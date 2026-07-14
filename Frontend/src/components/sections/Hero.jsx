@@ -4,7 +4,7 @@ import { ArrowRightOutlined, PlayCircleOutlined } from "@ant-design/icons";
 import Button from "../common/Button";
 import GradientBackground from "../common/GradientBackground";
 
-const Hero = ({ onGetStarted }) => {
+const Hero = ({ onGetStarted, onWatchDemo }) => {
     return (
         <GradientBackground className="py-20 md:py-32" type="blue">
             <Row gutter={[48, 48]} align="middle">
@@ -33,6 +33,7 @@ const Hero = ({ onGetStarted }) => {
                                 size="large"
                                 icon={<PlayCircleOutlined />}
                                 iconPosition="left"
+                                onClick={onWatchDemo}
                             >
                                 Watch Demo
                             </Button>

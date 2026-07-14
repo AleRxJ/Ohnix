@@ -22,7 +22,7 @@ const CTASection = () => {
                 <SectionTitle
                     light
                     title="Ready to Optimize Your Inventory?"
-                    description="Join thousands of businesses that have transformed their inventory management with InventoryPro"
+                    description="Join thousands of businesses that have transformed their inventory management with Ohnix by iTCycle"
                 />
 
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-5 mt-12 md:mt-14">

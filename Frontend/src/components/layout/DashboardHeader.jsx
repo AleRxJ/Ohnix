@@ -64,7 +64,7 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                     <div className="flex items-center">
                         <img
                             src="/IconOnly_Transparent_NoBuffer.png"
-                            alt="InventoryPro Logo"
+                            alt="Ohnix by iTCycle Logo"
                             className="h-full w-auto p-2"
                             style={{ maxHeight: "48px" }}
                         />

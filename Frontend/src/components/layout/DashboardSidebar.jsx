@@ -66,13 +66,13 @@ const SidebarLogo = ({ collapsed, onClick }) => (
         {collapsed ? (
             <img
                 src="/IconOnly_Transparent_NoBuffer.png"
-                alt="InventoryPro Logo"
+                alt="Ohnix by iTCycle Logo"
                 className="h-10 w-auto transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
             />
         ) : (
             <img
                 src="/FullLogo_Transparent_NoBuffer.png"
-                alt="InventoryPro Logo"
+                alt="Ohnix by iTCycle Logo"
                 className="h-20 w-auto transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
             />
         )}

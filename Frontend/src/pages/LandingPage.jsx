@@ -19,11 +19,18 @@ const LandingPage = () => {
         navigate("/signup");
     };
 
+    const handleWatchDemo = () => {
+        navigate("/demo");
+    };
+
     return (
         <Layout className="min-h-screen bg-white">
             <Navbar />
             <Content>
-                <Hero onGetStarted={handleGetStarted} />
+                <Hero
+                    onGetStarted={handleGetStarted}
+                    onWatchDemo={handleWatchDemo}
+                />
                 <Features features={features} />
                 <HowItWorks steps={steps} onGetStarted={handleGetStarted} />
                 <Testimonials testimonials={testimonials} />

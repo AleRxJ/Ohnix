@@ -10,6 +10,9 @@ const connectDB = async () => {
     }
 
     try {
+        // Debug: show the raw MONGODB_URI read from env
+        console.log("🔎 MONGODB_URI (raw):", process.env.MONGODB_URI);
+
         const conn = await mongoose.connect(
             `${process.env.MONGODB_URI}/${DB_NAME}`,
             {

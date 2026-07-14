@@ -14,6 +14,14 @@ export const AuthProvider = ({ children }) => {
         checkAuthStatus();
     }, []);
 
+    // If accessToken stored in localStorage, set default header
+    useEffect(() => {
+        const token = localStorage.getItem("accessToken");
+        if (token) {
+            api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        }
+    }, []);
+
     // Function to check if user is authenticated
     const checkAuthStatus = async () => {
         try {
@@ -44,6 +52,12 @@ export const AuthProvider = ({ children }) => {
 
             if (data.success) {
                 setUser(data.data.user);
+                // store access token for subsequent API calls
+                const token = data.data.accessToken;
+                if (token) {
+                    localStorage.setItem("accessToken", token);
+                    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+                }
                 setAuthenticated(true);
                 toast.success("Login successful");
                 return { success: true };
@@ -67,6 +81,8 @@ export const AuthProvider = ({ children }) => {
             if (response.data.success) {
                 setUser(null);
                 setAuthenticated(false);
+                localStorage.removeItem("accessToken");
+                delete api.defaults.headers.common["Authorization"];
                 toast.success("Logged out successfully");
             } else {
                 toast.error(response.data.message || "Logout failed");

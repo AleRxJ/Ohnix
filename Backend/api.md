@@ -1,4 +1,4 @@
-# 📦 InventoryPro API Documentation
+# 📦 Ohnix by iTCycle API Documentation
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen.svg)
@@ -191,7 +191,7 @@ Automated task management and low stock alert system (Admin only).
 
 ### JWT Token Authentication
 
-InventoryPro uses **JSON Web Tokens (JWT)** for secure authentication. Include the access token in the request header:
+Ohnix by iTCycle uses **JSON Web Tokens (JWT)** for secure authentication. Include the access token in the request header:
 
 ```
 Authorization: Bearer <your_access_token>
@@ -292,7 +292,7 @@ All routes require authentication except:
 
 ## 📞 Support & Contact
 
-**GitHub Repository**: [Visit Repository](https://github.com/SuryaX2/IMS/)
+**GitHub Repository**: [iTCycleHub/Ohnix](https://github.com/iTCycleHub/Ohnix)
 
 **Email**: sekharsurya111@gmail.com
 
@@ -302,6 +302,6 @@ All routes require authentication except:
   
 **Last Updated**: October 15, 2025 | **API Version**: 1.0.0
 
-Made with ❤️ by SuryaX2
+Made with ❤️ by iTCycleHub
 
 </div>

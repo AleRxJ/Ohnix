@@ -54,7 +54,7 @@ const Navbar = () => {
                         }`}
                         onClick={() => handleNavigation("/")}
                     >
-                        InventoryPro
+                        Ohnix by iTCycle
                     </div>
                 </div>
 
@@ -138,7 +138,7 @@ const Navbar = () => {
             <Drawer
                 title={
                     <span className="text-lg font-semibold text-gray-900 tracking-tight">
-                        InventoryPro
+                        Ohnix by iTCycle
                     </span>
                 }
                 placement="right"

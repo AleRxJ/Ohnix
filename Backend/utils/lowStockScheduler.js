@@ -50,7 +50,7 @@ class LowStockScheduler {
                 .join("");
 
             const mailOptions = {
-                from: `InventoryPro <${process.env.SENDER_EMAIL}>`,
+                from: `Ohnix by iTCycle <${process.env.SENDER_EMAIL}>`,
                 to: userEmail,
                 subject: "🚨 Weekly Low Stock Alert - Action Required",
                 html: `
@@ -113,7 +113,7 @@ class LowStockScheduler {
                                 This is an automated weekly report sent every Monday at 9:00 AM.
                             </p>
                             <p style="font-size: 12px; color: #9ca3af; margin: 0;">
-                                &copy; ${new Date().getFullYear()} InventoryPro. All Rights Reserved.
+                                &copy; ${new Date().getFullYear()} Ohnix by iTCycle. All Rights Reserved.
                             </p>
                         </div>
                     </div>

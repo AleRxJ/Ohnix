@@ -54,10 +54,28 @@ class OrderService {
             }
         }
 
-        const session = await mongoose.startSession();
-        session.startTransaction();
+        let session = null;
+        let transactionStarted = false;
+
+        // Try to start a transaction; if MongoDB does not support it (standalone), fall back
+        try {
+            session = await mongoose.startSession();
+            session.startTransaction();
+            transactionStarted = true;
+        } catch (txErr) {
+            console.warn(
+                "Transactions not supported by MongoDB instance, proceeding without transaction",
+                txErr.message
+            );
+            // ensure session is ended if startTransaction failed
+            try {
+                if (session) session.endSession();
+            } catch (e) {}
+            session = null;
+        }
 
         try {
+            const createOpts = session ? { session } : {};
             const [order] = await Order.create(
                 [
                     {
@@ -73,7 +91,7 @@ class OrderService {
                         updated_by: userId,
                     },
                 ],
-                { session }
+                createOpts
             );
 
             await OrderDetail.bulkCreateDetails(
@@ -103,13 +121,26 @@ class OrderService {
                 }
             }
 
-            await session.commitTransaction();
+            if (transactionStarted && session) {
+                await session.commitTransaction();
+            }
+
             return order;
         } catch (err) {
-            await session.abortTransaction();
+            if (transactionStarted && session) {
+                try {
+                    await session.abortTransaction();
+                } catch (e) {
+                    console.error("Failed to abort transaction:", e.message);
+                }
+            }
             throw err;
         } finally {
-            session.endSession();
+            if (session) {
+                try {
+                    session.endSession();
+                } catch (e) {}
+            }
         }
     }
 
