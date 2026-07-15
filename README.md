@@ -291,11 +291,11 @@ The backend includes a `vercel.json` that routes all `/api/v1/*` traffic to `ind
 
 ## 📞 Contact
 
-**GitHub**: [iTCycleHub/Ohnix](https://github.com/iTCycleHub/Ohnix)  
+**GitHub**: [iTCycle/Ohnix](https://github.com/iTCycle/Ohnix)  
 **Email**: sekharsurya111@gmail.com
 
 ---
 
 <div align="center">
-    Made with ❤️ by <strong>iTCycleHub</strong> &nbsp;|&nbsp; Ohnix API v1.0.0
+    Made with ❤️ by <strong>iTCycle</strong> &nbsp;|&nbsp; Ohnix API v1.0.0
 </div>

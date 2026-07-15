@@ -292,7 +292,7 @@ All routes require authentication except:
 
 ## 📞 Support & Contact
 
-**GitHub Repository**: [iTCycleHub/Ohnix](https://github.com/iTCycleHub/Ohnix)
+**GitHub Repository**: [iTCycle/Ohnix](https://github.com/iTCycle/Ohnix)
 
 **Email**: sekharsurya111@gmail.com
 
@@ -302,6 +302,6 @@ All routes require authentication except:
   
 **Last Updated**: October 15, 2025 | **API Version**: 1.0.0
 
-Made with ❤️ by iTCycleHub
+Made with ❤️ by iTCycle
 
 </div>

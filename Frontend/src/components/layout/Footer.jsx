@@ -28,7 +28,7 @@ const Footer = () => {
                             </p>
                             <Space size="large" className="text-3xl">
                                 <a
-                                    href="https://github.com/iTCycleHub/Ohnix"
+                                    href="https://github.com/iTCycle/Ohnix"
                                     target="_blank"
                                     rel="noreferrer"
                                     aria-label="GitHub"
@@ -37,7 +37,7 @@ const Footer = () => {
                                     <GithubOutlined className="text-slate-400 hover:text-white" />
                                 </a>
                                 <a
-                                    href="https://github.com/iTCycleHub/Ohnix"
+                                    href="https://github.com/iTCycle/Ohnix"
                                     target="_blank"
                                     rel="noreferrer"
                                     aria-label="Twitter"
@@ -46,7 +46,7 @@ const Footer = () => {
                                     <TwitterOutlined className="text-slate-400 hover:text-white" />
                                 </a>
                                 <a
-                                    href="https://github.com/iTCycleHub/Ohnix"
+                                    href="https://github.com/iTCycle/Ohnix"
                                     target="_blank"
                                     rel="noreferrer"
                                     aria-label="Instagram"
@@ -55,7 +55,7 @@ const Footer = () => {
                                     <InstagramFilled className="text-slate-400 hover:text-white" />
                                 </a>
                                 <a
-                                    href="https://github.com/iTCycleHub/Ohnix"
+                                    href="https://github.com/iTCycle/Ohnix"
                                     target="_blank"
                                     rel="noreferrer"
                                     aria-label="LinkedIn"
