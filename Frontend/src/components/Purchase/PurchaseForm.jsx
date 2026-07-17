@@ -18,6 +18,7 @@ import {
     MinusCircleOutlined,
     ShoppingCartOutlined,
 } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const { Option } = Select;
 
@@ -30,6 +31,7 @@ const PurchaseForm = ({
     form,
     initialValues,
 }) => {
+    const { t } = useI18n();
     // Build a lookup map for quick access to product details
     const productMap = React.useMemo(() => {
         const map = {};
@@ -75,9 +77,7 @@ const PurchaseForm = ({
                     <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
                         <ShoppingCartOutlined className="text-blue-600" />
                     </div>
-                    <span className="text-lg font-semibold">
-                        Add New Purchase
-                    </span>
+                    <span className="text-lg font-semibold">{t("purchases.add_new_purchase")}</span>
                 </div>
             }
             open={visible}
@@ -96,81 +96,35 @@ const PurchaseForm = ({
                 <Card className="mb-1 bg-gray-50 border-0">
                     <Row gutter={[16, 16]}>
                         <Col xs={24} sm={12}>
-                            <Form.Item
-                                label="Purchase Number"
-                                name="purchase_no"
-                                rules={[
-                                    {
-                                        required: true,
-                                        message: "Please enter purchase number",
-                                    },
-                                    {
-                                        max: 10,
-                                        message:
-                                            "Purchase number must be at most 10 characters",
-                                    },
-                                ]}
-                            >
-                                <Input
-                                    placeholder="Enter purchase number"
-                                    size="large"
-                                    className="rounded-lg"
-                                />
+                            <Form.Item label={t("purchases.purchase_number")} name="purchase_no" rules={[{ required: true, message: t("purchases.enter_purchase_number") }, { max: 10, message: t("purchases.purchase_number_max_length") }]}>
+                                <Input placeholder={t("purchases.purchase_number_placeholder")} size="large" className="rounded-lg" />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
-                            <Form.Item
-                                label="Supplier"
-                                name="supplier_id"
-                                rules={[
-                                    {
-                                        required: true,
-                                        message: "Please select supplier",
-                                    },
-                                ]}
-                            >
-                                <Select
-                                    placeholder="Select supplier"
-                                    size="large"
-                                    className="rounded-lg"
-                                    showSearch
-                                    optionFilterProp="children"
-                                >
+                            <Form.Item label={t("purchases.supplier")} name="supplier_id" rules={[{ required: true, message: t("purchases.select_supplier_message") }]}>
+                                <Select placeholder={t("purchases.select_supplier")} size="large" className="rounded-lg" showSearch optionFilterProp="children">
                                     {suppliers.map((supplier) => (
-                                        <Option
-                                            key={supplier._id}
-                                            value={supplier._id}
-                                        >
-                                            {supplier.name} ({supplier.shopname}
-                                            )
+                                        <Option key={supplier._id} value={supplier._id}>
+                                            {supplier.name} ({supplier.shopname})
                                         </Option>
                                     ))}
                                 </Select>
                             </Form.Item>
                         </Col>
                         <Col xs={24}>
-                            <Form.Item
-                                label="Purchase Status"
-                                name="purchase_status"
-                            >
-                                <Select
-                                    placeholder="Select status"
-                                    size="large"
-                                    className="rounded-lg"
-                                >
-                                    <Option value="pending">Pending</Option>
-                                    <Option value="completed">Completed</Option>
+                            <Form.Item label={t("common.status")} name="purchase_status">
+                                <Select placeholder={t("purchases.select_status")} size="large" className="rounded-lg">
+                                    <Option value="pending">{t("purchases.pending")}</Option>
+                                    <Option value="completed">{t("purchases.completed")}</Option>
                                 </Select>
                             </Form.Item>
                         </Col>
                     </Row>
                 </Card>
 
-                <Divider orientation="left">
-                    <span className="text-lg font-medium text-gray-700">
-                        Purchase Details
-                    </span>
-                </Divider>
+                    <Divider orientation="left">
+                        <span className="text-lg font-medium text-gray-700">{t("purchases.purchase_details")}</span>
+                    </Divider>
 
                 <Form.List name="details">
                     {(fields, { add, remove }) => (
@@ -192,20 +146,9 @@ const PurchaseForm = ({
                                     >
                                         <Row gutter={[16, 16]} align="middle">
                                             <Col xs={24} sm={8}>
-                                                <Form.Item
-                                                    {...restField}
-                                                    name={[name, "product_id"]}
-                                                    label="Product"
-                                                    rules={[
-                                                        {
-                                                            required: true,
-                                                            message:
-                                                                "Select product",
-                                                        },
-                                                    ]}
-                                                >
+                                                <Form.Item {...restField} name={[name, "product_id"]} label={t("products.product")} rules={[{ required: true, message: t("purchases.select_product_message") }]}>
                                                     <Select
-                                                        placeholder="Select product"
+                                                        placeholder={t("purchases.select_product")}
                                                         showSearch
                                                         optionFilterProp="label"
                                                         className="rounded-lg"
@@ -246,20 +189,9 @@ const PurchaseForm = ({
                                                 )}
                                             </Col>
                                             <Col xs={24} sm={6}>
-                                                <Form.Item
-                                                    {...restField}
-                                                    name={[name, "quantity"]}
-                                                    label="Quantity"
-                                                    rules={[
-                                                        {
-                                                            required: true,
-                                                            message:
-                                                                "Enter quantity",
-                                                        },
-                                                    ]}
-                                                >
+                                                <Form.Item {...restField} name={[name, "quantity"]} label={t("common.quantity")} rules={[{ required: true, message: t("purchases.enter_quantity_message") }]}>
                                                     <InputNumber
-                                                        placeholder="Quantity"
+                                                        placeholder={t("purchases.quantity_placeholder")}
                                                         min={1}
                                                         style={{
                                                             width: "100%",
@@ -269,20 +201,9 @@ const PurchaseForm = ({
                                                 </Form.Item>
                                             </Col>
                                             <Col xs={24} sm={7}>
-                                                <Form.Item
-                                                    {...restField}
-                                                    name={[name, "unitcost"]}
-                                                    label="Unit Cost"
-                                                    rules={[
-                                                        {
-                                                            required: true,
-                                                            message:
-                                                                "Enter unit cost",
-                                                        },
-                                                    ]}
-                                                >
+                                                <Form.Item {...restField} name={[name, "unitcost"]} label={t("purchases.unit_price")} rules={[{ required: true, message: t("purchases.enter_unit_price_message") }]}>
                                                     <InputNumber
-                                                        placeholder="Unit Cost"
+                                                        placeholder={t("purchases.unit_price_placeholder")}
                                                         min={0}
                                                         precision={2}
                                                         style={{
@@ -313,15 +234,8 @@ const PurchaseForm = ({
                                 );
                             })}
                             <Form.Item>
-                                <Button
-                                    type="dashed"
-                                    onClick={() => add()}
-                                    block
-                                    icon={<PlusOutlined />}
-                                    size="large"
-                                    className="h-12 border-2 border-dashed border-blue-300 text-blue-600 hover:border-blue-400 hover:text-blue-700 rounded-lg"
-                                >
-                                    Add Product
+                                <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="large" className="h-12 border-2 border-dashed border-blue-300 text-blue-600 hover:border-blue-400 hover:text-blue-700 rounded-lg">
+                                    {t("common.add_item")}
                                 </Button>
                             </Form.Item>
                         </>
@@ -330,23 +244,10 @@ const PurchaseForm = ({
 
                 <Form.Item className="mb-0 pt-4">
                     <Row justify="end">
-                        <Space size="large">
-                            <Button
-                                onClick={onCancel}
-                                size="large"
-                                className="px-8"
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="primary"
-                                htmlType="submit"
-                                size="large"
-                                className="px-8 bg-gradient-to-r from-blue-500 to-blue-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-                            >
-                                Create Purchase
-                            </Button>
-                        </Space>
+                            <Space size="large">
+                                <Button onClick={onCancel} size="large" className="px-8">{t("common.cancel")}</Button>
+                                <Button type="primary" htmlType="submit" size="large" className="px-8 bg-gradient-to-r from-blue-500 to-blue-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">{t("purchases.create_purchase")}</Button>
+                            </Space>
                     </Row>
                 </Form.Item>
             </Form>

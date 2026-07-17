@@ -12,36 +12,38 @@ import {
 import dayjs from "dayjs";
 import { getStatusColor } from "../../utils/purchaseUtils";
 import { getStatusIconPurchase } from "../../data";
+import useI18n from "../../hooks/useI18n";
 
 const { Text, Title } = Typography;
 
 const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
+    const { t } = useI18n();
     const detailColumns = [
         {
-            title: "Product",
+            title: t("products.product"),
             dataIndex: ["product_id", "product_name"],
             key: "product_name",
             render: (_, record) => (
                 <div className="font-medium text-gray-900">
-                    {record.product_id?.product_name || "N/A"}
+                    {record.product_id?.product_name || t("common.na")}
                 </div>
             ),
             width: 200,
             ellipsis: true,
         },
         {
-            title: "Product Code",
+            title: t("products.product_code"),
             dataIndex: ["product_id", "product_code"],
             key: "product_code",
             render: (_, record) => (
                 <Text code className="text-xs">
-                    {record.product_id?.product_code || "N/A"}
+                    {record.product_id?.product_code || t("common.na")}
                 </Text>
             ),
             width: 120,
         },
         {
-            title: "Quantity",
+            title: t("common.quantity"),
             dataIndex: "quantity",
             key: "quantity",
             render: (quantity) => (
@@ -53,7 +55,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
             align: "center",
         },
         {
-            title: "Unit Cost",
+            title: t("purchases.unit_price"),
             dataIndex: "unitcost",
             key: "unitcost",
             render: (cost) => (
@@ -65,7 +67,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
             align: "right",
         },
         {
-            title: "Total",
+            title: t("common.total"),
             dataIndex: "total",
             key: "total",
             render: (total) => (
@@ -77,7 +79,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
             align: "right",
         },
         {
-            title: "Return Status",
+            title: t("purchases.return_status"),
             key: "return_status",
             render: (_, record) => {
                 if (record.return_processed) {
@@ -87,28 +89,21 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                             size="small"
                             className="w-full"
                         >
-                            <Tag color="red" className="font-medium">
-                                Returned
-                            </Tag>
+                            <Tag color="red" className="font-medium">{t("purchases.returned")}</Tag>
                             <div className="text-xs text-gray-500 space-y-1">
                                 <div>
-                                    Qty:{" "}
-                                    <span className="font-medium">
-                                        {record.returned_quantity || 0}
-                                    </span>
+                                    {t("purchases.qty")}:{" "}
+                                    <span className="font-medium">{record.returned_quantity || 0}</span>
                                 </div>
                                 <div>
-                                    Refund:{" "}
-                                    <span className="font-medium text-red-600">
-                                        ₹
-                                        {(record.refund_amount || 0).toFixed(2)}
-                                    </span>
+                                    {t("purchases.refund")}:{" "}
+                                    <span className="font-medium text-red-600">₹{(record.refund_amount || 0).toFixed(2)}</span>
                                 </div>
                             </div>
                         </Space>
                     );
                 }
-                return <Tag color="default">Not Returned</Tag>;
+                return <Tag color="default">{t("purchases.not_returned")}</Tag>;
             },
             width: 140,
         },
@@ -118,12 +113,8 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
         <Modal
             title={
                 <div className="flex items-center space-x-2">
-                    <Title level={4} className="mb-0">
-                        Purchase Details
-                    </Title>
-                    <Tag color="blue" className="text-sm">
-                        {purchase?.purchase_no}
-                    </Tag>
+                    <Title level={4} className="mb-0">{t("purchases.purchase_details")}</Title>
+                    <Tag color="blue" className="text-sm">{purchase?.purchase_no}</Tag>
                 </div>
             }
             open={visible}
@@ -141,24 +132,16 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                         size="small"
                         className="purchase-info"
                     >
-                        <Descriptions.Item label="Purchase Number">
-                            <Text strong className="text-blue-600">
-                                {purchase.purchase_no}
-                            </Text>
+                        <Descriptions.Item label={t("purchases.purchase_number")}>
+                            <Text strong className="text-blue-600">{purchase.purchase_no}</Text>
                         </Descriptions.Item>
-                        <Descriptions.Item label="Supplier">
-                            <Text strong className="text-gray-900">
-                                {purchase.supplier_id?.name}
-                            </Text>
+                        <Descriptions.Item label={t("purchases.supplier")}>
+                            <Text strong className="text-gray-900">{purchase.supplier_id?.name}</Text>
                         </Descriptions.Item>
-                        <Descriptions.Item label="Purchase Date">
-                            <Text className="text-gray-700">
-                                {dayjs(purchase.purchase_date).format(
-                                    "DD/MM/YYYY"
-                                )}
-                            </Text>
+                        <Descriptions.Item label={t("purchases.purchase_date")}>
+                            <Text className="text-gray-700">{dayjs(purchase.purchase_date).format("DD/MM/YYYY")}</Text>
                         </Descriptions.Item>
-                        <Descriptions.Item label="Status">
+                        <Descriptions.Item label={t("common.status")}>
                             <Tag
                                 color={getStatusColor(purchase.purchase_status)}
                                 icon={getStatusIconPurchase(
@@ -169,28 +152,17 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                                 {purchase.purchase_status.toUpperCase()}
                             </Tag>
                         </Descriptions.Item>
-                        <Descriptions.Item label="Created By">
-                            <Text className="text-gray-700">
-                                {purchase.created_by?.username}
-                            </Text>
+                        <Descriptions.Item label={t("common.created_by")}>
+                            <Text className="text-gray-700">{purchase.created_by?.username}</Text>
                         </Descriptions.Item>
-                        <Descriptions.Item label="Created At">
-                            <Text className="text-gray-700">
-                                {dayjs(purchase.createdAt).format(
-                                    "DD/MM/YYYY HH:mm"
-                                )}
-                            </Text>
+                        <Descriptions.Item label={t("purchases.created_at")}>
+                            <Text className="text-gray-700">{dayjs(purchase.createdAt).format("DD/MM/YYYY HH:mm")}</Text>
                         </Descriptions.Item>
                     </Descriptions>
                 </Card>
             )}
 
-            <Divider
-                orientation="left"
-                className="text-lg font-semibold text-gray-800"
-            >
-                Purchase Items
-            </Divider>
+            <Divider orientation="left" className="text-lg font-semibold text-gray-800">{t("purchases.purchase_items")}</Divider>
 
             <Table
                 columns={detailColumns}
@@ -215,9 +187,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                         <Table.Summary fixed>
                             <Table.Summary.Row className="bg-gray-50">
                                 <Table.Summary.Cell index={0} colSpan={4}>
-                                    <Text strong className="text-gray-900">
-                                        Total Amount:
-                                    </Text>
+                                    <Text strong className="text-gray-900">{t("purchases.total_amount_label")}</Text>
                                 </Table.Summary.Cell>
                                 <Table.Summary.Cell index={4}>
                                     <Text
@@ -229,14 +199,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                                 </Table.Summary.Cell>
                                 <Table.Summary.Cell index={5}>
                                     {totalRefund > 0 && (
-                                        <Text
-                                            strong
-                                            type="danger"
-                                            className="text-sm"
-                                        >
-                                            Total Refund: ₹
-                                            {totalRefund.toFixed(2)}
-                                        </Text>
+                                        <Text strong type="danger" className="text-sm">{t("purchases.total_refund_label")} ₹{totalRefund.toFixed(2)}</Text>
                                     )}
                                 </Table.Summary.Cell>
                             </Table.Summary.Row>

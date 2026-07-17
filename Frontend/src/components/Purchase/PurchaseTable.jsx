@@ -1,122 +1,85 @@
 import React from "react";
 import { Table, Button, Space, Tag, Tooltip, Popconfirm } from "antd";
-import {
-    EyeOutlined,
-    CheckCircleOutlined,
-    InfoCircleOutlined,
-    UndoOutlined,
-} from "@ant-design/icons";
+import { EyeOutlined, CheckCircleOutlined, InfoCircleOutlined, UndoOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { getStatusColor } from "../../utils/purchaseUtils";
 import { getStatusIconPurchase } from "../../data";
+import useI18n from "../../hooks/useI18n";
 
-const PurchaseTable = ({
-    purchases,
-    loading,
-    searchText,
-    onViewDetails,
-    onUpdateStatus,
-    onReturnPreview,
-}) => {
+const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onViewDetails = () => {}, onUpdateStatus = () => {}, onReturnPreview = () => {} }) => {
+    const { t } = useI18n();
+
     const columns = [
         {
-            title: "Purchase No",
+            title: t("purchases.purchase_no"),
             dataIndex: "purchase_no",
             key: "purchase_no",
             filteredValue: [searchText],
             onFilter: (value, record) =>
-                record.purchase_no
-                    .toLowerCase()
-                    .includes(value.toLowerCase()) ||
-                record.supplier_id?.name
-                    ?.toLowerCase()
-                    .includes(value.toLowerCase()),
+                record.purchase_no?.toLowerCase().includes(value.toLowerCase()) ||
+                record.supplier_id?.name?.toLowerCase().includes(value.toLowerCase()),
         },
         {
-            title: "Supplier",
+            title: t("purchases.supplier"),
             dataIndex: ["supplier_id", "name"],
             key: "supplier",
-            render: (_, record) => record.supplier_id?.name || "N/A",
+            render: (_, record) => record.supplier_id?.name || t("common.na"),
         },
         {
-            title: "Purchase Date",
+            title: t("purchases.purchase_date"),
             dataIndex: "purchase_date",
             key: "purchase_date",
             render: (date) => dayjs(date).format("DD/MM/YYYY"),
         },
         {
-            title: "Status",
+            title: t("common.status"),
             dataIndex: "purchase_status",
             key: "status",
             render: (status) => (
-                <Tag
-                    color={getStatusColor(status)}
-                    icon={getStatusIconPurchase(status)}
-                >
-                    {status.toUpperCase()}
+                <Tag color={getStatusColor(status)} icon={getStatusIconPurchase(status)}>
+                    {t(`purchases.${status}`) || status.toUpperCase()}
                 </Tag>
             ),
         },
         {
-            title: "Created By",
+            title: t("common.created_by"),
             dataIndex: ["created_by", "username"],
             key: "created_by",
-            render: (_, record) => record.created_by?.username || "N/A",
+            render: (_, record) => record.created_by?.username || t("common.na"),
         },
         {
-            title: "Actions",
+            title: t("common.actions"),
             key: "actions",
             render: (_, record) => (
                 <Space size="middle">
-                    <Tooltip title="View Details">
-                        <Button
-                            icon={<EyeOutlined />}
-                            size="small"
-                            onClick={() => onViewDetails(record)}
-                        />
+                    <Tooltip title={t("purchases.view_details")}>
+                        <Button icon={<EyeOutlined />} size="small" onClick={() => onViewDetails(record)} />
                     </Tooltip>
 
                     {record.purchase_status === "pending" && (
-                        <Tooltip title="Mark as Completed">
+                        <Tooltip title={t("purchases.mark_completed")}>
                             <Popconfirm
-                                title="Mark this purchase as completed?"
-                                description="This will update the stock for all products in this purchase."
-                                onConfirm={() =>
-                                    onUpdateStatus(record._id, "completed")
-                                }
+                                title={t("purchases.confirm_mark_completed")}
+                                description={t("purchases.confirm_mark_completed_desc")}
+                                onConfirm={() => onUpdateStatus(record._id, "completed")}
                             >
-                                <Button
-                                    icon={<CheckCircleOutlined />}
-                                    size="small"
-                                    type="primary"
-                                />
+                                <Button icon={<CheckCircleOutlined />} size="small" type="primary" />
                             </Popconfirm>
                         </Tooltip>
                     )}
 
-                    {/* Only "completed" purchases can be returned — approved removed */}
                     {record.purchase_status === "completed" && (
                         <>
-                            <Tooltip title="Preview Return">
-                                <Button
-                                    icon={<InfoCircleOutlined />}
-                                    size="small"
-                                    onClick={() => onReturnPreview(record._id)}
-                                />
+                            <Tooltip title={t("purchases.preview_return")}>
+                                <Button icon={<InfoCircleOutlined />} size="small" onClick={() => onReturnPreview(record._id)} />
                             </Tooltip>
-                            <Tooltip title="Process Return">
+                            <Tooltip title={t("purchases.process_return")}>
                                 <Popconfirm
-                                    title="Process return for this purchase?"
-                                    description="This will reduce stock and calculate refund amounts."
-                                    onConfirm={() =>
-                                        onUpdateStatus(record._id, "returned")
-                                    }
+                                    title={t("purchases.confirm_process_return")}
+                                    description={t("purchases.confirm_process_return_desc")}
+                                    onConfirm={() => onUpdateStatus(record._id, "returned")}
                                 >
-                                    <Button
-                                        icon={<UndoOutlined />}
-                                        size="small"
-                                        danger
-                                    />
+                                    <Button icon={<UndoOutlined />} size="small" danger />
                                 </Popconfirm>
                             </Tooltip>
                         </>
@@ -136,8 +99,7 @@ const PurchaseTable = ({
                 pageSize: 10,
                 showSizeChanger: true,
                 showQuickJumper: true,
-                showTotal: (total, range) =>
-                    `${range[0]}-${range[1]} of ${total} items`,
+                showTotal: (total, range) => t("purchases.showing_purchases", { start: range[0], end: range[1], total }),
             }}
             scroll={{ x: 800 }}
         />

@@ -21,6 +21,7 @@ import PurchaseDetails from "./PurchaseDetails";
 import ReturnPreview from "./ReturnPreview";
 import { generatePurchaseNo } from "../../utils/purchaseUtils";
 import { Form } from "antd";
+import useI18n from "../../hooks/useI18n";
 
 const { Title } = Typography;
 
@@ -44,6 +45,7 @@ const PurchaseList = ({
         useState(false);
     const [selectedPurchase, setSelectedPurchase] = useState(null);
     const [form] = Form.useForm();
+    const { t } = useI18n();
 
     const handleViewDetails = async (purchase) => {
         setSelectedPurchase(purchase);
@@ -83,14 +85,10 @@ const PurchaseList = ({
                         <div className="mb-4 sm:mb-0">
                             <div className="flex-1 min-w-0">
                                 <h1 className="truncate mb-1 text-4xl font-bold flex items-center gap-2">
-                                    Purchases
-                                    <ShoppingCartOutlined className="text-blue-600 inline-block ml-2" />
+                                    {t("purchases.purchases")}<ShoppingCartOutlined className="text-blue-600 inline-block ml-2" />
                                 </h1>
                             </div>
-                            <p className="text-gray-600 text-sm sm:text-base">
-                                Manage your purchase orders and supplier
-                                relationships
-                            </p>
+                            <p className="text-gray-600 text-sm sm:text-base">{t("purchases.manage_purchases_description")}</p>
                         </div>
                     </div>
 
@@ -107,16 +105,9 @@ const PurchaseList = ({
                     >
                         <Col flex="auto" className="w-full sm:w-auto">
                             <Input.Search
-                                placeholder="Search by purchase number or supplier name..."
+                                placeholder={t("purchases.search_by_purchase")}
                                 allowClear
-                                enterButton={
-                                    <Button
-                                        type="primary"
-                                        icon={<SearchOutlined />}
-                                    >
-                                        Search
-                                    </Button>
-                                }
+                                enterButton={<Button type="primary" icon={<SearchOutlined />}>{t("common.search")}</Button>}
                                 size="large"
                                 onSearch={(value) => setSearchText(value)}
                                 onChange={(e) => setSearchText(e.target.value)}
@@ -130,8 +121,7 @@ const PurchaseList = ({
                                 size="large"
                                 onClick={handleAddPurchase}
                                 className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-blue-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-                            >
-                                Add Purchase
+                            > {t("purchases.add_new_purchase")}
                             </Button>
                         </Col>
                     </Row>
@@ -142,9 +132,7 @@ const PurchaseList = ({
                     <div className="p-4 sm:p-6">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full"></div>
-                            <Title level={4} className="!mb-0">
-                                Purchase Orders
-                            </Title>
+                            <Title level={4} className="!mb-0">{t("purchases.purchase_orders")}</Title>
                         </div>
                         <PurchaseTable
                             purchases={purchases}
