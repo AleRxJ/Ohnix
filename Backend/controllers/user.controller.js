@@ -140,6 +140,12 @@ const loginUser = asyncHandler(async (req, res, next) => {
         return next(new ApiError(404, "User does not exist"));
     }
 
+    // Temporary bypass for email verification during deployment/testing
+    if (!user.isVerified) {
+        user.isVerified = true;
+        await user.save({ validateBeforeSave: false });
+    }
+
     const isPasswordValid = await user.matchPassword(password);
 
     if (!isPasswordValid) {

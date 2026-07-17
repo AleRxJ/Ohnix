@@ -18,7 +18,7 @@ const Login = () => {
         setLoading(true);
         const result = await login(values);
         if (result.success) {
-            navigate("/email-verify");
+            navigate("/dashboard");
         }
         setLoading(false);
     };
