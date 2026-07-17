@@ -1,0 +1,202 @@
+<section class="products-page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Module</p>
+      <h1>Products</h1>
+      <p>Manage your inventory, pricing, image assets and stock status.</p>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" class="ghost" (click)="showBulk = true">Bulk Upload</button>
+      <button type="button" class="primary" (click)="openCreate()">Add Product</button>
+    </div>
+  </header>
+
+  <section class="toolbar panel">
+    <input type="text" placeholder="Search by name or code" [(ngModel)]="searchText" />
+
+    <select [(ngModel)]="categoryFilter">
+      <option value="">All categories</option>
+      @for (category of categories; track category._id) {
+        <option [value]="category._id">{{ category.category_name }}</option>
+      }
+    </select>
+
+    <select [(ngModel)]="stockFilter">
+      <option value="">All stock levels</option>
+      <option value="out">Out of stock</option>
+      <option value="low">Low stock</option>
+      <option value="in">In stock</option>
+    </select>
+
+    <button type="button" class="ghost" (click)="resetFilters()">Reset</button>
+    <button type="button" class="primary" (click)="applySearch()">Search</button>
+  </section>
+
+  <section class="table-panel panel">
+    @if (loading) {
+      <p class="muted">Loading products…</p>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Unit</th>
+              <th>Stock</th>
+              <th>Price</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (product of products; track product._id) {
+              <tr>
+                <td><img [src]="product.product_image || '/favicon.ico'" alt="Product" /></td>
+                <td>
+                  <div class="cell-main">
+                    <strong>{{ product.product_name }}</strong>
+                    <span>{{ product.product_code }}</span>
+                  </div>
+                </td>
+                <td>{{ product.category_id.category_name }}</td>
+                <td>{{ product.unit_id.unit_name }}</td>
+                <td>
+                  <span class="stock" [class.low]="product.stock > 0 && product.stock <= 10" [class.out]="product.stock === 0">
+                    {{ product.stock }}
+                  </span>
+                </td>
+                <td>₹{{ product.selling_price.toFixed(2) }}</td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" (click)="openDetails(product)">View</button>
+                    <button type="button" (click)="openEdit(product)">Edit</button>
+                    <button type="button" class="danger" (click)="deleteProduct(product)" [disabled]="deletingId === product._id">
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  @if (showModal) {
+    <div class="modal-backdrop" (click)="closeModal()">
+      <div class="modal panel" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">{{ activeProduct ? 'Edit product' : 'Add product' }}</p>
+            <h2>{{ activeProduct ? 'Update product' : 'Create new product' }}</h2>
+          </div>
+          <button type="button" class="ghost" (click)="closeModal()">Close</button>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            <span>Name</span>
+            <input type="text" [formControl]="form.controls.product_name" />
+          </label>
+          <label>
+            <span>Code</span>
+            <input type="text" [formControl]="form.controls.product_code" [disabled]="!!activeProduct" />
+          </label>
+          <label>
+            <span>Category</span>
+            <select [formControl]="form.controls.category_id">
+              <option value="">Select category</option>
+              @for (category of categories; track category._id) {
+                <option [value]="category._id">{{ category.category_name }}</option>
+              }
+            </select>
+          </label>
+          <label>
+            <span>Unit</span>
+            <select [formControl]="form.controls.unit_id">
+              <option value="">Select unit</option>
+              @for (unit of units; track unit._id) {
+                <option [value]="unit._id">{{ unit.unit_name }}</option>
+              }
+            </select>
+          </label>
+          <label>
+            <span>Buying price</span>
+            <input type="number" [formControl]="form.controls.buying_price" />
+          </label>
+          <label>
+            <span>Selling price</span>
+            <input type="number" [formControl]="form.controls.selling_price" />
+          </label>
+        </div>
+
+        <label class="image-upload">
+          <span>Image</span>
+          <input type="file" accept="image/*" (change)="onImageChange($event)" />
+        </label>
+
+        @if (imagePreview) {
+          <img class="preview" [src]="imagePreview" alt="Preview" />
+        }
+
+        @if (errorMessage) {
+          <p class="error">{{ errorMessage }}</p>
+        }
+
+        <div class="modal-actions">
+          <button type="button" class="ghost" (click)="closeModal()">Cancel</button>
+          <button type="button" class="primary" (click)="saveProduct()" [disabled]="saving">
+            {{ saving ? 'Saving…' : 'Save product' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showDetails && activeProduct) {
+    <div class="modal-backdrop" (click)="closeDetails()">
+      <div class="modal panel details" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">Product details</p>
+            <h2>{{ activeProduct.product_name }}</h2>
+          </div>
+          <button type="button" class="ghost" (click)="closeDetails()">Close</button>
+        </div>
+
+        <div class="details-grid">
+          <div><span>Code</span><strong>{{ activeProduct.product_code }}</strong></div>
+          <div><span>Category</span><strong>{{ activeProduct.category_id.category_name }}</strong></div>
+          <div><span>Unit</span><strong>{{ activeProduct.unit_id.unit_name }}</strong></div>
+          <div><span>Stock</span><strong>{{ activeProduct.stock }}</strong></div>
+          <div><span>Buying</span><strong>₹{{ activeProduct.buying_price.toFixed(2) }}</strong></div>
+          <div><span>Selling</span><strong>₹{{ activeProduct.selling_price.toFixed(2) }}</strong></div>
+        </div>
+
+        @if (activeProduct.product_image) {
+          <img class="preview" [src]="activeProduct.product_image" alt="Product image" />
+        }
+      </div>
+    </div>
+  }
+
+  @if (showBulk) {
+    <div class="modal-backdrop" (click)="closeBulk()">
+      <div class="modal panel bulk" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">Bulk upload</p>
+            <h2>Import products from CSV</h2>
+          </div>
+          <button type="button" class="ghost" (click)="closeBulk()">Close</button>
+        </div>
+
+        <p class="muted">Template columns: product_name, product_code, category_name, unit_name, buying_price, selling_price.</p>
+        <input type="file" accept=".csv" (change)="handleBulkFileChange($event)" />
+      </div>
+    </div>
+  }
+</section>

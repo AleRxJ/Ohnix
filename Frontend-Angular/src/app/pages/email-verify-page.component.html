@@ -1,0 +1,29 @@
+<app-auth-layout>
+  <app-auth-card title="Verify your email" subtitle="Request the OTP and confirm your account.">
+
+    <div class="actions-row">
+      <button type="button" (click)="sendOtp()" [disabled]="sending">
+        {{ sending ? 'Sending…' : 'Send OTP' }}
+      </button>
+    </div>
+
+    @if (otpSent) {
+      <form [formGroup]="form" (ngSubmit)="verifyOtp()" class="auth-form">
+        <label>
+          <span>OTP</span>
+          <input type="text" formControlName="otp" placeholder="123456" />
+        </label>
+
+        <button type="submit" [disabled]="loading">
+          {{ loading ? 'Verifying…' : 'Verify email' }}
+        </button>
+      </form>
+    }
+
+    @if (errorMessage) {
+      <p class="error">{{ errorMessage }}</p>
+    }
+
+    <a routerLink="/login" class="back-link">Back to login</a>
+  </app-auth-card>
+</app-auth-layout>
