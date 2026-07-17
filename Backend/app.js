@@ -6,10 +6,12 @@ import errorHandler from "./middleware/error.middleware.js";
 const app = express();
 
 const allowedOrigins = [
-   "https://ohnix-by-itcycle.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:5173",
-];
+   process.env.FRONTEND_URL,
+   ...(process.env.ALLOWED_ORIGINS?.split(",") || []),
+   "http://localhost:3000",
+   "http://localhost:5173",
+   "https://ohnix.vercel.app",
+].filter(Boolean);
 
 app.use(
     cors({

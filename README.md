@@ -183,6 +183,8 @@ This repo is prepared for a low-cost setup:
 
 For Vercel, import the repository at the root and keep the default root config. The app builds the React frontend from `Frontend/` and expects the backend URL in `VITE_BACKEND_URL`.
 
+For the backend, `render.yaml` is already included at the repo root so Render can deploy the `Backend/` service directly.
+
 Production env vars for the frontend:
 
 ```env
@@ -195,6 +197,8 @@ Production env vars for the backend should point to Atlas and your frontend doma
 MONGODB_URI=<atlas-connection-string>
 FRONTEND_URL=https://<your-vercel-domain>
 NODE_ENV=production
+START_SCHEDULER=true
+ALLOWED_ORIGINS=https://<your-vercel-domain>
 ```
 
 ---

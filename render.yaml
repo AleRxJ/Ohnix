@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: ohnix-backend
+    env: node
+    rootDir: Backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/v1/test
+    autoDeploy: true

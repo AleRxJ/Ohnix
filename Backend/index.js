@@ -31,7 +31,7 @@ connectDB()
                 `✅ Server listening on http://localhost:${process.env.PORT}/`
             );
             console.log("🚀 Starting low stock alert scheduler...");
-            if (process.env.NODE_ENV !== "production") {
+            if (process.env.START_SCHEDULER !== "false") {
                 lowStockScheduler.start();
             }
         });
