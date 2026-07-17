@@ -6,11 +6,13 @@ import AuthLayout from "../../components/auth/AuthLayout";
 import AuthCard from "../../components/auth/AuthCard";
 import { EmailInput, PasswordInput } from "../../components/auth/FormItems";
 import AuthButton from "../../components/auth/AuthButton";
+import useI18n from "../../hooks/useI18n";
 
 const Login = () => {
     const [loading, setLoading] = useState(false);
     const { login } = useContext(AuthContext);
     const navigate = useNavigate();
+    const { t } = useI18n();
 
     const onFinish = async (values) => {
         setLoading(true);
@@ -24,8 +26,8 @@ const Login = () => {
     return (
         <AuthLayout imageSrc="/imsTopImage.png">
             <AuthCard
-                title="Login"
-                subtitle="Sign in to continue to your account"
+                title={t('auth.login')}
+                subtitle={t('auth.login_success')}
             >
                 <Form
                     name="login-form"
@@ -43,27 +45,27 @@ const Login = () => {
                             to="/reset-password"
                             className="text-sm text-gray-600 hover:text-blue-600 transition-colors"
                         >
-                            Forgot password?
+                            {t('auth.forgot_password')}
                         </Link>
                     </div>
 
                     <Form.Item className="mb-0">
-                        <AuthButton loading={loading}>Sign In</AuthButton>
+                        <AuthButton loading={loading}>{t('auth.login')}</AuthButton>
                     </Form.Item>
 
                     <Divider plain className="my-6 text-gray-400 text-sm">
-                        Or
+                        {t('common.or')}
                     </Divider>
 
                     <div className="text-center text-sm">
                         <span className="text-gray-600">
-                            Don't have an account?
+                            {t('auth.dont_have_account')}
                         </span>{" "}
                         <Link
                             to="/signup"
                             className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
                         >
-                            Sign up
+                            {t('auth.signup')}
                         </Link>
                     </div>
                 </Form>
