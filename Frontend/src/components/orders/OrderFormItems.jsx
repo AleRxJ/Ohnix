@@ -1,11 +1,13 @@
 import React from "react";
 import { Form, Row, Col, Select, InputNumber, Button } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const { Option } = Select;
 
 const OrderFormItems = ({ products, onRemove, name, restField }) => {
     const form = Form.useFormInstance();
+    const { t } = useI18n();
 
     const handleProductChange = (productId) => {
         const selected = products.find((p) => p._id === productId);
@@ -35,19 +37,19 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                             name={[name, "product_id"]}
                             label={
                                 <span className="text-sm font-medium text-gray-700">
-                                    Product
+                                    {t("products.product")}
                                 </span>
                             }
                             rules={[
                                 {
                                     required: true,
-                                    message: "Please select a product",
+                                    message: t("orders.select_product_message"),
                                 },
                             ]}
                             className="mb-0"
                         >
                             <Select
-                                placeholder="Select a product"
+                                placeholder={t("orders.select_product")}
                                 showSearch
                                 optionFilterProp="label"
                                 size="large"
@@ -62,8 +64,8 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                                     >
                                         <div className="flex items-center justify-between">
                                             <span>{product.product_name}</span>
-                                            <span className="text-xs text-gray-400 ml-2">
-                                                Stock: {product.stock}
+                                                <span className="text-xs text-gray-400 ml-2">
+                                                {t("orders.stock")}: {product.stock}
                                             </span>
                                         </div>
                                     </Option>
@@ -78,13 +80,13 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                             name={[name, "quantity"]}
                             label={
                                 <span className="text-sm font-medium text-gray-700">
-                                    Quantity
+                                    {t("common.quantity")}
                                 </span>
                             }
                             rules={[
                                 {
                                     required: true,
-                                    message: "Please enter quantity",
+                                    message: t("orders.enter_quantity_message"),
                                 },
                             ]}
                             className="mb-0"
@@ -104,19 +106,19 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                             name={[name, "unitcost"]}
                             label={
                                 <span className="text-sm font-medium text-gray-700">
-                                    Unit Price
+                                    {t("orders.unit_price")}
                                 </span>
                             }
                             rules={[
                                 {
                                     required: true,
-                                    message: "Please enter unit price",
+                                    message: t("orders.enter_unit_price_message"),
                                 },
                             ]}
                             className="mb-0"
                         >
                             <InputNumber
-                                placeholder="Selling Price"
+                                placeholder={t("orders.selling_price")}
                                 min={0}
                                 step={0.01}
                                 className="w-full"

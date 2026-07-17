@@ -35,6 +35,7 @@ import AuthContext from "../../context/AuthContext";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
+import useI18n from "../../hooks/useI18n";
 
 const { Option } = Select;
 
@@ -43,6 +44,7 @@ const TopProductsReport = () => {
     const [loading, setLoading] = useState(false);
     const [limit, setLimit] = useState(10);
     const { user } = useContext(AuthContext);
+    const { t } = useI18n();
 
     const COLORS = [
         "#0088FE",
@@ -73,7 +75,7 @@ const TopProductsReport = () => {
         } catch (error) {
             toast.error(
                 error.response?.data?.message ||
-                    "Failed to fetch top products report"
+                        t("reports.failed_top_products_report")
             );
         } finally {
             setLoading(false);
@@ -82,7 +84,7 @@ const TopProductsReport = () => {
 
     const exportToCSV = () => {
         if (topProducts.length === 0) {
-            toast.error("No data to export");
+            toast.error(t("reports.no_data_to_export"));
             return;
         }
 
@@ -90,24 +92,24 @@ const TopProductsReport = () => {
         const csvData = [];
 
         // Add summary
-        csvData.push(["Top Products Report Summary"]);
+        csvData.push([t("reports.top_products_report_summary")]);
         const summary = calculateSummary();
-        csvData.push(["Total Products", summary.totalProducts]);
-        csvData.push(["Total Quantity Sold", summary.totalQuantitySold]);
+        csvData.push([t("reports.total_products"), summary.totalProducts]);
+        csvData.push([t("reports.total_quantity_sold"), summary.totalQuantitySold]);
         csvData.push([
-            "Total Revenue (in rupees)",
+            t("reports.total_revenue"),
             `${summary.totalRevenue.toFixed(2)}`,
         ]);
         csvData.push([""]);
 
         // Add headers
         csvData.push([
-            "Rank",
-            "Product Code",
-            "Product Name",
-            "Quantity Sold",
-            "Total Sales (in rupees)",
-            "Average Price (in rupees)",
+            t("reports.rank"),
+            t("products.product_code"),
+            t("products.product_name"),
+            t("reports.quantity_sold"),
+            t("reports.total_sales_rupees"),
+            t("reports.average_price_rupees"),
         ]);
 
         // Add product data
@@ -148,12 +150,12 @@ const TopProductsReport = () => {
             link.click();
             document.body.removeChild(link);
         }
-        toast.success("Top products report exported successfully!");
+        toast.success(t("reports.top_products_report_exported"));
     };
 
     const columns = [
         {
-            title: "Rank",
+            title: t("reports.rank"),
             key: "rank",
             render: (_, __, index) => (
                 <div className="flex items-center">
@@ -180,7 +182,7 @@ const TopProductsReport = () => {
             width: window.innerWidth < 768 ? 60 : 80,
         },
         {
-            title: "Product",
+            title: t("products.product"),
             key: "product",
             render: (record) => (
                 <div className="flex items-center space-x-2 sm:space-x-3">
@@ -206,7 +208,7 @@ const TopProductsReport = () => {
             ellipsis: true,
         },
         {
-            title: window.innerWidth < 768 ? "Qty" : "Quantity Sold",
+            title: window.innerWidth < 768 ? t("reports.qty") : t("reports.quantity_sold"),
             dataIndex: "quantity_sold",
             key: "quantity_sold",
             sorter: (a, b) => a.quantity_sold - b.quantity_sold,
@@ -220,14 +222,14 @@ const TopProductsReport = () => {
                         {quantity}
                     </div>
                     <div className="text-gray-500 text-xs hidden sm:block">
-                        units
+                        {t("reports.units")}
                     </div>
                 </div>
             ),
             width: window.innerWidth < 768 ? 60 : 120,
         },
         {
-            title: window.innerWidth < 768 ? "Sales" : "Total Sales",
+            title: window.innerWidth < 768 ? t("reports.sales") : t("reports.total_sales"),
             dataIndex: "total_sales",
             key: "total_sales",
             sorter: (a, b) => a.total_sales - b.total_sales,
@@ -244,14 +246,14 @@ const TopProductsReport = () => {
                             : sales.toFixed(2)}
                     </div>
                     <div className="text-gray-500 text-xs hidden sm:block">
-                        revenue
+                        {t("reports.revenue")}
                     </div>
                 </div>
             ),
             width: window.innerWidth < 768 ? 70 : 120,
         },
         {
-            title: "Avg. Price",
+            title: t("reports.avg_price"),
             key: "avg_price",
             render: (record) => {
                 const avgPrice =
@@ -273,7 +275,7 @@ const TopProductsReport = () => {
                                 : avgPrice.toFixed(2)}
                         </div>
                         <div className="text-gray-500 text-xs hidden md:block">
-                            per unit
+                            {t("reports.per_unit")}
                         </div>
                     </div>
                 );
@@ -305,24 +307,24 @@ const TopProductsReport = () => {
             <Card
                 title={
                     <span className="text-sm sm:text-base">
-                        Top Products Configuration
+                        {t("reports.top_products_configuration")}
                     </span>
                 }
             >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <span className="text-sm">Show top:</span>
+                        <span className="text-sm">{t("reports.show_top")}</span>
                         <Select
                             value={limit}
                             onChange={setLimit}
                             className="w-full sm:w-32"
                             size={window.innerWidth < 768 ? "middle" : "large"}
                         >
-                            <Option value={5}>5 Products</Option>
-                            <Option value={10}>10 Products</Option>
-                            <Option value={15}>15 Products</Option>
-                            <Option value={20}>20 Products</Option>
-                            <Option value={25}>25 Products</Option>
+                            <Option value={5}>{t("reports.products_count", { count: 5 })}</Option>
+                            <Option value={10}>{t("reports.products_count", { count: 10 })}</Option>
+                            <Option value={15}>{t("reports.products_count", { count: 15 })}</Option>
+                            <Option value={20}>{t("reports.products_count", { count: 20 })}</Option>
+                            <Option value={25}>{t("reports.products_count", { count: 25 })}</Option>
                         </Select>
                         <Button
                             type="primary"
@@ -332,8 +334,8 @@ const TopProductsReport = () => {
                             className="w-full sm:w-auto"
                             size={window.innerWidth < 768 ? "middle" : "large"}
                         >
-                            <span className="hidden sm:inline">Refresh</span>
-                            <span className="sm:hidden">Refresh</span>
+                            <span className="hidden sm:inline">{t("common.refresh")}</span>
+                            <span className="sm:hidden">{t("common.refresh")}</span>
                         </Button>
                     </div>
                     <Button
@@ -343,8 +345,8 @@ const TopProductsReport = () => {
                         className="bg-green-500 text-white hover:bg-green-600 w-full sm:w-auto"
                         size={window.innerWidth < 768 ? "middle" : "large"}
                     >
-                        <span className="hidden sm:inline">Export to CSV</span>
-                        <span className="sm:hidden">Export</span>
+                        <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
+                        <span className="sm:hidden">{t("common.export")}</span>
                     </Button>
                 </div>
             </Card>
@@ -356,8 +358,8 @@ const TopProductsReport = () => {
                         <StatCard
                             title={
                                 window.innerWidth < 768
-                                    ? "Products"
-                                    : "Total Products"
+                                        ? t("reports.products")
+                                        : t("reports.total_products")
                             }
                             value={summary.totalProducts}
                             icon={
@@ -371,8 +373,8 @@ const TopProductsReport = () => {
                         <StatCard
                             title={
                                 window.innerWidth < 768
-                                    ? "Qty Sold"
-                                    : "Total Quantity Sold"
+                                        ? t("reports.qty_sold")
+                                        : t("reports.total_quantity_sold")
                             }
                             value={summary.totalQuantitySold}
                             icon={
@@ -386,8 +388,8 @@ const TopProductsReport = () => {
                         <StatCard
                             title={
                                 window.innerWidth < 768
-                                    ? "Revenue"
-                                    : "Total Revenue"
+                                        ? t("reports.revenue")
+                                        : t("reports.total_revenue")
                             }
                             value={summary.totalRevenue}
                             icon={
@@ -410,8 +412,8 @@ const TopProductsReport = () => {
                             title={
                                 <span className="text-sm sm:text-base">
                                     {window.innerWidth < 768
-                                        ? "Top by Quantity"
-                                        : "Top Products by Quantity Sold"}
+                                        ? t("reports.top_by_quantity")
+                                        : t("reports.top_products_by_quantity_sold")}
                                 </span>
                             }
                             className="h-full"
@@ -461,17 +463,17 @@ const TopProductsReport = () => {
                                         <Tooltip
                                             formatter={(value, name) => [
                                                 value,
-                                                "Quantity Sold",
+                                                t("reports.quantity_sold")
                                             ]}
                                             labelFormatter={(label) =>
-                                                `Product: ${label}`
+                                                `${t("products.product")}: ${label}`
                                             }
                                         />
                                         <Legend />
                                         <Bar
                                             dataKey="quantity_sold"
                                             fill="#1890ff"
-                                            name="Quantity Sold"
+                                            name={t("reports.quantity_sold")}
                                             radius={[4, 4, 0, 0]}
                                         />
                                     </BarChart>
@@ -486,8 +488,8 @@ const TopProductsReport = () => {
                             title={
                                 <span className="text-sm sm:text-base">
                                     {window.innerWidth < 768
-                                        ? "Top by Revenue"
-                                        : "Top Products by Revenue"}
+                                        ? t("reports.top_by_revenue")
+                                        : t("reports.top_products_by_revenue")}
                                 </span>
                             }
                             className="h-full"

@@ -35,6 +35,7 @@ import AuthContext from "../../context/AuthContext";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
+import useI18n from "../../hooks/useI18n";
 
 const { RangePicker } = DatePicker;
 
@@ -46,6 +47,7 @@ const SalesReport = () => {
         dayjs(),
     ]);
     const { user } = useContext(AuthContext);
+    const { t } = useI18n();
 
     const COLORS = [
         "#0088FE",
@@ -81,7 +83,7 @@ const SalesReport = () => {
             }
         } catch (error) {
             toast.error(
-                error.response?.data?.message || "Failed to fetch sales report"
+                error.response?.data?.message || t("reports.failed_sales_report")
             );
         } finally {
             setLoading(false);
@@ -97,7 +99,7 @@ const SalesReport = () => {
 
     const exportToCSV = () => {
         if (!salesData) {
-            toast.error("No data to export");
+            toast.error(t("reports.no_data_to_export"));
             return;
         }
 
@@ -105,25 +107,25 @@ const SalesReport = () => {
         const csvData = [];
 
         // Add summary
-        csvData.push(["Sales Report Summary"]);
+        csvData.push([t("reports.sales_report_summary")]);
         csvData.push([
-            "Total Sales",
+            t("reports.total_sales"),
             `₹${salesData.summary.totalSales.toFixed(2)}`,
         ]);
-        csvData.push(["Total Orders", salesData.summary.totalOrders]);
+        csvData.push([t("orders.total_orders"), salesData.summary.totalOrders]);
         csvData.push([""]);
 
         // Add sales by date
-        csvData.push(["Sales by Date"]);
-        csvData.push(["Date", "Total Sales", "Number of Orders"]);
+        csvData.push([t("reports.sales_by_date")]);
+        csvData.push([t("common.date"), t("reports.total_sales"), t("orders.number_of_orders")]);
         salesData.salesByDate.forEach((item) => {
             csvData.push([item._id, `₹${item.total.toFixed(2)}`, item.orders]);
         });
         csvData.push([""]);
 
         // Add sales by product
-        csvData.push(["Top Selling Products"]);
-        csvData.push(["Product Name", "Quantity Sold", "Total Sales"]);
+        csvData.push([t("reports.top_selling_products")]);
+        csvData.push([t("products.product_name"), t("reports.quantity_sold"), t("reports.total_sales")]);
         salesData.salesByProduct.forEach((item) => {
             csvData.push([
                 item.product_name,
@@ -154,12 +156,12 @@ const SalesReport = () => {
             link.click();
             document.body.removeChild(link);
         }
-        toast.success("Sales report exported successfully!");
+        toast.success(t("reports.sales_report_exported"));
     };
 
     const productColumns = [
         {
-            title: "Product Name",
+            title: t("products.product_name"),
             dataIndex: "product_name",
             key: "product_name",
             sorter: (a, b) => a.product_name.localeCompare(b.product_name),
@@ -167,7 +169,7 @@ const SalesReport = () => {
             ellipsis: true,
         },
         {
-            title: "Quantity Sold",
+            title: t("reports.quantity_sold"),
             dataIndex: "quantity",
             key: "quantity",
             sorter: (a, b) => a.quantity - b.quantity,
@@ -178,7 +180,7 @@ const SalesReport = () => {
             responsive: ["sm"],
         },
         {
-            title: "Total Sales",
+            title: t("reports.total_sales"),
             dataIndex: "total",
             key: "total",
             sorter: (a, b) => a.total - b.total,
@@ -190,7 +192,7 @@ const SalesReport = () => {
             width: 120,
         },
         {
-            title: "Avg. Price",
+            title: t("reports.avg_price"),
             key: "avg_price",
             render: (record) => {
                 const avgPrice =
@@ -209,7 +211,7 @@ const SalesReport = () => {
     return (
         <div className="space-y-4 sm:space-y-6">
             {/* Date Range Filter and Export */}
-            <Card title="Filter and Export Options">
+            <Card title={t("reports.filter_and_export_options")}>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row gap-3">
                         <RangePicker
@@ -228,9 +230,9 @@ const SalesReport = () => {
                             className="w-full sm:w-auto"
                         >
                             <span className="hidden sm:inline">
-                                Refresh Report
+                                {t("reports.refresh_report")}
                             </span>
-                            <span className="sm:hidden">Refresh</span>
+                            <span className="sm:hidden">{t("common.refresh")}</span>
                         </Button>
                     </div>
                     <Button
@@ -239,8 +241,8 @@ const SalesReport = () => {
                         disabled={!salesData}
                         className="bg-green-500 text-white hover:bg-green-600 w-full sm:w-auto"
                     >
-                        <span className="hidden sm:inline">Export to CSV</span>
-                        <span className="sm:hidden">Export</span>
+                        <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
+                        <span className="sm:hidden">{t("common.export")}</span>
                     </Button>
                 </div>
             </Card>
@@ -251,7 +253,7 @@ const SalesReport = () => {
                     <Row gutter={[16, 16]} className="mb-4 sm:mb-6">
                         <Col xs={24} sm={12}>
                             <StatCard
-                                title="Total Sales Revenue"
+                                title={t("reports.total_sales_revenue")}
                                 value={salesData.summary.totalSales}
                                 icon={
                                     <DollarOutlined className="text-xl sm:text-2xl text-green" />
@@ -266,7 +268,7 @@ const SalesReport = () => {
                         </Col>
                         <Col xs={24} sm={12}>
                             <StatCard
-                                title="Total Orders"
+                                title={t("orders.total_orders")}
                                 value={salesData.summary.totalOrders}
                                 icon={
                                     <ShoppingCartOutlined className="text-xl sm:text-2xl text-blue" />
@@ -279,7 +281,7 @@ const SalesReport = () => {
 
                     {/* Sales Trend Chart */}
                     {salesData.salesByDate?.length > 0 && (
-                        <Card title="Sales Trend Over Time" className="w-full">
+                        <Card title={t("reports.sales_trend_over_time")} className="w-full">
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
                                     width="100%"
@@ -323,11 +325,11 @@ const SalesReport = () => {
                                                     ? `₹${value.toFixed(2)}`
                                                     : value,
                                                 name === "total"
-                                                    ? "Sales"
-                                                    : "Orders",
+                                                    ? t("reports.sales")
+                                                    : t("orders.orders"),
                                             ]}
                                             labelFormatter={(label) =>
-                                                `Date: ${label}`
+                                                `${t("common.date")}: ${label}`
                                             }
                                         />
                                         <Legend />
@@ -336,7 +338,7 @@ const SalesReport = () => {
                                             dataKey="total"
                                             stroke="#52c41a"
                                             strokeWidth={3}
-                                            name="Sales (₹)"
+                                            name={t("reports.sales_amount")}
                                             dot={{
                                                 r:
                                                     window.innerWidth < 768
@@ -349,7 +351,7 @@ const SalesReport = () => {
                                             dataKey="orders"
                                             stroke="#1890ff"
                                             strokeWidth={2}
-                                            name="Orders"
+                                            name={t("orders.orders")}
                                             dot={{
                                                 r:
                                                     window.innerWidth < 768
@@ -368,7 +370,7 @@ const SalesReport = () => {
                         {salesData.salesByProduct?.length > 0 && (
                             <Col xs={24} lg={12}>
                                 <Card
-                                    title="Top Products by Sales"
+                                    title={t("reports.top_products_by_sales")}
                                     className="h-full"
                                 >
                                     <div className="w-full overflow-x-auto">
@@ -433,8 +435,8 @@ const SalesReport = () => {
                                                             ? `₹${value.toFixed(2)}`
                                                             : value,
                                                         name === "total"
-                                                            ? "Sales"
-                                                            : "Quantity",
+                                                            ? t("reports.sales")
+                                                            : t("common.quantity"),
                                                     ]}
                                                 />
                                                 <Legend />
@@ -455,7 +457,7 @@ const SalesReport = () => {
                         {salesData.salesByProduct?.length > 0 && (
                             <Col xs={24} lg={12}>
                                 <Card
-                                    title="Sales Distribution by Product"
+                                                    title={t("reports.sales_distribution_by_product")}
                                     className="h-full"
                                 >
                                     <div className="w-full overflow-x-auto">

@@ -7,13 +7,16 @@ import {
     AppstoreOutlined,
 } from "@ant-design/icons";
 import StatCard from "../dashboard/StatCard";
+import useI18n from "../../hooks/useI18n";
 
 const CustomerStats = ({ stats }) => {
+    const { t } = useI18n();
+
     return (
         <Row gutter={[16, 16]} className="mb-6">
             <Col xs={24} sm={12} lg={6}>
                 <StatCard
-                    title="Total Customers"
+                    title={t("customers.total_customers")}
                     value={stats.total}
                     icon={
                         <UserOutlined className="text-xl sm:text-2xl text-blue" />
@@ -24,7 +27,7 @@ const CustomerStats = ({ stats }) => {
             </Col>
             <Col xs={24} sm={12} lg={6}>
                 <StatCard
-                    title="Regular Customers"
+                    title={t("customers.regular_customers")}
                     value={stats.regular}
                     icon={
                         <TeamOutlined className="text-xl sm:text-2xl text-green" />
@@ -35,7 +38,7 @@ const CustomerStats = ({ stats }) => {
             </Col>
             <Col xs={24} sm={12} lg={6}>
                 <StatCard
-                    title="Wholesale Customers"
+                    title={t("customers.wholesale_customers")}
                     value={stats.wholesale}
                     icon={
                         <AppstoreOutlined className="text-xl sm:text-2xl text-yellow" />
@@ -46,7 +49,7 @@ const CustomerStats = ({ stats }) => {
             </Col>
             <Col xs={24} sm={12} lg={6}>
                 <StatCard
-                    title="Retail Customers"
+                    title={t("customers.retail_customers")}
                     value={stats.retail}
                     icon={
                         <ShopOutlined className="text-xl sm:text-2xl text-red" />

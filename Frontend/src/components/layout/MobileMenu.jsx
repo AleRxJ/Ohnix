@@ -1,9 +1,12 @@
 // components/layout/MobileMenu.jsx
 import React from "react";
 import { Menu } from "antd";
-import { menuItems } from "../../data";
+import { getMenuItems } from "../../data";
+import useI18n from "../../hooks/useI18n";
 
 const MobileMenu = ({ collapsed, currentPage }) => {
+    const { t } = useI18n();
+
     return (
         <div
             className="md:hidden fixed top-16 left-0 right-0 transition-all duration-300 ease-in-out"
@@ -22,7 +25,7 @@ const MobileMenu = ({ collapsed, currentPage }) => {
                                 theme="dark"
                                 selectedKeys={[currentPage]}
                                 mode="inline"
-                                items={menuItems}
+                                items={getMenuItems(t)}
                                 className="border-r-0"
                                 style={{
                                     background: "transparent",

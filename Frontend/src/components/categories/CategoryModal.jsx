@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Modal, Form, Input, Button, Space } from "antd";
 import { TagsOutlined } from "@ant-design/icons";
 import { FORM_RULES, MODAL_WIDTH } from "../../utils/category_units/constants";
+import useI18n from "../../hooks/useI18n";
 
 const CategoryModal = ({
     visible,
@@ -10,6 +11,7 @@ const CategoryModal = ({
     editingCategory,
     form,
 }) => {
+    const { t } = useI18n();
     useEffect(() => {
         if (visible) {
             if (editingCategory) {
@@ -30,7 +32,7 @@ const CategoryModal = ({
         <Modal
             title={
                 <div className="text-lg font-medium text-gray-800">
-                    {editingCategory ? "Edit Category" : "Add New Category"}
+                    {editingCategory ? t("categories.edit_category") : t("categories.add_new_category")}
                 </div>
             }
             open={visible}
@@ -58,14 +60,14 @@ const CategoryModal = ({
                     name="category_name"
                     label={
                         <span className="text-sm font-medium text-gray-700">
-                            Category Name
+                            {t("categories.category_name")}
                         </span>
                     }
                     rules={FORM_RULES.CATEGORY_NAME}
                     className="mb-6"
                 >
                     <Input
-                        placeholder="Enter category name"
+                        placeholder={t("categories.enter_category_name")}
                         className="h-11 rounded-md border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
                         prefix={
                             <TagsOutlined className="text-gray-400 text-sm" />
@@ -79,7 +81,7 @@ const CategoryModal = ({
                             onClick={onClose}
                             className="h-10 px-6 rounded-md border-gray-300 hover:border-gray-400 transition-colors duration-200"
                         >
-                            Cancel
+                            {t("common.cancel")}
                         </Button>
                         <Button
                             type="primary"
@@ -87,8 +89,8 @@ const CategoryModal = ({
                             className="h-10 px-6 rounded-md bg-blue-600 hover:bg-blue-700 border-blue-600 hover:border-blue-700 transition-colors duration-200"
                         >
                             {editingCategory
-                                ? "Update Category"
-                                : "Create Category"}
+                                ? t("categories.update_category")
+                                : t("categories.create_category")}
                         </Button>
                     </div>
                 </Form.Item>

@@ -1,6 +1,7 @@
 import { Modal, Form, Row, Col, Select, Button, Divider } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import OrderFormItems from "./OrderFormItems";
+import useI18n from "../../hooks/useI18n";
 
 const { Option } = Select;
 
@@ -12,11 +13,12 @@ const CreateOrderModal = ({
     products,
     form,
 }) => {
+    const { t } = useI18n();
     return (
         <Modal
             title={
                 <div className="text-xl text-center uppercase tracking-wider font-bold text-gray-900">
-                    Create New Order
+                    {t("orders.create_new_order")}
                 </div>
             }
             open={visible}
@@ -35,7 +37,7 @@ const CreateOrderModal = ({
             >
                 <div className="mb-6">
                     <h4 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">
-                        Order Information
+                        {t("orders.order_information")}
                     </h4>
                     <Row gutter={16}>
                         <Col xs={24} sm={12}>
@@ -43,18 +45,18 @@ const CreateOrderModal = ({
                                 name="customer_id"
                                 label={
                                     <span className="font-medium text-gray-700">
-                                        Customer
+                                        {t("customers.customer")}
                                     </span>
                                 }
                                 rules={[
                                     {
                                         required: true,
-                                        message: "Please select a customer",
+                                        message: t("orders.select_customer_message"),
                                     },
                                 ]}
                             >
                                 <Select
-                                    placeholder="Select Customer"
+                                    placeholder={t("customers.select_customer")}
                                     showSearch
                                     optionFilterProp="children"
                                     className="w-full"
@@ -76,17 +78,17 @@ const CreateOrderModal = ({
                                 name="order_status"
                                 label={
                                     <span className="font-medium text-gray-700">
-                                        Order Status
+                                        {t("common.status")}
                                     </span>
                                 }
                                 initialValue="pending"
                             >
                                 <Select size="large">
-                                    <Option value="pending">Pending</Option>
+                                    <Option value="pending">{t("orders.pending")}</Option>
                                     <Option value="processing">
-                                        Processing
+                                        {t("orders.processing")}
                                     </Option>
-                                    <Option value="completed">Completed</Option>
+                                    <Option value="completed">{t("orders.completed")}</Option>
                                 </Select>
                             </Form.Item>
                         </Col>
@@ -100,7 +102,7 @@ const CreateOrderModal = ({
                         <div className="mb-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                                    Order Items
+                                    {t("orders.order_items")}
                                 </h4>
                                 <Button
                                     type="primary"
@@ -109,7 +111,7 @@ const CreateOrderModal = ({
                                     size="middle"
                                     className="font-medium"
                                 >
-                                    Add Item
+                                    {t("common.add_item")}
                                 </Button>
                             </div>
                             <div className="space-y-4">
@@ -135,7 +137,7 @@ const CreateOrderModal = ({
                         size="large"
                         className="w-full sm:w-auto min-w-[120px]"
                     >
-                        Cancel
+                        {t("common.cancel")}
                     </Button>
                     <Button
                         type="primary"
@@ -143,7 +145,7 @@ const CreateOrderModal = ({
                         size="large"
                         className="w-full sm:w-auto min-w-[120px] font-medium"
                     >
-                        Create Order
+                        {t("orders.create_order")}
                     </Button>
                 </div>
             </Form>

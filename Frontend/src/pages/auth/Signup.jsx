@@ -12,12 +12,14 @@ import {
 import AuthButton from "../../components/auth/AuthButton";
 import AvatarUpload from "../../components/common/AvatarUpload";
 import { api } from "../../api/api";
+import useI18n from "../../hooks/useI18n";
 
 const Signup = () => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const [avatarFile, setAvatarFile] = useState(null);
     const navigate = useNavigate();
+    const { t } = useI18n();
 
     const handleAvatarChange = (info) => {
         if (info.file.status === "done") {
@@ -27,7 +29,7 @@ const Signup = () => {
 
     const onFinish = async (values) => {
         if (!avatarFile) {
-            toast.error("Please upload an avatar");
+            toast.error(t("auth.upload_avatar"));
             return;
         }
 
@@ -47,13 +49,13 @@ const Signup = () => {
             });
 
             if (response.data.success) {
-                toast.success("Your account has been created successfully.");
+                toast.success(t("auth.account_created"));
                 navigate("/login");
             }
         } catch (error) {
             const errorMessage =
                 error.response?.data?.message ||
-                "Something went wrong during signup";
+                t("auth.signup_failed");
             toast.error(errorMessage);
         } finally {
             setLoading(false);
@@ -63,8 +65,8 @@ const Signup = () => {
     return (
         <AuthLayout imageSrc="/imsTopImage.png">
             <AuthCard
-                title="Create an Account"
-                subtitle="Join our platform and get started"
+                title={t("auth.create_account")}
+                subtitle={t("auth.join_platform")}
             >
                 <Form
                     form={form}
@@ -87,23 +89,21 @@ const Signup = () => {
                     </div>
 
                     <Form.Item className="mb-0 mt-6">
-                        <AuthButton loading={loading}>Sign Up</AuthButton>
+                        <AuthButton loading={loading}>{t("auth.signup")}</AuthButton>
                     </Form.Item>
                 </Form>
 
                 <Divider className="my-6" plain>
-                    Or
+                    {t("common.or")}
                 </Divider>
 
                 <div className="text-center text-sm">
-                    <span className="text-gray-600">
-                        Already have an account?
-                    </span>{" "}
+                    <span className="text-gray-600">{t("auth.already_have_account")}</span>{" "}
                     <button
                         onClick={() => navigate("/login")}
                         className="text-blue-600 font-medium hover:text-blue-700 transition-colors"
                     >
-                        Log in
+                        {t("auth.login")}
                     </button>
                 </div>
             </AuthCard>

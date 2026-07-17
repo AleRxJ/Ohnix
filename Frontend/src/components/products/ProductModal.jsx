@@ -1,6 +1,7 @@
 import React from "react";
 import { Modal, Form, Input, Select, InputNumber, Row, Col } from "antd";
 import ProductImageUpload from "./ProductImageUpload";
+import useI18n from "../../hooks/useI18n";
 
 const { Option } = Select;
 
@@ -17,6 +18,8 @@ const ProductModal = ({
     onCancel,
     onImageChange,
 }) => {
+    const { t } = useI18n();
+
     return (
         <Modal
             title={
@@ -38,8 +41,8 @@ const ProductModal = ({
                     padding: "20px 24px",
                 },
             }}
-            okText="Save Product"
-            cancelText="Cancel"
+            okText={t("products.save_product")}
+            cancelText={t("common.cancel")}
             okButtonProps={{
                 size: "large",
                 className: "min-w-[140px] h-10",
@@ -62,7 +65,7 @@ const ProductModal = ({
                                 <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
                                     <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
                                     <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                                        Product Details
+                                        {t("products.product_details")}
                                     </h3>
                                 </div>
                                 <Row gutter={12}>
@@ -71,25 +74,23 @@ const ProductModal = ({
                                             name="product_name"
                                             label={
                                                 <span className="text-xs font-medium text-gray-600">
-                                                    Product Name
+                                                    {t("products.product_name")}
                                                 </span>
                                             }
                                             rules={[
                                                 {
                                                     required: true,
-                                                    message:
-                                                        "Please enter product name",
+                                                    message: t("products.enter_product_name_required"),
                                                 },
                                                 {
                                                     max: 50,
-                                                    message:
-                                                        "Maximum 50 characters allowed",
+                                                    message: t("products.max_50_chars"),
                                                 },
                                             ]}
                                             className="mb-3"
                                         >
                                             <Input
-                                                placeholder="Enter product name"
+                                                placeholder={t("products.enter_product_name")}
                                                 size="large"
                                                 className="rounded-md"
                                             />
@@ -101,25 +102,23 @@ const ProductModal = ({
                                             name="product_code"
                                             label={
                                                 <span className="text-xs font-medium text-gray-600">
-                                                    Product Code
+                                                    {t("products.product_code")}
                                                 </span>
                                             }
                                             rules={[
                                                 {
                                                     required: true,
-                                                    message:
-                                                        "Please enter product code",
+                                                    message: t("products.enter_product_code_required"),
                                                 },
                                                 {
                                                     max: 5,
-                                                    message:
-                                                        "Maximum 5 characters allowed",
+                                                    message: t("products.max_5_chars"),
                                                 },
                                             ]}
                                             className="mb-3"
                                         >
                                             <Input
-                                                placeholder="Enter code"
+                                                placeholder={t("products.enter_product_code")}
                                                 disabled={!!editingProduct}
                                                 size="large"
                                                 className="rounded-md"
@@ -132,20 +131,19 @@ const ProductModal = ({
                                             name="category_id"
                                             label={
                                                 <span className="text-xs font-medium text-gray-600">
-                                                    Category
+                                                    {t("products.category")}
                                                 </span>
                                             }
                                             rules={[
                                                 {
                                                     required: true,
-                                                    message:
-                                                        "Please select a category",
+                                                    message: t("products.select_category_required"),
                                                 },
                                             ]}
                                             className="mb-0"
                                         >
                                             <Select
-                                                placeholder="Select category"
+                                                placeholder={t("products.select_category")}
                                                 size="large"
                                                 className="rounded-md"
                                             >
@@ -166,20 +164,19 @@ const ProductModal = ({
                                             name="unit_id"
                                             label={
                                                 <span className="text-xs font-medium text-gray-600">
-                                                    Unit
+                                                    {t("products.unit")}
                                                 </span>
                                             }
                                             rules={[
                                                 {
                                                     required: true,
-                                                    message:
-                                                        "Please select a unit",
+                                                    message: t("products.select_unit_required"),
                                                 },
                                             ]}
                                             className="mb-0"
                                         >
                                             <Select
-                                                placeholder="Select unit"
+                                                placeholder={t("products.select_unit")}
                                                 size="large"
                                                 className="rounded-md"
                                             >
@@ -201,7 +198,7 @@ const ProductModal = ({
                                 <div className="flex items-center gap-2 mb-3 pb-2 border-b border-emerald-100">
                                     <div className="w-1 h-4 bg-emerald-500 rounded-full"></div>
                                     <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                                        Pricing
+                                        {t("products.pricing")}
                                     </h3>
                                 </div>
                                 <Row gutter={12}>
@@ -210,20 +207,18 @@ const ProductModal = ({
                                             name="buying_price"
                                             label={
                                                 <span className="text-xs font-medium text-gray-600">
-                                                    Buying Price
+                                                    {t("products.buying_price")}
                                                 </span>
                                             }
                                             rules={[
                                                 {
                                                     required: true,
-                                                    message:
-                                                        "Please enter buying price",
+                                                    message: t("products.enter_buying_price"),
                                                 },
                                                 {
                                                     type: "number",
                                                     min: 0,
-                                                    message:
-                                                        "Price must be positive",
+                                                    message: t("products.price_must_be_positive"),
                                                 },
                                             ]}
                                             className="mb-0"
@@ -244,20 +239,18 @@ const ProductModal = ({
                                             name="selling_price"
                                             label={
                                                 <span className="text-xs font-medium text-gray-600">
-                                                    Selling Price
+                                                    {t("products.selling_price")}
                                                 </span>
                                             }
                                             rules={[
                                                 {
                                                     required: true,
-                                                    message:
-                                                        "Please enter selling price",
+                                                    message: t("products.enter_selling_price"),
                                                 },
                                                 {
                                                     type: "number",
                                                     min: 0,
-                                                    message:
-                                                        "Price must be positive",
+                                                    message: t("products.price_must_be_positive"),
                                                 },
                                             ]}
                                             className="mb-0"

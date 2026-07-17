@@ -16,6 +16,7 @@ import {
     PAGINATION_CONFIG,
     TABLE_SCROLL_CONFIG,
 } from "../../utils/category_units/constants";
+import useI18n from "../../hooks/useI18n";
 
 const CategoryTable = ({
     categories,
@@ -27,10 +28,11 @@ const CategoryTable = ({
     onDelete,
 }) => {
     const [hoveredRow, setHoveredRow] = useState(null);
+    const { t } = useI18n();
 
     const columns = [
         {
-            title: "Category Name",
+            title: t("categories.category_name"),
             dataIndex: "category_name",
             key: "category_name",
             sorter: (a, b) => a.category_name.localeCompare(b.category_name),
@@ -45,14 +47,14 @@ const CategoryTable = ({
                             {text}
                         </span>
                         <span className="text-sm text-gray-500 mt-0.5">
-                            Category
+                            {t("categories.category")}
                         </span>
                     </div>
                 </div>
             ),
         },
         {
-            title: "Actions",
+            title: t("common.actions"),
             key: "actions",
             width: "50%",
             align: "center",
@@ -61,7 +63,7 @@ const CategoryTable = ({
 
                 return (
                     <div className="flex items-center justify-center space-x-2">
-                        <Tooltip title="View Details">
+                        <Tooltip title={t("categories.view_details")}>
                             <Button
                                 type="text"
                                 size="middle"
@@ -72,7 +74,7 @@ const CategoryTable = ({
                         </Tooltip>
                         <Tooltip
                             title={
-                                canEditRecord ? "Edit" : "No permission to edit"
+                                canEditRecord ? t("common.edit") : t("common.no_permission_to_edit")
                             }
                         >
                             <Button
@@ -93,8 +95,8 @@ const CategoryTable = ({
                         <Tooltip
                             title={
                                 canEditRecord
-                                    ? "Delete"
-                                    : "No permission to delete"
+                                    ? t("common.delete")
+                                        : t("common.no_permission_to_delete")
                             }
                         >
                             <Button
@@ -106,12 +108,11 @@ const CategoryTable = ({
                                 disabled={!canEditRecord}
                                 onClick={() => {
                                     Modal.confirm({
-                                        title: "Delete Category",
-                                        content:
-                                            "Are you sure you want to delete this category?",
-                                        okText: "Delete",
+                                        title: t("categories.delete_category"),
+                                        content: t("categories.delete_category_confirm"),
+                                        okText: t("common.delete"),
                                         okType: "danger",
-                                        cancelText: "Cancel",
+                                        cancelText: t("common.cancel"),
                                         onOk: () => onDelete(record._id),
                                     });
                                 }}
@@ -138,7 +139,11 @@ const CategoryTable = ({
                 pagination={{
                     ...PAGINATION_CONFIG,
                     showTotal: (total, range) =>
-                        `Showing ${range[0]}-${range[1]} of ${total} categories`,
+                        t("categories.showing_categories", {
+                            start: range[0],
+                            end: range[1],
+                            total,
+                        }),
                     className: "px-6 py-4 bg-gray-50/50",
                     showSizeChanger: false,
                     size: "default",
@@ -150,11 +155,10 @@ const CategoryTable = ({
                                 description={
                                     <div className="text-center">
                                         <div className="text-gray-500 text-base font-medium mb-1">
-                                            No categories found
+                                            {t("categories.no_categories_found")}
                                         </div>
                                         <div className="text-gray-400 text-sm">
-                                            Create your first category to get
-                                            started
+                                            {t("categories.create_first_category")}
                                         </div>
                                     </div>
                                 }

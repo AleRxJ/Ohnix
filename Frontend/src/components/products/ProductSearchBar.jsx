@@ -5,6 +5,7 @@ import {
     FilterOutlined,
     ReloadOutlined,
 } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const ProductSearchBar = ({
     searchText,
@@ -13,12 +14,14 @@ const ProductSearchBar = ({
     onShowFilters,
     onReset,
 }) => {
+    const { t } = useI18n();
+
     return (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-4 py-3 mb-6">
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                 <div className="flex-1">
                     <Input
-                        placeholder="Search products by name or code..."
+                        placeholder={t("products.search_products")}
                         prefix={<SearchOutlined className="text-gray-400" />}
                         value={searchText}
                         onChange={(e) => onSearchChange(e.target.value)}
@@ -35,7 +38,7 @@ const ProductSearchBar = ({
                         size="large"
                         className="flex-1 sm:flex-none"
                     >
-                        Filters
+                        {t("products.filters")}
                     </Button>
 
                     <Button
@@ -44,7 +47,7 @@ const ProductSearchBar = ({
                         size="large"
                         className="flex-1 sm:flex-none"
                     >
-                        Reset
+                        {t("products.reset")}
                     </Button>
 
                     <Button
@@ -53,7 +56,7 @@ const ProductSearchBar = ({
                         size="large"
                         className="flex-1 sm:flex-none"
                     >
-                        Search
+                        {t("common.search")}
                     </Button>
                 </Space>
             </div>

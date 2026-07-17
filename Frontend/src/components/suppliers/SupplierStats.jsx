@@ -7,13 +7,15 @@ import {
     ProductOutlined,
 } from "@ant-design/icons";
 import StatCard from "../dashboard/StatCard";
+import useI18n from "../../hooks/useI18n";
 
 const SupplierStats = ({ stats }) => {
+    const { t } = useI18n();
     return (
         <Row gutter={[16, 16]} className="mb-6">
             <Col xs={24} sm={12} lg={6}>
                 <StatCard
-                    title="Individual"
+                    title={t("suppliers.individual")}
                     value={stats.individual}
                     icon={
                         <UserOutlined className="text-xl sm:text-2xl text-purple" />
@@ -24,7 +26,7 @@ const SupplierStats = ({ stats }) => {
             </Col>
             <Col xs={24} sm={12} lg={6}>
                 <StatCard
-                    title="Wholesale"
+                    title={t("suppliers.wholesale")}
                     value={stats.wholesale}
                     icon={
                         <ProductOutlined className="text-xl sm:text-2xl text-blue" />
@@ -35,7 +37,7 @@ const SupplierStats = ({ stats }) => {
             </Col>
             <Col xs={24} sm={12} lg={6}>
                 <StatCard
-                    title="Retail"
+                    title={t("suppliers.retail")}
                     value={stats.retail}
                     icon={
                         <UsergroupAddOutlined className="text-xl sm:text-2xl text-green" />
@@ -46,7 +48,7 @@ const SupplierStats = ({ stats }) => {
             </Col>
             <Col xs={24} sm={12} lg={6}>
                 <StatCard
-                    title="Companies"
+                    title={t("suppliers.companies")}
                     value={stats.company}
                     icon={
                         <ShopOutlined className="text-xl sm:text-2xl text-orange" />

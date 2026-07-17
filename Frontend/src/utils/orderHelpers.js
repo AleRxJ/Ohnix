@@ -37,8 +37,8 @@ export const calculateStats = (orders, pagination) => {
 export const TERMINAL_STATUSES = ["completed", "cancelled"];
 
 export const ORDER_STATUSES = [
-    { value: "pending", label: "Pending" },
-    { value: "processing", label: "Processing" },
-    { value: "completed", label: "Completed" },
-    { value: "cancelled", label: "Cancelled" },
+    { value: "pending", labelKey: "orders.pending" },
+    { value: "processing", labelKey: "orders.processing" },
+    { value: "completed", labelKey: "orders.completed" },
+    { value: "cancelled", labelKey: "orders.cancelled" },
 ];

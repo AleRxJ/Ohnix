@@ -82,46 +82,46 @@ export const steps = [
     },
 ];
 
-export const menuItems = [
+export const getMenuItems = (t) => [
     {
         key: "dashboard",
         icon: <DashboardOutlined />,
-        label: <Link to="/dashboard">Dashboard</Link>,
+        label: <Link to="/dashboard">{t("common.dashboard")}</Link>,
     },
     {
         key: "products",
         icon: <AppstoreOutlined />,
-        label: <Link to="/products">Products</Link>,
+        label: <Link to="/products">{t("common.products")}</Link>,
     },
     {
         key: "orders",
         icon: <ShoppingCartOutlined />,
-        label: <Link to="/orders">Orders</Link>,
+        label: <Link to="/orders">{t("common.orders")}</Link>,
     },
     {
         key: "purchases",
         icon: <ShoppingOutlined />,
-        label: <Link to="/purchases">Purchases</Link>,
+        label: <Link to="/purchases">{t("common.purchases")}</Link>,
     },
     {
         key: "customers",
         icon: <TeamOutlined />,
-        label: <Link to="/customers">Customers</Link>,
+        label: <Link to="/customers">{t("common.customers")}</Link>,
     },
     {
         key: "suppliers",
         icon: <UserSwitchOutlined />,
-        label: <Link to="/suppliers">Suppliers</Link>,
+        label: <Link to="/suppliers">{t("common.suppliers")}</Link>,
     },
     {
         key: "categories",
         icon: <AppstoreOutlined />,
-        label: <Link to="/categories">Categories</Link>,
+        label: <Link to="/categories">{t("common.categories")}</Link>,
     },
     {
         key: "reports",
         icon: <BarChartOutlined />,
-        label: <Link to="/reports">Reports</Link>,
+        label: <Link to="/reports">{t("common.reports")}</Link>,
     },
 ];
 

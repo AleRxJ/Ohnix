@@ -4,12 +4,14 @@ import { Layout, Menu, Avatar } from "antd";
 import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import AuthContext from "../../context/AuthContext";
-import { menuItems } from "../../data";
+import { getMenuItems } from "../../data";
+import useI18n from "../../hooks/useI18n";
 
 const { Sider } = Layout;
 
 const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     const { user, logout } = useContext(AuthContext);
+    const { t } = useI18n();
     const navigate = useNavigate();
 
     const handleLogoClick = () => {
@@ -43,7 +45,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                     theme="dark"
                     defaultSelectedKeys={[currentPage]}
                     mode="inline"
-                    items={menuItems.map((item) => ({
+                    items={getMenuItems(t).map((item) => ({
                         ...item,
                     }))}
                     className="border-r-0"
@@ -53,7 +55,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                 />
             </div>
 
-            {!collapsed && <SidebarUserProfile user={user} logout={logout} />}
+            {!collapsed && <SidebarUserProfile user={user} logout={logout} t={t} />}
         </Sider>
     );
 };
@@ -79,7 +81,7 @@ const SidebarLogo = ({ collapsed, onClick }) => (
     </div>
 );
 
-const SidebarUserProfile = ({ user, logout }) => (
+const SidebarUserProfile = ({ user, logout, t }) => (
     <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-900/80 to-transparent">
         <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-3 border border-slate-700/50 shadow-xl">
             <div className="flex items-center gap-3 mb-3">
@@ -108,7 +110,7 @@ const SidebarUserProfile = ({ user, logout }) => (
                 className="w-full bg-slate-700/50 hover:bg-slate-600/50 text-slate-100 font-medium py-2 px-3 rounded-lg text-sm transition-all duration-150 flex items-center justify-center gap-2 border border-slate-600/50 hover:border-slate-500/50 backdrop-blur-sm"
             >
                 <LogoutOutlined className="text-base" />
-                <span>Logout</span>
+                <span>{t("common.logout")}</span>
             </button>
         </div>
     </div>

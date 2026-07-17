@@ -8,6 +8,7 @@ import {
     TERMINAL_STATUSES,
 } from "../../utils/orderHelpers";
 import { getStatusIcon } from "../../data";
+import useI18n from "../../hooks/useI18n";
 
 const { Option } = Select;
 
@@ -17,12 +18,13 @@ const OrdersTable = ({
     pagination,
     onTableChange,
     onViewDetails,
+        const { t } = useI18n();
     onUpdateStatus,
     onGenerateInvoice,
-}) => {
+                title: t("orders.invoice_no"),
     const columns = [
         {
-            title: "Invoice No",
+                title: t("customers.customer"),
             dataIndex: "invoice_no",
             key: "invoice_no",
             width: 130,
@@ -33,13 +35,13 @@ const OrdersTable = ({
         {
             title: "Customer",
             dataIndex: ["customer_id", "name"],
-            key: "customer",
+                            {record.customer_id?.name || t("common.na")}
             width: 200,
             ellipsis: true,
             render: (text, record) => (
                 <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                        <UserOutlined className="text-blue-600 text-sm" />
+                title: t("common.date"),
                     </div>
                     <span className="font-medium text-gray-900">
                         {record.customer_id?.name || "N/A"}
@@ -50,7 +52,7 @@ const OrdersTable = ({
         {
             title: "Date",
             dataIndex: "order_date",
-            key: "order_date",
+                title: t("common.status"),
             width: 120,
             render: (date) => (
                 <span className="text-gray-600 text-sm">
@@ -65,7 +67,7 @@ const OrdersTable = ({
             width: 140,
             render: (status) => (
                 <Tag
-                    icon={getStatusIcon(status)}
+                title: t("common.items"),
                     color={getStatusColor(status)}
                     className="font-medium px-3 py-1 rounded-md"
                 >
@@ -75,7 +77,7 @@ const OrdersTable = ({
         },
         {
             title: "Items",
-            dataIndex: "total_products",
+                title: t("common.total"),
             key: "total_products",
             width: 80,
             align: "center",
@@ -87,7 +89,7 @@ const OrdersTable = ({
             title: "Total",
             dataIndex: "total",
             key: "total",
-            width: 120,
+                title: t("common.actions"),
             align: "right",
             render: (amount) => (
                 <span className="font-semibold text-green-600 text-base">
@@ -128,7 +130,7 @@ const OrdersTable = ({
                                 style={{ width: 110 }}
                                 onChange={(value) =>
                                     onUpdateStatus(record._id, value)
-                                }
+                                            {t(status.labelKey)}
                                 disabled={isTerminal}
                                 className="rounded"
                             >
@@ -165,7 +167,7 @@ const OrdersTable = ({
     const MobileOrderCard = ({ order }) => {
         const isTerminal = TERMINAL_STATUSES.includes(order.order_status);
         return (
-            <Card className="mb-3 shadow-sm rounded-xl border-2 hover:shadow-md transition-all duration-200">
+                                        {order.customer_id?.name || t("common.na")}
                 <div className="flex flex-col gap-3">
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -184,7 +186,7 @@ const OrdersTable = ({
                         <Tag
                             icon={getStatusIcon(order.order_status)}
                             color={getStatusColor(order.order_status)}
-                            className="font-medium px-2.5 py-0.5 text-xs rounded-md flex-shrink-0"
+                                    {t("orders.order_date")}
                         >
                             {order.order_status.toUpperCase()}
                         </Tag>
@@ -193,16 +195,16 @@ const OrdersTable = ({
                     <div className="flex items-center justify-between py-2.5 px-3 bg-gray-50 rounded-lg -mx-1">
                         <div className="flex flex-col">
                             <span className="text-xs text-gray-500 mb-0.5">
-                                Order Date
+                                    {t("common.items")}
                             </span>
                             <span className="text-sm font-medium text-gray-900">
-                                {dayjs(order.order_date).format("MMM DD, YYYY")}
+                                    {order.total_products}
                             </span>
                         </div>
                         <div className="h-8 w-px bg-gray-200"></div>
                         <div className="flex flex-col items-center">
                             <span className="text-xs text-gray-500 mb-0.5">
-                                Items
+                                    {t("common.total")}
                             </span>
                             <span className="text-sm font-semibold text-gray-900">
                                 {order.total_products}
@@ -218,7 +220,7 @@ const OrdersTable = ({
                             </span>
                         </div>
                     </div>
-
+                                {t("orders.view_details")}
                     <div className="flex gap-2 pt-1">
                         <Button
                             type="primary"
@@ -235,7 +237,7 @@ const OrdersTable = ({
                                 onGenerateInvoice(order._id, order.invoice_no)
                             }
                             className={`${
-                                order.order_status === "cancelled"
+                                {t("orders.invoice")}
                                     ? "invisible"
                                     : "flex-1 h-9 font-medium border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
                             }`}
@@ -250,19 +252,20 @@ const OrdersTable = ({
                 </div>
             </Card>
         );
-    };
+                                {t("orders.loading_orders")}
 
     return (
         <>
             <div className="block lg:hidden">
-                {loading ? (
+                            <p className="text-gray-500">{t("orders.no_orders_found")}</p>
                     <div className="flex flex-col items-center justify-center py-12">
                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
                         <p className="mt-3 text-gray-500 text-sm">
                             Loading orders...
                         </p>
-                    </div>
-                ) : orders.length === 0 ? (
+                                    {t("orders.orders_found", {
+                                        total: pagination.total,
+                                    })}
                     <Card className="text-center py-12">
                         <p className="text-gray-500">No orders found</p>
                     </Card>
@@ -291,7 +294,7 @@ const OrdersTable = ({
                             </span>
                             <Space>
                                 <Button
-                                    size="small"
+                                        {t("common.previous")}
                                     disabled={pagination.current === 1}
                                     onClick={() =>
                                         onTableChange({
@@ -307,7 +310,7 @@ const OrdersTable = ({
                                     disabled={
                                         pagination.current *
                                             pagination.pageSize >=
-                                        pagination.total
+                                        {t("common.next")}
                                     }
                                     onClick={() =>
                                         onTableChange({
@@ -329,7 +332,11 @@ const OrdersTable = ({
                     <Table
                         columns={columns}
                         dataSource={orders}
-                        rowKey="_id"
+                                    t("orders.showing_orders", {
+                                        start: range[0],
+                                        end: range[1],
+                                        total,
+                                    }),
                         loading={loading}
                         pagination={{
                             current: pagination.current,

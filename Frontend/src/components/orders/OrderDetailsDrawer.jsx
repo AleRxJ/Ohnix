@@ -9,6 +9,7 @@ import {
 import dayjs from "dayjs";
 import { getStatusColor } from "../../utils/orderHelpers";
 import { getStatusIcon } from "../../data";
+import useI18n from "../../hooks/useI18n";
 
 const OrderDetailsDrawer = ({
     visible,
@@ -18,26 +19,27 @@ const OrderDetailsDrawer = ({
     detailsLoading,
     onGenerateInvoice,
 }) => {
+    const { t } = useI18n();
     if (!selectedOrder) return null;
 
     const isCancelled = selectedOrder.order_status === "cancelled";
 
     const columns = [
         {
-            title: "Product",
+            title: t("products.product"),
             dataIndex: ["product_id", "product_name"],
             key: "product_name",
             render: (text) => (
                 <div className="flex items-center space-x-2">
                     <ShoppingCartOutlined className="text-blue-500" />
                     <span className="font-medium text-gray-800">
-                        {text || "N/A"}
+                        {text || t("common.na")}
                     </span>
                 </div>
             ),
         },
         {
-            title: "Quantity",
+            title: t("common.quantity"),
             dataIndex: "quantity",
             key: "quantity",
             align: "center",
@@ -49,7 +51,7 @@ const OrderDetailsDrawer = ({
             ),
         },
         {
-            title: "Unit Price",
+            title: t("orders.unit_price"),
             dataIndex: "unitcost",
             key: "unitcost",
             align: "right",
@@ -61,7 +63,7 @@ const OrderDetailsDrawer = ({
             ),
         },
         {
-            title: "Total",
+            title: t("common.total"),
             dataIndex: "total",
             key: "total",
             align: "right",
@@ -79,7 +81,7 @@ const OrderDetailsDrawer = ({
             title={
                 <div className="text-center w-full">
                     <span className="text-xl font-bold tracking-wide uppercase text-gray-900">
-                        Order Details - #{selectedOrder.invoice_no}
+                        {t("orders.order_details", { invoiceNo: selectedOrder.invoice_no })}
                     </span>
                 </div>
             }
@@ -99,7 +101,7 @@ const OrderDetailsDrawer = ({
             <div className="space-y-6">
                 <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                     <span className="text-sm font-medium text-gray-600 uppercase tracking-wide">
-                        Order Status
+                        {t("common.status")}
                     </span>
                     <Tag
                         icon={getStatusIcon(selectedOrder.order_status)}
@@ -115,7 +117,7 @@ const OrderDetailsDrawer = ({
                         <div className="flex items-center space-x-2 mb-2">
                             <UserOutlined className="text-gray-400" />
                             <span className="text-xs font-medium text-gray-500 uppercase">
-                                Customer
+                                {t("customers.customer")}
                             </span>
                         </div>
                         <p className="text-base font-semibold text-gray-900">
@@ -126,7 +128,7 @@ const OrderDetailsDrawer = ({
                         <div className="flex items-center space-x-2 mb-2">
                             <CalendarOutlined className="text-gray-400" />
                             <span className="text-xs font-medium text-gray-500 uppercase">
-                                Order Date
+                                {t("orders.order_date")}
                             </span>
                         </div>
                         <p className="text-base font-semibold text-gray-900">
@@ -141,20 +143,20 @@ const OrderDetailsDrawer = ({
 
                 <div>
                     <h3 className="text-sm font-medium text-gray-600 mb-4 uppercase tracking-wide">
-                        Order Summary
+                        {t("orders.order_summary")}
                     </h3>
                     <div className="bg-gray-50 rounded-2xl p-4 border-2 space-y-3 shadow-[0px_0px_20px_rgba(0,0,0,0.09)]">
                         <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">
-                                Total Products
+                                {t("common.total_products")}
                             </span>
                             <span className="text-sm font-medium text-gray-900">
-                                {selectedOrder.total_products} items
+                                {t("orders.items_count", { count: selectedOrder.total_products })}
                             </span>
                         </div>
                         <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">
-                                Subtotal
+                                {t("common.subtotal")}
                             </span>
                             <span className="text-sm font-medium text-gray-900">
                                 ₹{selectedOrder.sub_total?.toFixed(2)}
@@ -162,7 +164,7 @@ const OrderDetailsDrawer = ({
                         </div>
                         <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">
-                                GST (18%)
+                                {t("orders.gst", { rate: 18 })}
                             </span>
                             <span className="text-sm font-medium text-gray-900">
                                 ₹
@@ -175,7 +177,7 @@ const OrderDetailsDrawer = ({
                         <Divider style={{ margin: "12px 0" }} />
                         <div className="flex items-center justify-between">
                             <span className="text-base font-semibold text-gray-900">
-                                Total Amount
+                                {t("common.total_amount")}
                             </span>
                             <span className="text-xl font-bold text-green-600">
                                 ₹{selectedOrder.total?.toFixed(2)}
@@ -188,13 +190,13 @@ const OrderDetailsDrawer = ({
 
                 <div>
                     <h3 className="text-sm font-medium text-gray-600 mb-4 uppercase tracking-wide">
-                        Order Items
+                        {t("orders.order_items")}
                     </h3>
                     {detailsLoading ? (
                         <div className="text-center py-12">
                             <Spin size="large" />
                             <p className="mt-4 text-gray-500 text-sm">
-                                Loading items...
+                                {t("common.loading")}
                             </p>
                         </div>
                     ) : orderDetails.length > 0 ? (
@@ -211,7 +213,7 @@ const OrderDetailsDrawer = ({
                             <Empty
                                 description={
                                     <span className="text-gray-500">
-                                        No items found for this order
+                                        {t("orders.no_items_found")}
                                     </span>
                                 }
                             />
@@ -233,7 +235,7 @@ const OrderDetailsDrawer = ({
                             className="w-full"
                             size="large"
                         >
-                            Download Invoice PDF
+                            {t("orders.download_invoice_pdf")}
                         </Button>
                     </div>
                 )}

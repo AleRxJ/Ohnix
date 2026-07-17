@@ -1,18 +1,20 @@
 import React from "react";
 import { Modal, Button, Avatar, Tag, Descriptions } from "antd";
 import { UserOutlined } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const SupplierViewModal = ({ visible, onCancel, supplier, onEdit }) => {
+    const { t } = useI18n();
     if (!supplier) return null;
 
     return (
         <Modal
-            title="Supplier Details"
+            title={t("suppliers.supplier_details")}
             open={visible}
             onCancel={onCancel}
             footer={[
                 <Button key="close" onClick={onCancel}>
-                    Close
+                    {t("common.close")}
                 </Button>,
                 <Button
                     key="edit"
@@ -22,7 +24,7 @@ const SupplierViewModal = ({ visible, onCancel, supplier, onEdit }) => {
                         onEdit(supplier);
                     }}
                 >
-                    Edit Supplier
+                    {t("suppliers.edit_supplier")}
                 </Button>,
             ]}
             width={600}
@@ -40,37 +42,37 @@ const SupplierViewModal = ({ visible, onCancel, supplier, onEdit }) => {
                     />
                     <h3 className="mt-2 mb-0">{supplier.name}</h3>
                     <Tag color={supplier.type === "company" ? "blue" : "green"}>
-                        {supplier.type?.toUpperCase() || "N/A"}
+                        {supplier.type?.toUpperCase() || t("common.na")}
                     </Tag>
                 </div>
 
                 <Descriptions column={1} bordered>
-                    <Descriptions.Item label="Email">
+                    <Descriptions.Item label={t("suppliers.email")}>
                         {supplier.email}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Phone">
+                    <Descriptions.Item label={t("suppliers.phone")}>
                         {supplier.phone}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Address">
+                    <Descriptions.Item label={t("common.address")}>
                         {supplier.address}
                     </Descriptions.Item>
-                    <Descriptions.Item label="Shop Name">
-                        {supplier.shopname || "-"}
+                    <Descriptions.Item label={t("suppliers.shop_name")}>
+                        {supplier.shopname || t("common.dash")}
                     </Descriptions.Item>
                     {supplier.bank_name && (
                         <>
-                            <Descriptions.Item label="Bank Name">
+                            <Descriptions.Item label={t("suppliers.bank_name")}>
                                 {supplier.bank_name}
                             </Descriptions.Item>
-                            <Descriptions.Item label="Account Holder">
-                                {supplier.account_holder || "-"}
+                            <Descriptions.Item label={t("suppliers.account_holder")}>
+                                {supplier.account_holder || t("common.dash")}
                             </Descriptions.Item>
-                            <Descriptions.Item label="Account Number">
-                                {supplier.account_number || "-"}
+                            <Descriptions.Item label={t("suppliers.account_number")}>
+                                {supplier.account_number || t("common.dash")}
                             </Descriptions.Item>
                         </>
                     )}
-                    <Descriptions.Item label="Created">
+                    <Descriptions.Item label={t("common.created")}>
                         {new Date(supplier.createdAt).toLocaleDateString()}
                     </Descriptions.Item>
                 </Descriptions>

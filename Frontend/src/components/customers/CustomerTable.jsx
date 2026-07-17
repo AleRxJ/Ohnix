@@ -11,10 +11,12 @@ import {
     ShopOutlined,
 } from "@ant-design/icons";
 import { Typography } from "antd";
+import useI18n from "../../hooks/useI18n";
 
 const { Text } = Typography;
 
 const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
+    const { t } = useI18n();
     // Mobile card view for small screens
     const MobileCustomerCard = ({ customer }) => (
         <Card
@@ -61,11 +63,11 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                                 className="text-green-600"
                             />
                             <Popconfirm
-                                title="Delete Customer"
-                                description="Are you sure?"
+                                title={t("customers.delete_customer")}
+                                description={t("customers.delete_customer_confirm")}
                                 onConfirm={() => onDelete(customer._id)}
-                                okText="Delete"
-                                cancelText="Cancel"
+                                okText={t("common.delete")}
+                                cancelText={t("common.cancel")}
                                 okButtonProps={{ danger: true }}
                             >
                                 <Button
@@ -107,7 +109,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
 
     const columns = [
         {
-            title: "Customer",
+            title: t("customers.customer"),
             key: "customer",
             width: 200,
             render: (_, record) => (
@@ -137,7 +139,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
             ),
         },
         {
-            title: "Contact Information",
+            title: t("customers.contact_information"),
             key: "contact",
             width: 250,
             responsive: ['md'],
@@ -159,7 +161,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
             ),
         },
         {
-            title: "Location Details",
+            title: t("customers.location_details"),
             key: "location",
             width: 220,
             responsive: ['lg'],
@@ -186,19 +188,19 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                         </div>
                     )}
                     {!record.address && !record.store_name && (
-                        <span className="text-gray-400 text-sm italic">No location data</span>
+                        <span className="text-gray-400 text-sm italic">{t("customers.no_location_data")}</span>
                     )}
                 </div>
             ),
         },
         {
-            title: "Actions",
+            title: t("common.actions"),
             key: "actions",
             width: 130,
             fixed: "right",
             render: (_, record) => (
                 <Space size="small">
-                    <Tooltip title="View Details">
+                    <Tooltip title={t("customers.view_details")}>
                         <Button
                             type="text"
                             icon={<EyeOutlined />}
@@ -207,7 +209,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                             className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                         />
                     </Tooltip>
-                    <Tooltip title="Edit Customer">
+                    <Tooltip title={t("customers.edit_customer")}>
                         <Button
                             type="text"
                             icon={<EditOutlined />}
@@ -217,14 +219,14 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                         />
                     </Tooltip>
                     <Popconfirm
-                        title="Delete Customer"
-                        description="Are you sure you want to delete this customer?"
+                        title={t("customers.delete_customer")}
+                        description={t("customers.delete_customer_confirm")}
                         onConfirm={() => onDelete(record._id)}
-                        okText="Delete"
-                        cancelText="Cancel"
+                        okText={t("common.delete")}
+                        cancelText={t("common.cancel")}
                         okButtonProps={{ danger: true }}
                     >
-                        <Tooltip title="Delete Customer">
+                        <Tooltip title={t("customers.delete_customer")}>
                             <Button
                                 type="text"
                                 icon={<DeleteOutlined />}
@@ -267,8 +269,8 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                     description={
                         <div className="text-gray-500">
-                            <div className="text-base mb-1">No customers found</div>
-                            <div className="text-sm">Add your first customer to get started</div>
+                            <div className="text-base mb-1">{t("customers.no_customers_found")}</div>
+                            <div className="text-sm">{t("customers.add_first_customer")}</div>
                         </div>
                     }
                 />
@@ -287,7 +289,10 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                 </div>
                 {customers.length > 10 && (
                     <div className="text-center mt-4 pt-4 border-t text-sm text-gray-500">
-                        Showing {Math.min(10, customers.length)} of {customers.length} customers
+                        {t("customers.showing_customers", {
+                            shown: Math.min(10, customers.length),
+                            total: customers.length,
+                        })}
                     </div>
                 )}
             </div>
@@ -308,7 +313,11 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                         showSizeChanger: true,
                         showQuickJumper: true,
                         showTotal: (total, range) =>
-                            `Showing ${range[0]}-${range[1]} of ${total} customers`,
+                            t("customers.showing_of_customers", {
+                                start: range[0],
+                                end: range[1],
+                                total,
+                            }),
                         pageSizeOptions: ['10', '25', '50'],
                     }}
                 />

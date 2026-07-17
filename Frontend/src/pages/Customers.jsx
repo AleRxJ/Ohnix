@@ -3,6 +3,7 @@ import { Button, Input, Card, Form } from "antd";
 import { PlusOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import { api } from "../api/api";
+import useI18n from "../hooks/useI18n";
 import {
     CustomerStats,
     CustomerTable,
@@ -11,6 +12,7 @@ import {
 } from "../components/customers";
 
 const Customers = () => {
+    const { t } = useI18n();
     // State management
     const [state, setState] = useState({
         customers: [],
@@ -78,7 +80,7 @@ const Customers = () => {
             }
         } catch (error) {
             toast.error(
-                error.response?.data?.message || "Failed to fetch customers"
+                error.response?.data?.message || t("customers.failed_fetch_customers")
             );
         } finally {
             updateState({ loading: false });
@@ -92,12 +94,12 @@ const Customers = () => {
             const response = await submitCustomerData(formData);
 
             if (response.data.success) {
-                toast.success(response.data.message);
+                toast.success(response.data.message || t("customers.operation_success"));
                 await fetchCustomers();
                 handleCancel();
             }
         } catch (error) {
-            toast.error(error.response?.data?.message || "Operation failed");
+            toast.error(error.response?.data?.message || t("customers.operation_failed"));
         } finally {
             updateState({ loading: false });
         }
@@ -135,12 +137,12 @@ const Customers = () => {
         try {
             const response = await api.delete(`/customers/${id}`);
             if (response.data.success) {
-                toast.success("Customer deleted successfully");
+                toast.success(t("customers.customer_deleted"));
                 await fetchCustomers();
             }
         } catch (error) {
             toast.error(
-                error.response?.data?.message || "Failed to delete customer"
+                error.response?.data?.message || t("customers.failed_delete_customer")
             );
         }
     };
@@ -203,11 +205,11 @@ const Customers = () => {
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
                 <div className="flex-1 min-w-0">
                     <h1 className="truncate mb-1 text-4xl font-bold flex items-center gap-2">
-                        Customers
+                        {t("customers.manage_customers")}
                         <UserOutlined className="text-blue-600 inline-block ml-2" />
                     </h1>
                     <p className="text-gray-500 text-base md:text-sm  hidden sm:block">
-                        Manage your customers, view their details
+                        {t("customers.manage_customers_description")}
                     </p>
                 </div>
             </div>
@@ -217,7 +219,7 @@ const Customers = () => {
             {/* Search and Add Section */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-lg shadow-sm">
                 <Input
-                    placeholder="Search customers by name, email, phone, or store..."
+                    placeholder={t("customers.search_customers")}
                     prefix={<SearchOutlined className="text-gray-400" />}
                     value={state.searchText}
                     onChange={handleSearch}
@@ -232,16 +234,15 @@ const Customers = () => {
                     size="large"
                     className="min-w-40"
                 >
-                    Add Customer
+                    {t("customers.add_customer")}
                 </Button>
             </div>
 
             {/* Results Summary */}
             {state.searchText && (
                 <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-                    Found {filteredCustomers.length} customer
-                    {filteredCustomers.length !== 1 ? "s" : ""}
-                    {state.searchText && ` matching "${state.searchText}"`}
+                    {t("customers.customers_found", { count: filteredCustomers.length })}
+                    {state.searchText && ` ${t("customers.matching_search", { search: state.searchText })}`}
                 </div>
             )}
 

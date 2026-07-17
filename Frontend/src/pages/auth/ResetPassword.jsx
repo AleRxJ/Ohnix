@@ -10,6 +10,7 @@ import {
     OtpInput,
 } from "../../components/auth/FormItems";
 import AuthButton from "../../components/auth/AuthButton";
+import useI18n from "../../hooks/useI18n";
 
 const { Step } = Steps;
 
@@ -22,10 +23,11 @@ const ResetPassword = () => {
     const [loading, setLoading] = useState(false);
     const [otpSent, setOtpSent] = useState(false);
     const navigate = useNavigate();
+    const { t } = useI18n();
 
     const handleSendOTP = async () => {
         if (!email) {
-            message.error("Please enter your email address");
+            message.error(t("auth.email_required"));
             return;
         }
 
@@ -34,15 +36,15 @@ const ResetPassword = () => {
             const response = await api.post("/users/send-reset-otp", { email });
 
             if (response.data.success) {
-                message.success("OTP sent to your email");
+                message.success(t("auth.otp_sent"));
                 setOtpSent(true);
                 setCurrentStep(1);
             } else {
-                message.error(response.data.message || "Failed to send OTP");
+                message.error(response.data.message || t("auth.failed_send_otp"));
             }
         } catch (error) {
             const errorMessage =
-                error.response?.data?.message || "Something went wrong";
+                error.response?.data?.message || t("common.error");
             message.error(errorMessage);
         } finally {
             setLoading(false);
@@ -51,17 +53,17 @@ const ResetPassword = () => {
 
     const handleResetPassword = async () => {
         if (!otp) {
-            message.error("Please enter the OTP");
+            message.error(t("auth.otp_required"));
             return;
         }
 
         if (!newPassword) {
-            message.error("Please enter a new password");
+            message.error(t("auth.password_required"));
             return;
         }
 
         if (newPassword !== confirmPassword) {
-            message.error("Passwords do not match");
+            message.error(t("validation.passwords_dont_match"));
             return;
         }
 
@@ -74,16 +76,16 @@ const ResetPassword = () => {
             });
 
             if (response.data.success) {
-                message.success("Password reset successfully");
+                message.success(t("auth.password_reset_success"));
                 navigate("/login");
             } else {
                 message.error(
-                    response.data.message || "Failed to reset password"
+                    response.data.message || t("auth.failed_reset_password")
                 );
             }
         } catch (error) {
             const errorMessage =
-                error.response?.data?.message || "Something went wrong";
+                error.response?.data?.message || t("common.error");
             message.error(errorMessage);
         } finally {
             setLoading(false);
@@ -92,7 +94,7 @@ const ResetPassword = () => {
 
     const steps = [
         {
-            title: "Email",
+            title: t("common.email"),
             content: (
                 <Form layout="vertical" className="space-y-5">
                     <EmailInput
@@ -100,13 +102,13 @@ const ResetPassword = () => {
                         onChange={(e) => setEmail(e.target.value)}
                     />
                     <AuthButton onClick={handleSendOTP} loading={loading}>
-                        Send OTP
+                        {t("auth.send_otp")}
                     </AuthButton>
                 </Form>
             ),
         },
         {
-            title: "Verify",
+            title: t("auth.verify"),
             content: (
                 <Form layout="vertical" className="space-y-4">
                     <OtpInput
@@ -116,19 +118,19 @@ const ResetPassword = () => {
                     <div className="space-y-3">
                         <PasswordInput
                             name="newPassword"
-                            placeholder="Enter new password"
+                            placeholder={t("auth.enter_new_password")}
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                         />
                         <PasswordInput
                             name="confirmPassword"
-                            placeholder="Confirm new password"
+                            placeholder={t("auth.confirm_new_password")}
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                         />
                     </div>
                     <AuthButton onClick={handleResetPassword} loading={loading}>
-                        Reset Password
+                        {t("auth.reset_password")}
                     </AuthButton>
                 </Form>
             ),
@@ -138,11 +140,11 @@ const ResetPassword = () => {
     return (
         <AuthLayout>
             <AuthCard
-                title="Reset Password"
+                title={t("auth.reset_password")}
                 subtitle={
                     otpSent
-                        ? "Enter the OTP sent to your email"
-                        : "Enter your email to reset password"
+                        ? t("auth.enter_otp_sent_email")
+                        : t("auth.enter_email_reset")
                 }
             >
                 <div className="mb-6">
@@ -167,20 +169,20 @@ const ResetPassword = () => {
                             disabled={loading}
                             className="p-0 h-auto text-sm text-gray-600 hover:text-blue-600"
                         >
-                            Resend OTP
+                            {t("auth.resend_otp")}
                         </AuthButton>
                     </div>
                 )}
 
                 <div className="text-center mt-6 pt-4 border-t border-gray-100">
                     <span className="text-sm text-gray-500">
-                        Remember your password?{" "}
+                        {t("auth.remember_password")} {" "}
                     </span>
                     <Link
                         to="/login"
                         className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                     >
-                        Log in
+                        {t("auth.login")}
                     </Link>
                 </div>
             </AuthCard>

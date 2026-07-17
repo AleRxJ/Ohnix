@@ -12,9 +12,12 @@ import {
     MenuUnfoldOutlined,
 } from "@ant-design/icons";
 import AuthContext from "../../context/AuthContext";
+import useI18n from "../../hooks/useI18n";
+import LanguageSwitcher from "../LanguageSwitcher/LanguageSwitcher";
 
 const DashboardHeader = ({ collapsed, setCollapsed }) => {
     const { user, logout } = useContext(AuthContext);
+    const { t } = useI18n();
     const navigate = useNavigate();
 
     // Handle logout
@@ -32,7 +35,7 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
     const avatarMenu = [
         {
             key: "profile",
-            label: <Link to="/profile">View Profile</Link>,
+            label: <Link to="/profile">{t("common.profile")}</Link>,
             icon: <UserOutlined />,
         },
         {
@@ -41,7 +44,7 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
         },
         {
             key: "logout",
-            label: "Logout",
+            label: t("common.logout"),
             icon: <LogoutOutlined />,
             onClick: handleLogout,
         },
@@ -98,6 +101,9 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
             </div>
 
             <div className="flex items-center">
+                <div className="mr-3 hidden sm:block">
+                    <LanguageSwitcher />
+                </div>
                 <UserProfileInfo user={user} />
                 <UserAvatar user={user} avatarMenu={avatarMenu} />
             </div>

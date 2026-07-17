@@ -34,6 +34,7 @@ import AuthContext from "../../context/AuthContext";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
+import useI18n from "../../hooks/useI18n";
 
 const { RangePicker } = DatePicker;
 
@@ -45,6 +46,7 @@ const PurchaseReport = () => {
         dayjs(),
     ]);
     const { user } = useContext(AuthContext);
+    const { t } = useI18n();
 
     const COLORS = [
         "#0088FE",
@@ -81,7 +83,7 @@ const PurchaseReport = () => {
         } catch (error) {
             toast.error(
                 error.response?.data?.message ||
-                    "Failed to fetch purchase report"
+                        t("reports.failed_purchase_report")
             );
         } finally {
             setLoading(false);
@@ -97,7 +99,7 @@ const PurchaseReport = () => {
 
     const exportToCSV = () => {
         if (!purchaseData) {
-            toast.error("No data to export");
+            toast.error(t("reports.no_data_to_export"));
             return;
         }
 
@@ -105,31 +107,31 @@ const PurchaseReport = () => {
         const csvData = [];
 
         // Add summary
-        csvData.push(["Purchase Report Summary"]);
+        csvData.push([t("reports.purchase_report_summary")]);
         const summary = calculateSummary();
         csvData.push([
-            "Total Purchases",
+            t("reports.total_purchases"),
             `₹${summary.totalPurchases.toFixed(2)}`,
         ]);
-        csvData.push(["Total Suppliers", summary.totalSuppliers]);
-        csvData.push(["Total Transactions", summary.totalTransactions]);
+        csvData.push([t("suppliers.total_suppliers"), summary.totalSuppliers]);
+        csvData.push([t("reports.total_transactions"), summary.totalTransactions]);
         csvData.push([""]);
 
         // Add purchases by date
-        csvData.push(["Purchases by Date"]);
-        csvData.push(["Date", "Number of Purchases"]);
+        csvData.push([t("reports.purchases_by_date")]);
+        csvData.push([t("common.date"), t("reports.number_of_purchases")]);
         purchaseData.purchasesByDate.forEach((item) => {
             csvData.push([item._id, item.count]);
         });
         csvData.push([""]);
 
         // Add purchases by supplier
-        csvData.push(["Purchases by Supplier"]);
+        csvData.push([t("reports.purchases_by_supplier")]);
         csvData.push([
-            "Supplier Name",
-            "Shop Name",
-            "Total Purchases",
-            "Purchase Count",
+            t("suppliers.supplier_name"),
+            t("suppliers.shop_name"),
+            t("reports.total_purchases"),
+            t("reports.purchase_count"),
         ]);
         purchaseData.purchasesBySupplier.forEach((item) => {
             csvData.push([
@@ -162,12 +164,12 @@ const PurchaseReport = () => {
             link.click();
             document.body.removeChild(link);
         }
-        toast.success("Purchase report exported successfully!");
+        toast.success(t("reports.purchase_report_exported"));
     };
 
     const supplierColumns = [
         {
-            title: "Supplier Name",
+            title: t("suppliers.supplier_name"),
             dataIndex: "supplier_name",
             key: "supplier_name",
             sorter: (a, b) => a.supplier_name.localeCompare(b.supplier_name),
@@ -175,18 +177,18 @@ const PurchaseReport = () => {
             ellipsis: true,
         },
         {
-            title: "Shop Name",
+            title: t("suppliers.shop_name"),
             dataIndex: "shopname",
             key: "shopname",
             sorter: (a, b) =>
                 (a.shopname || "").localeCompare(b.shopname || ""),
-            render: (shopname) => shopname || "N/A",
+            render: (shopname) => shopname || t("common.na"),
             width: 120,
             ellipsis: true,
             responsive: ["sm"],
         },
         {
-            title: "Total Purchases",
+            title: t("reports.total_purchases"),
             dataIndex: "total_purchases",
             key: "total_purchases",
             sorter: (a, b) => a.total_purchases - b.total_purchases,
@@ -198,7 +200,7 @@ const PurchaseReport = () => {
             width: 130,
         },
         {
-            title: "Purchase Count",
+            title: t("reports.purchase_count"),
             dataIndex: "count",
             key: "count",
             sorter: (a, b) => a.count - b.count,
@@ -235,7 +237,7 @@ const PurchaseReport = () => {
     return (
         <div className="space-y-4 sm:space-y-6">
             {/* Date Range Filter and Export */}
-            <Card title="Filter and Export Options">
+            <Card title={t("reports.filter_and_export_options")}>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row gap-3">
                         <RangePicker
@@ -254,9 +256,9 @@ const PurchaseReport = () => {
                             className="w-full sm:w-auto"
                         >
                             <span className="hidden sm:inline">
-                                Refresh Report
+                                {t("reports.refresh_report")}
                             </span>
-                            <span className="sm:hidden">Refresh</span>
+                            <span className="sm:hidden">{t("common.refresh")}</span>
                         </Button>
                     </div>
                     <Button
@@ -265,8 +267,8 @@ const PurchaseReport = () => {
                         disabled={!purchaseData}
                         className="bg-green-500 text-white hover:bg-green-600 w-full sm:w-auto"
                     >
-                        <span className="hidden sm:inline">Export to CSV</span>
-                        <span className="sm:hidden">Export</span>
+                        <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
+                        <span className="sm:hidden">{t("common.export")}</span>
                     </Button>
                 </div>
             </Card>
@@ -277,7 +279,7 @@ const PurchaseReport = () => {
                     <Row gutter={[16, 16]} className="mb-4 sm:mb-6">
                         <Col xs={24} sm={12} lg={8}>
                             <StatCard
-                                title="Total Purchases"
+                                title={t("reports.total_purchases")}
                                 value={summary.totalPurchases}
                                 icon={
                                     <ShoppingOutlined className="text-xl sm:text-2xl text-green" />
@@ -292,7 +294,7 @@ const PurchaseReport = () => {
                         </Col>
                         <Col xs={24} sm={12} lg={8}>
                             <StatCard
-                                title="Total Suppliers"
+                                title={t("suppliers.total_suppliers")}
                                 value={summary.totalSuppliers}
                                 icon={
                                     <UserOutlined className="text-xl sm:text-2xl text-blue" />
@@ -303,7 +305,7 @@ const PurchaseReport = () => {
                         </Col>
                         <Col xs={24} sm={24} lg={8}>
                             <StatCard
-                                title="Total Transactions"
+                                title={t("reports.total_transactions")}
                                 value={summary.totalTransactions}
                                 icon={
                                     <FileTextOutlined className="text-xl sm:text-2xl text-purple" />
@@ -316,7 +318,7 @@ const PurchaseReport = () => {
 
                     {/* Purchases by Date Chart */}
                     {purchaseData.purchasesByDate?.length > 0 && (
-                        <Card title="Purchase Trend by Date" className="w-full">
+                        <Card title={t("reports.purchase_trend_by_date")} className="w-full">
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
                                     width="100%"
@@ -360,18 +362,18 @@ const PurchaseReport = () => {
                                             formatter={(value, name) => [
                                                 value,
                                                 name === "count"
-                                                    ? "Purchases"
+                                                    ? t("reports.purchases")
                                                     : name,
                                             ]}
                                             labelFormatter={(label) =>
-                                                `Date: ${label}`
+                                                `${t("common.date")}: ${label}`
                                             }
                                         />
                                         <Legend />
                                         <Bar
                                             dataKey="count"
                                             fill="#1890ff"
-                                            name="Number of Purchases"
+                                            name={t("reports.number_of_purchases")}
                                             radius={[4, 4, 0, 0]}
                                         />
                                     </BarChart>
@@ -383,7 +385,7 @@ const PurchaseReport = () => {
                     {/* Top Suppliers Bar Chart */}
                     {purchaseData.purchasesBySupplier?.length > 0 && (
                         <Card
-                            title="Top Suppliers by Purchase Value"
+                            title={t("reports.top_suppliers_by_purchase_value")}
                             className="h-full"
                         >
                             <div className="w-full overflow-x-auto">
@@ -437,15 +439,15 @@ const PurchaseReport = () => {
                                                     ? `₹${value.toFixed(2)}`
                                                     : value,
                                                 name === "total_purchases"
-                                                    ? "Total Purchases"
-                                                    : "Purchase Count",
+                                                    ? t("reports.total_purchases")
+                                                    : t("reports.purchase_count"),
                                             ]}
                                         />
                                         <Legend />
                                         <Bar
                                             dataKey="total_purchases"
                                             fill="#52c41a"
-                                            name="Purchase Amount"
+                                            name={t("reports.purchase_amount")}
                                             radius={[4, 4, 0, 0]}
                                         />
                                     </BarChart>
@@ -456,7 +458,7 @@ const PurchaseReport = () => {
 
                     {/* Supplier Details Table */}
                     {purchaseData.purchasesBySupplier?.length > 0 && (
-                        <Card title="Supplier Purchase Details">
+                            <Card title={t("reports.supplier_purchase_details")}>
                             <div className="overflow-x-auto">
                                 <Table
                                     columns={supplierColumns}
@@ -495,7 +497,7 @@ const PurchaseReport = () => {
                 <Card>
                     <div className="text-center py-8">
                         <p className="text-gray-500 text-sm sm:text-base px-4">
-                            Select a date range to generate purchase report
+                            {t("reports.select_date_range_purchase")}
                         </p>
                     </div>
                 </Card>

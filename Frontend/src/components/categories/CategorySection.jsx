@@ -6,8 +6,10 @@ import CategoryModal from "./CategoryModal";
 import CategoryViewModal from "./CategoryViewModal";
 import SearchFilter from "../common/SearchFilter";
 import { useCategories } from "../../hooks/categories_units/useCategories";
+import useI18n from "../../hooks/useI18n";
 
 const CategorySection = ({ user, isAdmin }) => {
+    const { t } = useI18n();
     const {
         categories,
         loading,
@@ -76,7 +78,7 @@ const CategorySection = ({ user, isAdmin }) => {
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="text-gray-900 font-semibold text-base sm:text-lg">
-                                Categories
+                                {t("categories.categories")}
                             </span>
                             <Badge 
                                 count={categories.length} 
@@ -92,7 +94,7 @@ const CategorySection = ({ user, isAdmin }) => {
                 }
                 extra={
                     <div className="flex flex-col sm:flex-row gap-2">
-                        <Tooltip title="Refresh">
+                        <Tooltip title={t("common.refresh")}>
                             <Button
                                 icon={<ReloadOutlined />}
                                 onClick={loadCategories}
@@ -100,7 +102,7 @@ const CategorySection = ({ user, isAdmin }) => {
                                 className="border-gray-200 hover:border-blue-400 hover:text-blue-600 mt-2 lg:mt-0"
                                 style={{ height: '36px' }}
                             >
-                                Refresh
+                                {t("common.refresh")}
                             </Button>
                         </Tooltip>
                         <Button
@@ -116,6 +118,8 @@ const CategorySection = ({ user, isAdmin }) => {
                         >
                             <span className="hidden sm:inline">Add Category</span>
                             <span className="sm:hidden">Add</span>
+                            <span className="hidden sm:inline">{t("categories.add_category")}</span>
+                            <span className="sm:hidden">{t("common.add")}</span>
                         </Button>
                     </div>
                 }
@@ -128,7 +132,7 @@ const CategorySection = ({ user, isAdmin }) => {
                         filter={filter}
                         setFilter={setFilter}
                         onClear={clearFilters}
-                        placeholder="Search categories..."
+                        placeholder={t("categories.search_categories")}
                         isAdmin={isAdmin}
                     />
 

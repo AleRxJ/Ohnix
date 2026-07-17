@@ -16,6 +16,7 @@ import {
     EyeOutlined,
     ExclamationCircleOutlined,
 } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const { Text } = Typography;
 
@@ -27,6 +28,8 @@ const ProductsTable = ({
     onDelete,
     onViewDetails,
 }) => {
+    const { t } = useI18n();
+
     // Mobile Card View Component
     const MobileProductCard = ({ product }) => (
         <Card className="mb-3" size="small">
@@ -35,7 +38,7 @@ const ProductsTable = ({
                 <div className="flex-shrink-0">
                     <Image
                         src={product.product_image}
-                        alt="Product"
+                        alt={t("products.product")}
                         width={60}
                         height={60}
                         style={{ objectFit: "cover" }}
@@ -51,7 +54,7 @@ const ProductsTable = ({
                                 {product.product_name}
                             </Text>
                             <Text type="secondary" className="text-xs">
-                                Code: {product.product_code}
+                                {t("products.product_code")}: {product.product_code}
                             </Text>
                         </div>
                         <div className="flex gap-1 ml-2">
@@ -68,11 +71,11 @@ const ProductsTable = ({
                                 size="small"
                             />
                             <Popconfirm
-                                title="Delete this product?"
-                                description="This action cannot be undone. Are you sure?"
+                                title={t("products.delete_product")}
+                                description={t("common.warning")}
                                 onConfirm={() => onDelete(product._id)}
-                                okText="Yes"
-                                cancelText="No"
+                                okText={t("common.yes")}
+                                cancelText={t("common.no")}
                                 icon={
                                     <ExclamationCircleOutlined
                                         style={{ color: "red" }}
@@ -91,12 +94,12 @@ const ProductsTable = ({
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                            <Text type="secondary">Category:</Text>
+                            <Text type="secondary">{t("products.category")}</Text>
                             <br />
                             <Text>{product.category_id?.category_name}</Text>
                         </div>
                         <div>
-                            <Text type="secondary">Stock:</Text>
+                            <Text type="secondary">{t("products.stock")}</Text>
                             <br />
                             <Badge
                                 status={
@@ -110,14 +113,14 @@ const ProductsTable = ({
                             />
                         </div>
                         <div>
-                            <Text type="secondary">Selling Price:</Text>
+                            <Text type="secondary">{t("products.selling_price")}</Text>
                             <br />
                             <Text strong>
                                 ₹{product.selling_price.toFixed(2)}
                             </Text>
                         </div>
                         <div>
-                            <Text type="secondary">Unit:</Text>
+                            <Text type="secondary">{t("products.unit")}</Text>
                             <br />
                             <Text>{product.unit_id?.unit_name}</Text>
                         </div>
@@ -129,7 +132,7 @@ const ProductsTable = ({
 
     const columns = [
         {
-            title: "Image",
+            title: t("common.image"),
             dataIndex: "product_image",
             key: "product_image",
             width: 80,
@@ -137,7 +140,7 @@ const ProductsTable = ({
             render: (image) => (
                 <Image
                     src={image}
-                    alt="Product"
+                    alt={t("products.product")}
                     width={50}
                     height={50}
                     style={{ objectFit: "cover" }}
@@ -146,7 +149,7 @@ const ProductsTable = ({
             ),
         },
         {
-            title: "Product Name",
+            title: t("products.product_name"),
             dataIndex: "product_name",
             key: "product_name",
             sorter: (a, b) => a.product_name.localeCompare(b.product_name),
@@ -156,13 +159,13 @@ const ProductsTable = ({
                         {text}
                     </Text>
                     <Text type="secondary" className="text-xs">
-                        Code: {record.product_code}
+                        {t("products.product_code")}: {record.product_code}
                     </Text>
                 </div>
             ),
         },
         {
-            title: "Category",
+            title: t("products.category"),
             dataIndex: ["category_id", "category_name"],
             key: "category",
             responsive: ["lg"],
@@ -173,21 +176,21 @@ const ProductsTable = ({
             onFilter: (value, record) => record.category_id._id === value,
         },
         {
-            title: "Stock",
+            title: t("products.stock"),
             dataIndex: "stock",
             key: "stock",
             width: 100,
             sorter: (a, b) => a.stock - b.stock,
             render: (stock) => {
                 let color = "success";
-                let status = "In Stock";
+                let status = t("common.active");
 
                 if (stock === 0) {
                     color = "error";
-                    status = "Out of Stock";
+                    status = t("products.out_of_stock");
                 } else if (stock <= 10) {
                     color = "warning";
-                    status = "Low Stock";
+                    status = t("products.low_stock");
                 }
 
                 return (
@@ -205,7 +208,7 @@ const ProductsTable = ({
             },
         },
         {
-            title: "Price",
+            title: t("common.price"),
             key: "price",
             render: (_, record) => (
                 <div className="flex flex-col">
@@ -213,25 +216,25 @@ const ProductsTable = ({
                         ₹ {record.selling_price.toFixed(2)}
                     </Text>
                     <Text type="secondary" className="text-xs">
-                        Buy: ₹{record.buying_price.toFixed(2)}
+                        {t("products.buying_price")}: ₹{record.buying_price.toFixed(2)}
                     </Text>
                 </div>
             ),
             sorter: (a, b) => a.selling_price - b.selling_price,
         },
         {
-            title: "Unit",
+            title: t("products.unit"),
             dataIndex: ["unit_id", "unit_name"],
             key: "unit",
             responsive: ["xl"],
         },
         {
-            title: "Actions",
+            title: t("common.actions"),
             key: "actions",
             width: 120,
             render: (_, record) => (
                 <Space size="small">
-                    <Tooltip title="View Details">
+                    <Tooltip title={t("common.info")}>
                         <Button
                             icon={<EyeOutlined />}
                             onClick={() => onViewDetails(record)}
@@ -239,7 +242,7 @@ const ProductsTable = ({
                             size="small"
                         />
                     </Tooltip>
-                    <Tooltip title="Edit">
+                    <Tooltip title={t("common.edit")}>
                         <Button
                             icon={<EditOutlined />}
                             onClick={() => onEdit(record)}
@@ -247,13 +250,13 @@ const ProductsTable = ({
                             size="small"
                         />
                     </Tooltip>
-                    <Tooltip title="Delete">
+                    <Tooltip title={t("common.delete")}>
                         <Popconfirm
-                            title="Delete this product?"
-                            description="This action cannot be undone. Are you sure?"
+                            title={t("products.delete_product")}
+                            description={t("common.warning")}
                             onConfirm={() => onDelete(record._id)}
-                            okText="Yes"
-                            cancelText="No"
+                            okText={t("common.yes")}
+                            cancelText={t("common.no")}
                             icon={
                                 <ExclamationCircleOutlined
                                     style={{ color: "red" }}
@@ -280,10 +283,12 @@ const ProductsTable = ({
         return (
             <div>
                 {loading ? (
-                    <div className="text-center py-8">Loading...</div>
+                    <div className="text-center py-8">{t("common.loading")}</div>
                 ) : products.length === 0 ? (
                     <div className="text-center py-8">
-                        <Text type="secondary">No products found</Text>
+                        <Text type="secondary">
+                            {t("products.no_products")}
+                        </Text>
                     </div>
                 ) : (
                     products.map((product) => (
@@ -306,7 +311,7 @@ const ProductsTable = ({
             scroll={{ x: 800 }}
             pagination={{
                 showSizeChanger: true,
-                showTotal: (total) => `Total ${total} products`,
+                showTotal: (total) => `${t("common.total")} ${total} ${t("products.products")}`,
                 responsive: true,
                 showQuickJumper: false,
                 size: "small",

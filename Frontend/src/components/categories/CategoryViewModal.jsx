@@ -6,6 +6,7 @@ import {
     canEdit,
     getOwnershipText,
 } from "../../utils/category_units/permissionUtils";
+import useI18n from "../../hooks/useI18n";
 
 const { Title, Text } = Typography;
 
@@ -17,6 +18,7 @@ const CategoryViewModal = ({
     isAdmin,
     onEdit,
 }) => {
+    const { t } = useI18n();
     if (!category) return null;
 
     const showEditButton = canEdit(category, user, isAdmin);
@@ -68,8 +70,8 @@ const CategoryViewModal = ({
                                     }}
                                 >
                                     {isOwner
-                                        ? "Your Category"
-                                        : "Other User's Category"}
+                                        ? t("categories.your_category")
+                                        : t("categories.other_users_category")}
                                 </Tag>
                             </div>
                         </div>
@@ -83,12 +85,12 @@ const CategoryViewModal = ({
                         <div className="space-y-4">
                             <div>
                                 <Text className="text-sm font-medium text-gray-500 uppercase tracking-wider">
-                                    Created Information
+                                    {t("categories.created_information")}
                                 </Text>
                                 <div className="mt-2 space-y-3">
                                     <div>
                                         <Text className="text-sm text-gray-600">
-                                            Created By
+                                            {t("categories.created_by")}
                                         </Text>
                                         <div className="mt-1">
                                             <Text className="text-base font-medium text-gray-900">
@@ -98,7 +100,7 @@ const CategoryViewModal = ({
                                     </div>
                                     <div>
                                         <Text className="text-sm text-gray-600">
-                                            Created At
+                                            {t("categories.created_at")}
                                         </Text>
                                         <div className="mt-1">
                                             <Text className="text-base text-gray-700">
@@ -116,12 +118,12 @@ const CategoryViewModal = ({
                         <div className="space-y-4">
                             <div>
                                 <Text className="text-sm font-medium text-gray-500 uppercase tracking-wider">
-                                    Last Updated
+                                    {t("categories.last_updated")}
                                 </Text>
                                 <div className="mt-2 space-y-3">
                                     <div>
                                         <Text className="text-sm text-gray-600">
-                                            Updated By
+                                            {t("categories.updated_by")}
                                         </Text>
                                         <div className="mt-1">
                                             <Text className="text-base font-medium text-gray-900">
@@ -131,7 +133,7 @@ const CategoryViewModal = ({
                                     </div>
                                     <div>
                                         <Text className="text-sm text-gray-600">
-                                            Updated At
+                                            {t("categories.updated_at")}
                                         </Text>
                                         <div className="mt-1">
                                             <Text className="text-base text-gray-700">
@@ -157,7 +159,7 @@ const CategoryViewModal = ({
                             className="h-10 px-6 border-gray-200 text-gray-600 hover:text-gray-700 hover:border-gray-300"
                             style={{ borderRadius: "8px" }}
                         >
-                            Close
+                            {t("common.close")}
                         </Button>
                         {showEditButton && (
                             <Button
@@ -173,7 +175,7 @@ const CategoryViewModal = ({
                                     fontWeight: 500,
                                 }}
                             >
-                                Edit Category
+                                {t("categories.edit_category")}
                             </Button>
                         )}
                     </div>

@@ -2,7 +2,6 @@ import { useState, useEffect, useContext } from "react";
 import { Form, Spin, Typography } from "antd";
 import {
     CheckCircleOutlined,
-    MailOutlined,
     ArrowLeftOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
@@ -13,6 +12,7 @@ import AuthCard from "../../components/auth/AuthCard";
 import { OtpInput } from "../../components/auth/FormItems";
 import AuthButton from "../../components/auth/AuthButton";
 import { api } from "../../api/api";
+import useI18n from "../../hooks/useI18n";
 
 const { Text, Title } = Typography;
 
@@ -23,15 +23,16 @@ const EmailVerify = () => {
     const [justVerified, setJustVerified] = useState(false);
     const navigate = useNavigate();
     const { user, setUser } = useContext(AuthContext);
+    const { t } = useI18n();
 
     useEffect(() => {
         if (user?.isVerified && !justVerified) {
-            toast.success("Your email is already verified!");
+            toast.success(t("auth.email_already_verified"));
             navigate("/dashboard");
         } else if (user?.isVerified && justVerified) {
             navigate("/dashboard");
         }
-    }, [user, navigate, justVerified]);
+    }, [user, navigate, justVerified, t]);
 
     const sendVerificationOtp = async () => {
         setLoading(true);
@@ -50,15 +51,14 @@ const EmailVerify = () => {
             const data = response.data;
 
             if (data.success) {
-                toast.success(data.message);
+                toast.success(data.message || t("auth.otp_sent"));
                 setOtpSent(true);
             } else {
-                toast.error(data.message || "Failed to send OTP");
+                toast.error(data.message || t("auth.failed_send_otp"));
             }
         } catch (error) {
             toast.error(
-                error.response?.data?.message ||
-                    "Something went wrong. Please try again."
+                error.response?.data?.message || t("common.error")
             );
             console.error(error);
         } finally {
@@ -86,7 +86,7 @@ const EmailVerify = () => {
 
             if (data.success) {
                 setJustVerified(true);
-                toast.success("Email verified successfully!");
+                toast.success(t("auth.email_verified_success"));
 
                 if (setUser) {
                     setUser((prev) => ({ ...prev, isVerified: true }));
@@ -96,12 +96,11 @@ const EmailVerify = () => {
                     navigate("/dashboard");
                 }, 1500);
             } else {
-                toast.error(data.message || "Verification failed");
+                toast.error(data.message || t("auth.verification_failed"));
             }
         } catch (error) {
             toast.error(
-                error.response?.data?.message ||
-                    "Something went wrong. Please try again."
+                error.response?.data?.message || t("common.error")
             );
             console.error(error);
         } finally {
@@ -118,14 +117,14 @@ const EmailVerify = () => {
     return (
         <AuthLayout>
             <AuthCard
-                title={"Verify Your Email"}
-                subtitle={"Enter the 6-digit code sent to your email"}
+                title={t("auth.verify_your_email")}
+                subtitle={t("auth.enter_6_digit_code")}
             >
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-12">
                         <Spin size="large" />
                         <Text className="mt-4 text-gray-600">
-                            Sending verification code...
+                            {t("auth.sending_verification_code")}
                         </Text>
                     </div>
                 ) : (
@@ -146,7 +145,7 @@ const EmailVerify = () => {
                                         icon={<CheckCircleOutlined />}
                                         className="w-full h-11"
                                     >
-                                        Verify Email
+                                        {t("auth.verify_email_action")}
                                     </AuthButton>
                                 </Form.Item>
 
@@ -157,7 +156,7 @@ const EmailVerify = () => {
                                         disabled={loading}
                                         className="text-blue-600 hover:text-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        Resend Code
+                                        {t("auth.resend_code")}
                                     </button>
                                     <span className="text-gray-300">|</span>
                                     <button
@@ -166,7 +165,7 @@ const EmailVerify = () => {
                                         className="text-gray-600 hover:text-gray-800 font-medium transition-colors inline-flex items-center gap-1"
                                     >
                                         <ArrowLeftOutlined className="text-xs" />
-                                        Back to Login
+                                        {t("auth.back_to_login")}
                                     </button>
                                 </div>
                             </Form>
@@ -176,7 +175,7 @@ const EmailVerify = () => {
                                     onClick={() => navigate("/login")}
                                     className="w-full max-w-xs h-11"
                                 >
-                                    Login to Continue
+                                    {t("auth.login_to_continue")}
                                 </AuthButton>
                             </div>
                         )}
@@ -185,12 +184,12 @@ const EmailVerify = () => {
 
                 <div className="mt-8 pt-6 border-t border-gray-100 text-center">
                     <Text className="text-sm text-gray-500">
-                        Need help?{" "}
+                        {t("auth.need_help")} {" "}
                         <a
-                            href="mailto:sekharsurya111@gmail.com"
+                            href="mailto:alejandrosoftware.engineering@gmail.com"
                             className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
                         >
-                            Contact Support
+                            {t("auth.contact_support")}
                         </a>
                     </Text>
                 </div>

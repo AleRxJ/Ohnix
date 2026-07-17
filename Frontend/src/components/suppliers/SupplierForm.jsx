@@ -19,6 +19,7 @@ import {
     BankOutlined,
     UploadOutlined,
 } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const { Option } = Select;
 
@@ -31,9 +32,10 @@ const SupplierForm = ({
     fileList,
     uploadProps,
 }) => {
+    const { t } = useI18n();
     return (
         <Modal
-            title={editMode ? "Edit Supplier" : "Add New Supplier"}
+            title={editMode ? t("suppliers.edit_supplier") : t("suppliers.add_new_supplier")}
             open={visible}
             onCancel={onCancel}
             footer={null}
@@ -49,48 +51,46 @@ const SupplierForm = ({
                     <Col span={12}>
                         <Form.Item
                             name="name"
-                            label="Supplier Name"
+                            label={t("suppliers.supplier_name")}
                             rules={[
                                 {
                                     required: true,
-                                    message: "Please enter supplier name",
+                                    message: t("suppliers.enter_supplier_name"),
                                 },
                                 {
                                     max: 50,
-                                    message:
-                                        "Name must be less than 50 characters",
+                                    message: t("suppliers.name_max_length"),
                                 },
                             ]}
                         >
                             <Input
                                 prefix={<UserOutlined />}
-                                placeholder="Enter supplier name"
+                                placeholder={t("suppliers.enter_supplier_name_placeholder")}
                             />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
                             name="email"
-                            label="Email"
+                            label={t("suppliers.email")}
                             rules={[
                                 {
                                     required: true,
-                                    message: "Please enter email",
+                                    message: t("suppliers.enter_email"),
                                 },
                                 {
                                     type: "email",
-                                    message: "Please enter valid email",
+                                    message: t("validation.invalid_email"),
                                 },
                                 {
                                     max: 50,
-                                    message:
-                                        "Email must be less than 50 characters",
+                                    message: t("suppliers.email_max_length"),
                                 },
                             ]}
                         >
                             <Input
                                 prefix={<MailOutlined />}
-                                placeholder="Enter email"
+                                placeholder={t("suppliers.enter_email_placeholder")}
                             />
                         </Form.Item>
                     </Col>
@@ -100,32 +100,31 @@ const SupplierForm = ({
                     <Col span={12}>
                         <Form.Item
                             name="phone"
-                            label="Phone"
+                            label={t("suppliers.phone")}
                             rules={[
                                 {
                                     required: true,
-                                    message: "Please enter phone number",
+                                    message: t("suppliers.enter_phone"),
                                 },
                                 {
                                     max: 15,
-                                    message:
-                                        "Phone must be less than 15 characters",
+                                    message: t("suppliers.phone_max_length"),
                                 },
                             ]}
                         >
                             <Input
                                 prefix={<PhoneOutlined />}
-                                placeholder="Enter phone number"
+                                placeholder={t("suppliers.enter_phone_placeholder")}
                             />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item name="type" label="Supplier Type">
-                            <Select placeholder="Select supplier type">
-                                <Option value="individual">Individual</Option>
-                                <Option value="wholesale">Wholesale</Option>
-                                <Option value="retail">Retail</Option>
-                                <Option value="company">Company</Option>
+                        <Form.Item name="type" label={t("suppliers.supplier_type")}>
+                            <Select placeholder={t("suppliers.select_supplier_type")}>
+                                <Option value="individual">{t("suppliers.individual")}</Option>
+                                <Option value="wholesale">{t("suppliers.wholesale")}</Option>
+                                <Option value="retail">{t("suppliers.retail")}</Option>
+                                <Option value="company">{t("suppliers.company")}</Option>
                             </Select>
                         </Form.Item>
                     </Col>
@@ -135,76 +134,72 @@ const SupplierForm = ({
                     <Col span={12}>
                         <Form.Item
                             name="shopname"
-                            label="Shop Name"
+                            label={t("suppliers.shop_name")}
                             rules={[
                                 {
                                     max: 50,
-                                    message:
-                                        "Shop name must be less than 50 characters",
+                                    message: t("suppliers.shop_name_max_length"),
                                 },
                             ]}
                         >
                             <Input
                                 prefix={<ShopOutlined />}
-                                placeholder="Enter shop name"
+                                placeholder={t("suppliers.enter_shop_name_placeholder")}
                             />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
                             name="address"
-                            label="Address"
+                            label={t("common.address")}
                             rules={[
                                 {
                                     required: true,
-                                    message: "Please enter address",
+                                    message: t("suppliers.enter_address"),
                                 },
                                 {
                                     max: 100,
-                                    message:
-                                        "Address must be less than 100 characters",
+                                    message: t("suppliers.address_max_length"),
                                 },
                             ]}
                         >
-                            <Input placeholder="Enter address" />
+                            <Input placeholder={t("suppliers.enter_address_placeholder")} />
                         </Form.Item>
                     </Col>
                 </Row>
 
-                <Divider>Banking Information (Optional)</Divider>
+                <Divider>{t("suppliers.banking_information")}</Divider>
 
                 <Row gutter={16}>
                     <Col span={12}>
                         <Form.Item
                             name="bank_name"
-                            label="Bank Name"
+                            label={t("suppliers.bank_name")}
                             rules={[
                                 {
                                     max: 50,
-                                    message:
-                                        "Bank name must be less than 50 characters",
+                                    message: t("suppliers.bank_name_max_length"),
                                 },
                             ]}
                         >
                             <Input
                                 prefix={<BankOutlined />}
-                                placeholder="Enter bank name"
+                                placeholder={t("suppliers.enter_bank_name_placeholder")}
                             />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
                         <Form.Item
                             name="account_holder"
-                            label="Account Holder"
+                            label={t("suppliers.account_holder")}
                             rules={[
                                 {
                                     max: 50,
-                                    message:
-                                        "Account holder must be less than 50 characters",
+                                    message: t("suppliers.account_holder_max_length"),
                                 },
                             ]}
                         >
-                            <Input placeholder="Enter account holder name" />
+                            <Input placeholder={t("suppliers.enter_account_holder_placeholder")} />
                         </Form.Item>
                     </Col>
                 </Row>
@@ -213,23 +208,22 @@ const SupplierForm = ({
                     <Col span={12}>
                         <Form.Item
                             name="account_number"
-                            label="Account Number"
+                            label={t("suppliers.account_number")}
                             rules={[
                                 {
                                     max: 50,
-                                    message:
-                                        "Account number must be less than 50 characters",
+                                    message: t("suppliers.account_number_max_length"),
                                 },
                             ]}
                         >
-                            <Input placeholder="Enter account number" />
+                            <Input placeholder={t("suppliers.enter_account_number_placeholder")} />
                         </Form.Item>
                     </Col>
                     <Col span={12}>
-                        <Form.Item name="photo" label="Supplier Photo">
+                        <Form.Item name="photo" label={t("suppliers.supplier_photo")}>
                             <Upload {...uploadProps} maxCount={1}>
                                 <Button icon={<UploadOutlined />}>
-                                    Upload Photo
+                                    {t("suppliers.upload_photo")}
                                 </Button>
                             </Upload>
                         </Form.Item>
@@ -238,9 +232,9 @@ const SupplierForm = ({
 
                 <Form.Item className="mb-0 mt-4">
                     <Space className="w-full justify-end">
-                        <Button onClick={onCancel}>Cancel</Button>
+                        <Button onClick={onCancel}>{t("common.cancel")}</Button>
                         <Button type="primary" htmlType="submit">
-                            {editMode ? "Update Supplier" : "Create Supplier"}
+                            {editMode ? t("suppliers.update_supplier") : t("suppliers.create_supplier")}
                         </Button>
                     </Space>
                 </Form.Item>

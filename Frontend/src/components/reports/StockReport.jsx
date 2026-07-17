@@ -25,6 +25,7 @@ import AuthContext from "../../context/AuthContext";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
+import useI18n from "../../hooks/useI18n";
 
 const StockReport = () => {
     const [stockData, setStockData] = useState([]);
@@ -32,6 +33,7 @@ const StockReport = () => {
     const [searchText, setSearchText] = useState("");
     const [filteredData, setFilteredData] = useState([]);
     const { user } = useContext(AuthContext);
+    const { t } = useI18n();
 
     useEffect(() => {
         fetchStockReport();
@@ -63,7 +65,7 @@ const StockReport = () => {
             }
         } catch (error) {
             toast.error(
-                error.response?.data?.message || "Failed to fetch stock report"
+                error.response?.data?.message || t("reports.failed_stock_report")
             );
         } finally {
             setLoading(false);
@@ -72,7 +74,7 @@ const StockReport = () => {
 
     const exportToCSV = () => {
         if (filteredData.length === 0) {
-            toast.error("No data to export");
+            toast.error(t("reports.no_data_to_export"));
             return;
         }
 
@@ -80,29 +82,29 @@ const StockReport = () => {
         const csvData = [];
 
         // Add summary
-        csvData.push(["Stock Report Summary"]);
+        csvData.push([t("reports.stock_report_summary")]);
         const summary = calculateSummary();
-        csvData.push(["Total Products", summary.totalProducts]);
-        csvData.push(["Products In Stock", summary.inStock]);
-        csvData.push(["Products Low Stock", summary.lowStock]);
-        csvData.push(["Products Out of Stock", summary.outOfStock]);
+        csvData.push([t("reports.total_products"), summary.totalProducts]);
+        csvData.push([t("reports.products_in_stock"), summary.inStock]);
+        csvData.push([t("reports.products_low_stock"), summary.lowStock]);
+        csvData.push([t("reports.products_out_of_stock"), summary.outOfStock]);
         csvData.push([
-            "Total Inventory Value (in rupees)",
+            t("reports.total_inventory_value"),
             `${summary.totalInventoryValue.toFixed(2)}`,
         ]);
         csvData.push([""]);
 
         // Add headers
         csvData.push([
-            "Product Code",
-            "Product Name",
-            "Category",
-            "Unit",
-            "Stock Quantity",
-            "Buying Price (in rupees)",
-            "Selling Price (in rupees)",
-            "Inventory Value (in rupees)",
-            "Status",
+            t("products.product_code"),
+            t("products.product_name"),
+            t("common.category"),
+            t("common.unit"),
+            t("common.stock_quantity"),
+            t("reports.buying_price"),
+            t("reports.selling_price"),
+            t("reports.inventory_value"),
+            t("common.status"),
         ]);
 
         // Add stock data
@@ -142,7 +144,7 @@ const StockReport = () => {
             link.click();
             document.body.removeChild(link);
         }
-        toast.success("Stock report exported successfully!");
+        toast.success(t("reports.stock_report_exported"));
     };
 
     const getStatusColor = (status) => {
@@ -173,7 +175,7 @@ const StockReport = () => {
 
     const columns = [
         {
-            title: "Code",
+            title: t("products.product_code"),
             dataIndex: "product_code",
             key: "product_code",
             sorter: (a, b) => a.product_code.localeCompare(b.product_code),
@@ -181,7 +183,7 @@ const StockReport = () => {
             ellipsis: true,
         },
         {
-            title: "Product Name",
+            title: t("products.product_name"),
             dataIndex: "product_name",
             key: "product_name",
             sorter: (a, b) => a.product_name.localeCompare(b.product_name),
@@ -189,7 +191,7 @@ const StockReport = () => {
             ellipsis: true,
         },
         {
-            title: "Category",
+            title: t("common.category"),
             dataIndex: "category_name",
             key: "category_name",
             sorter: (a, b) => a.category_name.localeCompare(b.category_name),
@@ -198,14 +200,14 @@ const StockReport = () => {
             responsive: ["sm"],
         },
         {
-            title: "Unit",
+            title: t("common.unit"),
             dataIndex: "unit_name",
             key: "unit_name",
             width: 60,
             responsive: ["md"],
         },
         {
-            title: "Stock",
+            title: t("common.stock"),
             dataIndex: "stock",
             key: "stock",
             sorter: (a, b) => a.stock - b.stock,
@@ -225,7 +227,7 @@ const StockReport = () => {
             ),
         },
         {
-            title: "Buy Price",
+            title: t("reports.buy_price"),
             dataIndex: "buying_price",
             key: "buying_price",
             sorter: (a, b) => a.buying_price - b.buying_price,
@@ -238,7 +240,7 @@ const StockReport = () => {
             responsive: ["sm"],
         },
         {
-            title: "Sell Price",
+            title: t("reports.sell_price"),
             dataIndex: "selling_price",
             key: "selling_price",
             sorter: (a, b) => a.selling_price - b.selling_price,
@@ -251,7 +253,7 @@ const StockReport = () => {
             responsive: ["md"],
         },
         {
-            title: "Inventory Value",
+            title: t("reports.inventory_value"),
             dataIndex: "inventory_value",
             key: "inventory_value",
             sorter: (a, b) => a.inventory_value - b.inventory_value,
@@ -264,14 +266,14 @@ const StockReport = () => {
             responsive: ["lg"],
         },
         {
-            title: "Status",
+            title: t("common.status"),
             dataIndex: "status",
             key: "status",
             width: window.innerWidth < 768 ? 90 : 120,
             filters: [
-                { text: "In Stock", value: "In Stock" },
-                { text: "Low Stock", value: "Low Stock" },
-                { text: "Out of Stock", value: "Out of Stock" },
+                { text: t("reports.in_stock"), value: "In Stock" },
+                { text: t("reports.low_stock"), value: "Low Stock" },
+                { text: t("reports.out_of_stock"), value: "Out of Stock" },
             ],
             onFilter: (value, record) => record.status === value,
             render: (status) => (
@@ -318,11 +320,11 @@ const StockReport = () => {
     return (
         <div className="space-y-4 sm:space-y-6">
             {/* Export Controls */}
-            <Card title="Filter and Export Options">
+            <Card title={t("reports.filter_and_export_options")}>
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row gap-3">
                         <Input
-                            placeholder="Search products..."
+                            placeholder={t("reports.search_products")}
                             prefix={<SearchOutlined />}
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
@@ -337,9 +339,9 @@ const StockReport = () => {
                             className="w-full sm:w-auto"
                         >
                             <span className="hidden sm:inline">
-                                Refresh Report
+                                {t("reports.refresh_report")}
                             </span>
-                            <span className="sm:hidden">Refresh</span>
+                            <span className="sm:hidden">{t("common.refresh")}</span>
                         </Button>
                     </div>
                     <Button
@@ -348,8 +350,8 @@ const StockReport = () => {
                         disabled={filteredData.length === 0}
                         className="bg-green-500 text-white hover:bg-green-600 w-full sm:w-auto"
                     >
-                        <span className="hidden sm:inline">Export to CSV</span>
-                        <span className="sm:hidden">Export</span>
+                        <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
+                        <span className="sm:hidden">{t("common.export")}</span>
                     </Button>
                 </div>
             </Card>
@@ -360,8 +362,8 @@ const StockReport = () => {
                     <StatCard
                         title={
                             window.innerWidth < 768
-                                ? "Products"
-                                : "Total Products"
+                                ? t("reports.products")
+                                : t("reports.total_products")
                         }
                         value={summary.totalProducts}
                         icon={
@@ -373,7 +375,7 @@ const StockReport = () => {
                 </Col>
                 <Col xs={12} sm={6} lg={6}>
                     <StatCard
-                        title="In Stock"
+                        title={t("reports.in_stock")}
                         value={summary.inStock}
                         icon={
                             <CheckCircleOutlined className="text-xl sm:text-2xl text-green" />
@@ -384,7 +386,7 @@ const StockReport = () => {
                 </Col>
                 <Col xs={12} sm={6} lg={6}>
                     <StatCard
-                        title="Low Stock"
+                        title={t("reports.low_stock")}
                         value={summary.lowStock}
                         icon={
                             <WarningOutlined className="text-xl sm:text-2xl text-orange" />
@@ -395,7 +397,7 @@ const StockReport = () => {
                 </Col>
                 <Col xs={12} sm={6} lg={6}>
                     <StatCard
-                        title="Out of Stock"
+                        title={t("reports.out_of_stock")}
                         value={summary.outOfStock}
                         icon={
                             <StopOutlined className="text-xl sm:text-2xl text-red" />
@@ -412,8 +414,8 @@ const StockReport = () => {
                     <StatCard
                         title={
                             window.innerWidth < 768
-                                ? "Inventory Value"
-                                : "Total Inventory Value"
+                                ? t("reports.inventory_value")
+                                : t("reports.total_inventory_value")
                         }
                         value={summary.totalInventoryValue}
                         icon={
@@ -430,10 +432,10 @@ const StockReport = () => {
             {/* Stock Report Table */}
             <Card
                 title={
-                    <span className="text-sm sm:text-base">
+                            <span className="text-sm sm:text-base">
                         {window.innerWidth < 768
-                            ? `Stock Report (${filteredData.length})`
-                            : `Stock Report (${filteredData.length} products)`}
+                            ? t("reports.stock_report_count_mobile", { count: filteredData.length })
+                            : t("reports.stock_report_count", { count: filteredData.length })}
                     </span>
                 }
             >
@@ -481,11 +483,10 @@ const StockReport = () => {
                             }}
                         />
                         <p className="text-gray-500 mt-4 text-sm sm:text-base px-4">
-                            No products found matching your search criteria
+                            {t("reports.no_products_matching_search")}
                         </p>
                         <p className="text-gray-400 text-xs sm:text-sm px-4">
-                            Try adjusting your search terms or clear the search
-                            to see all products
+                            {t("reports.try_adjusting_search")}
                         </p>
                     </div>
                 </Card>
@@ -502,11 +503,10 @@ const StockReport = () => {
                             }}
                         />
                         <p className="text-gray-500 mt-4 text-sm sm:text-base px-4">
-                            No stock data available
+                            {t("reports.no_stock_data_available")}
                         </p>
                         <p className="text-gray-400 text-xs sm:text-sm px-4">
-                            Add some products to your inventory to see the stock
-                            report
+                            {t("reports.add_products_to_inventory")}
                         </p>
                     </div>
                 </Card>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Modal } from "antd";
 import CustomerForm from "./CustomerForm";
+import useI18n from "../../hooks/useI18n";
 
 const CustomerModal = ({
     visible,
@@ -12,9 +13,11 @@ const CustomerModal = ({
     setFileList,
     editingCustomer,
 }) => {
+    const { t } = useI18n();
+
     return (
         <Modal
-            title={editingCustomer ? "Edit Customer" : "Add New Customer"}
+            title={editingCustomer ? t("customers.edit_customer") : t("customers.add_new_customer")}
             open={visible}
             onCancel={onCancel}
             footer={null}

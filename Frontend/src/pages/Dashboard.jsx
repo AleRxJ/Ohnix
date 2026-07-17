@@ -31,12 +31,14 @@ import LoadingSpinner from "../components/dashboard/LoadingSpinner";
 import ErrorDisplay from "../components/dashboard/ErrorDisplay";
 import { api } from "../api/api";
 import SalesChart from "../components/dashboard/SalesChart";
+import useI18n from "../hooks/useI18n";
 
 const { useToken } = theme;
 const { Title, Text } = Typography;
 
 const Dashboard = () => {
     const { token } = useToken();
+    const { t } = useI18n();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [dashboardData, setDashboardData] = useState({
@@ -82,16 +84,16 @@ const Dashboard = () => {
                     salesData: salesReportData,
                 });
 
-                toast.success("Data loaded successfully");
+                toast.success(t("dashboard.data_loaded_successfully"));
             } else {
-                setError("Failed to fetch dashboard data");
-                toast.error("Failed to load data");
+                setError(t("dashboard.failed_fetch_dashboard_data"));
+                toast.error(t("dashboard.failed_load_data"));
             }
         } catch (err) {
             console.error("Dashboard data fetch error:", err);
             const errorMessage =
                 err.response?.data?.message ||
-                "Something went wrong while fetching dashboard data";
+                t("dashboard.something_went_wrong_dashboard");
             setError(errorMessage);
             toast.error(errorMessage);
         } finally {
@@ -101,7 +103,7 @@ const Dashboard = () => {
 
     const topProductsColumns = [
         {
-            title: "Product",
+            title: t("products.product"),
             dataIndex: "product_name",
             key: "product_name",
             ellipsis: {
@@ -116,7 +118,7 @@ const Dashboard = () => {
             ),
         },
         {
-            title: "Units",
+            title: t("common.quantity"),
             dataIndex: "quantity_sold",
             key: "quantity_sold",
             width: 80,
@@ -134,7 +136,7 @@ const Dashboard = () => {
             ),
         },
         {
-            title: "Sales",
+            title: t("common.total"),
             dataIndex: "total_sales",
             key: "total_sales",
             width: 100,
@@ -150,7 +152,7 @@ const Dashboard = () => {
 
     const lowStockColumns = [
         {
-            title: "Product",
+            title: t("products.product"),
             dataIndex: "product_name",
             key: "product_name",
             ellipsis: {
@@ -165,7 +167,7 @@ const Dashboard = () => {
             ),
         },
         {
-            title: "Stock",
+            title: t("products.stock"),
             dataIndex: "stock",
             key: "stock",
             width: 70,
@@ -179,7 +181,7 @@ const Dashboard = () => {
             ),
         },
         {
-            title: "Status",
+            title: t("common.status"),
             key: "status",
             width: 90,
             align: "center",
@@ -188,7 +190,7 @@ const Dashboard = () => {
                     color={record.stock === 0 ? "error" : "warning"}
                     className="text-xs font-medium"
                 >
-                    {record.stock === 0 ? "Out" : "Low"}
+                    {record.stock === 0 ? t("products.out_of_stock") : t("products.low_stock")}
                 </Tag>
             ),
         },
@@ -196,7 +198,7 @@ const Dashboard = () => {
 
     const recentOrdersColumns = [
         {
-            title: "Order ID",
+            title: t("orders.invoice_number"),
             dataIndex: "invoice_no",
             key: "invoice_no",
             width: 100,
@@ -207,14 +209,14 @@ const Dashboard = () => {
             ),
         },
         {
-            title: "Customer",
+            title: t("customers.customer"),
             key: "customer",
             ellipsis: {
                 showTitle: false,
             },
             render: (_, record) => {
                 const customerName =
-                    record.customer_id?.name || "Unknown Customer";
+                    record.customer_id?.name || t("customers.unknown_customer");
                 return (
                     <Tooltip placement="topLeft" title={customerName}>
                         <span className="text-sm font-medium text-gray-800 block max-w-[150px] sm:max-w-[200px] truncate">
@@ -225,7 +227,7 @@ const Dashboard = () => {
             },
         },
         {
-            title: "Date",
+            title: t("common.date"),
             key: "date",
             width: 100,
             responsive: ["md"],
@@ -236,7 +238,7 @@ const Dashboard = () => {
             ),
         },
         {
-            title: "Total",
+            title: t("common.total"),
             dataIndex: "total",
             key: "total",
             width: 100,
@@ -248,7 +250,7 @@ const Dashboard = () => {
             ),
         },
         {
-            title: "Status",
+            title: t("common.status"),
             dataIndex: "order_status",
             key: "order_status",
             width: 100,
@@ -260,13 +262,13 @@ const Dashboard = () => {
                 if (status === "pending") color = "warning";
                 if (status === "cancelled") color = "error";
 
-                return <Tag color={color}>{status.toUpperCase()}</Tag>;
+                return <Tag color={color}>{t(`common.${status}`)}</Tag>;
             },
         },
     ];
 
     if (loading) {
-        return <LoadingSpinner tip="Loading dashboard data..." />;
+        return <LoadingSpinner tip={t("dashboard.loading_dashboard_data")} />;
     }
 
     if (error) {
@@ -283,7 +285,7 @@ const Dashboard = () => {
                         <Row gutter={[16, 16]}>
                             <Col xs={24} sm={12} lg={8}>
                                 <StatCard
-                                    title="Total Sales"
+                                    title={t("dashboard.total_sales")}
                                     value={dashboardData.totalSales}
                                     prefix={<ShoppingCartOutlined />}
                                     valueStyle={{ color: token.colorSuccess }}
@@ -297,7 +299,7 @@ const Dashboard = () => {
                             </Col>
                             <Col xs={24} sm={12} lg={8}>
                                 <StatCard
-                                    title="Total Purchases"
+                                    title={t("dashboard.total_purchases")}
                                     value={dashboardData.totalPurchase}
                                     prefix={<ShoppingOutlined />}
                                     valueStyle={{ color: token.colorPrimary }}
@@ -311,7 +313,7 @@ const Dashboard = () => {
                             </Col>
                             <Col xs={24} sm={24} lg={8}>
                                 <StatCard
-                                    title="Inventory Value"
+                                    title={t("dashboard.inventory_value")}
                                     value={dashboardData.inventoryValue}
                                     prefix={<DollarOutlined />}
                                     valueStyle={{ color: token.colorPurple }}
@@ -326,7 +328,7 @@ const Dashboard = () => {
                             </Col>
                             <Col xs={24} sm={8}>
                                 <StatCard
-                                    title="Total Products"
+                                    title={t("dashboard.total_products")}
                                     value={dashboardData.totalProducts}
                                     icon={
                                         <InboxOutlined className="text-2xl text-blue" />
@@ -335,7 +337,7 @@ const Dashboard = () => {
                             </Col>
                             <Col xs={24} sm={8}>
                                 <StatCard
-                                    title="Total Stock"
+                                    title={t("dashboard.total_stock")}
                                     value={dashboardData.totalStock}
                                     icon={
                                         <ShoppingOutlined className="text-2xl text-cyan" />
@@ -344,7 +346,7 @@ const Dashboard = () => {
                             </Col>
                             <Col xs={24} sm={8}>
                                 <StatCard
-                                    title="Out of Stock"
+                                    title={t("dashboard.out_of_stock")}
                                     value={dashboardData.outOfStockCount}
                                     icon={
                                         <WarningOutlined className="text-2xl" />
@@ -365,10 +367,10 @@ const Dashboard = () => {
                     <Divider className="flex items-center gap-3 mb-6">
                         <div>
                             <h2 className="text-xl font-bold text-slate-900 m-0 leading-tight">
-                                Analytics & Insights
+                                {t("dashboard.analytics_insights")}
                             </h2>
                             <p className="text-sm text-slate-500 m-0">
-                                Performance metrics and trends
+                                {t("dashboard.performance_metrics")}
                             </p>
                         </div>
                     </Divider>
@@ -389,10 +391,10 @@ const Dashboard = () => {
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-bold text-slate-900 m-0 leading-tight">
-                                                Quick Insights
+                                                    {t("dashboard.quick_insights")}
                                             </h3>
                                             <p className="text-sm text-slate-500 m-0">
-                                                Key product highlights
+                                                    {t("dashboard.key_product_highlights")}
                                             </p>
                                         </div>
                                     </div>
@@ -401,7 +403,7 @@ const Dashboard = () => {
                                         <div className="p-5 bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl border-2 border-emerald-200">
                                             <div className="flex items-start justify-between mb-3">
                                                 <Text className="text-emerald-700 text-xs font-bold uppercase tracking-wider block">
-                                                    Top Performer
+                                                    {t("dashboard.top_performer")}
                                                 </Text>
                                                 <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
                                                     🏆
@@ -414,7 +416,9 @@ const Dashboard = () => {
                                                 }
                                             </Text>
                                             <Badge
-                                                count={`${dashboardData.topProducts[0]?.quantity_sold} units sold`}
+                                                count={t("dashboard.units_sold", {
+                                                    count: dashboardData.topProducts[0]?.quantity_sold,
+                                                })}
                                                 style={{
                                                     backgroundColor: "#10b981",
                                                     fontSize: "11px",
@@ -426,7 +430,7 @@ const Dashboard = () => {
                                         <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
                                             <div className="flex items-start justify-between mb-3">
                                                 <Text className="text-blue-700 text-xs font-bold uppercase tracking-wider block">
-                                                    Most Profitable
+                                                    {t("dashboard.most_profitable")}
                                                 </Text>
                                                 <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
                                                     💰
@@ -442,7 +446,12 @@ const Dashboard = () => {
                                                 }
                                             </Text>
                                             <Badge
-                                                count={`$${dashboardData.topProducts.sort((a, b) => b.total_sales - a.total_sales)[0]?.total_sales.toLocaleString()} revenue`}
+                                                count={t("dashboard.revenue", {
+                                                    value: dashboardData.topProducts
+                                                        .slice()
+                                                        .sort((a, b) => b.total_sales - a.total_sales)[0]
+                                                        ?.total_sales.toLocaleString(),
+                                                })}
                                                 style={{
                                                     backgroundColor: "#3b82f6",
                                                     fontSize: "11px",
@@ -460,10 +469,10 @@ const Dashboard = () => {
                     <Divider className="flex items-center gap-3 mb-6">
                         <div>
                             <h2 className="text-xl font-bold text-slate-900 m-0 leading-tight">
-                                Reports & Activity
+                                {t("dashboard.reports_activity")}
                             </h2>
                             <p className="text-sm text-slate-500 m-0">
-                                Recent transactions and alerts
+                                {t("dashboard.recent_transactions_and_alerts")}
                             </p>
                         </div>
                     </Divider>
@@ -472,7 +481,7 @@ const Dashboard = () => {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
                                 <DataTable
-                                    title="Top Selling Products"
+                                    title={t("dashboard.top_selling_products")}
                                     columns={topProductsColumns}
                                     dataSource={dashboardData.topProducts.slice(
                                         0,
@@ -485,7 +494,7 @@ const Dashboard = () => {
 
                             <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
                                 <DataTable
-                                    title="Low Stock Alerts"
+                                    title={t("dashboard.low_stock_alerts")}
                                     columns={lowStockColumns}
                                     dataSource={dashboardData.lowStockProducts.slice(
                                         0,
@@ -499,7 +508,7 @@ const Dashboard = () => {
 
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
                             <DataTable
-                                title="Recent Orders"
+                                title={t("dashboard.recent_orders")}
                                 columns={recentOrdersColumns}
                                 dataSource={dashboardData.recentOrders.slice(
                                     0,

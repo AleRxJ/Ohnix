@@ -7,6 +7,7 @@ import {
     MoreOutlined,
     UserOutlined,
 } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const SupplierTable = ({
     suppliers,
@@ -16,9 +17,10 @@ const SupplierTable = ({
     onDelete,
     isAdmin = false,
 }) => {
+    const { t } = useI18n();
     const columns = [
         {
-            title: "Photo",
+            title: t("suppliers.photo"),
             dataIndex: "photo",
             key: "photo",
             width: 80,
@@ -31,39 +33,39 @@ const SupplierTable = ({
             ),
         },
         {
-            title: "Name",
+            title: t("suppliers.name"),
             dataIndex: "name",
             key: "name",
             sorter: (a, b) => a.name.localeCompare(b.name),
         },
         {
-            title: "Email",
+            title: t("suppliers.email"),
             dataIndex: "email",
             key: "email",
         },
         {
-            title: "Phone",
+            title: t("suppliers.phone"),
             dataIndex: "phone",
             key: "phone",
         },
         {
-            title: "Shop Name",
+            title: t("suppliers.shop_name"),
             dataIndex: "shopname",
             key: "shopname",
             render: (shopname) => shopname || "-",
         },
         {
-            title: "Type",
+            title: t("suppliers.type"),
             dataIndex: "type",
             key: "type",
             render: (type) => (
                 <Tag color={type === "company" ? "blue" : "green"}>
-                    {type?.toUpperCase() || "N/A"}
+                    {type?.toUpperCase() || t("common.na")}
                 </Tag>
             ),
         },
         {
-            title: "Address",
+            title: t("common.address"),
             dataIndex: "address",
             key: "address",
             ellipsis: true,
@@ -72,26 +74,26 @@ const SupplierTable = ({
         ...(isAdmin
             ? [
                   {
-                      title: "Owner",
+                      title: t("suppliers.owner"),
                       dataIndex: ["owner", "fullName"],
                       key: "owner",
                       render: (ownerName, record) => (
                           <span>
-                              {ownerName || record.owner?.username || "Unknown"}
+                              {ownerName || record.owner?.username || t("common.unknown")}
                           </span>
                       ),
                   },
               ]
             : []),
         {
-            title: "Actions",
+            title: t("common.actions"),
             key: "actions",
             width: 120,
             render: (_, record) => {
                 const items = [
                     {
                         key: "view",
-                        label: "View Details",
+                        label: t("suppliers.view_details"),
                         icon: <EyeOutlined />,
                         onClick: () => onView(record),
                     },
@@ -100,7 +102,7 @@ const SupplierTable = ({
                         ? [
                               {
                                   key: "edit",
-                                  label: "Edit",
+                                  label: t("common.edit"),
                                   icon: <EditOutlined />,
                                   onClick: () => onEdit(record),
                               },
@@ -111,11 +113,11 @@ const SupplierTable = ({
                                   danger: true,
                                   onClick: () => {
                                       Modal.confirm({
-                                          title: "Delete Supplier",
-                                          content: `Are you sure you want to delete ${record.name}?`,
-                                          okText: "Yes",
+                                          title: t("suppliers.delete_supplier"),
+                                          content: t("suppliers.delete_supplier_confirm", { name: record.name }),
+                                          okText: t("common.yes"),
                                           okType: "danger",
-                                          cancelText: "No",
+                                          cancelText: t("common.no"),
                                           onOk: () => onDelete(record._id),
                                       });
                                   },
@@ -146,7 +148,11 @@ const SupplierTable = ({
                     showSizeChanger: true,
                     showQuickJumper: true,
                     showTotal: (total, range) =>
-                        `${range[0]}-${range[1]} of ${total} suppliers`,
+                        t("suppliers.showing_suppliers", {
+                            start: range[0],
+                            end: range[1],
+                            total,
+                        }),
                 }}
                 scroll={{ x: 800 }}
             />

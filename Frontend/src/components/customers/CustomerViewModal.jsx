@@ -20,10 +20,13 @@ import {
     BankOutlined,
     IdcardOutlined,
 } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const { Title, Text } = Typography;
 
 const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
+    const { t } = useI18n();
+
     if (!customer) return null;
 
     const getTypeColor = (type) => {
@@ -69,7 +72,7 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
             footer={
                 <div className="flex justify-end space-x-3 pt-4 border-t">
                     <Button size="large" onClick={onCancel}>
-                        Close
+                        {t("common.close")}
                     </Button>
                     <Button
                         type="primary"
@@ -81,7 +84,7 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                         }}
                         className="min-w-32"
                     >
-                        Edit Customer
+                        {t("customers.edit_customer")}
                     </Button>
                 </div>
             }
@@ -109,7 +112,7 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                         color={getTypeColor(customer.type)}
                         className="text-sm px-4 py-1 rounded-full font-medium"
                     >
-                        {customer.type?.toUpperCase()} CUSTOMER
+                        {t("customers.customer_tag", { type: customer.type?.toUpperCase() })}
                     </Tag>
                 </div>
 
@@ -122,24 +125,24 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                                 className="text-gray-800 mb-4 flex items-center"
                             >
                                 <MailOutlined className="mr-2 text-blue-600" />
-                                Contact Details
+                                {t("customers.contact_details")}
                             </Title>
                             <div className="space-y-2">
                                 <InfoItem
                                     icon={<MailOutlined />}
-                                    label="Email Address"
+                                    label={t("customers.email_address")}
                                     value={customer.email}
                                     copyable
                                 />
                                 <InfoItem
                                     icon={<PhoneOutlined />}
-                                    label="Phone Number"
+                                    label={t("customers.phone_number")}
                                     value={customer.phone}
                                     copyable
                                 />
                                 <InfoItem
                                     icon={<HomeOutlined />}
-                                    label="Address"
+                                    label={t("common.address")}
                                     value={customer.address}
                                 />
                             </div>
@@ -157,22 +160,22 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                                     className="text-gray-800 mb-4 flex items-center"
                                 >
                                     <ShopOutlined className="mr-2 text-purple-600" />
-                                    Business Details
+                                    {t("customers.business_details")}
                                 </Title>
                                 <div className="space-y-2">
                                     <InfoItem
                                         icon={<ShopOutlined />}
-                                        label="Store Name"
+                                        label={t("customers.store_name")}
                                         value={customer.store_name}
                                     />
                                     <InfoItem
                                         icon={<IdcardOutlined />}
-                                        label="Account Holder"
+                                        label={t("customers.account_holder")}
                                         value={customer.account_holder}
                                     />
                                     <InfoItem
                                         icon={<BankOutlined />}
-                                        label="Account Number"
+                                        label={t("customers.account_number")}
                                         value={customer.account_number}
                                         copyable
                                     />
@@ -188,7 +191,7 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                                         <ShopOutlined className="text-3xl" />
                                     </div>
                                     <Text className="text-gray-500">
-                                        No business information available
+                                        {t("customers.no_business_information")}
                                     </Text>
                                 </div>
                             )}
