@@ -1,11 +1,13 @@
-# Ohnix by iTCycle — Inventory Management System
+# Ohnix — Inventory & Operations Management System
 
 [![Node](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen.svg)](https://nodejs.org/)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
 [![License](https://img.shields.io/badge/license-ISC-lightgrey.svg)]()
 [![Deploy](https://img.shields.io/badge/deployed-Vercel-black.svg)](https://ohnix-by-itcycle.vercel.app)
 
-A production-grade, multi-tenant **Inventory Management System** built on the MERN stack. Ohnix by iTCycle handles the full supply-chain loop — from supplier purchase orders and real-time stock tracking to customer sales orders, PDF invoice generation, and automated weekly low-stock email alerts — all behind a layered JWT + RBAC authentication system.
+A production-grade, multi-tenant **inventory and operations platform** built on the MERN stack. Ohnix brings control, visibility, and efficiency to every movement inside the business — from supplier purchase orders and real-time stock tracking to customer sales, invoice generation, and automated low-stock alerts — all behind a layered JWT + RBAC authentication system.
+
+Controla tu inventario, automatiza tus ventas y aporta eficiencia a cada movimiento operativo del negocio.
 
 ---
 
@@ -291,11 +293,11 @@ The backend includes a `vercel.json` that routes all `/api/v1/*` traffic to `ind
 
 ## 📞 Contact
 
-**GitHub**: [iTCycle/Ohnix](https://github.com/iTCycle/Ohnix)  
-**Email**: sekharsurya111@gmail.com
+**GitHub**: [AleRxJ/Ohnix](https://github.com/AleRxJ/Ohnix)  
+**Email**: alejandrosoftware.engineering@gmail.com
 
 ---
 
 <div align="center">
-    Made with ❤️ by <strong>iTCycle</strong> &nbsp;|&nbsp; Ohnix API v1.0.0
+    Made with ❤️ by <strong>Alejandro Vallejo</strong> &nbsp;|&nbsp; Ohnix API v1.0.0
 </div>
