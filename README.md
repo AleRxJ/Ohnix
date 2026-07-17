@@ -173,6 +173,30 @@ npm install
 npm run dev
 ```
 
+## Free Deployment
+
+This repo is prepared for a low-cost setup:
+
+- Frontend: Vercel free tier.
+- Backend: Render free tier or Railway free tier.
+- Database: MongoDB Atlas free tier.
+
+For Vercel, import the repository at the root and keep the default root config. The app builds the React frontend from `Frontend/` and expects the backend URL in `VITE_BACKEND_URL`.
+
+Production env vars for the frontend:
+
+```env
+VITE_BACKEND_URL=https://<your-backend-domain>
+```
+
+Production env vars for the backend should point to Atlas and your frontend domain:
+
+```env
+MONGODB_URI=<atlas-connection-string>
+FRONTEND_URL=https://<your-vercel-domain>
+NODE_ENV=production
+```
+
 ---
 
 ## Why It Feels Fast
