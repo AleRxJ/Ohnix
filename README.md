@@ -1,243 +1,148 @@
-# Ohnix — Inventory & Operations Management System
+# Ohnix
 
-[![Node](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen.svg)](https://nodejs.org/)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
-[![License](https://img.shields.io/badge/license-ISC-lightgrey.svg)]()
-[![Deploy](https://img.shields.io/badge/deployed-Vercel-black.svg)](https://ohnix-by-itcycle.vercel.app)
+<p align="center">
+  <strong>Inventario, ventas y operaciones con trazabilidad total.</strong><br>
+  Control, visibilidad y eficiencia para cada movimiento del negocio.
+</p>
 
-A production-grade, multi-tenant **inventory and operations platform** built on the MERN stack. Ohnix brings control, visibility, and efficiency to every movement inside the business — from supplier purchase orders and real-time stock tracking to customer sales, invoice generation, and automated low-stock alerts — all behind a layered JWT + RBAC authentication system.
+<p align="center">
+  <img src="https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen.svg" alt="Node" />
+  <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/license-ISC-lightgrey.svg" alt="License" />
+  <img src="https://img.shields.io/badge/deployed-Vercel-black.svg" alt="Deploy" />
+</p>
 
-Controla tu inventario, automatiza tus ventas y aporta eficiencia a cada movimiento operativo del negocio.
-
----
-
-## 🧠 Key Features
-
-- **Atomic stock operations** — `findOneAndUpdate` with `$gte` guard prevents overselling under concurrent order creation; all stock mutations run inside MongoDB sessions with full transaction rollback on failure.
-- **Explicit order & purchase state machines** — enforced transition graphs (`pending → processing → completed / cancelled`, `pending → completed → returned`) block illegal status jumps at the service layer before any DB write.
-- **Service layer architecture** — `OrderService` and `PurchaseService` encapsulate all business logic (invoice generation, multi-item stock deduction, return processing) and keep controllers thin.
-- **Purchase return workflow** — a dedicated return-preview endpoint calculates what is actually returnable based on current stock before committing, preventing negative inventory.
-- **CSV bulk product ingestion** — parses up to 500 rows, resolves category/unit references, deduplicates within the batch and against the DB, and returns a per-row error report using HTTP 207 Multi-Status.
-- **Automated low-stock scheduler** — a `node-cron` singleton emails per-user HTML reports every Monday at 09:00 (IST) with a Vercel Cron fallback; fully controllable via admin API endpoints.
-- **On-the-fly PDF invoices** — `pdfkit` renders branded, itemised A4 invoices with GST breakdown, streamed directly to the response without temporary files.
-- **Multi-tenant data isolation** — every resource record carries a `created_by` reference; middleware enforces that users can only read/write their own data, while admins bypass the filter.
-- **OTP-based auth flows** — email verification, password reset, and password change each have independent OTP issuance + 10-minute expiry + invalidation-on-use cycles.
-- **Environment-aware file uploads** — Multer switches between disk storage (local dev) and memory storage (Vercel production), feeding a unified `uploadToCloudinary` helper that handles both.
+<blockquote align="center">
+  Ohnix centraliza inventario, compras, ventas, reportes y alertas para que el negocio opere con menos fricción y más precisión.
+</blockquote>
 
 ---
 
-## 🏗️ Architecture & Design
+## Snapshot
 
-The backend follows a **layered MVC + Service pattern**:
-
-```
-HTTP Request
-    │
-    ▼
-Router           (routes/*.routes.js)   — maps HTTP verbs to middleware chains
-    │
-    ▼
-Middleware       (middleware/)          — JWT verification, RBAC (isAdmin), Multer, error handler
-    │
-    ▼
-Controller       (controllers/)        — parses request, validates inputs, delegates to service or model
-    │
-    ▼
-Service          (services/)           — coordinates multi-step business logic within DB transactions
-    │
-    ▼
-Model            (models/)             — Mongoose schemas with encapsulated static methods
-    │
-    ▼
-MongoDB (Atlas)
-```
-
-Controllers that deal with complex transactional flows (orders, purchases) delegate entirely to service classes, keeping the controller layer to pure HTTP concerns. Simpler CRUD resources (categories, units, suppliers, customers) are handled inline with thin controllers that call model statics directly.
-
-All async route handlers are wrapped in a shared `asyncHandler` utility that propagates thrown errors to the Express error middleware, which discriminates `ApiError` instances from unexpected crashes and returns structured JSON either way.
-
----
-
-## ⚙️ Tech Stack
-
-| Layer | Technology |
+| Dimensión | Enfoque |
 |---|---|
-| **Runtime** | Node.js (ESM, `"type": "module"`) |
-| **Framework** | Express 4.x |
-| **Database** | MongoDB via Mongoose 8.x |
-| **Authentication** | JSON Web Tokens (`jsonwebtoken`), bcryptjs |
-| **File Uploads** | Multer (disk + memory), Cloudinary SDK v2 |
-| **Email** | Nodemailer (Gmail SMTP) |
-| **PDF Generation** | PDFKit |
-| **Scheduling** | node-cron + Vercel Cron |
-| **Frontend** | React 18, Vite, React Router v7 |
-| **UI Library** | Ant Design 5.x, Tailwind CSS 3.x |
-| **Charts** | Recharts, @ant-design/plots |
-| **HTTP Client** | Axios |
-| **Deployment** | Vercel (backend + frontend) |
-| **Code Quality** | Prettier |
+| Inventario | Stock en tiempo real, validaciones atómicas y control multiusuario |
+| Operaciones | Compras, ventas, devoluciones y reportes en un solo flujo |
+| Automatización | Alertas de bajo stock, OTP, PDFs e integración con correo |
+| Seguridad | JWT, RBAC, cookies HTTP-only y aislamiento por usuario |
 
 ---
 
-## 🔌 API Overview
+## Why It Feels Different
+
+<table>
+  <tr>
+    <td width="50%"><strong>Control real de stock</strong><br>Las mutaciones de inventario usan validaciones atómicas y sesiones de MongoDB para evitar estados inconsistentes.</td>
+    <td width="50%"><strong>Flujos completos</strong><br>Compras, órdenes, retornos y alertas se diseñaron como procesos operativos, no como CRUD aislado.</td>
+  </tr>
+  <tr>
+    <td><strong>Arquitectura clara</strong><br>Controllers, services, models y middleware mantienen la lógica separada y fácil de extender.</td>
+    <td><strong>Salida profesional</strong><br>PDF de facturas, carga masiva CSV y notificaciones por correo para cerrar el ciclo operativo.</td>
+  </tr>
+</table>
+
+---
+
+## Core Experience
+
+- **Compras**: entrada de mercadería, control de estados y retorno parcial con trazabilidad.
+- **Ventas**: creación de órdenes, deducción segura de stock y generación de factura PDF.
+- **Productos**: catálogo con categorías, unidades, precios y carga masiva por CSV.
+- **Reportes**: métricas para decisiones rápidas sobre ventas, compras y stock bajo.
+- **Usuarios**: autenticación con verificación por OTP, roles y aislamiento por propietario.
+
+---
+
+## Architecture Flow
+
+```mermaid
+flowchart TD
+  A[Frontend React + Vite] --> B[Express API]
+  B --> C[Middleware: auth / RBAC / uploads]
+  C --> D[Controllers]
+  D --> E[Services]
+  E --> F[Models + Mongoose]
+  F --> G[(MongoDB)]
+  E --> H[PDF / Email / Cron]
+```
+
+---
+
+## Tech Stack
+
+| Layer | Stack |
+|---|---|
+| Backend | Node.js, Express, ESM |
+| Database | MongoDB, Mongoose |
+| Auth | JWT, bcryptjs, OTP |
+| Files | Multer, Cloudinary |
+| Reports | PDFKit |
+| Email | Nodemailer (Gmail SMTP) |
+| Scheduling | node-cron, Vercel Cron |
+| Frontend | React 18, Vite, React Router v7 |
+| UI | Ant Design 5.x, Tailwind CSS 3.x |
+| Charts | Recharts, @ant-design/plots |
+| HTTP | Axios |
+
+---
+
+## API Overview
 
 Base URL: `https://localhost:3001/api/v1`
-
-All endpoints return a consistent envelope:
 
 ```json
 {
   "statusCode": 200,
-  "data": { },
+  "data": {},
   "message": "Operation successful",
   "success": true
 }
 ```
 
-### Resource Groups
-
-| Tag | Prefix | Description |
+| Module | Route Prefix | Purpose |
 |---|---|---|
-| Auth | `/users` | Register, login, logout, token refresh, OTP flows |
-| Products | `/products` | CRUD + CSV bulk upload |
-| Categories | `/categories` | User-scoped + admin global view |
-| Units | `/units` | Measurement unit management |
-| Customers | `/customers` | Customer profiles with photo upload |
-| Suppliers | `/suppliers` | Supplier profiles with banking details |
-| Purchases | `/purchases` | Purchase orders, status transitions, return preview |
-| Orders | `/orders` | Sales orders, status machine, PDF invoice |
-| Reports | `/reports` | Dashboard KPIs, stock, sales, purchases, top products, low-stock |
-| Scheduler | `/scheduler` | Admin control over cron job and alert threshold |
+| Auth | `/users` | Register, login, logout, OTP flows |
+| Products | `/products` | Product CRUD and CSV bulk upload |
+| Categories | `/categories` | User and admin category management |
+| Units | `/units` | Measurement unit catalog |
+| Customers | `/customers` | Customer profiles and uploads |
+| Suppliers | `/suppliers` | Supplier data and banking info |
+| Purchases | `/purchases` | Purchase orders and returns |
+| Orders | `/orders` | Sales orders and invoice generation |
+| Reports | `/reports` | Dashboard KPIs and analytics |
+| Scheduler | `/scheduler` | Low-stock alert control |
 
-### Authentication
+---
 
-Tokens are accepted from three sources (in priority order): `Authorization: Bearer <token>` header, `accessToken` cookie, `accessToken` body/query field.
+## Data Model
 
-| Token | TTL | Transport |
-|---|---|---|
-| Access | 1 day | Header / Cookie |
-| Refresh | 10 days | HTTP-only Cookie |
-
-### Status Code Contract
-
-| Code | Meaning |
+| Model | Notes |
 |---|---|
-| 201 | Resource created |
-| 207 | Partial success (bulk upload) |
-| 400 | Validation failure |
-| 401 | Missing / invalid token |
-| 403 | Insufficient role |
-| 404 | Resource not found |
-| 409 | Duplicate constraint |
-| 422 | Insufficient stock |
-| 500 | Unhandled server error |
+| User | Roles, refresh token, OTP fields |
+| Category | Scoped by creator |
+| Unit | Scoped by creator |
+| Product | Stock, purchase and sale prices, tenant isolation |
+| Customer | Contact and billing profile |
+| Supplier | Commercial and banking profile |
+| Purchase | Purchase number and status lifecycle |
+| PurchaseDetail | Quantities, costs, and return tracking |
+| Order | Invoice number and lifecycle |
+| OrderDetail | Line items and totals |
 
 ---
 
-## 🗄️ Database Design
-
-Ten Mongoose models, all with `timestamps: true`:
-
-| Model | Key Fields | Relationships |
-|---|---|---|
-| `User` | `username`, `email`, `password` (bcrypt), `role`, OTP fields, `refreshToken` | root entity |
-| `Category` | `category_name`, `created_by` | → User |
-| `Unit` | `unit_name`, `created_by` | → User |
-| `Product` | `product_code` (unique per user), `stock`, `buying_price`, `selling_price` | → Category, Unit, User |
-| `Customer` | `name`, `email`, `phone`, `type`, banking fields | → User |
-| `Supplier` | `name`, `shopname`, banking fields | → User |
-| `Purchase` | `purchase_no` (globally unique), `purchase_status` | → Supplier, User |
-| `PurchaseDetail` | `quantity`, `unitcost`, return tracking fields | → Purchase, Product |
-| `Order` | `invoice_no` (globally unique, auto-generated), `order_status` | → Customer, User |
-| `OrderDetail` | `quantity`, `unitcost`, `total` | → Order, Product |
-
-**Notable design decisions:**
-
-- `Product` uses a compound unique index `{ product_code, created_by }` so the same code can exist across different user tenants.
-- `Product.deductStock` uses an atomic `findOneAndUpdate` with `{ stock: { $gte: quantity } }` as a filter — if the document doesn't match (race condition), the update returns `null` and the transaction aborts rather than silently overselling.
-- Purchase returns track `returned_quantity` and `refund_amount` per `PurchaseDetail` row, enabling partial returns and audit trails.
-- Category visibility merges user-owned categories with admin-created categories (de-duplicated via `Set`) to give users a shared taxonomy without compromising isolation.
-
----
-
-## 📂 Project Structure
-
-```
-Backend/
-├── controllers/        # Thin HTTP handlers — validate input, delegate, return response
-│   ├── order.controller.js
-│   ├── purchase.controller.js
-│   ├── product.bulk.controller.js   # CSV ingestion logic
-│   └── ...
-├── services/           # Business logic, transactions, state machine enforcement
-│   ├── order.service.js
-│   └── purchase.service.js
-├── models/             # Mongoose schemas + encapsulated static methods
-│   ├── product.model.js             # deductStock / restoreStock / findInsufficientStock
-│   ├── order.model.js               # getOrderWithDetails (aggregation pipeline)
-│   └── ...
-├── routes/             # Express Router — wires middleware chains to controllers
-├── middleware/
-│   ├── auth.middleware.js           # JWT verification → req.user
-│   ├── admin.middleware.js          # Role guard
-│   ├── multer.middleware.js         # Env-aware storage + CSV/image filters
-│   └── error.middleware.js          # Centralised error serialiser
-├── utils/
-│   ├── ApiError.js                  # Typed error with statusCode + errors[]
-│   ├── ApiResponse.js               # Consistent success envelope
-│   ├── asyncHandler.js              # Async error propagation wrapper
-│   ├── cloudinary.js                # Buffer + disk upload strategies
-│   ├── nodemailer.js                # Gmail SMTP transporter singleton
-│   └── lowStockScheduler.js        # Cron singleton with per-user email dispatch
-├── db/index.js                      # Connection pooling (maxPoolSize: 10), singleton guard
-├── app.js                           # Express setup, CORS whitelist, route registration
-└── index.js                         # Server bootstrap, graceful shutdown (SIGTERM/SIGINT)
-
-Frontend/
-├── src/
-│   ├── pages/          # Dashboard, Products, Orders, Purchases, Customers, Suppliers, Reports, …
-│   ├── components/     # DashboardLayout, ProtectedRoute, ProfilePage, ErrorPage
-│   ├── context/        # AuthContext (global auth state)
-│   └── App.jsx         # Route tree — public, protected, dashboard nested routes
-```
-
----
-
-## 🧪 Engineering Highlights
-
-**Transaction safety** — order creation, purchase completion, and purchase returns all run inside `mongoose.startSession()` / `startTransaction()` blocks. Any failure in the multi-step sequence (e.g., stock deduction for item N fails after items 0…N-1 succeeded) triggers `abortTransaction()` and re-throws, ensuring inventory never ends up in a partial state.
-
-**State machine enforcement** — both `OrderService.updateOrderStatus` and `PurchaseService.updatePurchaseStatus` maintain an explicit adjacency map. Attempting an invalid transition (e.g., `completed → processing`) throws a 400 `ApiError` before any DB operation is attempted. This makes the state graph a first-class concern of the service layer rather than scattered conditional logic.
-
-**Bulk upload resilience** — `bulkUploadProducts` uses `insertMany({ ordered: false })` so valid rows are inserted even when some rows fail. `BulkWriteError` is caught and dissected to surface per-document errors alongside a successful insert count, returned as HTTP 207.
-
-**Connection pooling** — `connectDB` uses a module-level `isConnected` flag to avoid re-creating connections on Vercel's serverless function reuse, with `maxPoolSize: 10` and socket/server selection timeouts tuned for Atlas.
-
-**Separation of concerns** — `ApiError` and `ApiResponse` classes enforce a contract at every layer boundary. Controllers never construct raw response objects; services never reference `req`/`res`. The error middleware is the single point that serialises `ApiError` instances to HTTP, meaning error shape is guaranteed consistent regardless of where in the stack the error originates.
-
-**Graceful shutdown** — `SIGTERM` and `SIGINT` handlers stop the cron scheduler before `process.exit`, preventing orphaned cron jobs on container restarts.
-
-**Security posture** — CORS origin whitelist rejects unknown origins (including Postman only via `!origin` pass-through for tooling), cookies are `httpOnly`, `secure` in production, and `sameSite: none` for cross-origin deployments. Refresh token rotation invalidates the old token on each use.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js ≥ 14
-- MongoDB Atlas cluster (or local MongoDB)
-- Cloudinary account
-- Gmail account with App Password enabled
+## Getting Started
 
 ### Backend
 
 ```bash
 cd Backend
 npm install
+npm run dev
 ```
 
-Create a `.env` file in `Backend/`:
+Create `Backend/.env`:
 
 ```env
 PORT=3001
@@ -260,44 +165,39 @@ FRONTEND_URL=http://localhost:5173
 TIMEZONE=Asia/Kolkata
 ```
 
-```bash
-npm run dev      # nodemon
-# or
-npm start        # node
-```
-
 ### Frontend
 
 ```bash
 cd Frontend
 npm install
-npm run dev      # Vite dev server on :5173
+npm run dev
 ```
 
-### Deployment (Vercel)
+---
 
-The backend includes a `vercel.json` that routes all `/api/v1/*` traffic to `index.js` and registers a Vercel Cron to call `/api/v1/scheduler/trigger-alerts` every Monday at 09:00 UTC, serving as a serverless-compatible fallback for the in-process `node-cron` scheduler (which is disabled in production via the `NODE_ENV` guard in `index.js`).
+## Why It Feels Fast
+
+- Atomic stock updates prevent overselling.
+- Service-layer transactions keep multi-step operations consistent.
+- Bulk upload returns partial success instead of failing everything.
+- Scheduled alerts keep inventory visible without manual checks.
 
 ---
 
-## 📌 Future Improvements
+## Future Work
 
-- **Idempotency keys** on order/purchase creation endpoints to safely handle client retries without duplicate records.
-- **Redis-backed distributed locking** as a complement to MongoDB's optimistic concurrency for high-throughput stock deduction scenarios.
-- **Webhook events** on order/purchase status transitions to enable downstream integrations (ERP, accounting) without polling.
-- **Audit log collection** — store every status transition and stock mutation with actor, timestamp, and before/after values for compliance and debugging.
-- **Test coverage** — unit tests for state machine logic in services, integration tests for the bulk upload pipeline, and contract tests for the API response envelope.
-- **Rate limiting** on auth endpoints (OTP send, login) to protect against brute-force and OTP enumeration attacks.
+- Idempotency keys for repeat-safe order creation.
+- Redis locking for higher throughput stock operations.
+- Audit logs for every state transition and stock mutation.
+- Rate limiting on auth and OTP endpoints.
 
 ---
 
-## 📞 Contact
+## Contact
 
 **GitHub**: [AleRxJ/Ohnix](https://github.com/AleRxJ/Ohnix)  
 **Email**: alejandrosoftware.engineering@gmail.com
 
----
-
-<div align="center">
-    Made with ❤️ by <strong>Alejandro Vallejo</strong> &nbsp;|&nbsp; Ohnix API v1.0.0
-</div>
+<p align="center">
+  Made with care by <strong>Alejandro Vallejo</strong> · Ohnix API v1.0.0
+</p>
