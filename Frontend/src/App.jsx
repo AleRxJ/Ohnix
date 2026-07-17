@@ -1,5 +1,7 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { I18nextProvider } from "react-i18next";
+import i18n from "./i18n/config.js";
 import Login from "./pages/auth/Login";
 import EmailVerify from "./pages/auth/EmailVerify";
 import ResetPassword from "./pages/auth/ResetPassword";
@@ -23,65 +25,67 @@ import Reports from "./pages/Reports";
 
 function App() {
     return (
-        <AuthProvider>
-            <BrowserRouter>
-                <Toaster />
-                <div>
-                    <Routes>
-                        {/* Public routes */}
-                        <Route path="/" element={<LandingPage />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/demo" element={<Demo />} />
-                        <Route path="/signup" element={<Signup />} />
-                        <Route
-                            path="/reset-password"
-                            element={<ResetPassword />}
-                        />
+        <I18nextProvider i18n={i18n}>
+            <AuthProvider>
+                <BrowserRouter>
+                    <Toaster />
+                    <div>
+                        <Routes>
+                            {/* Public routes */}
+                            <Route path="/" element={<LandingPage />} />
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/demo" element={<Demo />} />
+                            <Route path="/signup" element={<Signup />} />
+                            <Route
+                                path="/reset-password"
+                                element={<ResetPassword />}
+                            />
 
-                        {/* Email verification route (protected, but doesn't require verification) */}
-                        <Route
-                            path="/email-verify"
-                            element={
-                                <ProtectedRoute requireVerified={false}>
-                                    <EmailVerify />
-                                </ProtectedRoute>
-                            }
-                        />
-                        {/* Profile page (protected) */}
-                        <Route
-                            path="/profile"
-                            element={
-                                <ProtectedRoute>
-                                    <ProfilePage />
-                                </ProtectedRoute>
-                            }
-                        />
+                            {/* Email verification route (protected, but doesn't require verification) */}
+                            <Route
+                                path="/email-verify"
+                                element={
+                                    <ProtectedRoute requireVerified={false}>
+                                        <EmailVerify />
+                                    </ProtectedRoute>
+                                }
+                            />
+                            {/* Profile page (protected) */}
+                            <Route
+                                path="/profile"
+                                element={
+                                    <ProtectedRoute>
+                                        <ProfilePage />
+                                    </ProtectedRoute>
+                                }
+                            />
 
-                        {/* Dashboard and related routes */}
-                        <Route
-                            path="/"
-                            element={
-                                <ProtectedRoute>
-                                    <DashboardLayout />
-                                </ProtectedRoute>
-                            }
-                        >
-                            <Route path="dashboard" element={<Dashboard />} />
-                            <Route path="products" element={<Products />} />
-                            <Route path="orders" element={<Orders />} />
-                            <Route path="purchases" element={<Purchase />} />
-                            <Route path="customers" element={<Customers />} />
-                            <Route path="suppliers" element={<Suppliers />} />
-                            <Route path="categories" element={<Category />} />
-                            <Route path="reports/*" element={<Reports />} />
-                        </Route>
+                            {/* Dashboard and related routes */}
+                            <Route
+                                path="/"
+                                element={
+                                    <ProtectedRoute>
+                                        <DashboardLayout />
+                                    </ProtectedRoute>
+                                }
+                            >
+                                <Route path="dashboard" element={<Dashboard />} />
+                                <Route path="products" element={<Products />} />
+                                <Route path="orders" element={<Orders />} />
+                                <Route path="purchases" element={<Purchase />} />
+                                <Route path="customers" element={<Customers />} />
+                                <Route path="suppliers" element={<Suppliers />} />
+                                <Route path="categories" element={<Category />} />
+                                <Route path="reports/*" element={<Reports />} />
+                            </Route>
 
-                        {/* catch all */}
-                        <Route path="/*" element={<ErrorPage />} />
-                    </Routes>
-                </div>
-            </BrowserRouter>
-        </AuthProvider>
+                            {/* catch all */}
+                            <Route path="/*" element={<ErrorPage />} />
+                        </Routes>
+                    </div>
+                </BrowserRouter>
+            </AuthProvider>
+        </I18nextProvider>
     );
 }
 

@@ -1,0 +1,9 @@
+.language-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.language-switcher .ant-select {
+  min-width: 120px;
+}
