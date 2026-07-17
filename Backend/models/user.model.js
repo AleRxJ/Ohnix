@@ -3,6 +3,26 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+const DEFAULT_ACCESS_TOKEN_EXPIRY = "1d";
+const DEFAULT_REFRESH_TOKEN_EXPIRY = "10d";
+
+const normalizeJwtExpiry = (value, fallback) => {
+    const normalized = value?.trim().replace(/^['"]|['"]$/g, "");
+
+    if (!normalized) {
+        return fallback;
+    }
+
+    if (/^\d+$/.test(normalized) || /^\d+[smhdwy]$/.test(normalized)) {
+        return normalized;
+    }
+
+    console.warn(
+        `Invalid JWT expiry value "${value}". Falling back to "${fallback}".`
+    );
+    return fallback;
+};
+
 const userSchema = mongoose.Schema(
     {
         username: {
@@ -72,6 +92,11 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 userSchema.methods.generateAccessToken = function () {
+    const accessTokenExpiry = normalizeJwtExpiry(
+        process.env.ACCESS_TOKEN_EXPIRY,
+        DEFAULT_ACCESS_TOKEN_EXPIRY
+    );
+
     return jwt.sign(
         {
             _id: this._id,
@@ -79,17 +104,22 @@ userSchema.methods.generateAccessToken = function () {
             username: this.username,
         },
         process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
+        { expiresIn: accessTokenExpiry }
     );
 };
 
 userSchema.methods.generateRefreshToken = function () {
+    const refreshTokenExpiry = normalizeJwtExpiry(
+        process.env.REFRESH_TOKEN_EXPIRY,
+        DEFAULT_REFRESH_TOKEN_EXPIRY
+    );
+
     return jwt.sign(
         {
             _id: this._id,
         },
         process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: process.env.REFRESH_TOKEN_EXPIRY }
+        { expiresIn: refreshTokenExpiry }
     );
 };
 
