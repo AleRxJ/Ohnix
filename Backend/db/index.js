@@ -10,12 +10,14 @@ const connectDB = async () => {
     }
 
     try {
-        // Debug: show the raw MONGODB_URI read from env
-        console.log("🔎 MONGODB_URI (raw):", process.env.MONGODB_URI);
+        if (!process.env.MONGODB_URI) {
+            throw new Error("MONGODB_URI is not defined");
+        }
 
         const conn = await mongoose.connect(
-            `${process.env.MONGODB_URI}/${DB_NAME}`,
+            process.env.MONGODB_URI,
             {
+                dbName: DB_NAME,
                 maxPoolSize: 10,
                 serverSelectionTimeoutMS: 5000,
                 socketTimeoutMS: 45000,
