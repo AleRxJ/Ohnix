@@ -8,7 +8,15 @@ import transporter from "../utils/nodemailer.js";
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
+        if (!process.env.ACCESS_TOKEN_SECRET || !process.env.REFRESH_TOKEN_SECRET) {
+            throw new Error("JWT secrets are not configured");
+        }
+
         const user = await User.findById(userId);
+        if (!user) {
+            throw new Error("User not found while generating auth tokens");
+        }
+
         const accessToken = user.generateAccessToken();
         const refreshToken = user.generateRefreshToken();
 
@@ -17,9 +25,11 @@ const generateAccessAndRefreshTokens = async (userId) => {
 
         return { accessToken, refreshToken };
     } catch (error) {
+        console.error("Token generation failed:", error);
         throw new ApiError(
             500,
-            "Something went wrong while generating referesh and access token"
+            error?.message ||
+                "Something went wrong while generating referesh and access token"
         );
     }
 };
