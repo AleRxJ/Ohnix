@@ -579,5 +579,220 @@
     "otp_six_digits": "El OTP debe tener 6 dígitos",
     "otp_numbers": "El OTP debe contener solo números",
     "field_required": "{{field}} es requerido"
+  },
+  "landing": {
+    "nav": {
+      "home": "Inicio",
+      "about": "Plataforma",
+      "features": "Características",
+      "process": "Cómo funciona",
+      "faq": "FAQ",
+      "contact": "Contacto"
+    },
+    "hero": {
+      "eyebrow": "Ohnix | Inventario y operaciones",
+      "title": "Inventario, ventas y operaciones en un solo lugar.",
+      "subtitle": "Ohnix centraliza productos, existencias, compras, pedidos y reportes para que tu equipo controle cada movimiento con claridad—sin hojas de cálculo ni herramientas desconectadas.",
+      "primary_cta": "Crear cuenta gratis",
+      "secondary_cta": "Ver demo",
+      "stats": {
+        "cycles": {
+          "value": "Tiempo real",
+          "label": "Visibilidad de stock"
+        },
+        "assets": {
+          "value": "De punta a punta",
+          "label": "Flujo compra → venta"
+        },
+        "sustainability": {
+          "value": "Seguro",
+          "label": "Roles y acceso verificado"
+        }
+      },
+      "orbit": {
+        "nodeOne": "Productos",
+        "nodeTwo": "Movimientos",
+        "nodeThree": "Reportes"
+      },
+      "footer_note": "Trazabilidad en cada movimiento"
+    },
+    "about": {
+      "eyebrow": "Acerca de Ohnix",
+      "title": "Hecho para equipos que viven del inventario.",
+      "description": "Ohnix es una plataforma operativa que conecta catálogo, entradas de stock, ventas y analítica para que pymes operen con menos errores y decisiones más rápidas.",
+      "mission": {
+        "label": "Misión",
+        "title": "Control de inventario simple y confiable.",
+        "description": "Cada producto, cantidad y transacción debe ser fácil de registrar, auditar y gestionar desde un solo espacio."
+      },
+      "vision": {
+        "label": "Visión",
+        "title": "Operaciones que escalan sin perder precisión.",
+        "description": "Queremos que los equipos crezcan en volumen y complejidad manteniendo stock exacto y procesos consistentes."
+      },
+      "values": {
+        "title": "En qué nos enfocamos",
+        "connected": {
+          "title": "Datos conectados",
+          "description": "Compras, ventas y catálogo sincronizados para que el stock refleje la realidad."
+        },
+        "sustainable": {
+          "title": "Claridad operativa",
+          "description": "Estados, permisos e historial claros reducen la incertidumbre en el equipo."
+        },
+        "precise": {
+          "title": "Stock preciso",
+          "description": "Validaciones y actualizaciones atómicas ayudan a evitar sobreventa y diferencias silenciosas."
+        }
+      }
+    },
+    "solutions": {
+      "eyebrow": "Características",
+      "title": "Todo lo necesario para operar el inventario día a día.",
+      "description": "Módulos que trabajan juntos: configura tu catálogo, mueve stock y mide resultados desde un panel.",
+      "items": {
+        "lifecycle": {
+          "title": "Productos y catálogo",
+          "description": "Gestiona SKU, categorías, unidades, precios e imágenes—incluye carga masiva por CSV."
+        },
+        "assets": {
+          "title": "Compras y entradas",
+          "description": "Registra compras a proveedores, estados y aumentos de stock con trazabilidad."
+        },
+        "sustainability": {
+          "title": "Ventas y pedidos",
+          "description": "Crea órdenes, descuenta inventario de forma segura y exporta facturas en PDF."
+        },
+        "circular": {
+          "title": "Reportes y alertas",
+          "description": "Supervisa ventas, compras y stock bajo antes de que se conviertan en problemas."
+        }
+      }
+    },
+    "timeline": {
+      "eyebrow": "Cómo funciona",
+      "title": "De la configuración al insight en cuatro pasos.",
+      "description": "Un flujo práctico: organiza el catálogo, recibe mercancía, vende y revisa resultados.",
+      "steps": {
+        "observe": {
+          "title": "Organiza tu catálogo",
+          "description": "Añade productos, categorías, clientes y proveedores—la base para un stock exacto."
+        },
+        "connect": {
+          "title": "Registra compras",
+          "description": "Ingresa mercancía y actualiza cantidades con movimientos de stock validados."
+        },
+        "optimize": {
+          "title": "Gestiona ventas",
+          "description": "Emite pedidos, aplica descuentos de stock seguros y comparte facturas con clientes."
+        },
+        "regenerate": {
+          "title": "Revisa y mejora",
+          "description": "Usa panel y reportes para detectar tendencias, stock bajo y oportunidades de optimización."
+        }
+      }
+    },
+    "impact": {
+      "eyebrow": "Resultados",
+      "title": "Beneficios operativos en el día a día.",
+      "description": "Ohnix reduce el seguimiento manual y ofrece una fuente única de verdad para inventario y ventas.",
+      "metrics": {
+        "uptime": {
+          "value": "24/7",
+          "label": "Acceso",
+          "description": "Trabaja desde la nube cuando tu negocio lo necesite."
+        },
+        "recovery": {
+          "value": "1 hub",
+          "label": "Operación unificada",
+          "description": "Compras, ventas y catálogo en un flujo conectado."
+        },
+        "optimization": {
+          "value": "Menos",
+          "label": "Trabajo manual",
+          "description": "Alertas, PDFs y flujos estructurados reemplazan hojas de cálculo ad hoc."
+        },
+        "adoption": {
+          "value": "RBAC",
+          "label": "Control por equipo",
+          "description": "Roles y cuentas verificadas mantienen los datos en las manos correctas."
+        }
+      }
+    },
+    "testimonials": {
+      "eyebrow": "Equipos",
+      "title": "Para quienes necesitan control, no complejidad.",
+      "description": "Ejemplos de cómo los negocios usan Ohnix para mantener inventario exacto y ventas en marcha.",
+      "items": {
+        "first": {
+          "name": "Jefe de almacén",
+          "role": "Distribución mayorista",
+          "content": "Por fin vemos las mismas cifras de stock en oficina y en bodega. Compras y ventas alineadas sin doble digitación."
+        },
+        "second": {
+          "name": "Dueña de tienda",
+          "role": "Retail",
+          "content": "Las alertas de stock bajo y los reportes rápidos nos salvaron de quiebres repetidos. Facturar desde pedidos ahorra horas cada semana."
+        },
+        "third": {
+          "name": "Líder de operaciones",
+          "role": "Multi-sucursal",
+          "content": "Integrar al equipo fue sencillo: productos, proveedores y pedidos en un panel con permisos claros."
+        }
+      }
+    },
+    "partners": {
+      "eyebrow": "Industrias",
+      "title": "Para negocios que mueven mercancía física.",
+      "description": "Retail, mayoristas, talleres y equipos en crecimiento que necesitan inventario confiable sin coste enterprise.",
+      "items": {
+        "first": "Retail",
+        "second": "Mayorista",
+        "third": "Talleres",
+        "fourth": "Distribuidores",
+        "fifth": "Operaciones e-commerce",
+        "sixth": "Equipos PYME"
+      }
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Preguntas frecuentes sobre Ohnix",
+      "description": "Respuestas rápidas sobre qué hace la plataforma y cómo empezar.",
+      "items": {
+        "first": {
+          "question": "¿Qué es Ohnix?",
+          "answer": "Ohnix es una plataforma de inventario y operaciones de iTcycle. Permite gestionar productos, stock, compras, pedidos de venta, clientes, proveedores y reportes desde un solo lugar."
+        },
+        "second": {
+          "question": "¿Incluye compras y ventas?",
+          "answer": "Sí. Puedes registrar compras para aumentar stock, crear pedidos de venta con descuentos seguros, gestionar devoluciones cuando aplique y generar facturas en PDF."
+        },
+        "third": {
+          "question": "¿Puedo importar muchos productos a la vez?",
+          "answer": "Sí. El módulo de productos admite carga masiva por CSV para migrar o ampliar tu catálogo más rápido."
+        },
+        "fourth": {
+          "question": "¿Cómo empiezo?",
+          "answer": "Crea una cuenta con el botón principal, verifica tu correo y explora la demo para ver panel, productos y flujos de pedidos."
+        }
+      }
+    },
+    "contact": {
+      "eyebrow": "Comienza",
+      "title": "¿Listo para controlar tu inventario?",
+      "description": "Crea tu cuenta en minutos o mira la demo de compras, ventas y reportes.",
+      "primary_cta": "Registrarse gratis",
+      "secondary_cta": "Ver demo",
+      "email_label": "Correo",
+      "email": "hello@itcycle.com",
+      "signal_label": "Soporte",
+      "signal_description": "¿Dudas sobre configuración, migraciones o acceso del equipo? Solemos responder en un día hábil."
+    },
+    "footer": {
+      "tagline": "Ohnix by iTcycle — inventario, compras, ventas y reportes con trazabilidad total.",
+      "contact_title": "Contacto",
+      "email": "hello@itcycle.com",
+      "copyright": "Todos los derechos reservados."
+    }
   }
 }

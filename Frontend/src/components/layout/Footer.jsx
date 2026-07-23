@@ -7,61 +7,63 @@ import {
     InstagramFilled,
     MailOutlined,
 } from "@ant-design/icons";
-import { Link } from "react-router-dom";
+import useI18n from "../../hooks/useI18n";
 
 const { Footer: AntFooter } = Layout;
 
 const Footer = () => {
+    const { t } = useI18n();
+
     return (
-        <AntFooter className="bg-blue-900 text-slate-400 pt-16 pb-6 ">
-            <div className="container mx-auto px-6 max-w-6xl">
+        <AntFooter className="border-t border-white/5 bg-[#050505] pt-16 pb-8 text-[#A9B3B8]">
+            <div className="container mx-auto max-w-7xl px-6">
                 <Row gutter={[64, 32]} justify="space-between" align="middle">
                     <Col xs={24} md={12} lg={14}>
                         <div>
-                            <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">
-                                Ohnix by iTCycle
-                            </h1>
-                            <p className="text-slate-400 text-sm leading-relaxed mb-8 max-w-md">
-                                Smart inventory management for modern
-                                businesses. Streamline operations and boost
-                                efficiency.
+                            <img
+                                src="/FullLogo_Transparent_NoBuffer.png"
+                                alt="iTcycle"
+                                className="mb-4 h-10 w-auto"
+                            />
+                            <p className="max-w-md text-sm leading-relaxed text-[#A9B3B8]">
+                                {t("landing.footer.tagline")}
                             </p>
-                            <Space size="large" className="text-3xl">
+                            <Space size="large" className="mt-8 text-3xl">
                                 <a
                                     href="https://github.com/iTCycle/Ohnix"
                                     target="_blank"
                                     rel="noreferrer"
                                     aria-label="GitHub"
-                                    className="inline-flex items-center justify-center w-9 h-9 rounded-md transition-colors duration-200 hover:bg-slate-800/50"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
                                 >
-                                    <GithubOutlined className="text-slate-400 hover:text-white" />
+                                    <GithubOutlined className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
                                 </a>
                                 <a
                                     href="https://github.com/iTCycle/Ohnix"
                                     target="_blank"
                                     rel="noreferrer"
                                     aria-label="Twitter"
-                                    className="inline-flex items-center justify-center w-9 h-9 rounded-md transition-colors duration-200 hover:bg-slate-800/50"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
                                 >
-                                    <TwitterOutlined className="text-slate-400 hover:text-white" />
+                                    <TwitterOutlined className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
                                 </a>
                                 <a
                                     href="https://github.com/iTCycle/Ohnix"
                                     target="_blank"
                                     rel="noreferrer"
                                     aria-label="Instagram"
-                                    className="inline-flex items-center justify-center w-9 h-9 rounded-md transition-colors duration-200 hover:bg-slate-800/50"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
                                 >
-                                    <InstagramFilled className="text-slate-400 hover:text-white" />
+                                    <InstagramFilled className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
                                 </a>
                                 <a
                                     href="https://github.com/iTCycle/Ohnix"
                                     target="_blank"
                                     rel="noreferrer"
                                     aria-label="LinkedIn"
-                                    className="inline-flex items-center justify-center w-9 h-9 rounded-md transition-colors duration-200 hover:bg-slate-800/50"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
                                 >
-                                    <LinkedinFilled className="text-slate-400 hover:text-white" />
+                                    <LinkedinFilled className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
                                 </a>
                             </Space>
                         </div>
@@ -69,40 +71,36 @@ const Footer = () => {
 
                     <Col xs={24} md={12} lg={8}>
                         <div className="flex flex-col items-start md:items-end">
-                            <h2 className="text-xs font-semibold text-white uppercase tracking-wider mb-5">
-                                Get in Touch
+                            <h2 className="mb-5 text-xs font-semibold uppercase tracking-[0.35em] text-white">
+                                {t("landing.footer.contact_title")}
                             </h2>
                             <a
-                                href="mailto:sekharsurya111@gmail.com"
-                                className="text-slate-400 text-sm hover:text-white transition-colors duration-200 flex items-center gap-2 group"
+                                href={`mailto:${t("landing.footer.email")}`}
+                                className="group flex items-center gap-2 text-sm text-[#A9B3B8] transition-colors duration-200 hover:text-white"
                             >
-                                <MailOutlined className="text-base group-hover:scale-110 transition-transform duration-200" />
-                                sekharsurya111@gmail.com
+                                <MailOutlined className="text-base transition-transform duration-200 group-hover:scale-110" />
+                                {t("landing.footer.email")}
                             </a>
                         </div>
                     </Col>
                 </Row>
 
-                <Divider className="bg-blue-100 my-10 opacity-40" />
+                <Divider className="my-10 border-white/8 opacity-40" />
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <p className="text-slate-500 text-sm">
-                        © {new Date().getFullYear()} Ohnix by iTCycle. All rights
-                        reserved.
+                    <p className="text-sm text-[#6F7A81]">
+                        © {new Date().getFullYear()} iTcycle. {t("landing.footer.copyright")}
                     </p>
-                    <div className="flex gap-8">
-                        <Link
-                            to="/privacy"
-                            className="text-slate-500 text-sm hover:text-white transition-colors duration-200"
-                        >
-                            Privacy Policy
-                        </Link>
-                        <Link
-                            to="/terms"
-                            className="text-slate-500 text-sm hover:text-white transition-colors duration-200"
-                        >
-                            Terms of Service
-                        </Link>
+                    <div className="flex gap-8 text-sm">
+                        <a href="#home" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                            {t("landing.nav.home")}
+                        </a>
+                        <a href="#features" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                            {t("landing.nav.features")}
+                        </a>
+                        <a href="#contact" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                            {t("landing.nav.contact")}
+                        </a>
                     </div>
                 </div>
             </div>

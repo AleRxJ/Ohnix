@@ -585,5 +585,220 @@
     "otp_six_digits": "OTP must be 6 digits",
     "otp_numbers": "OTP must contain only numbers",
     "field_required": "{{field}} is required"
+  },
+  "landing": {
+    "nav": {
+      "home": "Home",
+      "about": "Platform",
+      "features": "Features",
+      "process": "How it works",
+      "faq": "FAQ",
+      "contact": "Contact"
+    },
+    "hero": {
+      "eyebrow": "Ohnix | Inventory & operations",
+      "title": "Inventory, sales, and operations in one place.",
+      "subtitle": "Ohnix centralizes products, stock, purchases, orders, and reports so your team controls every movement with clarity—without spreadsheets or disconnected tools.",
+      "primary_cta": "Create free account",
+      "secondary_cta": "Watch demo",
+      "stats": {
+        "cycles": {
+          "value": "Real-time",
+          "label": "Stock visibility"
+        },
+        "assets": {
+          "value": "End-to-end",
+          "label": "Purchase to sale flow"
+        },
+        "sustainability": {
+          "value": "Secure",
+          "label": "Roles & verified access"
+        }
+      },
+      "orbit": {
+        "nodeOne": "Products",
+        "nodeTwo": "Stock moves",
+        "nodeThree": "Reports"
+      },
+      "footer_note": "Traceability on every movement"
+    },
+    "about": {
+      "eyebrow": "About Ohnix",
+      "title": "Built for teams that live by their inventory.",
+      "description": "Ohnix is an operations platform that connects catalog, stock entries, sales, and analytics so small and mid-sized businesses run with fewer errors and faster decisions.",
+      "mission": {
+        "label": "Mission",
+        "title": "Make inventory control simple and reliable.",
+        "description": "Every product, quantity, and transaction should be easy to register, audit, and act on from a single workspace."
+      },
+      "vision": {
+        "label": "Vision",
+        "title": "Operations that scale without losing precision.",
+        "description": "We want teams to grow volume and complexity while keeping stock accurate and processes consistent."
+      },
+      "values": {
+        "title": "What we optimize for",
+        "connected": {
+          "title": "Connected data",
+          "description": "Purchases, sales, and catalog stay in sync so stock always reflects reality."
+        },
+        "sustainable": {
+          "title": "Operational clarity",
+          "description": "Clear states, permissions, and history reduce guesswork across the team."
+        },
+        "precise": {
+          "title": "Accurate stock",
+          "description": "Atomic updates and validations help prevent overselling and silent discrepancies."
+        }
+      }
+    },
+    "solutions": {
+      "eyebrow": "Features",
+      "title": "Everything you need to run inventory day to day.",
+      "description": "Modular tools that work together: configure your catalog, move stock in and out, and measure performance from one dashboard.",
+      "items": {
+        "lifecycle": {
+          "title": "Products & catalog",
+          "description": "Manage SKUs, categories, units, prices, and images—including bulk import from CSV."
+        },
+        "assets": {
+          "title": "Purchases & stock in",
+          "description": "Register supplier purchases, track statuses, and increase stock with full traceability."
+        },
+        "sustainability": {
+          "title": "Sales & orders",
+          "description": "Create orders, deduct inventory safely, and export professional invoice PDFs."
+        },
+        "circular": {
+          "title": "Reports & alerts",
+          "description": "Monitor sales, purchases, and low-stock signals to decide before problems appear."
+        }
+      }
+    },
+    "timeline": {
+      "eyebrow": "How it works",
+      "title": "From setup to insight in four steps.",
+      "description": "A practical flow that matches how teams actually operate: organize the catalog, receive goods, sell, and review results.",
+      "steps": {
+        "observe": {
+          "title": "Organize your catalog",
+          "description": "Add products, categories, customers, and suppliers—the foundation for accurate stock."
+        },
+        "connect": {
+          "title": "Register purchases",
+          "description": "Record incoming merchandise and update quantities with validated stock movements."
+        },
+        "optimize": {
+          "title": "Fulfill sales",
+          "description": "Issue orders, apply secure stock deductions, and share invoices with your customers."
+        },
+        "regenerate": {
+          "title": "Review & improve",
+          "description": "Use dashboards and reports to spot trends, low stock, and opportunities to optimize."
+        }
+      }
+    },
+    "impact": {
+      "eyebrow": "Outcomes",
+      "title": "Operational gains you can feel in daily work.",
+      "description": "Ohnix is designed to reduce manual tracking and give teams a shared source of truth for inventory and sales.",
+      "metrics": {
+        "uptime": {
+          "value": "24/7",
+          "label": "Access",
+          "description": "Work from the cloud whenever your business needs it."
+        },
+        "recovery": {
+          "value": "1 hub",
+          "label": "Unified ops",
+          "description": "Purchases, sales, and catalog in one connected flow."
+        },
+        "optimization": {
+          "value": "Less",
+          "label": "Manual work",
+          "description": "Automated alerts, PDFs, and structured workflows replace ad-hoc spreadsheets."
+        },
+        "adoption": {
+          "value": "RBAC",
+          "label": "Team control",
+          "description": "Roles and verified accounts keep data scoped to the right people."
+        }
+      }
+    },
+    "testimonials": {
+      "eyebrow": "Teams",
+      "title": "Trusted by operators who need control, not complexity.",
+      "description": "Examples of how businesses use Ohnix to keep inventory accurate and sales moving.",
+      "items": {
+        "first": {
+          "name": "Warehouse Manager",
+          "role": "Wholesale distribution",
+          "content": "We finally see the same stock numbers in the office and on the floor. Purchases and sales stay aligned without duplicate entries."
+        },
+        "second": {
+          "name": "Store Owner",
+          "role": "Retail",
+          "content": "Low-stock alerts and quick reports saved us from repeated outages. Invoicing from orders alone cut hours each week."
+        },
+        "third": {
+          "name": "Operations Lead",
+          "role": "Multi-branch",
+          "content": "Onboarding the team was straightforward: products, suppliers, and orders in one panel with clear permissions."
+        }
+      }
+    },
+    "partners": {
+      "eyebrow": "Industries",
+      "title": "Built for businesses that move physical goods.",
+      "description": "Retail, wholesale, workshops, and growing teams that need reliable inventory without enterprise overhead.",
+      "items": {
+        "first": "Retail",
+        "second": "Wholesale",
+        "third": "Workshops",
+        "fourth": "Distributors",
+        "fifth": "E-commerce ops",
+        "sixth": "SMB teams"
+      }
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Common questions about Ohnix",
+      "description": "Quick answers about what the platform does and how to get started.",
+      "items": {
+        "first": {
+          "question": "What is Ohnix?",
+          "answer": "Ohnix is an inventory and operations platform by iTcycle. It helps you manage products, stock, purchases, sales orders, customers, suppliers, and reports from one place."
+        },
+        "second": {
+          "question": "Does it support purchases and sales?",
+          "answer": "Yes. You can register purchases to increase stock, create sales orders with safe stock deductions, handle returns where applicable, and generate invoice PDFs."
+        },
+        "third": {
+          "question": "Can I import many products at once?",
+          "answer": "Yes. The product module supports bulk upload via CSV so you can migrate or expand your catalog faster."
+        },
+        "fourth": {
+          "question": "How do I get started?",
+          "answer": "Create an account with the primary button, verify your email, and explore the demo video to see the dashboard, products, and order flows in action."
+        }
+      }
+    },
+    "contact": {
+      "eyebrow": "Get started",
+      "title": "Ready to control your inventory?",
+      "description": "Create your account in minutes or watch the demo to see purchases, sales, and reporting workflows.",
+      "primary_cta": "Sign up free",
+      "secondary_cta": "View demo",
+      "email_label": "Email",
+      "email": "hello@itcycle.com",
+      "signal_label": "Support",
+      "signal_description": "Questions about setup, migrations, or team access? We typically respond within one business day."
+    },
+    "footer": {
+      "tagline": "Ohnix by iTcycle — inventory, purchases, sales, and reports with full traceability.",
+      "contact_title": "Contact",
+      "email": "hello@itcycle.com",
+      "copyright": "All rights reserved."
+    }
   }
 }

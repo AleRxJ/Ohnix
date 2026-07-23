@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { Layout, Button, Drawer } from "antd";
-import { MenuOutlined } from "@ant-design/icons";
-import { useNavigate, Link } from "react-router-dom";
-import { navLinks } from "../../data";
+import { useState, useEffect } from "react";
+import { Layout, Button, Drawer, Dropdown } from "antd";
+import { MenuOutlined, GlobalOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+import useI18n from "../../hooks/useI18n";
 
 const { Header } = Layout;
 
@@ -10,6 +10,22 @@ const Navbar = () => {
     const [visible, setVisible] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const navigate = useNavigate();
+    const { t, currentLanguage, changeLanguage } = useI18n();
+
+    const navLinks = [
+        { label: t("landing.nav.home"), path: "home" },
+        { label: t("landing.nav.features"), path: "features" },
+        { label: t("landing.nav.process"), path: "timeline" },
+        { label: t("landing.nav.faq"), path: "faq" },
+        { label: t("landing.nav.contact"), path: "contact" },
+    ];
+
+    const scrollToSection = (id) => {
+        const anchor = document.getElementById(id);
+        if (anchor) {
+            anchor.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    };
 
     useEffect(() => {
         const handleScroll = () => {
@@ -39,55 +55,47 @@ const Navbar = () => {
 
     return (
         <Header
-            className={`px-0 flex items-center justify-between h-16 fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
+            className={`px-0 flex items-center justify-between h-20 fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
                 scrolled
-                    ? "bg-white/95 backdrop-blur-md shadow-md border-b border-gray-100"
+                    ? "bg-[#050505]/90 backdrop-blur-xl border-b border-white/8"
                     : "bg-transparent"
             }`}
             style={{ borderBottom: "none" }}
         >
-            <div className="container mx-auto px-6 flex items-center justify-between">
-                <div className="flex items-center">
-                    <div
-                        className={`text-2xl font-bold cursor-pointer transition-colors duration-200 tracking-tight ${
-                            scrolled ? "text-blue-600" : "text-white"
-                        }`}
-                        onClick={() => handleNavigation("/")}
-                    >
-                        Ohnix by iTCycle
-                    </div>
-                </div>
+            <div className="container mx-auto flex items-center justify-between px-6">
+                <button
+                    type="button"
+                    onClick={() => handleNavigation("/")}
+                    className="flex items-center gap-3 text-left"
+                >
+                    <img
+                        src="/FullLogo_Transparent_NoBuffer.png"
+                        alt="iTcycle"
+                        className="h-10 w-auto md:h-11"
+                    />
+                </button>
 
                 <div className="hidden md:flex items-center gap-8">
                     <nav>
                         <ul className="flex items-center gap-8">
                             {navLinks.map((link) => (
-                                <li key={link.name}>
+                                <li key={link.path}>
                                     <a
                                         href="#"
                                         onClick={(e) => {
-                                            const anchor =
-                                                document.getElementById(
-                                                    link.path
-                                                );
                                             e.preventDefault();
-                                            anchor.scrollIntoView({
-                                                behavior: "smooth",
-                                                block: "center",
-                                            });
+                                            scrollToSection(link.path);
                                         }}
                                         className={`text-sm font-medium transition-all duration-200 relative group ${
                                             scrolled
-                                                ? "text-gray-600 hover:text-gray-900"
-                                                : "text-white/90 hover:text-white"
+                                                ? "text-[#A9B3B8] hover:text-white"
+                                                : "text-white/80 hover:text-white"
                                         }`}
                                     >
-                                        {link.name}
+                                        {link.label}
                                         <span
                                             className={`absolute left-0 -bottom-1 w-0 h-0.5 transition-all duration-200 group-hover:w-full ${
-                                                scrolled
-                                                    ? "bg-gray-900"
-                                                    : "bg-white"
+                                                scrolled ? "bg-[#29D8D5]" : "bg-[#44F3F0]"
                                             }`}
                                         ></span>
                                     </a>
@@ -96,25 +104,49 @@ const Navbar = () => {
                         </ul>
                     </nav>
                     <div className="flex items-center gap-3">
+                        <Dropdown
+                            menu={{
+                                items: [
+                                    { key: "en", label: "English" },
+                                    { key: "es", label: "Español" },
+                                ],
+                                onClick: (e) => {
+                                    if (e.key === "en" || e.key === "es") {
+                                        changeLanguage(e.key);
+                                    }
+                                },
+                            }}
+                        >
+                            <Button
+                                className={`h-10 px-3 text-sm font-medium border rounded-full transition-all duration-200 ${
+                                    scrolled
+                                        ? "border-white/12 text-white hover:border-[#29D8D5]/35 bg-white/[0.03]"
+                                        : "border-white/16 text-white hover:border-[#29D8D5]/35 bg-white/[0.02]"
+                                }`}
+                                icon={<GlobalOutlined />}
+                            >
+                                {currentLanguage === "es" ? "ES" : "EN"}
+                            </Button>
+                        </Dropdown>
                         <Button
                             onClick={() => handleNavigation("/login")}
-                            className={`h-9 px-5 text-sm font-medium border rounded-xl transition-all duration-200 ${
+                            className={`h-10 px-5 text-sm font-medium border rounded-full transition-all duration-200 ${
                                 scrolled
-                                    ? "border-gray-200 text-gray-700 hover:border-gray-300 hover:text-gray-900 bg-transparent"
-                                    : "border-white/30 text-white hover:border-white hover:bg-white/10 bg-transparent"
+                                    ? "border-white/12 text-white hover:border-[#29D8D5]/35 hover:text-white bg-white/[0.03]"
+                                    : "border-white/16 text-white hover:border-[#29D8D5]/35 hover:bg-white/[0.08] bg-white/[0.02]"
                             }`}
                         >
-                            Login
+                            {t("auth.login")}
                         </Button>
                         <Button
                             onClick={() => handleNavigation("/signup")}
-                            className={`h-9 px-5 text-sm font-medium rounded-xl border-0 transition-all duration-200 shadow-sm hover:shadow ${
+                            className={`h-10 px-5 text-sm font-medium rounded-full border-0 transition-all duration-200 shadow-sm hover:shadow ${
                                 scrolled
-                                    ? "bg-blue-600 text-white hover:bg-blue-700"
-                                    : "bg-white text-blue-600 hover:bg-gray-50"
+                                    ? "bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0]"
+                                    : "bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0]"
                             }`}
                         >
-                            Sign Up
+                            {t("auth.signup")}
                         </Button>
                     </div>
                 </div>
@@ -125,7 +157,7 @@ const Navbar = () => {
                         icon={
                             <MenuOutlined
                                 className={`text-xl ${
-                                    scrolled ? "text-gray-900" : "text-white"
+                                    scrolled ? "text-white" : "text-white"
                                 }`}
                             />
                         }
@@ -137,9 +169,11 @@ const Navbar = () => {
 
             <Drawer
                 title={
-                    <span className="text-lg font-semibold text-gray-900 tracking-tight">
-                        Ohnix by iTCycle
-                    </span>
+                    <img
+                        src="/FullLogo_Transparent_NoBuffer.png"
+                        alt="iTcycle"
+                        className="h-9 w-auto"
+                    />
                 }
                 placement="right"
                 onClose={closeDrawer}
@@ -147,57 +181,49 @@ const Navbar = () => {
                 width={280}
                 styles={{
                     header: {
-                        borderBottom: "1px solid #f0f0f0",
+                        borderBottom: "1px solid rgba(255,255,255,0.08)",
                         padding: "20px 24px",
+                        background: "#050505",
                     },
                     body: {
                         padding: "24px",
+                        background: "#050505",
+                        color: "#fff",
                     },
                 }}
             >
                 <div className="flex flex-col h-full">
                     <nav className="flex-1">
                         {navLinks.map((link) => (
-                            <div key={link.name} className="mb-1">
+                            <div key={link.path} className="mb-1">
                                 <a
                                     href="#"
                                     onClick={(e) => {
                                         e.preventDefault();
-                                        const anchor = document.getElementById(
-                                            link.path
-                                        );
-                                        if (anchor) {
-                                            anchor.scrollIntoView({
-                                                behavior: "smooth",
-                                                block: "start",
-                                            });
-                                            setTimeout(
-                                                () => closeDrawer(),
-                                                100
-                                            );
-                                        }
+                                        scrollToSection(link.path);
+                                        setTimeout(() => closeDrawer(), 100);
                                     }}
-                                    className="block py-3 px-4 text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all duration-200 text-sm font-medium"
+                                    className="block rounded-2xl px-4 py-3 text-sm font-medium text-[#A9B3B8] transition-all duration-200 hover:bg-white/[0.05] hover:text-white"
                                 >
-                                    {link.name}
+                                    {link.label}
                                 </a>
                             </div>
                         ))}
                     </nav>
-                    <div className="flex flex-col gap-3 pt-6 border-t border-gray-100">
+                    <div className="flex flex-col gap-3 pt-6 border-t border-white/8">
                         <Button
                             block
                             onClick={() => handleNavigation("/login")}
-                            className="h-10 text-sm font-medium border-gray-200 text-gray-700 hover:border-gray-300 hover:text-gray-900 rounded-xl"
+                            className="h-10 rounded-full border border-white/10 bg-white/[0.03] text-sm font-medium text-white hover:border-[#29D8D5]/35 hover:text-white"
                         >
-                            Login
+                            {t("auth.login")}
                         </Button>
                         <Button
                             block
                             onClick={() => handleNavigation("/signup")}
-                            className="h-10 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white border-0 rounded-xl shadow-sm"
+                            className="h-10 rounded-full border-0 bg-[#29D8D5] text-sm font-medium text-[#021314] shadow-sm hover:bg-[#44F3F0]"
                         >
-                            Sign Up
+                            {t("auth.signup")}
                         </Button>
                     </div>
                 </div>
