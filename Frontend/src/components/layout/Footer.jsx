@@ -21,8 +21,8 @@ const Footer = () => {
                     <Col xs={24} md={12} lg={14}>
                         <div>
                             <img
-                                src="/FullLogo_Transparent_NoBuffer.png"
-                                alt="iTcycle"
+                                src="/Ohnix_FullLogo.svg"
+                                alt="Ohnix logo"
                                 className="mb-4 h-10 w-auto"
                             />
                             <p className="max-w-md text-sm leading-relaxed text-[#A9B3B8]">

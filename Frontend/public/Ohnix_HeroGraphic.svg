@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
+  <defs>
+    <linearGradient id="gradHero" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#29D8D5"/>
+      <stop offset="100%" stop-color="#44F3F0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="#050505"/>
+  <circle cx="600" cy="400" r="240" fill="none" stroke="#29D8D5" stroke-width="22" opacity="0.95"/>
+  <circle cx="600" cy="400" r="160" fill="none" stroke="#44F3F0" stroke-width="18" opacity="0.9"/>
+  <circle cx="600" cy="400" r="84" fill="none" stroke="url(#gradHero)" stroke-width="16"/>
+  <path d="M 320 520 Q 490 350 640 280" fill="none" stroke="url(#gradHero)" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="290" cy="540" r="14" fill="#29D8D5"/>
+  <circle cx="654" cy="270" r="14" fill="#44F3F0"/>
+  <g fill="#ffffff" opacity="0.85">
+    <path d="M530 480 h140 v30 h-140 z" />
+    <path d="M600 340 h120 v22 h-120 z" />
+    <path d="M520 420 l12 -18 l22 30 l18 -24 l20 26" stroke="#29D8D5" stroke-width="4" fill="none"/>
+  </g>
+  <circle cx="600" cy="400" r="10" fill="#ffffff"/>
+</svg>

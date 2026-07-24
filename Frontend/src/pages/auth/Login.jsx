@@ -24,7 +24,7 @@ const Login = () => {
     };
 
     return (
-        <AuthLayout imageSrc="/imsTopImage.png">
+        <AuthLayout>
             <AuthCard
                 title={t('auth.login')}
                 subtitle={t('auth.login_success')}

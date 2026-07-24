@@ -33,7 +33,7 @@ const HowItWorks = ({ steps, onGetStarted }) => {
                             <div className="relative bg-white rounded-2xl p-3 shadow-[0_20px_60px_-15px_rgba(59,130,246,0.3)]">
                                 <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-1 border border-gray-100">
                                     <img
-                                        src="/Inventory-management-system.webp"
+                                        src="/Ohnix_FullLogo.svg"
                                         alt="Dashboard Preview"
                                         className="w-full object-contain rounded-lg"
                                     />

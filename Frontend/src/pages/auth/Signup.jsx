@@ -63,7 +63,7 @@ const Signup = () => {
     };
 
     return (
-        <AuthLayout imageSrc="/imsTopImage.png">
+        <AuthLayout>
             <AuthCard
                 title={t("auth.create_account")}
                 subtitle={t("auth.join_platform")}

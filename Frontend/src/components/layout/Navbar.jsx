@@ -69,8 +69,8 @@ const Navbar = () => {
                     className="flex items-center gap-3 text-left"
                 >
                     <img
-                        src="/FullLogo_Transparent_NoBuffer.png"
-                        alt="iTcycle"
+                        src="/Ohnix_Icon.svg"
+                        alt="Ohnix logo"
                         className="h-10 w-auto md:h-11"
                     />
                 </button>
@@ -170,8 +170,8 @@ const Navbar = () => {
             <Drawer
                 title={
                     <img
-                        src="/FullLogo_Transparent_NoBuffer.png"
-                        alt="iTcycle"
+                        src="/Ohnix_FullLogo.svg"
+                        alt="Ohnix logo"
                         className="h-9 w-auto"
                     />
                 }
@@ -210,6 +210,33 @@ const Navbar = () => {
                             </div>
                         ))}
                     </nav>
+                    <div className="pb-4">
+                        <div className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#A9B3B8]">
+                            {t("common.language")}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button
+                                onClick={() => changeLanguage("es")}
+                                className={`h-10 rounded-full border text-sm font-medium transition-all duration-200 ${
+                                    currentLanguage === "es"
+                                        ? "border-[#29D8D5] bg-[#29D8D5] text-[#021314]"
+                                        : "border-white/10 bg-white/[0.03] text-white hover:border-[#29D8D5]/35"
+                                }`}
+                            >
+                                ES
+                            </Button>
+                            <Button
+                                onClick={() => changeLanguage("en")}
+                                className={`h-10 rounded-full border text-sm font-medium transition-all duration-200 ${
+                                    currentLanguage === "en"
+                                        ? "border-[#29D8D5] bg-[#29D8D5] text-[#021314]"
+                                        : "border-white/10 bg-white/[0.03] text-white hover:border-[#29D8D5]/35"
+                                }`}
+                            >
+                                EN
+                            </Button>
+                        </div>
+                    </div>
                     <div className="flex flex-col gap-3 pt-6 border-t border-white/8">
                         <Button
                             block

@@ -60,7 +60,7 @@ export const OrbitalHero = ({
     stats,
     orbitLabels,
     footerNote = "Traceability on every movement",
-    productImage = "/Inventory-management-system.webp",
+    productImage = "/Ohnix_FullLogo.svg",
     productImageAlt = "Ohnix inventory dashboard",
 }) => {
     const [pointer, setPointer] = useState({ x: 50, y: 40 });

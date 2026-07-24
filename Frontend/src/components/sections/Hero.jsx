@@ -45,7 +45,7 @@ const Hero = ({ onGetStarted, onWatchDemo }) => {
                         <div className="absolute inset-0 bg-white/5 rounded-2xl transform rotate-2 blur-sm"></div>
                         <div className="relative bg-white/10 backdrop-blur-sm rounded-2xl p-3 shadow-2xl">
                             <img
-                                src="/Inventory-management-system.webp"
+                                src="/Ohnix_FullLogo.svg"
                                 alt="Inventory Dashboard"
                                 className="w-full rounded-xl shadow-lg transition-all duration-300 hover:shadow-2xl"
                             />

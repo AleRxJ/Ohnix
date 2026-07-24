@@ -17,7 +17,7 @@ import LanguageSwitcher from "../LanguageSwitcher/LanguageSwitcher";
 
 const DashboardHeader = ({ collapsed, setCollapsed }) => {
     const { user, logout } = useContext(AuthContext);
-    const { t } = useI18n();
+    const { t, currentLanguage, changeLanguage } = useI18n();
     const navigate = useNavigate();
 
     // Handle logout
@@ -66,8 +66,8 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                 >
                     <div className="flex items-center">
                         <img
-                            src="/IconOnly_Transparent_NoBuffer.png"
-                            alt="Ohnix by iTCycle Logo"
+                            src="/Ohnix_Icon.svg"
+                            alt="Ohnix icon"
                             className="h-full w-auto p-2"
                             style={{ maxHeight: "48px" }}
                         />
@@ -101,6 +101,25 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
             </div>
 
             <div className="flex items-center">
+                <div className="mr-2 sm:hidden">
+                    <Dropdown
+                        menu={{
+                            items: [
+                                { key: "en", label: "English" },
+                                { key: "es", label: "Español" },
+                            ],
+                            onClick: (e) => {
+                                if (e.key === "en" || e.key === "es") {
+                                    changeLanguage(e.key);
+                                }
+                            },
+                        }}
+                    >
+                        <button className="h-9 min-w-9 rounded-full border border-gray-200 bg-white px-2 text-xs font-semibold text-gray-700 hover:border-cyan-400 transition-colors">
+                            {currentLanguage === "es" ? "ES" : "EN"}
+                        </button>
+                    </Dropdown>
+                </div>
                 <div className="mr-3 hidden sm:block">
                     <LanguageSwitcher />
                 </div>
