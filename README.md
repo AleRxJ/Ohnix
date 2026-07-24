@@ -178,10 +178,12 @@ npm run dev
 This repo is prepared for a low-cost setup:
 
 - Frontend: Vercel free tier.
-- Backend: Render free tier or Railway free tier.
+- Backend: Vercel (recommended), Render or Railway.
 - Database: MongoDB Atlas free tier.
 
-For Vercel, import the repository at the root and keep the default root config. The app builds the React frontend from `Frontend/` and expects the backend URL in `VITE_BACKEND_URL`.
+For Vercel frontend, import the repository at the root and keep the default root config. The app builds the React frontend from `Frontend/` and expects the backend URL in `VITE_BACKEND_URL`.
+
+For Vercel backend, create a second Vercel project using `Backend/` as the project root. The backend is now serverless-ready for Vercel and uses `Backend/vercel.json`.
 
 For the backend, `render.yaml` is already included at the repo root so Render can deploy the `Backend/` service directly.
 
@@ -196,10 +198,14 @@ Production env vars for the backend should point to Atlas and your frontend doma
 ```env
 MONGODB_URI=<atlas-connection-string>
 FRONTEND_URL=https://<your-vercel-domain>
+ALLOWED_ORIGINS=https://<your-vercel-domain>,https://*.vercel.app
 NODE_ENV=production
-START_SCHEDULER=true
-ALLOWED_ORIGINS=https://<your-vercel-domain>
+START_SCHEDULER=false
 ```
+
+Notes:
+- Keep `START_SCHEDULER=false` on Vercel serverless to avoid duplicate schedulers per invocation.
+- If you use Vercel preview deployments, keep `https://*.vercel.app` in `ALLOWED_ORIGINS`.
 
 ---
 

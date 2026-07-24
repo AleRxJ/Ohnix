@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
 import connectDB from "./db/index.js";
 import { app } from "./app.js";
-import lowStockScheduler from "./utils/lowStockScheduler.js";
 
 dotenv.config({
     path: "./.env",
@@ -24,32 +23,28 @@ app.get("/api/v1/test", (req, res) => {
     });
 });
 
-connectDB()
-    .then(() => {
-        const port = process.env.PORT || 3000;
-        app.listen(port, () => {
-            console.log(
-                `✅ Server listening on http://localhost:${port}/`
-            );
-            console.log("🚀 Starting low stock alert scheduler...");
-            if (process.env.START_SCHEDULER !== "false") {
-                lowStockScheduler.start();
-            }
+let dbConnectPromise;
+
+const ensureDatabaseConnection = async () => {
+    if (!dbConnectPromise) {
+        dbConnectPromise = connectDB().catch((error) => {
+            dbConnectPromise = null;
+            throw error;
         });
-    })
-    .catch((err) => {
-        console.log("MongoDB connection failed !!! ", err);
-    });
+    }
 
-// Graceful shutdown
-process.on("SIGTERM", () => {
-    console.log("🛑 SIGTERM received, stopping low stock scheduler...");
-    lowStockScheduler.stop();
-    process.exit(0);
-});
+    return dbConnectPromise;
+};
 
-process.on("SIGINT", () => {
-    console.log("🛑 SIGINT received, stopping low stock scheduler...");
-    lowStockScheduler.stop();
-    process.exit(0);
-});
+export default async function handler(req, res) {
+    try {
+        await ensureDatabaseConnection();
+        return app(req, res);
+    } catch (error) {
+        console.error("❎ Database initialization failed", error);
+        return res.status(500).json({
+            message: "Database connection failed",
+            success: false,
+        });
+    }
+}

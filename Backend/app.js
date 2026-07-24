@@ -5,13 +5,35 @@ import errorHandler from "./middleware/error.middleware.js";
 
 const app = express();
 
-const allowedOrigins = [
+const normalizeOrigin = (value) => value?.trim().replace(/\/$/, "");
+
+const configuredOrigins = [
    process.env.FRONTEND_URL,
    ...(process.env.ALLOWED_ORIGINS?.split(",") || []),
+]
+   .map(normalizeOrigin)
+   .filter(Boolean);
+
+const defaultOrigins = [
    "http://localhost:3000",
    "http://localhost:5173",
    "https://ohnix.vercel.app",
-].filter(Boolean);
+];
+
+const allowedOrigins = [...new Set([...configuredOrigins, ...defaultOrigins])];
+
+const wildcardToRegex = (pattern) => {
+   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+   return new RegExp(`^${escaped.replace(/\*/g, ".*")}$`);
+};
+
+const allowedOriginMatchers = allowedOrigins
+   .filter((origin) => origin.includes("*"))
+   .map(wildcardToRegex);
+
+const allowedOriginList = allowedOrigins.filter(
+   (origin) => !origin.includes("*")
+);
 
 app.use(
     cors({
@@ -19,7 +41,13 @@ app.use(
             // Allow non-browser requests (Postman, mobile apps)
             if (!origin) return callback(null, true);
 
-            if (allowedOrigins.includes(origin)) {
+         const normalizedOrigin = normalizeOrigin(origin);
+         const isAllowedByList = allowedOriginList.includes(normalizedOrigin);
+         const isAllowedByPattern = allowedOriginMatchers.some((matcher) =>
+            matcher.test(normalizedOrigin)
+         );
+
+         if (isAllowedByList || isAllowedByPattern) {
                 callback(null, true);
             } else {
                 console.log("Blocked by CORS:", origin);
