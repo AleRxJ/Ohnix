@@ -20,12 +20,12 @@ router
     .post(upload.single("photo"), createCustomer)
     .get(getUserCustomers);
 
+// Admin routes - can access all customers
+router.route("/all").get(isAdmin, getAllCustomers);
+
 router
     .route("/:id")
     .patch(upload.single("photo"), updateCustomer)
     .delete(deleteCustomer);
-
-// Admin routes - can access all customers
-router.route("/all").get(isAdmin, getAllCustomers);
 
 export default router;

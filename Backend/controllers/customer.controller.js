@@ -1,9 +1,41 @@
-// customer.controller.js
-import { Customer } from "../models/customer.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
+import { prisma } from "../db/prisma.js";
+
+const toExternalId = (entity) => entity.legacyMongoId || entity.id;
+
+const mapCustomer = (customer) => ({
+    _id: toExternalId(customer),
+    name: customer.name,
+    email: customer.email,
+    phone: customer.phone,
+    address: customer.address,
+    type: customer.type,
+    store_name: customer.storeName,
+    account_holder: customer.accountHolder,
+    account_number: customer.accountNumber,
+    photo: customer.photo,
+    created_by: {
+        _id: toExternalId(customer.createdBy),
+        username: customer.createdBy.username,
+    },
+    createdAt: customer.createdAt,
+    updatedAt: customer.updatedAt,
+});
+
+const findCustomerByAnyId = async (id) =>
+    prisma.customer.findFirst({
+        where: {
+            OR: [{ id }, { legacyMongoId: id }],
+        },
+        include: {
+            createdBy: {
+                select: { id: true, legacyMongoId: true, username: true },
+            },
+        },
+    });
 
 const createCustomer = asyncHandler(async (req, res, next) => {
     const {
@@ -22,69 +54,73 @@ const createCustomer = asyncHandler(async (req, res, next) => {
     }
 
     try {
-        const existingCustomer = await Customer.findOne({
-            $or: [{ email }, { phone }],
-            created_by: req.user._id, // Check only within user's customers
+        const existingCustomer = await prisma.customer.findFirst({
+            where: {
+                createdById: req.user.prismaId,
+                OR: [{ email: email.toLowerCase().trim() }, { phone: phone.trim() }],
+            },
+            select: { id: true },
         });
 
         if (existingCustomer) {
             return next(
-                new ApiError(
-                    409,
-                    "Customer with this email or phone already exists"
-                )
+                new ApiError(409, "Customer with this email or phone already exists")
             );
         }
 
         let photoUrl = "default-customer.png";
         if (req.file) {
             const photo = await uploadToCloudinary(req.file);
-
             if (photo) {
                 photoUrl = photo.url;
             }
         }
 
-        const customerData = {
-            name,
-            email,
-            phone,
-            address,
-            type,
-            store_name,
-            account_holder,
-            account_number,
-            photo: photoUrl,
-            created_by: req.user._id, // Set the current user as creator
-        };
-
-        const customer = await Customer.createCustomer(customerData);
-
-        if (!customer) {
-            return next(new ApiError(500, "Failed to create customer"));
-        }
+        const customer = await prisma.customer.create({
+            data: {
+                name: name.trim(),
+                email: email.toLowerCase().trim(),
+                phone: phone.trim(),
+                address: address?.trim() || null,
+                type: type?.trim() || "regular",
+                storeName: store_name?.trim() || null,
+                accountHolder: account_holder?.trim() || null,
+                accountNumber: account_number?.trim() || null,
+                photo: photoUrl,
+                createdById: req.user.prismaId,
+            },
+            include: {
+                createdBy: {
+                    select: { id: true, legacyMongoId: true, username: true },
+                },
+            },
+        });
 
         return res
             .status(201)
-            .json(
-                new ApiResponse(201, customer, "Customer created successfully")
-            );
+            .json(new ApiResponse(201, mapCustomer(customer), "Customer created successfully"));
     } catch (error) {
         return next(new ApiError(500, error.message));
     }
 });
 
-// Get all customers (admin only)
-const getAllCustomers = asyncHandler(async (req, res, next) => {
+const getAllCustomers = asyncHandler(async (_req, res, next) => {
     try {
-        const customers = await Customer.getAllCustomers();
+        const customers = await prisma.customer.findMany({
+            orderBy: { createdAt: "desc" },
+            include: {
+                createdBy: {
+                    select: { id: true, legacyMongoId: true, username: true },
+                },
+            },
+        });
 
         return res
             .status(200)
             .json(
                 new ApiResponse(
                     200,
-                    customers,
+                    customers.map(mapCustomer),
                     "All customers fetched successfully"
                 )
             );
@@ -93,17 +129,24 @@ const getAllCustomers = asyncHandler(async (req, res, next) => {
     }
 });
 
-// Get current user's customers
 const getUserCustomers = asyncHandler(async (req, res, next) => {
     try {
-        const customers = await Customer.getCustomersByUser(req.user._id);
+        const customers = await prisma.customer.findMany({
+            where: { createdById: req.user.prismaId },
+            orderBy: { createdAt: "desc" },
+            include: {
+                createdBy: {
+                    select: { id: true, legacyMongoId: true, username: true },
+                },
+            },
+        });
 
         return res
             .status(200)
             .json(
                 new ApiResponse(
                     200,
-                    customers,
+                    customers.map(mapCustomer),
                     "Your customers fetched successfully"
                 )
             );
@@ -117,44 +160,63 @@ const updateCustomer = asyncHandler(async (req, res, next) => {
     const updateData = req.body;
 
     try {
-        // Check if the customer exists
-        const existingCustomer = await Customer.findById(id);
+        const existingCustomer = await findCustomerByAnyId(id);
 
         if (!existingCustomer) {
             return next(new ApiError(404, "Customer not found"));
         }
 
-        // Only allow if admin or the creator of the customer
         if (
             req.user.role !== "admin" &&
-            existingCustomer.created_by.toString() !== req.user._id.toString()
+            existingCustomer.createdById !== req.user.prismaId
         ) {
             return next(
-                new ApiError(
-                    403,
-                    "You don't have permission to update this customer"
-                )
+                new ApiError(403, "You don't have permission to update this customer")
             );
         }
 
-        // If photo is being updated
         if (req.file) {
             const photo = await uploadToCloudinary(req.file);
-
             if (photo) {
                 updateData.photo = photo.url;
             }
         }
 
-        const customer = await Customer.findByIdAndUpdate(id, updateData, {
-            new: true,
+        const customer = await prisma.customer.update({
+            where: { id: existingCustomer.id },
+            data: {
+                ...(updateData.name !== undefined && { name: updateData.name.trim() }),
+                ...(updateData.email !== undefined && {
+                    email: updateData.email.toLowerCase().trim(),
+                }),
+                ...(updateData.phone !== undefined && { phone: updateData.phone.trim() }),
+                ...(updateData.address !== undefined && {
+                    address: updateData.address?.trim() || null,
+                }),
+                ...(updateData.type !== undefined && {
+                    type: updateData.type?.trim() || "regular",
+                }),
+                ...(updateData.store_name !== undefined && {
+                    storeName: updateData.store_name?.trim() || null,
+                }),
+                ...(updateData.account_holder !== undefined && {
+                    accountHolder: updateData.account_holder?.trim() || null,
+                }),
+                ...(updateData.account_number !== undefined && {
+                    accountNumber: updateData.account_number?.trim() || null,
+                }),
+                ...(updateData.photo !== undefined && { photo: updateData.photo }),
+            },
+            include: {
+                createdBy: {
+                    select: { id: true, legacyMongoId: true, username: true },
+                },
+            },
         });
 
         return res
             .status(200)
-            .json(
-                new ApiResponse(200, customer, "Customer updated successfully")
-            );
+            .json(new ApiResponse(200, mapCustomer(customer), "Customer updated successfully"));
     } catch (error) {
         return next(new ApiError(500, error.message));
     }
@@ -164,27 +226,22 @@ const deleteCustomer = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
 
     try {
-        // Check if the customer exists
-        const existingCustomer = await Customer.findById(id);
+        const existingCustomer = await findCustomerByAnyId(id);
 
         if (!existingCustomer) {
             return next(new ApiError(404, "Customer not found"));
         }
 
-        // Only allow if admin or the creator of the customer
         if (
             req.user.role !== "admin" &&
-            existingCustomer.created_by.toString() !== req.user._id.toString()
+            existingCustomer.createdById !== req.user.prismaId
         ) {
             return next(
-                new ApiError(
-                    403,
-                    "You don't have permission to delete this customer"
-                )
+                new ApiError(403, "You don't have permission to delete this customer")
             );
         }
 
-        const customer = await Customer.findByIdAndDelete(id);
+        await prisma.customer.delete({ where: { id: existingCustomer.id } });
 
         return res
             .status(200)

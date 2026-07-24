@@ -1,108 +1,123 @@
-import { Product } from "../models/product.model.js";
-import { Order } from "../models/order.model.js";
-import { Purchase } from "../models/purchase.model.js";
-import { User } from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import transporter from "../utils/nodemailer.js";
-import mongoose from "mongoose";
+import { prisma } from "../db/prisma.js";
 
-// Get dashboard metrics (total sales, inventory value, low stock)
+const toExternalId = (entity) => entity.legacyMongoId || entity.id;
+
 const getDashboardMetrics = asyncHandler(async (req, res, next) => {
     try {
-        const userId = req.user._id;
+        const userId = req.user.prismaId;
         const isAdmin = req.user.role === "admin";
 
-        // Base query for filtering by user
-        const userFilter = isAdmin ? {} : { created_by: userId };
+        const orderWhere = {
+            ...(isAdmin ? {} : { createdById: userId }),
+            orderStatus: { not: "cancelled" },
+        };
 
-        // Get total sales (sum of all orders) - Fixed pipeline
-        const salesMatchStage = isAdmin
-            ? { order_status: { $ne: "cancelled" } }
-            : {
-                  order_status: { $ne: "cancelled" },
-                  created_by: new mongoose.Types.ObjectId(userId),
-              };
+        const purchaseWhere = isAdmin ? {} : { purchase: { createdById: userId } };
+        const productWhere = isAdmin ? {} : { createdById: userId };
 
-        const salesData = await Order.aggregate([
-            { $match: salesMatchStage },
-            { $group: { _id: null, totalSales: { $sum: "$total" } } },
-        ]);
-
-        // Get total purchase value - Fixed pipeline
-        const purchaseMatchStage = isAdmin
-            ? {}
-            : { created_by: new mongoose.Types.ObjectId(userId) };
-
-        const purchaseData = await Purchase.aggregate([
-            { $match: purchaseMatchStage },
-            {
-                $lookup: {
-                    from: "purchasedetails",
-                    localField: "_id",
-                    foreignField: "purchase_id",
-                    as: "details",
+        const [
+            totalSalesAgg,
+            totalPurchaseAgg,
+            inventoryAgg,
+            recentOrders,
+            lowStockProducts,
+            outOfStockCount,
+        ] = await Promise.all([
+            prisma.order.aggregate({
+                where: orderWhere,
+                _sum: { total: true },
+            }),
+            prisma.purchaseDetail.aggregate({
+                where: purchaseWhere,
+                _sum: { total: true },
+            }),
+            prisma.product.aggregate({
+                where: productWhere,
+                _sum: {
+                    stock: true,
                 },
-            },
-            { $unwind: { path: "$details", preserveNullAndEmptyArrays: true } },
-            {
-                $group: {
-                    _id: null,
-                    totalPurchase: { $sum: { $ifNull: ["$details.total", 0] } },
+                _count: {
+                    id: true,
                 },
-            },
-        ]);
-
-        // Get inventory value and count
-        const inventoryData = await Product.aggregate([
-            { $match: userFilter },
-            {
-                $group: {
-                    _id: null,
-                    inventoryValue: {
-                        $sum: { $multiply: ["$stock", "$buying_price"] },
+            }),
+            prisma.order.findMany({
+                where: isAdmin ? {} : { createdById: userId },
+                orderBy: { createdAt: "desc" },
+                take: 5,
+                include: {
+                    customer: {
+                        select: {
+                            id: true,
+                            legacyMongoId: true,
+                            name: true,
+                        },
                     },
-                    totalProducts: { $sum: 1 },
-                    totalStock: { $sum: "$stock" },
                 },
-            },
+            }),
+            prisma.product.findMany({
+                where: {
+                    ...productWhere,
+                    stock: { lt: 10 },
+                },
+                select: {
+                    id: true,
+                    legacyMongoId: true,
+                    productName: true,
+                    stock: true,
+                },
+                orderBy: { stock: "asc" },
+                take: 10,
+            }),
+            prisma.product.count({
+                where: {
+                    ...productWhere,
+                    stock: 0,
+                },
+            }),
         ]);
 
-        // Get recent orders (last 5)
-        const recentOrders = await Order.find(userFilter)
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .populate("customer_id", "name");
-
-        // Get low stock products (stock < 10)
-        const lowStockProducts = await Product.find({
-            ...userFilter,
-            stock: { $lt: 10 },
-        })
-            .select("product_name stock")
-            .sort({ stock: 1 })
-            .limit(10);
-
-        // Get out of stock products
-        const outOfStockCount = await Product.countDocuments({
-            ...userFilter,
-            stock: 0,
+        const productsForValue = await prisma.product.findMany({
+            where: productWhere,
+            select: {
+                stock: true,
+                buyingPrice: true,
+            },
         });
 
+        const inventoryValue = productsForValue.reduce(
+            (sum, p) => sum + p.stock * Number(p.buyingPrice),
+            0
+        );
+
         const metrics = {
-            totalSales: salesData.length > 0 ? salesData[0].totalSales : 0,
-            totalPurchase:
-                purchaseData.length > 0 ? purchaseData[0].totalPurchase : 0,
-            inventoryValue:
-                inventoryData.length > 0 ? inventoryData[0].inventoryValue : 0,
-            totalProducts:
-                inventoryData.length > 0 ? inventoryData[0].totalProducts : 0,
-            totalStock:
-                inventoryData.length > 0 ? inventoryData[0].totalStock : 0,
+            totalSales: Number(totalSalesAgg._sum.total || 0),
+            totalPurchase: Number(totalPurchaseAgg._sum.total || 0),
+            inventoryValue,
+            totalProducts: inventoryAgg._count.id || 0,
+            totalStock: inventoryAgg._sum.stock || 0,
             outOfStockCount,
-            lowStockProducts,
-            recentOrders,
+            lowStockProducts: lowStockProducts.map((p) => ({
+                _id: toExternalId(p),
+                product_name: p.productName,
+                stock: p.stock,
+            })),
+            recentOrders: recentOrders.map((o) => ({
+                _id: toExternalId(o),
+                invoice_no: o.invoiceNo,
+                customer_id: o.customer
+                    ? {
+                          _id: toExternalId(o.customer),
+                          name: o.customer.name,
+                      }
+                    : null,
+                total: Number(o.total),
+                order_status: o.orderStatus,
+                createdAt: o.createdAt,
+                updatedAt: o.updatedAt,
+            })),
         };
 
         return res
@@ -120,71 +135,49 @@ const getDashboardMetrics = asyncHandler(async (req, res, next) => {
     }
 });
 
-// Get stock report
 const getStockReport = asyncHandler(async (req, res, next) => {
     try {
-        const userId = req.user._id;
+        const userId = req.user.prismaId;
         const isAdmin = req.user.role === "admin";
 
-        // Match stage for filtering by user
-        const matchStage = isAdmin
-            ? {}
-            : { created_by: new mongoose.Types.ObjectId(userId) };
+        const products = await prisma.product.findMany({
+            where: isAdmin ? {} : { createdById: userId },
+            include: {
+                category: {
+                    select: {
+                        categoryName: true,
+                    },
+                },
+                unit: {
+                    select: {
+                        unitName: true,
+                    },
+                },
+            },
+            orderBy: { stock: "asc" },
+        });
 
-        const stockReport = await Product.aggregate([
-            { $match: matchStage },
-            {
-                $lookup: {
-                    from: "categories",
-                    localField: "category_id",
-                    foreignField: "_id",
-                    as: "category",
-                },
-            },
-            {
-                $lookup: {
-                    from: "units",
-                    localField: "unit_id",
-                    foreignField: "_id",
-                    as: "unit",
-                },
-            },
-            {
-                $unwind: {
-                    path: "$category",
-                    preserveNullAndEmptyArrays: true,
-                },
-            },
-            { $unwind: { path: "$unit", preserveNullAndEmptyArrays: true } },
-            {
-                $project: {
-                    product_name: 1,
-                    product_code: 1,
-                    category_name: {
-                        $ifNull: ["$category.category_name", "N/A"],
-                    },
-                    unit_name: { $ifNull: ["$unit.unit_name", "N/A"] },
-                    buying_price: 1,
-                    selling_price: 1,
-                    stock: 1,
-                    inventory_value: { $multiply: ["$stock", "$buying_price"] },
-                    status: {
-                        $cond: {
-                            if: { $eq: ["$stock", 0] },
-                            then: "Out of Stock",
-                            else: {
-                                $cond: {
-                                    if: { $lt: ["$stock", 10] },
-                                    then: "Low Stock",
-                                    else: "In Stock",
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-            { $sort: { stock: 1 } },
-        ]);
+        const stockReport = products.map((p) => {
+            const status =
+                p.stock === 0
+                    ? "Out of Stock"
+                    : p.stock < 10
+                      ? "Low Stock"
+                      : "In Stock";
+
+            return {
+                _id: toExternalId(p),
+                product_name: p.productName,
+                product_code: p.productCode,
+                category_name: p.category?.categoryName || "N/A",
+                unit_name: p.unit?.unitName || "N/A",
+                buying_price: Number(p.buyingPrice),
+                selling_price: Number(p.sellingPrice),
+                stock: p.stock,
+                inventory_value: p.stock * Number(p.buyingPrice),
+                status,
+            };
+        });
 
         return res
             .status(200)
@@ -201,101 +194,80 @@ const getStockReport = asyncHandler(async (req, res, next) => {
     }
 });
 
-// Get sales report
 const getSalesReport = asyncHandler(async (req, res, next) => {
     const { start_date, end_date } = req.query;
-    const userId = req.user._id;
+    const userId = req.user.prismaId;
     const isAdmin = req.user.role === "admin";
 
-    let dateFilter = {};
+    const dateFilter = {};
     if (start_date && end_date) {
-        dateFilter = {
-            order_date: {
-                $gte: new Date(start_date),
-                $lte: new Date(end_date),
-            },
-        };
-    }
-
-    // Add user filtering for non-admin users
-    if (!isAdmin) {
-        dateFilter.created_by = new mongoose.Types.ObjectId(userId);
+        dateFilter.gte = new Date(start_date);
+        dateFilter.lte = new Date(end_date);
     }
 
     try {
-        // Get sales by date
-        const salesByDate = await Order.aggregate([
-            { $match: { ...dateFilter, order_status: { $ne: "cancelled" } } },
-            {
-                $group: {
-                    _id: {
-                        $dateToString: {
-                            format: "%Y-%m-%d",
-                            date: "$order_date",
+        const orders = await prisma.order.findMany({
+            where: {
+                ...(isAdmin ? {} : { createdById: userId }),
+                orderStatus: { not: "cancelled" },
+                ...(Object.keys(dateFilter).length
+                    ? { orderDate: dateFilter }
+                    : {}),
+            },
+            include: {
+                orderDetails: {
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                legacyMongoId: true,
+                                productName: true,
+                            },
                         },
                     },
-                    total: { $sum: "$total" },
-                    orders: { $sum: 1 },
                 },
             },
-            { $sort: { _id: 1 } },
-        ]);
+            orderBy: { orderDate: "asc" },
+        });
 
-        // Get sales by product
-        const salesByProduct = await Order.aggregate([
-            { $match: { ...dateFilter, order_status: { $ne: "cancelled" } } },
-            {
-                $lookup: {
-                    from: "orderdetails",
-                    localField: "_id",
-                    foreignField: "order_id",
-                    as: "details",
-                },
-            },
-            {
-                $unwind: {
-                    path: "$details",
-                    preserveNullAndEmptyArrays: false,
-                },
-            },
-            {
-                $lookup: {
-                    from: "products",
-                    localField: "details.product_id",
-                    foreignField: "_id",
-                    as: "product",
-                },
-            },
-            {
-                $unwind: {
-                    path: "$product",
-                    preserveNullAndEmptyArrays: false,
-                },
-            },
-            {
-                $group: {
-                    _id: "$product._id",
-                    product_name: { $first: "$product.product_name" },
-                    quantity: { $sum: "$details.quantity" },
-                    total: { $sum: "$details.total" },
-                },
-            },
-            { $sort: { total: -1 } },
-            { $limit: 10 },
-        ]);
+        const byDateMap = new Map();
+        const byProductMap = new Map();
+
+        for (const order of orders) {
+            const dateKey = order.orderDate.toISOString().slice(0, 10);
+            const currentDate = byDateMap.get(dateKey) || { _id: dateKey, total: 0, orders: 0 };
+            currentDate.total += Number(order.total);
+            currentDate.orders += 1;
+            byDateMap.set(dateKey, currentDate);
+
+            for (const detail of order.orderDetails) {
+                const productId = detail.productId;
+                const currentProduct = byProductMap.get(productId) || {
+                    _id: toExternalId(detail.product),
+                    product_name: detail.product?.productName || "Unknown",
+                    quantity: 0,
+                    total: 0,
+                };
+                currentProduct.quantity += detail.quantity;
+                currentProduct.total += Number(detail.total);
+                byProductMap.set(productId, currentProduct);
+            }
+        }
+
+        const salesByDate = [...byDateMap.values()].sort((a, b) =>
+            a._id.localeCompare(b._id)
+        );
+
+        const salesByProduct = [...byProductMap.values()]
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 10);
 
         const report = {
             salesByDate,
             salesByProduct,
             summary: {
-                totalSales: salesByDate.reduce(
-                    (sum, item) => sum + item.total,
-                    0
-                ),
-                totalOrders: salesByDate.reduce(
-                    (sum, item) => sum + item.orders,
-                    0
-                ),
+                totalSales: salesByDate.reduce((sum, item) => sum + item.total, 0),
+                totalOrders: salesByDate.reduce((sum, item) => sum + item.orders, 0),
             },
         };
 
@@ -314,64 +286,58 @@ const getSalesReport = asyncHandler(async (req, res, next) => {
     }
 });
 
-// Get top selling products
 const getTopProducts = asyncHandler(async (req, res, next) => {
     const { limit = 10 } = req.query;
-    const userId = req.user._id;
+    const userId = req.user.prismaId;
     const isAdmin = req.user.role === "admin";
 
     try {
-        // Match stage for non-admin users
-        const orderMatch = isAdmin
-            ? { order_status: { $ne: "cancelled" } }
-            : {
-                  order_status: { $ne: "cancelled" },
-                  created_by: new mongoose.Types.ObjectId(userId),
-              };
+        const orders = await prisma.order.findMany({
+            where: {
+                ...(isAdmin ? {} : { createdById: userId }),
+                orderStatus: { not: "cancelled" },
+            },
+            include: {
+                orderDetails: {
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                legacyMongoId: true,
+                                productName: true,
+                                productCode: true,
+                                productImage: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
 
-        const topProducts = await Order.aggregate([
-            { $match: orderMatch },
-            {
-                $lookup: {
-                    from: "orderdetails",
-                    localField: "_id",
-                    foreignField: "order_id",
-                    as: "details",
-                },
-            },
-            {
-                $unwind: {
-                    path: "$details",
-                    preserveNullAndEmptyArrays: false,
-                },
-            },
-            {
-                $lookup: {
-                    from: "products",
-                    localField: "details.product_id",
-                    foreignField: "_id",
-                    as: "product",
-                },
-            },
-            {
-                $unwind: {
-                    path: "$product",
-                    preserveNullAndEmptyArrays: false,
-                },
-            },
-            {
-                $group: {
-                    _id: "$product._id",
-                    product_name: { $first: "$product.product_name" },
-                    product_code: { $first: "$product.product_code" },
-                    product_image: { $first: "$product.product_image" },
-                    quantity_sold: { $sum: "$details.quantity" },
-                    total_sales: { $sum: "$details.total" },
-                },
-            },
-            { $sort: { quantity_sold: -1 } },
-            { $limit: parseInt(limit) },
-        ]);
+        const byProductMap = new Map();
+
+        for (const order of orders) {
+            for (const detail of order.orderDetails) {
+                const productId = detail.productId;
+                const current = byProductMap.get(productId) || {
+                    _id: toExternalId(detail.product),
+                    product_name: detail.product?.productName || "Unknown",
+                    product_code: detail.product?.productCode || "N/A",
+                    product_image:
+                        detail.product?.productImage || "default-product.png",
+                    quantity_sold: 0,
+                    total_sales: 0,
+                };
+
+                current.quantity_sold += detail.quantity;
+                current.total_sales += Number(detail.total);
+                byProductMap.set(productId, current);
+            }
+        }
+
+        const topProducts = [...byProductMap.values()]
+            .sort((a, b) => b.quantity_sold - a.quantity_sold)
+            .slice(0, Number.parseInt(limit, 10));
 
         return res
             .status(200)
@@ -388,92 +354,78 @@ const getTopProducts = asyncHandler(async (req, res, next) => {
     }
 });
 
-// Get purchase report
 const getPurchaseReport = asyncHandler(async (req, res, next) => {
     const { start_date, end_date } = req.query;
-    const userId = req.user._id;
+    const userId = req.user.prismaId;
     const isAdmin = req.user.role === "admin";
 
-    let dateFilter = {};
+    const dateFilter = {};
     if (start_date && end_date) {
-        dateFilter = {
-            purchase_date: {
-                $gte: new Date(start_date),
-                $lte: new Date(end_date),
-            },
-        };
-    }
-
-    // Add user filtering for non-admin users
-    if (!isAdmin) {
-        dateFilter.created_by = new mongoose.Types.ObjectId(userId);
+        dateFilter.gte = new Date(start_date);
+        dateFilter.lte = new Date(end_date);
     }
 
     try {
-        // Get purchases by date
-        const purchasesByDate = await Purchase.aggregate([
-            { $match: dateFilter },
-            {
-                $group: {
-                    _id: {
-                        $dateToString: {
-                            format: "%Y-%m-%d",
-                            date: "$purchase_date",
-                        },
+        const purchases = await prisma.purchase.findMany({
+            where: {
+                ...(isAdmin ? {} : { createdById: userId }),
+                ...(Object.keys(dateFilter).length
+                    ? { purchaseDate: dateFilter }
+                    : {}),
+            },
+            include: {
+                supplier: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        name: true,
+                        shopname: true,
                     },
-                    count: { $sum: 1 },
+                },
+                purchaseDetails: {
+                    select: {
+                        total: true,
+                    },
                 },
             },
-            { $sort: { _id: 1 } },
-        ]);
+            orderBy: { purchaseDate: "asc" },
+        });
 
-        // Get purchases by supplier
-        const purchasesBySupplier = await Purchase.aggregate([
-            { $match: dateFilter },
-            {
-                $lookup: {
-                    from: "suppliers",
-                    localField: "supplier_id",
-                    foreignField: "_id",
-                    as: "supplier",
-                },
-            },
-            {
-                $unwind: {
-                    path: "$supplier",
-                    preserveNullAndEmptyArrays: true,
-                },
-            },
-            {
-                $lookup: {
-                    from: "purchasedetails",
-                    localField: "_id",
-                    foreignField: "purchase_id",
-                    as: "details",
-                },
-            },
-            { $unwind: { path: "$details", preserveNullAndEmptyArrays: true } },
-            {
-                $group: {
-                    _id: "$supplier._id",
-                    supplier_name: {
-                        $first: { $ifNull: ["$supplier.name", "Unknown"] },
-                    },
-                    shopname: {
-                        $first: { $ifNull: ["$supplier.shopname", "N/A"] },
-                    },
-                    total_purchases: {
-                        $sum: { $ifNull: ["$details.total", 0] },
-                    },
-                    count: { $sum: 1 },
-                },
-            },
-            { $sort: { total_purchases: -1 } },
-        ]);
+        const byDateMap = new Map();
+        const bySupplierMap = new Map();
+
+        for (const purchase of purchases) {
+            const dateKey = purchase.purchaseDate.toISOString().slice(0, 10);
+            const currentDate = byDateMap.get(dateKey) || { _id: dateKey, count: 0 };
+            currentDate.count += 1;
+            byDateMap.set(dateKey, currentDate);
+
+            const purchaseTotal = purchase.purchaseDetails.reduce(
+                (sum, detail) => sum + Number(detail.total),
+                0
+            );
+
+            const supplierKey = purchase.supplierId;
+            const currentSupplier = bySupplierMap.get(supplierKey) || {
+                _id: toExternalId(purchase.supplier),
+                supplier_name: purchase.supplier?.name || "Unknown",
+                shopname: purchase.supplier?.shopname || "N/A",
+                total_purchases: 0,
+                count: 0,
+            };
+
+            currentSupplier.total_purchases += purchaseTotal;
+            currentSupplier.count += 1;
+            bySupplierMap.set(supplierKey, currentSupplier);
+        }
 
         const report = {
-            purchasesByDate,
-            purchasesBySupplier,
+            purchasesByDate: [...byDateMap.values()].sort((a, b) =>
+                a._id.localeCompare(b._id)
+            ),
+            purchasesBySupplier: [...bySupplierMap.values()].sort(
+                (a, b) => b.total_purchases - a.total_purchases
+            ),
         };
 
         return res
@@ -490,33 +442,71 @@ const getPurchaseReport = asyncHandler(async (req, res, next) => {
         return next(new ApiError(500, error.message));
     }
 });
-// Get low stock alerts and send email notifications
+
 const getLowStockAlerts = asyncHandler(async (req, res, next) => {
     const { threshold = 10 } = req.query;
-    const userId = req.user._id;
+    const userId = req.user.prismaId;
     const isAdmin = req.user.role === "admin";
 
-    const userFilter = isAdmin ? {} : { created_by: userId };
-
     try {
-        const lowStockProducts = await Product.find({
-            ...userFilter,
-            stock: { $lt: parseInt(threshold) },
-        })
-            .select(
-                "product_name product_code stock buying_price selling_price"
-            )
-            .populate("category_id", "category_name")
-            .populate("created_by", "username email")
-            .sort({ stock: 1 });
+        const parsedThreshold = Number.parseInt(threshold, 10);
+
+        const lowStockProducts = await prisma.product.findMany({
+            where: {
+                ...(isAdmin ? {} : { createdById: userId }),
+                stock: { lt: parsedThreshold },
+            },
+            select: {
+                id: true,
+                legacyMongoId: true,
+                productName: true,
+                productCode: true,
+                stock: true,
+                buyingPrice: true,
+                sellingPrice: true,
+                category: {
+                    select: {
+                        categoryName: true,
+                    },
+                },
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                        email: true,
+                    },
+                },
+            },
+            orderBy: { stock: "asc" },
+        });
+
+        const mappedLowStock = lowStockProducts.map((p) => ({
+            _id: toExternalId(p),
+            product_name: p.productName,
+            product_code: p.productCode,
+            stock: p.stock,
+            buying_price: Number(p.buyingPrice),
+            selling_price: Number(p.sellingPrice),
+            category_id: {
+                category_name: p.category?.categoryName || "N/A",
+            },
+            created_by: p.createdBy
+                ? {
+                      _id: toExternalId(p.createdBy),
+                      username: p.createdBy.username,
+                      email: p.createdBy.email,
+                  }
+                : null,
+        }));
 
         return res.status(200).json(
             new ApiResponse(
                 200,
                 {
-                    lowStockProducts,
-                    count: lowStockProducts.length,
-                    threshold: parseInt(threshold),
+                    lowStockProducts: mappedLowStock,
+                    count: mappedLowStock.length,
+                    threshold: parsedThreshold,
                     automaticEmails: {
                         enabled: true,
                         schedule: "Every Monday at 9:00 AM",

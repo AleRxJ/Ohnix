@@ -1,20 +1,112 @@
-import { Purchase } from "../models/purchase.model.js";
-import { PurchaseDetail } from "../models/purchase-detail.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import purchaseService from "../services/purchase.service.js";
+import { prisma } from "../db/prisma.js";
+
+const toExternalId = (entity) => entity.legacyMongoId || entity.id;
+
+const mapPurchase = (purchase) => ({
+    _id: toExternalId(purchase),
+    purchase_no: purchase.purchaseNo,
+    purchase_date: purchase.purchaseDate,
+    purchase_status: purchase.purchaseStatus,
+    supplier_id: purchase.supplier
+        ? {
+              _id: toExternalId(purchase.supplier),
+              name: purchase.supplier.name,
+              shopname: purchase.supplier.shopname,
+          }
+        : null,
+    created_by: purchase.createdBy
+        ? {
+              _id: toExternalId(purchase.createdBy),
+              username: purchase.createdBy.username,
+          }
+        : null,
+    updated_by: purchase.updatedBy
+        ? {
+              _id: toExternalId(purchase.updatedBy),
+              username: purchase.updatedBy.username,
+          }
+        : null,
+    createdAt: purchase.createdAt,
+    updatedAt: purchase.updatedAt,
+});
+
+const mapPurchaseDetail = (detail) => ({
+    _id: toExternalId(detail),
+    purchase_id: detail.purchase
+        ? toExternalId(detail.purchase)
+        : detail.purchaseId,
+    product_id: detail.product
+        ? {
+              _id: toExternalId(detail.product),
+              product_name: detail.product.productName,
+              product_code: detail.product.productCode,
+              stock: detail.product.stock,
+          }
+        : null,
+    quantity: detail.quantity,
+    unitcost: Number(detail.unitcost),
+    total: Number(detail.total),
+    return_processed: detail.returnProcessed,
+    return_date: detail.returnDate,
+    returned_quantity: detail.returnedQuantity,
+    refund_amount: Number(detail.refundAmount),
+    createdAt: detail.createdAt,
+    updatedAt: detail.updatedAt,
+});
+
+const findPurchaseByAnyId = async (id) =>
+    prisma.purchase.findFirst({
+        where: {
+            OR: [{ id }, { legacyMongoId: id }],
+        },
+        include: {
+            supplier: {
+                select: {
+                    id: true,
+                    legacyMongoId: true,
+                    name: true,
+                    shopname: true,
+                },
+            },
+            createdBy: {
+                select: {
+                    id: true,
+                    legacyMongoId: true,
+                    username: true,
+                },
+            },
+            updatedBy: {
+                select: {
+                    id: true,
+                    legacyMongoId: true,
+                    username: true,
+                },
+            },
+        },
+    });
 
 const createPurchase = asyncHandler(async (req, res, next) => {
     try {
         const purchase = await purchaseService.createPurchase(
             req.body,
-            req.user._id
+            req.user.prismaId,
+            req.user.role
         );
+
+        const fullPurchase = await findPurchaseByAnyId(purchase._id);
+
         return res
             .status(201)
             .json(
-                new ApiResponse(201, purchase, "Purchase created successfully")
+                new ApiResponse(
+                    201,
+                    fullPurchase ? mapPurchase(fullPurchase) : purchase,
+                    "Purchase created successfully"
+                )
             );
     } catch (err) {
         return next(err);
@@ -23,20 +115,41 @@ const createPurchase = asyncHandler(async (req, res, next) => {
 
 const getAllPurchases = asyncHandler(async (req, res, next) => {
     try {
-        const purchases =
-            req.user.role === "admin"
-                ? await Purchase.getAllPurchases()
-                : await Purchase.find({ created_by: req.user._id })
-                      .populate("supplier_id", "name shopname")
-                      .populate("created_by", "username")
-                      .sort({ createdAt: -1 });
+        const purchases = await prisma.purchase.findMany({
+            where: req.user.role === "admin" ? {} : { createdById: req.user.prismaId },
+            orderBy: { createdAt: "desc" },
+            include: {
+                supplier: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        name: true,
+                        shopname: true,
+                    },
+                },
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+                updatedBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+            },
+        });
 
         return res
             .status(200)
             .json(
                 new ApiResponse(
                     200,
-                    purchases,
+                    purchases.map(mapPurchase),
                     "Purchases fetched successfully"
                 )
             );
@@ -49,32 +162,43 @@ const getPurchaseDetails = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
 
     try {
-        const purchase = await Purchase.findById(id);
+        const purchase = await findPurchaseByAnyId(id);
 
         if (!purchase) {
             return next(new ApiError(404, "Purchase not found"));
         }
 
-        if (
-            req.user.role !== "admin" &&
-            !purchase.created_by.equals(req.user._id)
-        ) {
+        if (req.user.role !== "admin" && purchase.createdById !== req.user.prismaId) {
             return next(
-                new ApiError(
-                    403,
-                    "You don't have permission to view this purchase"
-                )
+                new ApiError(403, "You don't have permission to view this purchase")
             );
         }
 
-        const details = await PurchaseDetail.getDetailsByPurchaseId(id);
+        const details = await prisma.purchaseDetail.findMany({
+            where: { purchaseId: purchase.id },
+            include: {
+                purchase: {
+                    select: { id: true, legacyMongoId: true },
+                },
+                product: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        productName: true,
+                        productCode: true,
+                        stock: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: "asc" },
+        });
 
         return res
             .status(200)
             .json(
                 new ApiResponse(
                     200,
-                    details,
+                    details.map(mapPurchaseDetail),
                     "Purchase details fetched successfully"
                 )
             );
@@ -95,7 +219,7 @@ const updatePurchaseStatus = asyncHandler(async (req, res, next) => {
         const result = await purchaseService.updatePurchaseStatus(
             id,
             purchase_status,
-            req.user._id,
+            req.user.prismaId,
             req.user.role
         );
 
@@ -117,53 +241,55 @@ const getReturnPreview = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
 
     try {
-        const purchase = await Purchase.findById(id);
+        const purchase = await findPurchaseByAnyId(id);
 
         if (!purchase) {
             return next(new ApiError(404, "Purchase not found"));
         }
 
-        if (
-            req.user.role !== "admin" &&
-            !purchase.created_by.equals(req.user._id)
-        ) {
+        if (req.user.role !== "admin" && purchase.createdById !== req.user.prismaId) {
             return next(
-                new ApiError(
-                    403,
-                    "You don't have permission to view this purchase"
-                )
+                new ApiError(403, "You don't have permission to view this purchase")
             );
         }
 
-        if (purchase.purchase_status === "returned") {
+        if (purchase.purchaseStatus === "returned") {
             return next(new ApiError(400, "Purchase is already returned"));
         }
 
-        if (purchase.purchase_status !== "completed") {
-            return next(
-                new ApiError(400, "Only completed purchases can be returned")
-            );
+        if (purchase.purchaseStatus !== "completed") {
+            return next(new ApiError(400, "Only completed purchases can be returned"));
         }
 
-        const purchaseDetails = await PurchaseDetail.find({
-            purchase_id: id,
-        }).populate("product_id", "product_name stock");
+        const purchaseDetails = await prisma.purchaseDetail.findMany({
+            where: { purchaseId: purchase.id },
+            include: {
+                product: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        productName: true,
+                        stock: true,
+                    },
+                },
+            },
+        });
 
         let totalPotentialRefund = 0;
 
         const returnPreview = purchaseDetails.map((detail) => {
-            const product = detail.product_id;
+            const product = detail.product;
             const returnableQuantity = Math.min(detail.quantity, product.stock);
-            const refundAmount = returnableQuantity * detail.unitcost;
+            const refundAmount = returnableQuantity * Number(detail.unitcost);
             totalPotentialRefund += refundAmount;
 
             return {
-                product_id: product._id,
-                product_name: product.product_name,
+                product_id: toExternalId(product),
+                product_name: product.productName,
                 purchased_quantity: detail.quantity,
                 current_stock: product.stock,
                 returnable_quantity: returnableQuantity,
-                unit_cost: detail.unitcost,
+                unit_cost: Number(detail.unitcost),
                 potential_refund: refundAmount,
                 can_fully_return: returnableQuantity === detail.quantity,
             };
@@ -173,8 +299,8 @@ const getReturnPreview = asyncHandler(async (req, res, next) => {
             new ApiResponse(
                 200,
                 {
-                    purchase_id: id,
-                    purchase_no: purchase.purchase_no,
+                    purchase_id: toExternalId(purchase),
+                    purchase_no: purchase.purchaseNo,
                     total_potential_refund: totalPotentialRefund,
                     return_preview: returnPreview,
                 },

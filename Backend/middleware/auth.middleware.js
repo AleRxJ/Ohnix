@@ -1,7 +1,10 @@
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
-import { User } from "../models/user.model.js";
+import { prisma } from "../db/prisma.js";
+
+const shouldLogAuthDebug =
+    process.env.NODE_ENV !== "production" || process.env.AUTH_DEBUG === "true";
 
 export const verifyJWT = asyncHandler(async (req, _, next) => {
     try {
@@ -12,13 +15,15 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
             req.body?.accessToken ||
             req.query?.accessToken;
 
-        console.log("Token sources:", {
-            cookies: !!req.cookies?.accessToken,
-            authorization: !!req.header("Authorization"),
-            body: !!req.body?.accessToken,
-            query: !!req.query?.accessToken,
-            foundToken: !!token,
-        });
+        if (shouldLogAuthDebug) {
+            console.log("Token sources:", {
+                cookies: !!req.cookies?.accessToken,
+                authorization: !!req.header("Authorization"),
+                body: !!req.body?.accessToken,
+                query: !!req.query?.accessToken,
+                foundToken: !!token,
+            });
+        }
 
         if (!token) {
             return next(
@@ -36,9 +41,24 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
             );
         }
 
-        const user = await User.findById(decodedToken?._id).select(
-            "-password -refreshToken"
-        );
+        const tokenUserId = decodedToken?._id;
+
+        const user = await prisma.user.findFirst({
+            where: {
+                OR: [{ id: tokenUserId }, { legacyMongoId: tokenUserId }],
+            },
+            select: {
+                id: true,
+                legacyMongoId: true,
+                username: true,
+                email: true,
+                role: true,
+                avatar: true,
+                isVerified: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
 
         if (!user) {
             return next(
@@ -46,7 +66,11 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
             );
         }
 
-        req.user = user;
+        req.user = {
+            ...user,
+            _id: user.legacyMongoId || user.id,
+            prismaId: user.id,
+        };
         next();
     } catch (error) {
         console.error("Auth middleware error:", error);

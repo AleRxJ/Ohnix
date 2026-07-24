@@ -20,7 +20,7 @@ connectDB()
         });
     })
     .catch((err) => {
-        console.log("MongoDB connection failed !!! ", err);
+        console.log("Database connection failed !!! ", err);
     });
 
 // Graceful shutdown for local/node runtime.

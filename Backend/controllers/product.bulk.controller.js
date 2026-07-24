@@ -1,9 +1,7 @@
-import { Product } from "../models/product.model.js";
-import { Category } from "../models/category.model.js";
-import { Unit } from "../models/unit.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { prisma } from "../db/prisma.js";
 import fs from "fs";
 
 const parseCSV = (csvText) => {
@@ -85,9 +83,7 @@ export const bulkUploadProducts = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "CSV file is empty or has no data rows"));
     }
 
-    const missingColumns = REQUIRED_COLUMNS.filter(
-        (col) => !headers.includes(col)
-    );
+    const missingColumns = REQUIRED_COLUMNS.filter((col) => !headers.includes(col));
     if (missingColumns.length > 0) {
         return next(
             new ApiError(
@@ -106,45 +102,53 @@ export const bulkUploadProducts = asyncHandler(async (req, res, next) => {
         );
     }
 
-    const userId = req.user._id;
+    const userId = req.user.prismaId;
 
-    const [userCategories, adminCategories, allUnits] = await Promise.all([
-        Category.getCategoriesByUser(userId),
-        Category.getAdminCategories(),
-        Unit.getUnitsByUser(userId),
+    const [availableCategories, allUnits] = await Promise.all([
+        prisma.category.findMany({
+            where:
+                req.user.role === "admin"
+                    ? {}
+                    : {
+                          OR: [
+                              { createdById: userId },
+                              { createdBy: { role: "admin" } },
+                          ],
+                      },
+            select: {
+                id: true,
+                categoryName: true,
+            },
+        }),
+        prisma.unit.findMany({
+            where: req.user.role === "admin" ? {} : { createdById: userId },
+            select: {
+                id: true,
+                unitName: true,
+            },
+        }),
     ]);
 
-    const seen = new Set();
-    const availableCategories = [];
-    for (const cat of [...userCategories, ...adminCategories]) {
-        const id = cat._id.toString();
-        if (!seen.has(id)) {
-            seen.add(id);
-            availableCategories.push(cat);
-        }
-    }
-
     const categoryMap = new Map(
-        availableCategories.map((c) => [c.category_name.toLowerCase(), c._id])
+        availableCategories.map((c) => [c.categoryName.toLowerCase(), c.id])
     );
-    const unitMap = new Map(
-        allUnits.map((u) => [u.unit_name.toLowerCase(), u._id])
-    );
+    const unitMap = new Map(allUnits.map((u) => [u.unitName.toLowerCase(), u.id]));
 
     const incomingCodes = rows
-        .map((r) => r.product_code?.toUpperCase())
+        .map((r) => r.product_code?.trim()?.toUpperCase())
         .filter(Boolean);
 
-    const existingProducts = await Product.find({
-        product_code: { $in: incomingCodes },
-        created_by: userId,
-    })
-        .select("product_code")
-        .lean();
+    const existingProducts = incomingCodes.length
+        ? await prisma.product.findMany({
+              where: {
+                  createdById: userId,
+                  productCode: { in: incomingCodes },
+              },
+              select: { productCode: true },
+          })
+        : [];
 
-    const existingCodeSet = new Set(
-        existingProducts.map((p) => p.product_code.toUpperCase())
-    );
+    const existingCodeSet = new Set(existingProducts.map((p) => p.productCode));
 
     const errors = [];
     const validProducts = [];
@@ -158,8 +162,8 @@ export const bulkUploadProducts = asyncHandler(async (req, res, next) => {
         const productCode = row.product_code?.trim()?.toUpperCase();
         const categoryName = row.category_name?.trim();
         const unitName = row.unit_name?.trim();
-        const buyingPrice = parseFloat(row.buying_price);
-        const sellingPrice = parseFloat(row.selling_price);
+        const buyingPrice = Number(row.buying_price);
+        const sellingPrice = Number(row.selling_price);
 
         if (!productName) rowErrors.push("product_name is required");
         if (!productCode) {
@@ -184,24 +188,22 @@ export const bulkUploadProducts = asyncHandler(async (req, res, next) => {
             rowErrors.push(`Unit "${unitName}" not found`);
         }
 
-        if (!row.buying_price || isNaN(buyingPrice) || buyingPrice < 0) {
+        if (!row.buying_price || Number.isNaN(buyingPrice) || buyingPrice < 0) {
             rowErrors.push("buying_price must be a non-negative number");
         }
-        if (!row.selling_price || isNaN(sellingPrice) || sellingPrice < 0) {
+        if (!row.selling_price || Number.isNaN(sellingPrice) || sellingPrice < 0) {
             rowErrors.push("selling_price must be a non-negative number");
         }
         if (
-            !isNaN(buyingPrice) &&
-            !isNaN(sellingPrice) &&
+            !Number.isNaN(buyingPrice) &&
+            !Number.isNaN(sellingPrice) &&
             sellingPrice < buyingPrice
         ) {
             rowErrors.push("selling_price must be >= buying_price");
         }
 
         if (productCode && seenCodesInBatch.has(productCode)) {
-            rowErrors.push(
-                `Duplicate product_code "${productCode}" within this file`
-            );
+            rowErrors.push(`Duplicate product_code "${productCode}" within this file`);
         } else if (productCode) {
             seenCodesInBatch.add(productCode);
         }
@@ -216,19 +218,23 @@ export const bulkUploadProducts = asyncHandler(async (req, res, next) => {
                 product_code: productCode || "N/A",
                 errors: rowErrors,
             });
-        } else {
-            validProducts.push({
-                product_name: productName,
-                product_code: productCode,
-                category_id: categoryId,
-                unit_id: unitId,
-                buying_price: buyingPrice,
-                selling_price: sellingPrice,
-                product_image: "default-product.png",
-                stock: 0,
-                created_by: userId,
-            });
+            return;
         }
+
+        validProducts.push({
+            row: rowNum,
+            data: {
+                productName,
+                productCode,
+                categoryId,
+                unitId,
+                buyingPrice,
+                sellingPrice,
+                productImage: "default-product.png",
+                stock: 0,
+                createdById: userId,
+            },
+        });
     });
 
     if (validProducts.length === 0) {
@@ -246,26 +252,22 @@ export const bulkUploadProducts = asyncHandler(async (req, res, next) => {
     let insertedCount = 0;
     const dbErrors = [];
 
-    try {
-        const result = await Product.insertMany(validProducts, {
-            ordered: false,
-        });
-        insertedCount = result.length;
-    } catch (err) {
-        if (err.name === "BulkWriteError" || err.writeErrors) {
-            insertedCount = err.result?.nInserted || 0;
-            (err.writeErrors || []).forEach((we) => {
-                const doc = validProducts[we.index];
+    for (const rowItem of validProducts) {
+        try {
+            await prisma.product.create({ data: rowItem.data });
+            insertedCount += 1;
+        } catch (error) {
+            if (error.code === "P2002") {
                 dbErrors.push({
-                    row: "DB",
-                    product_code: doc?.product_code || "Unknown",
+                    row: rowItem.row,
+                    product_code: rowItem.data.productCode,
                     errors: [
                         "Duplicate product code (concurrent upload detected)",
                     ],
                 });
-            });
-        } else {
-            return next(new ApiError(500, err.message));
+            } else {
+                return next(new ApiError(500, error.message));
+            }
         }
     }
 

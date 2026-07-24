@@ -1,37 +1,96 @@
-import { Unit } from "../models/unit.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { prisma } from "../db/prisma.js";
+
+const toExternalId = (entity) => entity.legacyMongoId || entity.id;
+
+const mapUnit = (unit) => ({
+    _id: toExternalId(unit),
+    unit_name: unit.unitName,
+    created_by: {
+        _id: toExternalId(unit.createdBy),
+        username: unit.createdBy.username,
+    },
+    updated_by: unit.updatedBy
+        ? {
+              _id: toExternalId(unit.updatedBy),
+              username: unit.updatedBy.username,
+          }
+        : null,
+    createdAt: unit.createdAt,
+    updatedAt: unit.updatedAt,
+});
+
+const findUnitByAnyId = async (id) =>
+    prisma.unit.findFirst({
+        where: {
+            OR: [{ id }, { legacyMongoId: id }],
+        },
+        include: {
+            createdBy: {
+                select: {
+                    id: true,
+                    legacyMongoId: true,
+                    username: true,
+                },
+            },
+            updatedBy: {
+                select: {
+                    id: true,
+                    legacyMongoId: true,
+                    username: true,
+                },
+            },
+        },
+    });
 
 const createUnit = asyncHandler(async (req, res, next) => {
     const { unit_name } = req.body;
 
-    if (!unit_name) {
+    if (!unit_name?.trim()) {
         return next(new ApiError(400, "Unit name is required"));
     }
 
     try {
-        const existingUnit = await Unit.findOne({
-            unit_name,
-            created_by: req.user._id,
+        const existingUnit = await prisma.unit.findFirst({
+            where: {
+                unitName: unit_name.trim(),
+                createdById: req.user.prismaId,
+            },
+            select: { id: true },
         });
 
         if (existingUnit) {
             return next(new ApiError(409, "Unit already exists"));
         }
 
-        const unit = await Unit.createUnit({
-            unit_name,
-            created_by: req.user._id,
+        const created = await prisma.unit.create({
+            data: {
+                unitName: unit_name.trim(),
+                createdById: req.user.prismaId,
+            },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+                updatedBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+            },
         });
-
-        if (!unit) {
-            return next(new ApiError(500, "Failed to create unit"));
-        }
 
         return res
             .status(201)
-            .json(new ApiResponse(201, unit, "Unit created successfully"));
+            .json(new ApiResponse(201, mapUnit(created), "Unit created successfully"));
     } catch (error) {
         return next(new ApiError(500, error.message));
     }
@@ -39,19 +98,33 @@ const createUnit = asyncHandler(async (req, res, next) => {
 
 const getAllUnits = asyncHandler(async (req, res, next) => {
     try {
-        let units;
+        const where =
+            req.user.role === "admin" ? {} : { createdById: req.user.prismaId };
 
-        if (req.user.role === "admin") {
-            // Admin can see all units
-            units = await Unit.getAllUnits();
-        } else {
-            // Regular user can only see their units
-            units = await Unit.getUnitsByUser(req.user._id);
-        }
+        const units = await prisma.unit.findMany({
+            where,
+            orderBy: { createdAt: "desc" },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+                updatedBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+            },
+        });
 
         return res
             .status(200)
-            .json(new ApiResponse(200, units, "Units fetched successfully"));
+            .json(new ApiResponse(200, units.map(mapUnit), "Units fetched successfully"));
     } catch (error) {
         return next(new ApiError(500, error.message));
     }
@@ -61,37 +134,12 @@ const updateUnit = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
     const { unit_name } = req.body;
 
-    if (!unit_name) {
+    if (!unit_name?.trim()) {
         return next(new ApiError(400, "Unit name is required"));
     }
 
     try {
-        let unit;
-
-        if (req.user.role === "admin") {
-            // Admin can update any unit
-            unit = await Unit.findByIdAndUpdate(
-                id,
-                {
-                    unit_name,
-                    updated_by: req.user._id,
-                },
-                { new: true }
-            );
-        } else {
-            // Regular user can only update their own units
-            unit = await Unit.findOneAndUpdate(
-                {
-                    _id: id,
-                    created_by: req.user._id,
-                },
-                {
-                    unit_name,
-                    updated_by: req.user._id,
-                },
-                { new: true }
-            );
-        }
+        const unit = await findUnitByAnyId(id);
 
         if (!unit) {
             return next(
@@ -102,9 +150,42 @@ const updateUnit = asyncHandler(async (req, res, next) => {
             );
         }
 
+        if (req.user.role !== "admin" && unit.createdById !== req.user.prismaId) {
+            return next(
+                new ApiError(
+                    404,
+                    "Unit not found or you don't have permission to update it"
+                )
+            );
+        }
+
+        const updated = await prisma.unit.update({
+            where: { id: unit.id },
+            data: {
+                unitName: unit_name.trim(),
+                updatedById: req.user.prismaId,
+            },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+                updatedBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+            },
+        });
+
         return res
             .status(200)
-            .json(new ApiResponse(200, unit, "Unit updated successfully"));
+            .json(new ApiResponse(200, mapUnit(updated), "Unit updated successfully"));
     } catch (error) {
         return next(new ApiError(500, error.message));
     }
@@ -114,18 +195,7 @@ const deleteUnit = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
 
     try {
-        let unit;
-
-        if (req.user.role === "admin") {
-            // Admin can delete any unit
-            unit = await Unit.findByIdAndDelete(id);
-        } else {
-            // Regular user can only delete their own units
-            unit = await Unit.findOneAndDelete({
-                _id: id,
-                created_by: req.user._id,
-            });
-        }
+        const unit = await findUnitByAnyId(id);
 
         if (!unit) {
             return next(
@@ -135,6 +205,17 @@ const deleteUnit = asyncHandler(async (req, res, next) => {
                 )
             );
         }
+
+        if (req.user.role !== "admin" && unit.createdById !== req.user.prismaId) {
+            return next(
+                new ApiError(
+                    404,
+                    "Unit not found or you don't have permission to delete it"
+                )
+            );
+        }
+
+        await prisma.unit.delete({ where: { id: unit.id } });
 
         return res
             .status(200)

@@ -22,12 +22,12 @@ router
     .post(upload.single("product_image"), createProduct)
     .get(getAllProducts);
 
+// Admin route
+router.route("/all").get(isAdmin, getAllProductsAdmin);
+
 router
     .route("/:id")
     .patch(upload.single("product_image"), updateProduct)
     .delete(deleteProduct);
-
-// Admin route
-router.route("/all").get(isAdmin, getAllProductsAdmin);
 
 export default router;

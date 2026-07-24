@@ -1,8 +1,7 @@
-import mongoose from "mongoose";
-import { Order } from "../models/order.model.js";
-import { OrderDetail } from "../models/order-detail.model.js";
-import { Product } from "../models/product.model.js";
+import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
+
+const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
 const generateInvoiceNo = () => {
     const ts = Date.now().toString(36).toUpperCase();
@@ -10,26 +9,84 @@ const generateInvoiceNo = () => {
     return `${ts}${rand}`.substring(0, 10);
 };
 
+const findCustomerByAnyId = async (id) =>
+    prisma.customer.findFirst({
+        where: {
+            OR: [{ id }, { legacyMongoId: id }],
+        },
+        select: {
+            id: true,
+            createdById: true,
+        },
+    });
+
+const findProductByAnyId = async (id) =>
+    prisma.product.findFirst({
+        where: {
+            OR: [{ id }, { legacyMongoId: id }],
+        },
+        select: {
+            id: true,
+            legacyMongoId: true,
+            productName: true,
+            productCode: true,
+            createdById: true,
+            stock: true,
+        },
+    });
+
+const findOrderByAnyId = async (id) =>
+    prisma.order.findFirst({
+        where: {
+            OR: [{ id }, { legacyMongoId: id }],
+        },
+        select: {
+            id: true,
+            createdById: true,
+            orderStatus: true,
+        },
+    });
+
 class OrderService {
-    async createOrder(orderData, userId) {
+    async createOrder(orderData, userId, userRole) {
         const { customer_id, sub_total, gst, total, order_status, orderItems } =
             orderData;
 
-        if (
-            !customer_id ||
-            !Array.isArray(orderItems) ||
-            orderItems.length === 0
-        ) {
+        if (!customer_id || !Array.isArray(orderItems) || orderItems.length === 0) {
             throw new ApiError(400, "Invalid order data");
         }
 
-        let invoice_no;
+        const customer = await findCustomerByAnyId(customer_id);
+        if (!customer) {
+            throw new ApiError(404, "Customer not found");
+        }
+
+        if (userRole !== "admin" && customer.createdById !== userId) {
+            throw new ApiError(403, "You don't have permission to use this customer");
+        }
+
+        for (const item of orderItems) {
+            if (!item.product_id || !item.quantity || !item.unitcost) {
+                throw new ApiError(400, "Invalid order item data");
+            }
+            if (Number(item.quantity) < 1) {
+                throw new ApiError(400, "Quantity must be at least 1");
+            }
+            if (Number(item.unitcost) < 0) {
+                throw new ApiError(400, "Unit cost must be non-negative");
+            }
+        }
+
+        let invoiceNo;
         let attempts = 0;
         do {
-            invoice_no = generateInvoiceNo();
-            const existing = await Order.findOne({ invoice_no }).lean();
+            invoiceNo = generateInvoiceNo();
+            const existing = await prisma.order.findUnique({
+                where: { invoiceNo },
+                select: { id: true },
+            });
             if (!existing) break;
-            attempts++;
+            attempts += 1;
         } while (attempts < 5);
 
         if (attempts >= 5) {
@@ -42,9 +99,35 @@ class OrderService {
         const initialStatus = order_status || "pending";
         const shouldDeductStock = initialStatus === "completed";
 
+        const resolvedItems = [];
+        for (const item of orderItems) {
+            const product = await findProductByAnyId(item.product_id);
+            if (!product) {
+                throw new ApiError(400, "One or more products not found");
+            }
+            if (userRole !== "admin" && product.createdById !== userId) {
+                throw new ApiError(403, "You don't have permission to use one or more products");
+            }
+            resolvedItems.push({
+                product,
+                quantity: Number(item.quantity),
+                unitcost: Number(item.unitcost),
+            });
+        }
+
         if (shouldDeductStock) {
-            const insufficientItems =
-                await Product.findInsufficientStock(orderItems);
+            const insufficientItems = resolvedItems
+                .filter((item) => item.product.stock < item.quantity)
+                .map((item) => ({
+                    product_id: toExternalId(item.product),
+                    product_name: item.product.productName,
+                    product_code: item.product.productCode,
+                    requested: item.quantity,
+                    available: item.product.stock,
+                    reason:
+                        item.product.stock === 0 ? "out_of_stock" : "insufficient_stock",
+                }));
+
             if (insufficientItems.length > 0) {
                 throw new ApiError(
                     422,
@@ -54,111 +137,71 @@ class OrderService {
             }
         }
 
-        let session = null;
-        let transactionStarted = false;
+        const order = await prisma.$transaction(async (tx) => {
+            const createdOrder = await tx.order.create({
+                data: {
+                    customerId: customer.id,
+                    orderDate: new Date(),
+                    orderStatus: initialStatus,
+                    totalProducts: orderItems.length,
+                    subTotal: Number(sub_total),
+                    gst: Number(gst || 0),
+                    total: Number(total),
+                    invoiceNo,
+                    createdById: userId,
+                    updatedById: userId,
+                },
+            });
 
-        // Try to start a transaction; if MongoDB does not support it (standalone), fall back
-        try {
-            session = await mongoose.startSession();
-            session.startTransaction();
-            transactionStarted = true;
-        } catch (txErr) {
-            console.warn(
-                "Transactions not supported by MongoDB instance, proceeding without transaction",
-                txErr.message
-            );
-            // ensure session is ended if startTransaction failed
-            try {
-                if (session) session.endSession();
-            } catch (e) {}
-            session = null;
-        }
-
-        try {
-            const createOpts = session ? { session } : {};
-            const [order] = await Order.create(
-                [
-                    {
-                        customer_id,
-                        order_date: new Date(),
-                        order_status: initialStatus,
-                        total_products: orderItems.length,
-                        sub_total,
-                        gst,
-                        total,
-                        invoice_no,
-                        created_by: userId,
-                        updated_by: userId,
+            for (const item of resolvedItems) {
+                await tx.orderDetail.create({
+                    data: {
+                        orderId: createdOrder.id,
+                        productId: item.product.id,
+                        quantity: item.quantity,
+                        unitcost: item.unitcost,
+                        total: item.quantity * item.unitcost,
                     },
-                ],
-                createOpts
-            );
+                });
 
-            await OrderDetail.bulkCreateDetails(
-                orderItems.map((item) => ({
-                    order_id: order._id,
-                    product_id: item.product_id,
-                    quantity: item.quantity,
-                    unitcost: item.unitcost,
-                    total: item.quantity * item.unitcost,
-                })),
-                session
-            );
-
-            if (shouldDeductStock) {
-                for (const item of orderItems) {
-                    const updated = await Product.deductStock(
-                        item.product_id,
-                        item.quantity,
-                        session
-                    );
-                    if (!updated) {
-                        throw new ApiError(
-                            422,
-                            `Insufficient stock for product ID: ${item.product_id}. Please refresh and try again.`
-                        );
-                    }
+                if (shouldDeductStock) {
+                    await tx.product.update({
+                        where: { id: item.product.id },
+                        data: {
+                            stock: { decrement: item.quantity },
+                        },
+                    });
                 }
             }
 
-            if (transactionStarted && session) {
-                await session.commitTransaction();
-            }
+            return createdOrder;
+        });
 
-            return order;
-        } catch (err) {
-            if (transactionStarted && session) {
-                try {
-                    await session.abortTransaction();
-                } catch (e) {
-                    console.error("Failed to abort transaction:", e.message);
-                }
-            }
-            throw err;
-        } finally {
-            if (session) {
-                try {
-                    session.endSession();
-                } catch (e) {}
-            }
-        }
+        return {
+            _id: toExternalId(order),
+            customer_id,
+            order_date: order.orderDate,
+            order_status: order.orderStatus,
+            total_products: order.totalProducts,
+            sub_total: Number(order.subTotal),
+            gst: Number(order.gst),
+            total: Number(order.total),
+            invoice_no: order.invoiceNo,
+            created_by: userId,
+            createdAt: order.createdAt,
+            updatedAt: order.updatedAt,
+        };
     }
 
     async updateOrderStatus(orderId, newStatus, userId, userRole) {
-        const order = await Order.findById(orderId);
+        const order = await findOrderByAnyId(orderId);
 
         if (!order) {
             throw new ApiError(404, "Order not found");
         }
 
-        if (
-            userRole !== "admin" &&
-            order.created_by.toString() !== userId.toString()
-        ) {
-            throw new ApiError(
-                403,
-                "You are not authorized to update this order"
-            );
+        if (userRole !== "admin" && order.createdById !== userId) {
+            throw new ApiError(403, "You are not authorized to update this order");
         }
 
         const validTransitions = {
@@ -168,25 +211,41 @@ class OrderService {
             cancelled: [],
         };
 
-        if (!validTransitions[order.order_status]?.includes(newStatus)) {
+        if (!validTransitions[order.orderStatus]?.includes(newStatus)) {
             throw new ApiError(
                 400,
-                `Cannot transition order from "${order.order_status}" to "${newStatus}"`
+                `Cannot transition order from "${order.orderStatus}" to "${newStatus}"`
             );
         }
 
         if (newStatus === "completed") {
-            const details = await OrderDetail.find({
-                order_id: orderId,
-            }).lean();
+            const details = await prisma.orderDetail.findMany({
+                where: { orderId: order.id },
+                include: {
+                    product: {
+                        select: {
+                            id: true,
+                            legacyMongoId: true,
+                            productName: true,
+                            productCode: true,
+                            stock: true,
+                        },
+                    },
+                },
+            });
 
-            const items = details.map((d) => ({
-                product_id: d.product_id,
-                quantity: d.quantity,
-            }));
+            const insufficientItems = details
+                .filter((d) => d.product.stock < d.quantity)
+                .map((d) => ({
+                    product_id: toExternalId(d.product),
+                    product_name: d.product.productName,
+                    product_code: d.product.productCode,
+                    requested: d.quantity,
+                    available: d.product.stock,
+                    reason:
+                        d.product.stock === 0 ? "out_of_stock" : "insufficient_stock",
+                }));
 
-            const insufficientItems =
-                await Product.findInsufficientStock(items);
             if (insufficientItems.length > 0) {
                 throw new ApiError(
                     422,
@@ -195,45 +254,45 @@ class OrderService {
                 );
             }
 
-            const session = await mongoose.startSession();
-            session.startTransaction();
-
-            try {
+            const updated = await prisma.$transaction(async (tx) => {
                 for (const detail of details) {
-                    const updated = await Product.deductStock(
-                        detail.product_id,
-                        detail.quantity,
-                        session
-                    );
-                    if (!updated) {
-                        throw new ApiError(
-                            422,
-                            `Insufficient stock for product ID: ${detail.product_id}. Please refresh and try again.`
-                        );
-                    }
+                    await tx.product.update({
+                        where: { id: detail.product.id },
+                        data: {
+                            stock: { decrement: detail.quantity },
+                        },
+                    });
                 }
 
-                const updated = await Order.findByIdAndUpdate(
-                    orderId,
-                    { order_status: newStatus, updated_by: userId },
-                    { new: true, session }
-                );
+                return tx.order.update({
+                    where: { id: order.id },
+                    data: {
+                        orderStatus: newStatus,
+                        updatedById: userId,
+                    },
+                });
+            });
 
-                await session.commitTransaction();
-                return updated;
-            } catch (err) {
-                await session.abortTransaction();
-                throw err;
-            } finally {
-                session.endSession();
-            }
+            return {
+                _id: toExternalId(updated),
+                order_status: updated.orderStatus,
+                updatedAt: updated.updatedAt,
+            };
         }
 
-        return Order.findByIdAndUpdate(
-            orderId,
-            { order_status: newStatus, updated_by: userId },
-            { new: true }
-        );
+        const updated = await prisma.order.update({
+            where: { id: order.id },
+            data: {
+                orderStatus: newStatus,
+                updatedById: userId,
+            },
+        });
+
+        return {
+            _id: toExternalId(updated),
+            order_status: updated.orderStatus,
+            updatedAt: updated.updatedAt,
+        };
     }
 }
 

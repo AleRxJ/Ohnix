@@ -1,52 +1,137 @@
-import { Category } from "../models/category.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { prisma } from "../db/prisma.js";
+
+const toExternalId = (entity) => entity.legacyMongoId || entity.id;
+
+const mapCategory = (category) => ({
+    _id: toExternalId(category),
+    category_name: category.categoryName,
+    created_by: {
+        _id: toExternalId(category.createdBy),
+        username: category.createdBy.username,
+    },
+    updated_by: category.updatedBy
+        ? {
+              _id: toExternalId(category.updatedBy),
+              username: category.updatedBy.username,
+          }
+        : null,
+    createdAt: category.createdAt,
+    updatedAt: category.updatedAt,
+});
+
+const findCategoryByAnyId = async (id) =>
+    prisma.category.findFirst({
+        where: {
+            OR: [{ id }, { legacyMongoId: id }],
+        },
+        include: {
+            createdBy: {
+                select: {
+                    id: true,
+                    legacyMongoId: true,
+                    username: true,
+                },
+            },
+            updatedBy: {
+                select: {
+                    id: true,
+                    legacyMongoId: true,
+                    username: true,
+                },
+            },
+        },
+    });
 
 const createCategory = asyncHandler(async (req, res, next) => {
     const { category_name } = req.body;
 
-    if (!category_name) {
+    if (!category_name?.trim()) {
         return next(new ApiError(400, "Category name is required"));
     }
 
+    const creatorId = req.user.prismaId;
+
     try {
-        const existingCategory = await Category.findOne({
-            category_name,
-            created_by: req.user._id,
+        const existingCategory = await prisma.category.findFirst({
+            where: {
+                categoryName: category_name.trim(),
+                createdById: creatorId,
+            },
+            select: { id: true },
         });
 
         if (existingCategory) {
             return next(new ApiError(409, "Category already exists"));
         }
 
-        const categoryData = {
-            category_name,
-            created_by: req.user._id,
-        };
-
-        const category = await Category.createCategory(categoryData);
+        const created = await prisma.category.create({
+            data: {
+                categoryName: category_name.trim(),
+                createdById: creatorId,
+            },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+                updatedBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+            },
+        });
 
         return res
             .status(201)
             .json(
-                new ApiResponse(201, category, "Category created successfully")
+                new ApiResponse(
+                    201,
+                    mapCategory(created),
+                    "Category created successfully"
+                )
             );
     } catch (error) {
         return next(new ApiError(500, error.message));
     }
 });
 
-const getAllCategories = asyncHandler(async (req, res, next) => {
+const getAllCategories = asyncHandler(async (_req, res, next) => {
     try {
-        const categories = await Category.getAllCategories();
+        const categories = await prisma.category.findMany({
+            orderBy: { createdAt: "desc" },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+                updatedBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+            },
+        });
 
         return res
             .status(200)
             .json(
                 new ApiResponse(
                     200,
-                    categories,
+                    categories.map(mapCategory),
                     "All categories fetched successfully"
                 )
             );
@@ -57,14 +142,33 @@ const getAllCategories = asyncHandler(async (req, res, next) => {
 
 const getUserCategories = asyncHandler(async (req, res, next) => {
     try {
-        const categories = await Category.getCategoriesByUser(req.user._id);
+        const categories = await prisma.category.findMany({
+            where: { createdById: req.user.prismaId },
+            orderBy: { createdAt: "desc" },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+                updatedBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+            },
+        });
 
         return res
             .status(200)
             .json(
                 new ApiResponse(
                     200,
-                    categories,
+                    categories.map(mapCategory),
                     "User categories fetched successfully"
                 )
             );
@@ -75,21 +179,39 @@ const getUserCategories = asyncHandler(async (req, res, next) => {
 
 const getAvailableCategories = asyncHandler(async (req, res, next) => {
     try {
-        const userId = req.user._id;
+        const userId = req.user.prismaId;
 
-        const [userCategories, adminCategories] = await Promise.all([
-            Category.getCategoriesByUser(userId),
-            Category.getAdminCategories(),
-        ]);
+        const categories = await prisma.category.findMany({
+            where: {
+                OR: [{ createdById: userId }, { createdBy: { role: "admin" } }],
+            },
+            orderBy: { createdAt: "desc" },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+                updatedBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+            },
+        });
 
+        const deduped = [];
         const seen = new Set();
-        const merged = [];
 
-        for (const cat of [...userCategories, ...adminCategories]) {
-            const id = cat._id.toString();
-            if (!seen.has(id)) {
-                seen.add(id);
-                merged.push(cat);
+        for (const category of categories) {
+            const externalId = toExternalId(category);
+            if (!seen.has(externalId)) {
+                seen.add(externalId);
+                deduped.push(mapCategory(category));
             }
         }
 
@@ -98,7 +220,7 @@ const getAvailableCategories = asyncHandler(async (req, res, next) => {
             .json(
                 new ApiResponse(
                     200,
-                    merged,
+                    deduped,
                     "Available categories fetched successfully"
                 )
             );
@@ -111,20 +233,20 @@ const updateCategory = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
     const { category_name } = req.body;
 
-    if (!category_name) {
+    if (!category_name?.trim()) {
         return next(new ApiError(400, "Category name is required"));
     }
 
     try {
-        const category = await Category.findById(id);
+        const category = await findCategoryByAnyId(id);
 
         if (!category) {
             return next(new ApiError(404, "Category not found"));
         }
 
         if (
-            !req.user.role === "admin" &&
-            !category.created_by.equals(req.user._id)
+            req.user.role !== "admin" &&
+            category.createdById !== req.user.prismaId
         ) {
             return next(
                 new ApiError(
@@ -134,21 +256,36 @@ const updateCategory = asyncHandler(async (req, res, next) => {
             );
         }
 
-        const updatedCategory = await Category.findByIdAndUpdate(
-            id,
-            {
-                category_name,
-                updated_by: req.user._id,
+        const updated = await prisma.category.update({
+            where: { id: category.id },
+            data: {
+                categoryName: category_name.trim(),
+                updatedById: req.user.prismaId,
             },
-            { new: true }
-        );
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+                updatedBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+            },
+        });
 
         return res
             .status(200)
             .json(
                 new ApiResponse(
                     200,
-                    updatedCategory,
+                    mapCategory(updated),
                     "Category updated successfully"
                 )
             );
@@ -161,15 +298,15 @@ const deleteCategory = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
 
     try {
-        const category = await Category.findById(id);
+        const category = await findCategoryByAnyId(id);
 
         if (!category) {
             return next(new ApiError(404, "Category not found"));
         }
 
         if (
-            !req.user.role === "admin" &&
-            !category.created_by.equals(req.user._id)
+            req.user.role !== "admin" &&
+            category.createdById !== req.user.prismaId
         ) {
             return next(
                 new ApiError(
@@ -179,7 +316,7 @@ const deleteCategory = asyncHandler(async (req, res, next) => {
             );
         }
 
-        await Category.findByIdAndDelete(id);
+        await prisma.category.delete({ where: { id: category.id } });
 
         return res
             .status(200)

@@ -1,8 +1,53 @@
-import { Supplier } from "../models/supplier.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
+import { prisma } from "../db/prisma.js";
+
+const toExternalId = (entity) => entity.legacyMongoId || entity.id;
+
+const mapSupplier = (supplier, currentUser) => ({
+    _id: toExternalId(supplier),
+    name: supplier.name,
+    email: supplier.email,
+    phone: supplier.phone,
+    address: supplier.address,
+    shopname: supplier.shopname,
+    type: supplier.type,
+    bank_name: supplier.bankName,
+    account_holder: supplier.accountHolder,
+    account_number: supplier.accountNumber,
+    photo: supplier.photo,
+    owner: supplier.createdBy
+        ? {
+              _id: toExternalId(supplier.createdBy),
+              username: supplier.createdBy.username,
+              email: supplier.createdBy.email,
+          }
+        : null,
+    canEdit: currentUser
+        ? currentUser.role === "admin" || supplier.createdById === currentUser.prismaId
+        : false,
+    createdAt: supplier.createdAt,
+    updatedAt: supplier.updatedAt,
+});
+
+const findSupplierByAnyId = async (id) =>
+    prisma.supplier.findFirst({
+        where: {
+            OR: [{ id }, { legacyMongoId: id }],
+        },
+        include: {
+            createdBy: {
+                select: {
+                    id: true,
+                    legacyMongoId: true,
+                    username: true,
+                    email: true,
+                },
+            },
+        },
+    });
 
 const createSupplier = asyncHandler(async (req, res, next) => {
     const {
@@ -24,67 +69,92 @@ const createSupplier = asyncHandler(async (req, res, next) => {
     }
 
     try {
-        const existingSupplier = await Supplier.findOne({
-            createdBy: req.user._id,
-            $or: [{ email }, { phone }],
+        const existingSupplier = await prisma.supplier.findFirst({
+            where: {
+                createdById: req.user.prismaId,
+                OR: [{ email: email.toLowerCase().trim() }, { phone: phone.trim() }],
+            },
+            select: { id: true },
         });
 
         if (existingSupplier) {
             return next(
-                new ApiError(
-                    409,
-                    "Supplier with this email or phone already exists"
-                )
+                new ApiError(409, "Supplier with this email or phone already exists")
             );
         }
 
-        // Handle photo upload
         let photoUrl = "default-supplier.png";
         if (req.file) {
             const photo = await uploadToCloudinary(req.file);
-
             if (photo) {
                 photoUrl = photo.url;
             }
         }
 
-        const supplierData = {
-            name,
-            email,
-            phone,
-            address,
-            shopname,
-            type,
-            bank_name,
-            account_holder,
-            account_number,
-            photo: photoUrl,
-            createdBy: req.user._id, // Associate supplier with the current user
-        };
-
-        const supplier = await Supplier.createSupplier(supplierData);
+        const supplier = await prisma.supplier.create({
+            data: {
+                name: name.trim(),
+                email: email.toLowerCase().trim(),
+                phone: phone.trim(),
+                address: address.trim(),
+                shopname: shopname?.trim() || null,
+                type: type?.trim() || "individual",
+                bankName: bank_name?.trim() || null,
+                accountHolder: account_holder?.trim() || null,
+                accountNumber: account_number?.trim() || null,
+                photo: photoUrl,
+                createdById: req.user.prismaId,
+            },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                        email: true,
+                    },
+                },
+            },
+        });
 
         return res
             .status(201)
             .json(
-                new ApiResponse(201, supplier, "Supplier created successfully")
+                new ApiResponse(
+                    201,
+                    mapSupplier(supplier, req.user),
+                    "Supplier created successfully"
+                )
             );
     } catch (error) {
         return next(new ApiError(500, error.message));
     }
 });
 
-const getUserSuppliers = asyncHandler(async (req, res, next) => {
+const getSuppliers = asyncHandler(async (req, res, next) => {
     try {
-        const suppliers = await Supplier.getSuppliersByUserId(req.user._id);
+        const suppliers = await prisma.supplier.findMany({
+            where: { createdById: req.user.prismaId },
+            orderBy: { createdAt: "desc" },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                        email: true,
+                    },
+                },
+            },
+        });
 
         return res
             .status(200)
             .json(
                 new ApiResponse(
                     200,
-                    suppliers,
-                    "User suppliers fetched successfully"
+                    suppliers.map((supplier) => mapSupplier(supplier, req.user)),
+                    "Suppliers fetched successfully"
                 )
             );
     } catch (error) {
@@ -94,14 +164,26 @@ const getUserSuppliers = asyncHandler(async (req, res, next) => {
 
 const getAllSuppliers = asyncHandler(async (req, res, next) => {
     try {
-        const suppliers = await Supplier.getAllSuppliers();
+        const suppliers = await prisma.supplier.findMany({
+            orderBy: { createdAt: "desc" },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                        email: true,
+                    },
+                },
+            },
+        });
 
         return res
             .status(200)
             .json(
                 new ApiResponse(
                     200,
-                    suppliers,
+                    suppliers.map((supplier) => mapSupplier(supplier, req.user)),
                     "All suppliers fetched successfully"
                 )
             );
@@ -112,46 +194,79 @@ const getAllSuppliers = asyncHandler(async (req, res, next) => {
 
 const updateSupplier = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
-    const updateData = req.body;
 
     try {
-        // Check if the supplier exists and belongs to the user
-        const existingSupplier = await Supplier.findById(id);
+        const existingSupplier = await findSupplierByAnyId(id);
 
         if (!existingSupplier) {
             return next(new ApiError(404, "Supplier not found"));
         }
 
-        // Check if user owns this supplier or is admin
         if (
-            existingSupplier.createdBy.toString() !== req.user._id.toString() &&
-            req.user.role !== "admin"
+            req.user.role !== "admin" &&
+            existingSupplier.createdById !== req.user.prismaId
         ) {
             return next(
-                new ApiError(
-                    403,
-                    "You don't have permission to update this supplier"
-                )
+                new ApiError(403, "You don't have permission to update this supplier")
             );
         }
 
-        // If photo is being updated
+        let photoUrl = existingSupplier.photo;
         if (req.file) {
             const photo = await uploadToCloudinary(req.file);
-
             if (photo) {
-                updateData.photo = photo.url;
+                photoUrl = photo.url;
             }
         }
 
-        const supplier = await Supplier.findByIdAndUpdate(id, updateData, {
-            new: true,
+        const updatedSupplier = await prisma.supplier.update({
+            where: { id: existingSupplier.id },
+            data: {
+                ...(req.body.name !== undefined && { name: req.body.name.trim() }),
+                ...(req.body.email !== undefined && {
+                    email: req.body.email.toLowerCase().trim(),
+                }),
+                ...(req.body.phone !== undefined && { phone: req.body.phone.trim() }),
+                ...(req.body.address !== undefined && {
+                    address: req.body.address?.trim() || null,
+                }),
+                ...(req.body.shopname !== undefined && {
+                    shopname: req.body.shopname?.trim() || null,
+                }),
+                ...(req.body.type !== undefined && {
+                    type: req.body.type?.trim() || "individual",
+                }),
+                ...(req.body.bank_name !== undefined && {
+                    bankName: req.body.bank_name?.trim() || null,
+                }),
+                ...(req.body.account_holder !== undefined && {
+                    accountHolder: req.body.account_holder?.trim() || null,
+                }),
+                ...(req.body.account_number !== undefined && {
+                    accountNumber: req.body.account_number?.trim() || null,
+                }),
+                photo: photoUrl,
+            },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                        email: true,
+                    },
+                },
+            },
         });
 
         return res
             .status(200)
             .json(
-                new ApiResponse(200, supplier, "Supplier updated successfully")
+                new ApiResponse(
+                    200,
+                    mapSupplier(updatedSupplier, req.user),
+                    "Supplier updated successfully"
+                )
             );
     } catch (error) {
         return next(new ApiError(500, error.message));
@@ -162,27 +277,22 @@ const deleteSupplier = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
 
     try {
-        // Check if the supplier exists and belongs to the user
-        const existingSupplier = await Supplier.findById(id);
+        const existingSupplier = await findSupplierByAnyId(id);
 
         if (!existingSupplier) {
             return next(new ApiError(404, "Supplier not found"));
         }
 
-        // Check if user owns this supplier or is admin
         if (
-            existingSupplier.createdBy.toString() !== req.user._id.toString() &&
-            req.user.role !== "admin"
+            req.user.role !== "admin" &&
+            existingSupplier.createdById !== req.user.prismaId
         ) {
             return next(
-                new ApiError(
-                    403,
-                    "You don't have permission to delete this supplier"
-                )
+                new ApiError(403, "You don't have permission to delete this supplier")
             );
         }
 
-        await Supplier.findByIdAndDelete(id);
+        await prisma.supplier.delete({ where: { id: existingSupplier.id } });
 
         return res
             .status(200)
@@ -194,7 +304,8 @@ const deleteSupplier = asyncHandler(async (req, res, next) => {
 
 export {
     createSupplier,
-    getUserSuppliers,
+    getSuppliers as getUserSuppliers,
+    getSuppliers,
     getAllSuppliers,
     updateSupplier,
     deleteSupplier,

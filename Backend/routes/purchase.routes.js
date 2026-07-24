@@ -16,12 +16,12 @@ router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
 // Regular user routes
 router.route("/").post(createPurchase).get(getAllPurchases);
 
+// Admin routes - if you want specific endpoints just for admins
+router.route("/all").get(isAdmin, getAllPurchases); // Guaranteed to get all purchases
+
 router.route("/:id").get(getPurchaseDetails).patch(updatePurchaseStatus);
 
 // Return preview route - to check what can be returned before processing
 router.route("/:id/return-preview").get(getReturnPreview);
-
-// Admin routes - if you want specific endpoints just for admins
-router.route("/all").get(isAdmin, getAllPurchases); // Guaranteed to get all purchases
 
 export default router;

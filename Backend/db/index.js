@@ -1,12 +1,29 @@
 import mongoose from "mongoose";
 import { DB_NAME } from "../constants.js";
+import { prisma } from "./prisma.js";
 
 let isConnected = false;
+let connectedProvider = null;
 
 const connectDB = async () => {
-    if (isConnected) {
-        console.log("♻️ Reusing existing MongoDB connection");
+    const provider = (process.env.DB_PROVIDER || "mongo").toLowerCase();
+
+    if (isConnected && connectedProvider === provider) {
+        console.log(`♻️ Reusing existing ${provider.toUpperCase()} connection`);
         return;
+    }
+
+    if (provider === "postgres" || provider === "prisma") {
+        try {
+            await prisma.$connect();
+            isConnected = true;
+            connectedProvider = provider;
+            console.log("✅ PostgreSQL connected via Prisma");
+            return;
+        } catch (error) {
+            console.error("❎ PostgreSQL connection FAILED", error);
+            throw error;
+        }
     }
 
     try {
@@ -24,6 +41,7 @@ const connectDB = async () => {
             }
         );
         isConnected = conn.connections[0].readyState === 1;
+        connectedProvider = "mongo";
         console.log(`✅ MongoDB connected: ${conn.connection.host}`);
     } catch (error) {
         console.error("❎ MongoDB connection FAILED", error);

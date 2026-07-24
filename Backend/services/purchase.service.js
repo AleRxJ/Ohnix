@@ -1,14 +1,47 @@
-import mongoose from "mongoose";
-import { Purchase } from "../models/purchase.model.js";
-import { PurchaseDetail } from "../models/purchase-detail.model.js";
-import { Product } from "../models/product.model.js";
-import { Supplier } from "../models/supplier.model.js";
+import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 
+const toExternalId = (entity) => entity.legacyMongoId || entity.id;
+
+const findSupplierByAnyId = async (id) =>
+    prisma.supplier.findFirst({
+        where: {
+            OR: [{ id }, { legacyMongoId: id }],
+        },
+        select: { id: true, createdById: true },
+    });
+
+const findProductByAnyId = async (id) =>
+    prisma.product.findFirst({
+        where: {
+            OR: [{ id }, { legacyMongoId: id }],
+        },
+        select: {
+            id: true,
+            legacyMongoId: true,
+            createdById: true,
+            productName: true,
+            productCode: true,
+            stock: true,
+        },
+    });
+
+const findPurchaseByAnyId = async (id) =>
+    prisma.purchase.findFirst({
+        where: {
+            OR: [{ id }, { legacyMongoId: id }],
+        },
+        select: {
+            id: true,
+            legacyMongoId: true,
+            purchaseStatus: true,
+            createdById: true,
+        },
+    });
+
 class PurchaseService {
-    async createPurchase(purchaseData, userId) {
-        const { supplier_id, purchase_no, purchase_status, details } =
-            purchaseData;
+    async createPurchase(purchaseData, userId, userRole) {
+        const { supplier_id, purchase_no, purchase_status, details } = purchaseData;
 
         if (
             !supplier_id ||
@@ -19,115 +52,126 @@ class PurchaseService {
             throw new ApiError(400, "Invalid purchase data");
         }
 
-        const supplier = await Supplier.findById(supplier_id).lean();
+        const supplier = await findSupplierByAnyId(supplier_id);
         if (!supplier) {
             throw new ApiError(404, "Supplier not found");
         }
 
-        const productIds = details.map((d) => d.product_id?.toString());
+        if (userRole !== "admin" && supplier.createdById !== userId) {
+            throw new ApiError(403, "You don't have permission to use this supplier");
+        }
+
+        const productIds = details.map((d) => d.product_id?.toString()).filter(Boolean);
         const uniqueProductIds = [...new Set(productIds)];
         if (uniqueProductIds.length !== productIds.length) {
             throw new ApiError(400, "Duplicate products in purchase details");
         }
 
-        const products = await Product.find({
-            _id: { $in: uniqueProductIds },
-        })
-            .select("_id")
-            .lean();
-
-        if (products.length !== uniqueProductIds.length) {
+        const products = await Promise.all(uniqueProductIds.map((id) => findProductByAnyId(id)));
+        if (products.some((p) => !p)) {
             throw new ApiError(400, "One or more products not found");
         }
 
-        for (const d of details) {
-            if (!d.quantity || d.quantity < 1) {
-                throw new ApiError(
-                    400,
-                    "Quantity must be at least 1 for all items"
-                );
-            }
-            if (d.unitcost === undefined || d.unitcost < 0) {
-                throw new ApiError(
-                    400,
-                    "Unit cost must be non-negative for all items"
-                );
+        for (const product of products) {
+            if (userRole !== "admin" && product.createdById !== userId) {
+                throw new ApiError(403, "You don't have permission to use one or more products");
             }
         }
 
-        const existing = await Purchase.findOne({ purchase_no }).lean();
+        for (const d of details) {
+            if (!d.quantity || Number(d.quantity) < 1) {
+                throw new ApiError(400, "Quantity must be at least 1 for all items");
+            }
+            if (d.unitcost === undefined || Number(d.unitcost) < 0) {
+                throw new ApiError(400, "Unit cost must be non-negative for all items");
+            }
+        }
+
+        const existing = await prisma.purchase.findUnique({
+            where: { purchaseNo: String(purchase_no).trim() },
+            select: { id: true },
+        });
         if (existing) {
             throw new ApiError(409, "Purchase number already exists");
         }
 
         const initialStatus = purchase_status || "pending";
         if (!["pending", "completed"].includes(initialStatus)) {
-            throw new ApiError(
-                400,
-                `Invalid purchase status: ${initialStatus}`
-            );
+            throw new ApiError(400, `Invalid purchase status: ${initialStatus}`);
         }
 
         const shouldAddStock = initialStatus === "completed";
 
-        const session = await mongoose.startSession();
-        session.startTransaction();
-
         try {
-            const [purchase] = await Purchase.create(
-                [
-                    {
-                        supplier_id,
-                        purchase_no,
-                        purchase_status: initialStatus,
-                        created_by: userId,
+            const purchase = await prisma.$transaction(async (tx) => {
+                const createdPurchase = await tx.purchase.create({
+                    data: {
+                        supplierId: supplier.id,
+                        purchaseNo: String(purchase_no).trim(),
+                        purchaseStatus: initialStatus,
+                        createdById: userId,
+                        updatedById: userId,
                     },
-                ],
-                { session }
-            );
+                });
 
-            await PurchaseDetail.bulkCreateDetails(
-                details.map((d) => ({
-                    purchase_id: purchase._id,
-                    product_id: d.product_id,
-                    quantity: d.quantity,
-                    unitcost: d.unitcost,
-                })),
-                session
-            );
-
-            if (shouldAddStock) {
                 for (const detail of details) {
-                    await Product.restoreStock(
-                        detail.product_id,
-                        detail.quantity,
-                        session
-                    );
-                }
-            }
+                    const mappedProduct = await findProductByAnyId(detail.product_id);
+                    if (!mappedProduct) {
+                        throw new ApiError(400, "One or more products not found");
+                    }
 
-            await session.commitTransaction();
-            return purchase;
+                    await tx.purchaseDetail.create({
+                        data: {
+                            purchaseId: createdPurchase.id,
+                            productId: mappedProduct.id,
+                            quantity: Number(detail.quantity),
+                            unitcost: Number(detail.unitcost),
+                            total: Number(detail.quantity) * Number(detail.unitcost),
+                        },
+                    });
+
+                    if (shouldAddStock) {
+                        await tx.product.update({
+                            where: { id: mappedProduct.id },
+                            data: {
+                                stock: {
+                                    increment: Number(detail.quantity),
+                                },
+                            },
+                        });
+                    }
+                }
+
+                return createdPurchase;
+            });
+
+            return {
+                _id: toExternalId(purchase),
+                purchase_no: purchase.purchaseNo,
+                purchase_date: purchase.purchaseDate,
+                purchase_status: purchase.purchaseStatus,
+                supplier_id,
+                created_by: userId,
+                createdAt: purchase.createdAt,
+                updatedAt: purchase.updatedAt,
+            };
         } catch (err) {
-            await session.abortTransaction();
+            if (err.code === "P2002") {
+                throw new ApiError(409, "Purchase number already exists");
+            }
             throw err;
-        } finally {
-            session.endSession();
         }
     }
 
     async updatePurchaseStatus(purchaseId, newStatus, userId, userRole) {
-        const purchase = await Purchase.findById(purchaseId);
+        const purchase = await findPurchaseByAnyId(purchaseId);
 
         if (!purchase) {
             throw new ApiError(404, "Purchase not found");
         }
 
-        if (userRole !== "admin" && !purchase.created_by.equals(userId)) {
-            throw new ApiError(
-                403,
-                "You don't have permission to update this purchase"
-            );
+        if (userRole !== "admin" && purchase.createdById !== userId) {
+            throw new ApiError(403, "You don't have permission to update this purchase");
         }
 
         const validTransitions = {
@@ -136,52 +180,136 @@ class PurchaseService {
             returned: [],
         };
 
-        if (!validTransitions[purchase.purchase_status]?.includes(newStatus)) {
+        if (!validTransitions[purchase.purchaseStatus]?.includes(newStatus)) {
             throw new ApiError(
                 400,
-                `Cannot transition purchase from "${purchase.purchase_status}" to "${newStatus}"`
+                `Cannot transition purchase from "${purchase.purchaseStatus}" to "${newStatus}"`
             );
         }
-
-        const session = await mongoose.startSession();
-        session.startTransaction();
 
         let returnInfo = null;
 
-        try {
+        const updatedPurchase = await prisma.$transaction(async (tx) => {
             if (newStatus === "returned") {
-                returnInfo = await PurchaseDetail.processAllReturns(
-                    purchaseId,
-                    session
-                );
+                const details = await tx.purchaseDetail.findMany({
+                    where: { purchaseId: purchase.id },
+                    include: {
+                        product: {
+                            select: {
+                                id: true,
+                                legacyMongoId: true,
+                                stock: true,
+                            },
+                        },
+                    },
+                });
+
+                const returnResults = [];
+                let totalRefundAmount = 0;
+
+                for (const detail of details) {
+                    if (detail.returnProcessed) {
+                        returnResults.push({
+                            product_id: toExternalId(detail.product),
+                            purchased_quantity: detail.quantity,
+                            returned_quantity: detail.returnedQuantity,
+                            refund_amount: Number(detail.refundAmount),
+                            fully_returned:
+                                detail.returnedQuantity === detail.quantity,
+                            skipped: true,
+                        });
+                        totalRefundAmount += Number(detail.refundAmount);
+                        continue;
+                    }
+
+                    const returnableQuantity = Math.min(
+                        detail.quantity,
+                        detail.product.stock
+                    );
+
+                    if (returnableQuantity > 0) {
+                        await tx.product.update({
+                            where: { id: detail.product.id },
+                            data: {
+                                stock: {
+                                    decrement: returnableQuantity,
+                                },
+                            },
+                        });
+                    }
+
+                    const refundAmount = returnableQuantity * Number(detail.unitcost);
+                    totalRefundAmount += refundAmount;
+
+                    await tx.purchaseDetail.update({
+                        where: { id: detail.id },
+                        data: {
+                            returnProcessed: true,
+                            returnDate: new Date(),
+                            returnedQuantity: returnableQuantity,
+                            refundAmount,
+                        },
+                    });
+
+                    returnResults.push({
+                        product_id: toExternalId(detail.product),
+                        purchased_quantity: detail.quantity,
+                        returned_quantity: returnableQuantity,
+                        refund_amount: refundAmount,
+                        fully_returned: returnableQuantity === detail.quantity,
+                    });
+                }
+
+                returnInfo = {
+                    total_refund_amount: totalRefundAmount,
+                    return_details: returnResults,
+                    return_summary: {
+                        total_items_processed: returnResults.length,
+                        fully_returned_items: returnResults.filter((i) => i.fully_returned)
+                            .length,
+                        partially_returned_items: returnResults.filter(
+                            (i) => !i.fully_returned
+                        ).length,
+                    },
+                };
             } else if (newStatus === "completed") {
-                const purchaseDetails = await PurchaseDetail.find({
-                    purchase_id: purchaseId,
-                }).lean();
+                const purchaseDetails = await tx.purchaseDetail.findMany({
+                    where: { purchaseId: purchase.id },
+                    select: { productId: true, quantity: true },
+                });
 
                 for (const detail of purchaseDetails) {
-                    await Product.restoreStock(
-                        detail.product_id,
-                        detail.quantity,
-                        session
-                    );
+                    await tx.product.update({
+                        where: { id: detail.productId },
+                        data: {
+                            stock: {
+                                increment: detail.quantity,
+                            },
+                        },
+                    });
                 }
             }
 
-            const updated = await Purchase.findByIdAndUpdate(
-                purchaseId,
-                { purchase_status: newStatus, updated_by: userId },
-                { new: true, session }
-            );
+            return tx.purchase.update({
+                where: { id: purchase.id },
+                data: {
+                    purchaseStatus: newStatus,
+                    updatedById: userId,
+                },
+            });
+        });
 
-            await session.commitTransaction();
-            return { purchase: updated, ...(returnInfo && { returnInfo }) };
-        } catch (err) {
-            await session.abortTransaction();
-            throw err;
-        } finally {
-            session.endSession();
-        }
+        return {
+            purchase: {
+                _id: toExternalId(updatedPurchase),
+                purchase_status: updatedPurchase.purchaseStatus,
+                purchase_no: updatedPurchase.purchaseNo,
+                purchase_date: updatedPurchase.purchaseDate,
+                createdAt: updatedPurchase.createdAt,
+                updatedAt: updatedPurchase.updatedAt,
+            },
+            ...(returnInfo && { returnInfo }),
+        };
     }
 }
 
