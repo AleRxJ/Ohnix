@@ -1,9 +1,53 @@
+databases:
+  - name: ohnix-postgres
+    databaseName: ohnix
+    user: ohnix
+
 services:
   - type: web
     name: ohnix-backend
     env: node
     rootDir: Backend
-    buildCommand: npm install
+    buildCommand: npm install && npx prisma generate
     startCommand: npm start
     healthCheckPath: /api/v1/test
     autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_PROVIDER
+        value: postgres
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ohnix-postgres
+          property: connectionString
+      - key: ACCESS_TOKEN_SECRET
+        generateValue: true
+      - key: REFRESH_TOKEN_SECRET
+        generateValue: true
+      - key: ACCESS_TOKEN_EXPIRY
+        value: 1d
+      - key: REFRESH_TOKEN_EXPIRY
+        value: 7d
+      - key: FRONTEND_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: START_SCHEDULER
+        value: "false"
+      - key: TIMEZONE
+        value: America/Mexico_City
+      - key: AUTH_DEBUG
+        value: "false"
+      - key: SENDER_EMAIL
+        sync: false
+      - key: SENDER_PASSWORD
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
