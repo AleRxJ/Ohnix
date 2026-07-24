@@ -30,25 +30,25 @@ const StatCard = ({
 
     return (
         <Card
-            className={`border border-gray-200 hover:border-gray-300 hover:shadow-lg transition-all duration-200 ${className}`}
+            className={`border border-white/10 bg-[#0F1012] hover:border-[#29D8D5]/35 hover:shadow-[0_18px_38px_rgba(0,0,0,0.32)] transition-all duration-300 animate-fade-up ${className}`}
             bodyStyle={{ padding: 0 }}
             styles={{ body: { padding: 0 } }}
         >
             <div className="p-5">
                 <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-sm font-medium text-gray-600 truncate">
+                        <span className="text-sm font-medium text-[#A9B3B8] truncate">
                             {title}
                         </span>
                         {description && (
                             <Tooltip title={description}>
-                                <InfoCircleOutlined className="text-xs text-gray-400 flex-shrink-0" />
+                                <InfoCircleOutlined className="text-xs text-[#A9B3B8] flex-shrink-0" />
                             </Tooltip>
                         )}
                     </div>
                     {icon && (
-                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 flex-shrink-0">
-                            <span className="text-blue-600 text-lg">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[linear-gradient(135deg,rgba(41,216,213,0.2),rgba(68,243,240,0.1))] border border-[#29D8D5]/25 flex-shrink-0">
+                            <span className="text-[#44F3F0] text-lg">
                                 {icon}
                             </span>
                         </div>
@@ -65,7 +65,7 @@ const StatCard = ({
                         valueStyle={{
                             fontSize: "32px",
                             fontWeight: "700",
-                            color: "#111827",
+                            color: "#ffffff",
                             lineHeight: "1.2",
                             ...valueStyle,
                         }}
@@ -83,7 +83,7 @@ const StatCard = ({
                         >
                             {getTrendText()}
                         </span>
-                        <span className="text-xs text-gray-500 ml-0.5">
+                        <span className="text-xs text-[#A9B3B8] ml-0.5">
                             vs last period
                         </span>
                     </div>

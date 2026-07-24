@@ -17,7 +17,7 @@ const DataTable = ({
             title={
                 <div className="flex items-center">
                     {icon && <span className="mr-2 text-primary">{icon}</span>}
-                    <span className="text-base sm:text-lg font-medium truncate">
+                    <span className="text-base sm:text-lg font-medium truncate text-white">
                         {title}
                     </span>
                     {dataSource?.length > 0 && (
@@ -25,8 +25,8 @@ const DataTable = ({
                             count={dataSource.length}
                             className="ml-2 flex-shrink-0"
                             style={{
-                                backgroundColor: "#e6f7ff",
-                                color: "#1890ff",
+                                backgroundColor: "rgba(41,216,213,0.16)",
+                                color: "#44F3F0",
                                 fontWeight: "bold",
                                 boxShadow: "none",
                                 fontSize: "10px",
@@ -41,6 +41,7 @@ const DataTable = ({
                         <RouterLink
                             to={viewAllLink}
                             className="flex items-center text-primary hover:text-primary-dark transition-colors text-xs sm:text-sm"
+                            style={{ color: "#44F3F0" }}
                         >
                             <span className="hidden sm:inline">View All</span>
                             <span className="sm:hidden">All</span>
@@ -49,18 +50,19 @@ const DataTable = ({
                     </Tooltip>
                 )
             }
-            className="h-full overflow-hidden rounded-lg border-0 shadow hover:shadow-md transition-all duration-300 flex flex-col"
+            className="h-full overflow-hidden rounded-lg border-0 shadow-none transition-all duration-300 flex flex-col bg-transparent"
             bodyStyle={{
                 padding: 0,
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
                 minHeight: 0,
+                backgroundColor: "transparent",
             }}
             headStyle={{
-                borderBottom: "1px solid #f0f0f0",
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
                 padding: "12px 16px",
-                backgroundColor: "#fafafa",
+                backgroundColor: "rgba(255,255,255,0.01)",
                 flexShrink: 0,
             }}
         >

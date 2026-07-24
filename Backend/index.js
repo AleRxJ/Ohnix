@@ -26,9 +26,10 @@ app.get("/api/v1/test", (req, res) => {
 
 connectDB()
     .then(() => {
-        app.listen(process.env.PORT || 3000, () => {
+        const port = process.env.PORT || 3000;
+        app.listen(port, () => {
             console.log(
-                `✅ Server listening on http://localhost:${process.env.PORT}/`
+                `✅ Server listening on http://localhost:${port}/`
             );
             console.log("🚀 Starting low stock alert scheduler...");
             if (process.env.START_SCHEDULER !== "false") {

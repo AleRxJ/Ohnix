@@ -276,12 +276,12 @@ const Dashboard = () => {
     }
 
     return (
-        <main className="min-h-screen">
+        <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.08),transparent_26%),linear-gradient(180deg,#070707_0%,#050505_100%)] text-white">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <DashboardHeader onRefresh={fetchDashboardData} />
 
-                <section className="mt-6">
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                <section className="mt-6 animate-fade-up-delay">
+                    <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)] p-6 backdrop-blur-md">
                         <Row gutter={[16, 16]}>
                             <Col xs={24} sm={12} lg={8}>
                                 <StatCard
@@ -363,13 +363,13 @@ const Dashboard = () => {
                     </div>
                 </section>
 
-                <section className="mt-8">
+                <section className="mt-8 animate-fade-up">
                     <Divider className="flex items-center gap-3 mb-6">
                         <div>
-                            <h2 className="text-xl font-bold text-slate-900 m-0 leading-tight">
+                            <h2 className="text-xl font-bold text-white m-0 leading-tight">
                                 {t("dashboard.analytics_insights")}
                             </h2>
-                            <p className="text-sm text-slate-500 m-0">
+                            <p className="text-sm text-[#A9B3B8] m-0">
                                 {t("dashboard.performance_metrics")}
                             </p>
                         </div>
@@ -384,16 +384,16 @@ const Dashboard = () => {
 
                         {dashboardData.topProducts &&
                             dashboardData.topProducts.length > 0 && (
-                                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                                <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)] p-6 backdrop-blur-md">
                                     <div className="flex items-center gap-3 mb-5">
                                         <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
                                             <InfoCircleOutlined className="text-lg text-blue-600" />
                                         </div>
                                         <div>
-                                            <h3 className="text-lg font-bold text-slate-900 m-0 leading-tight">
+                                                <h3 className="text-lg font-bold text-white m-0 leading-tight">
                                                     {t("dashboard.quick_insights")}
                                             </h3>
-                                            <p className="text-sm text-slate-500 m-0">
+                                                <p className="text-sm text-[#A9B3B8] m-0">
                                                     {t("dashboard.key_product_highlights")}
                                             </p>
                                         </div>
@@ -465,13 +465,13 @@ const Dashboard = () => {
                     </div>
                 </section>
 
-                <section className="mt-8 pb-8">
+                <section className="mt-8 pb-8 animate-fade-up">
                     <Divider className="flex items-center gap-3 mb-6">
                         <div>
-                            <h2 className="text-xl font-bold text-slate-900 m-0 leading-tight">
+                            <h2 className="text-xl font-bold text-white m-0 leading-tight">
                                 {t("dashboard.reports_activity")}
                             </h2>
-                            <p className="text-sm text-slate-500 m-0">
+                            <p className="text-sm text-[#A9B3B8] m-0">
                                 {t("dashboard.recent_transactions_and_alerts")}
                             </p>
                         </div>
@@ -479,7 +479,7 @@ const Dashboard = () => {
 
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                            <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
                                 <DataTable
                                     title={t("dashboard.top_selling_products")}
                                     columns={topProductsColumns}
@@ -492,7 +492,7 @@ const Dashboard = () => {
                                 />
                             </div>
 
-                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                            <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
                                 <DataTable
                                     title={t("dashboard.low_stock_alerts")}
                                     columns={lowStockColumns}
@@ -506,7 +506,7 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                        <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
                             <DataTable
                                 title={t("dashboard.recent_orders")}
                                 columns={recentOrdersColumns}
