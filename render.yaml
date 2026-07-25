@@ -1,8 +1,3 @@
-databases:
-  - name: ohnix-postgres
-    databaseName: ohnix
-    user: ohnix
-
 services:
   - type: web
     name: ohnix-backend
@@ -19,9 +14,7 @@ services:
       - key: DB_PROVIDER
         value: postgres
       - key: DATABASE_URL
-        fromDatabase:
-          name: ohnix-postgres
-          property: connectionString
+        sync: false
       - key: ACCESS_TOKEN_SECRET
         generateValue: true
       - key: REFRESH_TOKEN_SECRET
