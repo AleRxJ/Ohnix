@@ -15,11 +15,13 @@ import {
     ResponsiveContainer,
 } from "recharts";
 import useI18n from "../../hooks/useI18n";
+import { useCurrency } from "../../context/CurrencyContext";
 
 const { Text, Title } = Typography;
 
 const SalesChart = ({ salesData = {}, loading = false }) => {
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
 
     const salesByDate = useMemo(() => {
         if (Array.isArray(salesData)) {
@@ -97,7 +99,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                         {label}
                     </p>
                     <p className="text-[#44F3F0] font-bold text-base mb-0">
-                        ₹{Number(payload[0].value).toLocaleString()}
+                        {formatCurrency(Number(payload[0].value))}
                     </p>
                 </div>
             );
@@ -105,7 +107,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
         return null;
     };
 
-    const formatRupees = (value) => `₹${Number(value).toLocaleString()}`;
+    const formatRupees = (value) => formatCurrency(Number(value));
 
     const summaryData = useMemo(() => {
         if (salesData && salesData.summary) {
@@ -147,7 +149,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                                 {t("reports.total_sales")}
                             </Text>
                             <div className="text-white text-3xl font-bold">
-                                ₹ {summaryData.totalSales.toLocaleString()}
+                                {formatCurrency(summaryData.totalSales)}
                             </div>
                         </div>
 
@@ -286,7 +288,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                             {t("reports.average_daily_sales")}
                         </span>
                         <span className="text-lg font-bold text-white">
-                            ₹{averageSales.toLocaleString()}
+                            {formatCurrency(averageSales)}
                         </span>
                     </div>
                 </div>

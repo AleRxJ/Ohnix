@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { api } from "../../api/api.js";
 import { calculateStats } from "../../utils/purchaseUtils.js";
 import AuthContext from "../../context/AuthContext.jsx";
+import { formatCurrency } from "../../utils/currency.js";
 
 export const usePurchase = () => {
     const [purchases, setPurchases] = useState([]);
@@ -140,7 +141,7 @@ export const usePurchase = () => {
                 if (status === "returned" && response.data.data.returnInfo) {
                     const returnInfo = response.data.data.returnInfo;
                     message.success(
-                        `Purchase returned successfully! Total refund: ₹${returnInfo.total_refund_amount.toFixed(2)}`
+                        `Purchase returned successfully! Total refund: ${formatCurrency(returnInfo.total_refund_amount)}`
                     );
                 }
                 return { success: true };

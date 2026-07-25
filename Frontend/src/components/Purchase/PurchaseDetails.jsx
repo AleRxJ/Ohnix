@@ -13,11 +13,13 @@ import dayjs from "dayjs";
 import { getStatusColor } from "../../utils/purchaseUtils";
 import { getStatusIconPurchase } from "../../data";
 import useI18n from "../../hooks/useI18n";
+import { useCurrency } from "../../context/CurrencyContext";
 
 const { Text, Title } = Typography;
 
 const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
     const detailColumns = [
         {
             title: t("products.product"),
@@ -60,7 +62,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
             key: "unitcost",
             render: (cost) => (
                 <div className="font-medium text-[#44F3F0]">
-                    ₹{cost.toFixed(2)}
+                    {formatCurrency(cost)}
                 </div>
             ),
             width: 120,
@@ -72,7 +74,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
             key: "total",
             render: (total) => (
                 <div className="font-semibold text-white">
-                    ₹{total.toFixed(2)}
+                    {formatCurrency(total)}
                 </div>
             ),
             width: 120,
@@ -97,7 +99,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                                 </div>
                                 <div>
                                     {t("purchases.refund")}:{" "}
-                                    <span className="font-medium text-red-600">₹{(record.refund_amount || 0).toFixed(2)}</span>
+                                    <span className="font-medium text-red-600">{formatCurrency(record.refund_amount)}</span>
                                 </div>
                             </div>
                         </Space>
@@ -194,12 +196,12 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                                         strong
                                         className="text-lg text-[#44F3F0]"
                                     >
-                                        ₹{total.toFixed(2)}
+                                        {formatCurrency(total)}
                                     </Text>
                                 </Table.Summary.Cell>
                                 <Table.Summary.Cell index={5}>
                                     {totalRefund > 0 && (
-                                        <Text strong type="danger" className="text-sm">{t("purchases.total_refund_label")} ₹{totalRefund.toFixed(2)}</Text>
+                                        <Text strong type="danger" className="text-sm">{t("purchases.total_refund_label")} {formatCurrency(totalRefund)}</Text>
                                     )}
                                 </Table.Summary.Cell>
                             </Table.Summary.Row>

@@ -19,6 +19,8 @@ import {
     ShoppingCartOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import { useCurrency } from "../../context/CurrencyContext";
+import { getCurrencyInputProps } from "../../utils/currency";
 
 const { Option } = Select;
 
@@ -32,6 +34,8 @@ const PurchaseForm = ({
     initialValues,
 }) => {
     const { t } = useI18n();
+    const { currency } = useCurrency();
+    const currencyInputProps = getCurrencyInputProps(currency.code);
     // Build a lookup map for quick access to product details
     const productMap = React.useMemo(() => {
         const map = {};
@@ -225,8 +229,10 @@ const PurchaseForm = ({
                                                         style={{
                                                             width: "100%",
                                                         }}
-                                                        prefix="₹"
+                                                        prefix={currency.symbol}
                                                         className="rounded-lg purchase-form-input"
+                                                        formatter={currencyInputProps.formatter}
+                                                        parser={currencyInputProps.parser}
                                                     />
                                                 </Form.Item>
                                             </Col>

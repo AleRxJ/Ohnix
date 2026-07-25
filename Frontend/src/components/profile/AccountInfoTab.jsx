@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Typography, Card } from "antd";
+import { Button, Typography, Card, Select } from "antd";
 import {
     LockOutlined,
     InfoCircleOutlined,
@@ -10,10 +10,15 @@ import {
     CheckCircleOutlined,
     CloseCircleOutlined,
 } from "@ant-design/icons";
+import { useCurrency } from "../../context/CurrencyContext";
+import { formatCurrency } from "../../utils/currency";
+import CurrencySelector from "../common/CurrencySelector";
 
 const { Text, Title } = Typography;
 
 const AccountInfoTab = ({ user, isVerified, handleTabChange }) => {
+    const { currency } = useCurrency();
+
     return (
         <div className="max-w-6xl mx-auto">
             <div className="px-4 md:px-6 py-6 md:py-8">
@@ -157,6 +162,23 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange }) => {
                         >
                             Change Password
                         </Button>
+                    </div>
+                </Card>
+
+                <Card className="mt-4 rounded-lg shadow-sm border border-gray-200 bg-gradient-to-br from-gray-50 to-white">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <Title level={5} className="text-gray-900 m-0 mb-1 font-semibold">
+                                Currency Settings
+                            </Title>
+                            <Text className="text-gray-600 text-sm">
+                                Pick the base currency used across prices, totals, and reports.
+                            </Text>
+                            <div className="mt-2 text-xs text-gray-500">
+                                Current display example: {formatCurrency(1234.56, currency.code)}
+                            </div>
+                        </div>
+                        <CurrencySelector className="w-full sm:w-72" />
                     </div>
                 </Card>
             </div>

@@ -10,8 +10,10 @@ import UnitModal from "./UnitModal";
 import UnitViewModal from "./UnitViewModal";
 import SearchFilter from "../common/SearchFilter";
 import { useUnits } from "../../hooks/categories_units/useUnits";
+import useI18n from "../../hooks/useI18n";
 
 const UnitSection = ({ user, isAdmin }) => {
+    const { t } = useI18n();
     const {
         units,
         loading,
@@ -82,7 +84,7 @@ const UnitSection = ({ user, isAdmin }) => {
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="text-white font-semibold text-base sm:text-lg">
-                                Units
+                                {t("units.units")}
                             </span>
                             <Badge
                                 count={units.length}
@@ -98,7 +100,7 @@ const UnitSection = ({ user, isAdmin }) => {
                 }
                 extra={
                     <div className="flex flex-col sm:flex-row gap-2">
-                        <Tooltip title="Refresh">
+                        <Tooltip title={t("common.refresh")}>
                             <Button
                                 icon={<ReloadOutlined />}
                                 onClick={loadUnits}
@@ -106,7 +108,7 @@ const UnitSection = ({ user, isAdmin }) => {
                                 className="border-white/10 hover:border-[#44F3F0]/35 hover:text-white mt-2 lg:mt-0 text-white bg-white/[0.03]"
                                 style={{ height: "36px" }}
                             >
-                                Refresh
+                                {t("common.refresh")}
                             </Button>
                         </Tooltip>
                         <Button
@@ -134,7 +136,7 @@ const UnitSection = ({ user, isAdmin }) => {
                         filter={filter}
                         setFilter={setFilter}
                         onClear={clearFilters}
-                        placeholder="Search units..."
+                        placeholder={t("units.search_units")}
                         isAdmin={isAdmin}
                     />
 

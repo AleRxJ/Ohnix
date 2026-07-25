@@ -32,6 +32,7 @@ import ErrorDisplay from "../components/dashboard/ErrorDisplay";
 import { api } from "../api/api";
 import SalesChart from "../components/dashboard/SalesChart";
 import useI18n from "../hooks/useI18n";
+import { useCurrency } from "../context/CurrencyContext";
 
 const { useToken } = theme;
 const { Title, Text } = Typography;
@@ -39,6 +40,7 @@ const { Title, Text } = Typography;
 const Dashboard = () => {
     const { token } = useToken();
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [dashboardData, setDashboardData] = useState({
@@ -305,12 +307,12 @@ const Dashboard = () => {
                                     title={t("dashboard.total_sales")}
                                     value={dashboardData.totalSales}
                                     prefix={<ShoppingCartOutlined />}
-                                    valueStyle={{ color: token.colorSuccess }}
+                                    valueStyle={{ color: "#34D399" }}
                                     icon={
                                         <ShoppingCartOutlined className="text-2xl text-success" />
                                     }
                                     formatter={(value) =>
-                                        `₹${value.toLocaleString()}`
+                                        formatCurrency(value)
                                     }
                                 />
                             </Col>
@@ -319,12 +321,12 @@ const Dashboard = () => {
                                     title={t("dashboard.total_purchases")}
                                     value={dashboardData.totalPurchase}
                                     prefix={<ShoppingOutlined />}
-                                    valueStyle={{ color: token.colorPrimary }}
+                                    valueStyle={{ color: "#60A5FA" }}
                                     icon={
                                         <ShoppingOutlined className="text-2xl text-primary" />
                                     }
                                     formatter={(value) =>
-                                        `₹${value.toLocaleString()}`
+                                        formatCurrency(value)
                                     }
                                 />
                             </Col>
@@ -333,12 +335,12 @@ const Dashboard = () => {
                                     title={t("dashboard.inventory_value")}
                                     value={dashboardData.inventoryValue}
                                     prefix={<DollarOutlined />}
-                                    valueStyle={{ color: token.colorPurple }}
+                                    valueStyle={{ color: "#A78BFA" }}
                                     icon={
                                         <DollarOutlined className="text-2xl text-purple" />
                                     }
                                     formatter={(value) =>
-                                        `₹${value.toLocaleString()}`
+                                        formatCurrency(value)
                                     }
                                     precision={2}
                                 />
@@ -399,10 +401,10 @@ const Dashboard = () => {
                             <div className="flex items-center justify-between gap-4 mb-5">
                                 <div>
                                     <h3 className="text-lg font-bold text-white m-0 leading-tight">
-                                        Business pulse
+                                        {t("dashboard.business_pulse")}
                                     </h3>
                                     <p className="text-sm text-[#A9B3B8] m-0">
-                                        What a client would want to know at a glance
+                                        {t("dashboard.business_pulse_description")}
                                     </p>
                                 </div>
                                 <Badge
@@ -424,29 +426,29 @@ const Dashboard = () => {
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">Net trade delta</div>
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">{t("dashboard.net_trade_delta")}</div>
                                     <div className={`mt-2 text-2xl font-semibold ${netTradeDelta >= 0 ? "text-[#44F3F0]" : "text-[#F28B82]"}`}>
-                                        ₹{netTradeDelta.toLocaleString()}
+                                        {formatCurrency(netTradeDelta)}
                                     </div>
-                                    <div className="mt-2 text-sm text-[#A9B3B8]">Sales minus purchases over the current scope.</div>
+                                    <div className="mt-2 text-sm text-[#A9B3B8]">{t("dashboard.net_trade_delta_description")}</div>
                                 </div>
 
                                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">Average order value</div>
-                                    <div className="mt-2 text-2xl font-semibold text-white">₹{averageOrderValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                                    <div className="mt-2 text-sm text-[#A9B3B8]">Useful for pricing and basket-size decisions.</div>
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">{t("dashboard.average_order_value")}</div>
+                                    <div className="mt-2 text-2xl font-semibold text-white">{formatCurrency(averageOrderValue)}</div>
+                                    <div className="mt-2 text-sm text-[#A9B3B8]">{t("dashboard.average_order_value_description")}</div>
                                 </div>
 
                                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">Stock risk</div>
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">{t("dashboard.stock_risk")}</div>
                                     <div className="mt-2 text-2xl font-semibold text-white">{stockRiskCount}</div>
-                                    <div className="mt-2 text-sm text-[#A9B3B8]">Items that need restocking attention now.</div>
+                                    <div className="mt-2 text-sm text-[#A9B3B8]">{t("dashboard.stock_risk_description")}</div>
                                 </div>
 
                                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">Revenue concentration</div>
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">{t("dashboard.revenue_concentration")}</div>
                                     <div className="mt-2 text-2xl font-semibold text-white">{topProductShare.toFixed(1)}%</div>
-                                    <div className="mt-2 text-sm text-[#A9B3B8]">Share driven by the top product. Lower is safer.</div>
+                                    <div className="mt-2 text-sm text-[#A9B3B8]">{t("dashboard.revenue_concentration_description")}</div>
                                 </div>
                             </div>
                         </div>

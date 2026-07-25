@@ -22,6 +22,7 @@ import {
 } from "@ant-design/icons";
 import { api } from "../../api/api";
 import AuthContext from "../../context/AuthContext";
+import { useCurrency } from "../../context/CurrencyContext";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
@@ -34,6 +35,7 @@ const StockReport = () => {
     const [filteredData, setFilteredData] = useState([]);
     const { user } = useContext(AuthContext);
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
 
     useEffect(() => {
         fetchStockReport();
@@ -90,7 +92,7 @@ const StockReport = () => {
         csvData.push([t("reports.products_out_of_stock"), summary.outOfStock]);
         csvData.push([
             t("reports.total_inventory_value"),
-            `${summary.totalInventoryValue.toFixed(2)}`,
+            formatCurrency(summary.totalInventoryValue),
         ]);
         csvData.push([""]);
 
@@ -115,9 +117,9 @@ const StockReport = () => {
                 item.category_name,
                 item.unit_name,
                 item.stock,
-                `${item.buying_price.toFixed(2)}`,
-                `${item.selling_price.toFixed(2)}`,
-                `${item.inventory_value.toFixed(2)}`,
+                formatCurrency(item.buying_price),
+                formatCurrency(item.selling_price),
+                formatCurrency(item.inventory_value),
                 item.status,
             ]);
         });
@@ -234,7 +236,7 @@ const StockReport = () => {
             width: window.innerWidth < 768 ? 80 : 120,
             render: (price) => (
                 <span className="font-medium text-blue-600 text-xs sm:text-sm">
-                    ₹{price.toFixed(0)}
+                    {formatCurrency(price)}
                 </span>
             ),
             responsive: ["sm"],
@@ -247,7 +249,7 @@ const StockReport = () => {
             width: window.innerWidth < 768 ? 80 : 120,
             render: (price) => (
                 <span className="font-medium text-green-600 text-xs sm:text-sm">
-                    ₹{price.toFixed(0)}
+                    {formatCurrency(price)}
                 </span>
             ),
             responsive: ["md"],
@@ -260,7 +262,7 @@ const StockReport = () => {
             width: window.innerWidth < 768 ? 100 : 140,
             render: (value) => (
                 <span className="font-medium text-purple-600 text-xs sm:text-sm">
-                    ₹{value.toFixed(0)}
+                    {formatCurrency(value)}
                 </span>
             ),
             responsive: ["lg"],
@@ -423,7 +425,7 @@ const StockReport = () => {
                         }
                         valueStyle={{ color: "#722ed1" }}
                         className="dashboard-stat-card"
-                        formatter={(value) => `₹${value.toLocaleString()}`}
+                        formatter={(value) => formatCurrency(value)}
                         precision={2}
                     />
                 </Col>

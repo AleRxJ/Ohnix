@@ -32,6 +32,7 @@ import {
 } from "@ant-design/icons";
 import { api } from "../../api/api";
 import AuthContext from "../../context/AuthContext";
+import { useCurrency } from "../../context/CurrencyContext";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
@@ -45,6 +46,7 @@ const TopProductsReport = () => {
     const [limit, setLimit] = useState(10);
     const { user } = useContext(AuthContext);
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
 
     const COLORS = [
         "#0088FE",
@@ -98,7 +100,7 @@ const TopProductsReport = () => {
         csvData.push([t("reports.total_quantity_sold"), summary.totalQuantitySold]);
         csvData.push([
             t("reports.total_revenue"),
-            `${summary.totalRevenue.toFixed(2)}`,
+            formatCurrency(summary.totalRevenue),
         ]);
         csvData.push([""]);
 
@@ -123,8 +125,8 @@ const TopProductsReport = () => {
                 item.product_code,
                 item.product_name,
                 item.quantity_sold,
-                `${item.total_sales.toFixed(2)}`,
-                `${avgPrice.toFixed(2)}`,
+                formatCurrency(item.total_sales),
+                formatCurrency(avgPrice),
             ]);
         });
 
@@ -240,10 +242,7 @@ const TopProductsReport = () => {
                             window.innerWidth < 768 ? "text-xs" : "text-lg"
                         }`}
                     >
-                        ₹
-                        {window.innerWidth < 768
-                            ? sales.toFixed(0)
-                            : sales.toFixed(2)}
+                        {formatCurrency(sales)}
                     </div>
                     <div className="text-gray-500 text-xs hidden sm:block">
                         {t("reports.revenue")}
@@ -269,10 +268,7 @@ const TopProductsReport = () => {
                                     : "text-base"
                             }`}
                         >
-                            ₹
-                            {window.innerWidth < 768
-                                ? avgPrice.toFixed(0)
-                                : avgPrice.toFixed(2)}
+                            {formatCurrency(avgPrice)}
                         </div>
                         <div className="text-gray-500 text-xs hidden md:block">
                             {t("reports.per_unit")}
@@ -398,7 +394,7 @@ const TopProductsReport = () => {
                             }
                             valueStyle={{ color: "#722ed1" }}
                             className="dashboard-stat-card"
-                            formatter={(value) => `₹${value.toLocaleString()}`}
+                            formatter={(value) => formatCurrency(value)}
                             precision={window.innerWidth < 768 ? 0 : 2}
                         />
                     </Col>
@@ -537,12 +533,12 @@ const TopProductsReport = () => {
                                                         : 12,
                                             }}
                                             tickFormatter={(value) =>
-                                                `₹${value}`
+                                                formatCurrency(value)
                                             }
                                         />
                                         <Tooltip
                                             formatter={(value, name) => [
-                                                `₹${value.toFixed(2)}`,
+                                                formatCurrency(value),
                                                 t("reports.revenue"),
                                             ]}
                                             labelFormatter={(label) =>
@@ -628,7 +624,7 @@ const TopProductsReport = () => {
                                 </Pie>
                                 <Tooltip
                                     formatter={(value, name) => [
-                                        `₹${value.toFixed(2)}`,
+                                        formatCurrency(value),
                                         t("reports.revenue"),
                                     ]}
                                 />
@@ -642,7 +638,7 @@ const TopProductsReport = () => {
                                             name.length > maxLength
                                                 ? `${name.substring(0, maxLength)}...`
                                                 : name;
-                                        return `${displayName} - ₹${entry.payload.total_sales.toFixed(window.innerWidth < 768 ? 0 : 2)}`;
+                                        return `${displayName} - ${formatCurrency(entry.payload.total_sales)}`;
                                     }}
                                 />
                             </PieChart>

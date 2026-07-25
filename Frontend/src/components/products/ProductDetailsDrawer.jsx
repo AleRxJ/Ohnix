@@ -11,6 +11,7 @@ import {
     CloseCircleOutlined,
     PercentageOutlined,
 } from "@ant-design/icons";
+import { useCurrency } from "../../context/CurrencyContext";
 
 const { Text, Title } = Typography;
 
@@ -23,6 +24,7 @@ const ProductDetailsDrawer = ({
     height,
 }) => {
     if (!product) return null;
+    const { formatCurrency } = useCurrency();
 
     const getStockStatus = (stock) => {
         if (stock === 0) {
@@ -150,7 +152,7 @@ const ProductDetailsDrawer = ({
                                 <DollarOutlined className="text-[#44F3F0] text-lg" />
                             </div>
                             <Text className="text-xs text-[#A9B3B8] mb-1 font-bold">Profit</Text>
-                            <Text className="text-xl font-bold text-[#44F3F0]">₹{profitMargin}</Text>
+                            <Text className="text-xl font-bold text-[#44F3F0]">{formatCurrency(Number(profitMargin))}</Text>
                         </div>
                     </div>
 
@@ -177,14 +179,14 @@ const ProductDetailsDrawer = ({
                             <div className="flex items-center justify-between">
                                 <Text className="text-sm text-[#A9B3B8]">Buying Price</Text>
                                 <Text className="text-base font-semibold text-white">
-                                    ₹{product.buying_price?.toFixed(2) || "0.00"}
+                                    {formatCurrency(product.buying_price)}
                                 </Text>
                             </div>
                             <Divider className="!my-0" style={{ borderColor: "rgba(255,255,255,0.08)" }} />
                             <div className="flex items-center justify-between">
                                 <Text className="text-sm text-[#A9B3B8]">Selling Price</Text>
                                 <Text className="text-base font-semibold text-[#44F3F0]">
-                                    ₹{product.selling_price?.toFixed(2) || "0.00"}
+                                    {formatCurrency(product.selling_price)}
                                 </Text>
                             </div>
                         </div>

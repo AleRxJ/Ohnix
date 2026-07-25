@@ -7,9 +7,11 @@ import {
 } from "@ant-design/icons";
 import StatCard from "../dashboard/StatCard";
 import useI18n from "../../hooks/useI18n";
+import { useCurrency } from "../../context/CurrencyContext";
 
 const OrderStats = ({ stats }) => {
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
     return (
         <div className="mb-6">
             <Row gutter={[16, 16]}>
@@ -43,7 +45,7 @@ const OrderStats = ({ stats }) => {
                         value={stats.revenue}
                         icon={<DollarOutlined className="text-2xl" />}
                         valueStyle={{ color: "#389e0d" }}
-                        formatter={(value) => `₹${value.toLocaleString()}`}
+                        formatter={(value) => formatCurrency(value)}
                         precision={2}
                     />
                 </Col>

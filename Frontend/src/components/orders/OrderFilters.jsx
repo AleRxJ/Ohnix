@@ -6,6 +6,8 @@ import {
 } from "@ant-design/icons";
 import { ORDER_STATUSES } from "../../utils/orderHelpers";
 import useI18n from "../../hooks/useI18n";
+import { useCurrency } from "../../context/CurrencyContext";
+import { getCurrencyInputProps } from "../../utils/currency";
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -18,6 +20,8 @@ const OrderFilters = ({
     onResetFilters,
 }) => {
     const { t } = useI18n();
+    const { currency } = useCurrency();
+    const currencyInputProps = getCurrencyInputProps(currency.code);
     const totalRange = filters.total_range || {};
 
     return (
@@ -90,16 +94,9 @@ const OrderFilters = ({
                         }
                         className="w-full h-10"
                         min={0}
-                        prefix="₹"
-                        formatter={(value) =>
-                            value
-                                ? `${value}`.replace(
-                                      /\B(?=(\d{3})+(?!\d))/g,
-                                      ","
-                                  )
-                                : ""
-                        }
-                        parser={(value) => value.replace(/₹\s?|(,*)/g, "")}
+                        prefix={currency.symbol}
+                        formatter={currencyInputProps.formatter}
+                        parser={currencyInputProps.parser}
                     />
 
                     <InputNumber
@@ -113,16 +110,9 @@ const OrderFilters = ({
                         }
                         className="w-full h-10"
                         min={0}
-                        prefix="₹"
-                        formatter={(value) =>
-                            value
-                                ? `${value}`.replace(
-                                      /\B(?=(\d{3})+(?!\d))/g,
-                                      ","
-                                  )
-                                : ""
-                        }
-                        parser={(value) => value.replace(/₹\s?|(,*)/g, "")}
+                        prefix={currency.symbol}
+                        formatter={currencyInputProps.formatter}
+                        parser={currencyInputProps.parser}
                     />
                 </div>
 

@@ -296,8 +296,8 @@
     "completed_orders": "Pedidos completados",
     "total_revenue": "Ingresos totales",
     "search_by_invoice": "Buscar por factura...",
-    "min_total": "Total mínimo (₹)",
-    "max_total": "Total máximo (₹)",
+    "min_total": "Total mínimo",
+    "max_total": "Total máximo",
     "select_customer": "Selecciona un cliente",
     "order_details": "Detalles del pedido - #{{invoiceNo}}",
     "order_summary": "Resumen del pedido",
@@ -428,7 +428,8 @@
     "update_supplier": "Actualizar proveedor",
     "create_supplier": "Crear proveedor",
     "supplier_details": "Detalles del proveedor",
-    "total_suppliers": "Total de proveedores"
+    "total_suppliers": "Total de proveedores",
+    "manage_suppliers_description": "Administra tu directorio de proveedores y relaciones de compra"
   },
   "categories": {
     "category": "Categoría",
@@ -459,6 +460,33 @@
     "last_updated": "Última actualización",
     "updated_by": "Actualizado por",
     "updated_at": "Actualizado el"
+  },
+  "units": {
+    "unit": "Unidad",
+    "units": "Unidades",
+    "unit_name": "Nombre de la unidad",
+    "unit_of_measurement": "Unidad de medida",
+    "search_units": "Buscar unidades...",
+    "add_unit": "Agregar unidad",
+    "add_new_unit": "Agregar nueva unidad",
+    "edit_unit": "Editar unidad",
+    "create_unit": "Crear unidad",
+    "update_unit": "Actualizar unidad",
+    "view_details": "Ver detalles",
+    "enter_unit_name": "Ingresa el nombre de la unidad (ej: kg, und, lt)",
+    "delete_unit": "Eliminar unidad",
+    "delete_unit_confirm": "¿Seguro que quieres eliminar esta unidad?",
+    "your_unit": "Tu unidad",
+    "other_users_unit": "Unidad de otro usuario",
+    "created_information": "Información de creación",
+    "created_by": "Creado por",
+    "created_at": "Creado el",
+    "last_updated": "Última actualización",
+    "updated_by": "Actualizado por",
+    "updated_at": "Actualizado el",
+    "showing_units": "Mostrando {{start}}-{{end}} de {{total}} unidades",
+    "no_units_found": "No se encontraron unidades",
+    "create_first_unit": "Crea tu primera unidad para comenzar"
   },
   "reports": {
     "reports": "Reportes",
@@ -493,7 +521,7 @@
     "products_in_stock": "Productos en stock",
     "products_low_stock": "Productos con stock bajo",
     "products_out_of_stock": "Productos agotados",
-    "total_inventory_value": "Valor total del inventario (en rupias)",
+    "total_inventory_value": "Valor total del inventario",
     "sales_by_date": "Ventas por fecha",
     "sales_performance": "Rendimiento de ventas",
     "track_revenue_and_order_trends": "Sigue tus ingresos y tendencias de pedidos",
@@ -515,7 +543,7 @@
     "export_to_csv": "Exportar a CSV",
     "total_sales_revenue": "Ingresos totales por ventas",
     "sales_trend_over_time": "Tendencia de ventas en el tiempo",
-    "sales_amount": "Ventas (₹)",
+    "sales_amount": "Importe de ventas",
     "top_products_by_sales": "Productos principales por ventas",
     "sales_distribution_by_product": "Distribución de ventas por producto",
     "revenue_distribution_by_product": "Distribución de ingresos por producto",
@@ -530,9 +558,9 @@
     "purchase_amount": "Importe de compra",
     "supplier_purchase_details": "Detalles de compras por proveedor",
     "select_date_range_purchase": "Selecciona un rango de fechas para generar el reporte de compras",
-    "buying_price": "Precio de compra (en rupias)",
-    "selling_price": "Precio de venta (en rupias)",
-    "inventory_value": "Valor del inventario (en rupias)",
+    "buying_price": "Precio de compra",
+    "selling_price": "Precio de venta",
+    "inventory_value": "Valor del inventario",
     "buy_price": "Precio de compra",
     "sell_price": "Precio de venta",
     "in_stock": "En stock",
@@ -555,8 +583,8 @@
     "top_by_revenue": "Principales por ingresos",
     "top_products_by_revenue": "Productos principales por ingresos",
     "rank": "Puesto",
-    "total_sales_rupees": "Ventas totales (en rupias)",
-    "average_price_rupees": "Precio promedio (en rupias)",
+    "total_sales_rupees": "Ventas totales",
+    "average_price_rupees": "Precio promedio",
     "total_quantity_sold": "Cantidad total vendida"
   },
   "dashboard": {
@@ -573,12 +601,22 @@
     "out_of_stock": "Agotado",
     "analytics_insights": "Analítica e insights",
     "performance_metrics": "Métricas de rendimiento y tendencias",
+    "business_pulse": "Pulso del negocio",
+    "business_pulse_description": "Lo que un cliente querría ver de un vistazo",
+    "net_trade_delta": "Delta comercial neto",
+    "net_trade_delta_description": "Ventas menos compras en el alcance actual.",
+    "average_order_value": "Valor promedio por pedido",
+    "average_order_value_description": "Útil para decisiones de precio y tamaño de canasta.",
+    "stock_risk": "Riesgo de stock",
+    "stock_risk_description": "Artículos que requieren reposición inmediata.",
+    "revenue_concentration": "Concentración de ingresos",
+    "revenue_concentration_description": "Porcentaje impulsado por el producto principal. Menor es más seguro.",
     "quick_insights": "Insights rápidos",
     "key_product_highlights": "Puntos clave de productos",
     "top_performer": "Mejor rendimiento",
     "most_profitable": "Más rentable",
     "units_sold": "{{count}} unidades vendidas",
-    "revenue": "${{value}} de ingresos",
+    "revenue": "Ingresos: {{value}}",
     "reports_activity": "Reportes y actividad",
     "recent_transactions_and_alerts": "Transacciones recientes y alertas",
     "top_selling_products": "Productos más vendidos",
@@ -630,7 +668,8 @@
         "nodeTwo": "Movimientos",
         "nodeThree": "Reportes"
       },
-      "footer_note": "Trazabilidad en cada movimiento"
+      "footer_note": "Trazabilidad en cada movimiento",
+      "product_image_alt": "Panel de inventario de Ohnix"
     },
     "about": {
       "eyebrow": "Acerca de Ohnix",
@@ -803,6 +842,56 @@
       "email": "hello@itcycle.com",
       "signal_label": "Soporte",
       "signal_description": "¿Dudas sobre configuración, migraciones o acceso del equipo? Solemos responder en un día hábil."
+    },
+    "pricing": {
+      "eyebrow": "Precios",
+      "title": "Planes simples que escalan con tu negocio",
+      "description": "Precios claros para equipos que empiezan pequeño o se preparan para operar inventario y ventas a escala.",
+      "most_popular": "Más popular",
+      "plans": {
+        "starter": {
+          "name": "Inicial",
+          "subtitle": "Para equipos pequeños que se están organizando",
+          "price": "$0",
+          "billing": "/mes",
+          "description": "Controla productos, pedidos y clientes con el flujo base de Ohnix, ideal para validar el negocio antes de escalar.",
+          "features": {
+            "workspace": "1 espacio de trabajo",
+            "tracking": "Seguimiento básico de inventario y pedidos",
+            "support": "Soporte por correo",
+            "access": "Acceso a landing + dashboard"
+          },
+          "cta": "Empezar gratis"
+        },
+        "growth": {
+          "name": "Crecimiento",
+          "subtitle": "Para negocios listos para vender más",
+          "price": "$29",
+          "billing": "/mes",
+          "description": "Agrega pronósticos, reportes y una operación más fluida para equipos que necesitan visibilidad diaria y mejor control.",
+          "features": {
+            "unlimited": "Productos y pedidos ilimitados",
+            "reports": "Reportes y alertas avanzadas",
+            "priority": "Soporte prioritario",
+            "mobile": "Operación optimizada para móvil"
+          },
+          "cta": "Elegir Crecimiento"
+        },
+        "enterprise": {
+          "name": "Empresarial",
+          "subtitle": "Para operaciones con mayor complejidad",
+          "price": "Personalizado",
+          "billing": "precio",
+          "description": "Para empresas que requieren onboarding, flujos personalizados y un despliegue adaptado a sus procesos internos.",
+          "features": {
+            "onboarding": "Onboarding personalizado",
+            "implementation": "Implementación dedicada",
+            "workflows": "Flujos por roles",
+            "integrations": "Integraciones personalizadas"
+          },
+          "cta": "Hablar con ventas"
+        }
+      }
     },
     "footer": {
       "tagline": "Ohnix by iTcycle — inventario, compras, ventas y reportes con trazabilidad total.",

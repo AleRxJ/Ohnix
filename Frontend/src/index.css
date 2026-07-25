@@ -124,6 +124,17 @@ body {
   }
 }
 
+@keyframes cardRise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
 .animate-fade-up {
   animation: fadeUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -172,6 +183,19 @@ body {
 
 .hover-lift:hover {
   transform: translateY(-4px);
+}
+
+.module-shell,
+.glass-panel,
+.dashboard-app .ant-card {
+  animation: cardRise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.module-shell:hover,
+.glass-panel:hover,
+.dashboard-app .ant-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.42);
 }
 
 .glass-panel {
@@ -263,6 +287,95 @@ body {
   color: #7f8b92 !important;
 }
 
+.auth-ohnix-input.ant-select .ant-select-selector,
+.purchase-form-input.ant-select .ant-select-selector {
+  background: #111214 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.auth-ohnix-input.ant-select:hover .ant-select-selector,
+.purchase-form-input.ant-select:hover .ant-select-selector {
+  border-color: rgba(41, 216, 213, 0.45) !important;
+}
+
+.auth-ohnix-input.ant-select.ant-select-focused .ant-select-selector,
+.purchase-form-input.ant-select.ant-select-focused .ant-select-selector {
+  border-color: #29d8d5 !important;
+  box-shadow: 0 0 0 2px rgba(41, 216, 213, 0.18) !important;
+}
+
+.auth-ohnix-input.ant-select .ant-select-selection-item,
+.purchase-form-input.ant-select .ant-select-selection-item,
+.auth-ohnix-input.ant-select .ant-select-selection-search-input,
+.purchase-form-input.ant-select .ant-select-selection-search-input {
+  color: #ffffff !important;
+}
+
+.auth-ohnix-input.ant-select .ant-select-selection-placeholder,
+.purchase-form-input.ant-select .ant-select-selection-placeholder {
+  color: #8b98a0 !important;
+}
+
+.auth-ohnix-input.ant-select .ant-select-arrow,
+.purchase-form-input.ant-select .ant-select-arrow,
+.auth-ohnix-input.ant-select .ant-select-clear,
+.purchase-form-input.ant-select .ant-select-clear {
+  color: #7f8b92 !important;
+}
+
+.ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  background: #111214 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: rgba(41, 216, 213, 0.45) !important;
+}
+
+.ant-select-focused:not(.ant-select-disabled) .ant-select-selector {
+  border-color: #29d8d5 !important;
+  box-shadow: 0 0 0 2px rgba(41, 216, 213, 0.18) !important;
+}
+
+.ant-select .ant-select-selection-item,
+.ant-select .ant-select-selection-search-input {
+  color: #ffffff !important;
+}
+
+.ant-select .ant-select-selection-placeholder {
+  color: #8b98a0 !important;
+}
+
+.ant-select .ant-select-arrow,
+.ant-select .ant-select-clear {
+  color: #7f8b92 !important;
+}
+
+.ant-select-dropdown {
+  background: #0f1012 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45) !important;
+}
+
+.ant-select-dropdown .ant-select-item {
+  color: #d4dbdf !important;
+}
+
+.ant-select-dropdown .ant-select-item-option-active {
+  background: rgba(41, 216, 213, 0.12) !important;
+}
+
+.ant-select-dropdown .ant-select-item-option-selected {
+  background: rgba(41, 216, 213, 0.2) !important;
+  color: #ffffff !important;
+}
+
+.ant-select-dropdown .ant-empty-description {
+  color: #8b98a0 !important;
+}
+
 .antd-custom-table .ant-table {
   background: transparent !important;
   color: #d4dbdf !important;
@@ -342,6 +455,21 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
+.module-dark-table .ant-table-tbody > tr {
+  animation: cardRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.module-dark-table .ant-table-tbody > tr:nth-child(1) { animation-delay: 0.03s; }
+.module-dark-table .ant-table-tbody > tr:nth-child(2) { animation-delay: 0.06s; }
+.module-dark-table .ant-table-tbody > tr:nth-child(3) { animation-delay: 0.09s; }
+.module-dark-table .ant-table-tbody > tr:nth-child(4) { animation-delay: 0.12s; }
+.module-dark-table .ant-table-tbody > tr:nth-child(5) { animation-delay: 0.15s; }
+.module-dark-table .ant-table-tbody > tr:nth-child(6) { animation-delay: 0.18s; }
+.module-dark-table .ant-table-tbody > tr:nth-child(7) { animation-delay: 0.21s; }
+.module-dark-table .ant-table-tbody > tr:nth-child(8) { animation-delay: 0.24s; }
+.module-dark-table .ant-table-tbody > tr:nth-child(9) { animation-delay: 0.27s; }
+.module-dark-table .ant-table-tbody > tr:nth-child(10) { animation-delay: 0.3s; }
+
 .module-dark-table .ant-table-tbody > tr:hover > td {
   background: rgba(41, 216, 213, 0.08) !important;
 }
@@ -378,6 +506,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35) !important;
   backdrop-filter: blur(8px);
+  animation: cardRise 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .dashboard-app .ant-card-head {

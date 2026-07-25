@@ -2,8 +2,10 @@ import React, { useEffect } from "react";
 import { Modal, Form, Input, Button, Space } from "antd";
 import { AppstoreOutlined } from "@ant-design/icons";
 import { FORM_RULES, MODAL_WIDTH } from "../../utils/category_units/constants";
+import useI18n from "../../hooks/useI18n";
 
 const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
+    const { t } = useI18n();
     useEffect(() => {
         if (visible) {
             if (editingUnit) {
@@ -23,8 +25,8 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
     return (
         <Modal
             title={
-                <div className="text-lg font-medium text-gray-800">
-                    {editingUnit ? "Edit Unit" : "Add New Unit"}
+                <div className="text-lg font-semibold text-white">
+                    {editingUnit ? t("units.edit_unit") : t("units.add_new_unit")}
                 </div>
             }
             open={visible}
@@ -34,11 +36,20 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
             centered
             className="unit-modal"
             styles={{
-                body: { padding: "24px" },
-                header: {
-                    borderBottom: "1px solid #f0f0f0",
-                    paddingBottom: "16px",
+                mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                content: {
+                    background:
+                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                    borderRadius: "24px",
                 },
+                header: {
+                    background: "transparent",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    padding: "20px 24px 16px",
+                },
+                body: { padding: "20px 24px 24px" },
             }}
         >
             <Form
@@ -51,36 +62,36 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                 <Form.Item
                     name="unit_name"
                     label={
-                        <span className="text-sm font-medium text-gray-700">
-                            Unit Name
+                        <span className="text-sm font-medium text-[#A9B3B8]">
+                            {t("units.unit_name")}
                         </span>
                     }
                     rules={FORM_RULES.UNIT_NAME}
                     className="mb-6"
                 >
                     <Input
-                        placeholder="Enter unit name (e.g., kg, pcs, ltr)"
-                        className="h-11 rounded-md border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all duration-200"
+                        placeholder={t("units.enter_unit_name")}
+                        className="h-11 rounded-md auth-ohnix-input"
                         prefix={
-                            <AppstoreOutlined className="text-gray-400 text-sm" />
+                            <AppstoreOutlined className="text-[#8B98A0] text-sm" />
                         }
                     />
                 </Form.Item>
 
                 <Form.Item className="mb-0">
-                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-100">
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-white/10">
                         <Button
                             onClick={onClose}
-                            className="h-10 px-6 rounded-md border-gray-300 hover:border-gray-400 transition-colors duration-200"
+                            className="h-10 px-6 rounded-md bg-white/[0.04] border-white/10 text-white hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
                         >
-                            Cancel
+                            {t("common.cancel")}
                         </Button>
                         <Button
                             type="primary"
                             htmlType="submit"
-                            className="h-10 px-6 rounded-md bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700 transition-colors duration-200"
+                            className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                         >
-                            {editingUnit ? "Update Unit" : "Create Unit"}
+                            {editingUnit ? t("units.update_unit") : t("units.create_unit")}
                         </Button>
                     </div>
                 </Form.Item>

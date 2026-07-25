@@ -494,7 +494,7 @@ export const ContactSection = ({ heading, primaryCta, secondaryCta, onPrimary, o
     </ContentSection>
 );
 
-export const PricingSection = ({ heading, plans }) => (
+export const PricingSection = ({ heading, plans, featuredLabel }) => (
     <ContentSection id="pricing">
         <SectionHeading
             eyebrow={heading.eyebrow}
@@ -514,7 +514,7 @@ export const PricingSection = ({ heading, plans }) => (
                 >
                     {plan.featured ? (
                         <div className="absolute right-5 top-5 rounded-full border border-[#29D8D5]/30 bg-[#29D8D5]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-[#44F3F0]">
-                            Most Popular
+                            {featuredLabel}
                         </div>
                     ) : null}
 

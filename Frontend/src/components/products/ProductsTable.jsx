@@ -17,6 +17,7 @@ import {
     ExclamationCircleOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import { useCurrency } from "../../context/CurrencyContext";
 
 const { Text } = Typography;
 
@@ -29,6 +30,7 @@ const ProductsTable = ({
     onViewDetails,
 }) => {
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
 
     // Mobile Card View Component
     const MobileProductCard = ({ product }) => (
@@ -116,7 +118,7 @@ const ProductsTable = ({
                             <Text className="text-[#A9B3B8]">{t("products.selling_price")}</Text>
                             <br />
                             <Text strong className="text-white">
-                                ₹{product.selling_price.toFixed(2)}
+                                {formatCurrency(product.selling_price)}
                             </Text>
                         </div>
                         <div>
@@ -210,10 +212,10 @@ const ProductsTable = ({
             render: (_, record) => (
                 <div className="flex flex-col">
                     <Text strong className="text-sm text-white">
-                        ₹ {record.selling_price.toFixed(2)}
+                        {formatCurrency(record.selling_price)}
                     </Text>
                     <Text className="text-xs text-[#A9B3B8]">
-                        {t("products.buying_price")}: ₹{record.buying_price.toFixed(2)}
+                        {t("products.buying_price")}: {formatCurrency(record.buying_price)}
                     </Text>
                 </div>
             ),

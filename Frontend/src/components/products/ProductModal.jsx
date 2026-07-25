@@ -2,6 +2,8 @@ import React from "react";
 import { Modal, Form, Input, Select, InputNumber, Row, Col } from "antd";
 import ProductImageUpload from "./ProductImageUpload";
 import useI18n from "../../hooks/useI18n";
+import { useCurrency } from "../../context/CurrencyContext";
+import { getCurrencyInputProps } from "../../utils/currency";
 
 const { Option } = Select;
 
@@ -19,6 +21,8 @@ const ProductModal = ({
     onImageChange,
 }) => {
     const { t } = useI18n();
+    const { currency } = useCurrency();
+    const currencyInputProps = getCurrencyInputProps(currency.code);
 
     return (
         <Modal
@@ -238,11 +242,13 @@ const ProductModal = ({
                                         >
                                             <InputNumber
                                                 placeholder="0.00"
-                                                prefix="₹"
+                                                prefix={currency.symbol}
                                                 style={{ width: "100%" }}
                                                 precision={2}
                                                 size="large"
                                                 className="rounded-md auth-ohnix-input"
+                                                formatter={currencyInputProps.formatter}
+                                                parser={currencyInputProps.parser}
                                             />
                                         </Form.Item>
                                     </Col>
@@ -270,11 +276,13 @@ const ProductModal = ({
                                         >
                                             <InputNumber
                                                 placeholder="0.00"
-                                                prefix="₹"
+                                                prefix={currency.symbol}
                                                 style={{ width: "100%" }}
                                                 precision={2}
                                                 size="large"
                                                 className="rounded-md auth-ohnix-input"
+                                                formatter={currencyInputProps.formatter}
+                                                parser={currencyInputProps.parser}
                                             />
                                         </Form.Item>
                                     </Col>

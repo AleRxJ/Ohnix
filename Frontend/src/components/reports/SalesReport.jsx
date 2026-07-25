@@ -32,6 +32,7 @@ import {
 } from "@ant-design/icons";
 import { api } from "../../api/api";
 import AuthContext from "../../context/AuthContext";
+import { useCurrency } from "../../context/CurrencyContext";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
@@ -48,6 +49,7 @@ const SalesReport = () => {
     ]);
     const { user } = useContext(AuthContext);
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
 
     const COLORS = [
         "#0088FE",
@@ -110,7 +112,7 @@ const SalesReport = () => {
         csvData.push([t("reports.sales_report_summary")]);
         csvData.push([
             t("reports.total_sales"),
-            `₹${salesData.summary.totalSales.toFixed(2)}`,
+            formatCurrency(salesData.summary.totalSales),
         ]);
         csvData.push([t("orders.total_orders"), salesData.summary.totalOrders]);
         csvData.push([""]);
@@ -119,7 +121,7 @@ const SalesReport = () => {
         csvData.push([t("reports.sales_by_date")]);
         csvData.push([t("common.date"), t("reports.total_sales"), t("orders.number_of_orders")]);
         salesData.salesByDate.forEach((item) => {
-            csvData.push([item._id, `₹${item.total.toFixed(2)}`, item.orders]);
+            csvData.push([item._id, formatCurrency(item.total), item.orders]);
         });
         csvData.push([""]);
 
@@ -130,7 +132,7 @@ const SalesReport = () => {
             csvData.push([
                 item.product_name,
                 item.quantity,
-                `₹${item.total.toFixed(2)}`,
+                formatCurrency(item.total),
             ]);
         });
 
@@ -186,7 +188,7 @@ const SalesReport = () => {
             sorter: (a, b) => a.total - b.total,
             render: (total) => (
                 <span className="font-medium text-green-600">
-                    ₹{total.toFixed(2)}
+                    {formatCurrency(total)}
                 </span>
             ),
             width: 120,
@@ -199,7 +201,7 @@ const SalesReport = () => {
                     record.quantity > 0 ? record.total / record.quantity : 0;
                 return (
                     <span className="font-medium text-purple-600">
-                        ₹{avgPrice.toFixed(2)}
+                        {formatCurrency(avgPrice)}
                     </span>
                 );
             },
@@ -261,7 +263,7 @@ const SalesReport = () => {
                                 valueStyle={{ color: "#52c41a" }}
                                 className="dashboard-stat-card"
                                 formatter={(value) =>
-                                    `₹${value.toLocaleString()}`
+                                    formatCurrency(value)
                                 }
                                 precision={2}
                             />
@@ -322,7 +324,7 @@ const SalesReport = () => {
                                         <Tooltip
                                             formatter={(value, name) => [
                                                 name === "total"
-                                                    ? `₹${value.toFixed(2)}`
+                                                    ? formatCurrency(value)
                                                     : value,
                                                 name === "total"
                                                     ? t("reports.sales")
@@ -423,7 +425,7 @@ const SalesReport = () => {
                                                                 : 12,
                                                     }}
                                                     tickFormatter={(value) =>
-                                                        `₹${value}`
+                                                        formatCurrency(value)
                                                     }
                                                 />
                                                 <Tooltip
@@ -432,7 +434,7 @@ const SalesReport = () => {
                                                         name
                                                     ) => [
                                                         name === "total"
-                                                            ? `₹${value.toFixed(2)}`
+                                                            ? formatCurrency(value)
                                                             : value,
                                                         name === "total"
                                                             ? t("reports.sales")
@@ -527,7 +529,7 @@ const SalesReport = () => {
                                                 </Pie>
                                                 <Tooltip
                                                     formatter={(value) => [
-                                                        `₹${value.toFixed(2)}`,
+                                                        formatCurrency(value),
                                                         "Sales",
                                                     ]}
                                                 />

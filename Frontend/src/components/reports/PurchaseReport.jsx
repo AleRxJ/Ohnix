@@ -31,6 +31,7 @@ import {
 } from "@ant-design/icons";
 import { api } from "../../api/api";
 import AuthContext from "../../context/AuthContext";
+import { useCurrency } from "../../context/CurrencyContext";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
@@ -47,6 +48,7 @@ const PurchaseReport = () => {
     ]);
     const { user } = useContext(AuthContext);
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
 
     const COLORS = [
         "#0088FE",
@@ -111,7 +113,7 @@ const PurchaseReport = () => {
         const summary = calculateSummary();
         csvData.push([
             t("reports.total_purchases"),
-            `₹${summary.totalPurchases.toFixed(2)}`,
+            formatCurrency(summary.totalPurchases),
         ]);
         csvData.push([t("suppliers.total_suppliers"), summary.totalSuppliers]);
         csvData.push([t("reports.total_transactions"), summary.totalTransactions]);
@@ -137,7 +139,7 @@ const PurchaseReport = () => {
             csvData.push([
                 item.supplier_name,
                 item.shopname || "N/A",
-                `₹${item.total_purchases.toFixed(2)}`,
+                formatCurrency(item.total_purchases),
                 item.count,
             ]);
         });
@@ -194,7 +196,7 @@ const PurchaseReport = () => {
             sorter: (a, b) => a.total_purchases - b.total_purchases,
             render: (total) => (
                 <span className="font-medium text-green-600">
-                    ₹{total.toFixed(2)}
+                    {formatCurrency(total)}
                 </span>
             ),
             width: 130,
@@ -287,7 +289,7 @@ const PurchaseReport = () => {
                                 valueStyle={{ color: "#52c41a" }}
                                 className="dashboard-stat-card"
                                 formatter={(value) =>
-                                    `₹${value.toLocaleString()}`
+                                    formatCurrency(value)
                                 }
                                 precision={2}
                             />
@@ -430,13 +432,13 @@ const PurchaseReport = () => {
                                                         : 12,
                                             }}
                                             tickFormatter={(value) =>
-                                                `₹${value}`
+                                                formatCurrency(value)
                                             }
                                         />
                                         <Tooltip
                                             formatter={(value, name) => [
                                                 name === "total_purchases"
-                                                    ? `₹${value.toFixed(2)}`
+                                                    ? formatCurrency(value)
                                                     : value,
                                                 name === "total_purchases"
                                                     ? t("reports.total_purchases")

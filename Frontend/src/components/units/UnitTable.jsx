@@ -16,6 +16,7 @@ import {
     PAGINATION_CONFIG,
     TABLE_SCROLL_CONFIG,
 } from "../../utils/category_units/constants";
+import useI18n from "../../hooks/useI18n";
 
 const UnitTable = ({
     units,
@@ -27,10 +28,11 @@ const UnitTable = ({
     onDelete,
 }) => {
     const [hoveredRow, setHoveredRow] = useState(null);
+    const { t } = useI18n();
 
     const columns = [
         {
-            title: "Unit Name",
+            title: t("units.unit_name"),
             dataIndex: "unit_name",
             key: "unit_name",
             sorter: (a, b) => a.unit_name.localeCompare(b.unit_name),
@@ -45,14 +47,14 @@ const UnitTable = ({
                             {text}
                         </span>
                         <span className="text-sm text-[#A9B3B8] mt-0.5">
-                            Unit of Measurement
+                            {t("units.unit_of_measurement")}
                         </span>
                     </div>
                 </div>
             ),
         },
         {
-            title: "Actions",
+            title: t("common.actions"),
             key: "actions",
             width: "50%",
             align: "center",
@@ -61,7 +63,7 @@ const UnitTable = ({
 
                 return (
                     <div className="flex items-center justify-center space-x-2">
-                        <Tooltip title="View Details">
+                        <Tooltip title={t("units.view_details")}>
                             <Button
                                 type="text"
                                 size="middle"
@@ -72,7 +74,9 @@ const UnitTable = ({
                         </Tooltip>
                         <Tooltip
                             title={
-                                canEditRecord ? "Edit" : "No permission to edit"
+                                canEditRecord
+                                    ? t("common.edit")
+                                    : t("common.no_permission_to_edit")
                             }
                         >
                             <Button
@@ -93,8 +97,8 @@ const UnitTable = ({
                         <Tooltip
                             title={
                                 canEditRecord
-                                    ? "Delete"
-                                    : "No permission to delete"
+                                    ? t("common.delete")
+                                    : t("common.no_permission_to_delete")
                             }
                         >
                             <Button
@@ -106,12 +110,11 @@ const UnitTable = ({
                                 disabled={!canEditRecord}
                                 onClick={() => {
                                     Modal.confirm({
-                                        title: "Delete Unit",
-                                        content:
-                                            "Are you sure you want to delete this unit?",
-                                        okText: "Delete",
+                                        title: t("units.delete_unit"),
+                                        content: t("units.delete_unit_confirm"),
+                                        okText: t("common.delete"),
                                         okType: "danger",
-                                        cancelText: "Cancel",
+                                        cancelText: t("common.cancel"),
                                         onOk: () => onDelete(record._id),
                                     });
                                 }}
@@ -138,7 +141,11 @@ const UnitTable = ({
                 pagination={{
                     ...PAGINATION_CONFIG,
                     showTotal: (total, range) =>
-                        `Showing ${range[0]}-${range[1]} of ${total} units`,
+                        t("units.showing_units", {
+                            start: range[0],
+                            end: range[1],
+                            total,
+                        }),
                     className: "px-6 py-4 bg-white/[0.03]",
                     showSizeChanger: false,
                     size: "default",
@@ -150,11 +157,10 @@ const UnitTable = ({
                                 description={
                                     <div className="text-center">
                                         <div className="text-[#A9B3B8] text-base font-medium mb-1">
-                                            No units found
+                                            {t("units.no_units_found")}
                                         </div>
                                         <div className="text-[#8B98A0] text-sm">
-                                            Create your first unit to get
-                                            started
+                                            {t("units.create_first_unit")}
                                         </div>
                                     </div>
                                 }

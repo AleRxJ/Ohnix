@@ -161,52 +161,49 @@ const LandingPage = () => {
 
     const pricingPlans = [
         {
-            name: "Starter",
-            subtitle: "For small teams getting organized",
-            price: "$0",
-            billing: "/month",
-            description:
-                "Track products, orders and customers with the core Ohnix flow, ideal to validate the business before scaling.",
+            name: t("landing.pricing.plans.starter.name"),
+            subtitle: t("landing.pricing.plans.starter.subtitle"),
+            price: t("landing.pricing.plans.starter.price"),
+            billing: t("landing.pricing.plans.starter.billing"),
+            description: t("landing.pricing.plans.starter.description"),
             features: [
-                "1 workspace",
-                "Basic inventory and order tracking",
-                "Email support",
-                "Landing + dashboard access",
+                t("landing.pricing.plans.starter.features.workspace"),
+                t("landing.pricing.plans.starter.features.tracking"),
+                t("landing.pricing.plans.starter.features.support"),
+                t("landing.pricing.plans.starter.features.access"),
             ],
-            cta: "Start free",
+            cta: t("landing.pricing.plans.starter.cta"),
             icon: brandIcons.pricing,
         },
         {
-            name: "Growth",
-            subtitle: "For businesses ready to sell more",
-            price: "$29",
-            billing: "/month",
-            description:
-                "Add forecasting, reports, and smoother operations for teams that need daily visibility and cleaner control.",
+            name: t("landing.pricing.plans.growth.name"),
+            subtitle: t("landing.pricing.plans.growth.subtitle"),
+            price: t("landing.pricing.plans.growth.price"),
+            billing: t("landing.pricing.plans.growth.billing"),
+            description: t("landing.pricing.plans.growth.description"),
             features: [
-                "Unlimited products and orders",
-                "Advanced reports and alerts",
-                "Priority support",
-                "Mobile-friendly operations",
+                t("landing.pricing.plans.growth.features.unlimited"),
+                t("landing.pricing.plans.growth.features.reports"),
+                t("landing.pricing.plans.growth.features.priority"),
+                t("landing.pricing.plans.growth.features.mobile"),
             ],
-            cta: "Choose Growth",
+            cta: t("landing.pricing.plans.growth.cta"),
             icon: brandIcons.growth,
             featured: true,
         },
         {
-            name: "Enterprise",
-            subtitle: "For operations with more complexity",
-            price: "Custom",
-            billing: "pricing",
-            description:
-                "For companies that need onboarding, custom workflows, and a tailored rollout aligned to their internal processes.",
+            name: t("landing.pricing.plans.enterprise.name"),
+            subtitle: t("landing.pricing.plans.enterprise.subtitle"),
+            price: t("landing.pricing.plans.enterprise.price"),
+            billing: t("landing.pricing.plans.enterprise.billing"),
+            description: t("landing.pricing.plans.enterprise.description"),
             features: [
-                "Custom onboarding",
-                "Dedicated implementation",
-                "Role-based workflows",
-                "Custom integrations",
+                t("landing.pricing.plans.enterprise.features.onboarding"),
+                t("landing.pricing.plans.enterprise.features.implementation"),
+                t("landing.pricing.plans.enterprise.features.workflows"),
+                t("landing.pricing.plans.enterprise.features.integrations"),
             ],
-            cta: "Talk to sales",
+            cta: t("landing.pricing.plans.enterprise.cta"),
             icon: brandIcons.trust,
         },
     ];
@@ -260,12 +257,12 @@ const LandingPage = () => {
 
                 <PricingSection
                     heading={{
-                        eyebrow: "Pricing",
-                        title: "Simple plans that scale with the business",
-                        description:
-                            "Clear pricing for teams starting small or preparing to run inventory and sales at scale.",
+                        eyebrow: t("landing.pricing.eyebrow"),
+                        title: t("landing.pricing.title"),
+                        description: t("landing.pricing.description"),
                     }}
                     plans={pricingPlans}
+                    featuredLabel={t("landing.pricing.most_popular")}
                 />
 
                 <FaqSection

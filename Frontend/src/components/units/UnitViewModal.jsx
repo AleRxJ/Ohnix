@@ -6,10 +6,12 @@ import {
     canEdit,
     getOwnershipText,
 } from "../../utils/category_units/permissionUtils";
+import useI18n from "../../hooks/useI18n";
 
 const { Title, Text } = Typography;
 
 const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
+    const { t } = useI18n();
     if (!unit) return null;
 
     const showEditButton = canEdit(unit, user, isAdmin);
@@ -58,8 +60,8 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                                     }}
                                 >
                                     {isOwner
-                                        ? "Your Unit"
-                                        : "Other User's Unit"}
+                                        ? t("units.your_unit")
+                                        : t("units.other_users_unit")}
                                 </Tag>
                             </div>
                         </div>
@@ -73,12 +75,12 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                         <div className="space-y-4">
                             <div>
                                 <Text className="text-sm font-medium text-[#A9B3B8] uppercase tracking-wider">
-                                    Created Information
+                                    {t("units.created_information")}
                                 </Text>
                                 <div className="mt-2 space-y-3">
                                     <div>
                                         <Text className="text-sm text-[#A9B3B8]">
-                                            Created By
+                                            {t("units.created_by")}
                                         </Text>
                                         <div className="mt-1">
                                             <Text className="text-base font-medium text-white">
@@ -88,7 +90,7 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                                     </div>
                                     <div>
                                         <Text className="text-sm text-[#A9B3B8]">
-                                            Created At
+                                            {t("units.created_at")}
                                         </Text>
                                         <div className="mt-1">
                                             <Text className="text-base text-white">
@@ -104,12 +106,12 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                         <div className="space-y-4">
                             <div>
                                 <Text className="text-sm font-medium text-[#A9B3B8] uppercase tracking-wider">
-                                    Last Updated
+                                    {t("units.last_updated")}
                                 </Text>
                                 <div className="mt-2 space-y-3">
                                     <div>
                                         <Text className="text-sm text-[#A9B3B8]">
-                                            Updated By
+                                            {t("units.updated_by")}
                                         </Text>
                                         <div className="mt-1">
                                             <Text className="text-base font-medium text-white">
@@ -119,7 +121,7 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                                     </div>
                                     <div>
                                         <Text className="text-sm text-[#A9B3B8]">
-                                            Updated At
+                                            {t("units.updated_at")}
                                         </Text>
                                         <div className="mt-1">
                                             <Text className="text-base text-white">
@@ -143,7 +145,7 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                             className="h-10 px-6 border-white/10 text-white hover:text-white hover:border-[#29D8D5]/35 bg-white/[0.03]"
                             style={{ borderRadius: "8px" }}
                         >
-                            Close
+                            {t("common.close")}
                         </Button>
                         {showEditButton && (
                             <Button
@@ -159,7 +161,7 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                                     fontWeight: 500,
                                 }}
                             >
-                                Edit Unit
+                                {t("units.edit_unit")}
                             </Button>
                         )}
                     </div>

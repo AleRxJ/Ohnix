@@ -8,6 +8,7 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import Signup from "./pages/auth/Signup";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
+import { CurrencyProvider } from "./context/CurrencyContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorPage from "./components/error/ErrorPage";
 import LandingPage from "./pages/LandingPage";
@@ -26,11 +27,12 @@ import Reports from "./pages/Reports";
 function App() {
     return (
         <I18nextProvider i18n={i18n}>
-            <AuthProvider>
-                <BrowserRouter>
-                    <Toaster />
-                    <div>
-                        <Routes>
+            <CurrencyProvider>
+                <AuthProvider>
+                    <BrowserRouter>
+                        <Toaster />
+                        <div>
+                            <Routes>
                             {/* Public routes */}
                             <Route path="/" element={<LandingPage />} />
                             <Route path="/login" element={<Login />} />
@@ -81,10 +83,11 @@ function App() {
 
                             {/* catch all */}
                             <Route path="/*" element={<ErrorPage />} />
-                        </Routes>
-                    </div>
-                </BrowserRouter>
-            </AuthProvider>
+                            </Routes>
+                        </div>
+                    </BrowserRouter>
+                </AuthProvider>
+            </CurrencyProvider>
         </I18nextProvider>
     );
 }

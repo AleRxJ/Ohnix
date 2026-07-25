@@ -6,6 +6,7 @@ import {
     WarningOutlined,
     DollarOutlined 
 } from "@ant-design/icons";
+import { useCurrency } from "../../context/CurrencyContext";
 
 const { Text, Title } = Typography;
 
@@ -16,6 +17,7 @@ const ReturnPreview = ({
     returnPreviewData,
     purchases,
 }) => {
+    const { formatCurrency, currency } = useCurrency();
     const returnPreviewColumns = [
         {
             title: "Product",
@@ -79,7 +81,7 @@ const ReturnPreview = ({
             key: "unit_cost",
             render: (cost) => (
                 <div className="text-right font-medium text-[#D4DBDF]">
-                    ₹{cost.toFixed(2)}
+                    {formatCurrency(cost)}
                 </div>
             ),
             width: 120,
@@ -91,7 +93,7 @@ const ReturnPreview = ({
             key: "potential_refund",
             render: (refund) => (
                 <div className="text-right font-semibold text-[#44F3F0]">
-                    ₹{refund.toFixed(2)}
+                    {formatCurrency(refund)}
                 </div>
             ),
             width: 140,
@@ -178,7 +180,7 @@ const ReturnPreview = ({
                                     title="Total Potential Refund"
                                     value={returnPreviewData.total_potential_refund}
                                     precision={2}
-                                    prefix="₹"
+                                    prefix={currency.symbol}
                                     valueStyle={{ color: '#44F3F0', fontWeight: 'bold' }}
                                 />
                             </Card>
@@ -220,7 +222,7 @@ const ReturnPreview = ({
                                 <div className="space-y-2">
                                     <p>Review the return details below before proceeding.</p>
                                     <div className="flex flex-wrap gap-4 text-sm">
-                                        <span>💰 Total Refund: <strong>₹{returnPreviewData.total_potential_refund.toFixed(2)}</strong></span>
+                                        <span>💰 Total Refund: <strong>{formatCurrency(returnPreviewData.total_potential_refund)}</strong></span>
                                         <span>✅ Full Returns: <strong>{fullReturns}</strong></span>
                                         {partialReturns > 0 && (
                                             <span>⚠️ Partial Returns: <strong>{partialReturns}</strong></span>
@@ -275,7 +277,7 @@ const ReturnPreview = ({
                                         <Table.Summary.Cell index={5}>
                                             <div className="text-right">
                                                 <Text strong className="text-lg text-green-600">
-                                                    ₹{totalRefund.toFixed(2)}
+                                                    {formatCurrency(totalRefund)}
                                                 </Text>
                                             </div>
                                         </Table.Summary.Cell>

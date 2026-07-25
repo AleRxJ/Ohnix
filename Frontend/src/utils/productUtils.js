@@ -1,6 +1,7 @@
-export const formatPrice = (price, currency = "₹") => {
-    if (typeof price !== "number") return `${currency}0.00`;
-    return `${currency}${price.toFixed(2)}`;
+import { formatCurrency } from "./currency";
+
+export const formatPrice = (price, currencyCode) => {
+    return formatCurrency(price, currencyCode);
 };
 
 export const calculateProfitMargin = (sellingPrice, buyingPrice) => {

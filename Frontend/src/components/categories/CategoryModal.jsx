@@ -31,7 +31,7 @@ const CategoryModal = ({
     return (
         <Modal
             title={
-                <div className="text-lg font-medium text-gray-800">
+                <div className="text-lg font-semibold text-white">
                     {editingCategory ? t("categories.edit_category") : t("categories.add_new_category")}
                 </div>
             }
@@ -42,11 +42,20 @@ const CategoryModal = ({
             centered
             className="category-modal"
             styles={{
-                body: { padding: "24px" },
-                header: {
-                    borderBottom: "1px solid #f0f0f0",
-                    paddingBottom: "16px",
+                mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                content: {
+                    background:
+                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                    borderRadius: "24px",
                 },
+                header: {
+                    background: "transparent",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    padding: "20px 24px 16px",
+                },
+                body: { padding: "20px 24px 24px" },
             }}
         >
             <Form
@@ -59,7 +68,7 @@ const CategoryModal = ({
                 <Form.Item
                     name="category_name"
                     label={
-                        <span className="text-sm font-medium text-gray-700">
+                        <span className="text-sm font-medium text-[#A9B3B8]">
                             {t("categories.category_name")}
                         </span>
                     }
@@ -68,25 +77,25 @@ const CategoryModal = ({
                 >
                     <Input
                         placeholder={t("categories.enter_category_name")}
-                        className="h-11 rounded-md border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                        className="h-11 rounded-md auth-ohnix-input"
                         prefix={
-                            <TagsOutlined className="text-gray-400 text-sm" />
+                            <TagsOutlined className="text-[#8B98A0] text-sm" />
                         }
                     />
                 </Form.Item>
 
                 <Form.Item className="mb-0">
-                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-100">
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-white/10">
                         <Button
                             onClick={onClose}
-                            className="h-10 px-6 rounded-md border-gray-300 hover:border-gray-400 transition-colors duration-200"
+                            className="h-10 px-6 rounded-md bg-white/[0.04] border-white/10 text-white hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
                         >
                             {t("common.cancel")}
                         </Button>
                         <Button
                             type="primary"
                             htmlType="submit"
-                            className="h-10 px-6 rounded-md bg-blue-600 hover:bg-blue-700 border-blue-600 hover:border-blue-700 transition-colors duration-200"
+                            className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                         >
                             {editingCategory
                                 ? t("categories.update_category")

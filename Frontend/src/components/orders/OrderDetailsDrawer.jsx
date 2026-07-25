@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 import { getStatusColor } from "../../utils/orderHelpers";
 import { getStatusIcon } from "../../data";
 import useI18n from "../../hooks/useI18n";
+import { useCurrency } from "../../context/CurrencyContext";
 
 const OrderDetailsDrawer = ({
     visible,
@@ -20,6 +21,7 @@ const OrderDetailsDrawer = ({
     onGenerateInvoice,
 }) => {
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
     if (!selectedOrder) return null;
 
     const isCancelled = selectedOrder.order_status === "cancelled";
@@ -58,7 +60,7 @@ const OrderDetailsDrawer = ({
             width: 120,
             render: (price) => (
                 <span className="text-gray-700 font-medium">
-                    ₹{price?.toFixed(2) || "0.00"}
+                    {formatCurrency(price)}
                 </span>
             ),
         },
@@ -70,7 +72,7 @@ const OrderDetailsDrawer = ({
             width: 120,
             render: (total) => (
                 <span className="text-green-600 font-semibold text-lg">
-                    ₹{total?.toFixed(2) || "0.00"}
+                    {formatCurrency(total)}
                 </span>
             ),
         },
@@ -166,7 +168,7 @@ const OrderDetailsDrawer = ({
                                 {t("common.subtotal")}
                             </span>
                             <span className="text-sm font-medium text-white">
-                                ₹{selectedOrder.sub_total?.toFixed(2)}
+                                {formatCurrency(selectedOrder.sub_total)}
                             </span>
                         </div>
                         <div className="flex items-center justify-between">
@@ -174,11 +176,7 @@ const OrderDetailsDrawer = ({
                                 {t("orders.gst", { rate: 18 })}
                             </span>
                             <span className="text-sm font-medium text-white">
-                                ₹
-                                {(
-                                    selectedOrder.total -
-                                    selectedOrder.sub_total
-                                )?.toFixed(2)}
+                                {formatCurrency(selectedOrder.total - selectedOrder.sub_total)}
                             </span>
                         </div>
                         <Divider style={{ margin: "12px 0", borderColor: "rgba(255,255,255,0.08)" }} />
@@ -187,7 +185,7 @@ const OrderDetailsDrawer = ({
                                 {t("common.total_amount")}
                             </span>
                             <span className="text-xl font-bold text-[#44F3F0]">
-                                ₹{selectedOrder.total?.toFixed(2)}
+                                {formatCurrency(selectedOrder.total)}
                             </span>
                         </div>
                     </div>

@@ -9,6 +9,7 @@ import {
 } from "../../utils/orderHelpers";
 import { getStatusIcon } from "../../data";
 import useI18n from "../../hooks/useI18n";
+import { useCurrency } from "../../context/CurrencyContext";
 
 const { Option } = Select;
 
@@ -22,6 +23,7 @@ const OrdersTable = ({
     onGenerateInvoice = () => {},
 }) => {
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
 
     const columns = [
         {
@@ -77,7 +79,7 @@ const OrdersTable = ({
             dataIndex: "total",
             key: "total",
             align: "right",
-            render: (amount) => <span className="font-semibold text-[#44F3F0] text-base">₹{amount?.toFixed(2)}</span>,
+            render: (amount) => <span className="font-semibold text-[#44F3F0] text-base">{formatCurrency(amount)}</span>,
         },
         {
             title: t("common.actions"),
@@ -148,7 +150,7 @@ const OrdersTable = ({
                         <div className="h-8 w-px bg-white/10"></div>
                     <div className="flex flex-col items-center">
                         <span className="text-xs text-[#A9B3B8] mb-0.5">{t("common.total")}</span>
-                        <span className="text-sm font-semibold text-[#44F3F0]">₹{order.total?.toFixed(2)}</span>
+                        <span className="text-sm font-semibold text-[#44F3F0]">{formatCurrency(order.total)}</span>
                     </div>
                 </div>
 

@@ -2,12 +2,16 @@ import React from "react";
 import { Form, Row, Col, Select, InputNumber, Button } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import { useCurrency } from "../../context/CurrencyContext";
+import { getCurrencyInputProps } from "../../utils/currency";
 
 const { Option } = Select;
 
 const OrderFormItems = ({ products, onRemove, name, restField }) => {
     const form = Form.useFormInstance();
     const { t } = useI18n();
+    const { currency } = useCurrency();
+    const currencyInputProps = getCurrencyInputProps(currency.code);
 
     const handleProductChange = (productId) => {
         const selected = products.find((p) => p._id === productId);
@@ -123,7 +127,9 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                                 step={0.01}
                                 className="w-full auth-ohnix-input"
                                 size="large"
-                                prefix="₹"
+                                prefix={currency.symbol}
+                                formatter={currencyInputProps.formatter}
+                                parser={currencyInputProps.parser}
                             />
                         </Form.Item>
                     </Col>
