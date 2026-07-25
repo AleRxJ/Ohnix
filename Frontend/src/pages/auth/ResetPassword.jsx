@@ -167,20 +167,20 @@ const ResetPassword = () => {
                             type="link"
                             onClick={handleSendOTP}
                             disabled={loading}
-                            className="p-0 h-auto text-sm text-gray-600 hover:text-blue-600"
+                            className="p-0 h-auto text-sm text-[#A9B3B8] hover:text-[#44F3F0]"
                         >
                             {t("auth.resend_otp")}
                         </AuthButton>
                     </div>
                 )}
 
-                <div className="text-center mt-6 pt-4 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">
+                <div className="text-center mt-6 pt-4 border-t border-white/10">
+                    <span className="text-sm text-[#A9B3B8]">
                         {t("auth.remember_password")} {" "}
                     </span>
                     <Link
                         to="/login"
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        className="text-sm text-[#44F3F0] hover:text-[#29D8D5] font-medium"
                     >
                         {t("auth.login")}
                     </Link>

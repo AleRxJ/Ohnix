@@ -214,6 +214,98 @@ body {
   color: #44f3f0 !important;
 }
 
+.dashboard-app {
+  background: radial-gradient(circle at top, rgba(41, 216, 213, 0.08), transparent 28%), linear-gradient(180deg, #070707 0%, #050505 100%);
+  color: #ffffff;
+}
+
+.dashboard-app .ant-card {
+  background: rgba(11, 11, 11, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(8px);
+}
+
+.dashboard-app .ant-card-head {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+.dashboard-app .ant-card-head-title,
+.dashboard-app .ant-card-extra,
+.dashboard-app .ant-statistic-title,
+.dashboard-app .ant-typography,
+.dashboard-app .ant-form-item-label > label {
+  color: #d4dbdf !important;
+}
+
+.dashboard-app .ant-input,
+.dashboard-app .ant-input-affix-wrapper,
+.dashboard-app .ant-input-number,
+.dashboard-app .ant-input-number-input,
+.dashboard-app .ant-picker,
+.dashboard-app .ant-select-selector,
+.dashboard-app .ant-input-password {
+  background: #121316 !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.dashboard-app .ant-input::placeholder,
+.dashboard-app .ant-input-number-input::placeholder,
+.dashboard-app .ant-picker-input > input::placeholder,
+.dashboard-app .ant-select-selection-placeholder {
+  color: #8b98a0 !important;
+}
+
+.dashboard-app .ant-input:hover,
+.dashboard-app .ant-input-affix-wrapper:hover,
+.dashboard-app .ant-picker:hover,
+.dashboard-app .ant-select-selector:hover {
+  border-color: rgba(41, 216, 213, 0.45) !important;
+}
+
+.dashboard-app .ant-input:focus,
+.dashboard-app .ant-input-affix-wrapper-focused,
+.dashboard-app .ant-picker-focused,
+.dashboard-app .ant-select-focused .ant-select-selector {
+  border-color: #29d8d5 !important;
+  box-shadow: 0 0 0 2px rgba(41, 216, 213, 0.18) !important;
+}
+
+.dashboard-app .ant-btn-default {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #e6ecef !important;
+}
+
+.dashboard-app .ant-btn-default:hover {
+  border-color: rgba(41, 216, 213, 0.5) !important;
+  color: #44f3f0 !important;
+}
+
+.dashboard-app .ant-btn-primary {
+  background: linear-gradient(135deg, #29d8d5, #44f3f0) !important;
+  border-color: transparent !important;
+  color: #031416 !important;
+  font-weight: 700;
+}
+
+.dashboard-app .ant-btn-primary:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 0 24px rgba(41, 216, 213, 0.28) !important;
+}
+
+.auth-ohnix-input input:-webkit-autofill,
+.auth-ohnix-input input:-webkit-autofill:hover,
+.auth-ohnix-input input:-webkit-autofill:focus,
+.auth-ohnix-input input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  box-shadow: 0 0 0 1000px #111214 inset !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

@@ -34,11 +34,12 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                 top: 0,
                 left: 0,
                 zIndex: 1000,
-                background: "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)",
+                background: "linear-gradient(180deg, #0b0b0b 0%, #0a1114 100%)",
+                borderRight: "1px solid rgba(255,255,255,0.1)",
             }}
         >
             <SidebarLogo collapsed={collapsed} onClick={handleLogoClick} />
-            <div className="mx-4 mb-4 h-px bg-slate-700/50"></div>
+            <div className="mx-4 mb-4 h-px bg-white/10"></div>
 
             <div className="px-3">
                 <Menu
@@ -82,32 +83,32 @@ const SidebarLogo = ({ collapsed, onClick }) => (
 );
 
 const SidebarUserProfile = ({ user, logout, t }) => (
-    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-slate-900/80 to-transparent">
-        <div className="bg-slate-800/60 backdrop-blur-sm rounded-xl p-3 border border-slate-700/50 shadow-xl">
+    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
+        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/12 shadow-xl">
             <div className="flex items-center gap-3 mb-3">
                 <Avatar
                     src={user?.avatar}
                     style={{
                         background:
-                            "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
-                        border: "2px solid rgba(148, 163, 184, 0.3)",
-                        boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
+                            "linear-gradient(135deg, #29d8d5 0%, #44f3f0 100%)",
+                        border: "2px solid rgba(255, 255, 255, 0.3)",
+                        boxShadow: "0 6px 14px rgba(41, 216, 213, 0.3)",
                     }}
                     icon={<UserOutlined />}
                     size={40}
                 />
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-100 truncate m-0">
+                    <p className="text-sm font-semibold text-white truncate m-0">
                         {user?.username || "User"}
                     </p>
-                    <p className="text-xs text-slate-400 truncate m-0">
+                    <p className="text-xs text-[#A9B3B8] truncate m-0">
                         {user?.role || "Administrator"}
                     </p>
                 </div>
             </div>
             <button
                 onClick={logout}
-                className="w-full bg-slate-700/50 hover:bg-slate-600/50 text-slate-100 font-medium py-2 px-3 rounded-lg text-sm transition-all duration-150 flex items-center justify-center gap-2 border border-slate-600/50 hover:border-slate-500/50 backdrop-blur-sm"
+                className="w-full bg-white/6 hover:bg-white/12 text-white font-medium py-2 px-3 rounded-lg text-sm transition-all duration-150 flex items-center justify-center gap-2 border border-white/12 hover:border-[#29D8D5]/40 backdrop-blur-sm"
             >
                 <LogoutOutlined className="text-base" />
                 <span>{t("common.logout")}</span>

@@ -54,8 +54,11 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
         <Header
             className="px-6 flex items-center justify-between z-10 sticky top-0 h-16"
             style={{
-                background: "white",
-                boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+                background:
+                    "linear-gradient(180deg, rgba(9,10,12,0.95) 0%, rgba(9,10,12,0.86) 100%)",
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                boxShadow: "0 8px 28px rgba(0,0,0,0.35)",
+                backdropFilter: "blur(8px)",
             }}
         >
             <div className="flex items-center gap-4">
@@ -75,7 +78,7 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                 </div>
                 <div className="md:hidden">
                     <button
-                        className="text-lg px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
+                        className="text-lg px-2 py-1 rounded-md bg-white/10 text-white hover:bg-white/15 transition-colors border border-white/12"
                         onClick={() => setCollapsed(!collapsed)}
                     >
                         {collapsed ? (
@@ -88,7 +91,7 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
 
                 <div className="hidden md:block">
                     <button
-                        className="text-lg px-2 py-1 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
+                        className="text-lg px-2 py-1 rounded-md bg-white/10 text-white hover:bg-white/15 transition-colors border border-white/12"
                         onClick={() => setCollapsed(!collapsed)}
                     >
                         {collapsed ? (
@@ -132,10 +135,10 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
 
 const UserProfileInfo = ({ user }) => (
     <div className="hidden sm:flex flex-col items-end mr-3">
-        <span className="text-sm font-bold text-gray-800">
+        <span className="text-sm font-bold text-white">
             {user?.username || "User"}
         </span>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-[#A9B3B8]">
             {user?.role || "Administrator"}
         </span>
     </div>
@@ -147,9 +150,9 @@ const UserAvatar = ({ user, avatarMenu }) => (
             <Avatar
                 src={user?.avatar}
                 style={{
-                    background: "linear-gradient(to right, #1a237e, #283593)",
-                    border: "2px solid white",
-                    boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+                    background: "linear-gradient(135deg, #29d8d5 0%, #44f3f0 100%)",
+                    border: "2px solid rgba(255,255,255,0.26)",
+                    boxShadow: "0 8px 20px rgba(41,216,213,0.25)",
                 }}
                 icon={<UserOutlined />}
                 size="large"

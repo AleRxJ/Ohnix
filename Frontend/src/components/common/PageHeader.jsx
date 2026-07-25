@@ -11,18 +11,21 @@ const PageHeader = ({
     actionText,
 }) => {
     return (
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4 px-2 sm:px-0">
+        <div className="relative mb-4 overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] px-4 py-4 sm:px-5 sm:py-5 md:px-6 md:py-6 shadow-[0_18px_36px_rgba(0,0,0,0.28)]">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full border border-[#29D8D5]/20" />
+            <div className="pointer-events-none absolute -left-10 -bottom-10 h-32 w-32 rounded-full border border-white/8" />
+            <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="flex-1 min-w-0">
-                <h1 className="flex items-center gap-2 mb-1 text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
+                <h1 className="mb-1 flex items-center gap-2 text-xl font-bold leading-tight text-white sm:text-2xl lg:text-3xl">
                     <span className="truncate">{title}</span>
                     {icon && (
-                        <span className="text-blue-600 flex-shrink-0 text-xl sm:text-2xl lg:text-3xl">
+                        <span className="flex-shrink-0 text-lg text-[#44F3F0] sm:text-xl lg:text-2xl">
                             {icon}
                         </span>
                     )}
                 </h1>
                 {subtitle && (
-                    <p className="mt-1 text-gray-500 text-sm sm:text-base leading-relaxed pr-2 sm:pr-0">
+                    <p className="mt-1 pr-2 text-xs leading-relaxed text-[#A9B3B8] sm:pr-0 sm:text-sm md:text-base">
                         {subtitle}
                     </p>
                 )}
@@ -36,7 +39,7 @@ const PageHeader = ({
                             icon={actionIcon}
                             onClick={onActionClick}
                             size="large"
-                            className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto min-w-[120px]"
+                            className="w-full min-w-[120px] sm:w-auto"
                             block={window.innerWidth < 640}
                         >
                             <span className="truncate">{actionText}</span>
@@ -44,6 +47,7 @@ const PageHeader = ({
                     )}
                 </div>
             )}
+            </div>
         </div>
     );
 };

@@ -98,10 +98,10 @@ const Signup = () => {
                 </Divider>
 
                 <div className="text-center text-sm">
-                    <span className="text-gray-600">{t("auth.already_have_account")}</span>{" "}
+                    <span className="text-[#A9B3B8]">{t("auth.already_have_account")}</span>{" "}
                     <button
                         onClick={() => navigate("/login")}
-                        className="text-blue-600 font-medium hover:text-blue-700 transition-colors"
+                        className="text-[#44F3F0] font-medium hover:text-[#29D8D5] transition-colors"
                     >
                         {t("auth.login")}
                     </button>

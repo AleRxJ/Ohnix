@@ -34,14 +34,14 @@ const DashboardLayout = () => {
     const currentPage = pathSegments.length > 0 ? pathSegments[0] : "dashboard";
 
     return (
-        <Layout className="min-h-screen bg-slate-50">
+        <Layout className="dashboard-app min-h-screen">
             <DashboardSidebar
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}
                 currentPage={currentPage}
             />
 
-            <Layout className="bg-slate-50">
+            <Layout className="bg-transparent">
                 <DashboardHeader
                     collapsed={collapsed}
                     setCollapsed={setCollapsed}
@@ -49,8 +49,8 @@ const DashboardLayout = () => {
 
                 <MobileMenu collapsed={collapsed} currentPage={currentPage} />
 
-                <Content className="mx-4 my-4 sm:mx-6 sm:my-6 lg:mx-8 lg:my-8">
-                    <div className="bg-white rounded-xl border border-slate-200/60 shadow-sm overflow-hidden min-h-[calc(100vh-8rem)] transition-shadow duration-200 hover:shadow-md">
+                <Content className="mx-3 my-3 sm:mx-5 sm:my-5 lg:mx-7 lg:my-7">
+                    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,11,11,0.9),rgba(8,8,8,0.96))] min-h-[calc(100vh-8rem)] shadow-[0_20px_45px_rgba(0,0,0,0.42)] transition-shadow duration-300 hover:shadow-[0_24px_54px_rgba(0,0,0,0.5)]">
                         <Outlet />
                     </div>
                 </Content>

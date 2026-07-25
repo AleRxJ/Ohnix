@@ -137,7 +137,7 @@ const Reports = () => {
     };
 
     return (
-        <div className="p-3 sm:p-6 max-w-7xl mx-auto">
+        <div className="p-3 sm:p-6 max-w-7xl mx-auto text-white">
             <PageHeader
                 title={
                     <span className="text-lg sm:text-xl md:text-2xl">
@@ -232,7 +232,7 @@ const Reports = () => {
 
             {/* Quick Actions */}
             <Card
-                className="mb-4 sm:mb-6"
+                className="mb-4 sm:mb-6 border border-white/10 bg-[#0B0B0B]/90"
                 size={isMobile ? "small" : "default"}
             >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -245,7 +245,7 @@ const Reports = () => {
                             Quick Actions
                         </h3>
                         <p
-                            className={`text-gray-600 ${
+                            className={`text-[#A9B3B8] ${
                                 isMobile ? "text-xs" : "text-sm"
                             }`}
                         >
@@ -286,7 +286,7 @@ const Reports = () => {
             </Card>
 
             {/* Reports Tabs */}
-            <Card className="shadow-sm" size={isMobile ? "small" : "default"}>
+            <Card className="shadow-sm border border-white/10 bg-[#0B0B0B]/90" size={isMobile ? "small" : "default"}>
                 <Tabs
                     activeKey={activeTab}
                     onChange={setActiveTab}
@@ -295,7 +295,7 @@ const Reports = () => {
                     className="custom-tabs"
                     tabBarStyle={{
                         marginBottom: isMobile ? "16px" : "24px",
-                        borderBottom: "2px solid #f0f0f0",
+                        borderBottom: "1px solid rgba(255,255,255,0.1)",
                     }}
                     tabPosition={isMobile ? "top" : "top"}
                     tabBarExtraContent={
@@ -323,7 +323,7 @@ const Reports = () => {
 
             {/* Mobile Active Tab Indicator */}
             {isMobile && (
-                <Card className="mb-4" size="small">
+                <Card className="mb-4 border border-white/10 bg-[#0B0B0B]/90" size="small">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                             <Badge
@@ -342,7 +342,7 @@ const Reports = () => {
                             )}
                         </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2 mb-0">
+                    <p className="text-xs text-[#A9B3B8] mt-2 mb-0">
                         {reportDescriptions[activeTab]}
                     </p>
                 </Card>
@@ -350,7 +350,7 @@ const Reports = () => {
 
             {/* Footer Info */}
             <div
-                className={`mt-6 sm:mt-8 text-center text-gray-500 ${
+                className={`mt-6 sm:mt-8 text-center text-[#A9B3B8] ${
                     isMobile ? "text-xs" : "text-sm"
                 }`}
             >

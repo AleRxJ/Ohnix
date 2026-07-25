@@ -124,6 +124,7 @@ const EmailVerify = () => {
                     <div className="flex flex-col items-center justify-center py-12">
                         <Spin size="large" />
                         <Text className="mt-4 text-gray-600">
+                        <Text className="mt-4 text-[#A9B3B8]">
                             {t("auth.sending_verification_code")}
                         </Text>
                     </div>
@@ -154,15 +155,15 @@ const EmailVerify = () => {
                                         type="button"
                                         onClick={sendVerificationOtp}
                                         disabled={loading}
-                                        className="text-blue-600 hover:text-blue-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="text-[#44F3F0] hover:text-[#29D8D5] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {t("auth.resend_code")}
                                     </button>
-                                    <span className="text-gray-300">|</span>
+                                    <span className="text-white/20">|</span>
                                     <button
                                         type="button"
                                         onClick={() => navigate("/login")}
-                                        className="text-gray-600 hover:text-gray-800 font-medium transition-colors inline-flex items-center gap-1"
+                                        className="text-[#A9B3B8] hover:text-white font-medium transition-colors inline-flex items-center gap-1"
                                     >
                                         <ArrowLeftOutlined className="text-xs" />
                                         {t("auth.back_to_login")}
@@ -182,12 +183,12 @@ const EmailVerify = () => {
                     </>
                 )}
 
-                <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-                    <Text className="text-sm text-gray-500">
+                <div className="mt-8 pt-6 border-t border-white/10 text-center">
+                    <Text className="text-sm text-[#A9B3B8]">
                         {t("auth.need_help")} {" "}
                         <a
                             href="mailto:alejandrosoftware.engineering@gmail.com"
-                            className="text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                            className="text-[#44F3F0] hover:text-[#29D8D5] font-medium transition-colors"
                         >
                             {t("auth.contact_support")}
                         </a>

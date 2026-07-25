@@ -86,15 +86,13 @@ const Orders = () => {
     };
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-transparent text-white">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="space-y-6">
                     <PageHeader
                         title="Orders"
                         subtitle="Manage and track your orders"
-                        icon={
-                            <ShoppingCartOutlined className="text-blue-600" />
-                        }
+                        icon={<ShoppingCartOutlined />}
                         actionText="Create Order"
                         actionIcon={<PlusOutlined />}
                         onActionClick={() => setCreateModalVisible(true)}
@@ -110,7 +108,7 @@ const Orders = () => {
                         onResetFilters={handleResetFilters}
                     />
 
-                    <div className="bg-white rounded-lg border-2 border-gray-200">
+                    <div className="rounded-xl border border-white/10 bg-[#0B0B0B]/90 shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
                         <OrdersTable
                             orders={orders}
                             loading={loading}
