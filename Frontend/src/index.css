@@ -130,6 +130,90 @@ body {
   animation: sweepShine 4.6s ease-in-out infinite;
 }
 
+.auth-ohnix-input,
+.auth-ohnix-input.ant-input-affix-wrapper,
+.auth-ohnix-input .ant-input,
+.auth-ohnix-input input {
+  background: #111214 !important;
+  color: #ffffff !important;
+}
+
+.auth-ohnix-input::placeholder,
+.auth-ohnix-input input::placeholder,
+.auth-ohnix-input .ant-input::placeholder {
+  color: #8b98a0 !important;
+}
+
+.auth-ohnix-input.ant-input-affix-wrapper,
+.auth-ohnix-input.ant-input,
+.auth-ohnix-input .ant-input {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.auth-ohnix-input.ant-input-affix-wrapper:hover,
+.auth-ohnix-input.ant-input:hover,
+.auth-ohnix-input .ant-input:hover {
+  border-color: rgba(41, 216, 213, 0.45) !important;
+}
+
+.auth-ohnix-input.ant-input-affix-wrapper-focused,
+.auth-ohnix-input.ant-input:focus,
+.auth-ohnix-input .ant-input:focus,
+.auth-ohnix-input.ant-input-affix-wrapper:focus,
+.auth-ohnix-input.ant-input-affix-wrapper:focus-within {
+  border-color: #29d8d5 !important;
+  box-shadow: 0 0 0 2px rgba(41, 216, 213, 0.18) !important;
+}
+
+.auth-ohnix-input .ant-input-password-icon,
+.auth-ohnix-input .ant-input-clear-icon,
+.auth-ohnix-input .anticon {
+  color: #7f8b92 !important;
+}
+
+.antd-custom-table .ant-table {
+  background: transparent !important;
+  color: #d4dbdf !important;
+}
+
+.antd-custom-table .ant-table-thead > tr > th {
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: #9fb0b8 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.antd-custom-table .ant-table-tbody > tr > td {
+  background: transparent !important;
+  color: #e6ecef !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.antd-custom-table .ant-table-tbody > tr:hover > td {
+  background: rgba(41, 216, 213, 0.08) !important;
+}
+
+.antd-custom-table .ant-table-column-sorter,
+.antd-custom-table .ant-table-filter-trigger,
+.antd-custom-table .ant-table-column-sorter-up,
+.antd-custom-table .ant-table-column-sorter-down {
+  color: #8fa1aa !important;
+}
+
+.antd-custom-table .ant-pagination-item a,
+.antd-custom-table .ant-pagination-total-text,
+.antd-custom-table .ant-pagination-prev .ant-pagination-item-link,
+.antd-custom-table .ant-pagination-next .ant-pagination-item-link {
+  color: #a9b3b8 !important;
+}
+
+.antd-custom-table .ant-pagination-item-active {
+  border-color: rgba(41, 216, 213, 0.55) !important;
+}
+
+.antd-custom-table .ant-pagination-item-active a {
+  color: #44f3f0 !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

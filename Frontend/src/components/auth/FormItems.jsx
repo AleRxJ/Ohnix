@@ -31,7 +31,7 @@ export const EmailInput = ({ name = "email", required = true, ...props }) => {
                 prefix={<MailOutlined className="text-slate-400" />}
                 placeholder={t("common.email")}
                 size="large"
-                className="rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
+                className="auth-ohnix-input rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
             />
         </Form.Item>
     );
@@ -66,7 +66,7 @@ export const PasswordInput = ({
                 prefix={<LockOutlined className="text-slate-400" />}
                 placeholder={placeholder === "Password" ? t("common.password") : placeholder}
                 size="large"
-                className="rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
+                className="auth-ohnix-input rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
             />
         </Form.Item>
     );
@@ -98,7 +98,7 @@ export const UsernameInput = ({
                 prefix={<UserOutlined className="text-slate-400" />}
                 placeholder={t("common.username")}
                 size="large"
-                className="rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
+                className="auth-ohnix-input rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
             />
         </Form.Item>
     );
@@ -130,7 +130,7 @@ export const OtpInput = ({ name = "otp", required = true, ...props }) => {
                 prefix={<KeyOutlined className="text-slate-400" />}
                 placeholder={t("auth.enter_6_digit_code")}
                 size="large"
-                className="rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
+                className="auth-ohnix-input rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
                 maxLength={6}
             />
         </Form.Item>

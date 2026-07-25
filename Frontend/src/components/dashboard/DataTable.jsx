@@ -88,7 +88,7 @@ const DataTable = ({
                     loading={loading}
                     locale={{
                         emptyText: (
-                            <div className="py-6 sm:py-8 text-gray-400">
+                            <div className="py-6 sm:py-8 text-[#A9B3B8]">
                                 <div className="text-sm sm:text-base">
                                     No {title.toLowerCase()} available
                                 </div>
@@ -100,7 +100,7 @@ const DataTable = ({
                         x: "max-content",
                         y: pagination ? "calc(100% - 60px)" : "100%",
                     }}
-                    rowClassName="hover:bg-blue-50 transition-colors cursor-pointer"
+                    rowClassName="transition-colors cursor-pointer"
                     style={{
                         height: "100%",
                     }}

@@ -111,7 +111,7 @@ const Dashboard = () => {
             },
             render: (text) => (
                 <Tooltip placement="topLeft" title={text}>
-                    <span className="text-sm font-medium text-gray-800 block max-w-[150px] sm:max-w-[200px] truncate">
+                    <span className="text-sm font-medium text-[#E6ECEF] block max-w-[150px] sm:max-w-[200px] truncate">
                         {text}
                     </span>
                 </Tooltip>
@@ -160,7 +160,7 @@ const Dashboard = () => {
             },
             render: (text) => (
                 <Tooltip placement="topLeft" title={text}>
-                    <span className="text-sm font-medium text-gray-800 block max-w-[150px] sm:max-w-[200px] truncate">
+                    <span className="text-sm font-medium text-[#E6ECEF] block max-w-[150px] sm:max-w-[200px] truncate">
                         {text}
                     </span>
                 </Tooltip>
@@ -219,7 +219,7 @@ const Dashboard = () => {
                     record.customer_id?.name || t("customers.unknown_customer");
                 return (
                     <Tooltip placement="topLeft" title={customerName}>
-                        <span className="text-sm font-medium text-gray-800 block max-w-[150px] sm:max-w-[200px] truncate">
+                        <span className="text-sm font-medium text-[#E6ECEF] block max-w-[150px] sm:max-w-[200px] truncate">
                             {customerName}
                         </span>
                     </Tooltip>
@@ -232,7 +232,7 @@ const Dashboard = () => {
             width: 100,
             responsive: ["md"],
             render: (_, record) => (
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-[#A9B3B8]">
                     {new Date(record.createdAt).toLocaleDateString()}
                 </span>
             ),
@@ -274,6 +274,11 @@ const Dashboard = () => {
     if (error) {
         return <ErrorDisplay error={error} onRetry={fetchDashboardData} />;
     }
+
+    const topPerformer = dashboardData.topProducts?.[0] || null;
+    const mostProfitableProduct = dashboardData.topProducts?.length
+        ? [...dashboardData.topProducts].sort((a, b) => b.total_sales - a.total_sales)[0]
+        : null;
 
     return (
         <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.08),transparent_26%),linear-gradient(180deg,#070707_0%,#050505_100%)] text-white">
@@ -386,8 +391,8 @@ const Dashboard = () => {
                             dashboardData.topProducts.length > 0 && (
                                 <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)] p-6 backdrop-blur-md">
                                     <div className="flex items-center gap-3 mb-5">
-                                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                                            <InfoCircleOutlined className="text-lg text-blue-600" />
+                                        <div className="w-10 h-10 rounded-lg bg-[linear-gradient(135deg,rgba(41,216,213,0.2),rgba(68,243,240,0.1))] border border-[#29D8D5]/25 flex items-center justify-center">
+                                            <InfoCircleOutlined className="text-lg text-[#44F3F0]" />
                                         </div>
                                         <div>
                                                 <h3 className="text-lg font-bold text-white m-0 leading-tight">
@@ -400,60 +405,50 @@ const Dashboard = () => {
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="p-5 bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl border-2 border-emerald-200">
+                                        <div className="p-5 bg-[linear-gradient(145deg,rgba(41,216,213,0.16),rgba(41,216,213,0.04))] rounded-xl border border-[#29D8D5]/30">
                                             <div className="flex items-start justify-between mb-3">
-                                                <Text className="text-emerald-700 text-xs font-bold uppercase tracking-wider block">
+                                                <Text className="text-[#44F3F0] text-xs font-bold uppercase tracking-wider block">
                                                     {t("dashboard.top_performer")}
                                                 </Text>
-                                                <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                                <div className="w-8 h-8 rounded-lg bg-[#29D8D5]/15 border border-[#29D8D5]/35 flex items-center justify-center">
                                                     🏆
                                                 </div>
                                             </div>
-                                            <Text className="text-base font-bold text-slate-900 block mb-2">
-                                                {
-                                                    dashboardData.topProducts[0]
-                                                        ?.product_name
-                                                }
+                                            <Text className="text-base font-bold text-white block mb-2">
+                                                {topPerformer?.product_name}
                                             </Text>
                                             <Badge
                                                 count={t("dashboard.units_sold", {
-                                                    count: dashboardData.topProducts[0]?.quantity_sold,
+                                                    count: topPerformer?.quantity_sold,
                                                 })}
                                                 style={{
-                                                    backgroundColor: "#10b981",
+                                                    backgroundColor: "rgba(41,216,213,0.22)",
+                                                    color: "#44F3F0",
                                                     fontSize: "11px",
                                                     fontWeight: 600,
                                                 }}
                                             />
                                         </div>
 
-                                        <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
+                                        <div className="p-5 bg-[linear-gradient(145deg,rgba(68,243,240,0.14),rgba(68,243,240,0.03))] rounded-xl border border-[#44F3F0]/28">
                                             <div className="flex items-start justify-between mb-3">
-                                                <Text className="text-blue-700 text-xs font-bold uppercase tracking-wider block">
+                                                <Text className="text-[#8CECEC] text-xs font-bold uppercase tracking-wider block">
                                                     {t("dashboard.most_profitable")}
                                                 </Text>
-                                                <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                                <div className="w-8 h-8 rounded-lg bg-[#44F3F0]/12 border border-[#44F3F0]/30 flex items-center justify-center">
                                                     💰
                                                 </div>
                                             </div>
-                                            <Text className="text-base font-bold text-slate-900 block mb-2">
-                                                {
-                                                    dashboardData.topProducts.sort(
-                                                        (a, b) =>
-                                                            b.total_sales -
-                                                            a.total_sales
-                                                    )[0]?.product_name
-                                                }
+                                            <Text className="text-base font-bold text-white block mb-2">
+                                                {mostProfitableProduct?.product_name}
                                             </Text>
                                             <Badge
                                                 count={t("dashboard.revenue", {
-                                                    value: dashboardData.topProducts
-                                                        .slice()
-                                                        .sort((a, b) => b.total_sales - a.total_sales)[0]
-                                                        ?.total_sales.toLocaleString(),
+                                                    value: mostProfitableProduct?.total_sales?.toLocaleString(),
                                                 })}
                                                 style={{
-                                                    backgroundColor: "#3b82f6",
+                                                    backgroundColor: "rgba(68,243,240,0.2)",
+                                                    color: "#8CECEC",
                                                     fontSize: "11px",
                                                     fontWeight: 600,
                                                 }}
