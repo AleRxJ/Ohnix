@@ -1,6 +1,15 @@
 import axios from "axios";
 
-const backendBaseUrl = import.meta.env.VITE_BACKEND_URL || "";
+const configuredBackendUrl = import.meta.env.VITE_BACKEND_URL?.trim();
+
+// Keep local development pointing at the Vite host proxy/same-origin API when env is absent,
+// but use the hosted backend in production to avoid mobile clients resolving /api/v1 on Vercel.
+const backendBaseUrl = configuredBackendUrl
+    ? configuredBackendUrl
+    : import.meta.env.DEV
+      ? ""
+      : "https://ohnix.onrender.com";
+
 const normalizedBackendUrl = backendBaseUrl.endsWith("/api/v1")
     ? backendBaseUrl
     : `${backendBaseUrl.replace(/\/$/, "")}/api/v1`;

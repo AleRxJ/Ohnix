@@ -35,6 +35,7 @@ const defaultOrigins = [
    "http://localhost:3000",
    "http://localhost:5173",
    "https://ohnix.vercel.app",
+   "https://*.vercel.app",
 ];
 
 const allowedOrigins = [...new Set([...configuredOrigins, ...defaultOrigins])];
