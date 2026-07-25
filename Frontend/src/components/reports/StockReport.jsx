@@ -37,6 +37,14 @@ const StockReport = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
 
+    const statusLabelByValue = {
+        "Out of Stock": t("reports.out_of_stock"),
+        "Low Stock": t("reports.low_stock"),
+        "In Stock": t("reports.in_stock"),
+    };
+
+    const getStatusLabel = (status) => statusLabelByValue[status] || status;
+
     useEffect(() => {
         fetchStockReport();
     }, []);
@@ -120,7 +128,7 @@ const StockReport = () => {
                 formatCurrency(item.buying_price),
                 formatCurrency(item.selling_price),
                 formatCurrency(item.inventory_value),
-                item.status,
+                getStatusLabel(item.status),
             ]);
         });
 
@@ -284,9 +292,7 @@ const StockReport = () => {
                     icon={getStatusIcon(status)}
                     className={`text-xs ${window.innerWidth < 768 ? "px-1" : ""}`}
                 >
-                    {window.innerWidth < 768
-                        ? status.split(" ")[0] // Show only first word on mobile
-                        : status}
+                    {getStatusLabel(status)}
                 </Tag>
             ),
         },
@@ -453,7 +459,11 @@ const StockReport = () => {
                             showQuickJumper: window.innerWidth >= 1024,
                             showTotal: (total, range) =>
                                 window.innerWidth >= 768
-                                    ? `${range[0]}-${range[1]} of ${total} items`
+                                    ? t("common.showing_of_items", {
+                                          start: range[0],
+                                          end: range[1],
+                                          total,
+                                      })
                                     : `${range[0]}-${range[1]}/${total}`,
                             pageSizeOptions:
                                 window.innerWidth >= 768

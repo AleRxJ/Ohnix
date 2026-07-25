@@ -19,13 +19,24 @@ import TopProductsReport from "../components/reports/TopProductsReport";
 import AuthContext from "../context/AuthContext";
 import { api } from "../api/api";
 import toast from "react-hot-toast";
+import useI18n from "../hooks/useI18n";
 
 const Reports = () => {
     const [activeTab, setActiveTab] = useState("stock");
     const [triggeringAlert, setTriggeringAlert] = useState(false);
     const [schedulerStatus, setSchedulerStatus] = useState(null);
     const { user } = useContext(AuthContext);
+    const { t, currentLanguage } = useI18n();
     const isMobile = window.innerWidth < 768;
+
+    const tabLabelByKey = {
+        stock: isMobile ? t("reports.stock") : t("reports.stock_report"),
+        sales: isMobile ? t("reports.sales") : t("reports.sales_report"),
+        purchases: isMobile ? t("reports.purchases") : t("reports.purchase_report"),
+        "top-products": isMobile
+            ? t("reports.top")
+            : t("reports.top_products"),
+    };
 
     // New function for admin to manually trigger alerts (for testing)
     const triggerLowStockAlert = async () => {
@@ -78,7 +89,7 @@ const Reports = () => {
                     <InboxOutlined
                         className={`${isMobile ? "mr-1 text-xs" : "mr-1 text-sm"}`}
                     />
-                    {isMobile ? "Stock" : "Stock Report"}
+                    {tabLabelByKey.stock}
                 </span>
             ),
             children: <StockReport />,
@@ -92,7 +103,7 @@ const Reports = () => {
                     <ShoppingCartOutlined
                         className={`${isMobile ? "mr-1 text-xs" : "mr-1 text-sm"}`}
                     />
-                    {isMobile ? "Sales" : "Sales Report"}
+                    {tabLabelByKey.sales}
                 </span>
             ),
             children: <SalesReport />,
@@ -106,7 +117,7 @@ const Reports = () => {
                     <FileTextOutlined
                         className={`${isMobile ? "mr-1 text-xs" : "mr-1 text-sm"}`}
                     />
-                    {isMobile ? "Purchases" : "Purchase Report"}
+                    {tabLabelByKey.purchases}
                 </span>
             ),
             children: <PurchaseReport />,
@@ -120,7 +131,7 @@ const Reports = () => {
                     <TrophyOutlined
                         className={`${isMobile ? "mr-1 text-xs" : "mr-1 text-sm"}`}
                     />
-                    {isMobile ? "Top" : "Top Products"}
+                    {tabLabelByKey["top-products"]}
                 </span>
             ),
             children: <TopProductsReport />,
@@ -128,12 +139,10 @@ const Reports = () => {
     ];
 
     const reportDescriptions = {
-        stock: "Monitor your inventory levels, track stock status, and identify products that need restocking.",
-        sales: "Analyze your sales performance over time, track revenue trends, and identify your best-selling products.",
-        purchases:
-            "Review your purchasing patterns, supplier performance, and procurement costs analysis.",
-        "top-products":
-            "Discover your most profitable products and understand customer preferences based on sales data.",
+        stock: t("reports.report_description_stock"),
+        sales: t("reports.report_description_sales"),
+        purchases: t("reports.report_description_purchases"),
+        "top-products": t("reports.report_description_top_products"),
     };
 
     return (
@@ -142,15 +151,15 @@ const Reports = () => {
                 title={
                     <span className="text-lg sm:text-xl md:text-2xl">
                         {isMobile
-                            ? "Reports & Analytics"
-                            : "Business Reports & Analytics"}
+                            ? t("reports.reports_and_analytics")
+                            : t("reports.business_reports_and_analytics")}
                     </span>
                 }
                 subtitle={
                     <span className="text-sm sm:text-base">
                         {isMobile
-                            ? "Comprehensive business insights"
-                            : "Comprehensive insights into your business performance and inventory management"}
+                            ? t("reports.comprehensive_business_insights")
+                            : t("reports.comprehensive_business_insights_long")}
                     </span>
                 }
             />
@@ -158,11 +167,11 @@ const Reports = () => {
             {/* Admin Notice */}
             {user?.role === "admin" && (
                 <Alert
-                    message="Admin View"
+                    message={t("reports.admin_view")}
                     description={
                         isMobile
-                            ? "Viewing system-wide data. Regular users see only their own data."
-                            : "You are viewing reports across all users in the system. Regular users will only see their own data."
+                            ? t("reports.admin_viewing_system_wide_data_short")
+                            : t("reports.admin_viewing_system_wide_data_long")
                     }
                     type="info"
                     showIcon
@@ -172,16 +181,15 @@ const Reports = () => {
 
             {/* Automatic Low Stock Alert Info */}
             <Alert
-                message="📧 Automatic Low Stock Alerts"
+                message={t("reports.automatic_low_stock_alerts")}
                 description={
                     <div className="flex flex-col gap-2">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                             <span className={isMobile ? "text-xs" : "text-sm"}>
-                                Low stock email alerts are automatically sent
-                                every Monday at 9:00 AM.
+                                {t("reports.low_stock_alert_schedule")}
                                 {user?.role === "admin"
-                                    ? " You can manually trigger alerts for testing."
-                                    : " Check your email regularly for important stock notifications."}
+                                    ? ` ${t("reports.low_stock_alert_admin_suffix")}`
+                                    : ` ${t("reports.low_stock_alert_user_suffix")}`}
                             </span>
                             {user?.role === "admin" && (
                                 <div className="flex gap-2 items-center">
@@ -194,8 +202,8 @@ const Reports = () => {
                                             }
                                             text={
                                                 schedulerStatus.isRunning
-                                                    ? "Running"
-                                                    : "Stopped"
+                                                    ? t("reports.scheduler_running")
+                                                    : t("reports.scheduler_stopped")
                                             }
                                         />
                                     )}
@@ -206,20 +214,21 @@ const Reports = () => {
                                         onClick={triggerLowStockAlert}
                                         loading={triggeringAlert}
                                     >
-                                        Test Alerts
+                                        {t("reports.test_alerts")}
                                     </Button>
                                 </div>
                             )}
                         </div>
                         {schedulerStatus && user?.role === "admin" && (
                             <div className="text-xs text-gray-500">
-                                Threshold: {schedulerStatus.threshold} units |
-                                Next run:{" "}
+                                {t("reports.threshold")}:{" "}
+                                {schedulerStatus.threshold} {t("reports.units")} |
+                                {t("reports.next_run")}:{" "}
                                 {schedulerStatus.nextRun
                                     ? new Date(
                                           schedulerStatus.nextRun
-                                      ).toLocaleString()
-                                    : "Not scheduled"}
+                                      ).toLocaleString(currentLanguage)
+                                    : t("reports.not_scheduled")}
                             </div>
                         )}
                     </div>
@@ -242,7 +251,7 @@ const Reports = () => {
                                 isMobile ? "text-base" : "text-lg"
                             }`}
                         >
-                            Quick Actions
+                            {t("reports.quick_actions")}
                         </h3>
                         <p
                             className={`text-[#A9B3B8] ${
@@ -250,13 +259,13 @@ const Reports = () => {
                             }`}
                         >
                             {isMobile
-                                ? "Business insights and actions"
+                                ? t("reports.business_insights_and_actions")
                                 : reportDescriptions[activeTab]}
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
                         {user?.role === "admin" && (
-                            <Tooltip title="Manually trigger low stock alerts for all users (for testing purposes)">
+                            <Tooltip title={t("reports.manual_trigger_alerts_tooltip")}>
                                 <Button
                                     type="primary"
                                     icon={<AlertOutlined />}
@@ -269,8 +278,8 @@ const Reports = () => {
                                     }
                                 >
                                     {isMobile
-                                        ? "Test Alerts"
-                                        : "Trigger Test Alerts"}
+                                        ? t("reports.test_alerts")
+                                        : t("reports.trigger_test_alerts")}
                                 </Button>
                             </Tooltip>
                         )}
@@ -279,7 +288,9 @@ const Reports = () => {
                             onClick={() => window.print()}
                             size={isMobile ? "middle" : "default"}
                         >
-                            {isMobile ? "Print" : "Print Report"}
+                            {isMobile
+                                ? t("reports.print")
+                                : t("reports.print_report")}
                         </Button>
                     </div>
                 </div>
@@ -307,12 +318,12 @@ const Reports = () => {
                                             ? "processing"
                                             : "default"
                                     }
-                                    text={activeTab === "stock" ? "Active" : ""}
+                                    text={activeTab === "stock" ? t("common.active") : ""}
                                 />
                                 {activeTab === "stock" && (
                                     <AlertOutlined
                                         className="text-orange-500"
-                                        title="Stock monitoring active"
+                                        title={t("reports.stock_monitoring_active")}
                                     />
                                 )}
                             </div>
@@ -332,12 +343,12 @@ const Reports = () => {
                                         ? "processing"
                                         : "default"
                                 }
-                                text={`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace("-", " ")} Report`}
+                                text={tabLabelByKey[activeTab]}
                             />
                             {activeTab === "stock" && (
                                 <AlertOutlined
                                     className="text-orange-500"
-                                    title="Stock monitoring active"
+                                    title={t("reports.stock_monitoring_active")}
                                 />
                             )}
                         </div>
@@ -355,18 +366,16 @@ const Reports = () => {
                 }`}
             >
                 <p className="px-2">
-                    Reports are generated in real-time based on your latest
-                    data.
+                    {t("reports.reports_generated_realtime")}
                     {user?.role === "admin"
-                        ? " Admin view shows system-wide data."
-                        : " Data is filtered to your account."}
+                        ? ` ${t("reports.admin_view_shows_system_wide_data")}`
+                        : ` ${t("reports.data_filtered_to_your_account")}`}
                 </p>
                 <p className="mt-1 px-2">
-                    📧 Low stock alerts automatically sent every Monday at 9:00
-                    AM
+                    {t("reports.low_stock_alerts_footer")}
                 </p>
                 <p className="mt-1 px-2">
-                    Last updated: {new Date().toLocaleString()}
+                    {t("reports.last_updated")}: {new Date().toLocaleString(currentLanguage)}
                 </p>
             </div>
         </div>

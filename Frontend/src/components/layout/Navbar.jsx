@@ -16,7 +16,7 @@ const Navbar = () => {
         { label: t("landing.nav.home"), path: "home" },
         { label: t("landing.nav.features"), path: "features" },
         { label: t("landing.nav.process"), path: "timeline" },
-        { label: t("common.pricing"), path: "pricing" },
+        { label: t("pricing.eyebrow", { defaultValue: "Pricing" }), path: "pricing" },
         { label: t("landing.nav.faq"), path: "faq" },
         { label: t("landing.nav.contact"), path: "contact" },
     ];

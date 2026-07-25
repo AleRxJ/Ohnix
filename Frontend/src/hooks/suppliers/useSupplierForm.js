@@ -31,6 +31,18 @@ export const useSupplierForm = (onSuccess) => {
             account_holder: supplier.account_holder,
             account_number: supplier.account_number,
         });
+        if (supplier.photo && supplier.photo !== "default-supplier.png") {
+            setFileList([
+                {
+                    uid: "-1",
+                    name: "current-photo.jpg",
+                    status: "done",
+                    url: supplier.photo,
+                },
+            ]);
+        } else {
+            setFileList([]);
+        }
         setModalVisible(true);
     };
 
@@ -84,6 +96,10 @@ export const useSupplierForm = (onSuccess) => {
         },
         fileList,
         onChange: ({ fileList }) => setFileList(fileList),
+        maxCount: 1,
+        accept: "image/*",
+        listType: "picture-card",
+        className: "avatar-uploader",
     };
 
     return {

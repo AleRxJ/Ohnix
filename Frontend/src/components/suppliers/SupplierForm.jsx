@@ -5,7 +5,6 @@ import {
     Input,
     Upload,
     Button,
-    Space,
     Row,
     Col,
     Select,
@@ -35,23 +34,53 @@ const SupplierForm = ({
     const { t } = useI18n();
     return (
         <Modal
-            title={editMode ? t("suppliers.edit_supplier") : t("suppliers.add_new_supplier")}
+            title={
+                <div className="text-lg font-semibold text-white">
+                    {editMode
+                        ? t("suppliers.edit_supplier")
+                        : t("suppliers.add_new_supplier")}
+                </div>
+            }
             open={visible}
             onCancel={onCancel}
             footer={null}
-            width={800}
+            width={Math.min(880, window.innerWidth * 0.94)}
+            centered
+            className="supplier-modal"
+            styles={{
+                mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                content: {
+                    background:
+                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                    borderRadius: "24px",
+                },
+                header: {
+                    background: "transparent",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    padding: "20px 24px 16px",
+                },
+                body: { padding: "20px 24px 24px" },
+            }}
         >
             <Form
                 form={form}
                 layout="vertical"
                 onFinish={onSubmit}
                 autoComplete="off"
+                className="space-y-6"
+                size="large"
             >
-                <Row gutter={16}>
-                    <Col span={12}>
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12}>
                         <Form.Item
                             name="name"
-                            label={t("suppliers.supplier_name")}
+                            label={
+                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                    {t("suppliers.supplier_name")}
+                                </span>
+                            }
                             rules={[
                                 {
                                     required: true,
@@ -64,15 +93,22 @@ const SupplierForm = ({
                             ]}
                         >
                             <Input
-                                prefix={<UserOutlined />}
+                                prefix={
+                                    <UserOutlined className="text-[#8B98A0] text-sm" />
+                                }
                                 placeholder={t("suppliers.enter_supplier_name_placeholder")}
+                                className="h-11 rounded-md auth-ohnix-input"
                             />
                         </Form.Item>
                     </Col>
-                    <Col span={12}>
+                    <Col xs={24} sm={12}>
                         <Form.Item
                             name="email"
-                            label={t("suppliers.email")}
+                            label={
+                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                    {t("suppliers.email")}
+                                </span>
+                            }
                             rules={[
                                 {
                                     required: true,
@@ -89,18 +125,25 @@ const SupplierForm = ({
                             ]}
                         >
                             <Input
-                                prefix={<MailOutlined />}
+                                prefix={
+                                    <MailOutlined className="text-[#8B98A0] text-sm" />
+                                }
                                 placeholder={t("suppliers.enter_email_placeholder")}
+                                className="h-11 rounded-md auth-ohnix-input"
                             />
                         </Form.Item>
                     </Col>
                 </Row>
 
-                <Row gutter={16}>
-                    <Col span={12}>
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12}>
                         <Form.Item
                             name="phone"
-                            label={t("suppliers.phone")}
+                            label={
+                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                    {t("suppliers.phone")}
+                                </span>
+                            }
                             rules={[
                                 {
                                     required: true,
@@ -113,14 +156,27 @@ const SupplierForm = ({
                             ]}
                         >
                             <Input
-                                prefix={<PhoneOutlined />}
+                                prefix={
+                                    <PhoneOutlined className="text-[#8B98A0] text-sm" />
+                                }
                                 placeholder={t("suppliers.enter_phone_placeholder")}
+                                className="h-11 rounded-md auth-ohnix-input"
                             />
                         </Form.Item>
                     </Col>
-                    <Col span={12}>
-                        <Form.Item name="type" label={t("suppliers.supplier_type")}>
-                            <Select placeholder={t("suppliers.select_supplier_type")}>
+                    <Col xs={24} sm={12}>
+                        <Form.Item
+                            name="type"
+                            label={
+                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                    {t("suppliers.supplier_type")}
+                                </span>
+                            }
+                        >
+                            <Select
+                                placeholder={t("suppliers.select_supplier_type")}
+                                className="auth-ohnix-input"
+                            >
                                 <Option value="individual">{t("suppliers.individual")}</Option>
                                 <Option value="wholesale">{t("suppliers.wholesale")}</Option>
                                 <Option value="retail">{t("suppliers.retail")}</Option>
@@ -130,11 +186,15 @@ const SupplierForm = ({
                     </Col>
                 </Row>
 
-                <Row gutter={16}>
-                    <Col span={12}>
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12}>
                         <Form.Item
                             name="shopname"
-                            label={t("suppliers.shop_name")}
+                            label={
+                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                    {t("suppliers.shop_name")}
+                                </span>
+                            }
                             rules={[
                                 {
                                     max: 50,
@@ -143,15 +203,22 @@ const SupplierForm = ({
                             ]}
                         >
                             <Input
-                                prefix={<ShopOutlined />}
+                                prefix={
+                                    <ShopOutlined className="text-[#8B98A0] text-sm" />
+                                }
                                 placeholder={t("suppliers.enter_shop_name_placeholder")}
+                                className="h-11 rounded-md auth-ohnix-input"
                             />
                         </Form.Item>
                     </Col>
-                    <Col span={12}>
+                    <Col xs={24} sm={12}>
                         <Form.Item
                             name="address"
-                            label={t("common.address")}
+                            label={
+                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                    {t("common.address")}
+                                </span>
+                            }
                             rules={[
                                 {
                                     required: true,
@@ -163,18 +230,27 @@ const SupplierForm = ({
                                 },
                             ]}
                         >
-                            <Input placeholder={t("suppliers.enter_address_placeholder")} />
+                            <Input
+                                placeholder={t("suppliers.enter_address_placeholder")}
+                                className="h-11 rounded-md auth-ohnix-input"
+                            />
                         </Form.Item>
                     </Col>
                 </Row>
 
-                <Divider>{t("suppliers.banking_information")}</Divider>
+                <Divider className="border-white/10 text-white/80">
+                    {t("suppliers.banking_information")}
+                </Divider>
 
-                <Row gutter={16}>
-                    <Col span={12}>
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12}>
                         <Form.Item
                             name="bank_name"
-                            label={t("suppliers.bank_name")}
+                            label={
+                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                    {t("suppliers.bank_name")}
+                                </span>
+                            }
                             rules={[
                                 {
                                     max: 50,
@@ -183,15 +259,22 @@ const SupplierForm = ({
                             ]}
                         >
                             <Input
-                                prefix={<BankOutlined />}
+                                prefix={
+                                    <BankOutlined className="text-[#8B98A0] text-sm" />
+                                }
                                 placeholder={t("suppliers.enter_bank_name_placeholder")}
+                                className="h-11 rounded-md auth-ohnix-input"
                             />
                         </Form.Item>
                     </Col>
-                    <Col span={12}>
+                    <Col xs={24} sm={12}>
                         <Form.Item
                             name="account_holder"
-                            label={t("suppliers.account_holder")}
+                            label={
+                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                    {t("suppliers.account_holder")}
+                                </span>
+                            }
                             rules={[
                                 {
                                     max: 50,
@@ -199,16 +282,23 @@ const SupplierForm = ({
                                 },
                             ]}
                         >
-                            <Input placeholder={t("suppliers.enter_account_holder_placeholder")} />
+                            <Input
+                                placeholder={t("suppliers.enter_account_holder_placeholder")}
+                                className="h-11 rounded-md auth-ohnix-input"
+                            />
                         </Form.Item>
                     </Col>
                 </Row>
 
-                <Row gutter={16}>
-                    <Col span={12}>
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12}>
                         <Form.Item
                             name="account_number"
-                            label={t("suppliers.account_number")}
+                            label={
+                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                    {t("suppliers.account_number")}
+                                </span>
+                            }
                             rules={[
                                 {
                                     max: 50,
@@ -216,28 +306,62 @@ const SupplierForm = ({
                                 },
                             ]}
                         >
-                            <Input placeholder={t("suppliers.enter_account_number_placeholder")} />
+                            <Input
+                                placeholder={t("suppliers.enter_account_number_placeholder")}
+                                className="h-11 rounded-md auth-ohnix-input"
+                            />
                         </Form.Item>
                     </Col>
-                    <Col span={12}>
-                        <Form.Item name="photo" label={t("suppliers.supplier_photo")}>
-                            <Upload {...uploadProps} maxCount={1}>
-                                <Button icon={<UploadOutlined />}>
-                                    {t("suppliers.upload_photo")}
-                                </Button>
+                    <Col xs={24} sm={12}>
+                        <Form.Item
+                            label={
+                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                    {t("suppliers.supplier_photo")}
+                                </span>
+                            }
+                        >
+                            <Upload {...uploadProps}>
+                                {fileList.length === 0 && (
+                                    <div className="text-center mt-2 border border-dashed border-white/12 rounded-xl hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer bg-white/[0.03] hover:bg-white/[0.05] p-4 min-h-[120px] flex flex-col items-center justify-center">
+                                        <UploadOutlined className="text-3xl text-[#29D8D5] mb-3 block" />
+                                        <div className="text-white font-medium mb-1">
+                                            {t("suppliers.upload_photo")}
+                                        </div>
+                                        <div className="text-sm text-[#A9B3B8]">
+                                            JPG, PNG hasta 2MB
+                                        </div>
+                                    </div>
+                                )}
                             </Upload>
                         </Form.Item>
                     </Col>
                 </Row>
 
-                <Form.Item className="mb-0 mt-4">
-                    <Space className="w-full justify-end">
-                        <Button onClick={onCancel}>{t("common.cancel")}</Button>
-                        <Button type="primary" htmlType="submit">
+                <Form.Item className="mb-0">
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-white/10">
+                        <Button
+                            onClick={onCancel}
+                            className="h-10 px-6 rounded-md bg-white/[0.04] border-white/10 text-white hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                        >
+                            {t("common.cancel")}
+                        </Button>
+                        <Button
+                            type="primary"
+                            htmlType="submit"
+                            className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
+                        >
                             {editMode ? t("suppliers.update_supplier") : t("suppliers.create_supplier")}
                         </Button>
-                    </Space>
+                    </div>
                 </Form.Item>
+
+                <style jsx>{`
+                    .avatar-uploader .ant-upload-select {
+                        width: 120px !important;
+                        height: 120px !important;
+                        border-radius: 12px !important;
+                    }
+                `}</style>
             </Form>
         </Modal>
     );
