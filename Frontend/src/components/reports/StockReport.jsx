@@ -320,15 +320,15 @@ const StockReport = () => {
     return (
         <div className="space-y-4 sm:space-y-6">
             {/* Export Controls */}
-            <Card title={t("reports.filter_and_export_options")}>
+            <Card title={t("reports.filter_and_export_options")} className="module-shell overflow-hidden hover-lift">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row gap-3">
                         <Input
                             placeholder={t("reports.search_products")}
-                            prefix={<SearchOutlined />}
+                            prefix={<SearchOutlined className="text-[#8B98A0]" />}
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
-                            className="w-full sm:w-60"
+                            className="w-full sm:w-60 auth-ohnix-input"
                             allowClear
                         />
                         <Button
@@ -438,7 +438,7 @@ const StockReport = () => {
                             : t("reports.stock_report_count", { count: filteredData.length })}
                     </span>
                 }
-            >
+            className="module-shell overflow-hidden hover-lift">
                 <div className="overflow-x-auto">
                     <Table
                         columns={columns}
@@ -461,19 +461,20 @@ const StockReport = () => {
                         }}
                         scroll={{ x: 700 }}
                         size={window.innerWidth < 768 ? "small" : "middle"}
+                        className="module-dark-table"
                         rowClassName={(record) => {
                             if (record.status === "Out of Stock")
-                                return "bg-red-50 border-l-4 border-red-400";
+                                return "border-l-4 border-red-400";
                             if (record.status === "Low Stock")
-                                return "bg-orange-50 border-l-4 border-orange-400";
-                            return "bg-green-50 border-l-4 border-green-200";
+                                return "border-l-4 border-orange-400";
+                            return "border-l-4 border-[#29D8D5]";
                         }}
                     />
                 </div>
             </Card>
 
             {filteredData.length === 0 && !loading && stockData.length > 0 && (
-                <Card>
+                <Card className="module-shell overflow-hidden hover-lift">
                     <div className="text-center py-8">
                         <SearchOutlined
                             style={{
@@ -482,10 +483,10 @@ const StockReport = () => {
                                 color: "#d9d9d9",
                             }}
                         />
-                        <p className="text-gray-500 mt-4 text-sm sm:text-base px-4">
+                        <p className="text-[#A9B3B8] mt-4 text-sm sm:text-base px-4">
                             {t("reports.no_products_matching_search")}
                         </p>
-                        <p className="text-gray-400 text-xs sm:text-sm px-4">
+                        <p className="text-[#8B98A0] text-xs sm:text-sm px-4">
                             {t("reports.try_adjusting_search")}
                         </p>
                     </div>
@@ -493,7 +494,7 @@ const StockReport = () => {
             )}
 
             {stockData.length === 0 && !loading && (
-                <Card>
+                <Card className="module-shell overflow-hidden hover-lift">
                     <div className="text-center py-8">
                         <StopOutlined
                             style={{
@@ -502,10 +503,10 @@ const StockReport = () => {
                                 color: "#d9d9d9",
                             }}
                         />
-                        <p className="text-gray-500 mt-4 text-sm sm:text-base px-4">
+                        <p className="text-[#A9B3B8] mt-4 text-sm sm:text-base px-4">
                             {t("reports.no_stock_data_available")}
                         </p>
-                        <p className="text-gray-400 text-xs sm:text-sm px-4">
+                        <p className="text-[#8B98A0] text-xs sm:text-sm px-4">
                             {t("reports.add_products_to_inventory")}
                         </p>
                     </div>

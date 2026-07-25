@@ -43,12 +43,12 @@ const CategoryViewModal = ({
                 header: { display: "none" },
             }}
         >
-            <div className="bg-white">
+            <div className="bg-[#0B0B0B] text-white">
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-gray-100">
+                <div className="px-6 py-4 border-b border-white/10">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                            <div className="w-10 h-10 bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] rounded-xl flex items-center justify-center">
                                 <span className="text-white font-semibold text-lg">
                                     {category.category_name
                                         ?.charAt(0)
@@ -56,7 +56,7 @@ const CategoryViewModal = ({
                                 </span>
                             </div>
                             <div>
-                                <Title level={4} className="mb-1 text-gray-900">
+                                <Title level={4} className="mb-1 !text-white">
                                     {category.category_name}
                                 </Title>
                                 <Tag
@@ -64,9 +64,9 @@ const CategoryViewModal = ({
                                     className="border-0 rounded-full px-3 py-1 text-xs font-medium"
                                     style={{
                                         backgroundColor: isOwner
-                                            ? "#f0f9ff"
-                                            : "#fef3f2",
-                                        color: isOwner ? "#1e40af" : "#b91c1c",
+                                            ? "rgba(41,216,213,0.12)"
+                                            : "rgba(68,243,240,0.12)",
+                                        color: isOwner ? "#44F3F0" : "#A9B3B8",
                                     }}
                                 >
                                     {isOwner
@@ -84,26 +84,26 @@ const CategoryViewModal = ({
                         {/* Created Information */}
                         <div className="space-y-4">
                             <div>
-                                <Text className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+                                <Text className="text-sm font-medium text-[#A9B3B8] uppercase tracking-wider">
                                     {t("categories.created_information")}
                                 </Text>
                                 <div className="mt-2 space-y-3">
                                     <div>
-                                        <Text className="text-sm text-gray-600">
+                                        <Text className="text-sm text-[#A9B3B8]">
                                             {t("categories.created_by")}
                                         </Text>
                                         <div className="mt-1">
-                                            <Text className="text-base font-medium text-gray-900">
+                                            <Text className="text-base font-medium text-white">
                                                 {createdByName}
                                             </Text>
                                         </div>
                                     </div>
                                     <div>
-                                        <Text className="text-sm text-gray-600">
+                                        <Text className="text-sm text-[#A9B3B8]">
                                             {t("categories.created_at")}
                                         </Text>
                                         <div className="mt-1">
-                                            <Text className="text-base text-gray-700">
+                                            <Text className="text-base text-white">
                                                 {formatDateTime(
                                                     category.createdAt
                                                 )}
@@ -117,26 +117,26 @@ const CategoryViewModal = ({
                         {/* Updated Information */}
                         <div className="space-y-4">
                             <div>
-                                <Text className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+                                <Text className="text-sm font-medium text-[#A9B3B8] uppercase tracking-wider">
                                     {t("categories.last_updated")}
                                 </Text>
                                 <div className="mt-2 space-y-3">
                                     <div>
-                                        <Text className="text-sm text-gray-600">
+                                        <Text className="text-sm text-[#A9B3B8]">
                                             {t("categories.updated_by")}
                                         </Text>
                                         <div className="mt-1">
-                                            <Text className="text-base font-medium text-gray-900">
+                                            <Text className="text-base font-medium text-white">
                                                 {updatedByName}
                                             </Text>
                                         </div>
                                     </div>
                                     <div>
-                                        <Text className="text-sm text-gray-600">
+                                        <Text className="text-sm text-[#A9B3B8]">
                                             {t("categories.updated_at")}
                                         </Text>
                                         <div className="mt-1">
-                                            <Text className="text-base text-gray-700">
+                                            <Text className="text-base text-white">
                                                 {formatDateTime(
                                                     category.updatedAt
                                                 )}
@@ -152,11 +152,11 @@ const CategoryViewModal = ({
                 <Divider className="my-0" />
 
                 {/* Footer Actions */}
-                <div className="px-6 py-4 bg-gray-50 rounded-b-lg">
+                <div className="px-6 py-4 bg-white/[0.03] rounded-b-lg border-t border-white/10">
                     <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
                         <Button
                             onClick={onClose}
-                            className="h-10 px-6 border-gray-200 text-gray-600 hover:text-gray-700 hover:border-gray-300"
+                            className="h-10 px-6 border-white/10 text-white hover:text-white hover:border-[#29D8D5]/35 bg-white/[0.03]"
                             style={{ borderRadius: "8px" }}
                         >
                             {t("common.close")}
@@ -169,7 +169,7 @@ const CategoryViewModal = ({
                                     onClose();
                                     onEdit(category);
                                 }}
-                                className="h-10 px-6 bg-blue-600 hover:bg-blue-700 border-blue-600 hover:border-blue-700"
+                                className="h-10 px-6 bg-[#29D8D5] hover:bg-[#44F3F0] border-[#29D8D5] hover:border-[#44F3F0] text-[#021314]"
                                 style={{
                                     borderRadius: "8px",
                                     fontWeight: 500,

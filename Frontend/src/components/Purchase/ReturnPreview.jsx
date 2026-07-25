@@ -22,7 +22,7 @@ const ReturnPreview = ({
             dataIndex: "product_name",
             key: "product_name",
             render: (name) => (
-                <div className="font-medium text-gray-900">
+                <div className="font-medium text-white">
                     {name}
                 </div>
             ),
@@ -34,7 +34,7 @@ const ReturnPreview = ({
             dataIndex: "purchased_quantity",
             key: "purchased_quantity",
             render: (qty) => (
-                <div className="text-center font-medium text-blue-600">
+                <div className="text-center font-medium text-[#44F3F0]">
                     {qty}
                 </div>
             ),
@@ -46,7 +46,7 @@ const ReturnPreview = ({
             dataIndex: "current_stock",
             key: "current_stock",
             render: (stock) => (
-                <div className="text-center font-medium text-gray-700">
+                <div className="text-center font-medium text-[#D4DBDF]">
                     {stock}
                 </div>
             ),
@@ -62,8 +62,8 @@ const ReturnPreview = ({
                     <span
                         className={`font-semibold ${
                             record.can_fully_return
-                                ? "text-green-600"
-                                : "text-orange-600"
+                                ? "text-[#44F3F0]"
+                                : "text-[#FFCF70]"
                         }`}
                     >
                         {qty}
@@ -78,7 +78,7 @@ const ReturnPreview = ({
             dataIndex: "unit_cost",
             key: "unit_cost",
             render: (cost) => (
-                <div className="text-right font-medium text-gray-700">
+                <div className="text-right font-medium text-[#D4DBDF]">
                     ₹{cost.toFixed(2)}
                 </div>
             ),
@@ -90,7 +90,7 @@ const ReturnPreview = ({
             dataIndex: "potential_refund",
             key: "potential_refund",
             render: (refund) => (
-                <div className="text-right font-semibold text-green-600">
+                <div className="text-right font-semibold text-[#44F3F0]">
                     ₹{refund.toFixed(2)}
                 </div>
             ),
@@ -102,7 +102,7 @@ const ReturnPreview = ({
             key: "status",
             render: (_, record) => (
                 <Tag 
-                    color={record.can_fully_return ? "success" : "warning"}
+                    color={record.can_fully_return ? "cyan" : "gold"}
                     icon={record.can_fully_return ? <CheckCircleOutlined /> : <WarningOutlined />}
                     className="font-medium px-3 py-1"
                 >
@@ -138,8 +138,8 @@ const ReturnPreview = ({
         <Modal
             title={
                 <div className="flex items-center space-x-3">
-                    <ExclamationCircleOutlined className="text-orange-500" />
-                    <Title level={4} className="mb-0">
+                    <ExclamationCircleOutlined className="text-[#FFCF70]" />
+                    <Title level={4} className="mb-0 !text-white">
                         Return Preview
                     </Title>
                     <Tag color="blue" className="text-sm">
@@ -173,40 +173,40 @@ const ReturnPreview = ({
                     {/* Summary Cards */}
                     <Row gutter={[16, 16]}>
                         <Col xs={24} sm={12} md={8}>
-                            <Card className="text-center border-green-200 bg-green-50">
+                            <Card className="text-center border border-white/10 bg-[#0B0B0B]/92">
                                 <Statistic
                                     title="Total Potential Refund"
                                     value={returnPreviewData.total_potential_refund}
                                     precision={2}
                                     prefix="₹"
-                                    valueStyle={{ color: '#16a34a', fontWeight: 'bold' }}
+                                    valueStyle={{ color: '#44F3F0', fontWeight: 'bold' }}
                                 />
                             </Card>
                         </Col>
                         <Col xs={12} sm={6} md={4}>
-                            <Card className="text-center border-blue-200 bg-blue-50">
+                            <Card className="text-center border border-white/10 bg-[#0B0B0B]/92">
                                 <Statistic
                                     title="Total Items"
                                     value={totalItems}
-                                    valueStyle={{ color: '#2563eb', fontWeight: 'bold' }}
+                                    valueStyle={{ color: '#44F3F0', fontWeight: 'bold' }}
                                 />
                             </Card>
                         </Col>
                         <Col xs={12} sm={6} md={4}>
-                            <Card className="text-center border-green-200 bg-green-50">
+                            <Card className="text-center border border-white/10 bg-[#0B0B0B]/92">
                                 <Statistic
                                     title="Full Returns"
                                     value={fullReturns}
-                                    valueStyle={{ color: '#16a34a', fontWeight: 'bold' }}
+                                    valueStyle={{ color: '#44F3F0', fontWeight: 'bold' }}
                                 />
                             </Card>
                         </Col>
                         <Col xs={12} sm={6} md={4}>
-                            <Card className="text-center border-orange-200 bg-orange-50">
+                            <Card className="text-center border border-white/10 bg-[#0B0B0B]/92">
                                 <Statistic
                                     title="Partial Returns"
                                     value={partialReturns}
-                                    valueStyle={{ color: '#ea580c', fontWeight: 'bold' }}
+                                    valueStyle={{ color: '#FFCF70', fontWeight: 'bold' }}
                                 />
                             </Card>
                         </Col>
@@ -250,10 +250,10 @@ const ReturnPreview = ({
                         pagination={false}
                         scroll={{ x: 900 }}
                         size="small"
-                        className="return-preview-table"
+                        className="return-preview-table module-dark-table"
                         rowClassName={(record) => 
-                            `hover:bg-blue-50 transition-colors duration-200 ${
-                                record.can_fully_return ? 'bg-green-50' : 'bg-orange-50'
+                            `hover:bg-white/[0.05] transition-colors duration-200 ${
+                                record.can_fully_return ? 'bg-white/[0.02]' : 'bg-white/[0.02]'
                             }`
                         }
                         summary={(pageData) => {
@@ -264,7 +264,7 @@ const ReturnPreview = ({
 
                             return (
                                 <Table.Summary fixed>
-                                    <Table.Summary.Row className="bg-gray-50">
+                                    <Table.Summary.Row className="bg-white/[0.03]">
                                         <Table.Summary.Cell index={0} colSpan={5}>
                                             <div className="text-right">
                                                 <Text strong className="text-gray-900">

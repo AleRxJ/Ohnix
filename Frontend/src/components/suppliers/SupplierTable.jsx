@@ -108,7 +108,7 @@ const SupplierTable = ({
                               },
                               {
                                   key: "delete",
-                                  label: "Delete",
+                                  label: t("common.delete"),
                                   icon: <DeleteOutlined />,
                                   danger: true,
                                   onClick: () => {
@@ -136,7 +136,7 @@ const SupplierTable = ({
     ];
 
     return (
-        <Card>
+        <Card className="module-shell border border-white/10 bg-[#0B0B0B]/92 shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
             <Table
                 columns={columns}
                 dataSource={suppliers}
@@ -155,6 +155,7 @@ const SupplierTable = ({
                         }),
                 }}
                 scroll={{ x: 800 }}
+                className="module-dark-table"
             />
         </Card>
     );

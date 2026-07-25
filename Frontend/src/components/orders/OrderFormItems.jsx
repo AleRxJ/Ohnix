@@ -20,12 +20,12 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
     };
 
     return (
-        <div className="relative bg-white border-2 border-gray-200 rounded-2xl p-5 mb-4">
+        <div className="relative module-shell border border-white/10 rounded-2xl p-5 mb-4">
             <Button
                 type="text"
                 danger
                 onClick={onRemove}
-                className="absolute top-3 right-3 flex items-center justify-center h-8 w-8 rounded-lg hover:bg-red-50 z-10"
+                className="absolute top-3 right-3 flex items-center justify-center h-8 w-8 rounded-lg hover:bg-red-500/10 z-10"
                 icon={<DeleteOutlined className="text-sm" />}
             />
 
@@ -36,7 +36,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                             {...restField}
                             name={[name, "product_id"]}
                             label={
-                                <span className="text-sm font-medium text-gray-700">
+                                <span className="text-sm font-medium text-[#A9B3B8]">
                                     {t("products.product")}
                                 </span>
                             }
@@ -53,7 +53,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                                 showSearch
                                 optionFilterProp="label"
                                 size="large"
-                                className="w-full"
+                                className="w-full auth-ohnix-input"
                                 onChange={handleProductChange}
                             >
                                 {products.map((product) => (
@@ -64,7 +64,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                                     >
                                         <div className="flex items-center justify-between">
                                             <span>{product.product_name}</span>
-                                                <span className="text-xs text-gray-400 ml-2">
+                                            <span className="text-xs text-[#8B98A0] ml-2">
                                                 {t("orders.stock")}: {product.stock}
                                             </span>
                                         </div>
@@ -79,7 +79,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                             {...restField}
                             name={[name, "quantity"]}
                             label={
-                                <span className="text-sm font-medium text-gray-700">
+                                <span className="text-sm font-medium text-[#A9B3B8]">
                                     {t("common.quantity")}
                                 </span>
                             }
@@ -94,7 +94,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                             <InputNumber
                                 placeholder="0"
                                 min={1}
-                                className="w-full"
+                                className="w-full auth-ohnix-input"
                                 size="large"
                             />
                         </Form.Item>
@@ -105,7 +105,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                             {...restField}
                             name={[name, "unitcost"]}
                             label={
-                                <span className="text-sm font-medium text-gray-700">
+                                <span className="text-sm font-medium text-[#A9B3B8]">
                                     {t("orders.unit_price")}
                                 </span>
                             }
@@ -121,7 +121,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                                 placeholder={t("orders.selling_price")}
                                 min={0}
                                 step={0.01}
-                                className="w-full"
+                                className="w-full auth-ohnix-input"
                                 size="large"
                                 prefix="₹"
                             />

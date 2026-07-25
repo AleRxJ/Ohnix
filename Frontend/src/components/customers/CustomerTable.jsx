@@ -17,10 +17,11 @@ const { Text } = Typography;
 
 const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
     const { t } = useI18n();
+    const tableShellClass = "rounded-xl shadow-sm border border-white/10 overflow-hidden bg-[#0B0B0B]/92";
     // Mobile card view for small screens
     const MobileCustomerCard = ({ customer }) => (
         <Card
-            className="mb-4 shadow-sm hover:shadow-md transition-shadow"
+            className="mb-4 module-shell overflow-hidden hover-lift"
             bodyStyle={{ padding: '16px' }}
         >
             <div className="flex items-start space-x-3">
@@ -33,7 +34,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                 <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                         <div className="min-w-0 flex-1">
-                            <Text strong className="text-base text-gray-900 block truncate">
+                            <Text strong className="text-base text-white block truncate">
                                 {customer.name}
                             </Text>
                             <Tag 
@@ -48,19 +49,13 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                             </Tag>
                         </div>
                         <Space size="small">
-                            <Button
-                                type="text"
-                                icon={<EyeOutlined />}
-                                size="small"
-                                onClick={() => onView(customer)}
-                                className="text-blue-600"
-                            />
+                            <Button type="text" icon={<EyeOutlined />} size="small" onClick={() => onView(customer)} className="text-[#44F3F0]" />
                             <Button
                                 type="text"
                                 icon={<EditOutlined />}
                                 size="small"
                                 onClick={() => onEdit(customer)}
-                                className="text-green-600"
+                                className="text-[#29D8D5]"
                             />
                             <Popconfirm
                                 title={t("customers.delete_customer")}
@@ -74,30 +69,30 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                                     type="text"
                                     icon={<DeleteOutlined />}
                                     size="small"
-                                    className="text-red-600"
+                                    className="text-red-400"
                                 />
                             </Popconfirm>
                         </Space>
                     </div>
                     
                     <div className="space-y-1">
-                        <div className="flex items-center text-sm text-gray-600">
-                            <MailOutlined className="mr-2 text-blue-500 flex-shrink-0" />
+                        <div className="flex items-center text-sm text-[#A9B3B8]">
+                            <MailOutlined className="mr-2 text-[#44F3F0] flex-shrink-0" />
                             <span className="truncate">{customer.email}</span>
                         </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                            <PhoneOutlined className="mr-2 text-green-500 flex-shrink-0" />
+                        <div className="flex items-center text-sm text-[#A9B3B8]">
+                            <PhoneOutlined className="mr-2 text-[#29D8D5] flex-shrink-0" />
                             <span>{customer.phone}</span>
                         </div>
                         {customer.address && (
-                            <div className="flex items-start text-sm text-gray-600">
-                                <HomeOutlined className="mr-2 mt-0.5 text-purple-500 flex-shrink-0" />
+                            <div className="flex items-start text-sm text-[#A9B3B8]">
+                                <HomeOutlined className="mr-2 mt-0.5 text-[#8CECEC] flex-shrink-0" />
                                 <span className="truncate">{customer.address}</span>
                             </div>
                         )}
                         {customer.store_name && (
-                            <div className="flex items-center text-sm text-gray-600">
-                                <ShopOutlined className="mr-2 text-orange-500 flex-shrink-0" />
+                            <div className="flex items-center text-sm text-[#A9B3B8]">
+                                <ShopOutlined className="mr-2 text-[#FFCF70] flex-shrink-0" />
                                 <span className="truncate">{customer.store_name}</span>
                             </div>
                         )}
@@ -121,7 +116,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                         className="shadow-sm"
                     />
                     <div className="min-w-0 flex-1">
-                        <Text strong className="block text-gray-900 text-sm">
+                        <Text strong className="block text-white text-sm">
                             {record.name}
                         </Text>
                         <Tag 
@@ -145,16 +140,16 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
             responsive: ['md'],
             render: (_, record) => (
                 <div className="space-y-2">
-                    <div className="flex items-center text-sm text-gray-700">
-                        <MailOutlined className="mr-2 text-blue-500" />
+                    <div className="flex items-center text-sm text-[#D4DBDF]">
+                        <MailOutlined className="mr-2 text-[#44F3F0]" />
                         <Tooltip title={record.email}>
                             <span className="truncate max-w-[180px]">
                                 {record.email}
                             </span>
                         </Tooltip>
                     </div>
-                    <div className="flex items-center text-sm text-gray-700">
-                        <PhoneOutlined className="mr-2 text-green-500" />
+                    <div className="flex items-center text-sm text-[#D4DBDF]">
+                        <PhoneOutlined className="mr-2 text-[#29D8D5]" />
                         <span>{record.phone}</span>
                     </div>
                 </div>
@@ -188,7 +183,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                         </div>
                     )}
                     {!record.address && !record.store_name && (
-                        <span className="text-gray-400 text-sm italic">{t("customers.no_location_data")}</span>
+                        <span className="text-[#8B98A0] text-sm italic">{t("customers.no_location_data")}</span>
                     )}
                 </div>
             ),
@@ -206,7 +201,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                             icon={<EyeOutlined />}
                             size="small"
                             onClick={() => onView(record)}
-                            className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                            className="text-[#44F3F0] hover:text-[#44F3F0] hover:bg-white/5"
                         />
                     </Tooltip>
                     <Tooltip title={t("customers.edit_customer")}>
@@ -215,7 +210,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                             icon={<EditOutlined />}
                             size="small"
                             onClick={() => onEdit(record)}
-                            className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                            className="text-[#29D8D5] hover:text-[#29D8D5] hover:bg-white/5"
                         />
                     </Tooltip>
                     <Popconfirm
@@ -231,7 +226,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                                 type="text"
                                 icon={<DeleteOutlined />}
                                 size="small"
-                                className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                className="text-red-400 hover:text-red-300 hover:bg-white/5"
                             />
                         </Tooltip>
                     </Popconfirm>
@@ -246,7 +241,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                 {/* Mobile loading cards */}
                 <div className="block md:hidden space-y-4">
                     {[1, 2, 3].map(i => (
-                        <Card key={i} loading className="shadow-sm" />
+                        <Card key={i} loading className="shadow-sm module-shell" />
                     ))}
                 </div>
                 {/* Desktop loading table */}
@@ -256,6 +251,8 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                         dataSource={[]}
                         loading={true}
                         pagination={false}
+                        locale={{ emptyText: t("common.no_data") }}
+                        className="module-dark-table"
                     />
                 </div>
             </>
@@ -264,16 +261,18 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
 
     if (customers.length === 0) {
         return (
-            <div className="text-center py-12">
-                <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={
-                        <div className="text-gray-500">
-                            <div className="text-base mb-1">{t("customers.no_customers_found")}</div>
-                            <div className="text-sm">{t("customers.add_first_customer")}</div>
-                        </div>
-                    }
-                />
+            <div className="text-center py-12 module-shell border border-white/10 bg-[#0B0B0B]/92">
+                <div className="mx-auto max-w-md px-6">
+                    <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center mx-auto mb-4">
+                        <UserOutlined className="text-2xl text-[#44F3F0]" />
+                    </div>
+                    <div className="text-white text-lg font-semibold mb-2">
+                        {t("customers.no_customers_found")}
+                    </div>
+                    <div className="text-[#A9B3B8] text-sm">
+                        {t("customers.add_first_customer")}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -288,7 +287,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                     ))}
                 </div>
                 {customers.length > 10 && (
-                    <div className="text-center mt-4 pt-4 border-t text-sm text-gray-500">
+                    <div className="text-center mt-4 pt-4 border-t border-white/10 text-sm text-[#A9B3B8]">
                         {t("customers.showing_customers", {
                             shown: Math.min(10, customers.length),
                             total: customers.length,
@@ -299,41 +298,33 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
 
             {/* Desktop View */}
             <div className="hidden md:block">
-                <Table
-                    columns={columns}
-                    dataSource={customers}
-                    rowKey="_id"
-                    loading={loading}
-                    scroll={{ x: 800 }}
-                    rowClassName="hover:bg-gray-50 transition-colors"
-                    className="custom-table"
-                    pagination={{
-                        total: customers.length,
-                        pageSize: 10,
-                        showSizeChanger: true,
-                        showQuickJumper: true,
-                        showTotal: (total, range) =>
-                            t("customers.showing_of_customers", {
-                                start: range[0],
-                                end: range[1],
-                                total,
-                            }),
-                        pageSizeOptions: ['10', '25', '50'],
-                    }}
-                />
+                <div className={tableShellClass}>
+                    <Table
+                        columns={columns}
+                        dataSource={customers}
+                        rowKey="_id"
+                        loading={loading}
+                        locale={{ emptyText: t("common.no_data") }}
+                        scroll={{ x: 800 }}
+                        rowClassName="transition-colors"
+                        className="custom-table module-dark-table"
+                        pagination={{
+                            total: customers.length,
+                            pageSize: 10,
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total, range) =>
+                                t("customers.showing_of_customers", {
+                                    start: range[0],
+                                    end: range[1],
+                                    total,
+                                }),
+                            pageSizeOptions: ['10', '25', '50'],
+                        }}
+                    />
+                </div>
             </div>
 
-            <style jsx>{`
-                .custom-table .ant-table-thead > tr > th {
-                    background: #fafafa;
-                    font-weight: 600;
-                    color: #262626;
-                    border-bottom: 2px solid #f0f0f0;
-                }
-                .custom-table .ant-table-tbody > tr:hover > td {
-                    background: #f8faff !important;
-                }
-            `}</style>
         </>
     );
 };

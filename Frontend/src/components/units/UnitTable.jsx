@@ -41,10 +41,10 @@ const UnitTable = ({
                         <AppstoreOutlined className="text-white text-base" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-semibold text-gray-900 text-base leading-tight">
+                        <span className="font-semibold text-white text-base leading-tight">
                             {text}
                         </span>
-                        <span className="text-sm text-gray-500 mt-0.5">
+                        <span className="text-sm text-[#A9B3B8] mt-0.5">
                             Unit of Measurement
                         </span>
                     </div>
@@ -65,9 +65,9 @@ const UnitTable = ({
                             <Button
                                 type="text"
                                 size="middle"
-                                icon={<EyeOutlined className="text-blue-600" />}
+                                icon={<EyeOutlined className="text-[#44F3F0]" />}
                                 onClick={() => onView(record)}
-                                className="h-9 w-9 flex items-center justify-center text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-0 rounded-lg transition-all duration-200"
+                                className="h-9 w-9 flex items-center justify-center text-[#D4DBDF] hover:text-[#44F3F0] hover:bg-white/5 border-0 rounded-lg transition-all duration-200"
                             />
                         </Tooltip>
                         <Tooltip
@@ -79,13 +79,13 @@ const UnitTable = ({
                                 type="text"
                                 size="middle"
                                 icon={
-                                    <EditOutlined className="text-emerald-600" />
+                                    <EditOutlined className="text-[#29D8D5]" />
                                 }
                                 disabled={!canEditRecord}
                                 onClick={() => onEdit(record)}
                                 className={
                                     canEditRecord
-                                        ? "h-9 w-9 flex items-center justify-center text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 border-0 rounded-lg transition-all duration-200"
+                                        ? "h-9 w-9 flex items-center justify-center text-[#D4DBDF] hover:text-[#29D8D5] hover:bg-white/5 border-0 rounded-lg transition-all duration-200"
                                         : "h-9 w-9 flex items-center justify-center text-gray-300 cursor-not-allowed border-0 rounded-lg"
                                 }
                             />
@@ -101,7 +101,7 @@ const UnitTable = ({
                                 type="text"
                                 size="middle"
                                 icon={
-                                    <DeleteOutlined className="text-red-600" />
+                                    <DeleteOutlined className="text-red-400" />
                                 }
                                 disabled={!canEditRecord}
                                 onClick={() => {
@@ -117,7 +117,7 @@ const UnitTable = ({
                                 }}
                                 className={
                                     canEditRecord
-                                        ? "h-9 w-9 flex items-center justify-center text-gray-600 hover:text-red-600 hover:bg-red-50 border-0 rounded-lg transition-all duration-200"
+                                        ? "h-9 w-9 flex items-center justify-center text-[#D4DBDF] hover:text-red-300 hover:bg-white/5 border-0 rounded-lg transition-all duration-200"
                                         : "h-9 w-9 flex items-center justify-center text-gray-300 cursor-not-allowed border-0 rounded-lg"
                                 }
                             />
@@ -129,7 +129,7 @@ const UnitTable = ({
     ];
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="rounded-xl shadow-sm border border-white/10 overflow-hidden bg-[#0B0B0B]/92">
             <Table
                 columns={columns}
                 dataSource={units}
@@ -139,7 +139,7 @@ const UnitTable = ({
                     ...PAGINATION_CONFIG,
                     showTotal: (total, range) =>
                         `Showing ${range[0]}-${range[1]} of ${total} units`,
-                    className: "px-6 py-4 bg-gray-50/50",
+                    className: "px-6 py-4 bg-white/[0.03]",
                     showSizeChanger: false,
                     size: "default",
                 }}
@@ -149,10 +149,10 @@ const UnitTable = ({
                             <Empty
                                 description={
                                     <div className="text-center">
-                                        <div className="text-gray-500 text-base font-medium mb-1">
+                                        <div className="text-[#A9B3B8] text-base font-medium mb-1">
                                             No units found
                                         </div>
-                                        <div className="text-gray-400 text-sm">
+                                        <div className="text-[#8B98A0] text-sm">
                                             Create your first unit to get
                                             started
                                         </div>
@@ -164,11 +164,9 @@ const UnitTable = ({
                     ),
                 }}
                 scroll={{ x: 768, ...TABLE_SCROLL_CONFIG }}
-                className="unit-table"
-                rowClassName={(record, index) =>
-                    `hover:bg-emerald-50/30 transition-all duration-200 cursor-pointer ${
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50/30"
-                    }`
+                className="unit-table module-dark-table"
+                rowClassName={() =>
+                    "hover:bg-white/[0.05] transition-all duration-200 cursor-pointer bg-transparent"
                 }
                 onRow={(record) => ({
                     onMouseEnter: () => setHoveredRow(record._id),
@@ -177,18 +175,29 @@ const UnitTable = ({
                 size="large"
             />
             <style jsx>{`
+                .unit-table .ant-table,
+                .unit-table .ant-table-container,
+                .unit-table .ant-table-content,
+                .unit-table .ant-table-body,
+                .unit-table .ant-table-container::before,
+                .unit-table .ant-table-container::after {
+                    background: transparent !important;
+                }
+                .unit-table .ant-empty {
+                    color: #a9b3b8 !important;
+                }
+                .unit-table .ant-empty-description,
+                .unit-table .ant-empty-image {
+                    color: #a9b3b8 !important;
+                }
                 .unit-table .ant-table {
                     font-size: 14px;
                 }
                 .unit-table .ant-table-thead > tr > th {
-                    background: linear-gradient(
-                        135deg,
-                        #f8fafc 0%,
-                        #f1f5f9 100%
-                    );
-                    border-bottom: 2px solid #e2e8f0;
+                    background: rgba(255,255,255,0.03);
+                    border-bottom: 1px solid rgba(255,255,255,0.08);
                     font-weight: 600;
-                    color: #334155;
+                    color: #e5eef1;
                     font-size: 14px;
                     padding: 20px 24px;
                     border-top: none;
@@ -201,29 +210,29 @@ const UnitTable = ({
                 }
                 .unit-table .ant-table-tbody > tr > td {
                     padding: 20px 24px;
-                    border-bottom: 1px solid #f1f5f9;
+                    border-bottom: 1px solid rgba(255,255,255,0.06);
                     vertical-align: middle;
                 }
                 .unit-table .ant-table-tbody > tr:last-child > td {
-                    border-bottom: 1px solid #e2e8f0;
+                    border-bottom: 1px solid rgba(255,255,255,0.08);
                 }
                 .unit-table .ant-table-tbody > tr:hover > td {
-                    background-color: rgba(16, 185, 129, 0.04) !important;
+                    background-color: rgba(68, 243, 240, 0.04) !important;
                 }
                 .unit-table .ant-pagination {
                     margin: 0 !important;
-                    border-top: 1px solid #e2e8f0;
+                    border-top: 1px solid rgba(255,255,255,0.08);
                 }
                 .unit-table .ant-pagination .ant-pagination-item {
                     border-radius: 8px;
-                    border: 1px solid #e2e8f0;
+                    border: 1px solid rgba(255,255,255,0.08);
                 }
                 .unit-table .ant-pagination .ant-pagination-item-active {
-                    background: #10b981;
-                    border-color: #10b981;
+                    background: #44F3F0;
+                    border-color: #44F3F0;
                 }
                 .unit-table .ant-pagination .ant-pagination-item-active a {
-                    color: white;
+                    color: #021314;
                 }
 
                 @media (max-width: 768px) {

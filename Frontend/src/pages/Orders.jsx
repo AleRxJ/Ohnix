@@ -11,8 +11,10 @@ import OrderDetailsDrawer from "../components/orders/OrderDetailsDrawer";
 
 import { useOrders } from "../hooks/orders/useOrders";
 import { useOrderOperations } from "../hooks/orders/useOrderOperations";
+import useI18n from "../hooks/useI18n";
 
 const Orders = () => {
+    const { t } = useI18n();
     const [createModalVisible, setCreateModalVisible] = useState(false);
     const [detailsDrawerVisible, setDetailsDrawerVisible] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -90,10 +92,10 @@ const Orders = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="space-y-6">
                     <PageHeader
-                        title="Orders"
-                        subtitle="Manage and track your orders"
+                        title={t("orders.orders")}
+                        subtitle={t("orders.manage_orders_description")}
                         icon={<ShoppingCartOutlined />}
-                        actionText="Create Order"
+                        actionText={t("orders.create_order")}
                         actionIcon={<PlusOutlined />}
                         onActionClick={() => setCreateModalVisible(true)}
                     />

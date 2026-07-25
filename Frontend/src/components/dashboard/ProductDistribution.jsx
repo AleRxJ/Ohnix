@@ -6,6 +6,7 @@ import {
     ArrowUpOutlined,
     FireOutlined,
 } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const { Text, Title } = Typography;
 
@@ -23,6 +24,7 @@ const CHART_COLORS = [
 ];
 
 const ProductDistribution = ({ topProducts }) => {
+    const { t } = useI18n();
     const hasData = topProducts && topProducts.length > 0;
 
     const chartData = hasData
@@ -31,7 +33,7 @@ const ProductDistribution = ({ topProducts }) => {
                   (product) => product.product_name && product.quantity_sold > 0
               )
               .map((product) => ({
-                  type: product.product_name || "Unknown Product",
+                  type: product.product_name || t("common.unknown"),
                   value: product.quantity_sold || 0,
               }))
         : [];
@@ -132,27 +134,27 @@ const ProductDistribution = ({ topProducts }) => {
     };
 
     return (
-        <section className="w-full bg-white rounded-xl shadow-sm border border-slate-200">
-            <header className="px-6 py-5 border-b border-slate-100">
+        <section className="w-full rounded-2xl border border-white/10 bg-[#0B0B0B]/92 shadow-[0_18px_40px_rgba(0,0,0,0.35)] overflow-hidden reveal-card">
+            <header className="px-6 py-5 border-b border-white/8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+                        <div className="w-10 h-10 rounded-lg bg-[linear-gradient(135deg,rgba(41,216,213,0.22),rgba(68,243,240,0.12))] border border-[#29D8D5]/25 flex items-center justify-center shadow-sm animate-glow-pulse">
                             <TrophyOutlined className="text-white text-lg" />
                         </div>
                         <div>
-                            <h2 className="m-0 text-slate-900 font-bold text-lg leading-tight">
-                                Product Distribution
+                            <h2 className="m-0 text-white font-bold text-lg leading-tight">
+                                {t("reports.top_products")}
                             </h2>
-                            <p className="m-0 text-slate-500 text-xs mt-0.5">
-                                Top selling products overview
+                            <p className="m-0 text-[#A9B3B8] text-xs mt-0.5">
+                                {t("reports.top_products_overview")}
                             </p>
                         </div>
                     </div>
                     <a
                         href="/reports/top-products"
-                        className="px-4 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700 transition-all duration-200 flex items-center justify-center gap-2 font-semibold text-xs border border-blue-200 w-full sm:w-auto"
+                        className="px-4 py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] text-[#44F3F0] hover:text-white transition-all duration-200 flex items-center justify-center gap-2 font-semibold text-xs border border-white/10 hover:border-[#29D8D5]/35 w-full sm:w-auto"
                     >
-                        <span>View All</span>
+                        <span>{t("reports.top_products_view_all")}</span>
                         <ArrowUpOutlined className="text-xs rotate-45" />
                     </a>
                 </div>
@@ -160,7 +162,7 @@ const ProductDistribution = ({ topProducts }) => {
 
             {hasData && chartData.length > 0 ? (
                 <div className="p-6">
-                    <div className="bg-slate-50/50 rounded-xl border-2 border-slate-400 p-6 mb-6">
+                    <div className="glass-panel rounded-2xl p-6 mb-6">
                         <div
                             className="w-full mx-auto"
                             style={{ maxWidth: "420px" }}
@@ -171,20 +173,20 @@ const ProductDistribution = ({ topProducts }) => {
                         </div>
                     </div>
 
-                    <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl p-5 border-2 border-slate-400">
+                    <div className="rounded-2xl p-5 border border-white/10 bg-white/[0.03]">
                         <div className="flex items-center gap-2.5 mb-4">
-                            <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                                <FireOutlined className="text-orange-600 text-sm" />
+                            <div className="w-8 h-8 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center">
+                                <FireOutlined className="text-[#29D8D5] text-sm" />
                             </div>
-                            <span className="text-sm font-bold text-slate-800 uppercase tracking-wide">
-                                Top Performers
+                            <span className="text-sm font-bold text-white uppercase tracking-wide">
+                                {t("dashboard.top_performer")}
                             </span>
                         </div>
                         <div className="space-y-3">
                             {topProducts.slice(0, 3).map((item, index) => (
                                 <div
                                     key={index}
-                                    className="group flex items-center justify-between p-4 rounded-xl bg-white hover:bg-gradient-to-r hover:from-slate-50 hover:to-white transition-all duration-200 border-2 border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                                    className="group flex items-center justify-between p-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-all duration-200 border border-white/8 hover:border-[#29D8D5]/25 hover:shadow-[0_10px_25px_rgba(0,0,0,0.18)]"
                                 >
                                     <div className="flex items-center gap-3 min-w-0 flex-1">
                                         <div className="text-2xl flex-shrink-0 w-8 h-8 flex items-center justify-center">
@@ -195,27 +197,26 @@ const ProductDistribution = ({ topProducts }) => {
                                                 title={item.product_name}
                                                 placement="topLeft"
                                             >
-                                                <div className="text-sm font-semibold text-slate-800 truncate group-hover:text-slate-900 transition-colors">
+                                                <div className="text-sm font-semibold text-white truncate group-hover:text-[#44F3F0] transition-colors">
                                                     {truncateProductName(
                                                         item.product_name,
                                                         24
                                                     )}
                                                 </div>
                                             </Tooltip>
-                                            <div className="text-xs text-slate-500 mt-1 font-medium">
+                                            <div className="text-xs text-[#A9B3B8] mt-1 font-medium">
                                                 Rank #{index + 1}
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex-shrink-0 ml-4">
                                         <div
-                                            className="px-4 py-2 rounded-lg font-bold text-sm text-white shadow-sm"
+                                            className="px-4 py-2 rounded-lg font-bold text-sm text-[#021314] shadow-sm"
                                             style={{
-                                                backgroundColor:
-                                                    CHART_COLORS[
-                                                        index %
-                                                            CHART_COLORS.length
-                                                    ],
+                                                background:
+                                                    "linear-gradient(135deg, #29d8d5, #44f3f0)",
+                                                boxShadow:
+                                                    "0 10px 24px rgba(41, 216, 213, 0.18)",
                                             }}
                                         >
                                             {item.quantity_sold.toLocaleString()}
@@ -233,12 +234,13 @@ const ProductDistribution = ({ topProducts }) => {
                         imageStyle={{ height: 90 }}
                         description={
                             <div className="text-center mt-4">
-                                <div className="text-slate-700 font-semibold text-base mb-2">
-                                    No Product Data Available
+                                <div className="text-white font-semibold text-base mb-2">
+                                    {t("reports.no_sales_data_available")}
                                 </div>
-                                <Text className="text-sm text-slate-500 block leading-relaxed max-w-xs mx-auto">
-                                    Product sales analytics will be displayed
-                                    here once data becomes available
+                                <Text className="text-sm text-[#A9B3B8] block leading-relaxed max-w-xs mx-auto">
+                                    {t(
+                                        "reports.sales_data_will_be_displayed_here_once_orders_exist"
+                                    )}
                                 </Text>
                             </div>
                         }

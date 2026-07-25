@@ -9,9 +9,11 @@ import SupplierViewModal from "../components/suppliers/SupplierViewModal";
 import { useSuppliers } from "../hooks/suppliers/useSuppliers";
 import { useSupplierForm } from "../hooks/suppliers/useSupplierForm";
 import { useAuth } from "../hooks/useAuth";
+import useI18n from "../hooks/useI18n";
 import { filterSuppliers } from "../utils/supplierUtils";
 
 const Suppliers = () => {
+    const { t } = useI18n();
     // State for search and filtering
     const [searchText, setSearchText] = useState("");
     const [filterType, setFilterType] = useState("all");
@@ -78,17 +80,13 @@ const Suppliers = () => {
     };
 
     return (
-        <div className="p-6">
+        <div className="p-4 sm:p-6 space-y-6 text-white">
             {/* Page Header */}
             <PageHeader
-                title={isAdmin ? "Suppliers (Admin)" : "Suppliers"}
-                subtitle={
-                    isAdmin
-                        ? "Manage all suppliers across the system"
-                        : "Manage your suppliers and their information"
-                }
+                title={t("suppliers.suppliers")}
+                subtitle={t("suppliers.manage_suppliers_description")}
                 icon={<UserOutlined />}
-                actionText="Add Supplier"
+                actionText={t("suppliers.add_supplier")}
                 actionIcon={<PlusOutlined />}
                 onActionClick={openCreateModal}
             />

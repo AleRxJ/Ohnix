@@ -237,7 +237,7 @@ const PurchaseReport = () => {
     return (
         <div className="space-y-4 sm:space-y-6">
             {/* Date Range Filter and Export */}
-            <Card title={t("reports.filter_and_export_options")}>
+            <Card title={t("reports.filter_and_export_options")} className="module-shell border border-white/10 overflow-hidden hover-lift">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row gap-3">
                         <RangePicker
@@ -265,7 +265,7 @@ const PurchaseReport = () => {
                         icon={<FileExcelOutlined />}
                         onClick={exportToCSV}
                         disabled={!purchaseData}
-                        className="bg-green-500 text-white hover:bg-green-600 w-full sm:w-auto"
+                        className="bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0] w-full sm:w-auto border-0"
                     >
                         <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
                         <span className="sm:hidden">{t("common.export")}</span>
@@ -318,7 +318,7 @@ const PurchaseReport = () => {
 
                     {/* Purchases by Date Chart */}
                     {purchaseData.purchasesByDate?.length > 0 && (
-                        <Card title={t("reports.purchase_trend_by_date")} className="w-full">
+                        <Card title={t("reports.purchase_trend_by_date")} className="w-full module-shell border border-white/10">
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
                                     width="100%"
@@ -386,7 +386,7 @@ const PurchaseReport = () => {
                     {purchaseData.purchasesBySupplier?.length > 0 && (
                         <Card
                             title={t("reports.top_suppliers_by_purchase_value")}
-                            className="h-full"
+                            className="h-full module-shell border border-white/10"
                         >
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
@@ -458,7 +458,7 @@ const PurchaseReport = () => {
 
                     {/* Supplier Details Table */}
                     {purchaseData.purchasesBySupplier?.length > 0 && (
-                            <Card title={t("reports.supplier_purchase_details")}>
+                            <Card title={t("reports.supplier_purchase_details")} className="module-shell border border-white/10">
                             <div className="overflow-x-auto">
                                 <Table
                                     columns={supplierColumns}
@@ -486,6 +486,7 @@ const PurchaseReport = () => {
                                             ? "small"
                                             : "middle"
                                     }
+                                    className="module-dark-table"
                                 />
                             </div>
                         </Card>
@@ -494,9 +495,9 @@ const PurchaseReport = () => {
             )}
 
             {!purchaseData && !loading && (
-                <Card>
+                <Card className="module-shell border border-white/10">
                     <div className="text-center py-8">
-                        <p className="text-gray-500 text-sm sm:text-base px-4">
+                        <p className="text-[#A9B3B8] text-sm sm:text-base px-4">
                             {t("reports.select_date_range_purchase")}
                         </p>
                     </div>

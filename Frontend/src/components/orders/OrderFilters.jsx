@@ -21,18 +21,18 @@ const OrderFilters = ({
     const totalRange = filters.total_range || {};
 
     return (
-        <Card className="mb-6 border-2 rounded-lg">
+        <Card className="mb-6 module-shell overflow-hidden hover-lift">
             <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Input
                         placeholder={t("orders.search_by_invoice")}
-                        prefix={<SearchOutlined className="text-gray-400" />}
+                        prefix={<SearchOutlined className="text-[#8B98A0]" />}
                         value={filters.search || ""}
                         onChange={(e) =>
                             onFilterChange("search", e.target.value)
                         }
                         allowClear
-                        className="h-10"
+                        className="h-10 auth-ohnix-input"
                     />
 
                     <Select
@@ -126,7 +126,7 @@ const OrderFilters = ({
                     />
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100">
+                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-white/10">
                     <Button
                         type="primary"
                         icon={<FilterOutlined />}

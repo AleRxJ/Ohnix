@@ -306,14 +306,15 @@ const TopProductsReport = () => {
             {/* Controls */}
             <Card
                 title={
-                    <span className="text-sm sm:text-base">
+                    <span className="text-sm sm:text-base text-white">
                         {t("reports.top_products_configuration")}
                     </span>
                 }
+                className="module-shell border border-white/10"
             >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <span className="text-sm">{t("reports.show_top")}</span>
+                        <span className="text-sm text-[#A9B3B8]">{t("reports.show_top")}</span>
                         <Select
                             value={limit}
                             onChange={setLimit}
@@ -342,7 +343,7 @@ const TopProductsReport = () => {
                         icon={<FileExcelOutlined />}
                         onClick={exportToCSV}
                         disabled={topProducts.length === 0}
-                        className="bg-green-500 text-white hover:bg-green-600 w-full sm:w-auto"
+                        className="bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0] w-full sm:w-auto border-0 font-semibold"
                         size={window.innerWidth < 768 ? "middle" : "large"}
                     >
                         <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
@@ -410,13 +411,13 @@ const TopProductsReport = () => {
                     <Col xs={24} lg={12}>
                         <Card
                             title={
-                                <span className="text-sm sm:text-base">
+                                <span className="text-sm sm:text-base text-white">
                                     {window.innerWidth < 768
                                         ? t("reports.top_by_quantity")
                                         : t("reports.top_products_by_quantity_sold")}
                                 </span>
                             }
-                            className="h-full"
+                            className="h-full module-shell border border-white/10"
                         >
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
@@ -472,7 +473,7 @@ const TopProductsReport = () => {
                                         <Legend />
                                         <Bar
                                             dataKey="quantity_sold"
-                                            fill="#1890ff"
+                                            fill="#44F3F0"
                                             name={t("reports.quantity_sold")}
                                             radius={[4, 4, 0, 0]}
                                         />
@@ -486,13 +487,13 @@ const TopProductsReport = () => {
                     <Col xs={24} lg={12}>
                         <Card
                             title={
-                                <span className="text-sm sm:text-base">
+                                <span className="text-sm sm:text-base text-white">
                                     {window.innerWidth < 768
                                         ? t("reports.top_by_revenue")
                                         : t("reports.top_products_by_revenue")}
                                 </span>
                             }
-                            className="h-full"
+                            className="h-full module-shell border border-white/10"
                         >
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
@@ -542,17 +543,17 @@ const TopProductsReport = () => {
                                         <Tooltip
                                             formatter={(value, name) => [
                                                 `₹${value.toFixed(2)}`,
-                                                "Revenue",
+                                                t("reports.revenue"),
                                             ]}
                                             labelFormatter={(label) =>
-                                                `Product: ${label}`
+                                                `${t("products.product")}: ${label}`
                                             }
                                         />
                                         <Legend />
                                         <Bar
                                             dataKey="total_sales"
-                                            fill="#52c41a"
-                                            name="Revenue"
+                                            fill="#29D8D5"
+                                            name={t("reports.revenue")}
                                             radius={[4, 4, 0, 0]}
                                         />
                                     </BarChart>
@@ -567,13 +568,13 @@ const TopProductsReport = () => {
             {topProducts.length > 0 && (
                 <Card
                     title={
-                        <span className="text-sm sm:text-base">
+                        <span className="text-sm sm:text-base text-white">
                             {window.innerWidth < 768
-                                ? "Revenue Distribution"
-                                : "Revenue Distribution by Product"}
+                                ? t("reports.revenue")
+                                : t("reports.revenue_distribution_by_product")}
                         </span>
                     }
-                    className="w-full"
+                    className="w-full module-shell border border-white/10"
                 >
                     <div className="w-full overflow-x-auto">
                         <ResponsiveContainer
@@ -628,7 +629,7 @@ const TopProductsReport = () => {
                                 <Tooltip
                                     formatter={(value, name) => [
                                         `₹${value.toFixed(2)}`,
-                                        "Revenue",
+                                        t("reports.revenue"),
                                     ]}
                                 />
                                 <Legend
@@ -678,36 +679,27 @@ const TopProductsReport = () => {
                         }}
                         scroll={{ x: 400 }}
                         size={window.innerWidth < 768 ? "small" : "middle"}
-                        className="top-products-table"
-                        rowClassName={(record, index) => {
-                            if (index === 0)
-                                return "bg-yellow-50 border-l-4 border-yellow-400";
-                            if (index === 1)
-                                return "bg-gray-50 border-l-4 border-gray-400";
-                            if (index === 2)
-                                return "bg-orange-50 border-l-4 border-orange-400";
-                            return "";
-                        }}
+                        className="top-products-table module-dark-table"
+                        rowClassName={() => "bg-transparent hover:bg-white/[0.05]"}
                     />
                 </div>
             </Card>
 
             {topProducts.length === 0 && !loading && (
-                <Card>
+                <Card className="module-shell border border-white/10">
                     <div className="text-center py-8 sm:py-12">
                         <TrophyOutlined
                             style={{
                                 fontSize:
                                     window.innerWidth < 768 ? "36px" : "48px",
-                                color: "#d9d9d9",
+                                color: "#29D8D5",
                             }}
                         />
-                        <p className="text-gray-500 mt-4 text-sm sm:text-base px-4">
-                            No top products data available
+                        <p className="text-[#A9B3B8] mt-4 text-sm sm:text-base px-4">
+                            {t("reports.top_products_no_data")}
                         </p>
-                        <p className="text-gray-400 text-xs sm:text-sm px-4">
-                            Make some sales to see your best-selling products
-                            here!
+                        <p className="text-[#8B98A0] text-xs sm:text-sm px-4">
+                            {t("reports.top_products_no_data_help")}
                         </p>
                     </div>
                 </Card>

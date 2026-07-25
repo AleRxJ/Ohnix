@@ -34,14 +34,15 @@ const DashboardLayout = () => {
     const currentPage = pathSegments.length > 0 ? pathSegments[0] : "dashboard";
 
     return (
-        <Layout className="dashboard-app min-h-screen">
+        <Layout className="dashboard-app min-h-screen relative overflow-hidden">
+            <div className="pointer-events-none absolute inset-0 opacity-70 section-glow" />
             <DashboardSidebar
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}
                 currentPage={currentPage}
             />
 
-            <Layout className="bg-transparent">
+            <Layout className="bg-transparent relative z-10">
                 <DashboardHeader
                     collapsed={collapsed}
                     setCollapsed={setCollapsed}
@@ -50,7 +51,7 @@ const DashboardLayout = () => {
                 <MobileMenu collapsed={collapsed} currentPage={currentPage} />
 
                 <Content className="mx-3 my-3 sm:mx-5 sm:my-5 lg:mx-7 lg:my-7">
-                    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,11,11,0.9),rgba(8,8,8,0.96))] min-h-[calc(100vh-8rem)] shadow-[0_20px_45px_rgba(0,0,0,0.42)] transition-shadow duration-300 hover:shadow-[0_24px_54px_rgba(0,0,0,0.5)]">
+                    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,11,11,0.9),rgba(8,8,8,0.96))] min-h-[calc(100vh-8rem)] shadow-[0_20px_45px_rgba(0,0,0,0.42)] transition-shadow duration-300 hover:shadow-[0_24px_54px_rgba(0,0,0,0.5)] reveal-card">
                         <Outlet />
                     </div>
                 </Content>

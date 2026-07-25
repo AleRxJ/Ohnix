@@ -68,27 +68,29 @@ const UnitSection = ({ user, isAdmin }) => {
     return (
         <div className="w-full">
             <Card
-                className="shadow-sm border-0"
+                className="shadow-sm border-0 module-shell"
                 style={{
                     borderRadius: "12px",
-                    background: "#ffffff",
+                    background:
+                        "linear-gradient(180deg, rgba(11,11,11,0.96), rgba(8,8,8,0.98))",
+                    border: "1px solid rgba(255,255,255,0.08)",
                 }}
                 title={
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center">
-                            <AppstoreOutlined className="text-green-600 text-sm" />
+                        <div className="w-8 h-8 bg-[#44F3F0]/10 rounded-lg flex items-center justify-center border border-[#44F3F0]/20">
+                            <AppstoreOutlined className="text-[#44F3F0] text-sm" />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-gray-900 font-semibold text-base sm:text-lg">
+                            <span className="text-white font-semibold text-base sm:text-lg">
                                 Units
                             </span>
                             <Badge
                                 count={units.length}
                                 showZero
                                 style={{
-                                    backgroundColor: "#f0fdf4",
-                                    color: "#166534",
-                                    border: "1px solid #dcfce7",
+                                    backgroundColor: "rgba(68,243,240,0.12)",
+                                    color: "#44F3F0",
+                                    border: "1px solid rgba(68,243,240,0.2)",
                                 }}
                             />
                         </div>
@@ -101,7 +103,7 @@ const UnitSection = ({ user, isAdmin }) => {
                                 icon={<ReloadOutlined />}
                                 onClick={loadUnits}
                                 loading={loading}
-                                className="border-gray-200 hover:border-green-400 hover:text-green-600 mt-2 lg:mt-0"
+                                className="border-white/10 hover:border-[#44F3F0]/35 hover:text-white mt-2 lg:mt-0 text-white bg-white/[0.03]"
                                 style={{ height: "36px" }}
                             >
                                 Refresh
@@ -111,7 +113,7 @@ const UnitSection = ({ user, isAdmin }) => {
                             type="primary"
                             icon={<PlusOutlined />}
                             onClick={() => openModal()}
-                            className="bg-green-600 hover:bg-green-700 border-green-600 hover:border-green-700"
+                            className="bg-[#44F3F0] hover:bg-[#29D8D5] border-[#44F3F0] hover:border-[#29D8D5] text-[#021314]"
                             style={{
                                 height: "36px",
                                 borderRadius: "8px",

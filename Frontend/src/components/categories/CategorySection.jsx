@@ -66,27 +66,29 @@ const CategorySection = ({ user, isAdmin }) => {
     return (
         <div className="w-full">
             <Card
-                className="shadow-sm border-0"
-                style={{ 
-                    borderRadius: '12px',
-                    background: '#ffffff'
+                className="shadow-sm border-0 module-shell"
+                style={{
+                    borderRadius: "12px",
+                    background:
+                        "linear-gradient(180deg, rgba(11,11,11,0.96), rgba(8,8,8,0.98))",
+                    border: "1px solid rgba(255,255,255,0.08)",
                 }}
                 title={
                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
-                            <TagsOutlined className="text-blue-600 text-sm" />
+                        <div className="w-8 h-8 bg-[#29D8D5]/10 rounded-lg flex items-center justify-center border border-[#29D8D5]/20">
+                            <TagsOutlined className="text-[#29D8D5] text-sm" />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-gray-900 font-semibold text-base sm:text-lg">
+                            <span className="text-white font-semibold text-base sm:text-lg">
                                 {t("categories.categories")}
                             </span>
                             <Badge 
                                 count={categories.length} 
                                 showZero 
                                 style={{ 
-                                    backgroundColor: '#f0f9ff',
-                                    color: '#1e40af',
-                                    border: '1px solid #dbeafe'
+                                    backgroundColor: "rgba(41,216,213,0.12)",
+                                    color: "#44F3F0",
+                                    border: "1px solid rgba(41,216,213,0.2)"
                                 }}
                             />
                         </div>
@@ -99,7 +101,7 @@ const CategorySection = ({ user, isAdmin }) => {
                                 icon={<ReloadOutlined />}
                                 onClick={loadCategories}
                                 loading={loading}
-                                className="border-gray-200 hover:border-blue-400 hover:text-blue-600 mt-2 lg:mt-0"
+                                className="border-white/10 hover:border-[#29D8D5]/35 hover:text-white mt-2 lg:mt-0 text-white bg-white/[0.03]"
                                 style={{ height: '36px' }}
                             >
                                 {t("common.refresh")}
@@ -109,15 +111,13 @@ const CategorySection = ({ user, isAdmin }) => {
                             type="primary"
                             icon={<PlusOutlined />}
                             onClick={() => openModal()}
-                            className="bg-blue-600 hover:bg-blue-700 border-blue-600 hover:border-blue-700"
+                            className="bg-[#29D8D5] hover:bg-[#44F3F0] border-[#29D8D5] hover:border-[#44F3F0] text-[#021314]"
                             style={{ 
                                 height: '36px',
                                 borderRadius: '8px',
                                 fontWeight: 500
                             }}
                         >
-                            <span className="hidden sm:inline">Add Category</span>
-                            <span className="sm:hidden">Add</span>
                             <span className="hidden sm:inline">{t("categories.add_category")}</span>
                             <span className="sm:hidden">{t("common.add")}</span>
                         </Button>

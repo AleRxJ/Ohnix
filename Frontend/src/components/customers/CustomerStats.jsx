@@ -14,7 +14,7 @@ const CustomerStats = ({ stats }) => {
 
     return (
         <Row gutter={[16, 16]} className="mb-6">
-            <Col xs={24} sm={12} lg={6}>
+            <Col xs={24} sm={12} lg={6} className="stagger-1">
                 <StatCard
                     title={t("customers.total_customers")}
                     value={stats.total}
@@ -25,7 +25,7 @@ const CustomerStats = ({ stats }) => {
                     className="dashboard-stat-card"
                 />
             </Col>
-            <Col xs={24} sm={12} lg={6}>
+            <Col xs={24} sm={12} lg={6} className="stagger-2">
                 <StatCard
                     title={t("customers.regular_customers")}
                     value={stats.regular}
@@ -36,7 +36,7 @@ const CustomerStats = ({ stats }) => {
                     className="dashboard-stat-card"
                 />
             </Col>
-            <Col xs={24} sm={12} lg={6}>
+            <Col xs={24} sm={12} lg={6} className="stagger-3">
                 <StatCard
                     title={t("customers.wholesale_customers")}
                     value={stats.wholesale}
@@ -47,7 +47,7 @@ const CustomerStats = ({ stats }) => {
                     className="dashboard-stat-card"
                 />
             </Col>
-            <Col xs={24} sm={12} lg={6}>
+            <Col xs={24} sm={12} lg={6} className="stagger-4">
                 <StatCard
                     title={t("customers.retail_customers")}
                     value={stats.retail}

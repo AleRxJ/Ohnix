@@ -17,17 +17,17 @@ const ProductSearchBar = ({
     const { t } = useI18n();
 
     return (
-        <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-4 py-3 mb-6">
+        <div className="module-shell px-4 py-4 mb-6 animate-fade-up">
             <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                 <div className="flex-1">
                     <Input
                         placeholder={t("products.search_products")}
-                        prefix={<SearchOutlined className="text-gray-400" />}
+                        prefix={<SearchOutlined className="text-[#8B98A0]" />}
                         value={searchText}
                         onChange={(e) => onSearchChange(e.target.value)}
                         onPressEnter={onSearch}
                         size="large"
-                        className="w-full"
+                        className="w-full auth-ohnix-input"
                     />
                 </div>
 
@@ -36,7 +36,7 @@ const ProductSearchBar = ({
                         icon={<FilterOutlined />}
                         onClick={onShowFilters}
                         size="large"
-                        className="flex-1 sm:flex-none"
+                        className="flex-1 sm:flex-none hover:shadow-[0_0_22px_rgba(41,216,213,0.12)]"
                     >
                         {t("products.filters")}
                     </Button>

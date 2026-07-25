@@ -77,18 +77,18 @@ const PurchaseList = ({
     };
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-transparent text-white">
             <div className="p-4 sm:p-6 lg:p-8">
                 {/* Header Section */}
                 <div className="mb-8">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                         <div className="mb-4 sm:mb-0">
                             <div className="flex-1 min-w-0">
-                                <h1 className="truncate mb-1 text-4xl font-bold flex items-center gap-2">
-                                    {t("purchases.purchases")}<ShoppingCartOutlined className="text-blue-600 inline-block ml-2" />
+                                <h1 className="truncate mb-1 text-4xl font-bold flex items-center gap-2 text-white">
+                                    {t("purchases.purchases")}<ShoppingCartOutlined className="text-[#44F3F0] inline-block ml-2" />
                                 </h1>
                             </div>
-                            <p className="text-gray-600 text-sm sm:text-base">{t("purchases.manage_purchases_description")}</p>
+                            <p className="text-[#A9B3B8] text-sm sm:text-base">{t("purchases.manage_purchases_description")}</p>
                         </div>
                     </div>
 
@@ -97,7 +97,7 @@ const PurchaseList = ({
                 </div>
 
                 {/* Search and Add Section */}
-                <Card className="mb-6 shadow-sm border-0 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <Card className="mb-6 shadow-sm border border-white/10 bg-[#0B0B0B]/92 text-white">
                     <Row
                         gutter={[16, 16]}
                         align="middle"
@@ -120,7 +120,7 @@ const PurchaseList = ({
                                 icon={<PlusOutlined />}
                                 size="large"
                                 onClick={handleAddPurchase}
-                                className="w-full sm:w-auto bg-gradient-to-r from-blue-500 to-blue-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+                                className="w-full sm:w-auto bg-[#44F3F0] text-[#021314] border-0 shadow-lg hover:shadow-xl transition-all duration-300"
                             > {t("purchases.add_new_purchase")}
                             </Button>
                         </Col>
@@ -128,11 +128,11 @@ const PurchaseList = ({
                 </Card>
 
                 {/* Table Section */}
-                <Card className="shadow-sm border-0 overflow-hidden">
+                <Card className="shadow-sm border border-white/10 overflow-hidden bg-[#0B0B0B]/92 text-white">
                     <div className="p-4 sm:p-6">
                         <div className="flex items-center gap-3 mb-4">
-                            <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full"></div>
-                            <Title level={4} className="!mb-0">{t("purchases.purchase_orders")}</Title>
+                            <div className="w-1 h-6 bg-gradient-to-b from-[#29D8D5] to-[#44F3F0] rounded-full"></div>
+                            <Title level={4} className="!mb-0 !text-white">{t("purchases.purchase_orders")}</Title>
                         </div>
                         <PurchaseTable
                             purchases={purchases}

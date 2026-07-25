@@ -14,10 +14,13 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from "recharts";
+import useI18n from "../../hooks/useI18n";
 
 const { Text, Title } = Typography;
 
 const SalesChart = ({ salesData = {}, loading = false }) => {
+    const { t } = useI18n();
+
     const salesByDate = useMemo(() => {
         if (Array.isArray(salesData)) {
             return salesData;
@@ -89,12 +92,12 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-white px-4 py-3 border border-slate-200 shadow-lg rounded-lg">
-                    <p className="text-slate-500 text-xs font-medium mb-1">
+                <div className="rounded-xl border border-white/10 bg-[#0B0B0B]/96 px-4 py-3 shadow-[0_18px_30px_rgba(0,0,0,0.4)]">
+                    <p className="text-[#A9B3B8] text-xs font-medium mb-1">
                         {label}
                     </p>
-                    <p className="text-blue-600 font-bold text-base mb-0">
-                        ${Number(payload[0].value).toLocaleString()}
+                    <p className="text-[#44F3F0] font-bold text-base mb-0">
+                        ₹{Number(payload[0].value).toLocaleString()}
                     </p>
                 </div>
             );
@@ -102,7 +105,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
         return null;
     };
 
-    const formatDollar = (value) => `$${Number(value).toLocaleString()}`;
+    const formatRupees = (value) => `₹${Number(value).toLocaleString()}`;
 
     const summaryData = useMemo(() => {
         if (salesData && salesData.summary) {
@@ -115,18 +118,18 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
     }, [salesData, totalSales, totalOrders]);
 
     return (
-        <section className="w-full bg-white rounded-xl shadow-sm border border-slate-200">
-            <header className="px-6 py-5 border-b border-slate-100">
+        <section className="w-full rounded-2xl border border-white/10 bg-[#0B0B0B]/92 shadow-[0_18px_40px_rgba(0,0,0,0.35)] overflow-hidden reveal-card">
+            <header className="px-6 py-5 border-b border-white/8">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                        <LineChartOutlined className="text-blue-600 text-lg" />
+                    <div className="w-10 h-10 rounded-lg bg-[linear-gradient(135deg,rgba(41,216,213,0.22),rgba(68,243,240,0.12))] border border-[#29D8D5]/25 flex items-center justify-center shadow-sm">
+                        <LineChartOutlined className="text-[#44F3F0] text-lg" />
                     </div>
                     <div>
-                        <h2 className="m-0 text-slate-900 font-bold text-lg leading-tight">
-                            Sales Performance
+                        <h2 className="m-0 text-white font-bold text-lg leading-tight">
+                            {t("reports.sales_performance")}
                         </h2>
-                        <p className="m-0 text-slate-500 text-xs mt-0.5">
-                            Track your revenue and order trends
+                        <p className="m-0 text-[#A9B3B8] text-xs mt-0.5">
+                            {t("reports.track_revenue_and_order_trends")}
                         </p>
                     </div>
                 </div>
@@ -139,20 +142,20 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
             ) : hasSalesData ? (
                 <div className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                        <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 px-5 py-4 rounded-xl border-2 border-blue-400">
-                            <Text className="text-blue-700 text-xs font-semibold uppercase tracking-wider block mb-2">
-                                Total Sales
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
+                            <Text className="text-[#A9B3B8] text-xs font-semibold uppercase tracking-wider block mb-2">
+                                {t("reports.total_sales")}
                             </Text>
-                            <div className="text-blue-900 text-3xl font-bold">
+                            <div className="text-white text-3xl font-bold">
                                 ₹ {summaryData.totalSales.toLocaleString()}
                             </div>
                         </div>
 
-                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 px-5 py-4 rounded-xl border-2 border-indigo-400">
-                            <Text className="text-indigo-700 text-xs font-semibold uppercase tracking-wider block mb-2">
-                                Total Orders
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
+                            <Text className="text-[#A9B3B8] text-xs font-semibold uppercase tracking-wider block mb-2">
+                                {t("orders.total_orders")}
                             </Text>
-                            <div className="text-indigo-900 text-3xl font-bold">
+                            <div className="text-white text-3xl font-bold">
                                 {summaryData.totalOrders}
                             </div>
                         </div>
@@ -160,36 +163,36 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                         <div
                             className={`px-5 py-4 rounded-xl border-2 sm:col-span-2 lg:col-span-1 ${
                                 trend > 0
-                                    ? "bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-400"
+                                    ? "bg-white/[0.03] border-[#29D8D5]/25"
                                     : trend < 0
-                                      ? "bg-gradient-to-br from-rose-50 to-rose-100/50 border-rose-400"
-                                      : "bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-400"
+                                      ? "bg-white/[0.03] border-rose-400/30"
+                                      : "bg-white/[0.03] border-white/10"
                             }`}
                         >
                             <Text
                                 className={`text-xs font-semibold uppercase tracking-wider block mb-2 ${
                                     trend > 0
-                                        ? "text-emerald-700"
+                                        ? "text-[#44F3F0]"
                                         : trend < 0
                                           ? "text-rose-700"
-                                          : "text-slate-700"
+                                          : "text-[#A9B3B8]"
                                 }`}
                             >
-                                Growth Trend
+                                {t("reports.growth_trend")}
                             </Text>
                             <div
                                 className={`flex items-center text-3xl font-bold ${
                                     trend > 0
-                                        ? "text-emerald-900"
+                                        ? "text-white"
                                         : trend < 0
-                                          ? "text-rose-900"
-                                          : "text-slate-900"
+                                          ? "text-white"
+                                          : "text-white"
                                 }`}
                             >
                                 {trend > 0 ? (
-                                    <ArrowUpOutlined className="mr-2 text-emerald-600 text-xl" />
+                                    <ArrowUpOutlined className="mr-2 text-[#44F3F0] text-xl" />
                                 ) : trend < 0 ? (
-                                    <ArrowDownOutlined className="mr-2 text-rose-600 text-xl" />
+                                    <ArrowDownOutlined className="mr-2 text-rose-400 text-xl" />
                                 ) : null}
                                 {trend > 0 ? "+" : ""}
                                 {trend.toFixed(1)}%
@@ -197,7 +200,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                         </div>
                     </div>
 
-                    <div className="bg-slate-50/50 rounded-xl border border-slate-200 p-5">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
                         <div className="w-full h-80 sm:h-96 lg:h-[420px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart
@@ -232,7 +235,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                                     <CartesianGrid
                                         strokeDasharray="3 3"
                                         vertical={false}
-                                        stroke="#e2e8f0"
+                                        stroke="rgba(255,255,255,0.08)"
                                     />
                                     <XAxis
                                         dataKey="date"
@@ -240,18 +243,18 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                                         tickLine={false}
                                         tickMargin={12}
                                         tick={{
-                                            fill: "#64748b",
+                                            fill: "#A9B3B8",
                                             fontSize: 11,
                                             fontWeight: 500,
                                         }}
                                     />
                                     <YAxis
-                                        tickFormatter={formatDollar}
+                                        tickFormatter={formatRupees}
                                         axisLine={false}
                                         tickLine={false}
                                         tickMargin={12}
                                         tick={{
-                                            fill: "#64748b",
+                                            fill: "#A9B3B8",
                                             fontSize: 11,
                                             fontWeight: 500,
                                         }}
@@ -261,15 +264,15 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                                     <Area
                                         type="monotone"
                                         dataKey="sales"
-                                        stroke="#3b82f6"
+                                        stroke="#44F3F0"
                                         strokeWidth={3}
                                         fillOpacity={1}
                                         fill="url(#colorSales)"
                                         activeDot={{
                                             r: 6,
                                             strokeWidth: 3,
-                                            stroke: "#fff",
-                                            fill: "#3b82f6",
+                                            stroke: "#0B0B0B",
+                                            fill: "#44F3F0",
                                         }}
                                         dot={false}
                                     />
@@ -278,12 +281,12 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                         </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mt-5 pt-5 border-t border-slate-200">
-                        <span className="text-sm text-slate-600 font-medium">
-                            Average daily sales
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mt-5 pt-5 border-t border-white/10">
+                        <span className="text-sm text-[#A9B3B8] font-medium">
+                            {t("reports.average_daily_sales")}
                         </span>
-                        <span className="text-lg font-bold text-slate-900">
-                            ${averageSales.toLocaleString()}
+                        <span className="text-lg font-bold text-white">
+                            ₹{averageSales.toLocaleString()}
                         </span>
                     </div>
                 </div>
@@ -293,12 +296,13 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                         description={
                             <div className="text-center">
-                                <div className="text-slate-700 font-semibold text-base mb-2">
-                                    No Sales Data Available
+                                <div className="text-white font-semibold text-base mb-2">
+                                    {t("reports.no_sales_data_available")}
                                 </div>
-                                <p className="text-sm text-slate-500 mb-0 max-w-xs mx-auto">
-                                    Sales data will appear here once you have
-                                    recorded orders.
+                                <p className="text-sm text-[#A9B3B8] mb-0 max-w-xs mx-auto">
+                                    {t(
+                                        "reports.sales_data_will_be_displayed_here_once_orders_exist"
+                                    )}
                                 </p>
                             </div>
                         }

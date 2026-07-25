@@ -19,6 +19,9 @@ import {
     MailOutlined,
     QuestionCircleOutlined,
     SmileOutlined,
+    CrownOutlined,
+    ThunderboltOutlined as BoltOutlined,
+    CheckOutlined,
 } from "@ant-design/icons";
 
 const sectionShell =
@@ -179,7 +182,7 @@ export const OrbitalHero = ({
 
 export const ContentSection = ({ id, children, className = "", shell = true }) => {
     const content = (
-        <div className={`relative mx-auto max-w-7xl px-6 py-20 md:px-10 md:py-28 ${className}`}>
+        <div className={`relative mx-auto max-w-7xl px-6 py-20 md:px-10 md:py-28 animate-fade-up ${className}`}>
             {children}
         </div>
     );
@@ -491,6 +494,74 @@ export const ContactSection = ({ heading, primaryCta, secondaryCta, onPrimary, o
     </ContentSection>
 );
 
+export const PricingSection = ({ heading, plans }) => (
+    <ContentSection id="pricing">
+        <SectionHeading
+            eyebrow={heading.eyebrow}
+            title={heading.title}
+            description={heading.description}
+        />
+
+        <div className="mt-14 grid gap-5 lg:grid-cols-3">
+            {plans.map((plan) => (
+                <article
+                    key={plan.name}
+                    className={`relative overflow-hidden rounded-[32px] border p-7 transition-all duration-300 hover:-translate-y-1 ${
+                        plan.featured
+                            ? "border-[#29D8D5]/40 bg-[linear-gradient(180deg,rgba(41,216,213,0.12),rgba(255,255,255,0.03))] shadow-[0_0_0_1px_rgba(41,216,213,0.08),0_18px_50px_rgba(0,0,0,0.38)]"
+                            : "border-white/8 bg-white/[0.03]"
+                    }`}
+                >
+                    {plan.featured ? (
+                        <div className="absolute right-5 top-5 rounded-full border border-[#29D8D5]/30 bg-[#29D8D5]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-[#44F3F0]">
+                            Most Popular
+                        </div>
+                    ) : null}
+
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-[#44F3F0]">
+                            {plan.icon}
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-semibold text-white">{plan.name}</h3>
+                            <p className="text-sm text-[#A9B3B8]">{plan.subtitle}</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 flex items-end gap-2">
+                        <span className="text-5xl font-semibold tracking-tight text-white">{plan.price}</span>
+                        <span className="pb-1 text-sm text-[#A9B3B8]">{plan.billing}</span>
+                    </div>
+
+                    <p className="mt-4 text-sm leading-7 text-[#D4DBDF]">{plan.description}</p>
+
+                    <ul className="mt-6 space-y-3">
+                        {plan.features.map((feature) => (
+                            <li key={feature} className="flex items-start gap-3 text-sm text-[#D4DBDF]">
+                                <span className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#29D8D5]/12 text-[#44F3F0]">
+                                    <CheckOutlined className="text-[10px]" />
+                                </span>
+                                <span>{feature}</span>
+                            </li>
+                        ))}
+                    </ul>
+
+                    <button
+                        type="button"
+                        className={`mt-7 w-full rounded-full px-5 py-3 text-sm font-semibold transition-all duration-300 ${
+                            plan.featured
+                                ? "bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0]"
+                                : "border border-white/12 bg-white/[0.03] text-white hover:border-[#29D8D5]/35 hover:bg-white/[0.06]"
+                        }`}
+                    >
+                        {plan.cta}
+                    </button>
+                </article>
+            ))}
+        </div>
+    </ContentSection>
+);
+
 export const PlusIcon = () => (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
         <path d="M12 5v14M5 12h14" />
@@ -515,4 +586,6 @@ export const brandIcons = {
     ideas: <QuestionCircleOutlined />,
     delight: <SmileOutlined />,
     facility: <ApartmentOutlined />,
+    pricing: <CrownOutlined />,
+    growth: <BoltOutlined />,
 };

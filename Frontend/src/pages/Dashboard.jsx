@@ -279,6 +279,18 @@ const Dashboard = () => {
     const mostProfitableProduct = dashboardData.topProducts?.length
         ? [...dashboardData.topProducts].sort((a, b) => b.total_sales - a.total_sales)[0]
         : null;
+    const totalSales = Number(dashboardData.totalSales || 0);
+    const totalPurchase = Number(dashboardData.totalPurchase || 0);
+    const totalOrders = dashboardData.salesData?.summary?.totalOrders || 0;
+    const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
+    const topProductShare =
+        totalSales > 0 && topPerformer?.total_sales
+            ? (Number(topPerformer.total_sales) / totalSales) * 100
+            : 0;
+    const stockRiskCount =
+        (dashboardData.lowStockProducts?.length || 0) +
+        (dashboardData.outOfStockCount || 0);
+    const netTradeDelta = totalSales - totalPurchase;
 
     return (
         <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.08),transparent_26%),linear-gradient(180deg,#070707_0%,#050505_100%)] text-white">
@@ -382,6 +394,62 @@ const Dashboard = () => {
 
                     <div className="space-y-6">
                         <SalesChart salesData={dashboardData.salesData} />
+
+                        <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)] p-6 backdrop-blur-md">
+                            <div className="flex items-center justify-between gap-4 mb-5">
+                                <div>
+                                    <h3 className="text-lg font-bold text-white m-0 leading-tight">
+                                        Business pulse
+                                    </h3>
+                                    <p className="text-sm text-[#A9B3B8] m-0">
+                                        What a client would want to know at a glance
+                                    </p>
+                                </div>
+                                <Badge
+                                    count={stockRiskCount}
+                                    style={{
+                                        backgroundColor:
+                                            stockRiskCount > 0
+                                                ? "rgba(250,173,20,0.18)"
+                                                : "rgba(41,216,213,0.16)",
+                                        color:
+                                            stockRiskCount > 0
+                                                ? "#FFCF70"
+                                                : "#44F3F0",
+                                        fontWeight: 700,
+                                        boxShadow: "none",
+                                    }}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">Net trade delta</div>
+                                    <div className={`mt-2 text-2xl font-semibold ${netTradeDelta >= 0 ? "text-[#44F3F0]" : "text-[#F28B82]"}`}>
+                                        ₹{netTradeDelta.toLocaleString()}
+                                    </div>
+                                    <div className="mt-2 text-sm text-[#A9B3B8]">Sales minus purchases over the current scope.</div>
+                                </div>
+
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">Average order value</div>
+                                    <div className="mt-2 text-2xl font-semibold text-white">₹{averageOrderValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                    <div className="mt-2 text-sm text-[#A9B3B8]">Useful for pricing and basket-size decisions.</div>
+                                </div>
+
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">Stock risk</div>
+                                    <div className="mt-2 text-2xl font-semibold text-white">{stockRiskCount}</div>
+                                    <div className="mt-2 text-sm text-[#A9B3B8]">Items that need restocking attention now.</div>
+                                </div>
+
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">Revenue concentration</div>
+                                    <div className="mt-2 text-2xl font-semibold text-white">{topProductShare.toFixed(1)}%</div>
+                                    <div className="mt-2 text-sm text-[#A9B3B8]">Share driven by the top product. Lower is safer.</div>
+                                </div>
+                            </div>
+                        </div>
 
                         <ProductDistribution
                             topProducts={dashboardData.topProducts}

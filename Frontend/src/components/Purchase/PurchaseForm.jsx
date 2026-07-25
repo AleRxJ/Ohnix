@@ -74,10 +74,10 @@ const PurchaseForm = ({
         <Modal
             title={
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
-                        <ShoppingCartOutlined className="text-blue-600" />
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/[0.06] border border-white/10">
+                        <ShoppingCartOutlined className="text-[#44F3F0]" />
                     </div>
-                    <span className="text-lg font-semibold">{t("purchases.add_new_purchase")}</span>
+                    <span className="text-lg font-semibold text-white">{t("purchases.add_new_purchase")}</span>
                 </div>
             }
             open={visible}
@@ -85,6 +85,22 @@ const PurchaseForm = ({
             footer={null}
             width={950}
             className="purchase-form-modal"
+            styles={{
+                mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                content: {
+                    background:
+                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                    borderRadius: "24px",
+                },
+                header: {
+                    background: "transparent",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    padding: "20px 24px 16px",
+                },
+                body: { padding: "24px" },
+            }}
         >
             <Form
                 form={form}
@@ -93,16 +109,16 @@ const PurchaseForm = ({
                 initialValues={initialValues}
                 className="mt-2"
             >
-                <Card className="mb-1 bg-gray-50 border-0">
+                <Card className="mb-1 border border-white/10 bg-white/[0.03] text-white shadow-sm">
                     <Row gutter={[16, 16]}>
                         <Col xs={24} sm={12}>
                             <Form.Item label={t("purchases.purchase_number")} name="purchase_no" rules={[{ required: true, message: t("purchases.enter_purchase_number") }, { max: 10, message: t("purchases.purchase_number_max_length") }]}>
-                                <Input placeholder={t("purchases.purchase_number_placeholder")} size="large" className="rounded-lg" />
+                                <Input placeholder={t("purchases.purchase_number_placeholder")} size="large" className="rounded-lg purchase-form-input" />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
                             <Form.Item label={t("purchases.supplier")} name="supplier_id" rules={[{ required: true, message: t("purchases.select_supplier_message") }]}>
-                                <Select placeholder={t("purchases.select_supplier")} size="large" className="rounded-lg" showSearch optionFilterProp="children">
+                                <Select placeholder={t("purchases.select_supplier")} size="large" className="rounded-lg purchase-form-input" showSearch optionFilterProp="children">
                                     {suppliers.map((supplier) => (
                                         <Option key={supplier._id} value={supplier._id}>
                                             {supplier.name} ({supplier.shopname})
@@ -113,7 +129,7 @@ const PurchaseForm = ({
                         </Col>
                         <Col xs={24}>
                             <Form.Item label={t("common.status")} name="purchase_status">
-                                <Select placeholder={t("purchases.select_status")} size="large" className="rounded-lg">
+                                <Select placeholder={t("purchases.select_status")} size="large" className="rounded-lg purchase-form-input">
                                     <Option value="pending">{t("purchases.pending")}</Option>
                                     <Option value="completed">{t("purchases.completed")}</Option>
                                 </Select>
@@ -123,7 +139,7 @@ const PurchaseForm = ({
                 </Card>
 
                     <Divider orientation="left">
-                        <span className="text-lg font-medium text-gray-700">{t("purchases.purchase_details")}</span>
+                        <span className="text-lg font-medium text-white">{t("purchases.purchase_details")}</span>
                     </Divider>
 
                 <Form.List name="details">
@@ -142,7 +158,7 @@ const PurchaseForm = ({
                                 return (
                                     <Card
                                         key={key}
-                                        className="mb-4 border border-gray-200 shadow-sm"
+                                        className="mb-4 border border-white/10 shadow-sm bg-white/[0.03] text-white"
                                     >
                                         <Row gutter={[16, 16]} align="middle">
                                             <Col xs={24} sm={8}>
@@ -151,7 +167,7 @@ const PurchaseForm = ({
                                                         placeholder={t("purchases.select_product")}
                                                         showSearch
                                                         optionFilterProp="label"
-                                                        className="rounded-lg"
+                                                        className="rounded-lg purchase-form-input"
                                                         onChange={(val) =>
                                                             handleProductChange(
                                                                 val,
@@ -196,7 +212,7 @@ const PurchaseForm = ({
                                                         style={{
                                                             width: "100%",
                                                         }}
-                                                        className="rounded-lg"
+                                                        className="rounded-lg purchase-form-input"
                                                     />
                                                 </Form.Item>
                                             </Col>
@@ -210,7 +226,7 @@ const PurchaseForm = ({
                                                             width: "100%",
                                                         }}
                                                         prefix="₹"
-                                                        className="rounded-lg"
+                                                        className="rounded-lg purchase-form-input"
                                                     />
                                                 </Form.Item>
                                             </Col>
@@ -245,12 +261,56 @@ const PurchaseForm = ({
                 <Form.Item className="mb-0 pt-4">
                     <Row justify="end">
                             <Space size="large">
-                                <Button onClick={onCancel} size="large" className="px-8">{t("common.cancel")}</Button>
-                                <Button type="primary" htmlType="submit" size="large" className="px-8 bg-gradient-to-r from-blue-500 to-blue-600 border-0 shadow-lg hover:shadow-xl transition-all duration-300">{t("purchases.create_purchase")}</Button>
+                                <Button onClick={onCancel} size="large" className="px-8 bg-white/[0.04] border-white/10 text-white hover:text-[#44F3F0] hover:border-[#44F3F0]">{t("common.cancel")}</Button>
+                                <Button type="primary" htmlType="submit" size="large" className="px-8 bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 shadow-lg hover:shadow-xl transition-all duration-300 text-[#021314]">{t("purchases.create_purchase")}</Button>
                             </Space>
                     </Row>
                 </Form.Item>
             </Form>
+
+            <style jsx>{`
+                .purchase-form-modal .ant-modal-close {
+                    color: #a9b3b8;
+                }
+                .purchase-form-modal .ant-modal-title {
+                    color: #ffffff;
+                }
+                .purchase-form-modal .ant-form-item-label > label {
+                    color: #d4dbdf;
+                }
+                .purchase-form-modal .ant-input,
+                .purchase-form-modal .ant-input-affix-wrapper,
+                .purchase-form-modal .ant-input-number,
+                .purchase-form-modal .ant-select-selector {
+                    background: #111214 !important;
+                    color: #ffffff !important;
+                    border-color: rgba(255, 255, 255, 0.12) !important;
+                }
+                .purchase-form-modal .ant-select-selection-placeholder,
+                .purchase-form-modal .ant-input::placeholder,
+                .purchase-form-modal .ant-input-number-input::placeholder {
+                    color: #8b98a0 !important;
+                }
+                .purchase-form-modal .ant-card {
+                    background: rgba(255, 255, 255, 0.03) !important;
+                    border-color: rgba(255, 255, 255, 0.1) !important;
+                    color: #ffffff !important;
+                }
+                .purchase-form-modal .ant-divider-inner-text {
+                    color: #ffffff !important;
+                }
+                .purchase-form-modal .ant-input-number-handler-wrap,
+                .purchase-form-modal .ant-select-arrow,
+                .purchase-form-modal .ant-select-clear,
+                .purchase-form-modal .ant-input-clear-icon {
+                    color: #8b98a0 !important;
+                }
+                .purchase-form-modal .ant-btn-default {
+                    background: rgba(255, 255, 255, 0.04);
+                    color: #ffffff;
+                    border-color: rgba(255, 255, 255, 0.1);
+                }
+            `}</style>
         </Modal>
     );
 };

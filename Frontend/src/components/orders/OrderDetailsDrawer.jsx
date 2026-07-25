@@ -80,7 +80,7 @@ const OrderDetailsDrawer = ({
         <Drawer
             title={
                 <div className="text-center w-full">
-                    <span className="text-xl font-bold tracking-wide uppercase text-gray-900">
+                    <span className="text-xl font-bold tracking-wide uppercase text-white">
                         {t("orders.order_details", { invoiceNo: selectedOrder.invoice_no })}
                     </span>
                 </div>
@@ -89,18 +89,25 @@ const OrderDetailsDrawer = ({
             onClose={onClose}
             open={visible}
             width={520}
-            closeIcon={<CloseOutlined className="text-gray-500" />}
+            closeIcon={<CloseOutlined className="text-[#A9B3B8]" />}
             styles={{
-                body: { padding: 24, backgroundColor: "#ffffff" },
+                mask: { backgroundColor: "rgba(0,0,0,0.45)" },
+                body: {
+                    padding: 24,
+                    background:
+                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                },
                 header: {
-                    borderBottom: "1px solid #f0f0f0",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
                     padding: "20px 24px",
+                    background:
+                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(8,8,8,0.98))",
                 },
             }}
         >
             <div className="space-y-6">
-                <div className="flex items-center justify-between pb-4 border-b border-gray-100">
-                    <span className="text-sm font-medium text-gray-600 uppercase tracking-wide">
+                <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                    <span className="text-sm font-medium text-[#A9B3B8] uppercase tracking-wide">
                         {t("common.status")}
                     </span>
                     <Tag
@@ -115,23 +122,23 @@ const OrderDetailsDrawer = ({
                 <div className="grid grid-cols-2 gap-6">
                     <div>
                         <div className="flex items-center space-x-2 mb-2">
-                            <UserOutlined className="text-gray-400" />
-                            <span className="text-xs font-medium text-gray-500 uppercase">
+                            <UserOutlined className="text-[#8B98A0]" />
+                            <span className="text-xs font-medium text-[#A9B3B8] uppercase">
                                 {t("customers.customer")}
                             </span>
                         </div>
-                        <p className="text-base font-semibold text-gray-900">
+                        <p className="text-base font-semibold text-white">
                             {selectedOrder.customer_id?.name || "N/A"}
                         </p>
                     </div>
                     <div>
                         <div className="flex items-center space-x-2 mb-2">
-                            <CalendarOutlined className="text-gray-400" />
-                            <span className="text-xs font-medium text-gray-500 uppercase">
+                            <CalendarOutlined className="text-[#8B98A0]" />
+                            <span className="text-xs font-medium text-[#A9B3B8] uppercase">
                                 {t("orders.order_date")}
                             </span>
                         </div>
-                        <p className="text-base font-semibold text-gray-900">
+                        <p className="text-base font-semibold text-white">
                             {dayjs(selectedOrder.order_date).format(
                                 "MMMM DD, YYYY"
                             )}
@@ -142,31 +149,31 @@ const OrderDetailsDrawer = ({
                 <Divider style={{ margin: "24px 0" }} />
 
                 <div>
-                    <h3 className="text-sm font-medium text-gray-600 mb-4 uppercase tracking-wide">
+                    <h3 className="text-sm font-medium text-[#A9B3B8] mb-4 uppercase tracking-wide">
                         {t("orders.order_summary")}
                     </h3>
-                    <div className="bg-gray-50 rounded-2xl p-4 border-2 space-y-3 shadow-[0px_0px_20px_rgba(0,0,0,0.09)]">
+                    <div className="rounded-2xl p-4 border border-white/10 space-y-3 bg-white/[0.03] shadow-[0px_0px_20px_rgba(0,0,0,0.18)]">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-[#A9B3B8]">
                                 {t("common.total_products")}
                             </span>
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-sm font-medium text-white">
                                 {t("orders.items_count", { count: selectedOrder.total_products })}
                             </span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-[#A9B3B8]">
                                 {t("common.subtotal")}
                             </span>
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-sm font-medium text-white">
                                 ₹{selectedOrder.sub_total?.toFixed(2)}
                             </span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-[#A9B3B8]">
                                 {t("orders.gst", { rate: 18 })}
                             </span>
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-sm font-medium text-white">
                                 ₹
                                 {(
                                     selectedOrder.total -
@@ -174,12 +181,12 @@ const OrderDetailsDrawer = ({
                                 )?.toFixed(2)}
                             </span>
                         </div>
-                        <Divider style={{ margin: "12px 0" }} />
+                        <Divider style={{ margin: "12px 0", borderColor: "rgba(255,255,255,0.08)" }} />
                         <div className="flex items-center justify-between">
-                            <span className="text-base font-semibold text-gray-900">
+                            <span className="text-base font-semibold text-white">
                                 {t("common.total_amount")}
                             </span>
-                            <span className="text-xl font-bold text-green-600">
+                            <span className="text-xl font-bold text-[#44F3F0]">
                                 ₹{selectedOrder.total?.toFixed(2)}
                             </span>
                         </div>
@@ -189,13 +196,13 @@ const OrderDetailsDrawer = ({
                 <Divider style={{ margin: "24px 0" }} />
 
                 <div>
-                    <h3 className="text-sm font-medium text-gray-600 mb-4 uppercase tracking-wide">
+                    <h3 className="text-sm font-medium text-[#A9B3B8] mb-4 uppercase tracking-wide">
                         {t("orders.order_items")}
                     </h3>
                     {detailsLoading ? (
                         <div className="text-center py-12">
                             <Spin size="large" />
-                            <p className="mt-4 text-gray-500 text-sm">
+                            <p className="mt-4 text-[#A9B3B8] text-sm">
                                 {t("common.loading")}
                             </p>
                         </div>
@@ -212,7 +219,7 @@ const OrderDetailsDrawer = ({
                         <div className="py-12">
                             <Empty
                                 description={
-                                    <span className="text-gray-500">
+                                    <span className="text-[#A9B3B8]">
                                         {t("orders.no_items_found")}
                                     </span>
                                 }

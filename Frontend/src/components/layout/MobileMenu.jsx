@@ -1,31 +1,58 @@
 // components/layout/MobileMenu.jsx
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Menu } from "antd";
 import { getMenuItems } from "../../data";
 import useI18n from "../../hooks/useI18n";
 
-const MobileMenu = ({ collapsed, currentPage }) => {
+const MobileMenu = ({ collapsed, currentPage, onClose }) => {
     const { t } = useI18n();
+    const panelRef = useRef(null);
+
+    useEffect(() => {
+        const handlePointerDown = (event) => {
+            if (collapsed) return;
+            if (panelRef.current && !panelRef.current.contains(event.target)) {
+                onClose?.();
+            }
+        };
+
+        document.addEventListener("mousedown", handlePointerDown);
+        document.addEventListener("touchstart", handlePointerDown, {
+            passive: true,
+        });
+
+        return () => {
+            document.removeEventListener("mousedown", handlePointerDown);
+            document.removeEventListener("touchstart", handlePointerDown);
+        };
+    }, [collapsed, onClose]);
 
     return (
         <div
-            className="md:hidden fixed top-16 left-0 right-0 transition-all duration-300 ease-in-out"
+            className="md:hidden fixed inset-0 transition-all duration-300 ease-in-out"
             style={{
-                maxHeight: !collapsed ? "calc(100vh - 4rem)" : "0",
                 opacity: !collapsed ? 1 : 0,
                 pointerEvents: !collapsed ? "auto" : "none",
                 zIndex: 999,
             }}
         >
-            <div className="h-full bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 shadow-2xl border-b border-indigo-900/20">
+            <div
+                className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
+                onClick={onClose}
+            />
+            <div
+                ref={panelRef}
+                className="absolute top-16 left-0 right-0 max-h-[calc(100vh-4rem)] overflow-hidden border-b border-white/10 bg-[linear-gradient(180deg,rgba(9,10,12,0.98),rgba(5,5,5,0.98))] shadow-2xl"
+            >
                 <div className="px-4 py-3 h-full flex flex-col">
-                    <div className="flex-1 bg-gray-800/40 backdrop-blur-md rounded-xl overflow-hidden border border-gray-700/40 shadow-inner">
-                        <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-600/80 scrollbar-track-gray-800/20 hover:scrollbar-thumb-indigo-500">
+                    <div className="flex-1 rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] shadow-inner">
+                        <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-[#29D8D5]/70 scrollbar-track-white/10 hover:scrollbar-thumb-[#44F3F0]">
                             <Menu
                                 theme="dark"
                                 selectedKeys={[currentPage]}
                                 mode="inline"
                                 items={getMenuItems(t)}
+                                onClick={onClose}
                                 className="border-r-0"
                                 style={{
                                     background: "transparent",

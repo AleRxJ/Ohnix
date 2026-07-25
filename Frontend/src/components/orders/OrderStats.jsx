@@ -13,7 +13,7 @@ const OrderStats = ({ stats }) => {
     return (
         <div className="mb-6">
             <Row gutter={[16, 16]}>
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={12} lg={6} className="stagger-1">
                     <StatCard
                         title={t("orders.total_orders")}
                         value={stats.total}
@@ -21,7 +21,7 @@ const OrderStats = ({ stats }) => {
                         valueStyle={{ color: "#1890ff" }}
                     />
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={12} lg={6} className="stagger-2">
                     <StatCard
                         title={t("orders.pending_orders")}
                         value={stats.pending}
@@ -29,7 +29,7 @@ const OrderStats = ({ stats }) => {
                         valueStyle={{ color: "#fa8c16" }}
                     />
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={12} lg={6} className="stagger-3">
                     <StatCard
                         title={t("orders.completed_orders")}
                         value={stats.completed}
@@ -37,7 +37,7 @@ const OrderStats = ({ stats }) => {
                         valueStyle={{ color: "#52c41a" }}
                     />
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
+                <Col xs={24} sm={12} lg={6} className="stagger-4">
                     <StatCard
                         title={t("orders.total_revenue")}
                         value={stats.revenue}

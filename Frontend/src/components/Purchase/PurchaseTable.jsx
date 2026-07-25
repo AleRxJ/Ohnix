@@ -95,6 +95,7 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
             dataSource={purchases}
             loading={loading}
             rowKey="_id"
+            locale={{ emptyText: t("common.no_data") }}
             pagination={{
                 pageSize: 10,
                 showSizeChanger: true,
@@ -102,6 +103,7 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
                 showTotal: (total, range) => t("purchases.showing_purchases", { start: range[0], end: range[1], total }),
             }}
             scroll={{ x: 800 }}
+            className="module-dark-table"
         />
     );
 };

@@ -6,6 +6,7 @@ import Footer from "../components/layout/Footer";
 import {
     OrbitalHero,
     CardGrid,
+    PricingSection,
     CycleTimelineSection,
     ImpactMetricsSection,
     TestimonialsSection,
@@ -158,6 +159,58 @@ const LandingPage = () => {
         },
     ];
 
+    const pricingPlans = [
+        {
+            name: "Starter",
+            subtitle: "For small teams getting organized",
+            price: "$0",
+            billing: "/month",
+            description:
+                "Track products, orders and customers with the core Ohnix flow, ideal to validate the business before scaling.",
+            features: [
+                "1 workspace",
+                "Basic inventory and order tracking",
+                "Email support",
+                "Landing + dashboard access",
+            ],
+            cta: "Start free",
+            icon: brandIcons.pricing,
+        },
+        {
+            name: "Growth",
+            subtitle: "For businesses ready to sell more",
+            price: "$29",
+            billing: "/month",
+            description:
+                "Add forecasting, reports, and smoother operations for teams that need daily visibility and cleaner control.",
+            features: [
+                "Unlimited products and orders",
+                "Advanced reports and alerts",
+                "Priority support",
+                "Mobile-friendly operations",
+            ],
+            cta: "Choose Growth",
+            icon: brandIcons.growth,
+            featured: true,
+        },
+        {
+            name: "Enterprise",
+            subtitle: "For operations with more complexity",
+            price: "Custom",
+            billing: "pricing",
+            description:
+                "For companies that need onboarding, custom workflows, and a tailored rollout aligned to their internal processes.",
+            features: [
+                "Custom onboarding",
+                "Dedicated implementation",
+                "Role-based workflows",
+                "Custom integrations",
+            ],
+            cta: "Talk to sales",
+            icon: brandIcons.trust,
+        },
+    ];
+
     return (
         <Layout className="min-h-screen bg-[#050505]">
             <Navbar />
@@ -203,6 +256,16 @@ const LandingPage = () => {
                         description: t("landing.timeline.description"),
                     }}
                     steps={timelineSteps}
+                />
+
+                <PricingSection
+                    heading={{
+                        eyebrow: "Pricing",
+                        title: "Simple plans that scale with the business",
+                        description:
+                            "Clear pricing for teams starting small or preparing to run inventory and sales at scale.",
+                    }}
+                    plans={pricingPlans}
                 />
 
                 <FaqSection

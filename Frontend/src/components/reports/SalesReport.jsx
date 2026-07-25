@@ -211,7 +211,7 @@ const SalesReport = () => {
     return (
         <div className="space-y-4 sm:space-y-6">
             {/* Date Range Filter and Export */}
-            <Card title={t("reports.filter_and_export_options")}>
+            <Card title={t("reports.filter_and_export_options")} className="module-shell border border-white/10 overflow-hidden hover-lift">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row gap-3">
                         <RangePicker
@@ -219,7 +219,7 @@ const SalesReport = () => {
                             onChange={handleDateRangeChange}
                             format="YYYY-MM-DD"
                             allowClear={false}
-                            className="w-full sm:w-auto"
+                            className="w-full sm:w-auto auth-ohnix-input"
                             size="middle"
                         />
                         <Button
@@ -239,7 +239,7 @@ const SalesReport = () => {
                         icon={<FileExcelOutlined />}
                         onClick={exportToCSV}
                         disabled={!salesData}
-                        className="bg-green-500 text-white hover:bg-green-600 w-full sm:w-auto"
+                        className="bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0] w-full sm:w-auto border-0"
                     >
                         <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
                         <span className="sm:hidden">{t("common.export")}</span>
@@ -281,7 +281,7 @@ const SalesReport = () => {
 
                     {/* Sales Trend Chart */}
                     {salesData.salesByDate?.length > 0 && (
-                        <Card title={t("reports.sales_trend_over_time")} className="w-full">
+                        <Card title={t("reports.sales_trend_over_time")} className="w-full module-shell border border-white/10">
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
                                     width="100%"
@@ -371,7 +371,7 @@ const SalesReport = () => {
                             <Col xs={24} lg={12}>
                                 <Card
                                     title={t("reports.top_products_by_sales")}
-                                    className="h-full"
+                                    className="h-full module-shell border border-white/10"
                                 >
                                     <div className="w-full overflow-x-auto">
                                         <ResponsiveContainer
@@ -457,8 +457,8 @@ const SalesReport = () => {
                         {salesData.salesByProduct?.length > 0 && (
                             <Col xs={24} lg={12}>
                                 <Card
-                                                    title={t("reports.sales_distribution_by_product")}
-                                    className="h-full"
+                                    title={t("reports.sales_distribution_by_product")}
+                                    className="h-full module-shell border border-white/10"
                                 >
                                     <div className="w-full overflow-x-auto">
                                         <ResponsiveContainer
@@ -541,7 +541,7 @@ const SalesReport = () => {
 
                     {/* Product Sales Table */}
                     {salesData.salesByProduct?.length > 0 && (
-                        <Card title="Product Sales Details">
+                        <Card title="Product Sales Details" className="module-shell border border-white/10">
                             <div className="overflow-x-auto">
                                 <Table
                                     columns={productColumns}
@@ -567,6 +567,7 @@ const SalesReport = () => {
                                             ? "small"
                                             : "middle"
                                     }
+                                    className="module-dark-table"
                                 />
                             </div>
                         </Card>
@@ -575,9 +576,9 @@ const SalesReport = () => {
             )}
 
             {!salesData && !loading && (
-                <Card>
+                <Card className="module-shell border border-white/10 overflow-hidden hover-lift">
                     <div className="text-center py-8">
-                        <p className="text-gray-500 text-sm sm:text-base px-4">
+                        <p className="text-[#A9B3B8] text-sm sm:text-base px-4">
                             Select a date range to generate sales report
                         </p>
                     </div>

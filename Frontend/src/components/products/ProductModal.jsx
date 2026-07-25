@@ -23,7 +23,7 @@ const ProductModal = ({
     return (
         <Modal
             title={
-                <div className="text-xl text-center font-bold text-gray-800">
+                <div className="text-xl text-center font-bold text-white">
                     {title}
                 </div>
             }
@@ -37,8 +37,21 @@ const ProductModal = ({
                 top: 32,
             }}
             styles={{
+                mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                content: {
+                    background:
+                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                    borderRadius: "24px",
+                },
+                header: {
+                    background: "transparent",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    padding: "20px 24px 16px",
+                },
                 body: {
-                    padding: "20px 24px",
+                    padding: "20px 24px 24px",
                 },
             }}
             okText={t("products.save_product")}
@@ -61,10 +74,10 @@ const ProductModal = ({
                 <Row gutter={20} className="space-y-4 lg:space-y-0">
                     <Col xs={24} lg={14}>
                         <div className="space-y-4">
-                            <div className="bg-white rounded-lg border-2 border-gray-200 p-4 ">
-                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
-                                    <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
-                                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            <div className="module-shell p-4 reveal-card">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/8">
+                                    <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
+                                    <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">
                                         {t("products.product_details")}
                                     </h3>
                                 </div>
@@ -73,7 +86,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="product_name"
                                             label={
-                                                <span className="text-xs font-medium text-gray-600">
+                                                <span className="text-xs font-medium text-[#A9B3B8]">
                                                     {t("products.product_name")}
                                                 </span>
                                             }
@@ -92,7 +105,7 @@ const ProductModal = ({
                                             <Input
                                                 placeholder={t("products.enter_product_name")}
                                                 size="large"
-                                                className="rounded-md"
+                                                className="rounded-md auth-ohnix-input"
                                             />
                                         </Form.Item>
                                     </Col>
@@ -101,7 +114,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="product_code"
                                             label={
-                                                <span className="text-xs font-medium text-gray-600">
+                                                <span className="text-xs font-medium text-[#A9B3B8]">
                                                     {t("products.product_code")}
                                                 </span>
                                             }
@@ -121,7 +134,7 @@ const ProductModal = ({
                                                 placeholder={t("products.enter_product_code")}
                                                 disabled={!!editingProduct}
                                                 size="large"
-                                                className="rounded-md"
+                                                className="rounded-md auth-ohnix-input"
                                             />
                                         </Form.Item>
                                     </Col>
@@ -130,7 +143,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="category_id"
                                             label={
-                                                <span className="text-xs font-medium text-gray-600">
+                                                <span className="text-xs font-medium text-[#A9B3B8]">
                                                     {t("products.category")}
                                                 </span>
                                             }
@@ -145,7 +158,7 @@ const ProductModal = ({
                                             <Select
                                                 placeholder={t("products.select_category")}
                                                 size="large"
-                                                className="rounded-md"
+                                                className="rounded-md auth-ohnix-input"
                                             >
                                                 {categories.map((category) => (
                                                     <Option
@@ -163,7 +176,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="unit_id"
                                             label={
-                                                <span className="text-xs font-medium text-gray-600">
+                                                <span className="text-xs font-medium text-[#A9B3B8]">
                                                     {t("products.unit")}
                                                 </span>
                                             }
@@ -178,7 +191,7 @@ const ProductModal = ({
                                             <Select
                                                 placeholder={t("products.select_unit")}
                                                 size="large"
-                                                className="rounded-md"
+                                                className="rounded-md auth-ohnix-input"
                                             >
                                                 {units.map((unit) => (
                                                     <Option
@@ -194,10 +207,10 @@ const ProductModal = ({
                                 </Row>
                             </div>
 
-                            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg border-2 border-emerald-200 p-4 ">
-                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-emerald-100">
-                                    <div className="w-1 h-4 bg-emerald-500 rounded-full"></div>
-                                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                            <div className="module-shell p-4 reveal-card">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/8">
+                                    <div className="w-1 h-4 bg-[#44F3F0] rounded-full"></div>
+                                    <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">
                                         {t("products.pricing")}
                                     </h3>
                                 </div>
@@ -206,7 +219,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="buying_price"
                                             label={
-                                                <span className="text-xs font-medium text-gray-600">
+                                                <span className="text-xs font-medium text-[#A9B3B8]">
                                                     {t("products.buying_price")}
                                                 </span>
                                             }
@@ -229,7 +242,7 @@ const ProductModal = ({
                                                 style={{ width: "100%" }}
                                                 precision={2}
                                                 size="large"
-                                                className="rounded-md"
+                                                className="rounded-md auth-ohnix-input"
                                             />
                                         </Form.Item>
                                     </Col>
@@ -238,7 +251,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="selling_price"
                                             label={
-                                                <span className="text-xs font-medium text-gray-600">
+                                                <span className="text-xs font-medium text-[#A9B3B8]">
                                                     {t("products.selling_price")}
                                                 </span>
                                             }
@@ -261,7 +274,7 @@ const ProductModal = ({
                                                 style={{ width: "100%" }}
                                                 precision={2}
                                                 size="large"
-                                                className="rounded-md"
+                                                className="rounded-md auth-ohnix-input"
                                             />
                                         </Form.Item>
                                     </Col>
@@ -271,10 +284,10 @@ const ProductModal = ({
                     </Col>
 
                     <Col xs={24} lg={10}>
-                        <div className="bg-gradient-to-br from-slate-50 to-gray-100 rounded-lg border-2 border-gray-200 p-4  h-full">
-                            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200">
-                                <div className="w-1 h-4 bg-indigo-500 rounded-full"></div>
-                                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                        <div className="module-shell p-4 h-full reveal-card">
+                            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/8">
+                                <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
+                                <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">
                                     Product Image
                                 </h3>
                             </div>

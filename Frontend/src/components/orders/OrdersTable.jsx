@@ -29,7 +29,7 @@ const OrdersTable = ({
             dataIndex: "invoice_no",
             key: "invoice_no",
             width: 130,
-            render: (text) => <span className="font-semibold text-blue-600">#{text}</span>,
+            render: (text) => <span className="font-semibold text-[#44F3F0]">#{text}</span>,
         },
         {
             title: t("orders.customer"),
@@ -39,10 +39,10 @@ const OrdersTable = ({
             ellipsis: true,
             render: (text, record) => (
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
-                        <UserOutlined className="text-blue-500" />
+                    <div className="w-8 h-8 rounded-full bg-white/[0.05] flex items-center justify-center flex-shrink-0 border border-white/10">
+                        <UserOutlined className="text-[#44F3F0]" />
                     </div>
-                    <span className="font-medium text-gray-900">{record.customer_id?.name || t("common.na")}</span>
+                    <span className="font-medium text-white">{record.customer_id?.name || t("common.na")}</span>
                 </div>
             ),
         },
@@ -51,7 +51,7 @@ const OrdersTable = ({
             dataIndex: "order_date",
             key: "order_date",
             width: 140,
-            render: (date) => <span className="text-gray-600 text-sm">{dayjs(date).format("MMM DD, YYYY")}</span>,
+            render: (date) => <span className="text-[#A9B3B8] text-sm">{dayjs(date).format("MMM DD, YYYY")}</span>,
         },
         {
             title: t("orders.order_status"),
@@ -70,14 +70,14 @@ const OrdersTable = ({
             key: "total_products",
             width: 80,
             align: "center",
-            render: (count) => <span className="font-medium text-gray-700">{count}</span>,
+            render: (count) => <span className="font-medium text-white">{count}</span>,
         },
         {
             title: t("common.total"),
             dataIndex: "total",
             key: "total",
             align: "right",
-            render: (amount) => <span className="font-semibold text-green-600 text-base">₹{amount?.toFixed(2)}</span>,
+            render: (amount) => <span className="font-semibold text-[#44F3F0] text-base">₹{amount?.toFixed(2)}</span>,
         },
         {
             title: t("common.actions"),
@@ -89,7 +89,7 @@ const OrdersTable = ({
                 return (
                     <Space size="small" className="flex justify-center">
                         <Tooltip title={t("orders.view_details")}>
-                            <Button type="text" icon={<EyeOutlined />} onClick={() => onViewDetails(record)} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50" />
+                            <Button type="text" icon={<EyeOutlined />} onClick={() => onViewDetails(record)} className="text-[#44F3F0] hover:text-[#44F3F0] hover:bg-white/5" />
                         </Tooltip>
 
                         <Tooltip title={isTerminal ? t("orders.status_final") : ""}>
@@ -114,7 +114,7 @@ const OrdersTable = ({
                                 type="text"
                                 icon={<FilePdfOutlined />}
                                 onClick={() => onGenerateInvoice(record._id, record.invoice_no)}
-                                className={`${record.order_status === "cancelled" ? "invisible" : "text-red-600 hover:text-red-700 hover:bg-red-50"}`}
+                                className={`${record.order_status === "cancelled" ? "invisible" : "text-red-400 hover:text-red-300 hover:bg-white/5"}`}
                             />
                         </Tooltip>
                     </Space>
@@ -126,29 +126,29 @@ const OrdersTable = ({
     const MobileOrderCard = ({ order }) => {
         const isTerminal = TERMINAL_STATUSES.includes(order.order_status);
         return (
-            <Card className="mb-4 shadow-sm hover:shadow-md transition-shadow">
+            <Card className="mb-4 module-shell overflow-hidden hover-lift">
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <div className="w-10 h-10 rounded-full bg-[linear-gradient(135deg,rgba(41,216,213,0.18),rgba(68,243,240,0.12))] border border-[#29D8D5]/20 flex items-center justify-center flex-shrink-0 shadow-sm">
                             <UserOutlined className="text-white text-base" />
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate">{order.customer_id?.name || t("common.na")}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">#{order.invoice_no}</p>
+                            <p className="text-sm font-semibold text-white truncate">{order.customer_id?.name || t("common.na")}</p>
+                            <p className="text-xs text-[#A9B3B8] mt-0.5">#{order.invoice_no}</p>
                         </div>
                     </div>
                     <Tag icon={getStatusIcon(order.order_status)} color={getStatusColor(order.order_status)}>{t(`orders.${order.order_status}`) || order.order_status.toUpperCase()}</Tag>
                 </div>
 
-                <div className="flex items-center justify-between py-2.5 px-3 bg-gray-50 rounded-lg mt-3">
+                <div className="flex items-center justify-between py-2.5 px-3 bg-white/[0.03] rounded-lg mt-3 border border-white/8">
                     <div className="flex flex-col">
-                        <span className="text-xs text-gray-500 mb-0.5">{t("common.items")}</span>
-                        <span className="text-sm font-medium text-gray-900">{order.total_products}</span>
+                        <span className="text-xs text-[#A9B3B8] mb-0.5">{t("common.items")}</span>
+                        <span className="text-sm font-medium text-white">{order.total_products}</span>
                     </div>
-                    <div className="h-8 w-px bg-gray-200"></div>
+                        <div className="h-8 w-px bg-white/10"></div>
                     <div className="flex flex-col items-center">
-                        <span className="text-xs text-gray-500 mb-0.5">{t("common.total")}</span>
-                        <span className="text-sm font-semibold text-gray-900">₹{order.total?.toFixed(2)}</span>
+                        <span className="text-xs text-[#A9B3B8] mb-0.5">{t("common.total")}</span>
+                        <span className="text-sm font-semibold text-[#44F3F0]">₹{order.total?.toFixed(2)}</span>
                     </div>
                 </div>
 
@@ -157,7 +157,7 @@ const OrdersTable = ({
                     <Button
                         icon={<FilePdfOutlined />}
                         onClick={() => onGenerateInvoice(order._id, order.invoice_no)}
-                        className={`${order.order_status === "cancelled" ? "invisible" : "flex-1 h-9 font-medium border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"}`}
+                        className={`${order.order_status === "cancelled" ? "invisible" : "flex-1 h-9 font-medium border-red-400 text-red-400 hover:bg-white/5 hover:border-red-300"}`}
                         size="middle"
                         disabled={isTerminal && order.order_status !== "completed"}
                     >
@@ -175,23 +175,23 @@ const OrdersTable = ({
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-12">
                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-                        <p className="mt-3 text-gray-500 text-sm">{t("orders.loading_orders")}</p>
+                        <p className="mt-3 text-[#A9B3B8] text-sm">{t("orders.loading_orders")}</p>
                     </div>
                 ) : orders.length === 0 ? (
-                    <Card className="text-center py-12">
-                        <p className="text-gray-500">{t("orders.no_orders_found")}</p>
-                        <p className="text-sm text-gray-500 mt-2">{t("orders.adjust_filters_or_create")}</p>
+                    <Card className="text-center py-12 module-shell border border-white/10 bg-[#0B0B0B]/92 text-white">
+                        <p className="text-[#A9B3B8]">{t("orders.no_orders_found")}</p>
+                        <p className="text-sm text-[#A9B3B8] mt-2">{t("orders.adjust_filters_or_create")}</p>
                     </Card>
                 ) : (
                     <>
                         <div className="m-3 text-right">
-                            <p className="text-sm text-gray-600 font-medium">{t("orders.orders_found", { total: pagination.total })}</p>
+                            <p className="text-sm text-[#A9B3B8] font-medium">{t("orders.orders_found", { total: pagination.total })}</p>
                         </div>
                         {orders.map((order) => (
                             <MobileOrderCard key={order._id} order={order} />
                         ))}
-                        <div className="flex justify-between items-center m-4 pt-3 border-t border-gray-100">
-                            <span className="text-sm text-gray-500">
+                        <div className="flex justify-between items-center m-4 pt-3 border-t border-white/10">
+                            <span className="text-sm text-[#A9B3B8]">
                                 {(pagination.current - 1) * pagination.pageSize + 1} - {Math.min(pagination.current * pagination.pageSize, pagination.total)} {t("orders.of") || "of"} {pagination.total}
                             </span>
                             <Space>
@@ -204,7 +204,7 @@ const OrdersTable = ({
             </div>
 
             <div className="hidden lg:block">
-                <Card className="border-0 shadow-sm rounded-lg overflow-hidden">
+                <Card className="module-shell overflow-hidden border border-white/10 bg-[#0B0B0B]/92">
                     <Table
                         columns={columns}
                         dataSource={orders}
@@ -220,36 +220,10 @@ const OrdersTable = ({
                         }}
                         onChange={onTableChange}
                         scroll={{ x: 900 }}
-                        className="orders-table"
+                        className="orders-table module-dark-table"
                     />
                 </Card>
             </div>
-
-            <style jsx>{`
-                .orders-table :global(.ant-table) {
-                    font-size: 14px;
-                }
-                .orders-table :global(.ant-table-thead > tr > th) {
-                    background-color: #f9fafb;
-                    border-bottom: 2px solid #e5e7eb;
-                    font-weight: 600;
-                    color: #374151;
-                    padding: 14px 16px;
-                }
-                .orders-table :global(.ant-table-tbody > tr > td) {
-                    border-bottom: 1px solid #f3f4f6;
-                    padding: 16px;
-                }
-                .orders-table :global(.ant-table-tbody > tr:hover > td) {
-                    background-color: #f9fafb;
-                }
-                .orders-table :global(.ant-table-tbody > tr) {
-                    transition: background-color 0.2s ease;
-                }
-                .orders-table :global(.ant-pagination) {
-                    margin-top: 20px;
-                }
-            `}</style>
         </>
     );
 };

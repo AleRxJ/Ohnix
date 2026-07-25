@@ -102,6 +102,28 @@ body {
   }
 }
 
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+@keyframes glowPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.06);
+  }
+}
+
 .animate-fade-up {
   animation: fadeUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -112,6 +134,76 @@ body {
 
 .animate-float-glow {
   animation: floatGlow 5s ease-in-out infinite;
+}
+
+.animate-drift {
+  animation: drift 7s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glowPulse 4.5s ease-in-out infinite;
+}
+
+.animate-fade-up-slow {
+  animation: fadeUp 1.05s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+.stagger-1 { animation-delay: 0.08s; }
+.stagger-2 { animation-delay: 0.16s; }
+.stagger-3 { animation-delay: 0.24s; }
+.stagger-4 { animation-delay: 0.32s; }
+
+.reveal-card {
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 320ms ease,
+    box-shadow 320ms ease,
+    background-color 320ms ease;
+}
+
+.reveal-card:hover {
+  transform: translateY(-4px);
+}
+
+.hover-lift {
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 320ms ease,
+    border-color 320ms ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+}
+
+.glass-panel {
+  background: linear-gradient(180deg, rgba(11, 11, 11, 0.92), rgba(8, 8, 8, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(10px);
+}
+
+.section-glow::before {
+  content: "";
+  position: absolute;
+  inset: -20% 18% auto 18%;
+  height: 180px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(41, 216, 213, 0.18), transparent 70%);
+  filter: blur(24px);
+  pointer-events: none;
+  animation: glowPulse 5.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-up-delay,
+  .animate-fade-up-slow,
+  .animate-float-glow,
+  .animate-drift,
+  .animate-glow-pulse,
+  .surface-shine::after,
+  .section-glow::before {
+    animation: none !important;
+  }
 }
 
 .surface-shine {
@@ -212,6 +304,68 @@ body {
 
 .antd-custom-table .ant-pagination-item-active a {
   color: #44f3f0 !important;
+}
+
+.module-dark-table .ant-table {
+  background: transparent !important;
+  color: #e6ecef !important;
+}
+
+.module-dark-table .ant-table-container,
+.module-dark-table .ant-table-content,
+.module-dark-table .ant-table-body,
+.module-dark-table .ant-table-placeholder,
+.module-dark-table .ant-table-empty,
+.module-dark-table .ant-table-container::before,
+.module-dark-table .ant-table-container::after {
+  background: transparent !important;
+}
+
+.module-dark-table .ant-empty {
+  color: #a9b3b8 !important;
+}
+
+.module-dark-table .ant-empty-description,
+.module-dark-table .ant-empty-image {
+  color: #a9b3b8 !important;
+}
+
+.module-dark-table .ant-table-thead > tr > th {
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: #9fb0b8 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.module-dark-table .ant-table-tbody > tr > td {
+  background: transparent !important;
+  color: #e6ecef !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+.module-dark-table .ant-table-tbody > tr:hover > td {
+  background: rgba(41, 216, 213, 0.08) !important;
+}
+
+.module-dark-table .ant-pagination-item a,
+.module-dark-table .ant-pagination-total-text,
+.module-dark-table .ant-pagination-prev .ant-pagination-item-link,
+.module-dark-table .ant-pagination-next .ant-pagination-item-link {
+  color: #a9b3b8 !important;
+}
+
+.module-dark-table .ant-pagination-item-active {
+  border-color: rgba(41, 216, 213, 0.55) !important;
+}
+
+.module-dark-table .ant-pagination-item-active a {
+  color: #44f3f0 !important;
+}
+
+.module-shell {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(11, 11, 11, 0.92);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  border-radius: 22px;
 }
 
 .dashboard-app {

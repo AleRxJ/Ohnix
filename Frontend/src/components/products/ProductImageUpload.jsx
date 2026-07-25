@@ -24,7 +24,7 @@ const ProductImageUpload = ({ imageUrl, onChange }) => {
                 className="block w-full"
             >
                 {imageUrl ? (
-                    <div className="w-full h-48 sm:h-56 md:h-64 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden hover:border-blue-400 transition-colors duration-200 cursor-pointer">
+                    <div className="w-full h-48 sm:h-56 md:h-64 border border-dashed border-white/12 rounded-lg overflow-hidden hover:border-[#29D8D5]/60 transition-colors duration-200 cursor-pointer bg-white/[0.03]">
                         <img
                             src={imageUrl}
                             alt="Product"
@@ -32,16 +32,16 @@ const ProductImageUpload = ({ imageUrl, onChange }) => {
                         />
                     </div>
                 ) : (
-                    <div className="w-full h-48 sm:h-56 md:h-64 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 hover:border-blue-400 transition-all duration-200 cursor-pointer flex items-center justify-center">
+                    <div className="w-full h-48 sm:h-56 md:h-64 border border-dashed border-white/12 rounded-lg bg-white/[0.03] hover:bg-white/[0.05] hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer flex items-center justify-center">
                         <div className="flex flex-col items-center justify-center gap-3 px-4">
-                            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
-                                <UploadOutlined className="text-2xl text-blue-500" />
+                            <div className="w-12 h-12 rounded-full bg-[#29D8D5]/10 flex items-center justify-center">
+                                <UploadOutlined className="text-2xl text-[#29D8D5]" />
                             </div>
                             <div className="text-center">
-                                <p className="text-sm font-medium text-gray-700 mb-1">
+                                <p className="text-sm font-medium text-white mb-1">
                                     Click to upload product image
                                 </p>
-                                <p className="text-xs text-gray-500">
+                                <p className="text-xs text-[#A9B3B8]">
                                     PNG, JPG up to 5MB
                                 </p>
                             </div>

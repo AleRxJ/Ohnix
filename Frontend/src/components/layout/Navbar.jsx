@@ -16,6 +16,7 @@ const Navbar = () => {
         { label: t("landing.nav.home"), path: "home" },
         { label: t("landing.nav.features"), path: "features" },
         { label: t("landing.nav.process"), path: "timeline" },
+        { label: t("common.pricing"), path: "pricing" },
         { label: t("landing.nav.faq"), path: "faq" },
         { label: t("landing.nav.contact"), path: "contact" },
     ];
@@ -180,6 +181,9 @@ const Navbar = () => {
                 open={visible}
                 width={280}
                 styles={{
+                    mask: {
+                        backgroundColor: "rgba(0,0,0,0.45)",
+                    },
                     header: {
                         borderBottom: "1px solid rgba(255,255,255,0.08)",
                         padding: "20px 24px",
@@ -201,7 +205,7 @@ const Navbar = () => {
                                     onClick={(e) => {
                                         e.preventDefault();
                                         scrollToSection(link.path);
-                                        setTimeout(() => closeDrawer(), 100);
+                                        closeDrawer();
                                     }}
                                     className="block rounded-2xl px-4 py-3 text-sm font-medium text-[#A9B3B8] transition-all duration-200 hover:bg-white/[0.05] hover:text-white"
                                 >

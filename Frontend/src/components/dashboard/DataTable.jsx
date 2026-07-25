@@ -50,7 +50,7 @@ const DataTable = ({
                     </Tooltip>
                 )
             }
-            className="h-full overflow-hidden rounded-lg border-0 shadow-none transition-all duration-300 flex flex-col bg-transparent"
+            className="h-full overflow-hidden rounded-lg border-0 shadow-none transition-all duration-300 flex flex-col bg-transparent module-shell"
             bodyStyle={{
                 padding: 0,
                 flex: 1,
@@ -95,7 +95,7 @@ const DataTable = ({
                             </div>
                         ),
                     }}
-                    className="antd-custom-table flex-1"
+                    className="antd-custom-table module-dark-table flex-1"
                     scroll={{
                         x: "max-content",
                         y: pagination ? "calc(100% - 60px)" : "100%",

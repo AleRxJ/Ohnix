@@ -30,7 +30,7 @@ const StatCard = ({
 
     return (
         <Card
-            className={`border border-white/10 bg-[#0F1012] hover:border-[#29D8D5]/35 hover:shadow-[0_18px_38px_rgba(0,0,0,0.32)] transition-all duration-300 animate-fade-up ${className}`}
+            className={`border border-white/10 bg-[#0F1012] hover:border-[#29D8D5]/35 hover:shadow-[0_18px_38px_rgba(0,0,0,0.32)] transition-all duration-300 animate-fade-up hover-lift ${className}`}
             bodyStyle={{ padding: 0 }}
             styles={{ body: { padding: 0 } }}
         >
@@ -47,7 +47,7 @@ const StatCard = ({
                         )}
                     </div>
                     {icon && (
-                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[linear-gradient(135deg,rgba(41,216,213,0.2),rgba(68,243,240,0.1))] border border-[#29D8D5]/25 flex-shrink-0">
+                        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[linear-gradient(135deg,rgba(41,216,213,0.2),rgba(68,243,240,0.1))] border border-[#29D8D5]/25 flex-shrink-0 animate-glow-pulse">
                             <span className="text-[#44F3F0] text-lg">
                                 {icon}
                             </span>
