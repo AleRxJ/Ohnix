@@ -6,9 +6,10 @@ databases:
 services:
   - type: web
     name: ohnix-backend
-    env: node
+    runtime: node
     rootDir: Backend
     buildCommand: npm install && npx prisma generate
+    preDeployCommand: npx prisma db push
     startCommand: npm start
     healthCheckPath: /api/v1/test
     autoDeploy: true
