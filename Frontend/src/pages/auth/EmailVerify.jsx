@@ -123,7 +123,6 @@ const EmailVerify = () => {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-12">
                         <Spin size="large" />
-                        <Text className="mt-4 text-gray-600">
                         <Text className="mt-4 text-[#A9B3B8]">
                             {t("auth.sending_verification_code")}
                         </Text>
