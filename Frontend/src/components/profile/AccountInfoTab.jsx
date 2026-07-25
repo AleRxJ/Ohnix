@@ -1,187 +1,194 @@
 import React from "react";
-import { Button, Typography, Card, Select } from "antd";
+import { Button, Typography, Card } from "antd";
 import {
     LockOutlined,
     InfoCircleOutlined,
     CalendarOutlined,
     UserOutlined,
     MailOutlined,
-    KeyOutlined,
     CheckCircleOutlined,
     CloseCircleOutlined,
 } from "@ant-design/icons";
 import { useCurrency } from "../../context/CurrencyContext";
 import { formatCurrency } from "../../utils/currency";
 import CurrencySelector from "../common/CurrencySelector";
+import useI18n from "../../hooks/useI18n";
 
 const { Text, Title } = Typography;
 
 const AccountInfoTab = ({ user, isVerified, handleTabChange }) => {
     const { currency } = useCurrency();
+    const { t } = useI18n();
 
     return (
-        <div className="max-w-6xl mx-auto">
-            <div className="px-4 md:px-6 py-6 md:py-8">
-                <div className="mb-8">
-                    <h1 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-2">
-                        Account Information
-                    </h1>
-                    <Text className="text-gray-600">
-                        View and manage your account details
-                    </Text>
-                </div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div className="mb-6 sm:mb-8">
+                <h1 className="text-2xl sm:text-3xl font-semibold text-white mb-2">
+                    {t("profile.account_information")}
+                </h1>
+                <Text className="text-[#A9B3B8]">
+                    {t("profile.profile_summary")}
+                </Text>
+            </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-6">
-                    <Card className="rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200">
-                        <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                                <UserOutlined className="text-blue-600 text-lg" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <Text className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
-                                    Username
-                                </Text>
-                                <Text className="text-base font-medium text-gray-900 block truncate">
-                                    {user?.username || "Not set"}
-                                </Text>
-                            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-6">
+                <Card className="rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-white/10 bg-white/[0.04] text-white">
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                            <UserOutlined className="text-[#44F3F0] text-lg" />
                         </div>
-                    </Card>
-
-                    <Card className="rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200">
-                        <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center">
-                                <MailOutlined className="text-indigo-600 text-lg" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <Text className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
-                                    Email Address
-                                </Text>
-                                <Text className="text-base font-medium text-gray-900 block truncate">
-                                    {user?.email || "Not set"}
-                                </Text>
-                            </div>
+                        <div className="flex-1 min-w-0">
+                            <Text className="text-[11px] font-medium text-[#A9B3B8] uppercase tracking-[0.22em] block mb-1">
+                                {t("profile.username")}
+                            </Text>
+                            <Text className="text-base font-medium text-white block truncate">
+                                {user?.username || t("common.na")}
+                            </Text>
                         </div>
-                    </Card>
+                    </div>
+                </Card>
 
-                    <Card className="rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200">
-                        <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                                <CalendarOutlined className="text-purple-600 text-lg" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <Text className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
-                                    Member Since
-                                </Text>
-                                <Text className="text-base font-medium text-gray-900 block">
-                                    {user?.createdAt
-                                        ? new Date(
-                                              user.createdAt
-                                          ).toLocaleDateString("en-US", {
+                <Card className="rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-white/10 bg-white/[0.04] text-white">
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                            <MailOutlined className="text-[#44F3F0] text-lg" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <Text className="text-[11px] font-medium text-[#A9B3B8] uppercase tracking-[0.22em] block mb-1">
+                                {t("profile.email")}
+                            </Text>
+                            <Text className="text-base font-medium text-white block truncate">
+                                {user?.email || t("common.na")}
+                            </Text>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-white/10 bg-white/[0.04] text-white">
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                            <CalendarOutlined className="text-[#44F3F0] text-lg" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <Text className="text-[11px] font-medium text-[#A9B3B8] uppercase tracking-[0.22em] block mb-1">
+                                {t("profile.member_since")}
+                            </Text>
+                            <Text className="text-base font-medium text-white block">
+                                {user?.createdAt
+                                    ? new Date(user.createdAt).toLocaleDateString(
+                                          "en-US",
+                                          {
                                               year: "numeric",
                                               month: "long",
                                               day: "numeric",
-                                          })
-                                        : "N/A"}
-                                </Text>
-                            </div>
+                                          }
+                                      )
+                                    : t("common.na")}
+                            </Text>
                         </div>
-                    </Card>
-
-                    <Card className="rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200">
-                        <div className="flex items-start gap-3">
-                            <div
-                                className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${isVerified ? "bg-green-50" : "bg-red-50"}`}
-                            >
-                                {isVerified ? (
-                                    <CheckCircleOutlined className="text-green-600 text-lg" />
-                                ) : (
-                                    <CloseCircleOutlined className="text-red-600 text-lg" />
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <Text className="text-xs font-medium text-gray-500 uppercase tracking-wide block mb-1">
-                                    Verification Status
-                                </Text>
-                                <Text
-                                    className={`text-base font-medium block ${isVerified ? "text-green-700" : "text-red-700"}`}
-                                >
-                                    {isVerified ? "Verified" : "Unverified"}
-                                </Text>
-                            </div>
-                        </div>
-                    </Card>
-                </div>
-
-                {!isVerified && (
-                    <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
-                        <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                                <InfoCircleOutlined className="text-amber-600 text-sm" />
-                            </div>
-                            <div>
-                                <Title
-                                    level={5}
-                                    className="text-amber-900 m-0 mb-1 text-sm font-semibold"
-                                >
-                                    Account Verification Required
-                                </Title>
-                                <Text className="text-amber-800 text-sm">
-                                    Please verify your account to unlock all
-                                    features and ensure account security.
-                                </Text>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <Card className="rounded-lg shadow-sm border border-gray-200 bg-gradient-to-br from-gray-50 to-white">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-blue-600 flex items-center justify-center">
-                                <LockOutlined className="text-white text-xl" />
-                            </div>
-                            <div>
-                                <Title
-                                    level={5}
-                                    className="text-gray-900 m-0 mb-1 font-semibold"
-                                >
-                                    Security Settings
-                                </Title>
-                                <Text className="text-gray-600 text-sm">
-                                    Update your password to keep your account
-                                    secure
-                                </Text>
-                            </div>
-                        </div>
-                        <Button
-                            type="primary"
-                            onClick={() => handleTabChange("2")}
-                            className="bg-blue-600 hover:bg-blue-700 border-0 rounded-lg shadow-sm h-10 px-6 font-medium"
-                            icon={<LockOutlined />}
-                        >
-                            Change Password
-                        </Button>
                     </div>
                 </Card>
 
-                <Card className="mt-4 rounded-lg shadow-sm border border-gray-200 bg-gradient-to-br from-gray-50 to-white">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                            <Title level={5} className="text-gray-900 m-0 mb-1 font-semibold">
-                                Currency Settings
-                            </Title>
-                            <Text className="text-gray-600 text-sm">
-                                Pick the base currency used across prices, totals, and reports.
-                            </Text>
-                            <div className="mt-2 text-xs text-gray-500">
-                                Current display example: {formatCurrency(1234.56, currency.code)}
-                            </div>
+                <Card className="rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-white/10 bg-white/[0.04] text-white">
+                    <div className="flex items-start gap-3">
+                        <div
+                            className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border ${
+                                isVerified
+                                    ? "bg-emerald-500/15 border-emerald-500/20"
+                                    : "bg-amber-500/15 border-amber-500/20"
+                            }`}
+                        >
+                            {isVerified ? (
+                                <CheckCircleOutlined className="text-emerald-300 text-lg" />
+                            ) : (
+                                <CloseCircleOutlined className="text-amber-300 text-lg" />
+                            )}
                         </div>
-                        <CurrencySelector className="w-full sm:w-72" />
+                        <div className="flex-1 min-w-0">
+                            <Text className="text-[11px] font-medium text-[#A9B3B8] uppercase tracking-[0.22em] block mb-1">
+                                {t("profile.verification_status")}
+                            </Text>
+                            <Text
+                                className={`text-base font-medium block ${
+                                    isVerified ? "text-emerald-300" : "text-amber-300"
+                                }`}
+                            >
+                                {isVerified ? t("profile.verified") : t("profile.unverified")}
+                            </Text>
+                        </div>
                     </div>
                 </Card>
             </div>
+
+            {!isVerified && (
+                <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-amber-500/20 flex items-center justify-center">
+                            <InfoCircleOutlined className="text-amber-200 text-sm" />
+                        </div>
+                        <div>
+                            <Title
+                                level={5}
+                                className="text-amber-50 m-0 mb-1 text-sm font-semibold"
+                            >
+                                {t("profile.account_verification_required")}
+                            </Title>
+                            <Text className="text-amber-100/90 text-sm">
+                                {t("profile.verify_account_to_unlock")}
+                            </Text>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <Card className="rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-white/10 bg-white/[0.04] text-white">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-[#29D8D5] flex items-center justify-center shadow-[0_12px_28px_rgba(41,216,213,0.2)]">
+                            <LockOutlined className="text-[#021314] text-xl" />
+                        </div>
+                        <div>
+                            <Title
+                                level={5}
+                                className="text-white m-0 mb-1 font-semibold"
+                            >
+                                {t("profile.security_settings")}
+                            </Title>
+                            <Text className="text-[#A9B3B8] text-sm">
+                                {t("profile.security_description")}
+                            </Text>
+                        </div>
+                    </div>
+                    <Button
+                        type="primary"
+                        onClick={() => handleTabChange("2")}
+                        className="bg-[#29D8D5] hover:bg-[#44F3F0] text-[#021314] border-0 rounded-xl shadow-[0_12px_28px_rgba(41,216,213,0.22)] h-10 px-6 font-medium"
+                        icon={<LockOutlined />}
+                    >
+                        {t("profile.change_password")}
+                    </Button>
+                </div>
+            </Card>
+
+            <Card className="mt-4 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-white/10 bg-white/[0.04] text-white">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <Title
+                            level={5}
+                            className="text-white m-0 mb-1 font-semibold"
+                        >
+                            Currency Settings
+                        </Title>
+                        <Text className="text-[#A9B3B8] text-sm">
+                            Pick the base currency used across prices, totals, and reports.
+                        </Text>
+                        <div className="mt-2 text-xs text-[#A9B3B8]">
+                            Current display example: {formatCurrency(1234.56, currency.code)}
+                        </div>
+                    </div>
+                    <CurrencySelector className="w-full sm:w-72" />
+                </div>
+            </Card>
         </div>
     );
 };

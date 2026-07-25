@@ -19,6 +19,7 @@ import {
     IdcardOutlined,
     SecurityScanOutlined,
 } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const { Text } = Typography;
 
@@ -30,15 +31,19 @@ const ProfileHeader = ({
     customUploadRequest,
     setEditMode,
 }) => {
+    const { t } = useI18n();
+
     return (
         <Card
-            className="mb-8 border border-gray-200 rounded-2xl shadow-sm"
+            className="mb-0 border-0 rounded-none shadow-none bg-transparent"
             bodyStyle={{ padding: 0 }}
         >
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 px-6 py-8 md:px-8 md:py-10 rounded-t-2xl">
-                <div className="flex flex-col md:flex-row md:items-start gap-6">
-                    <div className="flex justify-center md:justify-start">
-                        <div className="relative">
+            <div className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(41,216,213,0.18),transparent_36%),linear-gradient(135deg,rgba(7,11,12,0.98),rgba(11,11,11,0.92))] px-5 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+                <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.05),transparent_20%,transparent_80%,rgba(255,255,255,0.03))] opacity-40" />
+                <div className="relative grid grid-cols-1 xl:grid-cols-[1.3fr_0.8fr] gap-6 lg:gap-8 items-start">
+                    <div className="flex flex-col gap-6 md:flex-row md:items-start">
+                        <div className="flex justify-center md:justify-start">
+                            <div className="relative">
                             <Badge
                                 dot={isVerified}
                                 color="#10b981"
@@ -46,10 +51,10 @@ const ProfileHeader = ({
                             >
                                 <Spin spinning={avatarLoading}>
                                     <Avatar
-                                        size={112}
+                                            size={120}
                                         src={user?.avatar}
                                         icon={!user?.avatar && <UserOutlined />}
-                                        className="ring-4 ring-white shadow-lg"
+                                            className="ring-4 ring-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.35)] border border-white/10"
                                     />
                                 </Spin>
                             </Badge>
@@ -64,112 +69,148 @@ const ProfileHeader = ({
                                     shape="circle"
                                     icon={<CameraOutlined />}
                                     size="small"
-                                    className="absolute bottom-1 right-1 bg-blue-600 hover:bg-blue-700 border-2 border-white shadow-md"
+                                        className="absolute bottom-1 right-1 bg-[#29D8D5] hover:bg-[#44F3F0] border-2 border-[#050608] shadow-[0_10px_24px_rgba(41,216,213,0.3)] text-[#021314]"
                                 />
                             </Upload>
                         </div>
                     </div>
-
-                    <div className="flex-1 text-center md:text-left">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                            <div>
-                                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                                    <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-                                        {user?.username}
-                                    </h1>
-                                    {isVerified && (
-                                        <Tooltip title="Verified Account">
-                                            <CheckCircleOutlined className="text-green-500 text-lg" />
-                                        </Tooltip>
-                                    )}
-                                </div>
-                                <div className="flex items-center justify-center md:justify-start gap-2 text-gray-600 mb-1">
-                                    <MailOutlined className="text-sm" />
-                                    <p className="text-sm truncate max-w-xs sm:max-w-md">
-                                        {user?.email}
-                                    </p>
-                                </div>
-                                <p className="text-sm text-gray-500 mt-2 hidden md:block">
-                                    {user?.role === "admin"
-                                        ? "Administrator account with extended privileges"
-                                        : "Standard user account with basic access"}
-                                </p>
+                        <div className="flex-1 text-center md:text-left">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-[#A9B3B8] mb-4">
+                                {t("profile.hero_title")}
                             </div>
-                            <div>
-                                <Button
-                                    type="primary"
-                                    icon={<EditOutlined />}
-                                    onClick={() => setEditMode(true)}
-                                    className="bg-blue-600 hover:bg-blue-700 border-0 rounded-lg px-6 h-10"
-                                >
-                                    Edit Profile
-                                </Button>
+
+                            <div className="flex flex-col gap-4">
+                                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <div>
+                                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2">
+                                            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
+                                                {user?.username}
+                                            </h1>
+                                            {isVerified && (
+                                                <Tooltip title={t("profile.verified_account")}>
+                                                    <CheckCircleOutlined className="text-[#44F3F0] text-lg" />
+                                                </Tooltip>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center justify-center md:justify-start gap-2 text-[#A9B3B8] mb-2">
+                                            <MailOutlined className="text-sm" />
+                                            <p className="text-sm truncate max-w-xs sm:max-w-md">
+                                                {user?.email}
+                                            </p>
+                                        </div>
+                                        <p className="text-sm text-[#A9B3B8] max-w-2xl mx-auto md:mx-0">
+                                            {user?.role === "admin"
+                                                ? t("profile.administrator_account")
+                                                : t("profile.standard_account")}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex justify-center md:justify-start">
+                                        <Button
+                                            type="primary"
+                                            icon={<EditOutlined />}
+                                            onClick={() => setEditMode(true)}
+                                            className="h-11 px-6 rounded-xl border-0 bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0] shadow-[0_14px_32px_rgba(41,216,213,0.24)] font-medium"
+                                        >
+                                            {t("profile.edit_profile")}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-sm">
+                                        <Text className="text-[11px] uppercase tracking-[0.22em] text-[#A9B3B8] block mb-2">
+                                            {t("profile.member_since")}
+                                        </Text>
+                                        <p className="text-sm font-medium text-white truncate">
+                                            {user?.createdAt
+                                                ? new Date(user.createdAt).toLocaleDateString()
+                                                : t("common.na")}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-sm">
+                                        <Text className="text-[11px] uppercase tracking-[0.22em] text-[#A9B3B8] block mb-2">
+                                            {t("profile.account_type")}
+                                        </Text>
+                                        <p className="text-sm font-medium text-white capitalize truncate">
+                                            {user?.role || t("common.unknown")}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-sm">
+                                        <Text className="text-[11px] uppercase tracking-[0.22em] text-[#A9B3B8] block mb-2">
+                                            {t("profile.verification_status")}
+                                        </Text>
+                                        <p className={`text-sm font-medium truncate ${isVerified ? "text-[#44F3F0]" : "text-amber-300"}`}>
+                                            {isVerified ? t("profile.verified") : t("profile.unverified")}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="px-6 py-6 md:px-8 bg-white rounded-b-2xl">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-blue-100 rounded-lg">
-                            <CalendarOutlined className="text-blue-600 text-lg" />
+            <div className="px-5 sm:px-6 lg:px-8 pb-5 sm:pb-6 lg:pb-8 bg-[#0B0B0B]/78">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                        <div className="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-[#29D8D5]/15 rounded-xl border border-[#29D8D5]/20">
+                            <CalendarOutlined className="text-[#44F3F0] text-lg" />
                         </div>
                         <div className="min-w-0">
-                            <Text className="text-xs text-gray-500 uppercase font-medium block">
-                                Member Since
+                            <Text className="text-[11px] text-[#A9B3B8] uppercase tracking-[0.22em] block mb-1">
+                                {t("profile.member_since")}
                             </Text>
-                            <p className="text-sm font-semibold text-gray-900 truncate">
+                            <p className="text-sm font-medium text-white truncate">
                                 {user?.createdAt
-                                    ? new Date(
-                                          user.createdAt
-                                      ).toLocaleDateString()
-                                    : "N/A"}
+                                    ? new Date(user.createdAt).toLocaleDateString()
+                                    : t("common.na")}
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-purple-100 rounded-lg">
-                            <IdcardOutlined className="text-purple-600 text-lg" />
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                        <div className="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-white/5 rounded-xl border border-white/10">
+                            <IdcardOutlined className="text-white/80 text-lg" />
                         </div>
                         <div className="min-w-0">
-                            <Text className="text-xs text-gray-500 uppercase font-medium block">
-                                Account Type
+                            <Text className="text-[11px] text-[#A9B3B8] uppercase tracking-[0.22em] block mb-1">
+                                {t("profile.account_type")}
                             </Text>
-                            <p className="text-sm font-semibold text-gray-900 capitalize truncate">
-                                {user?.role || "Standard User"}
+                            <p className="text-sm font-medium text-white capitalize truncate">
+                                {user?.role || t("common.unknown")}
                             </p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
                         <div
-                            className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg ${
-                                isVerified ? "bg-green-100" : "bg-red-100"
+                            className={`flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-xl border ${
+                                isVerified
+                                    ? "bg-emerald-500/15 border-emerald-500/20"
+                                    : "bg-amber-500/15 border-amber-500/20"
                             }`}
                         >
                             <SecurityScanOutlined
                                 className={`text-lg ${
                                     isVerified
-                                        ? "text-green-600"
-                                        : "text-red-600"
+                                        ? "text-emerald-300"
+                                        : "text-amber-300"
                                 }`}
                             />
                         </div>
                         <div className="min-w-0">
-                            <Text className="text-xs text-gray-500 uppercase font-medium block">
-                                Status
+                            <Text className="text-[11px] text-[#A9B3B8] uppercase tracking-[0.22em] block mb-1">
+                                {t("profile.verification_status")}
                             </Text>
                             <p
-                                className={`text-sm font-semibold truncate ${
+                                className={`text-sm font-medium truncate ${
                                     isVerified
-                                        ? "text-green-600"
-                                        : "text-red-600"
+                                        ? "text-emerald-300"
+                                        : "text-amber-300"
                                 }`}
                             >
-                                {isVerified ? "Verified" : "Unverified"}
+                                {isVerified ? t("profile.verified") : t("profile.unverified")}
                             </p>
                         </div>
                     </div>

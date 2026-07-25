@@ -9,6 +9,7 @@ import {
 } from "@ant-design/icons";
 import { FormDivider, PrimaryButton, SecondaryButton } from "../common/UI";
 import { EmailFormItem, UsernameFormItem } from "../common/FormItems";
+import useI18n from "../../hooks/useI18n";
 
 const { Text } = Typography;
 
@@ -19,67 +20,69 @@ const EditProfileForm = ({
     setEditMode,
     user,
 }) => {
+    const { t } = useI18n();
+
     return (
-        <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-5 border-b border-gray-200">
+        <div className="w-full max-w-4xl mx-auto">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.04] shadow-[0_18px_50px_rgba(0,0,0,0.24)] overflow-hidden backdrop-blur-md">
+                <div className="bg-[linear-gradient(135deg,rgba(41,216,213,0.16),rgba(255,255,255,0.03))] px-5 sm:px-6 py-5 sm:py-6 border-b border-white/10">
                     <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-sm">
-                            <UserOutlined className="text-white text-xl" />
+                        <div className="w-11 h-11 rounded-2xl bg-[#29D8D5] flex items-center justify-center shadow-[0_12px_28px_rgba(41,216,213,0.24)]">
+                            <UserOutlined className="text-[#021314] text-xl" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-semibold text-gray-900 m-0 leading-tight">
-                                Edit Profile
+                            <h2 className="text-xl sm:text-2xl font-semibold text-white m-0 leading-tight">
+                                {t("profile.edit_profile")}
                             </h2>
-                            <Text className="text-sm text-gray-600">
-                                Update your account information
+                            <Text className="text-sm text-[#A9B3B8]">
+                                {t("profile.edit_profile_description")}
                             </Text>
                         </div>
                     </div>
                 </div>
 
-                <div className="p-6 sm:p-8">
+                <div className="p-5 sm:p-6 lg:p-8">
                     <Form
                         form={profileForm}
                         layout="vertical"
                         onFinish={handleProfileUpdate}
                     >
-                        <div className="space-y-6">
-                            <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                        <div className="space-y-5 lg:space-y-6">
+                            <div className="rounded-2xl p-5 border border-white/10 bg-[#050608]/70">
                                 <div className="flex items-center gap-2.5 mb-4">
-                                    <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
-                                        <UserOutlined className="text-blue-600 text-base" />
+                                    <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                        <UserOutlined className="text-[#44F3F0] text-base" />
                                     </div>
                                     <div>
                                         <Text
                                             strong
-                                            className="text-sm text-gray-900 block leading-none"
+                                            className="text-sm text-white block leading-none"
                                         >
-                                            Username
+                                            {t("profile.username")}
                                         </Text>
-                                        <Text className="text-xs text-gray-500">
-                                            Choose a unique username
+                                        <Text className="text-xs text-[#A9B3B8]">
+                                            {t("profile.choose_unique_username")}
                                         </Text>
                                     </div>
                                 </div>
                                 <UsernameFormItem />
                             </div>
 
-                            <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
+                            <div className="rounded-2xl p-5 border border-white/10 bg-[#050608]/70">
                                 <div className="flex items-center gap-2.5 mb-4">
-                                    <div className="w-9 h-9 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
-                                        <MailOutlined className="text-gray-400 text-base" />
+                                    <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                        <MailOutlined className="text-[#A9B3B8] text-base" />
                                     </div>
                                     <div>
                                         <Text
                                             strong
-                                            className="text-sm text-gray-900 block leading-none"
+                                            className="text-sm text-white block leading-none"
                                         >
-                                            Email Address
+                                            {t("profile.email")}
                                         </Text>
-                                        <Text className="text-xs text-gray-500 flex items-center gap-1">
+                                        <Text className="text-xs text-[#A9B3B8] flex items-center gap-1">
                                             <LockOutlined className="text-xs" />
-                                            Cannot be changed
+                                            {t("profile.email_cannot_be_changed")}
                                         </Text>
                                     </div>
                                 </div>
@@ -87,24 +90,24 @@ const EditProfileForm = ({
                             </div>
                         </div>
 
-                        <div className="mt-8 pt-6 border-t border-gray-200">
+                        <div className="mt-8 pt-6 border-t border-white/10">
                             <Form.Item className="mb-0">
                                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                                     <PrimaryButton
                                         htmlType="submit"
                                         loading={loading}
                                         icon={<SaveOutlined />}
-                                        className="sm:flex-none bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 border-0 rounded-lg shadow-sm h-11 font-medium"
+                                        className="sm:flex-none h-11 font-medium rounded-xl border-0 bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0] shadow-[0_12px_28px_rgba(41,216,213,0.22)]"
                                     >
-                                        Save Changes
+                                        {t("profile.save_changes")}
                                     </PrimaryButton>
 
                                     <SecondaryButton
                                         onClick={() => setEditMode(false)}
                                         icon={<CloseOutlined />}
-                                        className="sm:flex-none border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 hover:border-gray-400 h-11 font-medium"
+                                        className="sm:flex-none h-11 font-medium rounded-xl border-white/10 text-white hover:bg-white/5 hover:border-white/15"
                                     >
-                                        Cancel
+                                        {t("profile.cancel")}
                                     </SecondaryButton>
                                 </div>
                             </Form.Item>
