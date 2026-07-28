@@ -3,9 +3,10 @@ import { ApiError } from "../utils/ApiError.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
-import transporter from "../utils/nodemailer.js";
+import { sendMailSafe } from "../utils/nodemailer.js";
 import bcrypt from "bcryptjs";
 import { prisma } from "../db/prisma.js";
+import { notifyAdminsUpgradeRequestCreated } from "../utils/upgradeRequestNotifications.js";
 
 const DEFAULT_ACCESS_TOKEN_EXPIRY = "1d";
 const DEFAULT_REFRESH_TOKEN_EXPIRY = "10d";
@@ -38,6 +39,22 @@ const userPublicSelect = {
     role: true,
     avatar: true,
     isVerified: true,
+    preferredLanguage: true,
+    subscription: {
+        select: {
+            plan: true,
+            status: true,
+            startedAt: true,
+            endsAt: true,
+        },
+    },
+    company: {
+        select: {
+            id: true,
+            name: true,
+            legalName: true,
+        },
+    },
     createdAt: true,
     updatedAt: true,
 };
@@ -59,6 +76,15 @@ const toAuthUser = (user) => ({
     _id: user.legacyMongoId || user.id,
     prismaId: user.id,
 });
+
+const normalizePreferredLanguage = (value) => {
+    const normalized = `${value || ""}`.toLowerCase().trim();
+    return normalized.startsWith("en") ? "en" : "es";
+};
+
+const normalizeRole = (role) => (role === "admin" ? "admin" : "user");
+const normalizePlan = (plan) =>
+    ["starter", "growth", "enterprise"].includes(plan) ? plan : "starter";
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -122,7 +148,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
 };
 
 const registerUser = asyncHandler(async (req, res, next) => {
-    const { email, username, password } = req.body;
+    const { email, username, password, desiredPlan, preferredLanguage } = req.body;
 
     if ([email, username, password].some((field) => field?.trim() === "")) {
         return next(new ApiError(400, "All fields are required"));
@@ -164,12 +190,44 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const normalizedDesiredPlan = ["growth", "enterprise"].includes(
+        desiredPlan?.toLowerCase?.()
+    )
+        ? desiredPlan.toLowerCase()
+        : null;
+    const normalizedPreferredLanguage = normalizePreferredLanguage(
+        preferredLanguage || req.headers["accept-language"]
+    );
+    const signupRequestStatus = normalizedDesiredPlan ? "approved" : null;
+
     const user = await prisma.user.create({
         data: {
             avatar: avatar.url,
             email: normalizedEmail,
             password: hashedPassword,
             username: normalizedUsername,
+            preferredLanguage: normalizedPreferredLanguage,
+            subscription: {
+                create: {
+                    plan: "starter",
+                    status: "active",
+                },
+            },
+            ...(normalizedDesiredPlan
+                ? {
+                      planUpgradeRequests: {
+                          create: {
+                              currentPlan: "starter",
+                              targetPlan: normalizedDesiredPlan,
+                              status: signupRequestStatus,
+                              notes: "Requested during signup",
+                              adminResponse:
+                                  "Auto-approved for standard checkout. Complete payment to activate your plan.",
+                              paymentStatus: "awaiting_checkout",
+                          },
+                      },
+                  }
+                : {}),
         },
     });
 
@@ -182,6 +240,41 @@ const registerUser = asyncHandler(async (req, res, next) => {
         return next(
             new ApiError(500, "Something went wrong while registering the user")
         );
+    }
+
+    if (normalizedDesiredPlan) {
+        const signupUpgradeRequest = await prisma.planUpgradeRequest.findFirst({
+            where: {
+                userId: createdUser.id,
+                targetPlan: normalizedDesiredPlan,
+                status: signupRequestStatus,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+            select: {
+                id: true,
+                currentPlan: true,
+                targetPlan: true,
+                notes: true,
+                status: true,
+                createdAt: true,
+            },
+        });
+
+        // In the default signup flow, plan requests are auto-approved and should
+        // not create admin queue noise. Keep this branch for future exception routing.
+        if (signupUpgradeRequest?.status === "open") {
+            await notifyAdminsUpgradeRequestCreated({
+                request: signupUpgradeRequest,
+                user: {
+                    email: createdUser.email,
+                    username: createdUser.username,
+                },
+                source: "signup",
+                locale: normalizedPreferredLanguage,
+            });
+        }
     }
 
     // Sending Welcome Email
@@ -214,7 +307,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
         `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await sendMailSafe(mailOptions, "welcome-email");
 
     return res
         .status(201)
@@ -446,13 +539,18 @@ const changeCurrentPassword = asyncHandler(async (req, res, next) => {
 });
 
 const updateAccountDetails = asyncHandler(async (req, res, next) => {
-    const { username } = req.body;
+    const { username, preferredLanguage } = req.body;
 
-    if (!username) {
-        return next(new ApiError(400, "All fields are required"));
+    if (!username && !preferredLanguage) {
+        return next(
+            new ApiError(400, "At least one field is required: username or preferredLanguage")
+        );
     }
 
-    const normalizedUsername = username.toLowerCase().trim();
+    const normalizedUsername = username?.toLowerCase().trim();
+    const normalizedPreferredLanguage = preferredLanguage
+        ? normalizePreferredLanguage(preferredLanguage)
+        : undefined;
 
     const currentUser = await prisma.user.findFirst({
         where: userLookupByTokenId(req.user?._id),
@@ -464,22 +562,27 @@ const updateAccountDetails = asyncHandler(async (req, res, next) => {
     }
 
     // username must be unique
-    const existed = await prisma.user.findFirst({
-        where: {
-            username: normalizedUsername,
-            NOT: { id: currentUser.id },
-        },
-        select: { id: true },
-    });
+    if (normalizedUsername) {
+        const existed = await prisma.user.findFirst({
+            where: {
+                username: normalizedUsername,
+                NOT: { id: currentUser.id },
+            },
+            select: { id: true },
+        });
 
-    if (existed) {
-        return next(new ApiError(409, "Username already exists"));
+        if (existed) {
+            return next(new ApiError(409, "Username already exists"));
+        }
     }
 
     const user = await prisma.user.update({
         where: { id: currentUser.id },
         data: {
-            username: normalizedUsername,
+            ...(normalizedUsername ? { username: normalizedUsername } : {}),
+            ...(normalizedPreferredLanguage
+                ? { preferredLanguage: normalizedPreferredLanguage }
+                : {}),
         },
         select: userPublicSelect,
     });
@@ -539,6 +642,150 @@ const getCurrentUser = asyncHandler(async (req, res, next) => {
         .json(new ApiResponse(200, toAuthUser(currentUser), "User fetched successfully"));
 });
 
+const listUsersAdmin = asyncHandler(async (_req, res) => {
+    const users = await prisma.user.findMany({
+        select: {
+            ...userPublicSelect,
+        },
+        orderBy: {
+            createdAt: "desc",
+        },
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, users, "Users fetched successfully"));
+});
+
+const createUserAdmin = asyncHandler(async (req, res, next) => {
+    const {
+        email,
+        username,
+        password,
+        role,
+        companyId,
+        preferredLanguage,
+        plan,
+    } = req.body;
+
+    if (!email?.trim() || !username?.trim() || !password?.trim()) {
+        return next(
+            new ApiError(400, "Email, username, and password are required")
+        );
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedUsername = username.toLowerCase().trim();
+
+    const existedUser = await prisma.user.findFirst({
+        where: {
+            OR: [{ username: normalizedUsername }, { email: normalizedEmail }],
+        },
+        select: { id: true },
+    });
+
+    if (existedUser) {
+        return next(new ApiError(409, "User with email or username already exists"));
+    }
+
+    if (companyId) {
+        const company = await prisma.company.findUnique({
+            where: { id: companyId },
+            select: { id: true },
+        });
+
+        if (!company) {
+            return next(new ApiError(404, "Assigned company not found"));
+        }
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const avatarSeed = encodeURIComponent(normalizedUsername || normalizedEmail);
+
+    const created = await prisma.user.create({
+        data: {
+            email: normalizedEmail,
+            username: normalizedUsername,
+            password: hashedPassword,
+            role: normalizeRole(role),
+            companyId: companyId || null,
+            preferredLanguage: normalizePreferredLanguage(preferredLanguage),
+            avatar: `https://ui-avatars.com/api/?background=29D8D5&color=021314&name=${avatarSeed}`,
+            isVerified: true,
+            subscription: {
+                create: {
+                    plan: normalizePlan(plan),
+                    status: "active",
+                },
+            },
+        },
+        select: userPublicSelect,
+    });
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, created, "Managed user created successfully"));
+});
+
+const updateUserAdmin = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+    const { username, role, companyId, preferredLanguage, isVerified } = req.body;
+
+    const existing = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+    });
+
+    if (!existing) {
+        return next(new ApiError(404, "User not found"));
+    }
+
+    const normalizedUsername = username?.toLowerCase().trim();
+
+    if (normalizedUsername) {
+        const collision = await prisma.user.findFirst({
+            where: {
+                username: normalizedUsername,
+                id: { not: userId },
+            },
+            select: { id: true },
+        });
+
+        if (collision) {
+            return next(new ApiError(409, "Username already exists"));
+        }
+    }
+
+    if (companyId) {
+        const company = await prisma.company.findUnique({
+            where: { id: companyId },
+            select: { id: true },
+        });
+
+        if (!company) {
+            return next(new ApiError(404, "Assigned company not found"));
+        }
+    }
+
+    const updated = await prisma.user.update({
+        where: { id: userId },
+        data: {
+            ...(normalizedUsername ? { username: normalizedUsername } : {}),
+            ...(role !== undefined ? { role: normalizeRole(role) } : {}),
+            ...(companyId !== undefined ? { companyId: companyId || null } : {}),
+            ...(preferredLanguage !== undefined
+                ? { preferredLanguage: normalizePreferredLanguage(preferredLanguage) }
+                : {}),
+            ...(typeof isVerified === "boolean" ? { isVerified } : {}),
+        },
+        select: userPublicSelect,
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, updated, "User updated successfully"));
+});
+
 // Send verification otp to users email
 const sendVerifyOtp = asyncHandler(async (req, res, next) => {
     try {
@@ -590,7 +837,28 @@ const sendVerifyOtp = asyncHandler(async (req, res, next) => {
                 </div>
             `,
         };
-        await transporter.sendMail(mailOptions);
+        const mailResult = await sendMailSafe(mailOptions, "verify-email-otp");
+
+        if (!mailResult?.sent) {
+            if (process.env.NODE_ENV === "production") {
+                return next(
+                    new ApiError(
+                        503,
+                        "Email service is temporarily unavailable. Please try again later."
+                    )
+                );
+            }
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(
+                        200,
+                        { devOtp: otp },
+                        "OTP generated. Email service unavailable in local environment"
+                    )
+                );
+        }
 
         return res
             .status(200)
@@ -652,7 +920,28 @@ const sendChangePasswordOtp = asyncHandler(async (req, res, next) => {
                 </div>
             `,
         };
-        await transporter.sendMail(mailOptions);
+        const mailResult = await sendMailSafe(mailOptions, "change-password-otp");
+
+        if (!mailResult?.sent) {
+            if (process.env.NODE_ENV === "production") {
+                return next(
+                    new ApiError(
+                        503,
+                        "Email service is temporarily unavailable. Please try again later."
+                    )
+                );
+            }
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(
+                        200,
+                        { devOtp: otp },
+                        "OTP generated. Email service unavailable in local environment"
+                    )
+                );
+        }
 
         return res
             .status(200)
@@ -827,7 +1116,28 @@ const sendResetOtp = asyncHandler(async (req, res, next) => {
             `,
         };
 
-        await transporter.sendMail(mailOptions);
+        const mailResult = await sendMailSafe(mailOptions, "reset-password-otp");
+
+        if (!mailResult?.sent) {
+            if (process.env.NODE_ENV === "production") {
+                return next(
+                    new ApiError(
+                        503,
+                        "Email service is temporarily unavailable. Please try again later."
+                    )
+                );
+            }
+
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(
+                        200,
+                        { devOtp: otp },
+                        "OTP generated. Email service unavailable in local environment"
+                    )
+                );
+        }
 
         return res
             .status(200)
@@ -903,6 +1213,9 @@ export {
     updateAccountDetails,
     updateUserAvatar,
     getCurrentUser,
+    listUsersAdmin,
+    createUserAdmin,
+    updateUserAdmin,
     sendVerifyOtp,
     verifyEmail,
     isAuthenticated,

@@ -5,6 +5,13 @@ import { prisma } from "./prisma.js";
 let isConnected = false;
 let connectedProvider = null;
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const parsePositiveInt = (value, fallback) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+};
+
 const connectDB = async () => {
     const provider = (process.env.DB_PROVIDER || "mongo").toLowerCase();
 
@@ -14,15 +21,32 @@ const connectDB = async () => {
     }
 
     if (provider === "postgres" || provider === "prisma") {
-        try {
-            await prisma.$connect();
-            isConnected = true;
-            connectedProvider = provider;
-            console.log("✅ PostgreSQL connected via Prisma");
-            return;
-        } catch (error) {
-            console.error("❎ PostgreSQL connection FAILED", error);
-            throw error;
+        const maxRetries = parsePositiveInt(process.env.DB_CONNECT_MAX_RETRIES, 5);
+        const retryDelayMs = parsePositiveInt(process.env.DB_CONNECT_RETRY_MS, 2000);
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                await prisma.$connect();
+                isConnected = true;
+                connectedProvider = provider;
+                console.log("✅ PostgreSQL connected via Prisma");
+                return;
+            } catch (error) {
+                const isLastAttempt = attempt === maxRetries;
+                console.error(
+                    `❎ PostgreSQL connection FAILED (attempt ${attempt}/${maxRetries})`,
+                    error
+                );
+
+                if (isLastAttempt) {
+                    console.error(
+                        "ℹ️ Verify DATABASE_URL, Neon project status, and outbound network access."
+                    );
+                    throw error;
+                }
+
+                await sleep(retryDelayMs);
+            }
         }
     }
 

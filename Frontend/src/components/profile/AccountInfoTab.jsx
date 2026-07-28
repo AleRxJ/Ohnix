@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Button, Typography, Card } from "antd";
 import {
     LockOutlined,
@@ -13,12 +13,85 @@ import { useCurrency } from "../../context/CurrencyContext";
 import { formatCurrency } from "../../utils/currency";
 import CurrencySelector from "../common/CurrencySelector";
 import useI18n from "../../hooks/useI18n";
+import { subscriptionService } from "../../services/subscriptionService";
+import SubscriptionPlanCard from "./SubscriptionPlanCard";
+import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 const { Text, Title } = Typography;
 
-const AccountInfoTab = ({ user, isVerified, handleTabChange }) => {
+const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
+    const navigate = useNavigate();
     const { currency } = useCurrency();
     const { t } = useI18n();
+    const [loadingSubscription, setLoadingSubscription] = useState(true);
+    const [refreshingSubscription, setRefreshingSubscription] = useState(false);
+    const [subscription, setSubscription] = useState(null);
+    const [usage, setUsage] = useState(null);
+
+    const fetchSubscriptionData = useCallback(async () => {
+        try {
+            const [subscriptionResponse, usageResponse] = await Promise.all([
+                subscriptionService.getMySubscription(),
+                subscriptionService.getMyUsage(),
+            ]);
+
+            setSubscription(subscriptionResponse?.data || null);
+            setUsage(usageResponse?.data || null);
+        } catch (error) {
+            toast.error(
+                error.response?.data?.message || t("profile.subscription.load_failed")
+            );
+        }
+    }, [t]);
+
+    useEffect(() => {
+        const run = async () => {
+            setLoadingSubscription(true);
+            await fetchSubscriptionData();
+            setLoadingSubscription(false);
+        };
+
+        run();
+    }, [fetchSubscriptionData]);
+
+    const handleRefreshSubscription = async () => {
+        setRefreshingSubscription(true);
+        await fetchSubscriptionData();
+        setRefreshingSubscription(false);
+        if (refreshUser) {
+            refreshUser();
+        }
+    };
+
+    const handlePause = async () => {
+        await subscriptionService.pauseMySubscription();
+        await handleRefreshSubscription();
+    };
+
+    const handleCancel = async () => {
+        await subscriptionService.cancelMySubscription();
+        await handleRefreshSubscription();
+    };
+
+    const handleReactivate = async () => {
+        await subscriptionService.reactivateMySubscription();
+        await handleRefreshSubscription();
+    };
+
+    const handleRequestUpgrade = () => {
+        const email = "hello@itcycle.com";
+        const subject = encodeURIComponent("Upgrade request - Ohnix plan");
+        const body = encodeURIComponent(
+            `Hello team, I would like to upgrade my plan.\n\nCurrent user: ${user?.email || "N/A"}\nCurrent plan: ${subscription?.plan || "starter"}`
+        );
+
+        window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+    };
+
+    const handleOpenBilling = () => {
+        navigate("/billing");
+    };
 
     return (
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -169,6 +242,20 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange }) => {
                     </Button>
                 </div>
             </Card>
+
+            <SubscriptionPlanCard
+                loading={loadingSubscription}
+                refreshing={refreshingSubscription}
+                subscription={subscription || user?.subscription}
+                usage={usage}
+                onRefresh={handleRefreshSubscription}
+                onPause={handlePause}
+                onCancel={handleCancel}
+                onReactivate={handleReactivate}
+                onRequestUpgrade={handleRequestUpgrade}
+                compact
+                onOpenBilling={handleOpenBilling}
+            />
 
             <Card className="mt-4 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-white/10 bg-white/[0.04] text-white">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

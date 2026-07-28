@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import errorHandler from "./middleware/error.middleware.js";
+import { handlePaymentWebhook } from "./controllers/subscription.controller.js";
 
 const app = express();
 
@@ -78,6 +79,12 @@ app.use(
     })
 );
 
+app.post(
+   "/api/v1/subscriptions/payments/webhook",
+   express.raw({ type: "application/json" }),
+   handlePaymentWebhook
+);
+
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static("public"));
@@ -94,6 +101,8 @@ import purchaseRouter from "./routes/purchase.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import reportRouter from "./routes/report.routes.js";
 import schedulerRouter from "./routes/scheduler.routes.js";
+import subscriptionRouter from "./routes/subscription.routes.js";
+import companyRouter from "./routes/company.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -106,6 +115,8 @@ app.use("/api/v1/purchases", purchaseRouter);
 app.use("/api/v1/orders", orderRouter);
 app.use("/api/v1/reports", reportRouter);
 app.use("/api/v1/scheduler", schedulerRouter);
+app.use("/api/v1/subscriptions", subscriptionRouter);
+app.use("/api/v1/companies", companyRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________
@@ -167,6 +178,15 @@ app.use("/api/v1/scheduler", schedulerRouter);
     API : http://localhost:3001/api/v1/reports/purchases - GET
     API : http://localhost:3001/api/v1/reports/top-products - GET
     API : http://localhost:3001/api/v1/reports/low-stock-alerts - GET
+
+ * subscriptions
+    API : http://localhost:3001/api/v1/subscriptions/me - GET
+    API : http://localhost:3001/api/v1/subscriptions/me/usage - GET
+    API : http://localhost:3001/api/v1/subscriptions/me/pause - PATCH
+    API : http://localhost:3001/api/v1/subscriptions/me/cancel - PATCH
+    API : http://localhost:3001/api/v1/subscriptions/me/reactivate - PATCH
+    API : http://localhost:3001/api/v1/subscriptions/admin/users/:userId/plan - PATCH (Admin only)
+    API : http://localhost:3001/api/v1/subscriptions/admin/users/:userId/usage - GET (Admin only)
  */
 
 app.use(errorHandler);

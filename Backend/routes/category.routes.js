@@ -9,6 +9,7 @@ import {
 } from "../controllers/category.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
+import { enforceEntityLimit } from "../middleware/pricing.middleware.js";
 
 const router = Router();
 
@@ -16,7 +17,7 @@ router.use(verifyJWT);
 
 router.route("/available").get(getAvailableCategories);
 
-router.route("/").post(createCategory);
+router.route("/").post(enforceEntityLimit("categories"), createCategory);
 router.route("/user").get(getUserCategories);
 router.route("/user/:id").patch(updateCategory).delete(deleteCategory);
 

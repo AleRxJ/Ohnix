@@ -190,6 +190,7 @@ const ProfilePage = () => {
                                             <AccountInfoTab
                                                 user={user}
                                                 isVerified={isVerified}
+                                                refreshUser={refreshUser}
                                                 handleTabChange={
                                                     handleTabChange
                                                 }

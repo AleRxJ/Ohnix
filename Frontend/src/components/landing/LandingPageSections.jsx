@@ -494,7 +494,7 @@ export const ContactSection = ({ heading, primaryCta, secondaryCta, onPrimary, o
     </ContentSection>
 );
 
-export const PricingSection = ({ heading, plans, featuredLabel }) => (
+export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) => (
     <ContentSection id="pricing">
         <SectionHeading
             eyebrow={heading.eyebrow}
@@ -548,6 +548,7 @@ export const PricingSection = ({ heading, plans, featuredLabel }) => (
 
                     <button
                         type="button"
+                        onClick={() => onPlanSelect?.(plan.key)}
                         className={`mt-7 w-full rounded-full px-5 py-3 text-sm font-semibold transition-all duration-300 ${
                             plan.featured
                                 ? "bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0]"

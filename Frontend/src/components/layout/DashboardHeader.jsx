@@ -8,12 +8,14 @@ import {
     UserOutlined,
     LogoutOutlined,
     SettingOutlined,
+    ApartmentOutlined,
     MenuFoldOutlined,
     MenuUnfoldOutlined,
 } from "@ant-design/icons";
 import AuthContext from "../../context/AuthContext";
 import useI18n from "../../hooks/useI18n";
 import LanguageSwitcher from "../LanguageSwitcher/LanguageSwitcher";
+import { userService } from "../../services/userService";
 
 const DashboardHeader = ({ collapsed, setCollapsed }) => {
     const { user, logout } = useContext(AuthContext);
@@ -31,6 +33,20 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
         navigate("/dashboard");
     };
 
+    const handleLanguageSelection = async (language) => {
+        if (language !== "en" && language !== "es") {
+            return;
+        }
+
+        changeLanguage(language);
+
+        try {
+            await userService.updatePreferredLanguage(language);
+        } catch (_) {
+            // Keep current UI language even if persistence fails.
+        }
+    };
+
     // Avatar dropdown menu
     const avatarMenu = [
         {
@@ -38,6 +54,20 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
             label: <Link to="/profile">{t("common.profile")}</Link>,
             icon: <UserOutlined />,
         },
+        {
+            key: "billing",
+            label: <Link to="/billing">{t("common.billing")}</Link>,
+            icon: <SettingOutlined />,
+        },
+        ...(user?.role === "admin"
+            ? [
+                  {
+                      key: "admin-management",
+                      label: <Link to="/admin/management">{t("common.admin_panel")}</Link>,
+                      icon: <ApartmentOutlined />,
+                  },
+              ]
+            : []),
         {
             key: "divider",
             type: "divider",
@@ -113,7 +143,7 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                             ],
                             onClick: (e) => {
                                 if (e.key === "en" || e.key === "es") {
-                                    changeLanguage(e.key);
+                                    handleLanguageSelection(e.key);
                                 }
                             },
                         }}

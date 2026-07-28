@@ -1,24 +1,40 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { Form, Divider } from "antd";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AuthContext from "../../context/AuthContext";
 import AuthLayout from "../../components/auth/AuthLayout";
 import AuthCard from "../../components/auth/AuthCard";
 import { EmailInput, PasswordInput } from "../../components/auth/FormItems";
 import AuthButton from "../../components/auth/AuthButton";
 import useI18n from "../../hooks/useI18n";
+import toast from "react-hot-toast";
 
 const Login = () => {
+    const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
     const { login } = useContext(AuthContext);
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { t } = useI18n();
+
+    useEffect(() => {
+        const emailFromQuery = searchParams.get("email");
+        if (emailFromQuery) {
+            form.setFieldsValue({ email: emailFromQuery });
+        }
+    }, [form, searchParams]);
 
     const onFinish = async (values) => {
         setLoading(true);
         const result = await login(values);
         if (result.success) {
             navigate("/dashboard");
+        } else if (
+            typeof result.message === "string" &&
+            result.message.toLowerCase().includes("does not exist")
+        ) {
+            toast.error(t("auth.account_not_found_redirect_signup"));
+            navigate(`/signup?email=${encodeURIComponent(values.email || "")}`);
         }
         setLoading(false);
     };
@@ -30,6 +46,7 @@ const Login = () => {
                 subtitle={t('auth.login_success')}
             >
                 <Form
+                    form={form}
                     name="login-form"
                     className="w-full"
                     onFinish={onFinish}

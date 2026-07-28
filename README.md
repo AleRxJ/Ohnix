@@ -115,6 +115,49 @@ Base URL: `https://localhost:3001/api/v1`
 
 ---
 
+## Payments (CO + ES)
+
+### Most Common Methods
+
+- Colombia: `PSE`, `Card`
+- Spain: `Card`, `Bizum`, `SEPA Debit`
+
+The current checkout flow already supports these country/method combinations in-app.
+
+### Developer Mode Setup (Stripe)
+
+1. Create a Stripe account and enable **Test mode**.
+2. Configure payment methods in Stripe Dashboard:
+- `PSE` and `Card` for Colombia
+- `Bizum`, `SEPA Debit`, and `Card` for Spain
+3. Fill backend variables from `Backend/.env.example`:
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_AMOUNT_GROWTH_COP`
+- `STRIPE_AMOUNT_ENTERPRISE_COP`
+- `STRIPE_AMOUNT_GROWTH_EUR`
+- `STRIPE_AMOUNT_ENTERPRISE_EUR`
+4. Start webhook forwarding in local development:
+
+```bash
+stripe listen --forward-to http://localhost:3001/api/v1/subscriptions/payments/webhook
+```
+
+5. Copy the generated `whsec_...` into `STRIPE_WEBHOOK_SECRET`.
+
+### End-to-End Test
+
+1. Create an upgrade request (Growth or Enterprise).
+2. Approve it from admin queue.
+3. In Billing, choose country + payment method and click `Pay and activate now`.
+4. Complete test checkout.
+5. Verify automatic transition:
+- request `approved -> closed`
+- subscription `plan -> targetPlan`
+- payment success screen with activation checklist
+
+---
+
 ## Data Model
 
 | Model | Notes |

@@ -2,6 +2,19 @@ import cron from "node-cron";
 import { prisma } from "../db/prisma.js";
 import transporter from "./nodemailer.js";
 
+const resolveTimezone = () => {
+    const configuredTimezone = process.env.TIMEZONE || "Asia/Kolkata";
+    try {
+        Intl.DateTimeFormat("en-US", { timeZone: configuredTimezone });
+        return configuredTimezone;
+    } catch {
+        console.warn(
+            `Invalid TIMEZONE '${configuredTimezone}'. Falling back to UTC.`
+        );
+        return "UTC";
+    }
+};
+
 class LowStockScheduler {
     constructor() {
         this.threshold = 10;
@@ -226,7 +239,7 @@ class LowStockScheduler {
             },
             {
                 scheduled: false,
-                timezone: process.env.TIMEZONE || "Asia/Kolkata",
+                timezone: resolveTimezone(),
             }
         );
 

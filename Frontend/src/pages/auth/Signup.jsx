@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Form, Divider } from "antd";
-import { useNavigate } from "react-router-dom";
+import { Form, Divider, Select } from "antd";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import AuthLayout from "../../components/auth/AuthLayout";
 import AuthCard from "../../components/auth/AuthCard";
@@ -19,7 +19,15 @@ const Signup = () => {
     const [loading, setLoading] = useState(false);
     const [avatarFile, setAvatarFile] = useState(null);
     const navigate = useNavigate();
-    const { t } = useI18n();
+    const [searchParams] = useSearchParams();
+    const { t, currentLanguage } = useI18n();
+
+    const initialDesiredPlan = ["starter", "growth", "enterprise"].includes(
+        searchParams.get("plan")
+    )
+        ? searchParams.get("plan")
+        : "starter";
+    const initialEmail = searchParams.get("email") || "";
 
     const handleAvatarChange = (info) => {
         if (info.file.status === "done") {
@@ -41,6 +49,10 @@ const Signup = () => {
             formData.append("email", values.email);
             formData.append("password", values.password);
             formData.append("avatar", avatarFile);
+            formData.append("preferredLanguage", currentLanguage || "es");
+            if (values.desiredPlan && values.desiredPlan !== "starter") {
+                formData.append("desiredPlan", values.desiredPlan);
+            }
 
             const response = await api.post(`/users/register`, formData, {
                 headers: {
@@ -49,13 +61,30 @@ const Signup = () => {
             });
 
             if (response.data.success) {
-                toast.success(t("auth.account_created"));
-                navigate("/login");
+                const requestedPlan = values.desiredPlan || "starter";
+                if (["growth", "enterprise"].includes(requestedPlan)) {
+                    toast.success(t("auth.account_created_plan_request"));
+                } else {
+                    toast.success(t("auth.account_created"));
+                }
+                navigate(`/signup/request-status?plan=${requestedPlan}`);
             }
         } catch (error) {
             const errorMessage =
                 error.response?.data?.message ||
                 t("auth.signup_failed");
+
+            if (
+                typeof errorMessage === "string" &&
+                errorMessage.toLowerCase().includes("already exists")
+            ) {
+                toast.error(t("auth.account_exists_redirect_login"));
+                navigate(
+                    `/login?email=${encodeURIComponent(values.email || initialEmail || "")}`
+                );
+                return;
+            }
+
             toast.error(errorMessage);
         } finally {
             setLoading(false);
@@ -72,6 +101,7 @@ const Signup = () => {
                     form={form}
                     name="signup_form"
                     onFinish={onFinish}
+                    initialValues={{ desiredPlan: initialDesiredPlan, email: initialEmail }}
                     layout="vertical"
                     requiredMark={false}
                     className="w-full"
@@ -86,6 +116,27 @@ const Signup = () => {
                         <UsernameInput />
                         <EmailInput />
                         <PasswordInput hasFeedback={true} />
+                        <Form.Item
+                            name="desiredPlan"
+                            label={t("auth.desired_plan")}
+                        >
+                            <Select
+                                options={[
+                                    {
+                                        value: "starter",
+                                        label: t("profile.subscription.plan_starter"),
+                                    },
+                                    {
+                                        value: "growth",
+                                        label: t("profile.subscription.plan_growth"),
+                                    },
+                                    {
+                                        value: "enterprise",
+                                        label: t("profile.subscription.plan_enterprise"),
+                                    },
+                                ]}
+                            />
+                        </Form.Item>
                     </div>
 
                     <Form.Item className="mb-0 mt-6">

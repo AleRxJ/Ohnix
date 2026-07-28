@@ -1,0 +1,971 @@
+import React, { useContext, useEffect, useState } from "react";
+import { Button, Typography, Modal, Form, Select, Input, List, Tag, Checkbox } from "antd";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import AuthContext from "../context/AuthContext";
+import useI18n from "../hooks/useI18n";
+import { subscriptionService } from "../services/subscriptionService";
+import SubscriptionPlanCard from "../components/profile/SubscriptionPlanCard";
+
+const { Title, Text } = Typography;
+const { TextArea } = Input;
+
+const REQUEST_STATUS_COLORS = {
+    open: "blue",
+    reviewing: "gold",
+    approved: "green",
+    rejected: "red",
+    closed: "default",
+};
+
+const REQUEST_STATUS_OPTIONS = [
+    "open",
+    "reviewing",
+    "approved",
+    "rejected",
+    "closed",
+];
+
+const UPGRADE_OPTIONS_BY_PLAN = {
+    starter: ["growth", "enterprise"],
+    growth: ["enterprise"],
+    enterprise: [],
+};
+
+const SLA_HOURS_BY_TARGET_PLAN = {
+    growth: 48,
+    enterprise: 72,
+};
+
+const TRACKER_STEP_KEYS = ["submitted", "reviewing", "approved", "activated"];
+
+const PAYMENT_METHOD_LABELS = {
+    card: "Tarjeta / Card",
+    pse: "PSE (otros bancos)",
+    bancolombia_button: "Boton Bancolombia",
+    bizum: "Bizum",
+    sepa_debit: "SEPA Débito",
+};
+
+const formatEtaDuration = (remainingMs, t) => {
+    if (remainingMs <= 60 * 60 * 1000) {
+        return t("profile.subscription.tracker_eta_less_than_hour");
+    }
+
+    const totalHours = Math.ceil(remainingMs / (1000 * 60 * 60));
+    if (totalHours < 24) {
+        return t("profile.subscription.tracker_eta_hours", { count: totalHours });
+    }
+
+    const days = Math.ceil(totalHours / 24);
+    return t("profile.subscription.tracker_eta_days", { count: days });
+};
+
+const extractFirstUrl = (text) => {
+    const normalizedText = typeof text === "string" ? text : "";
+    const match = normalizedText.match(/https?:\/\/[^\s)]+/i);
+    return match?.[0] || null;
+};
+
+const isValidHttpUrl = (value = "") => {
+    try {
+        const parsed = new URL(value);
+        return ["http:", "https:"].includes(parsed.protocol);
+    } catch {
+        return false;
+    }
+};
+
+const Billing = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { user, refreshUser } = useContext(AuthContext);
+    const { t } = useI18n();
+
+    const [loadingSubscription, setLoadingSubscription] = useState(true);
+    const [refreshingSubscription, setRefreshingSubscription] = useState(false);
+    const [subscription, setSubscription] = useState(null);
+    const [usage, setUsage] = useState(null);
+    const [requests, setRequests] = useState([]);
+    const [adminRequests, setAdminRequests] = useState([]);
+    const [adminFilterStatus, setAdminFilterStatus] = useState("");
+    const [adminSearch, setAdminSearch] = useState("");
+    const [requestModalOpen, setRequestModalOpen] = useState(false);
+    const [requestSubmitting, setRequestSubmitting] = useState(false);
+    const [adminModalOpen, setAdminModalOpen] = useState(false);
+    const [adminSubmitting, setAdminSubmitting] = useState(false);
+    const [checkoutLoadingRequestId, setCheckoutLoadingRequestId] = useState("");
+    const [checkoutMethodsByCountry, setCheckoutMethodsByCountry] = useState({});
+    const [checkoutSelectionByRequestId, setCheckoutSelectionByRequestId] = useState({});
+    const [billingLoadWarning, setBillingLoadWarning] = useState("");
+    const [selectedAdminRequest, setSelectedAdminRequest] = useState(null);
+    const [upgradeForm] = Form.useForm();
+    const [adminReviewForm] = Form.useForm();
+
+    const isAdmin = user?.role === "admin";
+    const currentPlan = subscription?.plan || user?.subscription?.plan || "starter";
+    const availableUpgradeOptions = UPGRADE_OPTIONS_BY_PLAN[currentPlan] || [];
+    const safeRequests = Array.isArray(requests) ? requests : [];
+    const safeAdminRequests = Array.isArray(adminRequests) ? adminRequests : [];
+    const isPlanAlreadyActiveForRequest = (request) =>
+        subscription?.plan === request?.targetPlan && subscription?.status === "active";
+
+    const isRequestInProgress = (request) => {
+        if (!request) {
+            return false;
+        }
+
+        if (["open", "reviewing"].includes(request.status)) {
+            return true;
+        }
+
+        return request.status === "approved" && !isPlanAlreadyActiveForRequest(request);
+    };
+
+    const latestActiveRequest = safeRequests.find(isRequestInProgress);
+
+    const trackerCurrentStep = (() => {
+        if (!latestActiveRequest) {
+            return -1;
+        }
+
+        if (latestActiveRequest.status === "open") {
+            return 0;
+        }
+
+        if (latestActiveRequest.status === "reviewing") {
+            return 1;
+        }
+
+        if (latestActiveRequest.status === "approved") {
+            const isTargetPlanActive =
+                subscription?.plan === latestActiveRequest.targetPlan &&
+                subscription?.status === "active";
+            return isTargetPlanActive ? 3 : 2;
+        }
+
+        return -1;
+    })();
+
+    const trackerEta = (() => {
+        if (!latestActiveRequest) {
+            return null;
+        }
+
+        if (!["open", "reviewing"].includes(latestActiveRequest.status)) {
+            return null;
+        }
+
+        const slaHours = SLA_HOURS_BY_TARGET_PLAN[latestActiveRequest.targetPlan];
+        if (!slaHours) {
+            return null;
+        }
+
+        const createdAtTs = new Date(latestActiveRequest.createdAt).getTime();
+        if (Number.isNaN(createdAtTs)) {
+            return null;
+        }
+
+        const dueAtTs = createdAtTs + slaHours * 60 * 60 * 1000;
+        const remainingMs = dueAtTs - Date.now();
+
+        if (remainingMs <= 0) {
+            return {
+                overdue: true,
+                text: t("profile.subscription.tracker_eta_overdue"),
+            };
+        }
+
+        return {
+            overdue: false,
+            text: formatEtaDuration(remainingMs, t),
+        };
+    })();
+
+    const fetchSubscriptionData = async () => {
+        const results = await Promise.allSettled([
+            subscriptionService.getMySubscription(),
+            subscriptionService.getMyUsage(),
+            subscriptionService.getMyUpgradeRequests(),
+            isAdmin
+                ? subscriptionService.getUpgradeRequestsAdmin(adminFilterStatus)
+                : Promise.resolve({ data: [] }),
+        ]);
+
+        const [subscriptionResult, usageResult, requestResult, adminRequestResult] = results;
+
+        if (subscriptionResult.status === "fulfilled") {
+            setSubscription(subscriptionResult.value?.data || null);
+        }
+
+        if (usageResult.status === "fulfilled") {
+            setUsage(usageResult.value?.data || null);
+        }
+
+        if (requestResult.status === "fulfilled") {
+            setRequests(Array.isArray(requestResult.value?.data) ? requestResult.value.data : []);
+        }
+
+        if (adminRequestResult.status === "fulfilled") {
+            setAdminRequests(
+                Array.isArray(adminRequestResult.value?.data)
+                    ? adminRequestResult.value.data
+                    : []
+            );
+        }
+
+        const failedCount = results.filter((result) => result.status === "rejected").length;
+        if (failedCount > 0) {
+            setBillingLoadWarning(t("profile.subscription.partial_data_warning"));
+        } else {
+            setBillingLoadWarning("");
+        }
+    };
+
+    useEffect(() => {
+        const run = async () => {
+            try {
+                setLoadingSubscription(true);
+                const [_, methodsResponse] = await Promise.all([
+                    fetchSubscriptionData(),
+                    subscriptionService.getCheckoutPaymentMethods(),
+                ]);
+
+                const methodsByCountry = methodsResponse?.data?.methodsByCountry || {};
+                setCheckoutMethodsByCountry(methodsByCountry);
+            } catch (error) {
+                toast.error(
+                    error.response?.data?.message ||
+                        t("profile.subscription.load_failed")
+                );
+            } finally {
+                setLoadingSubscription(false);
+            }
+        };
+
+        run();
+    }, [t, isAdmin, adminFilterStatus]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get("payment") === "cancelled") {
+            toast.error(t("profile.subscription.payment_cancelled"));
+        }
+    }, [location.search, t]);
+
+    useEffect(() => {
+        const countryList = Object.keys(checkoutMethodsByCountry);
+        if (!countryList.length || !safeRequests.length) {
+            return;
+        }
+
+        const fallbackCountry = countryList[0];
+        const fallbackMethod = checkoutMethodsByCountry[fallbackCountry]?.[0] || "card";
+
+        setCheckoutSelectionByRequestId((prev) => {
+            let changed = false;
+            const next = { ...prev };
+
+            safeRequests.forEach((request) => {
+                if (!next[request.id]) {
+                    changed = true;
+                    next[request.id] = {
+                        country: fallbackCountry,
+                        method: fallbackMethod,
+                    };
+                }
+            });
+
+            return changed ? next : prev;
+        });
+    }, [checkoutMethodsByCountry, safeRequests]);
+
+    const handleRefreshSubscription = async () => {
+        try {
+            setRefreshingSubscription(true);
+            const [_, methodsResponse] = await Promise.all([
+                fetchSubscriptionData(),
+                subscriptionService.getCheckoutPaymentMethods(),
+            ]);
+            const methodsByCountry = methodsResponse?.data?.methodsByCountry || {};
+            setCheckoutMethodsByCountry(methodsByCountry);
+            await refreshUser();
+        } catch (error) {
+            toast.error(
+                error.response?.data?.message ||
+                    t("profile.subscription.load_failed")
+            );
+        } finally {
+            setRefreshingSubscription(false);
+        }
+    };
+
+    const handlePause = async () => {
+        try {
+            await subscriptionService.pauseMySubscription();
+            await handleRefreshSubscription();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        }
+    };
+
+    const handleCancel = async () => {
+        try {
+            await subscriptionService.cancelMySubscription();
+            await handleRefreshSubscription();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        }
+    };
+
+    const handleReactivate = async () => {
+        try {
+            await subscriptionService.reactivateMySubscription();
+            await handleRefreshSubscription();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        }
+    };
+
+    const handleRequestUpgrade = () => {
+        if (availableUpgradeOptions.length === 0) {
+            toast.success(t("profile.subscription.top_plan_reached"));
+            return;
+        }
+
+        upgradeForm.setFieldsValue({
+            targetPlan: availableUpgradeOptions[0],
+            notes: "",
+            requiresManualReview: false,
+        });
+        setRequestModalOpen(true);
+    };
+
+    const submitUpgradeRequest = async (values) => {
+        try {
+            setRequestSubmitting(true);
+            await subscriptionService.createUpgradeRequest(values);
+            setRequestModalOpen(false);
+            upgradeForm.resetFields();
+            await handleRefreshSubscription();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setRequestSubmitting(false);
+        }
+    };
+
+    const ensureCheckoutSelection = (requestId) => {
+        const existing = checkoutSelectionByRequestId[requestId];
+        if (existing) {
+            return existing;
+        }
+
+        const fallbackCountry = Object.keys(checkoutMethodsByCountry)[0] || "CO";
+        const fallbackMethod = checkoutMethodsByCountry[fallbackCountry]?.[0] || "card";
+
+        return {
+            country: fallbackCountry,
+            method: fallbackMethod,
+        };
+    };
+
+    const updateCheckoutCountry = (requestId, country) => {
+        const methods = checkoutMethodsByCountry[country] || [];
+        setCheckoutSelectionByRequestId((prev) => ({
+            ...prev,
+            [requestId]: {
+                country,
+                method: methods[0] || "card",
+            },
+        }));
+    };
+
+    const updateCheckoutMethod = (requestId, method) => {
+        const current = ensureCheckoutSelection(requestId);
+        setCheckoutSelectionByRequestId((prev) => ({
+            ...prev,
+            [requestId]: {
+                ...current,
+                method,
+            },
+        }));
+    };
+
+    const handleStartCheckout = async (request) => {
+        if (!request?.id) {
+            return;
+        }
+
+        try {
+            setCheckoutLoadingRequestId(request.id);
+            const selection = ensureCheckoutSelection(request.id);
+            const response =
+                await subscriptionService.createUpgradeCheckoutSessionWithMethod(
+                    request.id,
+                    {
+                        country: selection.country,
+                        paymentMethod: selection.method,
+                    }
+                );
+            const checkoutUrl = response?.data?.checkoutUrl;
+
+            if (!checkoutUrl) {
+                toast.error(t("profile.subscription.checkout_unavailable"));
+                return;
+            }
+
+            window.location.assign(checkoutUrl);
+        } catch (error) {
+            toast.error(
+                error.response?.data?.message ||
+                    t("profile.subscription.checkout_unavailable")
+            );
+        } finally {
+            setCheckoutLoadingRequestId("");
+        }
+    };
+
+    const openAdminReview = (request) => {
+        setSelectedAdminRequest(request);
+        adminReviewForm.setFieldsValue({
+            status: request.status,
+            adminResponse: request.adminResponse || "",
+            paymentLink: request.paymentLink || extractFirstUrl(request.adminResponse) || "",
+        });
+        setAdminModalOpen(true);
+    };
+
+    const submitAdminReview = async (values) => {
+        if (!selectedAdminRequest?.id) {
+            return;
+        }
+
+        try {
+            setAdminSubmitting(true);
+            await subscriptionService.updateUpgradeRequestAdmin(
+                selectedAdminRequest.id,
+                values
+            );
+            setAdminModalOpen(false);
+            setSelectedAdminRequest(null);
+            adminReviewForm.resetFields();
+            await handleRefreshSubscription();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setAdminSubmitting(false);
+        }
+    };
+
+    const filteredAdminRequests = safeAdminRequests.filter((item) => {
+        const search = adminSearch.trim().toLowerCase();
+        if (!search) {
+            return true;
+        }
+
+        const username = item.user?.username?.toLowerCase() || "";
+        const email = item.user?.email?.toLowerCase() || "";
+
+        return username.includes(search) || email.includes(search);
+    });
+
+    return (
+        <div className="min-h-screen bg-[#050608] text-white relative overflow-hidden">
+            <div className="pointer-events-none absolute inset-0 opacity-80">
+                <div className="absolute -top-28 -left-24 h-72 w-72 rounded-full bg-[#29D8D5]/12 blur-3xl" />
+                <div className="absolute top-1/3 -right-24 h-80 w-80 rounded-full bg-[#44F3F0]/10 blur-3xl" />
+                <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+            </div>
+
+            <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8 lg:py-10 space-y-6 sm:space-y-7">
+                <div className="flex justify-start">
+                    <Button
+                        type="default"
+                        onClick={() => navigate("/profile")}
+                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white hover:bg-white/[0.08] hover:border-white/15"
+                        icon={<ArrowLeftOutlined className="text-[#44F3F0]" />}
+                    >
+                        {t("profile.back_to_dashboard")}
+                    </Button>
+                </div>
+
+                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 lg:p-8 shadow-[0_24px_70px_rgba(0,0,0,0.35)] backdrop-blur-md">
+                    <Title level={2} className="!text-white !mb-1">
+                        {t("profile.subscription.manage_plan")}
+                    </Title>
+                    <Text className="text-[#A9B3B8]">
+                        {t("profile.subscription.description")}
+                    </Text>
+
+                    {billingLoadWarning ? (
+                        <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                            {billingLoadWarning}
+                        </div>
+                    ) : null}
+
+                    <SubscriptionPlanCard
+                        loading={loadingSubscription}
+                        refreshing={refreshingSubscription}
+                        subscription={subscription || user?.subscription}
+                        usage={usage}
+                        onRefresh={handleRefreshSubscription}
+                        onPause={handlePause}
+                        onCancel={handleCancel}
+                        onReactivate={handleReactivate}
+                        onRequestUpgrade={handleRequestUpgrade}
+                    />
+
+                    {latestActiveRequest ? (
+                        <div className="mt-6 rounded-2xl border border-[#29D8D5]/20 bg-[#29D8D5]/8 p-4 sm:p-5">
+                            <Title level={5} className="!text-white !mb-2">
+                                {t("profile.subscription.tracker_title")}
+                            </Title>
+                            <Text className="text-[#CFE8E8]">
+                                {t("profile.subscription.tracker_description")}
+                            </Text>
+
+                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                                    <div className="text-xs uppercase tracking-[0.14em] text-[#A9B3B8]">
+                                        {t("profile.subscription.tracker_requested_plan")}
+                                    </div>
+                                    <div className="mt-1 text-sm text-white">
+                                        {t(`profile.subscription.plan_${latestActiveRequest.currentPlan}`)} → {" "}
+                                        {t(`profile.subscription.plan_${latestActiveRequest.targetPlan}`)}
+                                    </div>
+                                </div>
+                                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                                    <div className="text-xs uppercase tracking-[0.14em] text-[#A9B3B8]">
+                                        {t("profile.subscription.tracker_current_status")}
+                                    </div>
+                                    <div className="mt-1">
+                                        <Tag color={REQUEST_STATUS_COLORS[latestActiveRequest.status] || "default"}>
+                                            {t(`profile.subscription.request_status_${latestActiveRequest.status}`)}
+                                        </Tag>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {trackerEta ? (
+                                <div
+                                    className={`mt-3 rounded-xl border p-3 text-xs ${
+                                        trackerEta.overdue
+                                            ? "border-amber-300/30 bg-amber-500/10 text-amber-100"
+                                            : "border-cyan-300/30 bg-cyan-500/10 text-cyan-100"
+                                    }`}
+                                >
+                                    <span className="font-semibold">
+                                        {t("profile.subscription.tracker_eta_label")}:
+                                    </span>{" "}
+                                    {trackerEta.text}
+                                </div>
+                            ) : null}
+
+                            <div className="mt-4 space-y-2">
+                                {TRACKER_STEP_KEYS.map((stepKey, index) => {
+                                    const isDone = trackerCurrentStep >= index;
+                                    const isCurrent = trackerCurrentStep === index;
+
+                                    return (
+                                        <div
+                                            key={stepKey}
+                                            className={`rounded-xl border p-3 ${
+                                                isCurrent
+                                                    ? "border-[#44F3F0]/45 bg-[#44F3F0]/12"
+                                                    : isDone
+                                                      ? "border-emerald-300/30 bg-emerald-500/10"
+                                                      : "border-white/10 bg-white/[0.02]"
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="text-sm font-medium text-white">
+                                                    {t(`profile.subscription.tracker_step_${stepKey}_title`)}
+                                                </div>
+                                                <Tag color={isDone ? "green" : "default"}>
+                                                    {isCurrent
+                                                        ? t("profile.subscription.tracker_now")
+                                                        : isDone
+                                                          ? t("profile.subscription.tracker_done")
+                                                          : t("profile.subscription.tracker_pending")}
+                                                </Tag>
+                                            </div>
+                                            <div className="mt-1 text-xs text-[#C9D3D9]">
+                                                {t(`profile.subscription.tracker_step_${stepKey}_description`)}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ) : null}
+
+                    <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+                        <Title level={5} className="!text-white !mb-2">
+                            {t("profile.subscription.requests_title")}
+                        </Title>
+                        <Text className="text-[#A9B3B8]">
+                            {t("profile.subscription.requests_description")}
+                        </Text>
+
+                        <List
+                            className="mt-4"
+                            dataSource={safeRequests}
+                            locale={{
+                                emptyText: (
+                                    <span className="text-[#A9B3B8]">
+                                        {t("profile.subscription.no_requests")}
+                                    </span>
+                                ),
+                            }}
+                            renderItem={(item) => (
+                                <List.Item className="!border-white/10">
+                                    {(() => {
+                                        const paymentUrl = item.paymentLink || extractFirstUrl(item.adminResponse);
+                                        const selection = ensureCheckoutSelection(item.id);
+                                        const methodsForCountry =
+                                            checkoutMethodsByCountry[selection.country] || [];
+
+                                        return (
+                                    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div>
+                                            <Text className="text-white">
+                                                {t(`profile.subscription.plan_${item.currentPlan}`)} → {" "}
+                                                {t(`profile.subscription.plan_${item.targetPlan}`)}
+                                            </Text>
+                                            <div className="text-xs text-[#A9B3B8]">
+                                                {new Date(item.createdAt).toLocaleString()}
+                                            </div>
+                                            {item.notes ? (
+                                                <div className="mt-1 text-xs text-[#A9B3B8]">
+                                                    {item.notes}
+                                                </div>
+                                            ) : null}
+                                            {item.adminResponse ? (
+                                                <div className="mt-1 text-xs text-[#44F3F0]">
+                                                    {item.adminResponse}
+                                                </div>
+                                            ) : null}
+
+                                            <div className="mt-2 text-xs text-[#A9B3B8]">
+                                                {item.status === "approved" && isPlanAlreadyActiveForRequest(item)
+                                                    ? t("profile.subscription.request_status_help_approved_activated")
+                                                    : t(`profile.subscription.request_status_help_${item.status}`)}
+                                            </div>
+
+                                            {item.status === "approved" && !isPlanAlreadyActiveForRequest(item) ? (
+                                                <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
+                                                    <div className="text-sm font-medium text-emerald-200">
+                                                        {t("profile.subscription.payment_ready_title")}
+                                                    </div>
+                                                    <div className="mt-1 text-xs text-emerald-100/90">
+                                                        {t("profile.subscription.payment_ready_description")}
+                                                    </div>
+                                                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                                        <Select
+                                                            size="small"
+                                                            value={selection.country}
+                                                            options={Object.keys(checkoutMethodsByCountry).map(
+                                                                (countryCode) => ({
+                                                                    value: countryCode,
+                                                                    label: countryCode === "CO"
+                                                                        ? "Colombia"
+                                                                        : countryCode === "ES"
+                                                                          ? "España"
+                                                                          : countryCode,
+                                                                })
+                                                            )}
+                                                            onChange={(country) =>
+                                                                updateCheckoutCountry(item.id, country)
+                                                            }
+                                                        />
+                                                        <Select
+                                                            size="small"
+                                                            value={selection.method}
+                                                            options={methodsForCountry.map((method) => ({
+                                                                value: method,
+                                                                label:
+                                                                    PAYMENT_METHOD_LABELS[method] || method,
+                                                            }))}
+                                                            onChange={(method) =>
+                                                                updateCheckoutMethod(item.id, method)
+                                                            }
+                                                        />
+                                                    </div>
+                                                    {paymentUrl ? (
+                                                        <Button
+                                                            size="small"
+                                                            type="primary"
+                                                            loading={checkoutLoadingRequestId === item.id}
+                                                            onClick={() => handleStartCheckout(item)}
+                                                            className="!mt-2 !rounded-lg !bg-[#29D8D5] !text-[#021314] hover:!bg-[#44F3F0]"
+                                                        >
+                                                            {t("profile.subscription.checkout_cta")}
+                                                        </Button>
+                                                    ) : (
+                                                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                            <Button
+                                                                size="small"
+                                                                type="primary"
+                                                                loading={checkoutLoadingRequestId === item.id}
+                                                                onClick={() => handleStartCheckout(item)}
+                                                                className="!rounded-lg !bg-[#29D8D5] !text-[#021314] hover:!bg-[#44F3F0]"
+                                                            >
+                                                                {t("profile.subscription.checkout_cta")}
+                                                            </Button>
+                                                            <span className="text-xs text-[#CDEFEF]">
+                                                                {t("profile.subscription.payment_link_missing")}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                        <Tag color={REQUEST_STATUS_COLORS[item.status] || "default"}>
+                                            {t(`profile.subscription.request_status_${item.status}`)}
+                                        </Tag>
+                                    </div>
+                                        );
+                                    })()}
+                                </List.Item>
+                            )}
+                        />
+                    </div>
+
+                    {isAdmin ? (
+                        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+                            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <Title level={5} className="!text-white !mb-2">
+                                        {t("profile.subscription.admin_requests_title")}
+                                    </Title>
+                                    <Text className="text-[#A9B3B8]">
+                                        {t("profile.subscription.admin_requests_description")}
+                                    </Text>
+                                </div>
+
+                                <div className="grid w-full grid-cols-1 gap-2 sm:w-[430px] sm:grid-cols-2">
+                                    <Select
+                                        value={adminFilterStatus}
+                                        onChange={setAdminFilterStatus}
+                                        options={[
+                                            {
+                                                value: "",
+                                                label: t("profile.subscription.all_statuses"),
+                                            },
+                                            ...REQUEST_STATUS_OPTIONS.map((status) => ({
+                                                value: status,
+                                                label: t(
+                                                    `profile.subscription.request_status_${status}`
+                                                ),
+                                            })),
+                                        ]}
+                                    />
+                                    <Input
+                                        value={adminSearch}
+                                        onChange={(event) => setAdminSearch(event.target.value)}
+                                        placeholder={t("profile.subscription.search_user_placeholder")}
+                                    />
+                                </div>
+                            </div>
+
+                            <List
+                                className="mt-4"
+                                dataSource={filteredAdminRequests}
+                                pagination={{
+                                    pageSize: 8,
+                                    showSizeChanger: false,
+                                    hideOnSinglePage: true,
+                                }}
+                                locale={{
+                                    emptyText: (
+                                        <span className="text-[#A9B3B8]">
+                                            {t("profile.subscription.no_requests")}
+                                        </span>
+                                    ),
+                                }}
+                                renderItem={(item) => (
+                                    <List.Item className="!border-white/10">
+                                        <div className="flex w-full flex-col gap-3">
+                                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                                <div>
+                                                    <Text className="text-white">
+                                                        {item.user?.username || item.user?.email || "User"}
+                                                    </Text>
+                                                    <div className="text-xs text-[#A9B3B8]">
+                                                        {item.user?.email || "-"}
+                                                    </div>
+                                                    <div className="mt-1 text-sm text-white">
+                                                        {t(`profile.subscription.plan_${item.currentPlan}`)} → {" "}
+                                                        {t(`profile.subscription.plan_${item.targetPlan}`)}
+                                                    </div>
+                                                    <div className="text-xs text-[#A9B3B8]">
+                                                        {new Date(item.createdAt).toLocaleString()}
+                                                    </div>
+                                                    {item.notes ? (
+                                                        <div className="mt-1 text-xs text-[#A9B3B8]">
+                                                            {item.notes}
+                                                        </div>
+                                                    ) : null}
+                                                    {item.adminResponse ? (
+                                                        <div className="mt-1 text-xs text-[#44F3F0]">
+                                                            {item.adminResponse}
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+
+                                                <Tag color={REQUEST_STATUS_COLORS[item.status] || "default"}>
+                                                    {t(
+                                                        `profile.subscription.request_status_${item.status}`
+                                                    )}
+                                                </Tag>
+                                            </div>
+
+                                            <div>
+                                                <Button
+                                                    size="small"
+                                                    onClick={() => openAdminReview(item)}
+                                                    className="rounded-lg border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0]"
+                                                >
+                                                    {t("profile.subscription.review_request")}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </List.Item>
+                                )}
+                            />
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+
+            <Modal
+                title={t("profile.subscription.request_modal_title")}
+                open={requestModalOpen}
+                onCancel={() => setRequestModalOpen(false)}
+                onOk={() => upgradeForm.submit()}
+                okText={t("profile.subscription.submit_request")}
+                cancelText={t("common.cancel")}
+                confirmLoading={requestSubmitting}
+                destroyOnClose
+            >
+                <Form
+                    form={upgradeForm}
+                    layout="vertical"
+                    onFinish={submitUpgradeRequest}
+                >
+                    <Form.Item
+                        name="targetPlan"
+                        label={t("profile.subscription.target_plan")}
+                        rules={[{ required: true, message: t("validation.required_field") }]}
+                    >
+                        <Select
+                            options={availableUpgradeOptions.map((plan) => ({
+                                value: plan,
+                                label: t(`profile.subscription.plan_${plan}`),
+                            }))}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="notes"
+                        label={t("profile.subscription.request_notes")}
+                        rules={[{ max: 800 }]}
+                    >
+                        <TextArea
+                            rows={4}
+                            placeholder={t("profile.subscription.request_notes_placeholder")}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="requiresManualReview"
+                        valuePropName="checked"
+                    >
+                        <Checkbox>
+                            {t("profile.subscription.special_review_checkbox")}
+                        </Checkbox>
+                        <div className="mt-1 text-xs text-[#6b7280]">
+                            {t("profile.subscription.special_review_help")}
+                        </div>
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title={t("profile.subscription.admin_review_title")}
+                open={adminModalOpen}
+                onCancel={() => {
+                    setAdminModalOpen(false);
+                    setSelectedAdminRequest(null);
+                }}
+                onOk={() => adminReviewForm.submit()}
+                okText={t("profile.subscription.update_request")}
+                cancelText={t("common.cancel")}
+                confirmLoading={adminSubmitting}
+                destroyOnClose
+            >
+                <Form
+                    form={adminReviewForm}
+                    layout="vertical"
+                    onFinish={submitAdminReview}
+                >
+                    <Form.Item
+                        name="status"
+                        label={t("profile.subscription.target_status")}
+                        rules={[{ required: true, message: t("validation.required_field") }]}
+                    >
+                        <Select
+                            options={REQUEST_STATUS_OPTIONS.map((status) => ({
+                                value: status,
+                                label: t(`profile.subscription.request_status_${status}`),
+                            }))}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="adminResponse"
+                        label={t("profile.subscription.admin_response")}
+                        rules={[{ max: 800 }]}
+                    >
+                        <TextArea
+                            rows={4}
+                            placeholder={t("profile.subscription.admin_response_placeholder")}
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="paymentLink"
+                        label={t("profile.subscription.payment_link")}
+                        rules={[
+                            {
+                                validator: (_, value) => {
+                                    if (!value) {
+                                        return Promise.resolve();
+                                    }
+
+                                    return isValidHttpUrl(value)
+                                        ? Promise.resolve()
+                                        : Promise.reject(
+                                              new Error(
+                                                  t(
+                                                      "profile.subscription.payment_link_invalid"
+                                                  )
+                                              )
+                                          );
+                                },
+                            },
+                        ]}
+                    >
+                        <Input
+                            placeholder={t("profile.subscription.payment_link_placeholder")}
+                        />
+                    </Form.Item>
+                </Form>
+            </Modal>
+        </div>
+    );
+};
+
+export default Billing;

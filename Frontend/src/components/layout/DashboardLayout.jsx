@@ -48,7 +48,11 @@ const DashboardLayout = () => {
                     setCollapsed={setCollapsed}
                 />
 
-                <MobileMenu collapsed={collapsed} currentPage={currentPage} />
+                <MobileMenu
+                    collapsed={collapsed}
+                    currentPage={currentPage}
+                    onClose={() => setCollapsed(true)}
+                />
 
                 <Content className="mx-3 my-3 sm:mx-5 sm:my-5 lg:mx-7 lg:my-7">
                     <div className="overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,11,11,0.9),rgba(8,8,8,0.96))] min-h-[calc(100vh-8rem)] shadow-[0_20px_45px_rgba(0,0,0,0.42)] transition-shadow duration-300 hover:shadow-[0_24px_54px_rgba(0,0,0,0.5)] reveal-card">

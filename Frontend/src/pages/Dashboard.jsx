@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
     Card,
     Row,
@@ -33,11 +34,13 @@ import { api } from "../api/api";
 import SalesChart from "../components/dashboard/SalesChart";
 import useI18n from "../hooks/useI18n";
 import { useCurrency } from "../context/CurrencyContext";
+import { subscriptionService } from "../services/subscriptionService";
 
 const { useToken } = theme;
 const { Title, Text } = Typography;
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const { token } = useToken();
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -56,10 +59,31 @@ const Dashboard = () => {
         topProducts: [],
     });
     const [timeframe, setTimeframe] = useState("30days");
+    const [subscriptionSnapshot, setSubscriptionSnapshot] = useState(null);
+    const [requestSnapshot, setRequestSnapshot] = useState([]);
 
     useEffect(() => {
         fetchDashboardData();
     }, [timeframe]);
+
+    useEffect(() => {
+        fetchSubscriptionSnapshot();
+    }, []);
+
+    const fetchSubscriptionSnapshot = async () => {
+        try {
+            const [subscriptionResponse, requestsResponse] = await Promise.all([
+                subscriptionService.getMySubscription(),
+                subscriptionService.getMyUpgradeRequests(),
+            ]);
+
+            setSubscriptionSnapshot(subscriptionResponse?.data || null);
+            setRequestSnapshot(Array.isArray(requestsResponse?.data) ? requestsResponse.data : []);
+        } catch {
+            setSubscriptionSnapshot(null);
+            setRequestSnapshot([]);
+        }
+    };
 
     const fetchDashboardData = async () => {
         try {
@@ -293,6 +317,9 @@ const Dashboard = () => {
         (dashboardData.lowStockProducts?.length || 0) +
         (dashboardData.outOfStockCount || 0);
     const netTradeDelta = totalSales - totalPurchase;
+    const activePlanRequest = requestSnapshot.find((request) =>
+        ["open", "reviewing", "approved"].includes(request.status)
+    );
 
     return (
         <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.08),transparent_26%),linear-gradient(180deg,#070707_0%,#050505_100%)] text-white">
@@ -301,6 +328,38 @@ const Dashboard = () => {
 
                 <section className="mt-6 animate-fade-up-delay">
                     <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)] p-6 backdrop-blur-md">
+                        <div className="mb-5 rounded-xl border border-[#29D8D5]/20 bg-[#29D8D5]/8 p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <Text className="text-xs uppercase tracking-[0.16em] text-[#A9B3B8]">
+                                        {t("dashboard.plan_overview")}
+                                    </Text>
+                                    <div className="mt-1 text-sm text-white">
+                                        {t("dashboard.current_plan")}: {" "}
+                                        {t(`profile.subscription.plan_${subscriptionSnapshot?.plan || "starter"}`)}
+                                    </div>
+                                    {activePlanRequest ? (
+                                        <div className="mt-1 text-xs text-[#CFE8E8]">
+                                            {t("dashboard.request_in_progress")}: {" "}
+                                            {t(`profile.subscription.request_status_${activePlanRequest.status}`)}
+                                        </div>
+                                    ) : (
+                                        <div className="mt-1 text-xs text-[#A9B3B8]">
+                                            {t("dashboard.no_active_plan_request")}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <Button
+                                    type="default"
+                                    onClick={() => navigate("/billing")}
+                                    className="rounded-full border border-white/10 bg-white/[0.04] text-white hover:border-[#29D8D5]/40 hover:text-[#E9FEFE]"
+                                >
+                                    {t("dashboard.manage_plan_cta")}
+                                </Button>
+                            </div>
+                        </div>
+
                         <Row gutter={[16, 16]}>
                             <Col xs={24} sm={12} lg={8}>
                                 <StatCard

@@ -29,6 +29,14 @@ export const userService = {
         }
     },
 
+    async updatePreferredLanguage(preferredLanguage) {
+        const response = await api.patch("/users/update-account", {
+            preferredLanguage,
+        });
+
+        return response.data;
+    },
+
     // Avatar upload
     async updateAvatar(file) {
         const formData = new FormData();

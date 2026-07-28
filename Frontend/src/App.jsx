@@ -6,6 +6,7 @@ import Login from "./pages/auth/Login";
 import EmailVerify from "./pages/auth/EmailVerify";
 import ResetPassword from "./pages/auth/ResetPassword";
 import Signup from "./pages/auth/Signup";
+import SignupRequestStatus from "./pages/auth/SignupRequestStatus";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
@@ -23,6 +24,9 @@ import Customers from "./pages/Customers";
 import Suppliers from "./pages/Suppliers";
 import Category from "./pages/Category";
 import Reports from "./pages/Reports";
+import Billing from "./pages/Billing";
+import AdminManagement from "./pages/AdminManagement";
+import PaymentSuccess from "./pages/PaymentSuccess";
 
 function App() {
     return (
@@ -38,6 +42,7 @@ function App() {
                             <Route path="/login" element={<Login />} />
                             <Route path="/demo" element={<Demo />} />
                             <Route path="/signup" element={<Signup />} />
+                            <Route path="/signup/request-status" element={<SignupRequestStatus />} />
                             <Route
                                 path="/reset-password"
                                 element={<ResetPassword />}
@@ -79,6 +84,9 @@ function App() {
                                 <Route path="suppliers" element={<Suppliers />} />
                                 <Route path="categories" element={<Category />} />
                                 <Route path="reports/*" element={<Reports />} />
+                                <Route path="billing" element={<Billing />} />
+                                <Route path="billing/payment-success" element={<PaymentSuccess />} />
+                                <Route path="admin/management" element={<AdminManagement />} />
                             </Route>
 
                             {/* catch all */}

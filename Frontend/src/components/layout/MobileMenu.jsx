@@ -3,8 +3,10 @@ import React, { useEffect, useRef } from "react";
 import { Menu } from "antd";
 import { getMenuItems } from "../../data";
 import useI18n from "../../hooks/useI18n";
+import AuthContext from "../../context/AuthContext";
 
 const MobileMenu = ({ collapsed, currentPage, onClose }) => {
+    const { user } = React.useContext(AuthContext);
     const { t } = useI18n();
     const panelRef = useRef(null);
 
@@ -51,7 +53,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
                                 theme="dark"
                                 selectedKeys={[currentPage]}
                                 mode="inline"
-                                items={getMenuItems(t)}
+                                items={getMenuItems(t, user?.role)}
                                 onClick={onClose}
                                 className="border-r-0"
                                 style={{

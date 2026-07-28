@@ -9,6 +9,7 @@ import {
 import { bulkUploadProducts } from "../controllers/product.bulk.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
+import { enforceEntityLimit } from "../middleware/pricing.middleware.js";
 import { upload, csvUpload } from "../middleware/multer.middleware.js";
 
 const router = Router();
@@ -19,7 +20,7 @@ router.route("/bulk-upload").post(csvUpload.single("file"), bulkUploadProducts);
 
 router
     .route("/")
-    .post(upload.single("product_image"), createProduct)
+    .post(enforceEntityLimit("products"), upload.single("product_image"), createProduct)
     .get(getAllProducts);
 
 // Admin route

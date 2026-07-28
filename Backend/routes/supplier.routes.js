@@ -8,6 +8,7 @@ import {
 } from "../controllers/supplier.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
+import { enforceEntityLimit } from "../middleware/pricing.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
 
 const router = Router();
@@ -19,7 +20,7 @@ router.route("/admin/all").get(isAdmin, getAllSuppliers);
 // Regular user routes
 router
     .route("/")
-    .post(upload.single("photo"), createSupplier)
+    .post(enforceEntityLimit("suppliers"), upload.single("photo"), createSupplier)
     .get(getUserSuppliers);
 
 router

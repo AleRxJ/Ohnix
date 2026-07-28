@@ -32,6 +32,14 @@ const LandingPage = () => {
         navigate("/demo");
     };
 
+    const handlePlanCta = (planKey) => {
+        const normalizedPlan = ["starter", "growth", "enterprise"].includes(planKey)
+            ? planKey
+            : "starter";
+
+        navigate(`/signup?plan=${normalizedPlan}&source=landing-pricing`);
+    };
+
     const heroStats = [
         {
             value: t("landing.hero.stats.cycles.value"),
@@ -161,6 +169,7 @@ const LandingPage = () => {
 
     const pricingPlans = [
         {
+            key: "starter",
             name: t("landing.pricing.plans.starter.name"),
             subtitle: t("landing.pricing.plans.starter.subtitle"),
             price: t("landing.pricing.plans.starter.price"),
@@ -176,6 +185,7 @@ const LandingPage = () => {
             icon: brandIcons.pricing,
         },
         {
+            key: "growth",
             name: t("landing.pricing.plans.growth.name"),
             subtitle: t("landing.pricing.plans.growth.subtitle"),
             price: t("landing.pricing.plans.growth.price"),
@@ -192,6 +202,7 @@ const LandingPage = () => {
             featured: true,
         },
         {
+            key: "enterprise",
             name: t("landing.pricing.plans.enterprise.name"),
             subtitle: t("landing.pricing.plans.enterprise.subtitle"),
             price: t("landing.pricing.plans.enterprise.price"),
@@ -263,6 +274,7 @@ const LandingPage = () => {
                     }}
                     plans={pricingPlans}
                     featuredLabel={t("landing.pricing.most_popular")}
+                    onPlanSelect={handlePlanCta}
                 />
 
                 <FaqSection

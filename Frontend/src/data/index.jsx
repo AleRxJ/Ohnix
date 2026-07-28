@@ -7,6 +7,8 @@ import {
     ShoppingCartOutlined,
     ShoppingOutlined,
     UserSwitchOutlined,
+    CreditCardOutlined,
+    ApartmentOutlined,
     CheckCircleOutlined,
     ClockCircleOutlined,
     UndoOutlined,
@@ -82,48 +84,65 @@ export const steps = [
     },
 ];
 
-export const getMenuItems = (t) => [
-    {
-        key: "dashboard",
-        icon: <DashboardOutlined />,
-        label: <Link to="/dashboard">{t("common.dashboard")}</Link>,
-    },
-    {
-        key: "products",
-        icon: <AppstoreOutlined />,
-        label: <Link to="/products">{t("common.products")}</Link>,
-    },
-    {
-        key: "orders",
-        icon: <ShoppingCartOutlined />,
-        label: <Link to="/orders">{t("common.orders")}</Link>,
-    },
-    {
-        key: "purchases",
-        icon: <ShoppingOutlined />,
-        label: <Link to="/purchases">{t("common.purchases")}</Link>,
-    },
-    {
-        key: "customers",
-        icon: <TeamOutlined />,
-        label: <Link to="/customers">{t("common.customers")}</Link>,
-    },
-    {
-        key: "suppliers",
-        icon: <UserSwitchOutlined />,
-        label: <Link to="/suppliers">{t("common.suppliers")}</Link>,
-    },
-    {
-        key: "categories",
-        icon: <AppstoreOutlined />,
-        label: <Link to="/categories">{t("common.categories")}</Link>,
-    },
-    {
-        key: "reports",
-        icon: <BarChartOutlined />,
-        label: <Link to="/reports">{t("common.reports")}</Link>,
-    },
-];
+export const getMenuItems = (t, role) => {
+    const items = [
+        {
+            key: "dashboard",
+            icon: <DashboardOutlined />,
+            label: <Link to="/dashboard">{t("common.dashboard")}</Link>,
+        },
+        {
+            key: "products",
+            icon: <AppstoreOutlined />,
+            label: <Link to="/products">{t("common.products")}</Link>,
+        },
+        {
+            key: "orders",
+            icon: <ShoppingCartOutlined />,
+            label: <Link to="/orders">{t("common.orders")}</Link>,
+        },
+        {
+            key: "purchases",
+            icon: <ShoppingOutlined />,
+            label: <Link to="/purchases">{t("common.purchases")}</Link>,
+        },
+        {
+            key: "customers",
+            icon: <TeamOutlined />,
+            label: <Link to="/customers">{t("common.customers")}</Link>,
+        },
+        {
+            key: "suppliers",
+            icon: <UserSwitchOutlined />,
+            label: <Link to="/suppliers">{t("common.suppliers")}</Link>,
+        },
+        {
+            key: "categories",
+            icon: <AppstoreOutlined />,
+            label: <Link to="/categories">{t("common.categories")}</Link>,
+        },
+        {
+            key: "reports",
+            icon: <BarChartOutlined />,
+            label: <Link to="/reports">{t("common.reports")}</Link>,
+        },
+        {
+            key: "billing",
+            icon: <CreditCardOutlined />,
+            label: <Link to="/billing">{t("common.billing")}</Link>,
+        },
+    ];
+
+    if (role === "admin") {
+        items.push({
+            key: "admin",
+            icon: <ApartmentOutlined />,
+            label: <Link to="/admin/management">{t("common.admin_panel")}</Link>,
+        });
+    }
+
+    return items;
+};
 
 export const getStatusIcon = (status) => {
     const icons = {

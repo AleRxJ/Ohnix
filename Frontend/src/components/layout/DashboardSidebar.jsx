@@ -46,7 +46,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                     theme="dark"
                     defaultSelectedKeys={[currentPage]}
                     mode="inline"
-                    items={getMenuItems(t).map((item) => ({
+                    items={getMenuItems(t, user?.role).map((item) => ({
                         ...item,
                     }))}
                     className="border-r-0"

@@ -13,11 +13,15 @@ import {
     resetPassword,
     updateAccountDetails,
     updateUserAvatar,
+    listUsersAdmin,
+    createUserAdmin,
+    updateUserAdmin,
     sendChangePasswordOtp,
     verifyChangePasswordOtp,
 } from "../controllers/user.controller.js";
 import { upload } from "../middleware/multer.middleware.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
+import { isAdmin } from "../middleware/admin.middleware.js";
 
 const router = Router();
 
@@ -44,6 +48,12 @@ router
     .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
 
 router.route("/current-user").get(verifyJWT, getCurrentUser);
+
+router
+    .route("/admin/users")
+    .get(verifyJWT, isAdmin, listUsersAdmin)
+    .post(verifyJWT, isAdmin, createUserAdmin);
+router.route("/admin/users/:userId").patch(verifyJWT, isAdmin, updateUserAdmin);
 
 router.route("/send-verify-otp").post(verifyJWT, sendVerifyOtp);
 router.route("/verify-email").post(verifyJWT, verifyEmail);

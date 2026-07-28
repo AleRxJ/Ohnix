@@ -27,6 +27,8 @@ https://localhost:3001/api/v1
 - [🛍️ Order APIs](#️-order-apis)
 - [📊 Report APIs](#-report-apis)
 - [⏰ Scheduler APIs](#-scheduler-apis)
+- [💳 Subscription APIs](#-subscription-apis)
+- [🏢 Company APIs](#-company-apis)
 - [🔒 Authentication & Authorization](#-authentication--authorization)
 - [📋 Response Structure](#-response-structure)
 
@@ -53,6 +55,17 @@ Comprehensive user authentication and account management.
 | **POST**  | `/users/reset-password`             | Reset password using OTP               | ❌   | Public |
 | **POST**  | `/users/send-change-password-otp`   | Send OTP for password change           | ✅   | User   |
 | **POST**  | `/users/verify-change-password-otp` | Verify password change OTP             | ✅   | User   |
+| **GET**   | `/users/admin/users`                | List all users across companies        | ✅   | Admin  |
+| **POST**  | `/users/admin/users`                | Create managed user                    | ✅   | Admin  |
+| **PATCH** | `/users/admin/users/:userId`        | Update managed user role/company/state | ✅   | Admin  |
+ 
+Optional field:
+- `desiredPlan`: `growth` or `enterprise` to automatically create an open upgrade request after signup (account is still created on Starter).
+- `preferredLanguage`: `es` or `en` to persist communication language for account and billing notifications.
+
+`/users/update-account` supports:
+- `username` (optional)
+- `preferredLanguage` (`es` or `en`, optional)
 
 ---
 
@@ -184,6 +197,141 @@ Automated task management and low stock alert system (Admin only).
 | **PUT**  | `/scheduler/threshold`      | Update low stock threshold value               | ✅   | Admin |
 | **POST** | `/scheduler/start`          | Start the automated scheduler service          | ✅   | Admin |
 | **POST** | `/scheduler/stop`           | Stop the automated scheduler service           | ✅   | Admin |
+
+---
+
+## 💳 Subscription APIs
+
+Subscription lifecycle and plan usage tracking.
+
+| Method    | Endpoint                             | Description                                            | Auth | Role  |
+| --------- | ------------------------------------ | ------------------------------------------------------ | ---- | ----- |
+| **GET**   | `/subscriptions/me`                  | Get current user plan, status and limits               | ✅   | User  |
+| **GET**   | `/subscriptions/me/usage`            | Get current user usage and remaining quota             | ✅   | User  |
+| **GET**   | `/subscriptions/me/upgrade-requests` | Get current user upgrade request history               | ✅   | User  |
+| **GET**   | `/subscriptions/me/checkout-payment-methods` | Get autonomous checkout methods by country (CO/ES) | ✅   | User  |
+| **POST**  | `/subscriptions/me/upgrade-requests` | Create a new upgrade request                           | ✅   | User  |
+| **POST**  | `/subscriptions/me/upgrade-requests/:id/checkout-session` | Create checkout session with selected country and method | ✅ | User |
+| **GET**   | `/subscriptions/me/upgrade-requests/:id/checkout-status` | Poll checkout/activation status for upgrade request | ✅ | User |
+| **PATCH** | `/subscriptions/me/pause`            | Pause current user subscription                        | ✅   | User  |
+| **PATCH** | `/subscriptions/me/cancel`           | Cancel current user subscription                       | ✅   | User  |
+| **PATCH** | `/subscriptions/me/reactivate`       | Reactivate current user subscription                   | ✅   | User  |
+| **PATCH** | `/subscriptions/admin/users/:userId/plan`  | Upgrade/downgrade target user plan                     | ✅   | Admin |
+| **GET**   | `/subscriptions/admin/users/:userId/usage` | Get target user usage snapshot and entitlement context | ✅   | Admin |
+| **GET**   | `/subscriptions/admin/upgrade-requests`     | List upgrade requests for review                       | ✅   | Admin |
+| **PATCH** | `/subscriptions/admin/upgrade-requests/:id` | Update upgrade request status and admin response       | ✅   | Admin |
+
+### Approval Model (Auto + Exceptions)
+
+- Default behavior: requests are auto-approved and users can go directly to checkout.
+- Exception behavior: requests are routed to admin review queue when special conditions apply.
+- Admin queue endpoint (`GET /subscriptions/admin/upgrade-requests`) returns only active exceptions by default (`open`, `reviewing`) unless a specific `status` filter is sent.
+
+### Create Upgrade Request Payload (Optional Manual Review Flag)
+
+```json
+{
+    "targetPlan": "enterprise",
+    "notes": "Need invoice and custom contract terms",
+    "requiresManualReview": true
+}
+```
+
+Use `requiresManualReview=true` only when manual handling is needed.
+
+### Payment Webhook (No Auth)
+
+| Method   | Endpoint                                  | Description                              | Auth | Role |
+| -------- | ----------------------------------------- | ---------------------------------------- | ---- | ---- |
+| **POST** | `/subscriptions/payments/webhook`         | Receives payment provider confirmation and closes approved request automatically | ❌ | System |
+
+### Create Checkout Session Payload
+
+```json
+{
+    "country": "CO",
+    "paymentMethod": "pse"
+}
+```
+
+Supported combinations:
+
+- `CO`: `pse` (otros bancos), `bancolombia_button`, `card`
+- `ES`: `card`, `bizum`, `sepa_debit`
+
+### Required Environment Variables (Autonomous Checkout)
+
+```bash
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+
+# One-time upgrade amounts in the smallest currency unit
+# COP has no decimals (example: 99000 = COP 99,000)
+STRIPE_AMOUNT_GROWTH_COP=99000
+STRIPE_AMOUNT_ENTERPRISE_COP=299000
+
+# EUR uses cents (example: 2900 = EUR 29.00)
+STRIPE_AMOUNT_GROWTH_EUR=2900
+STRIPE_AMOUNT_ENTERPRISE_EUR=9900
+
+FRONTEND_URL=http://localhost:5173
+```
+
+### Stripe Dashboard Requirements (CO/ES)
+
+Enable these payment methods in Stripe for the account/environment being tested:
+
+- Colombia: `pse`, `card` (the `bancolombia_button` option is routed through PSE)
+- Spain: `card`, `bizum`, `sepa_debit`
+
+If a method is not enabled in Stripe Dashboard, checkout creation for that method may fail or the method may not appear in the hosted checkout UI.
+
+### Local Webhook Test (Developer Mode)
+
+1. Start backend server.
+2. Forward Stripe events to local webhook endpoint:
+
+```bash
+stripe listen --forward-to http://localhost:3001/api/v1/subscriptions/payments/webhook
+```
+
+3. Copy generated `whsec_...` and set `STRIPE_WEBHOOK_SECRET`.
+4. Create upgrade request as user.
+5. If it is auto-approved, continue directly to checkout. If it is marked as exception, admin should review/approve first.
+6. Create checkout session from Billing with country + method (for example CO + PSE).
+7. Complete test payment in Stripe Checkout.
+
+### Expected State Transition After Successful Payment
+
+- Upgrade request: `approved` -> `closed`
+- Subscription plan: `currentPlan` -> `targetPlan`
+- Payment fields:
+    - `paymentStatus`: `succeeded`
+    - `paidAt`: populated
+
+### Troubleshooting
+
+- `Invalid webhook signature`:
+    - verify raw webhook route registration is before JSON parser in app middleware chain.
+    - verify `STRIPE_WEBHOOK_SECRET` matches current `stripe listen` session.
+- `Unsupported payment method for country`:
+    - check payload `country` + `paymentMethod` combination.
+    - check method enablement in Stripe Dashboard.
+- Request remains `approved` after payment:
+    - verify webhook forwarding is active and hitting `/subscriptions/payments/webhook`.
+    - inspect backend logs for webhook processing errors.
+
+---
+
+## 🏢 Company APIs
+
+Platform-level company administration (Admin only).
+
+| Method    | Endpoint                    | Description                          | Auth | Role  |
+| --------- | --------------------------- | ------------------------------------ | ---- | ----- |
+| **GET**   | `/companies/admin`          | List all companies                   | ✅   | Admin |
+| **POST**  | `/companies/admin`          | Create a managed company             | ✅   | Admin |
+| **PATCH** | `/companies/admin/:companyId` | Update company profile and active state | ✅   | Admin |
 
 ---
 

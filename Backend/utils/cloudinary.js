@@ -11,6 +11,33 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+const isPlaceholder = (value) => {
+    const normalized = `${value || ""}`.trim().toLowerCase();
+    return !normalized || normalized === "change_me";
+};
+
+const isCloudinaryConfigured = () =>
+    !isPlaceholder(process.env.CLOUDINARY_CLOUD_NAME) &&
+    !isPlaceholder(process.env.CLOUDINARY_API_KEY) &&
+    !isPlaceholder(process.env.CLOUDINARY_API_SECRET);
+
+const toPublicUrlFromLocalPath = (localFilePath) => {
+    const normalizedPath = path.normalize(localFilePath);
+    const publicSegment = `${path.sep}public${path.sep}`;
+    const publicIndex = normalizedPath.lastIndexOf(publicSegment);
+
+    if (publicIndex === -1) {
+        return null;
+    }
+
+    const relativePath = normalizedPath
+        .slice(publicIndex + publicSegment.length)
+        .split(path.sep)
+        .join("/");
+
+    return `/${relativePath}`;
+};
+
 // Function to upload buffer directly to Cloudinary (for Vercel)
 const uploadBufferToCloudinary = async (buffer, filename) => {
     try {
@@ -49,6 +76,25 @@ const uploadOnCloudinary = async (localFilePath) => {
         if (!fs.existsSync(localFilePath)) {
             console.error(`File not found: ${localFilePath}`);
             return null;
+        }
+
+        if (!isCloudinaryConfigured()) {
+            if (process.env.NODE_ENV === "production") {
+                console.error(
+                    "Cloudinary is not configured in production. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET."
+                );
+                return null;
+            }
+
+            const localUrl = toPublicUrlFromLocalPath(localFilePath);
+            if (!localUrl) {
+                return null;
+            }
+
+            return {
+                url: localUrl,
+                provider: "local",
+            };
         }
 
         // Upload the file to cloudinary
