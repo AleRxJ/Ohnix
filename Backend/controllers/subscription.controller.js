@@ -15,7 +15,7 @@ import {
     createUpgradeCheckoutSession as createUpgradeCheckoutSessionProvider,
     getSupportedPaymentMethodsByCountry,
     isAutonomousCheckoutConfigured,
-    parseStripeWebhookEvent,
+    parsePaymentWebhookEvent,
 } from "../services/payment.service.js";
 
 const normalizePaymentLink = (value) => {
@@ -653,30 +653,47 @@ export const getMyUpgradeCheckoutStatus = asyncHandler(async (req, res, next) =>
 export const handlePaymentWebhook = async (req, res) => {
     try {
         const signature = req.headers["stripe-signature"];
-        const event = parseStripeWebhookEvent({
+        const event = parsePaymentWebhookEvent({
             rawBody: req.body,
+            headers: req.headers,
             signature,
         });
 
-        if (event?.type === "checkout.session.completed") {
+        const provider = event?.provider || "stripe";
+
+        if (
+            event?.type === "checkout.session.completed" ||
+            event?.type === "payment.succeeded"
+        ) {
             const session = event.data?.object;
-            const upgradeRequestId = session?.metadata?.upgradeRequestId;
+            const upgradeRequestId =
+                session?.metadata?.upgradeRequestId ||
+                session?.upgradeRequestId ||
+                session?.requestId;
 
             if (upgradeRequestId) {
                 await closeApprovedRequestAndActivatePlan({
                     requestId: upgradeRequestId,
                     actedBy: "payment-webhook",
-                    paymentSessionId: session.id,
-                    paymentProvider: "stripe",
+                    paymentSessionId:
+                        session?.id || session?.sessionId || session?.reference,
+                    paymentProvider: provider,
                     paymentStatus: "paid",
-                    paymentLink: session.url || null,
+                    paymentLink:
+                        session?.url || session?.checkoutUrl || session?.paymentUrl || null,
                 });
             }
         }
 
-        if (event?.type === "checkout.session.expired") {
+        if (
+            event?.type === "checkout.session.expired" ||
+            event?.type === "payment.failed"
+        ) {
             const session = event.data?.object;
-            const upgradeRequestId = session?.metadata?.upgradeRequestId;
+            const upgradeRequestId =
+                session?.metadata?.upgradeRequestId ||
+                session?.upgradeRequestId ||
+                session?.requestId;
 
             if (upgradeRequestId) {
                 await prisma.planUpgradeRequest.updateMany({
@@ -685,7 +702,8 @@ export const handlePaymentWebhook = async (req, res) => {
                         status: "approved",
                     },
                     data: {
-                        paymentStatus: "expired",
+                        paymentStatus:
+                            event?.type === "payment.failed" ? "failed" : "expired",
                     },
                 });
             }

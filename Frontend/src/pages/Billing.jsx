@@ -42,8 +42,8 @@ const TRACKER_STEP_KEYS = ["submitted", "reviewing", "approved", "activated"];
 
 const PAYMENT_METHOD_LABELS = {
     card: "Tarjeta / Card",
-    pse: "PSE (otros bancos)",
-    bancolombia_button: "Boton Bancolombia",
+    pse: "ACH (PSE - otros bancos)",
+    bancolombia_button: "Pasarela Bancolombia",
     bizum: "Bizum",
     sepa_debit: "SEPA Débito",
 };
@@ -77,11 +77,28 @@ const isValidHttpUrl = (value = "") => {
     }
 };
 
+const UPGRADE_REQUEST_ERROR_I18N_MAP = {
+    "You already have an upgrade request in progress":
+        "profile.subscription.error_upgrade_request_in_progress",
+    "You are already on this plan":
+        "profile.subscription.error_already_on_target_plan",
+};
+
 const Billing = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, refreshUser } = useContext(AuthContext);
     const { t } = useI18n();
+
+    const resolveLocalizedErrorMessage = (error, fallbackKey = "common.error") => {
+        const backendMessage = error?.response?.data?.message;
+
+        if (backendMessage && UPGRADE_REQUEST_ERROR_I18N_MAP[backendMessage]) {
+            return t(UPGRADE_REQUEST_ERROR_I18N_MAP[backendMessage]);
+        }
+
+        return backendMessage || t(fallbackKey);
+    };
 
     const [loadingSubscription, setLoadingSubscription] = useState(true);
     const [refreshingSubscription, setRefreshingSubscription] = useState(false);
@@ -350,7 +367,7 @@ const Billing = () => {
             upgradeForm.resetFields();
             await handleRefreshSubscription();
         } catch (error) {
-            toast.error(error.response?.data?.message || t("common.error"));
+            toast.error(resolveLocalizedErrorMessage(error));
         } finally {
             setRequestSubmitting(false);
         }

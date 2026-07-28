@@ -7,7 +7,7 @@ const getStripe = () => {
     }
 
     return new Stripe(secretKey, {
-        apiVersion: "2024-06-20",
+        apiVersion: "2026-06-24.dahlia",
     });
 };
 
@@ -22,12 +22,71 @@ const COUNTRY_CONFIG = {
     },
 };
 
+const truthyValues = new Set(["1", "true", "yes", "on"]);
+
+const isEnvFlagEnabled = (value) =>
+    truthyValues.has(`${value || ""}`.trim().toLowerCase());
+
+const DIRECT_CO_METHOD_ENDPOINTS = {
+    pse: process.env.COLOMBIA_DIRECT_PSE_ENDPOINT || "/payments/pse/checkout",
+    bancolombia_button:
+        process.env.COLOMBIA_DIRECT_BANCOLOMBIA_ENDPOINT ||
+        "/payments/bancolombia/checkout",
+};
+
 const PAYMENT_METHOD_TO_STRIPE_TYPE = {
     card: "card",
     pse: "pse",
-    bancolombia_button: "pse",
+    ach: "pse",
+    bancolombia_button: "bancolombia",
     bizum: "bizum",
     sepa_debit: "sepa_debit",
+};
+
+const getStripeMethodCandidates = ({ paymentMethod, country }) => {
+    const primary = PAYMENT_METHOD_TO_STRIPE_TYPE[paymentMethod];
+    if (!primary) {
+        return [];
+    }
+
+    // Stripe availability can vary by account/country and API version.
+    // For Colombia banking methods, prioritize the intended rail and then
+    // fall back only to the other local rail (never silently force card).
+    if (country === "CO" && ["pse", "bancolombia_button"].includes(paymentMethod)) {
+        if (paymentMethod === "bancolombia_button") {
+            return ["bancolombia", "pse"];
+        }
+
+        return ["pse", "bancolombia"];
+    }
+
+    return [primary];
+};
+
+const getCurrencyCandidates = ({ country, preferredCurrency }) => {
+    const base = [preferredCurrency];
+    if (country === "CO") {
+        return [...new Set([...base, "usd", "eur"])];
+    }
+
+    return base;
+};
+
+const isInvalidPaymentMethodTypeError = (error) =>
+    error?.type === "StripeInvalidRequestError" &&
+    error?.rawType === "invalid_request_error" &&
+    error?.param === "payment_method_types[0]";
+
+const isUnsupportedCurrencyMethodComboError = (error) => {
+    const message = `${error?.raw?.message || error?.message || ""}`.toLowerCase();
+    return (
+        error?.type === "StripeInvalidRequestError" &&
+        error?.rawType === "invalid_request_error" &&
+        (
+            message.includes("supported by the default currency") ||
+            message.includes("must convert to at least 50 cents")
+        )
+    );
 };
 
 const normalizePaymentMethod = (value) => {
@@ -37,18 +96,42 @@ const normalizePaymentMethod = (value) => {
         return "bancolombia_button";
     }
 
+    if (["pse", "ach", "ach_pse", "bank_transfer"].includes(normalized)) {
+        return "pse";
+    }
+
     return normalized;
 };
 
 const PLAN_ONE_TIME_AMOUNT_BY_CURRENCY = {
     growth: {
         cop: () => Number(process.env.STRIPE_AMOUNT_GROWTH_COP),
+        usd: () => Number(process.env.STRIPE_AMOUNT_GROWTH_USD),
         eur: () => Number(process.env.STRIPE_AMOUNT_GROWTH_EUR),
     },
     enterprise: {
         cop: () => Number(process.env.STRIPE_AMOUNT_ENTERPRISE_COP),
+        usd: () => Number(process.env.STRIPE_AMOUNT_ENTERPRISE_USD),
         eur: () => Number(process.env.STRIPE_AMOUNT_ENTERPRISE_EUR),
     },
+};
+
+const getColombiaDirectConfig = () => {
+    const baseUrl = `${process.env.COLOMBIA_DIRECT_BASE_URL || ""}`.trim().replace(
+        /\/$/,
+        ""
+    );
+
+    return {
+        enabled: isEnvFlagEnabled(process.env.COLOMBIA_DIRECT_PAYMENTS_ENABLED),
+        strict: isEnvFlagEnabled(process.env.COLOMBIA_DIRECT_PAYMENTS_STRICT),
+        baseUrl,
+        apiKey: `${process.env.COLOMBIA_DIRECT_API_KEY || ""}`.trim(),
+        providerName: `${process.env.COLOMBIA_DIRECT_PROVIDER_NAME || "co_direct"}`
+            .trim()
+            .toLowerCase(),
+        timeoutMs: Number(process.env.COLOMBIA_DIRECT_TIMEOUT_MS || 15000),
+    };
 };
 
 const getSuccessUrl = (requestId) => {
@@ -85,6 +168,99 @@ const getAmountForPlanAndCurrency = (targetPlan, currency) => {
     return Math.round(amount);
 };
 
+const createColombiaDirectCheckoutSession = async ({
+    request,
+    user,
+    paymentMethod,
+    country,
+}) => {
+    const directConfig = getColombiaDirectConfig();
+
+    if (!directConfig.enabled) {
+        throw new Error("Colombia direct payments are disabled");
+    }
+
+    if (!directConfig.baseUrl) {
+        throw new Error("COLOMBIA_DIRECT_BASE_URL is required for direct payments");
+    }
+
+    const endpointPath = DIRECT_CO_METHOD_ENDPOINTS[paymentMethod];
+    if (!endpointPath) {
+        throw new Error("Direct integration is not available for this payment method");
+    }
+
+    const amount = getAmountForPlanAndCurrency(request.targetPlan, "cop");
+    if (!amount) {
+        throw new Error("Colombia direct payments require COP amounts to be configured");
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), directConfig.timeoutMs);
+
+    try {
+        const endpointUrl = `${directConfig.baseUrl}${endpointPath.startsWith("/") ? "" : "/"}${endpointPath}`;
+
+        const response = await fetch(endpointUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...(directConfig.apiKey
+                    ? { Authorization: `Bearer ${directConfig.apiKey}` }
+                    : {}),
+            },
+            body: JSON.stringify({
+                requestId: request.id,
+                userId: request.userId,
+                customerEmail: user.email,
+                customerName: user.username,
+                currentPlan: request.currentPlan,
+                targetPlan: request.targetPlan,
+                amount,
+                currency: "cop",
+                paymentMethod,
+                country,
+                successUrl: getSuccessUrl(request.id),
+                cancelUrl: getCancelUrl(request.id),
+                metadata: {
+                    source: "ohnix",
+                    upgradeRequestId: request.id,
+                },
+            }),
+            signal: controller.signal,
+        });
+
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+            throw new Error(
+                payload?.message ||
+                    `Colombia direct checkout failed with status ${response.status}`
+            );
+        }
+
+        const checkoutUrl =
+            payload?.checkoutUrl || payload?.paymentUrl || payload?.redirectUrl;
+        const sessionId =
+            payload?.sessionId || payload?.id || payload?.reference || request.id;
+
+        if (!checkoutUrl) {
+            throw new Error("Colombia direct checkout did not return a checkout URL");
+        }
+
+        return {
+            provider: directConfig.providerName,
+            checkoutUrl,
+            sessionId: `${sessionId}`,
+            country,
+            paymentMethod,
+            resolvedStripeMethod: null,
+            resolvedCurrency: "cop",
+        };
+    } finally {
+        clearTimeout(timeout);
+    }
+};
+
 export const isAutonomousCheckoutConfigured = () => {
     const stripe = getStripe();
     return Boolean(stripe);
@@ -103,9 +279,6 @@ export const createUpgradeCheckoutSession = async ({
     country,
 }) => {
     const stripe = getStripe();
-    if (!stripe) {
-        throw new Error("Autonomous checkout is not configured");
-    }
 
     const countryConfig = resolveCountryConfig(country);
     if (!countryConfig) {
@@ -118,50 +291,122 @@ export const createUpgradeCheckoutSession = async ({
         throw new Error("Selected payment method is not available for this country");
     }
 
-    const stripePaymentMethodType = PAYMENT_METHOD_TO_STRIPE_TYPE[normalizedPaymentMethod];
-    if (!stripePaymentMethodType) {
+    const stripePaymentMethodCandidates = getStripeMethodCandidates({
+        paymentMethod: normalizedPaymentMethod,
+        country: countryConfig.country,
+    });
+
+    if (!stripePaymentMethodCandidates.length) {
         throw new Error("Unsupported payment method");
     }
 
-    const amount = getAmountForPlanAndCurrency(
-        request.targetPlan,
-        countryConfig.currency
-    );
+    const shouldTryColombiaDirect =
+        countryConfig.country === "CO" &&
+        ["pse", "bancolombia_button"].includes(normalizedPaymentMethod);
 
-    if (!amount) {
-        throw new Error(
-            `Missing one-time amount for ${request.targetPlan} in ${countryConfig.currency}`
-        );
+    if (shouldTryColombiaDirect) {
+        const directConfig = getColombiaDirectConfig();
+
+        try {
+            return await createColombiaDirectCheckoutSession({
+                request,
+                user,
+                paymentMethod: normalizedPaymentMethod,
+                country: countryConfig.country,
+            });
+        } catch (directError) {
+            console.warn(
+                "Colombia direct checkout unavailable. Falling back to Stripe.",
+                directError?.message || directError
+            );
+
+            if (directConfig.strict) {
+                throw directError;
+            }
+        }
     }
 
-    const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        customer_email: user.email,
-        payment_method_types: [stripePaymentMethodType],
-        line_items: [
-            {
-                price_data: {
-                    currency: countryConfig.currency,
-                    product_data: {
-                        name: `Ohnix ${request.targetPlan} upgrade`,
-                        description: `Plan upgrade from ${request.currentPlan} to ${request.targetPlan}`,
-                    },
-                    unit_amount: amount,
-                },
-                quantity: 1,
-            },
-        ],
-        success_url: getSuccessUrl(request.id),
-        cancel_url: getCancelUrl(request.id),
-        metadata: {
-            upgradeRequestId: request.id,
-            userId: request.userId,
-            currentPlan: request.currentPlan,
-            targetPlan: request.targetPlan,
-            checkoutCountry: countryConfig.country,
-            checkoutPaymentMethod: normalizedPaymentMethod,
-        },
+    if (!stripe) {
+        throw new Error("Autonomous checkout is not configured");
+    }
+
+    const currencyCandidates = getCurrencyCandidates({
+        country: countryConfig.country,
+        preferredCurrency: countryConfig.currency,
     });
+
+    let session = null;
+    let resolvedStripeMethod = null;
+    let resolvedCurrency = null;
+    let lastError = null;
+
+    for (const candidateCurrency of currencyCandidates) {
+        const amount = getAmountForPlanAndCurrency(request.targetPlan, candidateCurrency);
+        if (!amount) {
+            continue;
+        }
+
+        for (const candidateMethod of stripePaymentMethodCandidates) {
+            try {
+                session = await stripe.checkout.sessions.create({
+                    mode: "payment",
+                    customer_email: user.email,
+                    payment_method_types: [candidateMethod],
+                    line_items: [
+                        {
+                            price_data: {
+                                currency: candidateCurrency,
+                                product_data: {
+                                    name: `Ohnix ${request.targetPlan} upgrade`,
+                                    description: `Plan upgrade from ${request.currentPlan} to ${request.targetPlan}`,
+                                },
+                                unit_amount: amount,
+                            },
+                            quantity: 1,
+                        },
+                    ],
+                    success_url: getSuccessUrl(request.id),
+                    cancel_url: getCancelUrl(request.id),
+                    metadata: {
+                        upgradeRequestId: request.id,
+                        userId: request.userId,
+                        currentPlan: request.currentPlan,
+                        targetPlan: request.targetPlan,
+                        checkoutCountry: countryConfig.country,
+                        checkoutPaymentMethod: normalizedPaymentMethod,
+                        checkoutPaymentMethodResolved: candidateMethod,
+                        checkoutCurrencyResolved: candidateCurrency,
+                    },
+                });
+                resolvedStripeMethod = candidateMethod;
+                resolvedCurrency = candidateCurrency;
+                break;
+            } catch (error) {
+                lastError = error;
+                if (
+                    isInvalidPaymentMethodTypeError(error) ||
+                    isUnsupportedCurrencyMethodComboError(error)
+                ) {
+                    continue;
+                }
+
+                throw error;
+            }
+        }
+
+        if (session) {
+            break;
+        }
+    }
+
+    if (!session) {
+        throw (
+            lastError ||
+            new Error(
+                "Selected payment method is not available for this Stripe account"
+            )
+        );
+    }
 
     return {
         provider: "stripe",
@@ -169,6 +414,8 @@ export const createUpgradeCheckoutSession = async ({
         sessionId: session.id,
         country: countryConfig.country,
         paymentMethod: normalizedPaymentMethod,
+        resolvedStripeMethod,
+        resolvedCurrency,
     };
 };
 
@@ -188,4 +435,54 @@ export const parseStripeWebhookEvent = ({ rawBody, signature }) => {
         : rawBody;
 
     return parsedBody;
+};
+
+const isDirectProviderWebhook = (headers = {}, parsedBody = null) => {
+    const headerValue =
+        headers["x-payment-provider"] || headers["x-provider"] || headers["x-webhook-provider"];
+    const normalizedHeader = `${headerValue || ""}`.trim().toLowerCase();
+    const normalizedBodyProvider = `${parsedBody?.provider || ""}`.trim().toLowerCase();
+
+    return normalizedHeader.includes("co_direct") || normalizedBodyProvider === "co_direct";
+};
+
+const validateDirectWebhookSecret = (headers = {}) => {
+    const configuredSecret = `${process.env.COLOMBIA_DIRECT_WEBHOOK_SECRET || ""}`.trim();
+    if (!configuredSecret) {
+        return true;
+    }
+
+    const incomingSecret =
+        `${headers["x-webhook-secret"] || headers["x-signature-token"] || ""}`.trim();
+
+    return incomingSecret && incomingSecret === configuredSecret;
+};
+
+export const parsePaymentWebhookEvent = ({ rawBody, headers = {}, signature }) => {
+    const parsedBody = Buffer.isBuffer(rawBody)
+        ? JSON.parse(rawBody.toString("utf8"))
+        : rawBody;
+
+    if (isDirectProviderWebhook(headers, parsedBody)) {
+        if (!validateDirectWebhookSecret(headers)) {
+            throw new Error("Invalid direct webhook secret");
+        }
+
+        return {
+            provider: "co_direct",
+            type:
+                parsedBody?.type ||
+                parsedBody?.event ||
+                (parsedBody?.status === "paid" ? "payment.succeeded" : "payment.updated"),
+            data: {
+                object: parsedBody?.data || parsedBody,
+            },
+        };
+    }
+
+    const stripeEvent = parseStripeWebhookEvent({ rawBody, signature });
+    return {
+        ...stripeEvent,
+        provider: "stripe",
+    };
 };

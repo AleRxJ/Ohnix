@@ -243,7 +243,7 @@ Use `requiresManualReview=true` only when manual handling is needed.
 
 | Method   | Endpoint                                  | Description                              | Auth | Role |
 | -------- | ----------------------------------------- | ---------------------------------------- | ---- | ---- |
-| **POST** | `/subscriptions/payments/webhook`         | Receives payment provider confirmation and closes approved request automatically | ❌ | System |
+| **POST** | `/subscriptions/payments/webhook`         | Receives payment provider confirmation (Stripe or CO direct) and closes approved request automatically | ❌ | System |
 
 ### Create Checkout Session Payload
 
@@ -256,8 +256,16 @@ Use `requiresManualReview=true` only when manual handling is needed.
 
 Supported combinations:
 
-- `CO`: `pse` (otros bancos), `bancolombia_button`, `card`
+- `CO`: `pse` (transferencia bancaria local), `bancolombia_button`, `card`
 - `ES`: `card`, `bizum`, `sepa_debit`
+
+Provider routing behavior:
+
+- Default: Stripe for all countries/methods.
+- Optional for Colombia: when `COLOMBIA_DIRECT_PAYMENTS_ENABLED=true`,
+    `pse` and `bancolombia_button` will try the direct Colombia integration first.
+- If direct integration fails, system falls back to Stripe unless
+    `COLOMBIA_DIRECT_PAYMENTS_STRICT=true`.
 
 ### Required Environment Variables (Autonomous Checkout)
 
@@ -274,17 +282,55 @@ STRIPE_AMOUNT_ENTERPRISE_COP=299000
 STRIPE_AMOUNT_GROWTH_EUR=2900
 STRIPE_AMOUNT_ENTERPRISE_EUR=9900
 
+# Optional USD fallback when COP is not supported by the Stripe account
+STRIPE_AMOUNT_GROWTH_USD=2900
+STRIPE_AMOUNT_ENTERPRISE_USD=9900
+
 FRONTEND_URL=http://localhost:5173
+
+# Optional Colombia direct payment integration
+COLOMBIA_DIRECT_PAYMENTS_ENABLED=false
+COLOMBIA_DIRECT_PAYMENTS_STRICT=false
+COLOMBIA_DIRECT_PROVIDER_NAME=co_direct
+COLOMBIA_DIRECT_BASE_URL=
+COLOMBIA_DIRECT_API_KEY=
+COLOMBIA_DIRECT_WEBHOOK_SECRET=
+COLOMBIA_DIRECT_PSE_ENDPOINT=/payments/pse/checkout
+COLOMBIA_DIRECT_BANCOLOMBIA_ENDPOINT=/payments/bancolombia/checkout
+COLOMBIA_DIRECT_TIMEOUT_MS=15000
 ```
 
 ### Stripe Dashboard Requirements (CO/ES)
 
 Enable these payment methods in Stripe for the account/environment being tested:
 
-- Colombia: `pse`, `card` (the `bancolombia_button` option is routed through PSE)
+- Colombia: `pse`, `bancolombia`, `card`
 - Spain: `card`, `bizum`, `sepa_debit`
 
 If a method is not enabled in Stripe Dashboard, checkout creation for that method may fail or the method may not appear in the hosted checkout UI.
+
+### Colombia Direct Webhook Contract (Optional)
+
+Use the same endpoint: `/subscriptions/payments/webhook`
+
+Recommended headers:
+
+- `x-payment-provider: co_direct`
+- `x-webhook-secret: <COLOMBIA_DIRECT_WEBHOOK_SECRET>` (if configured)
+
+Accepted payload example for success:
+
+```json
+{
+    "provider": "co_direct",
+    "type": "payment.succeeded",
+    "data": {
+        "upgradeRequestId": "req_123",
+        "sessionId": "pay_456",
+        "checkoutUrl": "https://..."
+    }
+}
+```
 
 ### Local Webhook Test (Developer Mode)
 
