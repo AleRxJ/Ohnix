@@ -18,6 +18,7 @@ import {
     ContentSection,
     brandIcons,
     VideoModal,
+    MarqueeStrip,
 } from "../components/landing/LandingPageSections";
 
 const { Content } = Layout;
@@ -34,6 +35,19 @@ const LandingPage = () => {
     const handleWatchDemo = () => {
         setShowDemo(true);
     };
+
+    const marqueeItems = [
+        t("landing.hero.orbit.nodeOne"),
+        t("landing.hero.orbit.nodeTwo"),
+        t("landing.hero.orbit.nodeThree"),
+        t("landing.solutions.items.lifecycle.title"),
+        t("landing.solutions.items.assets.title"),
+        t("landing.solutions.items.sustainability.title"),
+        t("landing.solutions.items.circular.title"),
+        t("landing.impact.metrics.uptime.label"),
+        t("landing.impact.metrics.recovery.label"),
+        t("landing.impact.metrics.optimization.label"),
+    ];
 
     const handlePlanCta = (planKey) => {
         const normalizedPlan = ["starter", "growth", "enterprise"].includes(planKey)
@@ -248,6 +262,8 @@ const LandingPage = () => {
                     footerNote={t("landing.hero.footer_note")}
                     productImageAlt={t("landing.hero.product_image_alt")}
                 />
+
+                <MarqueeStrip items={marqueeItems} />
 
                 <ImpactMetricsSection
                     heading={{

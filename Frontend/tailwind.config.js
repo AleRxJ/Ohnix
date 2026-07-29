@@ -15,6 +15,18 @@ export default {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
+        revealUp: {
+          '0%': { opacity: '0', transform: 'translateY(56px) scale(0.95)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        slideFromLeft: {
+          '0%': { opacity: '0', transform: 'translateX(-44px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        slideFromRight: {
+          '0%': { opacity: '0', transform: 'translateX(44px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
         floatY: {
           '0%, 100%': { transform: 'translateY(0px)' },
           '50%': { transform: 'translateY(-18px)' },
@@ -45,6 +57,10 @@ export default {
           '0%': { backgroundPosition: '-400% center' },
           '100%': { backgroundPosition: '400% center' },
         },
+        sweepLeft: {
+          '0%': { transform: 'translateX(-160%) skewX(-15deg)' },
+          '100%': { transform: 'translateX(260%) skewX(-15deg)' },
+        },
         spinSlow: {
           '0%': { transform: 'rotate(0deg)' },
           '100%': { transform: 'rotate(360deg)' },
@@ -53,10 +69,17 @@ export default {
           '0%': { opacity: '0', transform: 'scale(0.92)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
+        marqueeLeft: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
       },
       animation: {
         'fade-up': 'fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) both',
         'fade-in': 'fadeIn 0.5s ease-out both',
+        'reveal-up': 'revealUp 0.8s cubic-bezier(0.22,1,0.36,1) both',
+        'slide-from-left': 'slideFromLeft 0.75s cubic-bezier(0.22,1,0.36,1) both',
+        'slide-from-right': 'slideFromRight 0.75s cubic-bezier(0.22,1,0.36,1) both',
         'float': 'floatY 6s ease-in-out infinite',
         'float-slow': 'floatY 9s ease-in-out infinite',
         'float-xs': 'floatY 4s ease-in-out infinite',
@@ -67,8 +90,10 @@ export default {
         'blob-float': 'blobFloat 8s ease-in-out infinite',
         'blob-float-alt': 'blobFloatAlt 11s ease-in-out infinite',
         'shimmer': 'shimmer 3s linear infinite',
+        'sweep': 'sweepLeft 3.5s ease-in-out infinite 1.2s',
         'spin-slow': 'spinSlow 12s linear infinite',
         'scale-in': 'scaleIn 0.4s cubic-bezier(0.22,1,0.36,1) both',
+        'marquee': 'marqueeLeft 32s linear infinite',
       },
     },
   },

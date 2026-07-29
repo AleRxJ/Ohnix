@@ -139,11 +139,37 @@ export const VideoModal = ({ isOpen, onClose, src, title }) => {
     );
 };
 
+/* ── Horizontal marquee ticker ──────────────────────────────────────── */
+export const MarqueeStrip = ({ items }) => {
+    const doubled = [...items, ...items];
+    return (
+        <div className="relative overflow-hidden border-y border-white/[0.04] bg-[#030303] py-4 select-none">
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#030303] to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#030303] to-transparent" />
+            <div className="flex w-max animate-marquee items-center gap-12">
+                {doubled.map((item, i) => (
+                    <span
+                        key={i}
+                        className="inline-flex shrink-0 items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.32em] text-[#5A6770] whitespace-nowrap transition-colors"
+                    >
+                        <span className="h-1 w-1 rounded-full bg-[#29D8D5]/70 shadow-[0_0_6px_rgba(41,216,213,0.7)]" />
+                        {item}
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 export const SectionHeading = ({ eyebrow, title, description, align = "center" }) => {
+    const [ref, visible] = useScrollReveal(0.1);
     const alignment = align === "left" ? "items-start text-left" : "items-center text-center";
 
     return (
-        <div className={`flex flex-col gap-4 ${alignment}`}>
+        <div
+            ref={ref}
+            className={`flex flex-col gap-4 ${alignment} transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+        >
             {eyebrow ? (
                 <span className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#29D8D5] shadow-[0_0_0_1px_rgba(41,216,213,0.08)]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_18px_rgba(41,216,213,0.85)]" />
@@ -151,7 +177,7 @@ export const SectionHeading = ({ eyebrow, title, description, align = "center" }
                 </span>
             ) : null}
             <div className="max-w-4xl">
-                <h2 className="text-3xl font-semibold tracking-tight text-white md:text-5xl md:leading-[1.05]">
+                <h2 className="text-3xl font-semibold tracking-tight md:text-5xl md:leading-[1.05] bg-gradient-to-br from-white via-[#E8EDEE] to-[#29D8D5]/55 bg-clip-text text-transparent">
                     {title}
                 </h2>
                 {description ? (
@@ -430,7 +456,9 @@ export const MissionVisionSection = ({ heading, mission, vision, valuesTitle, va
     </ContentSection>
 );
 
-export const CycleTimelineSection = ({ heading, steps }) => (
+export const CycleTimelineSection = ({ heading, steps }) => {
+    const [ref, visible] = useScrollReveal(0.06);
+    return (
     <ContentSection id="timeline">
         <SectionHeading
             eyebrow={heading.eyebrow}
@@ -438,7 +466,7 @@ export const CycleTimelineSection = ({ heading, steps }) => (
             description={heading.description}
         />
 
-        <div className="relative mt-14">
+        <div ref={ref} className="relative mt-14">
             <div
                 aria-hidden="true"
                 className="pointer-events-none absolute left-[12.5%] right-[12.5%] top-7 hidden h-px bg-gradient-to-r from-transparent via-[#29D8D5]/35 to-transparent lg:block"
@@ -447,12 +475,21 @@ export const CycleTimelineSection = ({ heading, steps }) => (
             {steps.map((step, index) => (
                 <article
                     key={step.title}
-                    className="relative overflow-hidden rounded-[28px] border border-white/8 bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#29D8D5]/30"
+                    className={`group relative overflow-hidden rounded-[28px] border border-white/8 bg-white/[0.03] p-6 transition-all duration-500 hover:-translate-y-2 hover:border-[#29D8D5]/40 hover:bg-white/[0.05] hover:shadow-[0_0_0_1px_rgba(41,216,213,0.12),0_20px_60px_rgba(0,0,0,0.4)] ${
+                        visible
+                            ? index % 2 === 0 ? "animate-slide-from-left" : "animate-slide-from-right"
+                            : "opacity-0"
+                    }`}
+                    style={{ animationDelay: `${index * 0.1}s` }}
                 >
+                    {/* sweep on hover */}
+                    <div className="pointer-events-none absolute inset-0 -z-0 overflow-hidden rounded-[28px]">
+                        <div className="absolute -left-full top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100 group-hover:animate-sweep" />
+                    </div>
                     <div className="absolute right-5 top-5 text-[11px] font-semibold uppercase tracking-[0.35em] text-[#A9B3B8]">
                         {String(index + 1).padStart(2, "0")}
                     </div>
-                    <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/10 bg-[#29D8D5]/10 text-[#29D8D5]">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/10 bg-[#29D8D5]/10 text-[#29D8D5] transition-all duration-300 group-hover:bg-[#29D8D5]/20 group-hover:scale-110">
                         {step.icon}
                     </div>
                     <h3 className="mt-6 text-xl font-semibold text-white">{step.title}</h3>
@@ -462,7 +499,8 @@ export const CycleTimelineSection = ({ heading, steps }) => (
             </div>
         </div>
     </ContentSection>
-);
+    );
+};
 
 export const MobileStickyCta = ({ primaryCta, secondaryCta, onPrimary, onSecondary }) => (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/96 px-4 py-3 backdrop-blur-xl md:hidden animate-slide-up"
@@ -596,7 +634,12 @@ export const FaqSection = ({ heading, items }) => (
 
 export const ContactSection = ({ heading, primaryCta, secondaryCta, onPrimary, onSecondary, contact }) => (
     <ContentSection id="contact">
-        <div className="rounded-[36px] border border-white/8 bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.12),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-8 md:p-12 lg:p-16">
+        <div className="relative overflow-hidden rounded-[36px] border border-[#29D8D5]/20 bg-[radial-gradient(ellipse_at_top_left,rgba(41,216,213,0.14),transparent_50%),radial-gradient(ellipse_at_bottom_right,rgba(68,243,240,0.10),transparent_50%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-8 md:p-12 lg:p-16">
+            {/* Ambient animated orbs */}
+            <div aria-hidden="true" className="pointer-events-none">
+                <div className="absolute -left-28 -top-28 h-72 w-72 rounded-full bg-[#29D8D5]/8 blur-[80px] animate-blob-float" />
+                <div className="absolute -right-16 -bottom-16 h-56 w-56 rounded-full bg-[#44F3F0]/6 blur-[60px] animate-blob-float-alt" />
+            </div>
             <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
                 <div>
                     <SectionHeading
@@ -642,7 +685,9 @@ export const ContactSection = ({ heading, primaryCta, secondaryCta, onPrimary, o
     </ContentSection>
 );
 
-export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) => (
+export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) => {
+    const [ref, visible] = useScrollReveal(0.06);
+    return (
     <ContentSection id="pricing">
         <SectionHeading
             eyebrow={heading.eyebrow}
@@ -650,18 +695,25 @@ export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) 
             description={heading.description}
         />
 
-        <div className="mt-14 grid gap-5 lg:grid-cols-3">
-            {plans.map((plan) => (
+        <div ref={ref} className="mt-14 grid gap-5 lg:grid-cols-3">
+            {plans.map((plan, i) => (
                 <article
                     key={plan.name}
-                    className={`relative overflow-hidden rounded-[32px] border p-7 transition-all duration-300 hover:-translate-y-1 ${
+                    className={`relative overflow-hidden rounded-[32px] border p-7 transition-all duration-500 hover:-translate-y-2 ${
                         plan.featured
                             ? "border-[#29D8D5]/40 bg-[linear-gradient(180deg,rgba(41,216,213,0.12),rgba(255,255,255,0.03))] shadow-[0_0_0_1px_rgba(41,216,213,0.08),0_18px_50px_rgba(0,0,0,0.38)]"
                             : "border-white/8 bg-white/[0.03]"
-                    }`}
+                    } ${visible ? "animate-reveal-up" : "opacity-0"}`}
+                    style={{ animationDelay: `${i * 0.1}s` }}
                 >
+                    {/* Shimmer sweep on featured card */}
+                    {plan.featured && (
+                        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[32px]">
+                            <div className="absolute top-0 h-full w-[45%] -skew-x-12 bg-gradient-to-r from-transparent via-[#29D8D5]/6 to-transparent animate-sweep" />
+                        </div>
+                    )}
                     {plan.featured ? (
-                        <div className="absolute right-5 top-5 rounded-full border border-[#29D8D5]/30 bg-[#29D8D5]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-[#44F3F0]">
+                        <div className="absolute right-5 top-5 z-10 rounded-full border border-[#29D8D5]/30 bg-[#29D8D5]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-[#44F3F0]">
                             {featuredLabel}
                         </div>
                     ) : null}
@@ -709,7 +761,8 @@ export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) 
             ))}
         </div>
     </ContentSection>
-);
+    );
+};
 
 export const PlusIcon = () => (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
