@@ -8,7 +8,11 @@ const AuthLayout = ({ children }) => {
             <div className="pointer-events-none absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:46px_46px]" />
 
             {/* ── Left panel — desktop only ────────────────────────────── */}
-            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden border-r border-white/8 items-center justify-center">
+            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center">
+
+                {/* Gradient divider — fades top/bottom, teal glow centre */}
+                <div className="pointer-events-none absolute right-0 inset-y-0 w-px bg-gradient-to-b from-transparent via-[#29D8D5]/30 to-transparent" aria-hidden="true" />
+                <div className="pointer-events-none absolute right-0 inset-y-[20%] h-[60%] w-[1px] blur-[3px] bg-[#29D8D5]/15" aria-hidden="true" />
 
                 {/* Central ambient glow behind the logo */}
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden="true">
