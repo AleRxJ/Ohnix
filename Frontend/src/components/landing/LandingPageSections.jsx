@@ -222,32 +222,33 @@ export const HeroDashboard = () => {
 /* ── Page-wide orbital background layer ────────────────────────────── */
 export const PageOrbitalLayer = () => (
     <div
-        className="pointer-events-none fixed inset-0 z-0 select-none overflow-hidden"
+        className="pointer-events-none fixed inset-0 select-none overflow-hidden"
+        style={{ zIndex: 2, mixBlendMode: "screen" }}
         aria-hidden="true"
     >
         {/* Ring A — large, top-right, slow */}
-        <div className="absolute -right-48 -top-32 h-[680px] w-[680px] rounded-full border border-[#29D8D5]/[0.045] animate-orbit-slow">
-            <div className="absolute left-1/2 top-0 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5] shadow-[0_0_18px_rgba(41,216,213,0.85),0_0_36px_rgba(41,216,213,0.35)]" />
+        <div className="absolute -right-48 -top-32 h-[680px] w-[680px] rounded-full border border-[#29D8D5]/[0.14] animate-orbit-slow">
+            <div className="absolute left-1/2 top-0 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5] shadow-[0_0_22px_6px_rgba(41,216,213,0.8),0_0_50px_rgba(41,216,213,0.4)]" />
         </div>
 
         {/* Ring B — medium, centre-left, mid reverse */}
-        <div className="absolute -left-52 top-[38%] h-[500px] w-[500px] rounded-full border border-white/[0.04] animate-orbit-mid">
-            <div className="absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#44F3F0]/70 shadow-[0_0_14px_rgba(68,243,240,0.7),0_0_28px_rgba(68,243,240,0.28)]" />
+        <div className="absolute -left-52 top-[38%] h-[500px] w-[500px] rounded-full border border-[#44F3F0]/[0.12] animate-orbit-mid">
+            <div className="absolute left-1/2 top-0 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#44F3F0] shadow-[0_0_18px_5px_rgba(68,243,240,0.75),0_0_40px_rgba(68,243,240,0.35)]" />
         </div>
 
         {/* Ring C — small, lower-right, fast */}
-        <div className="absolute -bottom-20 right-[18%] h-[320px] w-[320px] rounded-full border border-[#29D8D5]/[0.05] animate-orbit-fast">
-            <div className="absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5]/60 shadow-[0_0_10px_rgba(41,216,213,0.6)]" />
+        <div className="absolute -bottom-20 right-[18%] h-[320px] w-[320px] rounded-full border border-[#29D8D5]/[0.14] animate-orbit-fast">
+            <div className="absolute left-1/2 top-0 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5] shadow-[0_0_16px_4px_rgba(41,216,213,0.75)]" />
         </div>
 
         {/* Ring D — extra-large, lower-left, very slow reverse */}
-        <div className="absolute -bottom-96 -left-96 h-[1000px] w-[1000px] rounded-full border border-white/[0.025] animate-orbit-slow" style={{ animationDirection: "reverse" }}>
-            <div className="absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5]/45 shadow-[0_0_12px_rgba(41,216,213,0.45)]" />
+        <div className="absolute -bottom-96 -left-96 h-[1000px] w-[1000px] rounded-full border border-[#29D8D5]/[0.09] animate-orbit-slow" style={{ animationDirection: "reverse" }}>
+            <div className="absolute left-1/2 top-0 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5] shadow-[0_0_16px_4px_rgba(41,216,213,0.65)]" />
         </div>
 
         {/* Ring E — tiny accent, upper-left, xs reverse */}
-        <div className="absolute left-[12%] top-[10%] h-[160px] w-[160px] rounded-full border border-[#44F3F0]/[0.07] animate-orbit-xs">
-            <div className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#44F3F0]/80 shadow-[0_0_8px_rgba(68,243,240,0.8)]" />
+        <div className="absolute left-[12%] top-[10%] h-[160px] w-[160px] rounded-full border border-[#44F3F0]/[0.18] animate-orbit-xs">
+            <div className="absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#44F3F0] shadow-[0_0_14px_4px_rgba(68,243,240,0.85)]" />
         </div>
     </div>
 );
