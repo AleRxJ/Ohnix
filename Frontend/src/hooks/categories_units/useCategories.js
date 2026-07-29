@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { api } from "../../api/api";
 import { useAuth } from "../useAuth";
 import toast from "react-hot-toast";
@@ -10,49 +10,72 @@ export const useCategories = () => {
     const [searchText, setSearchText] = useState("");
     const [filter, setFilter] = useState("all");
 
-    const loadCategories = useCallback(async () => {
+    // Función interna que no depende de otras dependencias
+    const loadCategoriesInternal = useCallback(async (admin) => {
         setLoading(true);
         try {
-            let response;
-            if (isAdmin) {
-                response = await api.get("/categories/admin/all");
-            } else {
-                response = await api.get("/categories/user");
-            }
+            const endpoint = admin ? "/categories/admin/all" : "/categories/user";
+            console.log(`[useCategories] Loading from ${endpoint}, isAdmin=${admin}`);
+            
+            const response = await api.get(endpoint);
+            console.log(`[useCategories] Response:`, response.data);
 
             if (response.data.success) {
+                console.log(`[useCategories] Setting ${response.data.data.length} categories`);
                 setCategories(response.data.data);
                 return response.data.data;
+            } else {
+                console.warn(`[useCategories] API returned success=false:`, response.data);
+                return [];
             }
         } catch (error) {
+            console.error("[useCategories] Error:", error);
             toast.error("Failed to load categories");
-            console.error("Error loading categories:", error);
             return [];
         } finally {
             setLoading(false);
         }
-    }, [isAdmin]);
-
-    useEffect(() => {
-        loadCategories();
     }, []);
+
+    // Wrapper que siempre usa el último valor de isAdmin
+    const loadCategories = useCallback(async () => {
+        return loadCategoriesInternal(isAdmin);
+    }, [isAdmin, loadCategoriesInternal]);
+
+    // Load categories on mount only
+    useEffect(() => {
+        console.log("[useCategories] Component mounted, loading initial categories");
+        console.log("[useCategories] Current user:", user);
+        console.log("[useCategories] isAdmin:", isAdmin);
+        loadCategoriesInternal(isAdmin);
+    }, []); // Empty dependency array - only run once
 
     const createCategory = useCallback(
         async (values) => {
             const loadingToast = toast.loading("Creating category...");
             try {
+                console.log("[useCategories] Creating category with values:", values);
                 const response = await api.post("/categories", values);
+                console.log("[useCategories] Create response:", response.data);
+                
                 if (response.data.success) {
                     toast.success("Category created successfully", {
                         id: loadingToast,
                     });
-                    await loadCategories();
+                    console.log("[useCategories] Calling loadCategories after create");
+                    const result = await loadCategories();
+                    console.log("[useCategories] loadCategories returned:", result);
                     return { success: true, data: response.data.data };
+                } else {
+                    console.warn("[useCategories] Create returned success=false:", response.data);
+                    toast.error(response.data.message || "Failed to create category", { id: loadingToast });
+                    return { success: false, error: response.data.message };
                 }
             } catch (error) {
                 const errorMsg =
                     error.response?.data?.message ||
                     "Failed to create category";
+                console.error("[useCategories] Create error:", error);
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
             }
@@ -137,13 +160,24 @@ export const useCategories = () => {
         setFilter("all");
     }, []);
 
-    const stats = {
-        total: categories.length,
-        mine: categories.filter((cat) => cat.created_by._id === user?._id)
-            .length,
-        others: categories.filter((cat) => cat.created_by._id !== user?._id)
-            .length,
-    };
+    const stats = useMemo(() => {
+        const calculated = {
+            total: categories.length,
+            mine: categories.filter((cat) => {
+                const match = cat.created_by._id === user?._id;
+                console.log(`[useCategories] Comparing: "${cat.created_by._id}" === "${user?._id}" = ${match}`);
+                return match;
+            }).length,
+            others: categories.filter((cat) => cat.created_by._id !== user?._id)
+                .length,
+        };
+        console.log("[useCategories] Stats calculated:", calculated);
+        console.log("[useCategories] Total categories in state:", categories.length);
+        console.log("[useCategories] Categories:", categories);
+        return calculated;
+    }, [categories, user?._id]);
+
+    console.log("[useCategories] About to return - stats:", stats, "categories.length:", categories.length);
 
     return {
         categories: filteredCategories,

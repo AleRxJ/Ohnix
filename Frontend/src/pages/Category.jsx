@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Row, Col, Card, Divider } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
 import { useAuth } from "../hooks/useAuth";
@@ -11,13 +11,9 @@ import UnitSection from "../components/units/UnitSection";
 
 const CategoryUnit = () => {
     const { user, isAdmin } = useAuth();
-    const { stats: categoryStats, loadCategories } = useCategories();
-    const { stats: unitStats, loadUnits } = useUnits();
-
-    useEffect(() => {
-        loadCategories();
-        loadUnits();
-    }, [loadCategories, loadUnits]);
+    // ✅ Llamar a los hooks UNA SOLA VEZ aquí
+    const categoryHook = useCategories();
+    const unitHook = useUnits();
 
     return (
         <div className="min-h-screen p-4 sm:p-6 bg-transparent text-white">
@@ -33,8 +29,8 @@ const CategoryUnit = () => {
 
                 <div className="mb-8">
                     <StatsSection
-                        categoryStats={categoryStats}
-                        unitStats={unitStats}
+                        categoryStats={categoryHook.stats}
+                        unitStats={unitHook.stats}
                     />
                 </div>
 
@@ -46,6 +42,7 @@ const CategoryUnit = () => {
                                 <CategorySection
                                     user={user}
                                     isAdmin={isAdmin}
+                                    categoryHook={categoryHook}
                                 />
                             </div>
                         </div>
@@ -53,7 +50,11 @@ const CategoryUnit = () => {
                     <Col xs={24} xl={12}>
                         <div className="h-full">
                             <div className="h-full rounded-xl border border-white/10 bg-[#0B0B0B]/90 shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
-                                <UnitSection user={user} isAdmin={isAdmin} />
+                                <UnitSection 
+                                    user={user} 
+                                    isAdmin={isAdmin}
+                                    unitHook={unitHook}
+                                />
                             </div>
                         </div>
                     </Col>

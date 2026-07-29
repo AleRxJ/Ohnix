@@ -33,6 +33,28 @@ const ProfileHeader = ({
 }) => {
     const { t } = useI18n();
 
+    // Generar avatar por defecto si no existe o está vacío
+    const getAvatarSrc = () => {
+        if (user?.avatar && user.avatar.trim()) {
+            let avatarUrl = user.avatar;
+            console.log("[ProfileHeader] Using existing avatar:", avatarUrl);
+            
+            // Si es una ruta relativa local, convertirla a URL HTTP
+            if (avatarUrl.startsWith("/") && !avatarUrl.startsWith("//")) {
+                // Es una ruta relativa local, agregar el API base URL
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+                avatarUrl = `${apiBaseUrl}${avatarUrl}`;
+                console.log("[ProfileHeader] Converted to full URL:", avatarUrl);
+            }
+            
+            return avatarUrl;
+        }
+        // Fallback: generar usando ui-avatars.com
+        const name = encodeURIComponent(user?.username || "User");
+        console.log("[ProfileHeader] Using generated avatar for:", name);
+        return `https://ui-avatars.com/api/?background=29D8D5&color=021314&name=${name}&size=128`;
+    };
+
     return (
         <Card
             className="mb-0 border-0 rounded-none shadow-none bg-transparent"
@@ -52,8 +74,8 @@ const ProfileHeader = ({
                                 <Spin spinning={avatarLoading}>
                                     <Avatar
                                             size={120}
-                                        src={user?.avatar}
-                                        icon={!user?.avatar && <UserOutlined />}
+                                        src={getAvatarSrc()}
+                                        icon={!getAvatarSrc() && <UserOutlined />}
                                             className="ring-4 ring-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.35)] border border-white/10"
                                     />
                                 </Spin>

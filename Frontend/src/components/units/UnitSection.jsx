@@ -9,10 +9,9 @@ import UnitTable from "./UnitTable";
 import UnitModal from "./UnitModal";
 import UnitViewModal from "./UnitViewModal";
 import SearchFilter from "../common/SearchFilter";
-import { useUnits } from "../../hooks/categories_units/useUnits";
 import useI18n from "../../hooks/useI18n";
 
-const UnitSection = ({ user, isAdmin }) => {
+const UnitSection = ({ user, isAdmin, unitHook }) => {
     const { t } = useI18n();
     const {
         units,
@@ -26,7 +25,7 @@ const UnitSection = ({ user, isAdmin }) => {
         updateUnit,
         deleteUnit,
         clearFilters,
-    } = useUnits();
+    } = unitHook;
 
     const [modalVisible, setModalVisible] = useState(false);
     const [viewModalVisible, setViewModalVisible] = useState(false);

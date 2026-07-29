@@ -5,10 +5,9 @@ import CategoryTable from "./CategoryTable";
 import CategoryModal from "./CategoryModal";
 import CategoryViewModal from "./CategoryViewModal";
 import SearchFilter from "../common/SearchFilter";
-import { useCategories } from "../../hooks/categories_units/useCategories";
 import useI18n from "../../hooks/useI18n";
 
-const CategorySection = ({ user, isAdmin }) => {
+const CategorySection = ({ user, isAdmin, categoryHook }) => {
     const { t } = useI18n();
     const {
         categories,
@@ -22,7 +21,7 @@ const CategorySection = ({ user, isAdmin }) => {
         updateCategory,
         deleteCategory,
         clearFilters,
-    } = useCategories();
+    } = categoryHook;
 
     const [modalVisible, setModalVisible] = useState(false);
     const [viewModalVisible, setViewModalVisible] = useState(false);

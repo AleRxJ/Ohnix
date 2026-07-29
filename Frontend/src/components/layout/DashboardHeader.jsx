@@ -174,11 +174,34 @@ const UserProfileInfo = ({ user }) => (
     </div>
 );
 
-const UserAvatar = ({ user, avatarMenu }) => (
+const UserAvatar = ({ user, avatarMenu }) => {
+    // Generar avatar por defecto si no existe o está vacío
+    const getAvatarSrc = () => {
+        if (user?.avatar && user.avatar.trim()) {
+            let avatarUrl = user.avatar;
+            console.log("[UserAvatar] Using existing avatar:", avatarUrl);
+            
+            // Si es una ruta relativa local, convertirla a URL HTTP
+            if (avatarUrl.startsWith("/") && !avatarUrl.startsWith("//")) {
+                // Es una ruta relativa local, agregar el API base URL
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+                avatarUrl = `${apiBaseUrl}${avatarUrl}`;
+                console.log("[UserAvatar] Converted to full URL:", avatarUrl);
+            }
+            
+            return avatarUrl;
+        }
+        // Fallback: generar usando ui-avatars.com
+        const name = encodeURIComponent(user?.username || "User");
+        console.log("[UserAvatar] Using generated avatar for:", name);
+        return `https://ui-avatars.com/api/?background=29D8D5&color=021314&name=${name}&size=128`;
+    };
+    
+    return (
     <Dropdown menu={{ items: avatarMenu }} placement="bottomRight" arrow>
         <div className="cursor-pointer">
             <Avatar
-                src={user?.avatar}
+                src={getAvatarSrc()}
                 style={{
                     background: "linear-gradient(135deg, #29d8d5 0%, #44f3f0 100%)",
                     border: "2px solid rgba(255,255,255,0.26)",
@@ -189,6 +212,7 @@ const UserAvatar = ({ user, avatarMenu }) => (
             />
         </div>
     </Dropdown>
-);
+    );
+};
 
 export default DashboardHeader;

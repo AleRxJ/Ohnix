@@ -82,12 +82,35 @@ const SidebarLogo = ({ collapsed, onClick }) => (
     </div>
 );
 
-const SidebarUserProfile = ({ user, logout, t }) => (
+const SidebarUserProfile = ({ user, logout, t }) => {
+    // Generar avatar por defecto si no existe o está vacío
+    const getAvatarSrc = () => {
+        if (user?.avatar && user.avatar.trim()) {
+            let avatarUrl = user.avatar;
+            console.log("[SidebarUserProfile] Using existing avatar:", avatarUrl);
+            
+            // Si es una ruta relativa local, convertirla a URL HTTP
+            if (avatarUrl.startsWith("/") && !avatarUrl.startsWith("//")) {
+                // Es una ruta relativa local, agregar el API base URL
+                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
+                avatarUrl = `${apiBaseUrl}${avatarUrl}`;
+                console.log("[SidebarUserProfile] Converted to full URL:", avatarUrl);
+            }
+            
+            return avatarUrl;
+        }
+        // Fallback: generar usando ui-avatars.com
+        const name = encodeURIComponent(user?.username || "User");
+        console.log("[SidebarUserProfile] Using generated avatar for:", name);
+        return `https://ui-avatars.com/api/?background=29D8D5&color=021314&name=${name}&size=128`;
+    };
+
+    return (
     <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
         <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/12 shadow-xl">
             <div className="flex items-center gap-3 mb-3">
                 <Avatar
-                    src={user?.avatar}
+                    src={getAvatarSrc()}
                     style={{
                         background:
                             "linear-gradient(135deg, #29d8d5 0%, #44f3f0 100%)",
@@ -115,6 +138,7 @@ const SidebarUserProfile = ({ user, logout, t }) => (
             </button>
         </div>
     </div>
-);
+    );
+};
 
 export default DashboardSidebar;
