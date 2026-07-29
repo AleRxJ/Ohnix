@@ -311,7 +311,8 @@ const registerUser = asyncHandler(async (req, res, next) => {
         `,
     };
 
-    await sendMailSafe(mailOptions, "welcome-email");
+    // Sending Welcome Email (fire and forget — do not block registration response)
+    sendMailSafe(mailOptions, "welcome-email").catch(() => {});
 
     return res
         .status(201)
