@@ -19,6 +19,8 @@ import {
     brandIcons,
     VideoModal,
     MarqueeStrip,
+    HeroDashboard,
+    PageOrbitalLayer,
 } from "../components/landing/LandingPageSections";
 
 const { Content } = Layout;
@@ -238,6 +240,7 @@ const LandingPage = () => {
 
     return (
         <Layout className="min-h-screen bg-[#050505]">
+            <PageOrbitalLayer />
             <VideoModal
                 isOpen={showDemo}
                 onClose={() => setShowDemo(false)}
@@ -261,6 +264,8 @@ const LandingPage = () => {
                     orbitLabels={orbitLabels}
                     footerNote={t("landing.hero.footer_note")}
                     productImageAlt={t("landing.hero.product_image_alt")}
+                    heroVisual={<HeroDashboard />}
+                    cyclingWords={["Inventario", "Activos", "Operaciones", "Almacén"]}
                 />
 
                 <MarqueeStrip items={marqueeItems} />

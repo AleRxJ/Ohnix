@@ -69,7 +69,189 @@ const AnimatedStat = ({ value, active }) => {
     return <>{display}</>;
 };
 
-/* ── Video demo modal ───────────────────────────────────────────────── */
+/* ── Typewriter cycling word ────────────────────────────────────────── */
+const TypewriterWord = ({ words }) => {
+    const [idx, setIdx] = useState(0);
+    const [text, setText] = useState("");
+    const [phase, setPhase] = useState("typing");
+
+    useEffect(() => {
+        const word = words[idx];
+        let timer;
+        if (phase === "typing") {
+            if (text.length < word.length) {
+                timer = setTimeout(() => setText(word.slice(0, text.length + 1)), 75);
+            } else {
+                timer = setTimeout(() => setPhase("pausing"), 2000);
+            }
+        } else if (phase === "pausing") {
+            timer = setTimeout(() => setPhase("deleting"), 500);
+        } else {
+            if (text.length > 0) {
+                timer = setTimeout(() => setText(text.slice(0, -1)), 38);
+            } else {
+                setIdx((i) => (i + 1) % words.length);
+                setPhase("typing");
+            }
+        }
+        return () => clearTimeout(timer);
+    }, [text, phase, idx, words]);
+
+    return (
+        <span>
+            <span className="text-[#29D8D5]">{text}</span>
+            <span className="ml-0.5 inline-block h-[0.82em] w-[3px] translate-y-[2px] rounded-sm bg-[#29D8D5] align-middle animate-blink" />
+        </span>
+    );
+};
+
+/* ── Live dashboard mockup ──────────────────────────────────────────── */
+export const HeroDashboard = () => {
+    const [productCount, setProductCount] = useState(0);
+    const [valueCount, setValueCount]     = useState(0);
+    const [highlightRow, setHighlightRow] = useState(0);
+
+    useEffect(() => {
+        const animCount = (target, setter, duration = 1800) => {
+            const start = performance.now();
+            const tick = (now) => {
+                const t = Math.min((now - start) / duration, 1);
+                setter(Math.round(target * (1 - Math.pow(1 - t, 3))));
+                if (t < 1) requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        };
+        const t = setTimeout(() => {
+            animCount(1247, setProductCount);
+            animCount(842,  setValueCount);
+        }, 350);
+        return () => clearTimeout(t);
+    }, []);
+
+    useEffect(() => {
+        const iv = setInterval(() => setHighlightRow((r) => (r + 1) % 4), 1400);
+        return () => clearInterval(iv);
+    }, []);
+
+    const spark = [28, 42, 35, 58, 44, 67, 53, 72, 60, 85, 70, 92];
+    const W = 200, H = 44;
+    const pts = spark.map((v, i) => `${(i / (spark.length - 1)) * W},${H - (v / 100) * H}`).join(" ");
+
+    const rows = [
+        { sku: "SKU-1042", name: "Tornillo M6 A2",  stock: 342, ok: true  },
+        { sku: "SKU-0891", name: "Cable HDMI 2.0",  stock: 12,  ok: false },
+        { sku: "SKU-2314", name: "Sensor DHT22",     stock: 89,  ok: true  },
+        { sku: "SKU-0472", name: "Caja Corrugada",   stock: 5,   ok: false },
+    ];
+
+    return (
+        <div className="w-full overflow-hidden rounded-[18px] border border-white/10 bg-[#080808] text-white">
+            {/* Window chrome */}
+            <div className="flex items-center gap-3 border-b border-white/8 bg-[#0d0d0d] px-4 py-2.5">
+                <div className="flex gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]/80" />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]/80" />
+                </div>
+                <span className="flex-1 text-center text-[11px] font-medium text-[#555]">
+                    ohnix — Dashboard
+                </span>
+                <div className="flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_8px_rgba(41,216,213,0.9)] animate-pulse" />
+                    <span className="text-[10px] font-semibold text-[#29D8D5]">En vivo</span>
+                </div>
+            </div>
+
+            {/* KPI strip */}
+            <div className="grid grid-cols-3 divide-x divide-white/5 border-b border-white/6">
+                {[
+                    { label: "Productos",  value: productCount.toLocaleString(), note: "+8.2%",    pos: true  },
+                    { label: "Valor",      value: `$${(valueCount / 10).toFixed(1)}k`, note: "+5.1%", pos: true  },
+                    { label: "Alertas",    value: "3",                           note: "bajo mín.", pos: false },
+                ].map((k) => (
+                    <div key={k.label} className="bg-[#080808] px-3 py-2.5">
+                        <div className="text-[9px] uppercase tracking-widest text-[#444]">{k.label}</div>
+                        <div className="mt-0.5 text-base font-semibold tabular-nums text-white">{k.value}</div>
+                        <div className={`mt-0.5 text-[9px] font-medium ${k.pos ? "text-[#29D8D5]" : "text-amber-400"}`}>
+                            {k.pos && "↑ "}{k.note}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Sparkline */}
+            <div className="border-b border-white/6 bg-[#060606] px-3 py-2.5">
+                <div className="flex items-center justify-between">
+                    <span className="text-[9px] uppercase tracking-widest text-[#444]">Movimientos — 12 sem.</span>
+                    <span className="text-[9px] font-semibold text-[#29D8D5]">+18.4% ↑</span>
+                </div>
+                <svg viewBox={`0 0 ${W} ${H}`} className="mt-1.5 w-full" preserveAspectRatio="none" style={{ height: "36px" }}>
+                    <defs>
+                        <linearGradient id="hd-grad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%"   stopColor="#29D8D5" stopOpacity="0.28" />
+                            <stop offset="100%" stopColor="#29D8D5" stopOpacity="0"    />
+                        </linearGradient>
+                    </defs>
+                    <polygon points={`0,${H} ${pts} ${W},${H}`} fill="url(#hd-grad)" />
+                    <polyline points={pts} fill="none" stroke="#29D8D5" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+                    <circle cx={W} cy={H - (spark[spark.length - 1] / 100) * H} r="2.5" fill="#29D8D5" />
+                </svg>
+            </div>
+
+            {/* Rows */}
+            <div className="bg-[#080808] px-3 py-2">
+                <div className="mb-1.5 text-[9px] uppercase tracking-widest text-[#444]">Stock reciente</div>
+                <div>
+                    {rows.map((r, i) => (
+                        <div
+                            key={r.sku}
+                            className={`flex items-center gap-2 rounded-md px-1 py-[5px] transition-colors duration-500 ${highlightRow === i ? "bg-white/[0.05]" : ""}`}
+                        >
+                            <span className="w-[52px] shrink-0 font-mono text-[9px] text-[#3a4a55]">{r.sku}</span>
+                            <span className="flex-1 truncate text-[11px] text-[#8A9BA8]">{r.name}</span>
+                            <span className="w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums text-white">{r.stock}</span>
+                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${r.ok ? "bg-[#29D8D5]" : "bg-amber-400 animate-pulse"}`} />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/* ── Page-wide orbital background layer ────────────────────────────── */
+export const PageOrbitalLayer = () => (
+    <div
+        className="pointer-events-none fixed inset-0 z-0 select-none overflow-hidden"
+        aria-hidden="true"
+    >
+        {/* Ring A — large, top-right, slow */}
+        <div className="absolute -right-48 -top-32 h-[680px] w-[680px] rounded-full border border-[#29D8D5]/[0.045] animate-orbit-slow">
+            <div className="absolute left-1/2 top-0 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5] shadow-[0_0_18px_rgba(41,216,213,0.85),0_0_36px_rgba(41,216,213,0.35)]" />
+        </div>
+
+        {/* Ring B — medium, centre-left, mid reverse */}
+        <div className="absolute -left-52 top-[38%] h-[500px] w-[500px] rounded-full border border-white/[0.04] animate-orbit-mid">
+            <div className="absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#44F3F0]/70 shadow-[0_0_14px_rgba(68,243,240,0.7),0_0_28px_rgba(68,243,240,0.28)]" />
+        </div>
+
+        {/* Ring C — small, lower-right, fast */}
+        <div className="absolute -bottom-20 right-[18%] h-[320px] w-[320px] rounded-full border border-[#29D8D5]/[0.05] animate-orbit-fast">
+            <div className="absolute left-1/2 top-0 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5]/60 shadow-[0_0_10px_rgba(41,216,213,0.6)]" />
+        </div>
+
+        {/* Ring D — extra-large, lower-left, very slow reverse */}
+        <div className="absolute -bottom-96 -left-96 h-[1000px] w-[1000px] rounded-full border border-white/[0.025] animate-orbit-slow" style={{ animationDirection: "reverse" }}>
+            <div className="absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5]/45 shadow-[0_0_12px_rgba(41,216,213,0.45)]" />
+        </div>
+
+        {/* Ring E — tiny accent, upper-left, xs reverse */}
+        <div className="absolute left-[12%] top-[10%] h-[160px] w-[160px] rounded-full border border-[#44F3F0]/[0.07] animate-orbit-xs">
+            <div className="absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#44F3F0]/80 shadow-[0_0_8px_rgba(68,243,240,0.8)]" />
+        </div>
+    </div>
+);
+
 export const VideoModal = ({ isOpen, onClose, src, title }) => {
     useEffect(() => {
         document.body.style.overflow = isOpen ? "hidden" : "";
@@ -200,11 +382,31 @@ export const OrbitalHero = ({
     onSecondary,
     stats,
     orbitLabels,
+    cyclingWords = [],
+    heroVisual = null,
     footerNote = "Traceability on every movement",
     productImage = "/Ohnix_FullLogo.svg",
     productImageAlt = "Ohnix inventory dashboard",
 }) => {
     const [pointer, setPointer] = useState({ x: 50, y: 40 });
+    const [visual, setVisual] = useState("dash");
+    const [fading, setFading] = useState(false);
+    const swapRef = useRef(null);
+
+    useEffect(() => {
+        if (!heroVisual) return;
+        const iv = setInterval(() => {
+            setFading(true);
+            swapRef.current = setTimeout(() => {
+                setVisual((v) => (v === "dash" ? "logo" : "dash"));
+                setFading(false);
+            }, 520);
+        }, 5500);
+        return () => {
+            clearInterval(iv);
+            clearTimeout(swapRef.current);
+        };
+    }, [heroVisual]);
 
     return (
         <section
@@ -255,6 +457,15 @@ export const OrbitalHero = ({
                         >
                             {title}
                         </h1>
+
+                        {cyclingWords.length > 0 && (
+                            <div
+                                className="mt-3 text-4xl font-semibold tracking-tight md:text-6xl animate-fade-up"
+                                style={{ animationDelay: "0.15s" }}
+                            >
+                                <TypewriterWord words={cyclingWords} />
+                            </div>
+                        )}
 
                         <p
                             className="mt-6 max-w-2xl text-base leading-8 text-[#A9B3B8] md:text-xl animate-fade-up"
@@ -311,13 +522,41 @@ export const OrbitalHero = ({
 
                         <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.55)] transition-transform duration-300 hover:-translate-y-1 animate-float">
                             <div className="overflow-hidden rounded-[22px] border border-white/8 bg-[#0a0a0a]">
-                                <img
-                                    src={productImage}
-                                    alt={productImageAlt}
-                                    className="block w-full select-none"
-                                />
+                                {/* Cycling visual with fade-swap transition */}
+                                <div
+                                    style={{
+                                        opacity: fading ? 0 : 1,
+                                        transform: fading ? "scale(0.96)" : "scale(1)",
+                                        transition: "opacity 0.52s ease, transform 0.52s ease",
+                                    }}
+                                >
+                                    {heroVisual && visual === "dash" ? (
+                                        heroVisual
+                                    ) : (
+                                        <img
+                                            src={productImage}
+                                            alt={productImageAlt}
+                                            className="block w-full select-none"
+                                        />
+                                    )}
+                                </div>
                             </div>
                         </div>
+
+                        {/* Carousel indicator dots */}
+                        {heroVisual && (
+                            <div className="mt-4 flex justify-center gap-2">
+                                {["dash", "logo"].map((v) => (
+                                    <button
+                                        key={v}
+                                        type="button"
+                                        aria-label={v === "dash" ? "Dashboard" : "Logo"}
+                                        onClick={() => { setFading(true); setTimeout(() => { setVisual(v); setFading(false); }, 520); }}
+                                        className={`h-1.5 rounded-full transition-all duration-400 ${visual === v && !fading ? "w-6 bg-[#29D8D5]" : "w-1.5 bg-white/20 hover:bg-white/40"}`}
+                                    />
+                                ))}
+                            </div>
+                        )}
 
                         <div className="mt-5 flex flex-wrap justify-center gap-2">
                             {orbitLabels.map((label, i) => (

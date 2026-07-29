@@ -73,6 +73,10 @@ export default {
           '0%': { transform: 'translateX(0)' },
           '100%': { transform: 'translateX(-50%)' },
         },
+        blink: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0' },
+        },
       },
       animation: {
         'fade-up': 'fadeUp 0.7s cubic-bezier(0.22,1,0.36,1) both',
@@ -94,6 +98,11 @@ export default {
         'spin-slow': 'spinSlow 12s linear infinite',
         'scale-in': 'scaleIn 0.4s cubic-bezier(0.22,1,0.36,1) both',
         'marquee': 'marqueeLeft 32s linear infinite',
+        'blink': 'blink 1s step-end infinite',
+        'orbit-xs':   'spinSlow 13s linear infinite reverse',
+        'orbit-fast': 'spinSlow 20s linear infinite',
+        'orbit-mid':  'spinSlow 32s linear infinite reverse',
+        'orbit-slow': 'spinSlow 48s linear infinite',
       },
     },
   },
