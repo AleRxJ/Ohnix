@@ -10,6 +10,7 @@ import SignupRequestStatus from "./pages/auth/SignupRequestStatus";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
+import AntdConfigProvider from "./components/common/AntdConfigProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorPage from "./components/error/ErrorPage";
 import LandingPage from "./pages/LandingPage";
@@ -33,6 +34,7 @@ function App() {
         <I18nextProvider i18n={i18n}>
             <CurrencyProvider>
                 <AuthProvider>
+                    <AntdConfigProvider>
                     <BrowserRouter>
                         <Toaster />
                         <div>
@@ -94,6 +96,7 @@ function App() {
                             </Routes>
                         </div>
                     </BrowserRouter>
+                    </AntdConfigProvider>
                 </AuthProvider>
             </CurrencyProvider>
         </I18nextProvider>

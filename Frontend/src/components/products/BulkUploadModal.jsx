@@ -19,6 +19,7 @@ import {
     FileTextOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/api";
+import useI18n from "../../hooks/useI18n";
 
 const { Text } = Typography;
 
@@ -33,6 +34,7 @@ const BulkUploadModal = ({
     const [uploading, setUploading] = useState(false);
     const [result, setResult] = useState(null);
     const [progress, setProgress] = useState(0);
+    const { t } = useI18n();
 
     const handleFileSelect = (selectedFile) => {
         const isCSV =

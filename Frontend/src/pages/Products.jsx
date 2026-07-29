@@ -12,6 +12,7 @@ import BulkUploadModal from "../components/products/BulkUploadModal";
 import { useProducts } from "../hooks/products/useProducts";
 import { useCategories } from "../hooks/products/useCategories";
 import { useUnits } from "../hooks/products/useUnits";
+import useI18n from "../hooks/useI18n";
 
 import {
     prepareProductFormData,
@@ -31,6 +32,7 @@ const Products = () => {
     } = useProducts();
     const { categories } = useCategories();
     const { units } = useUnits();
+    const { t } = useI18n();
 
     const [form] = Form.useForm();
 
@@ -137,7 +139,7 @@ const Products = () => {
             }
         } catch (error) {
             console.error("Form validation error:", error);
-            message.error("Please check all required fields");
+            message.error(t("products.enter_product_name_required"));
         } finally {
             setModalLoading(false);
             // FIX 4: Always release the lock, even on error.
@@ -148,7 +150,7 @@ const Products = () => {
     const handleDeleteProduct = async (productId) => {
         const result = await deleteProduct(productId);
         if (!result.success) {
-            message.error("Failed to delete product");
+            message.error(t("products.product_deleted") || "Error");
         }
     };
 
@@ -176,11 +178,11 @@ const Products = () => {
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
                         <div className="flex-1 min-w-0">
                             <h1 className="truncate mb-1 text-3xl sm:text-4xl font-bold flex items-center gap-2 text-white">
-                                Products
+                                {t("products.products")}
                                 <ProductOutlined className="text-[#44F3F0] inline-block ml-2" />
                             </h1>
                             <p className="text-[#A9B3B8] text-base md:text-sm hidden sm:block">
-                                Manage your product inventory
+                                {t("products.manage_inventory")}
                             </p>
                         </div>
                         <div className="flex-shrink-0 flex gap-2">
@@ -189,7 +191,7 @@ const Products = () => {
                                 size="large"
                                 className="w-full sm:w-auto"
                             >
-                                Bulk Upload
+                                {t("products.bulk_upload")}
                             </Button>
                             <Button
                                 type="primary"
@@ -200,9 +202,9 @@ const Products = () => {
                                 block={window.innerWidth < 640}
                             >
                                 <span className="hidden xs:inline">
-                                    Add Product
+                                    {t("products.add_product")}
                                 </span>
-                                <span className="inline xs:hidden">Add</span>
+                                <span className="inline xs:hidden">{t("common.add")}</span>
                             </Button>
                         </div>
                     </div>
@@ -239,7 +241,7 @@ const Products = () => {
                     <ProductModal
                         visible={isModalVisible}
                         title={
-                            editingProduct ? "Edit Product" : "Add New Product"
+                            editingProduct ? t("products.edit_product") : t("products.add_new_product")
                         }
                         form={form}
                         loading={modalLoading}

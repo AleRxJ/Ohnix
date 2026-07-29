@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import LanguageSwitcher from "../LanguageSwitcher/LanguageSwitcher";
 
 const AuthLayout = ({ children }) => {
     return (
@@ -51,6 +52,11 @@ const AuthLayout = ({ children }) => {
 
             {/* ── Right panel — form ───────────────────────────────────── */}
             <div className="relative w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-8 lg:p-12">
+
+                {/* Language switcher — top right */}
+                <div className="absolute top-4 right-4 z-50">
+                    <LanguageSwitcher />
+                </div>
 
                 {/* Mobile logo — only visible when left panel is hidden */}
                 <div className="lg:hidden mb-8 flex flex-col items-center gap-2">

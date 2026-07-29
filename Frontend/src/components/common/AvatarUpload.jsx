@@ -1,121 +1,64 @@
 import React, { useState } from "react";
-import { LoadingOutlined, PlusOutlined } from "@ant-design/icons";
+import { LoadingOutlined, CameraOutlined } from "@ant-design/icons";
 import { Upload, message } from "antd";
-
-const getBase64 = (img, callback) => {
-    const reader = new FileReader();
-    reader.addEventListener("load", () => callback(reader.result));
-    reader.readAsDataURL(img);
-};
-
-const beforeUpload = (file) => {
-    const isJpgOrPng = file.type === "image/jpeg" || file.type === "image/png";
-    if (!isJpgOrPng) {
-        message.error("You can only upload JPG/PNG file!");
-    }
-    const isLt2M = file.size / 1024 / 1024 < 2;
-    if (!isLt2M) {
-        message.error("Image must smaller than 2MB!");
-    }
-    return isJpgOrPng && isLt2M;
-};
+import useI18n from "../../hooks/useI18n";
 
 const AvatarUpload = ({ onChange }) => {
     const [loading, setLoading] = useState(false);
-    const [imageUrl, setImageUrl] = useState();
+    const [imageUrl, setImageUrl] = useState(null);
+    const { t } = useI18n();
 
-    const handleChange = (info) => {
-        if (info.file.status === "uploading") {
-            setLoading(true);
-            return;
-        }
-        
-        // This is the key change - handle errors properly
-        if (info.file.status === "error") {
-            setLoading(false);
-            message.error("Upload failed. Please try again.");
-            return;
-        }
-        
-        if (info.file.status === "done") {
-            // Get this url from response in real world.
-            getBase64(info.file.originFileObj, (url) => {
-                setLoading(false);
-                setImageUrl(url);
-            });
-
-            // Pass the change to parent component
-            if (onChange) {
-                onChange(info);
-            }
-        }
+    const beforeUpload = (file) => {
+        const ok = (file.type === "image/jpeg" || file.type === "image/png");
+        if (!ok) message.error(t("common.only_jpg_png") || "Solo JPG/PNG");
+        const sizeOk = file.size / 1024 / 1024 < 2;
+        if (!sizeOk) message.error(t("common.max_2mb") || "Máx. 2 MB");
+        return ok && sizeOk;
     };
 
-    // Alternative approach using customRequest to bypass actual upload
     const customRequest = ({ file, onSuccess }) => {
-        getBase64(file, (url) => {
+        setLoading(true);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            setImageUrl(e.target.result);
             setLoading(false);
-            setImageUrl(url);
-            
-            // Manually call onSuccess to mark upload as complete
-            setTimeout(() => {
-                onSuccess("ok");
-            }, 0);
-        });
-        
-        // Pass the change to parent component with the file
-        if (onChange) {
-            // Create mock info object similar to what antd would provide
-            const mockInfo = {
-                file: {
-                    status: 'done',
-                    originFileObj: file,
-                    name: file.name,
-                    response: { url: 'success' }
-                }
-            };
-            onChange(mockInfo);
-        }
+            onSuccess("ok");
+            if (onChange) {
+                onChange({ file: { status: "done", originFileObj: file, name: file.name } });
+            }
+        };
+        reader.readAsDataURL(file);
     };
-
-    const uploadButton = (
-        <button
-            style={{
-                border: 0,
-                background: "none",
-            }}
-            type="button"
-        >
-            {loading ? <LoadingOutlined /> : <PlusOutlined />}
-            <div style={{ marginTop: 8 }}>Upload</div>
-        </button>
-    );
 
     return (
         <Upload
             name="avatar"
-            listType="picture-circle"
-            className="avatar-uploader"
             showUploadList={false}
             customRequest={customRequest}
             beforeUpload={beforeUpload}
-            onChange={handleChange}
+            accept="image/jpeg,image/png"
         >
-            {imageUrl ? (
-                <img
-                    src={imageUrl}
-                    alt="avatar"
-                    style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        objectPosition: "center",
-                        borderRadius: "50%"
-                    }}
-                />
-            ) : (
-                uploadButton
-            )}
+            <div className="group relative h-24 w-24 cursor-pointer rounded-full border border-[#29D8D5]/25 bg-white/[0.03] transition-all duration-300 hover:border-[#29D8D5]/50 hover:bg-white/[0.06] hover:shadow-[0_0_20px_rgba(41,216,213,0.15)] overflow-hidden flex items-center justify-center select-none">
+                {imageUrl ? (
+                    <>
+                        <img src={imageUrl} alt="avatar" className="h-full w-full object-cover object-center" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <CameraOutlined className="text-white text-lg" />
+                            <span className="text-[9px] text-white uppercase tracking-wider">{t("common.edit") || "Cambiar"}</span>
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex flex-col items-center gap-1.5 text-[#5A6770] group-hover:text-[#29D8D5] transition-colors duration-300">
+                        {loading
+                            ? <LoadingOutlined className="text-xl" />
+                            : <CameraOutlined className="text-xl" />
+                        }
+                        <span className="text-[9px] uppercase tracking-[0.2em] leading-none">
+                            {t("auth.upload_photo")}
+                        </span>
+                    </div>
+                )}
+            </div>
         </Upload>
     );
 };

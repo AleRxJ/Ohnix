@@ -178,14 +178,18 @@ const registerUser = asyncHandler(async (req, res, next) => {
         avatarFile = req.file;
     }
 
-    if (!avatarFile) {
-        return next(new ApiError(400, "Avatar file is required"));
-    }
-
-    const avatar = await uploadToCloudinary(avatarFile);
-
-    if (!avatar) {
-        return next(new ApiError(400, "Avatar file upload failed"));
+    // Avatar is optional — use Cloudinary upload if file provided, otherwise
+    // fall back to a generated ui-avatars.com URL based on the username.
+    let avatarUrl;
+    if (avatarFile) {
+        const uploaded = await uploadToCloudinary(avatarFile);
+        if (!uploaded) {
+            return next(new ApiError(400, "Avatar file upload failed"));
+        }
+        avatarUrl = uploaded.url;
+    } else {
+        const avatarSeed = encodeURIComponent(normalizedUsername || normalizedEmail);
+        avatarUrl = `https://ui-avatars.com/api/?background=29D8D5&color=021314&name=${avatarSeed}`;
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -202,7 +206,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     const user = await prisma.user.create({
         data: {
-            avatar: avatar.url,
+            avatar: avatarUrl,
             email: normalizedEmail,
             password: hashedPassword,
             username: normalizedUsername,

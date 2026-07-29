@@ -36,11 +36,6 @@ const Signup = () => {
     };
 
     const onFinish = async (values) => {
-        if (!avatarFile) {
-            toast.error(t("auth.upload_avatar"));
-            return;
-        }
-
         try {
             setLoading(true);
 
@@ -106,8 +101,8 @@ const Signup = () => {
                     requiredMark={false}
                     className="w-full"
                 >
-                    <div className="flex flex-col items-center mb-8">
-                        <div className="w-28 h-28">
+                    <div className="flex justify-center mb-6">
+                        <div className="w-24 h-24">
                             <AvatarUpload onChange={handleAvatarChange} />
                         </div>
                     </div>

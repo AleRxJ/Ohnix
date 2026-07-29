@@ -7,6 +7,7 @@ import {
     CloseCircleOutlined,
     CheckCircleOutlined,
 } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -22,13 +23,14 @@ const ProductFilters = ({
     onReset,
     onClose,
 }) => {
+    const { t } = useI18n();
     return (
         <Drawer
             title={
                 <div className="flex items-center gap-2.5">
                     <FilterOutlined className="text-blue-600 text-base" />
                     <span className="text-base font-semibold text-gray-900">
-                        Filter Products
+                        {t("products.filter_products")}
                     </span>
                 </div>
             }
@@ -58,7 +60,7 @@ const ProductFilters = ({
                         className="flex-1"
                         size="large"
                     >
-                        Reset
+                        {t("products.reset")}
                     </Button>
                     <Button
                         type="primary"
@@ -67,7 +69,7 @@ const ProductFilters = ({
                         className="flex-1"
                         size="large"
                     >
-                        Apply
+                        {t("products.apply_filters")}
                     </Button>
                 </div>
             }
@@ -79,12 +81,12 @@ const ProductFilters = ({
                             <AppstoreOutlined className="text-blue-600 text-sm" />
                         </div>
                         <Text className="text-sm font-semibold text-gray-900">
-                            Category
+                            {t("products.category")}
                         </Text>
                     </div>
                     <Select
                         style={{ width: "100%" }}
-                        placeholder="All categories"
+                        placeholder={t("products.all_categories")}
                         allowClear
                         value={categoryFilter}
                         onChange={onCategoryChange}
@@ -105,12 +107,12 @@ const ProductFilters = ({
                             <InboxOutlined className="text-green-600 text-sm" />
                         </div>
                         <Text className="text-sm font-semibold text-gray-900">
-                            Stock Status
+                            {t("products.stock_status")}
                         </Text>
                     </div>
                     <Select
                         style={{ width: "100%" }}
-                        placeholder="All stock levels"
+                        placeholder={t("products.all_stock_levels")}
                         allowClear
                         value={stockFilter}
                         onChange={onStockChange}
@@ -120,19 +122,19 @@ const ProductFilters = ({
                         <Option value="out">
                             <Space>
                                 <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
-                                Out of Stock
+                                {t("products.out_of_stock")}
                             </Space>
                         </Option>
                         <Option value="low">
                             <Space>
                                 <span className="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
-                                Low Stock
+                                {t("products.low_stock")}
                             </Space>
                         </Option>
                         <Option value="in">
                             <Space>
                                 <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
-                                In Stock
+                                {t("products.in_stock")}
                             </Space>
                         </Option>
                     </Select>
@@ -140,8 +142,7 @@ const ProductFilters = ({
 
                 <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
                     <Text className="text-xs text-blue-700 leading-relaxed">
-                        <strong>Tip:</strong> Select filters above and click
-                        Apply to update your product list.
+                        {t("products.filter_tip")}
                     </Text>
                 </div>
             </div>
@@ -150,3 +151,4 @@ const ProductFilters = ({
 };
 
 export default ProductFilters;
+
