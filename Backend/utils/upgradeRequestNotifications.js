@@ -1,5 +1,107 @@
-import transporter from "./nodemailer.js";
+import transporter, { isMailConfigured } from "./nodemailer.js";
 import { prisma } from "../db/prisma.js";
+
+// ─── Plan activated confirmation ────────────────────────────────────────────
+export const notifyUserPlanActivated = async ({ user, targetPlan, locale }) => {
+    if (!isMailConfigured() || !user?.email) return;
+    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
+    const planLabel = targetPlan
+        ? targetPlan.charAt(0).toUpperCase() + targetPlan.slice(1)
+        : "";
+    const subject = isEN
+        ? `[Ohnix] Your ${planLabel} plan is now active`
+        : `[Ohnix] Tu plan ${planLabel} ya está activo`;
+    const title = isEN ? `Plan ${planLabel} activated` : `Plan ${planLabel} activado`;
+    const body = isEN
+        ? `Hello <strong>${user.username || "there"}</strong>, your payment has been confirmed and your <strong>${planLabel}</strong> plan is now active. Your new limits are available immediately.`
+        : `Hola <strong>${user.username || ""}</strong>, tu pago fue confirmado y tu plan <strong>${planLabel}</strong> ya está activo. Tus nuevos límites están disponibles de inmediato.`;
+    const cta = isEN ? "Go to Dashboard" : "Ir al Dashboard";
+    const footer = isEN ? "Ohnix by iTCycle" : "Ohnix by iTCycle";
+    try {
+        await transporter.sendMail({
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            to: user.email,
+            subject,
+            html: `
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
+                    <h2 style="color:#29D8D5;margin:0 0 12px;">✅ ${title}</h2>
+                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;">${body}</p>
+                    <div style="text-align:center;margin:28px 0;">
+                        <a href="${process.env.FRONTEND_URL || ""}" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;">${cta}</a>
+                    </div>
+                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} ${footer}. Todos los derechos reservados.</p>
+                </div>
+            `,
+        });
+    } catch (err) {
+        console.error("[plan-activated] Failed to send notification:", err?.message);
+    }
+};
+
+// ─── Email verified confirmation ─────────────────────────────────────────────
+export const notifyUserEmailVerified = async ({ user, locale }) => {
+    if (!isMailConfigured() || !user?.email) return;
+    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
+    const subject = isEN ? "[Ohnix] Email verified ✅" : "[Ohnix] Correo verificado ✅";
+    const title = isEN ? "Account verified" : "Cuenta verificada";
+    const body = isEN
+        ? `Hello <strong>${user.username || "there"}</strong>, your email has been verified successfully. Your account is now fully active.`
+        : `Hola <strong>${user.username || ""}</strong>, tu correo fue verificado exitosamente. Tu cuenta está completamente activa.`;
+    try {
+        await transporter.sendMail({
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            to: user.email,
+            subject,
+            html: `
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
+                    <h2 style="color:#29D8D5;margin:0 0 12px;">✅ ${title}</h2>
+                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;">${body}</p>
+                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. Todos los derechos reservados.</p>
+                </div>
+            `,
+        });
+    } catch (err) {
+        console.error("[email-verified] Failed to send notification:", err?.message);
+    }
+};
+
+// ─── New user registered → admin notification ────────────────────────────────
+export const notifyAdminsNewUserRegistered = async ({ user }) => {
+    if (!isMailConfigured() || !user?.email) return;
+    try {
+        const adminUsers = await prisma.user.findMany({
+            where: { role: "admin" },
+            select: { email: true },
+        });
+        const recipients = Array.from(new Set([
+            ...adminUsers.map((a) => a.email?.toLowerCase()).filter(Boolean),
+            ...parseAdditionalRecipients(),
+        ]));
+        if (!recipients.length) return;
+        await transporter.sendMail({
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            bcc: recipients,
+            subject: `[Ohnix] Nuevo usuario registrado: ${user.username}`,
+            html: `
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #1d2733;border-radius:12px;">
+                    <h2 style="color:#29D8D5;margin:0 0 12px;">👤 Nuevo usuario registrado</h2>
+                    <table style="width:100%;border-collapse:separate;border-spacing:0 8px;">
+                        <tr><td style="color:#9ca3af;padding:8px 12px;border:1px solid #1d2733;border-radius:8px 0 0 8px;width:35%;">Usuario</td><td style="color:#e5e7eb;padding:8px 12px;border:1px solid #1d2733;border-radius:0 8px 8px 0;">${user.username}</td></tr>
+                        <tr><td style="color:#9ca3af;padding:8px 12px;border:1px solid #1d2733;border-radius:8px 0 0 8px;">Email</td><td style="color:#e5e7eb;padding:8px 12px;border:1px solid #1d2733;border-radius:0 8px 8px 0;">${user.email}</td></tr>
+                        <tr><td style="color:#9ca3af;padding:8px 12px;border:1px solid #1d2733;border-radius:8px 0 0 8px;">Plan</td><td style="color:#e5e7eb;padding:8px 12px;border:1px solid #1d2733;border-radius:0 8px 8px 0;">${user.plan || "starter"}</td></tr>
+                        <tr><td style="color:#9ca3af;padding:8px 12px;border:1px solid #1d2733;border-radius:8px 0 0 8px;">Fecha</td><td style="color:#e5e7eb;padding:8px 12px;border:1px solid #1d2733;border-radius:0 8px 8px 0;">${new Date().toLocaleString()}</td></tr>
+                    </table>
+                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle.</p>
+                </div>
+            `,
+        });
+    } catch (err) {
+        console.error("[new-user-admin] Failed to send notification:", err?.message);
+    }
+};
 
 const BRAND = {
     bg: "#050608",
@@ -161,7 +263,10 @@ export const notifyAdminsUpgradeRequestCreated = async ({
             ])
         );
 
-        if (!recipients.length || !process.env.SENDER_EMAIL) {
+        if (!recipients.length || !isMailConfigured()) {
+            if (process.env.NODE_ENV !== "production" || process.env.AUTH_DEBUG === "true") {
+                console.warn("[upgrade-notify] Admin email skipped: mail not configured or no recipients.");
+            }
             return;
         }
 
@@ -224,7 +329,10 @@ export const notifyUserUpgradeRequestResolved = async ({
             return;
         }
 
-        if (!process.env.SENDER_EMAIL) {
+        if (!isMailConfigured()) {
+            if (process.env.NODE_ENV !== "production" || process.env.AUTH_DEBUG === "true") {
+                console.warn("[upgrade-notify] User resolution email skipped: mail not configured.");
+            }
             return;
         }
 

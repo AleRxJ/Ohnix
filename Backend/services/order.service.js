@@ -1,5 +1,6 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
+import { sendRealtimeLowStockAlert } from "../utils/lowStockScheduler.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -176,6 +177,30 @@ class OrderService {
 
             return createdOrder;
         });
+
+        // Check for low stock after deduction and alert (fire and forget)
+        if (shouldDeductStock) {
+            const LOW_STOCK_THRESHOLD = 10;
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { email: true, username: true, preferredLanguage: true },
+            });
+            if (user) {
+                const lowItems = resolvedItems
+                    .map((item) => ({
+                        productName: item.product.productName,
+                        productCode: item.product.productCode,
+                        stock: item.product.stock - item.quantity,
+                        userEmail: user.email,
+                        username: user.username,
+                        locale: user.preferredLanguage,
+                    }))
+                    .filter((item) => item.stock >= 0 && item.stock < LOW_STOCK_THRESHOLD);
+                if (lowItems.length > 0) {
+                    sendRealtimeLowStockAlert(lowItems).catch(() => {});
+                }
+            }
+        }
 
         return {
             _id: toExternalId(order),

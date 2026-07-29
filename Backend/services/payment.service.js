@@ -46,21 +46,16 @@ const PAYMENT_METHOD_TO_STRIPE_TYPE = {
 const getStripeMethodCandidates = ({ paymentMethod, country }) => {
     const primary = PAYMENT_METHOD_TO_STRIPE_TYPE[paymentMethod];
     if (!primary) {
-        return [];
+        return ["card"];
     }
 
-    // Stripe availability can vary by account/country and API version.
-    // For Colombia banking methods, prioritize the intended rail and then
-    // fall back only to the other local rail (never silently force card).
+    // PSE and Bancolombia were removed from Stripe's API in 2026.
+    // When Colombia direct checkout is unavailable, fall back to card.
     if (country === "CO" && ["pse", "bancolombia_button"].includes(paymentMethod)) {
-        if (paymentMethod === "bancolombia_button") {
-            return ["bancolombia", "pse"];
-        }
-
-        return ["pse", "bancolombia"];
+        return ["card"];
     }
 
-    return [primary];
+    return [primary, "card"].filter((v, i, arr) => arr.indexOf(v) === i);
 };
 
 const getCurrencyCandidates = ({ country, preferredCurrency }) => {
@@ -264,6 +259,13 @@ const createColombiaDirectCheckoutSession = async ({
 export const isAutonomousCheckoutConfigured = () => {
     const stripe = getStripe();
     return Boolean(stripe);
+};
+
+export const verifyStripeSession = async (sessionId) => {
+    const stripe = getStripe();
+    if (!stripe) throw new Error("Stripe not configured");
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    return session?.payment_status === "paid";
 };
 
 export const getSupportedPaymentMethodsByCountry = () =>

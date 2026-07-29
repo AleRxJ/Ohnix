@@ -6,7 +6,43 @@ import jwt from "jsonwebtoken";
 import { sendMailSafe } from "../utils/nodemailer.js";
 import bcrypt from "bcryptjs";
 import { prisma } from "../db/prisma.js";
-import { notifyAdminsUpgradeRequestCreated } from "../utils/upgradeRequestNotifications.js";
+import { notifyAdminsUpgradeRequestCreated, notifyUserEmailVerified, notifyAdminsNewUserRegistered } from "../utils/upgradeRequestNotifications.js";
+
+// ─── Bilingual OTP email builder ─────────────────────────────────────────────
+const buildOtpEmail = ({ username, otp, locale, context }) => {
+    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
+    const titles = {
+        verify:          { es: "Verificación de cuenta",    en: "Account verification" },
+        change_password: { es: "Cambio de contraseña",      en: "Change password" },
+        reset_password:  { es: "Restablecer contraseña",    en: "Reset password" },
+    };
+    const intros = {
+        verify:          { es: "Usa el siguiente código OTP para verificar tu correo:", en: "Use the following OTP code to verify your email:" },
+        change_password: { es: "Usa el siguiente código OTP para cambiar tu contraseña:", en: "Use the following OTP code to change your password:" },
+        reset_password:  { es: "Usa el siguiente código OTP para restablecer tu contraseña:", en: "Use the following OTP code to reset your password:" },
+    };
+    const title = isEN ? titles[context]?.en : titles[context]?.es;
+    const intro = isEN ? intros[context]?.en : intros[context]?.es;
+    const greeting = isEN ? `Hello <strong>${username}</strong>,` : `Hola <strong>${username}</strong>,`;
+    const validity = isEN
+        ? "This code is valid for <strong>10 minutes</strong>. If you didn't request this, ignore this email."
+        : "Este código es válido por <strong>10 minutos</strong>. Si no solicitaste esto, ignora este correo.";
+    const footer = `&copy; ${new Date().getFullYear()} Ohnix by iTCycle. ${isEN ? "All rights reserved." : "Todos los derechos reservados."}`;
+    return `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
+            <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:8px;">OHNIX</div>
+            <h2 style="color:#29D8D5;margin:0 0 16px;">${title}</h2>
+            <p style="font-size:15px;color:#e5e7eb;margin:0 0 6px;">${greeting}</p>
+            <p style="font-size:15px;color:#e5e7eb;margin:0 0 20px;">${intro}</p>
+            <div style="text-align:center;margin:24px 0;">
+                <span style="background:#29D8D5;color:#021314;padding:14px 32px;border-radius:10px;font-size:30px;font-weight:800;display:inline-block;letter-spacing:8px;">${otp}</span>
+            </div>
+            <p style="font-size:13px;color:#9ca3af;margin:0 0 20px;">${validity}</p>
+            <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+            <p style="text-align:center;font-size:12px;color:#6b7280;">${footer}</p>
+        </div>
+    `;
+};
 
 const DEFAULT_ACCESS_TOKEN_EXPIRY = "1d";
 const DEFAULT_REFRESH_TOKEN_EXPIRY = "10d";
@@ -313,6 +349,15 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     // Sending Welcome Email (fire and forget — do not block registration response)
     sendMailSafe(mailOptions, "welcome-email").catch(() => {});
+
+    // Notify admins of new registration (fire and forget)
+    notifyAdminsNewUserRegistered({
+        user: {
+            username: createdUser.username,
+            email: createdUser.email,
+            plan: normalizedDesiredPlan || "starter",
+        },
+    }).catch(() => {});
 
     return res
         .status(201)
@@ -801,6 +846,7 @@ const sendVerifyOtp = asyncHandler(async (req, res, next) => {
                 username: true,
                 email: true,
                 isVerified: true,
+                preferredLanguage: true,
             },
         });
 
@@ -822,25 +868,12 @@ const sendVerifyOtp = asyncHandler(async (req, res, next) => {
         });
 
         const mailOptions = {
-            from: process.env.EMAIL_USER,
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
             to: user.email,
-            subject: "Account Verification - Verify your email",
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background-color: #f9f9f9;">
-                    <h2 style="color: #333; text-align: center;">Account Verification</h2>
-                    <p style="font-size: 16px; color: #555;">Hi <strong>${user.username}</strong>,</p>
-                    <p style="font-size: 16px; color: #555;">Please use the following OTP to verify your email:</p>
-                    <div style="text-align: center; margin: 20px 0;">
-                        <span style="background-color: #4CAF50; color: white; padding: 12px 24px; border-radius: 5px; font-size: 24px; font-weight: bold; display: inline-block;">
-                            ${otp}
-                        </span>
-                    </div>
-                    <p style="font-size: 16px; color: #555;">This OTP is valid for <strong>10 minutes</strong>.</p>
-                    <p style="font-size: 16px; color: #555;">If you did not request this, please ignore this email.</p>
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-                    <p style="text-align: center; font-size: 14px; color: #888;">&copy; ${new Date().getFullYear()} Surya. All rights reserved.</p>
-                </div>
-            `,
+            subject: user.preferredLanguage === "en"
+                ? "Ohnix — Verify your email"
+                : "Ohnix — Verifica tu correo",
+            html: buildOtpEmail({ username: user.username, otp, locale: user.preferredLanguage, context: "verify" }),
         };
         const mailResult = await sendMailSafe(mailOptions, "verify-email-otp");
 
@@ -888,6 +921,7 @@ const sendChangePasswordOtp = asyncHandler(async (req, res, next) => {
                 id: true,
                 username: true,
                 email: true,
+                preferredLanguage: true,
             },
         });
 
@@ -905,25 +939,12 @@ const sendChangePasswordOtp = asyncHandler(async (req, res, next) => {
         });
 
         const mailOptions = {
-            from: process.env.EMAIL_USER,
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
             to: user.email,
-            subject: "Change Password - Verify your email",
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background-color: #f9f9f9;">
-                    <h2 style="color: #333; text-align: center;">Change Password</h2>
-                    <p style="font-size: 16px; color: #555;">Hi <strong>${user.username}</strong>,</p>
-                    <p style="font-size: 16px; color: #555;">Please use the following OTP to change your password:</p>
-                    <div style="text-align: center; margin: 20px 0;">
-                        <span style="background-color: #4CAF50; color: white; padding: 12px 24px; border-radius: 5px; font-size: 24px; font-weight: bold; display: inline-block;">
-                            ${otp}
-                        </span>
-                    </div>
-                    <p style="font-size: 16px; color: #555;">This OTP is valid for <strong>10 minutes</strong>.</p>
-                    <p style="font-size: 16px; color: #555;">If you did not request this, please ignore this email.</p>
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-                    <p style="text-align: center; font-size: 14px; color: #888;">&copy; ${new Date().getFullYear()} Surya. All rights reserved.</p>
-                </div>
-            `,
+            subject: user.preferredLanguage === "en"
+                ? "Ohnix — Change password OTP"
+                : "Ohnix — Código para cambiar contraseña",
+            html: buildOtpEmail({ username: user.username, otp, locale: user.preferredLanguage, context: "change_password" }),
         };
         const mailResult = await sendMailSafe(mailOptions, "change-password-otp");
 
@@ -1052,6 +1073,12 @@ const verifyEmail = asyncHandler(async (req, res, next) => {
             },
         });
 
+        // Send email verified confirmation (fire and forget)
+        notifyUserEmailVerified({
+            user: { email: req.user.email, username: req.user.username },
+            locale: req.user.preferredLanguage,
+        }).catch(() => {});
+
         return res
             .status(200)
             .json(new ApiResponse(200, {}, "User verified successfully"));
@@ -1086,6 +1113,7 @@ const sendResetOtp = asyncHandler(async (req, res, next) => {
                 id: true,
                 username: true,
                 email: true,
+                preferredLanguage: true,
             },
         });
 
@@ -1103,22 +1131,12 @@ const sendResetOtp = asyncHandler(async (req, res, next) => {
         });
 
         const mailOptions = {
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
             to: email,
-            subject: "Password Reset OTP",
-            html: `
-                <div style="font-family: Arial, sans-serif; padding: 20px;">
-                    <h2 style="color: #333; text-align: center;">Password Reset OTP</h2>
-                    <p style="font-size: 16px; color: #555;">Hi <strong>${user.username}</strong>,</p>
-                    <p style="font-size: 16px; color: #555;">Please use the following OTP to reset your password:</p>
-                    <div style="text-align: center; margin: 20px 0;">
-                        <span style="font-size: 24px; font-weight: bold; color: #007BFF;">${otp}</span>
-                    </div>
-                    <p style="font-size: 16px; color: #555;">This OTP is valid for <strong>10 minutes</strong>.</p>
-                    <p style="font-size: 16px; color: #555;">If you did not request this, please ignore this email.</p>
-                    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-                    <p style="text-align: center; font-size: 14px; color: #888;">&copy; ${new Date().getFullYear()} Surya. All rights reserved.</p>
-                </div>
-            `,
+            subject: user.preferredLanguage === "en"
+                ? "Ohnix — Reset your password"
+                : "Ohnix — Código para restablecer contraseña",
+            html: buildOtpEmail({ username: user.username, otp, locale: user.preferredLanguage, context: "reset_password" }),
         };
 
         const mailResult = await sendMailSafe(mailOptions, "reset-password-otp");

@@ -55,6 +55,7 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
                 role: true,
                 avatar: true,
                 isVerified: true,
+                preferredLanguage: true,
                 createdAt: true,
                 updatedAt: true,
             },

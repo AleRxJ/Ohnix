@@ -43,6 +43,7 @@ const PaymentSuccess = () => {
     const { user } = useContext(AuthContext);
 
     const requestId = searchParams.get("requestId") || "";
+    const sessionId = searchParams.get("session_id") || "";
 
     const [loading, setLoading] = useState(true);
     const [statusData, setStatusData] = useState(null);
@@ -91,6 +92,23 @@ const PaymentSuccess = () => {
                 const requestStatus = statusResponse?.data?.request?.status;
                 const targetPlanActive = statusResponse?.data?.targetPlanActive;
 
+                // After 5 polls without activation, try direct session verification
+                // as fallback for when Stripe webhook hasn't arrived yet
+                if (!(requestStatus === "closed" && targetPlanActive) && pollCount === 5 && sessionId) {
+                    try {
+                        await subscriptionService.verifyAndActivateBySession(requestId, sessionId);
+                        // Re-check status after forced activation
+                        const refreshed = await subscriptionService.getUpgradeCheckoutStatus(requestId);
+                        if (refreshed?.data?.targetPlanActive) {
+                            setStatusData(refreshed?.data || null);
+                            setLoading(false);
+                            return;
+                        }
+                    } catch {
+                        // Fallback failed silently, keep polling
+                    }
+                }
+
                 if (!(requestStatus === "closed" && targetPlanActive) && pollCount < 15) {
                     pollCount += 1;
                     pollTimer = setTimeout(load, 4000);
@@ -116,7 +134,7 @@ const PaymentSuccess = () => {
                 clearTimeout(pollTimer);
             }
         };
-    }, [requestId, t]);
+    }, [requestId, sessionId, t]);
 
     const checklist = useMemo(() => {
         const usage = usageData?.usage || {};

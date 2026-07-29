@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import { prisma } from "../db/prisma.js";
-import transporter from "./nodemailer.js";
+import transporter, { isMailConfigured } from "./nodemailer.js";
 
 const resolveTimezone = () => {
     const configuredTimezone = process.env.TIMEZONE || "Asia/Kolkata";
@@ -22,6 +22,10 @@ class LowStockScheduler {
     }
 
     async sendUserLowStockAlert(userId, userEmail, username) {
+        if (!isMailConfigured()) {
+            console.warn(`[low-stock-alert] Skipped for ${username}: mail not configured (check SENDER_EMAIL / SENDER_PASSWORD env vars).`);
+            return { sent: false, reason: "mail_not_configured" };
+        }
         try {
             const lowStockProducts = await prisma.product.findMany({
                 where: {
@@ -286,5 +290,77 @@ class LowStockScheduler {
 }
 
 const lowStockScheduler = new LowStockScheduler();
+
+/**
+ * Send a real-time low stock alert for products that fell below threshold after an order.
+ * @param {Array<{productName, productCode, stock, userEmail, username, locale?}>} items
+ */
+export const sendRealtimeLowStockAlert = async (items) => {
+    if (!isMailConfigured() || !items?.length) return;
+
+    const byUser = items.reduce((acc, item) => {
+        const key = item.userEmail;
+        if (!acc[key]) acc[key] = { userEmail: item.userEmail, username: item.username, locale: item.locale, products: [] };
+        acc[key].products.push(item);
+        return acc;
+    }, {});
+
+    for (const { userEmail, username, locale, products } of Object.values(byUser)) {
+        try {
+            const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
+            const count = products.length;
+            const subject = isEN
+                ? `⚠️ Ohnix — Low stock detected (${count} product${count > 1 ? "s" : ""})`
+                : `⚠️ Ohnix — Stock bajo detectado (${count} producto${count > 1 ? "s" : ""})`;
+            const title = isEN ? "⚠️ Low stock alert" : "⚠️ Alerta de stock bajo";
+            const intro = isEN
+                ? `Hello <strong>${username}</strong>, the following products fell below the threshold after the last order:`
+                : `Hola <strong>${username}</strong>, los siguientes productos quedaron por debajo del umbral tras el último pedido:`;
+            const colProduct = isEN ? "Product" : "Producto";
+            const colCode = isEN ? "Code" : "Código";
+            const colStock = isEN ? "Current stock" : "Stock actual";
+            const ctaLabel = isEN ? "Restock now" : "Reabastecer ahora";
+
+            const rows = products.map((p) => `
+                <tr>
+                    <td style="padding:10px 14px;color:#e5e7eb;font-weight:600;border-bottom:1px solid #1d2733;">${p.productName}</td>
+                    <td style="padding:10px 14px;color:#9ca3af;font-family:monospace;border-bottom:1px solid #1d2733;">${p.productCode}</td>
+                    <td style="padding:10px 14px;text-align:center;border-bottom:1px solid #1d2733;">
+                        <span style="background:#450a0a;color:#fca5a5;font-weight:700;padding:3px 10px;border-radius:99px;font-size:13px;">${p.stock}</span>
+                    </td>
+                </tr>`).join("");
+
+            await transporter.sendMail({
+                from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+                to: userEmail,
+                subject,
+                html: `
+                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid #b91c1c;border-radius:12px;">
+                        <div style="background:linear-gradient(120deg,rgba(185,28,28,0.2),rgba(41,216,213,0.06));border-bottom:1px solid #1d2733;padding:16px 0 14px;margin-bottom:18px;border-radius:8px 8px 0 0;">
+                            <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:6px;">OHNIX</div>
+                            <h2 style="color:#fca5a5;margin:0;font-size:20px;">${title}</h2>
+                        </div>
+                        <p style="color:#e5e7eb;font-size:15px;line-height:1.6;margin:0 0 18px;">${intro}</p>
+                        <table style="width:100%;border-collapse:collapse;border:1px solid #1d2733;border-radius:8px;overflow:hidden;">
+                            <thead><tr style="background:#111827;">
+                                <th style="padding:10px 14px;text-align:left;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">${colProduct}</th>
+                                <th style="padding:10px 14px;text-align:left;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">${colCode}</th>
+                                <th style="padding:10px 14px;text-align:center;color:#29D8D5;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;">${colStock}</th>
+                            </tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                        <p style="text-align:center;margin:24px 0 8px;">
+                            <a href="${process.env.FRONTEND_URL || ""}/products" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:14px;">${ctaLabel}</a>
+                        </p>
+                        <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+                        <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle.</p>
+                    </div>
+                `,
+            });
+        } catch (err) {
+            console.error(`[realtime-low-stock] Failed for ${userEmail}:`, err?.message);
+        }
+    }
+};
 
 export default lowStockScheduler;

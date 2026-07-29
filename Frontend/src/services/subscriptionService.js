@@ -93,4 +93,12 @@ export const subscriptionService = {
         );
         return response.data;
     },
+
+    async verifyAndActivateBySession(requestId, sessionId) {
+        const response = await api.post(
+            `/subscriptions/me/upgrade-requests/${requestId}/verify-activate`,
+            { sessionId }
+        );
+        return response.data;
+    },
 };

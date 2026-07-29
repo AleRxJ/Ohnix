@@ -16,6 +16,7 @@ import {
     reactivateMySubscription,
     updateUpgradeRequestAdmin,
     updateUserPlan,
+    verifyAndActivateBySession,
 } from "../controllers/subscription.controller.js";
 
 const router = Router();
@@ -28,6 +29,7 @@ router.route("/me/upgrade-requests").get(getMyUpgradeRequests).post(createUpgrad
 router.route("/me/checkout-payment-methods").get(getCheckoutPaymentMethods);
 router.route("/me/upgrade-requests/:id/checkout-session").post(createMyUpgradeCheckoutSession);
 router.route("/me/upgrade-requests/:id/checkout-status").get(getMyUpgradeCheckoutStatus);
+router.route("/me/upgrade-requests/:id/verify-activate").post(verifyAndActivateBySession);
 router.route("/me/pause").patch(pauseMySubscription);
 router.route("/me/cancel").patch(cancelMySubscription);
 router.route("/me/reactivate").patch(reactivateMySubscription);

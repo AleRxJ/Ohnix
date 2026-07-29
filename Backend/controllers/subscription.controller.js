@@ -10,12 +10,14 @@ import {
 import {
     notifyAdminsUpgradeRequestCreated,
     notifyUserUpgradeRequestResolved,
+    notifyUserPlanActivated,
 } from "../utils/upgradeRequestNotifications.js";
 import {
     createUpgradeCheckoutSession as createUpgradeCheckoutSessionProvider,
     getSupportedPaymentMethodsByCountry,
     isAutonomousCheckoutConfigured,
     parsePaymentWebhookEvent,
+    verifyStripeSession,
 } from "../services/payment.service.js";
 
 const normalizePaymentLink = (value) => {
@@ -234,6 +236,13 @@ const closeApprovedRequestAndActivatePlan = async ({
             actedBy,
             locale: targetUser?.preferredLanguage,
         });
+
+        // Also send dedicated plan activated email
+        notifyUserPlanActivated({
+            user: targetUser,
+            targetPlan: result.request.targetPlan,
+            locale: targetUser?.preferredLanguage,
+        }).catch(() => {});
     }
 
     return result;
@@ -648,6 +657,64 @@ export const getMyUpgradeCheckoutStatus = asyncHandler(async (req, res, next) =>
             "Checkout status fetched successfully"
         )
     );
+});
+
+// Fallback: verify Stripe session directly and activate plan if payment confirmed
+// Called by the frontend when the webhook hasn't fired yet
+export const verifyAndActivateBySession = asyncHandler(async (req, res, next) => {
+    const { id } = req.params; // upgradeRequestId
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+        return next(new ApiError(400, "sessionId is required"));
+    }
+
+    const request = await prisma.planUpgradeRequest.findFirst({
+        where: { id, userId: req.user.prismaId },
+        select: UPGRADE_REQUEST_SELECT,
+    });
+
+    if (!request) {
+        return next(new ApiError(404, "Upgrade request not found"));
+    }
+
+    if (request.status === "closed") {
+        const subscription = await ensureUserSubscription(req.user.prismaId);
+        return res.status(200).json(new ApiResponse(200, {
+            alreadyActivated: true,
+            targetPlanActive: request.targetPlan === subscription.plan,
+        }, "Plan already activated"));
+    }
+
+    if (request.status !== "approved") {
+        return next(new ApiError(400, "Request is not in approved status"));
+    }
+
+    let paid = false;
+    try {
+        paid = await verifyStripeSession(sessionId);
+    } catch (err) {
+        console.error("[verify-activate] Stripe session check failed:", err?.message);
+        return next(new ApiError(502, "Could not verify payment with Stripe"));
+    }
+
+    if (!paid) {
+        return res.status(200).json(new ApiResponse(200, { paid: false }, "Payment not yet confirmed"));
+    }
+
+    await closeApprovedRequestAndActivatePlan({
+        requestId: id,
+        actedBy: "session-verify-fallback",
+        paymentSessionId: sessionId,
+        paymentProvider: "stripe",
+        paymentStatus: "paid",
+    });
+
+    const subscription = await ensureUserSubscription(req.user.prismaId);
+    return res.status(200).json(new ApiResponse(200, {
+        activated: true,
+        targetPlanActive: request.targetPlan === subscription.plan,
+    }, "Plan activated successfully"));
 });
 
 export const handlePaymentWebhook = async (req, res) => {
