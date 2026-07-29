@@ -1,5 +1,6 @@
 import { Layout } from "antd";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import useI18n from "../hooks/useI18n";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
@@ -16,6 +17,7 @@ import {
     SectionHeading,
     ContentSection,
     brandIcons,
+    VideoModal,
 } from "../components/landing/LandingPageSections";
 
 const { Content } = Layout;
@@ -23,13 +25,14 @@ const { Content } = Layout;
 const LandingPage = () => {
     const navigate = useNavigate();
     const { t } = useI18n();
+    const [showDemo, setShowDemo] = useState(false);
 
     const handleGetStarted = () => {
         navigate("/signup");
     };
 
     const handleWatchDemo = () => {
-        navigate("/demo");
+        setShowDemo(true);
     };
 
     const handlePlanCta = (planKey) => {
@@ -221,6 +224,15 @@ const LandingPage = () => {
 
     return (
         <Layout className="min-h-screen bg-[#050505]">
+            <VideoModal
+                isOpen={showDemo}
+                onClose={() => setShowDemo(false)}
+                /* Replace the src below with your real YouTube URL, e.g:
+                   src="https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
+                   Leave src undefined to show the "coming soon" placeholder */
+                src={undefined}
+                title="Demo Ohnix"
+            />
             <Navbar />
             <Content className="bg-[#050505] pb-24 md:pb-0">
                 <OrbitalHero

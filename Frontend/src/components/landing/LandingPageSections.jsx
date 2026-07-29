@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
     ArrowRightOutlined,
     ApiOutlined,
@@ -9,6 +9,7 @@ import {
     EnvironmentOutlined,
     GlobalOutlined,
     LinkOutlined,
+    CloseOutlined,
     PlayCircleOutlined,
     RocketOutlined,
     SafetyOutlined,
@@ -26,6 +27,117 @@ import {
 
 const sectionShell =
     "relative overflow-hidden border-t border-white/5 bg-[#050505] text-white";
+
+/* ── Scroll-reveal hook ──────────────────────────────────────────────── */
+const useScrollReveal = (threshold = 0.12) => {
+    const ref = useRef(null);
+    const [visible, setVisible] = useState(false);
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        const obs = new IntersectionObserver(
+            ([e]) => { if (e.isIntersecting) { setVisible(true); obs.unobserve(el); } },
+            { threshold }
+        );
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [threshold]);
+    return [ref, visible];
+};
+
+/* ── Animated numeric counter ──────────────────────────────────────── */
+const AnimatedStat = ({ value, active }) => {
+    const [display, setDisplay] = useState("0");
+    useEffect(() => {
+        if (!active) return;
+        const m = String(value).match(/^([\d.]+)(.*)$/);
+        if (!m) { setDisplay(value); return; }
+        const end = parseFloat(m[1]);
+        const suffix = m[2];
+        const hasDecimal = m[1].includes(".");
+        const duration = 1600;
+        const start = performance.now();
+        const tick = (now) => {
+            const t = Math.min((now - start) / duration, 1);
+            const ease = 1 - Math.pow(1 - t, 3);
+            const cur = hasDecimal ? (end * ease).toFixed(1) : Math.round(end * ease);
+            setDisplay(`${cur}${suffix}`);
+            if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }, [active, value]);
+    return <>{display}</>;
+};
+
+/* ── Video demo modal ───────────────────────────────────────────────── */
+export const VideoModal = ({ isOpen, onClose, src, title }) => {
+    useEffect(() => {
+        document.body.style.overflow = isOpen ? "hidden" : "";
+        return () => { document.body.style.overflow = ""; };
+    }, [isOpen]);
+
+    useEffect(() => {
+        const onKey = (e) => { if (e.key === "Escape") onClose(); };
+        if (isOpen) window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [isOpen, onClose]);
+
+    if (!isOpen) return null;
+
+    const embedSrc = src
+        ? src.replace("watch?v=", "embed/") + "?autoplay=1&rel=0"
+        : null;
+
+    return (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 sm:p-8">
+            {/* backdrop */}
+            <div
+                className="absolute inset-0 bg-black/85 backdrop-blur-lg animate-fade-in"
+                onClick={onClose}
+            />
+            {/* panel */}
+            <div className="relative w-full max-w-4xl animate-scale-in">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="absolute -right-1 -top-12 flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white transition-all hover:bg-white/20 hover:border-white/30"
+                    aria-label="Cerrar"
+                >
+                    <CloseOutlined />
+                </button>
+
+                <div className="overflow-hidden rounded-[28px] border border-[#29D8D5]/25 bg-[#090909] shadow-[0_0_0_1px_rgba(41,216,213,0.08),0_48px_120px_rgba(0,0,0,0.85)]">
+                    <div className="aspect-video bg-[#090909]">
+                        {embedSrc ? (
+                            <iframe
+                                title={title || "Demo Ohnix"}
+                                className="h-full w-full"
+                                src={embedSrc}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                            />
+                        ) : (
+                            /* placeholder while there's no real video URL */
+                            <div className="flex h-full w-full flex-col items-center justify-center gap-6 px-6 text-center">
+                                <div className="relative flex h-24 w-24 items-center justify-center">
+                                    <span className="absolute h-full w-full rounded-full bg-[#29D8D5]/20 animate-ripple" />
+                                    <span className="absolute h-full w-full rounded-full bg-[#29D8D5]/15 animate-ripple-delay" />
+                                    <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-[#29D8D5]/40 bg-[#29D8D5]/10 text-[#29D8D5]">
+                                        <PlayCircleOutlined className="text-4xl" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-lg font-semibold text-white">Demo próximamente</p>
+                                    <p className="mt-2 text-sm text-[#A9B3B8]">Estamos preparando el video de demo. Contáctanos para una demostración en vivo.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export const SectionHeading = ({ eyebrow, title, description, align = "center" }) => {
     const alignment = align === "left" ? "items-start text-left" : "items-center text-center";
@@ -93,26 +205,46 @@ export const OrbitalHero = ({
             </div>
 
             <div className="relative mx-auto max-w-7xl px-6 pb-20 pt-28 md:px-10 md:pb-28 lg:pt-32">
+                {/* ── Mobile-only ambient blobs ───────────────────────────────── */}
+                <div className="pointer-events-none absolute inset-0 overflow-hidden md:hidden" aria-hidden="true">
+                    <div className="absolute -left-24 top-24 h-80 w-80 rounded-full bg-[#29D8D5]/8 blur-[90px] animate-blob-float" />
+                    <div className="absolute -right-16 top-1/3 h-64 w-64 rounded-full bg-[#44F3F0]/6 blur-[70px] animate-blob-float-alt" />
+                    <div className="absolute bottom-24 left-1/3 h-48 w-48 rounded-full bg-[#29D8D5]/5 blur-[55px] animate-float-slow" />
+                </div>
+
                 <div className="grid items-center gap-14 lg:grid-cols-[1.03fr_0.97fr] lg:gap-20">
                     <div className="relative z-10">
-                        <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-[#29D8D5]">
-                            <span className="h-2 w-2 rounded-full bg-[#29D8D5] shadow-[0_0_16px_rgba(41,216,213,0.9)]" />
+                        {/* ── Eyebrow with live pulse dot ─── */}
+                        <div className="animate-fade-up inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-[#29D8D5]">
+                            <span className="relative flex h-2 w-2">
+                                <span className="absolute inline-flex h-full w-full rounded-full bg-[#29D8D5] opacity-70 animate-ping" />
+                                <span className="relative h-2 w-2 rounded-full bg-[#29D8D5] shadow-[0_0_16px_rgba(41,216,213,0.9)]" />
+                            </span>
                             {eyebrow}
                         </div>
 
-                        <h1 className="mt-7 max-w-3xl text-5xl font-semibold tracking-tight text-white md:text-7xl md:leading-[0.94]">
+                        <h1
+                            className="mt-7 max-w-3xl text-5xl font-semibold tracking-tight text-white md:text-7xl md:leading-[0.94] animate-fade-up"
+                            style={{ animationDelay: "0.1s" }}
+                        >
                             {title}
                         </h1>
 
-                        <p className="mt-6 max-w-2xl text-base leading-8 text-[#A9B3B8] md:text-xl">
+                        <p
+                            className="mt-6 max-w-2xl text-base leading-8 text-[#A9B3B8] md:text-xl animate-fade-up"
+                            style={{ animationDelay: "0.2s" }}
+                        >
                             {subtitle}
                         </p>
 
-                        <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+                        <div
+                            className="mt-10 flex flex-col gap-4 sm:flex-row animate-fade-up"
+                            style={{ animationDelay: "0.3s" }}
+                        >
                             <button
                                 type="button"
                                 onClick={onPrimary}
-                                className="group inline-flex items-center justify-center gap-3 rounded-full bg-[#29D8D5] px-6 py-3.5 text-sm font-semibold text-[#021314] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#44F3F0] hover:shadow-[0_0_40px_rgba(41,216,213,0.28)]"
+                                className="group relative inline-flex items-center justify-center gap-3 rounded-full bg-[#29D8D5] px-6 py-3.5 text-sm font-semibold text-[#021314] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#44F3F0] animate-glow-pulse"
                             >
                                 {primaryCta}
                                 <ArrowRightOutlined className="transition-transform duration-300 group-hover:translate-x-1" />
@@ -127,11 +259,15 @@ export const OrbitalHero = ({
                             </button>
                         </div>
 
-                        <div className="mt-12 grid gap-4 sm:grid-cols-3">
-                            {stats.map((stat) => (
+                        <div
+                            className="mt-12 grid gap-4 sm:grid-cols-3 animate-fade-up"
+                            style={{ animationDelay: "0.4s" }}
+                        >
+                            {stats.map((stat, i) => (
                                 <div
                                     key={stat.label}
                                     className="rounded-3xl border border-white/8 bg-white/[0.03] px-5 py-5 backdrop-blur-sm transition-all duration-300 hover:border-[#29D8D5]/30 hover:bg-white/[0.05]"
+                                    style={{ animationDelay: `${0.45 + i * 0.08}s` }}
                                 >
                                     <div className="text-2xl font-semibold tracking-tight text-white md:text-3xl">
                                         {stat.value}
@@ -144,10 +280,10 @@ export const OrbitalHero = ({
                         </div>
                     </div>
 
-                    <div className="relative mx-auto w-full max-w-[620px]">
+                    <div className="relative mx-auto w-full max-w-[620px] animate-fade-up" style={{ animationDelay: "0.2s" }}>
                         <div className="absolute -inset-6 rounded-[40px] bg-[radial-gradient(circle_at_center,rgba(41,216,213,0.2),transparent_62%)] blur-2xl" />
 
-                        <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.55)] transition-transform duration-300 hover:-translate-y-1">
+                        <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.55)] transition-transform duration-300 hover:-translate-y-1 animate-float">
                             <div className="overflow-hidden rounded-[22px] border border-white/8 bg-[#0a0a0a]">
                                 <img
                                     src={productImage}
@@ -158,12 +294,13 @@ export const OrbitalHero = ({
                         </div>
 
                         <div className="mt-5 flex flex-wrap justify-center gap-2">
-                            {orbitLabels.map((label) => (
+                            {orbitLabels.map((label, i) => (
                                 <span
                                     key={label}
-                                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#0B0B0B]/90 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-[#A9B3B8] backdrop-blur-sm"
+                                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#0B0B0B]/90 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-[#A9B3B8] backdrop-blur-sm animate-fade-in"
+                                    style={{ animationDelay: `${0.6 + i * 0.15}s` }}
                                 >
-                                    <span className="h-2 w-2 rounded-full bg-[#44F3F0] shadow-[0_0_12px_rgba(68,243,240,0.85)]" />
+                                    <span className="h-2 w-2 rounded-full bg-[#44F3F0] shadow-[0_0_12px_rgba(68,243,240,0.85)] animate-pulse" />
                                     {label}
                                 </span>
                             ))}
@@ -200,6 +337,8 @@ export const ContentSection = ({ id, children, className = "", shell = true }) =
 };
 
 export const CardGrid = ({ items, columns = 3, iconTone = "accent" }) => {
+    const [ref, visible] = useScrollReveal();
+
     const gridClass = {
         2: "md:grid-cols-2",
         3: "md:grid-cols-2 xl:grid-cols-3",
@@ -207,8 +346,8 @@ export const CardGrid = ({ items, columns = 3, iconTone = "accent" }) => {
     }[columns] || "md:grid-cols-2 xl:grid-cols-3";
 
     return (
-        <div className={`grid gap-5 ${gridClass}`}>
-            {items.map((item) => {
+        <div ref={ref} className={`grid gap-5 ${gridClass}`}>
+            {items.map((item, index) => {
                 const iconClass =
                     iconTone === "accent"
                         ? "text-[#29D8D5]"
@@ -217,10 +356,11 @@ export const CardGrid = ({ items, columns = 3, iconTone = "accent" }) => {
                 return (
                     <article
                         key={item.title}
-                        className="group rounded-[28px] border border-white/8 bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#29D8D5]/30 hover:bg-white/[0.05]"
+                        className={`group rounded-[28px] border border-white/8 bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#29D8D5]/30 hover:bg-white/[0.05] ${visible ? "animate-fade-up" : "opacity-0"}`}
+                        style={{ animationDelay: `${index * 0.08}s` }}
                     >
                         <div className="flex items-start gap-4">
-                            <div className={`rounded-2xl border border-white/10 bg-white/[0.04] p-3 ${iconClass}`}>
+                            <div className={`rounded-2xl border border-white/10 bg-white/[0.04] p-3 ${iconClass} transition-transform duration-300 group-hover:scale-110`}>
                                 <span className="text-2xl">{item.icon}</span>
                             </div>
                             <div className="flex-1">
@@ -325,27 +465,33 @@ export const CycleTimelineSection = ({ heading, steps }) => (
 );
 
 export const MobileStickyCta = ({ primaryCta, secondaryCta, onPrimary, onSecondary }) => (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/95 p-4 backdrop-blur-xl md:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/96 px-4 py-3 backdrop-blur-xl md:hidden animate-slide-up"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}
+    >
         <div className="mx-auto flex max-w-lg gap-3">
             <button
                 type="button"
                 onClick={onSecondary}
-                className="flex-1 rounded-full border border-white/12 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white"
+                className="flex-1 rounded-full border border-white/15 bg-white/[0.04] px-4 py-3.5 text-sm font-semibold text-white transition-all active:scale-95 hover:border-[#29D8D5]/30"
             >
                 {secondaryCta}
             </button>
             <button
                 type="button"
                 onClick={onPrimary}
-                className="flex-1 rounded-full bg-[#29D8D5] px-4 py-3 text-sm font-semibold text-[#021314]"
+                className="relative flex-1 overflow-hidden rounded-full bg-[#29D8D5] px-4 py-3.5 text-sm font-semibold text-[#021314] transition-all active:scale-95"
             >
-                {primaryCta}
+                <span className="pointer-events-none absolute inset-0 rounded-full animate-ripple bg-[#44F3F0]" />
+                <span className="pointer-events-none absolute inset-0 rounded-full animate-ripple-delay bg-[#44F3F0]" />
+                <span className="relative">{primaryCta}</span>
             </button>
         </div>
     </div>
 );
 
-export const ImpactMetricsSection = ({ heading, metrics }) => (
+export const ImpactMetricsSection = ({ heading, metrics }) => {
+    const [ref, visible] = useScrollReveal();
+    return (
     <ContentSection id="impact">
         <SectionHeading
             eyebrow={heading.eyebrow}
@@ -353,14 +499,15 @@ export const ImpactMetricsSection = ({ heading, metrics }) => (
             description={heading.description}
         />
 
-        <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            {metrics.map((metric) => (
+        <div ref={ref} className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {metrics.map((metric, i) => (
                 <article
                     key={metric.label}
-                    className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-6"
+                    className="rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-6 transition-all duration-500 hover:border-[#29D8D5]/30 hover:-translate-y-1 animate-fade-up"
+                    style={{ animationDelay: `${i * 0.1}s` }}
                 >
-                    <div className="text-4xl font-semibold tracking-tight text-white">
-                        {metric.value}
+                    <div className="text-4xl font-semibold tracking-tight text-white tabular-nums">
+                        <AnimatedStat value={metric.value} active={visible} />
                     </div>
                     <div className="mt-3 text-sm uppercase tracking-[0.28em] text-[#29D8D5]">
                         {metric.label}
@@ -370,7 +517,8 @@ export const ImpactMetricsSection = ({ heading, metrics }) => (
             ))}
         </div>
     </ContentSection>
-);
+    );
+};
 
 export const TestimonialsSection = ({ heading, testimonials }) => (
     <ContentSection id="stories">
