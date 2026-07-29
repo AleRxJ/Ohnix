@@ -466,6 +466,15 @@
     "upload_products": "Cargar productos",
     "upload_another_file": "Cargar otro archivo",
     "kb_supported_rows": "KB — hasta 500 filas soportadas",
+    "upload_success": "¡Todos los {{count}} producto(s) se cargaron exitosamente!",
+    "upload_partial_success": "Carga parcial: {{inserted}} insertados, {{failed}} fallidos.",
+    "upload_failed": "Carga fallida. {{count}} fila(s) tuvieron errores.",
+    "csv_only_accepted": "Solo se aceptan archivos CSV (.csv)",
+    "total_rows": "Total de filas:",
+    "inserted": "✓ Insertados:",
+    "failed_rows": "✗ Fallidos:",
+    "row_errors": "Errores de fila ({{count}})",
+    "done": "Listo",
     "manage_inventory": "Gestiona tu inventario de productos",
     "search_products": "Buscar productos por nombre o código...",
     "filters": "Filtros",
@@ -740,7 +749,20 @@
     "updated_at": "Actualizado el",
     "showing_units": "Mostrando {{start}}-{{end}} de {{total}} unidades",
     "no_units_found": "No se encontraron unidades",
-    "create_first_unit": "Crea tu primera unidad para comenzar"
+    "create_first_unit": "Crea tu primera unidad para comenzar",
+    "select_common_unit": "Selecciona una unidad común",
+    "create_custom_unit": "Crear unidad personalizada",
+    "common_units": "Unidades comunes",
+    "category": "Categoría",
+    "measurement_type": "Tipo de medida",
+    "weight": "Peso",
+    "volume": "Volumen",
+    "length": "Longitud",
+    "area": "Área",
+    "count": "Cantidad",
+    "time": "Tiempo",
+    "custom_name": "Nombre personalizado",
+    "unit_symbol": "Símbolo de unidad"
   },
   "reports": {
     "reports": "Reportes",
@@ -1196,5 +1218,20 @@
       "email": "hello@itcycle.com",
       "copyright": "Todos los derechos reservados."
     }
+  },
+  "categories_units": {
+    "categories_units": "Categorías y Unidades",
+    "manage_inventory_categories_units": "Administra tus categorías e unidades de inventario",
+    "total_categories": "Total de categorías",
+    "your_categories": "Tus categorías",
+    "total_units": "Total de unidades",
+    "your_units": "Tus unidades"
+  },
+  "filter": {
+    "all_items": "Todos los elementos",
+    "my_items": "Mis elementos",
+    "others_items": "Elementos de otros",
+    "clear_filters": "Limpiar filtros",
+    "clear": "Limpiar"
   }
 }

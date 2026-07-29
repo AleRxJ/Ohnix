@@ -8,8 +8,10 @@ import PageHeader from "../components/common/PageHeader";
 import StatsSection from "../components/common/StatsSection";
 import CategorySection from "../components/categories/CategorySection";
 import UnitSection from "../components/units/UnitSection";
+import useI18n from "../hooks/useI18n";
 
 const CategoryUnit = () => {
+    const { t } = useI18n();
     const { user, isAdmin } = useAuth();
     // ✅ Llamar a los hooks UNA SOLA VEZ aquí
     const categoryHook = useCategories();
@@ -21,8 +23,8 @@ const CategoryUnit = () => {
                 {/* Enhanced Header */}
                 <div className="mb-8">
                     <PageHeader
-                        title="Categories & Units"
-                        subtitle="Manage your inventory categories and units"
+                        title={t("categories_units.categories_units")}
+                        subtitle={t("categories_units.manage_inventory_categories_units")}
                         icon={<InboxOutlined />}
                     />
                 </div>

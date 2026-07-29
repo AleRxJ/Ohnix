@@ -43,7 +43,7 @@ const BulkUploadModal = ({
             selectedFile.name.toLowerCase().endsWith(".csv");
 
         if (!isCSV) {
-            message.error("Only CSV files are accepted (.csv)");
+            message.error(t("products.csv_only_accepted"));
             setFile(null);
             return false;
         }
@@ -168,7 +168,7 @@ const BulkUploadModal = ({
                 <div className="flex items-center gap-2">
                     <FileTextOutlined className="text-blue-600" />
                     <span className="text-lg font-bold">
-                        Bulk Product Upload
+                        {t("products.bulk_product_upload")}
                     </span>
                 </div>
             }
@@ -183,11 +183,10 @@ const BulkUploadModal = ({
                     <div className="flex items-start justify-between gap-4">
                         <div>
                             <Text className="font-semibold text-blue-900 block mb-1">
-                                Step 1: Download Template
+                                {t("products.step_1_download_template")}
                             </Text>
                             <Text className="text-sm text-blue-700">
-                                Use the template CSV to ensure correct column
-                                names. Required:{" "}
+                                {t("products.template_csv_instruction")}{" "}
                                 <Text code className="text-xs">
                                     product_name
                                 </Text>
@@ -219,14 +218,14 @@ const BulkUploadModal = ({
                             size="small"
                             className="flex-shrink-0"
                         >
-                            Template
+                            {t("products.template")}
                         </Button>
                     </div>
                 </div>
 
                 <div>
                     <Text className="font-semibold block mb-2">
-                        Step 2: Select CSV File
+                        {t("products.step_2_select_csv")}
                     </Text>
                     <Upload
                         accept=".csv"
@@ -241,14 +240,13 @@ const BulkUploadModal = ({
                             className="w-full"
                         >
                             {file
-                                ? `Selected: ${file.name}`
-                                : "Click to select CSV file"}
+                                ? `${t("products.selected")}: ${file.name}`
+                                : t("products.click_to_select_csv")}
                         </Button>
                     </Upload>
                     {file && (
                         <Text type="secondary" className="text-xs mt-1 block">
-                            {(file.size / 1024).toFixed(1)} KB — up to 500 rows
-                            supported
+                            {(file.size / 1024).toFixed(1)} {t("products.kb_supported_rows")}
                         </Text>
                     )}
                 </div>
@@ -270,7 +268,7 @@ const BulkUploadModal = ({
                         disabled={!file || uploading}
                         className="w-full"
                     >
-                        {uploading ? "Uploading…" : "Upload Products"}
+                        {uploading ? t("products.uploading") : t("products.upload_products")}
                     </Button>
                 )}
 
@@ -282,7 +280,7 @@ const BulkUploadModal = ({
                             <Alert
                                 type="success"
                                 icon={<CheckCircleOutlined />}
-                                message={`All ${result.inserted} product(s) uploaded successfully!`}
+                                message={t("products.upload_success", { count: result.inserted })}
                                 showIcon
                             />
                         )}
@@ -290,7 +288,7 @@ const BulkUploadModal = ({
                         {partialSuccess && (
                             <Alert
                                 type="warning"
-                                message={`Partial success: ${result.inserted} inserted, ${result.failed} failed.`}
+                                message={t("products.upload_partial_success", { inserted: result.inserted, failed: result.failed })}
                                 showIcon
                             />
                         )}
@@ -299,23 +297,23 @@ const BulkUploadModal = ({
                             <Alert
                                 type="error"
                                 icon={<CloseCircleOutlined />}
-                                message={`Upload failed. ${result.failed} row(s) had errors.`}
+                                message={t("products.upload_failed", { count: result.failed })}
                                 showIcon
                             />
                         )}
 
                         <div className="flex gap-2 flex-wrap">
                             <Tag color="default">
-                                Total rows: {result.total}
+                                {t("products.total_rows")} {result.total}
                             </Tag>
                             {result.inserted > 0 && (
                                 <Tag color="success">
-                                    ✓ Inserted: {result.inserted}
+                                    {t("products.inserted")} {result.inserted}
                                 </Tag>
                             )}
                             {result.failed > 0 && (
                                 <Tag color="error">
-                                    ✗ Failed: {result.failed}
+                                    {t("products.failed_rows")} {result.failed}
                                 </Tag>
                             )}
                         </div>
@@ -323,7 +321,7 @@ const BulkUploadModal = ({
                         {result.errors?.length > 0 && (
                             <div>
                                 <Text className="font-semibold text-red-600 block mb-2">
-                                    Row Errors ({result.errors.length})
+                                    {t("products.row_errors", { count: result.errors.length })}
                                 </Text>
                                 <Table
                                     dataSource={result.errors.map((e, i) => ({
@@ -352,14 +350,14 @@ const BulkUploadModal = ({
                                 }}
                                 className="flex-1"
                             >
-                                Upload Another File
+                                {t("products.upload_another_file")}
                             </Button>
                             <Button
                                 type="primary"
                                 onClick={handleClose}
                                 className="flex-1"
                             >
-                                Done
+                                {t("products.done")}
                             </Button>
                         </div>
                     </div>

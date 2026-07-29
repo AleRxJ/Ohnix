@@ -466,6 +466,15 @@
     "upload_products": "Upload Products",
     "upload_another_file": "Upload Another File",
     "kb_supported_rows": "KB — up to 500 rows supported",
+    "upload_success": "All {{count}} product(s) uploaded successfully!",
+    "upload_partial_success": "Partial success: {{inserted}} inserted, {{failed}} failed.",
+    "upload_failed": "Upload failed. {{count}} row(s) had errors.",
+    "csv_only_accepted": "Only CSV files are accepted (.csv)",
+    "total_rows": "Total rows:",
+    "inserted": "✓ Inserted:",
+    "failed_rows": "✗ Failed:",
+    "row_errors": "Row Errors ({{count}})",
+    "done": "Done",
     "manage_inventory": "Manage your product inventory",
     "search_products": "Search products by name or code...",
     "filters": "Filters",
@@ -739,7 +748,20 @@
     "updated_at": "Updated At",
     "showing_units": "Showing {{start}}-{{end}} of {{total}} units",
     "no_units_found": "No units found",
-    "create_first_unit": "Create your first unit to get started"
+    "create_first_unit": "Create your first unit to get started",
+    "select_common_unit": "Select a common unit",
+    "create_custom_unit": "Create custom unit",
+    "common_units": "Common Units",
+    "category": "Category",
+    "measurement_type": "Measurement Type",
+    "weight": "Weight",
+    "volume": "Volume",
+    "length": "Length",
+    "area": "Area",
+    "count": "Count",
+    "time": "Time",
+    "custom_name": "Custom Name",
+    "unit_symbol": "Unit Symbol"
   },
   "reports": {
     "reports": "Reports",
@@ -1202,5 +1224,20 @@
       "email": "hello@itcycle.com",
       "copyright": "All rights reserved."
     }
+  },
+  "categories_units": {
+    "categories_units": "Categories & Units",
+    "manage_inventory_categories_units": "Manage your inventory categories and units",
+    "total_categories": "Total Categories",
+    "your_categories": "Your Categories",
+    "total_units": "Total Units",
+    "your_units": "Your Units"
+  },
+  "filter": {
+    "all_items": "All Items",
+    "my_items": "My Items",
+    "others_items": "Others' Items",
+    "clear_filters": "Clear Filters",
+    "clear": "Clear"
   }
 }

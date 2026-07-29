@@ -598,3 +598,27 @@ body {
   }
 }
 
+/* Unit Modal Tabs */
+.unit-modal-tabs .ant-tabs {
+  color: #ffffff;
+}
+
+.unit-modal-tabs .ant-tabs-tab {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #a9b3b8 !important;
+}
+
+.unit-modal-tabs .ant-tabs-tab-active {
+  border-color: #29d8d5 !important;
+  color: #44f3f0 !important;
+}
+
+.unit-modal-tabs .ant-tabs-ink-bar {
+  background: linear-gradient(90deg, #29d8d5, #44f3f0) !important;
+}
+
+.unit-modal-tabs .ant-tabs-content {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+

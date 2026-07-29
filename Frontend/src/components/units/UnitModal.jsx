@@ -1,26 +1,57 @@
-import React, { useEffect } from "react";
-import { Modal, Form, Input, Button, Space } from "antd";
+import React, { useEffect, useState } from "react";
+import { Modal, Form, Input, Button, Space, Select, Tabs, Divider } from "antd";
 import { AppstoreOutlined } from "@ant-design/icons";
 import { FORM_RULES, MODAL_WIDTH } from "../../utils/category_units/constants";
+import { COMMON_UNITS, UNIT_CATEGORIES, getUnitsByCategory } from "../../utils/commonUnits";
 import useI18n from "../../hooks/useI18n";
 
 const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
     const { t } = useI18n();
+    const [mode, setMode] = useState("common"); // "common" or "custom"
+    const [selectedCategory, setSelectedCategory] = useState("Weight");
+    const [selectedUnit, setSelectedUnit] = useState(null);
+
     useEffect(() => {
         if (visible) {
             if (editingUnit) {
                 form.setFieldsValue({
                     unit_name: editingUnit.unit_name,
                 });
+                setMode("custom");
             } else {
                 form.resetFields();
+                setMode("common");
+                setSelectedCategory("Weight");
+                setSelectedUnit(null);
             }
         }
     }, [visible, editingUnit, form]);
 
+    const handleSelectCommonUnit = (unit) => {
+        setSelectedUnit(unit);
+        form.setFieldsValue({
+            unit_name: `${unit.name} (${unit.symbol})`,
+        });
+    };
+
     const handleSubmit = (values) => {
         onSubmit(values);
+        setMode("common");
+        setSelectedUnit(null);
     };
+
+    const commonUnitsInCategory = getUnitsByCategory(selectedCategory);
+
+    const categoryOptions = UNIT_CATEGORIES.map((cat) => ({
+        label: t(`units.${cat.toLowerCase()}`) || cat,
+        value: cat,
+    }));
+
+    const unitsForSelect = COMMON_UNITS.map((unit) => ({
+        label: `${unit.name} (${unit.symbol})`,
+        value: unit.id,
+        unit: unit,
+    }));
 
     return (
         <Modal
@@ -32,7 +63,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
             open={visible}
             onCancel={onClose}
             footer={null}
-            width={Math.min(480, window.innerWidth * 0.9)}
+            width={Math.min(540, window.innerWidth * 0.9)}
             centered
             className="unit-modal"
             styles={{
@@ -52,51 +83,158 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                 body: { padding: "20px 24px 24px" },
             }}
         >
-            <Form
-                form={form}
-                layout="vertical"
-                onFinish={handleSubmit}
-                className="space-y-6"
-                size="large"
-            >
-                <Form.Item
-                    name="unit_name"
-                    label={
-                        <span className="text-sm font-medium text-[#A9B3B8]">
-                            {t("units.unit_name")}
-                        </span>
-                    }
-                    rules={FORM_RULES.UNIT_NAME}
-                    className="mb-6"
-                >
-                    <Input
-                        placeholder={t("units.enter_unit_name")}
-                        className="h-11 rounded-md auth-ohnix-input"
-                        prefix={
-                            <AppstoreOutlined className="text-[#8B98A0] text-sm" />
-                        }
-                    />
-                </Form.Item>
+            {!editingUnit && (
+                <Tabs
+                    value={mode}
+                    onChange={setMode}
+                    items={[
+                        {
+                            key: "common",
+                            label: <span className="text-white">{t("units.select_common_unit")}</span>,
+                            children: (
+                                <div className="space-y-4 py-3">
+                                    <Form.Item
+                                        label={
+                                            <span className="text-sm font-medium text-[#A9B3B8]">
+                                                {t("units.measurement_type")}
+                                            </span>
+                                        }
+                                        className="mb-4"
+                                    >
+                                        <Select
+                                            value={selectedCategory}
+                                            onChange={setSelectedCategory}
+                                            options={categoryOptions}
+                                            className="w-full"
+                                        />
+                                    </Form.Item>
 
-                <Form.Item className="mb-0">
-                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-white/10">
-                        <Button
-                            onClick={onClose}
-                            className="h-10 px-6 rounded-md bg-white/[0.04] border-white/10 text-white hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
-                        >
-                            {t("common.cancel")}
-                        </Button>
-                        <Button
-                            type="primary"
-                            htmlType="submit"
-                            className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
-                        >
-                            {editingUnit ? t("units.update_unit") : t("units.create_unit")}
-                        </Button>
-                    </div>
-                </Form.Item>
-            </Form>
+                                    <div>
+                                        <label className="text-sm font-medium text-[#A9B3B8] block mb-3">
+                                            {t("units.common_units")}
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto bg-white/[0.02] p-3 rounded-md border border-white/10">
+                                            {commonUnitsInCategory.map((unit) => (
+                                                <button
+                                                    key={unit.id}
+                                                    onClick={() => handleSelectCommonUnit(unit)}
+                                                    className={`p-3 rounded-lg border text-sm text-left transition-all ${
+                                                        selectedUnit?.id === unit.id
+                                                            ? "border-[#29D8D5] bg-[#29D8D5]/10 text-[#44F3F0]"
+                                                            : "border-white/10 bg-white/[0.03] text-[#A9B3B8] hover:border-[#29D8D5]/50 hover:bg-white/[0.05]"
+                                                    }`}
+                                                    type="button"
+                                                >
+                                                    <div className="font-medium">{unit.name}</div>
+                                                    <div className="text-xs opacity-75">{unit.symbol}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {selectedUnit && (
+                                        <Form form={form} layout="vertical" onFinish={handleSubmit}>
+                                            <Form.Item className="mb-0">
+                                                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-white/10">
+                                                    <Button
+                                                        onClick={onClose}
+                                                        className="h-10 px-6 rounded-md bg-white/[0.04] border-white/10 text-white hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                                                    >
+                                                        {t("common.cancel")}
+                                                    </Button>
+                                                    <Button
+                                                        type="primary"
+                                                        htmlType="submit"
+                                                        className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
+                                                    >
+                                                        {t("units.create_unit")}
+                                                    </Button>
+                                                </div>
+                                            </Form.Item>
+                                        </Form>
+                                    )}
+                                </div>
+                            ),
+                        },
+                        {
+                            key: "custom",
+                            label: <span className="text-white">{t("units.create_custom_unit")}</span>,
+                            children: (
+                                <div className="py-3">
+                                    <CustomUnitForm
+                                        form={form}
+                                        onSubmit={handleSubmit}
+                                        onCancel={onClose}
+                                        editingUnit={editingUnit}
+                                        t={t}
+                                    />
+                                </div>
+                            ),
+                        },
+                    ]}
+                    className="unit-modal-tabs"
+                />
+            )}
+
+            {editingUnit && (
+                <CustomUnitForm
+                    form={form}
+                    onSubmit={handleSubmit}
+                    onCancel={onClose}
+                    editingUnit={editingUnit}
+                    t={t}
+                />
+            )}
         </Modal>
+    );
+};
+
+const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t }) => {
+    return (
+        <Form
+            form={form}
+            layout="vertical"
+            onFinish={onSubmit}
+            className="space-y-6"
+            size="large"
+        >
+            <Form.Item
+                name="unit_name"
+                label={
+                    <span className="text-sm font-medium text-[#A9B3B8]">
+                        {t("units.unit_name")}
+                    </span>
+                }
+                rules={FORM_RULES.UNIT_NAME}
+                className="mb-6"
+            >
+                <Input
+                    placeholder={t("units.enter_unit_name")}
+                    className="h-11 rounded-md auth-ohnix-input"
+                    prefix={
+                        <AppstoreOutlined className="text-[#8B98A0] text-sm" />
+                    }
+                />
+            </Form.Item>
+
+            <Form.Item className="mb-0">
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-white/10">
+                    <Button
+                        onClick={onCancel}
+                        className="h-10 px-6 rounded-md bg-white/[0.04] border-white/10 text-white hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                    >
+                        {t("common.cancel")}
+                    </Button>
+                    <Button
+                        type="primary"
+                        htmlType="submit"
+                        className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
+                    >
+                        {editingUnit ? t("units.update_unit") : t("units.create_unit")}
+                    </Button>
+                </div>
+            </Form.Item>
+        </Form>
     );
 };
 

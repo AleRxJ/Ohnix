@@ -6,6 +6,7 @@ import {
     SearchOutlined,
 } from "@ant-design/icons";
 import { FILTER_OPTIONS } from "../../utils/category_units/constants";
+import useI18n from "../../hooks/useI18n";
 
 const { Search } = Input;
 const { Option } = Select;
@@ -19,6 +20,7 @@ const SearchFilter = ({
     placeholder = "Search...",
     isAdmin = false,
 }) => {
+    const { t } = useI18n();
     return (
         <div className="space-y-4">
             {/* Search Input */}
@@ -51,18 +53,18 @@ const SearchFilter = ({
                         >
                             <Option value={FILTER_OPTIONS.ALL}>
                                 <span className="flex items-center gap-2">
-                                    All Items
+                                    {t("filter.all_items")}
                                 </span>
                             </Option>
                             <Option value={FILTER_OPTIONS.MINE}>
                                 <span className="flex items-center gap-2">
-                                    My Items
+                                    {t("filter.my_items")}
                                 </span>
                             </Option>
                             {isAdmin && (
                                 <Option value={FILTER_OPTIONS.OTHERS}>
                                     <span className="flex items-center gap-2">
-                                        Others' Items
+                                        {t("filter.others_items")}
                                     </span>
                                 </Option>
                             )}
@@ -80,9 +82,9 @@ const SearchFilter = ({
                             type="default"
                         >
                             <span className="hidden sm:inline">
-                                Clear Filters
+                                {t("filter.clear_filters")}
                             </span>
-                            <span className="sm:hidden">Clear</span>
+                            <span className="sm:hidden">{t("filter.clear")}</span>
                         </Button>
                     </div>
                 </Col>

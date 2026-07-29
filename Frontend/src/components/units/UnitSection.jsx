@@ -121,8 +121,8 @@ const UnitSection = ({ user, isAdmin, unitHook }) => {
                                 fontWeight: 500,
                             }}
                         >
-                            <span className="hidden sm:inline">Add Unit</span>
-                            <span className="sm:hidden">Add</span>
+                            <span className="hidden sm:inline">{t("units.add_unit")}</span>
+                            <span className="sm:hidden">{t("common.add")}</span>
                         </Button>
                     </div>
                 }
