@@ -29,8 +29,9 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
 
     const handleSelectCommonUnit = (unit) => {
         setSelectedUnit(unit);
+        const unitNameTranslated = t(unit.translationKey || unit.name);
         form.setFieldsValue({
-            unit_name: `${unit.name} (${unit.symbol})`,
+            unit_name: `${unitNameTranslated} (${unit.symbol})`,
         });
     };
 
@@ -125,7 +126,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                                                     }`}
                                                     type="button"
                                                 >
-                                                    <div className="font-medium">{unit.name}</div>
+                                                    <div className="font-medium">{t(unit.translationKey || unit.name)}</div>
                                                     <div className="text-xs opacity-75">{unit.symbol}</div>
                                                 </button>
                                             ))}

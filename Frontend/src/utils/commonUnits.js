@@ -1,49 +1,49 @@
 // Common measurement units with symbols and categories
 export const COMMON_UNITS = [
   // Weight
-  { id: "kg", name: "Kilogram", symbol: "kg", category: "Weight" },
-  { id: "g", name: "Gram", symbol: "g", category: "Weight" },
-  { id: "mg", name: "Milligram", symbol: "mg", category: "Weight" },
-  { id: "lb", name: "Pound", symbol: "lb", category: "Weight" },
-  { id: "oz", name: "Ounce", symbol: "oz", category: "Weight" },
-  { id: "ton", name: "Metric Ton", symbol: "t", category: "Weight" },
+  { id: "kg", name: "Kilogram", symbol: "kg", category: "Weight", translationKey: "units.unit_kilogram" },
+  { id: "g", name: "Gram", symbol: "g", category: "Weight", translationKey: "units.unit_gram" },
+  { id: "mg", name: "Milligram", symbol: "mg", category: "Weight", translationKey: "units.unit_milligram" },
+  { id: "lb", name: "Pound", symbol: "lb", category: "Weight", translationKey: "units.unit_pound" },
+  { id: "oz", name: "Ounce", symbol: "oz", category: "Weight", translationKey: "units.unit_ounce" },
+  { id: "ton", name: "Metric Ton", symbol: "t", category: "Weight", translationKey: "units.unit_metric_ton" },
 
   // Volume
-  { id: "l", name: "Liter", symbol: "L", category: "Volume" },
-  { id: "ml", name: "Milliliter", symbol: "mL", category: "Volume" },
-  { id: "gal", name: "Gallon", symbol: "gal", category: "Volume" },
-  { id: "fl_oz", name: "Fluid Ounce", symbol: "fl oz", category: "Volume" },
-  { id: "cup", name: "Cup", symbol: "cup", category: "Volume" },
-  { id: "tbsp", name: "Tablespoon", symbol: "tbsp", category: "Volume" },
-  { id: "tsp", name: "Teaspoon", symbol: "tsp", category: "Volume" },
+  { id: "l", name: "Liter", symbol: "L", category: "Volume", translationKey: "units.unit_liter" },
+  { id: "ml", name: "Milliliter", symbol: "mL", category: "Volume", translationKey: "units.unit_milliliter" },
+  { id: "gal", name: "Gallon", symbol: "gal", category: "Volume", translationKey: "units.unit_gallon" },
+  { id: "fl_oz", name: "Fluid Ounce", symbol: "fl oz", category: "Volume", translationKey: "units.unit_fluid_ounce" },
+  { id: "cup", name: "Cup", symbol: "cup", category: "Volume", translationKey: "units.unit_cup" },
+  { id: "tbsp", name: "Tablespoon", symbol: "tbsp", category: "Volume", translationKey: "units.unit_tablespoon" },
+  { id: "tsp", name: "Teaspoon", symbol: "tsp", category: "Volume", translationKey: "units.unit_teaspoon" },
 
   // Length
-  { id: "m", name: "Meter", symbol: "m", category: "Length" },
-  { id: "cm", name: "Centimeter", symbol: "cm", category: "Length" },
-  { id: "mm", name: "Millimeter", symbol: "mm", category: "Length" },
-  { id: "km", name: "Kilometer", symbol: "km", category: "Length" },
-  { id: "ft", name: "Foot", symbol: "ft", category: "Length" },
-  { id: "in", name: "Inch", symbol: "in", category: "Length" },
+  { id: "m", name: "Meter", symbol: "m", category: "Length", translationKey: "units.unit_meter" },
+  { id: "cm", name: "Centimeter", symbol: "cm", category: "Length", translationKey: "units.unit_centimeter" },
+  { id: "mm", name: "Millimeter", symbol: "mm", category: "Length", translationKey: "units.unit_millimeter" },
+  { id: "km", name: "Kilometer", symbol: "km", category: "Length", translationKey: "units.unit_kilometer" },
+  { id: "ft", name: "Foot", symbol: "ft", category: "Length", translationKey: "units.unit_foot" },
+  { id: "in", name: "Inch", symbol: "in", category: "Length", translationKey: "units.unit_inch" },
 
   // Area
-  { id: "m2", name: "Square Meter", symbol: "m²", category: "Area" },
-  { id: "cm2", name: "Square Centimeter", symbol: "cm²", category: "Area" },
-  { id: "km2", name: "Square Kilometer", symbol: "km²", category: "Area" },
-  { id: "hectare", name: "Hectare", symbol: "ha", category: "Area" },
+  { id: "m2", name: "Square Meter", symbol: "m²", category: "Area", translationKey: "units.unit_square_meter" },
+  { id: "cm2", name: "Square Centimeter", symbol: "cm²", category: "Area", translationKey: "units.unit_square_centimeter" },
+  { id: "km2", name: "Square Kilometer", symbol: "km²", category: "Area", translationKey: "units.unit_square_kilometer" },
+  { id: "hectare", name: "Hectare", symbol: "ha", category: "Area", translationKey: "units.unit_hectare" },
 
   // Piece/Count
-  { id: "piece", name: "Piece", symbol: "pcs", category: "Count" },
-  { id: "unit", name: "Unit", symbol: "u", category: "Count" },
-  { id: "dozen", name: "Dozen", symbol: "doz", category: "Count" },
-  { id: "box", name: "Box", symbol: "box", category: "Count" },
-  { id: "pack", name: "Pack", symbol: "pack", category: "Count" },
-  { id: "bundle", name: "Bundle", symbol: "bundle", category: "Count" },
+  { id: "piece", name: "Piece", symbol: "pcs", category: "Count", translationKey: "units.unit_piece" },
+  { id: "unit", name: "Unit", symbol: "u", category: "Count", translationKey: "units.unit_unit" },
+  { id: "dozen", name: "Dozen", symbol: "doz", category: "Count", translationKey: "units.unit_dozen" },
+  { id: "box", name: "Box", symbol: "box", category: "Count", translationKey: "units.unit_box" },
+  { id: "pack", name: "Pack", symbol: "pack", category: "Count", translationKey: "units.unit_pack" },
+  { id: "bundle", name: "Bundle", symbol: "bundle", category: "Count", translationKey: "units.unit_bundle" },
 
   // Time
-  { id: "hour", name: "Hour", symbol: "h", category: "Time" },
-  { id: "min", name: "Minute", symbol: "min", category: "Time" },
-  { id: "sec", name: "Second", symbol: "s", category: "Time" },
-  { id: "day", name: "Day", symbol: "d", category: "Time" },
+  { id: "hour", name: "Hour", symbol: "h", category: "Time", translationKey: "units.unit_hour" },
+  { id: "min", name: "Minute", symbol: "min", category: "Time", translationKey: "units.unit_minute" },
+  { id: "sec", name: "Second", symbol: "s", category: "Time", translationKey: "units.unit_second" },
+  { id: "day", name: "Day", symbol: "d", category: "Time", translationKey: "units.unit_day" },
 ];
 
 export const UNIT_CATEGORIES = [
