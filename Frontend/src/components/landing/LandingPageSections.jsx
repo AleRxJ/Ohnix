@@ -220,38 +220,129 @@ export const HeroDashboard = () => {
 };
 
 /* ── Page-wide orbital background layer ────────────────────────────── */
-export const PageOrbitalLayer = () => (
-    <div
-        className="pointer-events-none fixed inset-0 select-none overflow-hidden"
-        style={{ zIndex: 2, mixBlendMode: "screen" }}
-        aria-hidden="true"
-    >
-        {/* Ring A — large, top-right, slow */}
-        <div className="absolute -right-48 -top-32 h-[680px] w-[680px] rounded-full border border-[#29D8D5]/[0.14] animate-orbit-slow">
-            <div className="absolute left-1/2 top-0 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5] shadow-[0_0_22px_6px_rgba(41,216,213,0.8),0_0_50px_rgba(41,216,213,0.4)]" />
-        </div>
+/* ── Page-wide orbital background layer (mouse + scroll parallax) ─── */
+export const PageOrbitalLayer = () => {
+    const ringRefs  = useRef([]);
+    const target    = useRef({ x: 50, y: 50, scroll: 0 });
+    const cur       = useRef({ x: 50, y: 50, scroll: 0 });
+    const rafRef    = useRef(null);
 
-        {/* Ring B — medium, centre-left, mid reverse */}
-        <div className="absolute -left-52 top-[38%] h-[500px] w-[500px] rounded-full border border-[#44F3F0]/[0.12] animate-orbit-mid">
-            <div className="absolute left-1/2 top-0 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#44F3F0] shadow-[0_0_18px_5px_rgba(68,243,240,0.75),0_0_40px_rgba(68,243,240,0.35)]" />
-        </div>
+    // [mouseDepth, scrollDepth-px-per-scrollY-px] — 2× bigger than before
+    const depths = [
+        [0.18, -0.08],
+        [0.28,  0.12],
+        [0.38, -0.06],
+        [0.10,  0.15],
+        [0.48, -0.12],
+    ];
 
-        {/* Ring C — small, lower-right, fast */}
-        <div className="absolute -bottom-20 right-[18%] h-[320px] w-[320px] rounded-full border border-[#29D8D5]/[0.14] animate-orbit-fast">
-            <div className="absolute left-1/2 top-0 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5] shadow-[0_0_16px_4px_rgba(41,216,213,0.75)]" />
-        </div>
+    useEffect(() => {
+        const lerp = (a, b, t) => a + (b - a) * t;
 
-        {/* Ring D — extra-large, lower-left, very slow reverse */}
-        <div className="absolute -bottom-96 -left-96 h-[1000px] w-[1000px] rounded-full border border-[#29D8D5]/[0.09] animate-orbit-slow" style={{ animationDirection: "reverse" }}>
-            <div className="absolute left-1/2 top-0 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5] shadow-[0_0_16px_4px_rgba(41,216,213,0.65)]" />
-        </div>
+        const tick = () => {
+            cur.current.x      = lerp(cur.current.x,      target.current.x,      0.055);
+            cur.current.y      = lerp(cur.current.y,      target.current.y,      0.055);
+            cur.current.scroll = lerp(cur.current.scroll, target.current.scroll, 0.055);
 
-        {/* Ring E — tiny accent, upper-left, xs reverse */}
-        <div className="absolute left-[12%] top-[10%] h-[160px] w-[160px] rounded-full border border-[#44F3F0]/[0.18] animate-orbit-xs">
-            <div className="absolute left-1/2 top-0 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#44F3F0] shadow-[0_0_14px_4px_rgba(68,243,240,0.85)]" />
+            const mx = cur.current.x - 50;
+            const my = cur.current.y - 50;
+            const s  = cur.current.scroll;
+
+            ringRefs.current.forEach((el, i) => {
+                if (!el) return;
+                const [md, sd] = depths[i];
+                el.style.transform = `translate(${mx * md}px, ${my * md + s * sd}px)`;
+            });
+
+            rafRef.current = requestAnimationFrame(tick);
+        };
+
+        rafRef.current = requestAnimationFrame(tick);
+
+        const onMove   = (e) => {
+            target.current.x = (e.clientX / window.innerWidth)  * 100;
+            target.current.y = (e.clientY / window.innerHeight) * 100;
+        };
+        const onScroll = () => { target.current.scroll = window.scrollY; };
+
+        window.addEventListener("mousemove", onMove,   { passive: true });
+        window.addEventListener("scroll",    onScroll, { passive: true });
+        return () => {
+            cancelAnimationFrame(rafRef.current);
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("scroll",    onScroll);
+        };
+    }, []);
+
+    /* Shared dot glow layers — bright core + mid halo + diffuse outer */
+    const glowTeal  = "0 0 5px 2px #29D8D5, 0 0 22px 8px rgba(41,216,213,0.95), 0 0 55px 18px rgba(41,216,213,0.6), 0 0 110px 35px rgba(41,216,213,0.32)";
+    const glowCyan  = "0 0 5px 2px #44F3F0, 0 0 22px 8px rgba(68,243,240,0.95), 0 0 55px 18px rgba(68,243,240,0.6), 0 0 110px 35px rgba(68,243,240,0.32)";
+    const pingTeal  = "1px solid rgba(41,216,213,0.55)";
+    const pingCyan  = "1px solid rgba(68,243,240,0.55)";
+
+    return (
+        <div
+            className="pointer-events-none fixed inset-0 select-none overflow-hidden"
+            style={{ zIndex: 2, mixBlendMode: "screen" }}
+            aria-hidden="true"
+        >
+            {/* Ring A — large, top-right, slow */}
+            <div ref={(el) => { ringRefs.current[0] = el; }} className="absolute -right-48 top-6" style={{ willChange: "transform" }}>
+                <div className="rounded-full animate-orbit-slow" style={{ width: 560, height: 560, border: "1.5px solid rgba(41,216,213,0.25)" }}>
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
+                        <div className="absolute inset-0 rounded-full animate-ripple" style={{ width: 28, height: 28, border: pingTeal }} />
+                        <div className="absolute inset-0 rounded-full animate-ripple-delay" style={{ width: 28, height: 28, border: pingTeal }} />
+                        <div className="h-5 w-5 rounded-full" style={{ background: "#29D8D5", boxShadow: glowTeal }} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Ring B — medium, centre-left, mid reverse */}
+            <div ref={(el) => { ringRefs.current[1] = el; }} className="absolute -left-52 top-[38%]" style={{ willChange: "transform" }}>
+                <div className="rounded-full animate-orbit-mid" style={{ width: 345, height: 345, border: "1.5px solid rgba(68,243,240,0.25)" }}>
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
+                        <div className="absolute inset-0 rounded-full animate-ripple" style={{ width: 24, height: 24, border: pingCyan }} />
+                        <div className="absolute inset-0 rounded-full animate-ripple-delay" style={{ width: 24, height: 24, border: pingCyan }} />
+                        <div className="h-4 w-4 rounded-full" style={{ background: "#44F3F0", boxShadow: glowCyan }} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Ring C — small, lower-right, fast */}
+            <div ref={(el) => { ringRefs.current[2] = el; }} className="absolute -bottom-20 right-[18%]" style={{ willChange: "transform" }}>
+                <div className="rounded-full animate-orbit-fast" style={{ width: 262, height: 262, border: "1.5px solid rgba(41,216,213,0.25)" }}>
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
+                        <div className="absolute inset-0 rounded-full animate-ripple" style={{ width: 22, height: 22, border: pingTeal }} />
+                        <div className="absolute inset-0 rounded-full animate-ripple-delay" style={{ width: 22, height: 22, border: pingTeal }} />
+                        <div className="h-3.5 w-3.5 rounded-full" style={{ background: "#29D8D5", boxShadow: glowTeal }} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Ring D — extra-large, lower-left, very slow reverse */}
+            <div ref={(el) => { ringRefs.current[3] = el; }} className="absolute -bottom-96 -left-96" style={{ willChange: "transform" }}>
+                <div className="rounded-full animate-orbit-slow" style={{ width: 820, height: 820, border: "1.5px solid rgba(41,216,213,0.25)", animationDirection: "reverse" }}>
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
+                        <div className="absolute inset-0 rounded-full animate-ripple" style={{ width: 22, height: 22, border: pingTeal }} />
+                        <div className="absolute inset-0 rounded-full animate-ripple-delay" style={{ width: 22, height: 22, border: pingTeal }} />
+                        <div className="h-3.5 w-3.5 rounded-full" style={{ background: "#29D8D5", boxShadow: glowTeal }} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Ring E — tiny accent, upper-left, xs reverse */}
+            <div ref={(el) => { ringRefs.current[4] = el; }} className="absolute left-[12%] top-[10%]" style={{ willChange: "transform" }}>
+                <div className="rounded-full animate-orbit-xs" style={{ width: 131, height: 131, border: "1.5px solid rgba(68,243,240,0.25)" }}>
+                    <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
+                        <div className="absolute inset-0 rounded-full animate-ripple" style={{ width: 18, height: 18, border: pingCyan }} />
+                        <div className="absolute inset-0 rounded-full animate-ripple-delay" style={{ width: 18, height: 18, border: pingCyan }} />
+                        <div className="h-3 w-3 rounded-full" style={{ background: "#44F3F0", boxShadow: glowCyan }} />
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 export const VideoModal = ({ isOpen, onClose, src, title }) => {
     useEffect(() => {
