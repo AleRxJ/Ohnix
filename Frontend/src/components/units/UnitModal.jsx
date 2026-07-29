@@ -134,6 +134,12 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
 
                                     {selectedUnit && (
                                         <Form form={form} layout="vertical" onFinish={handleSubmit}>
+                                            <Form.Item
+                                                name="unit_name"
+                                                className="mb-4"
+                                            >
+                                                <Input type="hidden" />
+                                            </Form.Item>
                                             <Form.Item className="mb-0">
                                                 <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-white/10">
                                                     <Button
