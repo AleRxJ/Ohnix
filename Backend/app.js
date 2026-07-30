@@ -40,6 +40,8 @@ const configuredOrigins = [
 const defaultOrigins = [
    "http://localhost:3000",
    "http://localhost:5173",
+   "https://ohnix.co",
+   "https://www.ohnix.co",
    "https://ohnix.vercel.app",
    "https://*.vercel.app",
 ];
