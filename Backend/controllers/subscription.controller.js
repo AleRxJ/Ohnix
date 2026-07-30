@@ -1072,9 +1072,17 @@ export const handleEpaycoConfirmation = async (req, res) => {
  */
 export const handleEpaycoResponse = (req, res) => {
     const data = req.method === "POST" ? req.body || {} : req.query || {};
-    const requestId = `${data.x_extra1 || ""}`.trim();
-    const stateCode = parseInt(`${data.x_cod_transaction_state || 0}`, 10);
-    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
+
+    // Priority: x_extra1 (ePayco extra field) → requestId query param embedded in our URL
+    const requestId =
+        `${data.x_extra1 || data.extra1 || ""}`.trim() ||
+        `${req.query.requestId || ""}`.trim();
+
+    const stateCode = parseInt(
+        `${data.x_cod_transaction_state || data.cod_transaction_state || 0}`,
+        10
+    );
+    const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
 
     if (!requestId) {
         return res.redirect(`${frontendBase}/billing`);

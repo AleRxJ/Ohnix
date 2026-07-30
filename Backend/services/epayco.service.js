@@ -14,15 +14,50 @@ import crypto from "crypto";
 // Configuration
 // ---------------------------------------------------------------------------
 
-const getEpaycoConfig = () => ({
-    publicKey: `${process.env.EPAYCO_PUBLIC_KEY || ""}`.trim(),
-    privateKey: `${process.env.EPAYCO_PRIVATE_KEY || ""}`.trim(),
-    custId: `${process.env.EPAYCO_P_CUST_ID || ""}`.trim(),
-    // ePayco expects the string "TRUE" or "FALSE"
-    test: `${process.env.EPAYCO_TEST || "TRUE"}`.trim().toUpperCase() === "TRUE" ? "TRUE" : "FALSE",
-    responseUrl: `${process.env.EPAYCO_RESPONSE_URL || ""}`.trim(),
-    confirmationUrl: `${process.env.EPAYCO_CONFIRMATION_URL || ""}`.trim(),
-});
+/**
+ * Resolves the public base URL of this backend service.
+ * Priority:
+ *  1. RENDER_EXTERNAL_URL  — set automatically by Render on every deploy
+ *  2. BACKEND_URL          — explicit override (useful on other hosts)
+ *  3. localhost fallback   — local development only
+ */
+const getBackendBaseUrl = () => {
+    const candidates = [
+        process.env.RENDER_EXTERNAL_URL,
+        process.env.BACKEND_URL,
+    ];
+    for (const url of candidates) {
+        const trimmed = `${url || ""}`.trim().replace(/\/$/, "");
+        if (trimmed && trimmed.startsWith("http")) {
+            return trimmed;
+        }
+    }
+    return "http://localhost:3001";
+};
+
+const getEpaycoConfig = () => {
+    const base = getBackendBaseUrl();
+    const epaycoBase = `${base}/api/v1/subscriptions/payments/epayco`;
+
+    // If EPAYCO_RESPONSE_URL / EPAYCO_CONFIRMATION_URL are explicitly set, use them.
+    // Otherwise derive them from the backend's own public URL so no extra config is needed.
+    const responseUrl =
+        `${process.env.EPAYCO_RESPONSE_URL || ""}`.trim() ||
+        `${epaycoBase}/response`;
+    const confirmationUrl =
+        `${process.env.EPAYCO_CONFIRMATION_URL || ""}`.trim() ||
+        `${epaycoBase}/confirmation`;
+
+    return {
+        publicKey: `${process.env.EPAYCO_PUBLIC_KEY || ""}`.trim(),
+        privateKey: `${process.env.EPAYCO_PRIVATE_KEY || ""}`.trim(),
+        custId: `${process.env.EPAYCO_P_CUST_ID || ""}`.trim(),
+        // ePayco expects the string "TRUE" or "FALSE"
+        test: `${process.env.EPAYCO_TEST || "TRUE"}`.trim().toUpperCase() === "TRUE" ? "TRUE" : "FALSE",
+        responseUrl,
+        confirmationUrl,
+    };
+};
 
 export const isEpaycoConfigured = () => {
     const cfg = getEpaycoConfig();
@@ -128,6 +163,12 @@ export const buildEpaycoWidgetParams = ({ request, user, reference }) => {
     const planLabel =
         request.targetPlan.charAt(0).toUpperCase() + request.targetPlan.slice(1);
 
+    // Embed requestId in the response URL so it is always available even if
+    // ePayco does not forward x_extra1 correctly in all environments.
+    const responseUrlWithId = cfg.responseUrl.includes("?")
+        ? `${cfg.responseUrl}&requestId=${encodeURIComponent(request.id)}`
+        : `${cfg.responseUrl}?requestId=${encodeURIComponent(request.id)}`;
+
     return {
         publicKey: cfg.publicKey,
         custId: cfg.custId,
@@ -138,7 +179,7 @@ export const buildEpaycoWidgetParams = ({ request, user, reference }) => {
         description: `Upgrade de plan ${request.currentPlan} a ${request.targetPlan}`,
         email: user.email,
         reference,
-        responseUrl: cfg.responseUrl,
+        responseUrl: responseUrlWithId,
         confirmationUrl: cfg.confirmationUrl,
         // Passed through ePayco as extra fields and returned on confirmation/response
         extra1: request.id,      // upgradeRequestId — used to activate the plan
