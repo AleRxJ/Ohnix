@@ -407,6 +407,41 @@ const LandingPage = () => {
                     }}
                 />
 
+                <section className="px-6 pb-16 md:px-10">
+                    <div className="mx-auto max-w-7xl rounded-[24px] border border-white/10 bg-white/[0.03] p-6 md:p-8">
+                        <h2 className="text-2xl font-semibold text-white">Explora rutas clave de Ohnix</h2>
+                        <p className="mt-3 text-sm leading-7 text-[#A9B3B8]">
+                            Compara planes, revisa la solucion para pymes y evalua nuestra comparativa para tomar una mejor decision.
+                        </p>
+                        <div className="mt-6 grid gap-3 md:grid-cols-3">
+                            <button
+                                type="button"
+                                onClick={() => navigate("/software-inventario-pymes")}
+                                className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-left text-white hover:border-[#29D8D5]/35"
+                            >
+                                <span className="block text-sm font-semibold">Software para pymes</span>
+                                <span className="mt-1 block text-xs text-[#A9B3B8]">Inventario, compras y pedidos en un flujo.</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/precios")}
+                                className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-left text-white hover:border-[#29D8D5]/35"
+                            >
+                                <span className="block text-sm font-semibold">Planes y precios</span>
+                                <span className="mt-1 block text-xs text-[#A9B3B8]">Elige el plan que se ajusta a tu etapa.</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/comparativa/ohnix-vs-alegra")}
+                                className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-left text-white hover:border-[#29D8D5]/35"
+                            >
+                                <span className="block text-sm font-semibold">Comparativa Ohnix vs Alegra</span>
+                                <span className="mt-1 block text-xs text-[#A9B3B8]">Evalua diferencias por enfoque operativo.</span>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
                 <WhatsAppSupportButton
                     phoneNumber="+573142193936"
                     message="Hola, vi Ohnix y tengo preguntas 👋"

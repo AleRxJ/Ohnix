@@ -1,5 +1,8 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/((?!robots\\.txt$|sitemap\\.xml$|favicon\\.ico$|assets/|Ohnix_Icon\\.svg$|Ohnix_FullLogo\\.svg$).*)",
+      "destination": "/"
+    }
   ]
 }

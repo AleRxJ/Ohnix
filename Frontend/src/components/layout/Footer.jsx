@@ -1,5 +1,6 @@
 import React from "react";
 import { Layout, Row, Col, Space, Divider } from "antd";
+import { Link } from "react-router-dom";
 import {
     GithubOutlined,
     TwitterOutlined,
@@ -92,15 +93,18 @@ const Footer = () => {
                         © {new Date().getFullYear()} iTcycle. {t("landing.footer.copyright")}
                     </p>
                     <div className="flex gap-8 text-sm">
-                        <a href="#home" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        <Link to="/" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
                             {t("landing.nav.home")}
-                        </a>
-                        <a href="#features" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
-                            {t("landing.nav.features")}
-                        </a>
-                        <a href="#contact" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
-                            {t("landing.nav.contact")}
-                        </a>
+                        </Link>
+                        <Link to="/software-inventario-pymes" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                            Software pymes
+                        </Link>
+                        <Link to="/precios" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                            Precios
+                        </Link>
+                        <Link to="/comparativa/ohnix-vs-alegra" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                            Ohnix vs Alegra
+                        </Link>
                     </div>
                 </div>
             </div>

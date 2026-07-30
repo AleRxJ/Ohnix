@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Layout, Button, Drawer, Dropdown } from "antd";
 import { MenuOutlined, GlobalOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import useI18n from "../../hooks/useI18n";
 
 const { Header } = Layout;
@@ -10,6 +10,7 @@ const Navbar = () => {
     const [visible, setVisible] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
     const { t, currentLanguage, changeLanguage } = useI18n();
 
     const navLinks = [
@@ -19,6 +20,11 @@ const Navbar = () => {
         { label: t("pricing.eyebrow", { defaultValue: "Pricing" }), path: "pricing" },
         { label: t("landing.nav.faq"), path: "faq" },
         { label: t("landing.nav.contact"), path: "contact" },
+    ];
+
+    const seoLinks = [
+        { label: "Software pymes", route: "/software-inventario-pymes" },
+        { label: "Precios", route: "/precios" },
     ];
 
     const scrollToSection = (id) => {
@@ -82,10 +88,12 @@ const Navbar = () => {
                             {navLinks.map((link) => (
                                 <li key={link.path}>
                                     <a
-                                        href="#"
+                                        href={location.pathname === "/" ? `#${link.path}` : `/#${link.path}`}
                                         onClick={(e) => {
-                                            e.preventDefault();
-                                            scrollToSection(link.path);
+                                            if (location.pathname === "/") {
+                                                e.preventDefault();
+                                                scrollToSection(link.path);
+                                            }
                                         }}
                                         className={`text-sm font-medium transition-all duration-200 relative group ${
                                             scrolled
@@ -104,6 +112,17 @@ const Navbar = () => {
                             ))}
                         </ul>
                     </nav>
+                    <div className="hidden lg:flex items-center gap-3">
+                        {seoLinks.map((link) => (
+                            <Button
+                                key={link.route}
+                                onClick={() => handleNavigation(link.route)}
+                                className="h-10 px-4 text-sm font-medium border-white/12 text-white rounded-full bg-white/[0.03] hover:border-[#29D8D5]/35"
+                            >
+                                {link.label}
+                            </Button>
+                        ))}
+                    </div>
                     <div className="flex items-center gap-3">
                         <Dropdown
                             menu={{
@@ -201,10 +220,12 @@ const Navbar = () => {
                         {navLinks.map((link) => (
                             <div key={link.path} className="mb-1">
                                 <a
-                                    href="#"
+                                    href={location.pathname === "/" ? `#${link.path}` : `/#${link.path}`}
                                     onClick={(e) => {
-                                        e.preventDefault();
-                                        scrollToSection(link.path);
+                                        if (location.pathname === "/") {
+                                            e.preventDefault();
+                                            scrollToSection(link.path);
+                                        }
                                         closeDrawer();
                                     }}
                                     className="block rounded-2xl px-4 py-3 text-sm font-medium text-[#A9B3B8] transition-all duration-200 hover:bg-white/[0.05] hover:text-white"
