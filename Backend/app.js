@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import errorHandler from "./middleware/error.middleware.js";
-import { handlePaymentWebhook } from "./controllers/subscription.controller.js";
+import { handlePaymentWebhook, handleEpaycoConfirmation, handleEpaycoResponse } from "./controllers/subscription.controller.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -90,6 +90,24 @@ app.post(
    "/api/v1/subscriptions/payments/webhook",
    express.raw({ type: "application/json" }),
    handlePaymentWebhook
+);
+
+// ePayco public endpoints — must be registered before the global body parsers
+// so we can apply the correct parsers per route.
+// Confirmation: server-to-server POST from ePayco (form-urlencoded or JSON)
+app.post(
+    "/api/v1/subscriptions/payments/epayco/confirmation",
+    express.json({ limit: "16kb" }),
+    express.urlencoded({ extended: true, limit: "16kb" }),
+    handleEpaycoConfirmation
+);
+// Response: browser redirect from ePayco after the user completes payment (GET or POST)
+app.get("/api/v1/subscriptions/payments/epayco/response", handleEpaycoResponse);
+app.post(
+    "/api/v1/subscriptions/payments/epayco/response",
+    express.json({ limit: "16kb" }),
+    express.urlencoded({ extended: true, limit: "16kb" }),
+    handleEpaycoResponse
 );
 
 app.use(express.json({ limit: "16kb" }));

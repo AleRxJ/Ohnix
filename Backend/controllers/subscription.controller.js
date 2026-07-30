@@ -20,6 +20,13 @@ import {
     parsePaymentWebhookEvent,
     verifyStripeSession,
 } from "../services/payment.service.js";
+import {
+    buildEpaycoWidgetParams,
+    isEpaycoConfigured,
+    validateEpaycoSignature,
+    EPAYCO_STATE,
+    isEpaycoTransactionApproved,
+} from "../services/epayco.service.js";
 
 const normalizePaymentLink = (value) => {
     const trimmed = `${value || ""}`.trim();
@@ -889,3 +896,199 @@ export const updateUpgradeRequestAdmin = asyncHandler(async (req, res, next) => 
         .status(200)
         .json(new ApiResponse(200, updatedRequest, "Upgrade request updated successfully"));
 });
+
+// =============================================================================
+// ePayco handlers
+// =============================================================================
+
+/**
+ * GET /subscriptions/me/upgrade-requests/:id/epayco-params
+ *
+ * Returns the parameters needed by the ePayco JS widget.
+ * Protected by JWT — only the owner of the upgrade request can fetch them.
+ * The reference (paymentSessionId) is read from the DB so it is stable
+ * across page refreshes.
+ */
+export const getEpaycoCheckoutParams = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+
+    if (!isEpaycoConfigured()) {
+        return next(new ApiError(503, "ePayco is not configured on this server"));
+    }
+
+    const request = await prisma.planUpgradeRequest.findFirst({
+        where: { id, userId: req.user.prismaId },
+        select: UPGRADE_REQUEST_SELECT,
+    });
+
+    if (!request) {
+        return next(new ApiError(404, "Upgrade request not found"));
+    }
+
+    if (request.status !== "approved") {
+        return next(new ApiError(409, "Checkout is only available for approved upgrade requests"));
+    }
+
+    // paymentSessionId is the ePayco reference stored when the checkout session was created
+    if (!request.paymentSessionId) {
+        return next(
+            new ApiError(
+                400,
+                "Checkout session not initialized. Please click 'Pagar con ePayco' from the billing page first."
+            )
+        );
+    }
+
+    const user = await prisma.user.findUnique({
+        where: { id: req.user.prismaId },
+        select: { email: true, username: true },
+    });
+
+    if (!user?.email) {
+        return next(new ApiError(400, "A valid account email is required"));
+    }
+
+    const params = buildEpaycoWidgetParams({
+        request,
+        user,
+        reference: request.paymentSessionId,
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, params, "ePayco checkout params fetched successfully"));
+});
+
+/**
+ * POST /subscriptions/payments/epayco/confirmation
+ *
+ * Server-to-server callback called by ePayco after every transaction event.
+ * This is the ONLY trusted source of truth — never rely solely on the
+ * Response URL (browser redirect) to activate a plan.
+ *
+ * Security:
+ *  - Validates SHA-256 signature using private key (never exposed to the client)
+ *  - Idempotent: if the request is already closed/paid, returns 200 without re-processing
+ *  - Always returns HTTP 200 so ePayco does not retry indefinitely
+ */
+export const handleEpaycoConfirmation = async (req, res) => {
+    try {
+        const data = req.body || {};
+
+        const refPayco = `${data.x_ref_payco || ""}`.trim();
+        const transactionId = `${data.x_transaction_id || ""}`.trim();
+        const amount = `${data.x_amount || ""}`.trim();
+        const currencyCode = `${data.x_currency_code || ""}`.trim();
+        const signature = `${data.x_signature || ""}`.trim();
+        const stateCode = parseInt(`${data.x_cod_transaction_state || 0}`, 10);
+        const requestId = `${data.x_extra1 || ""}`.trim(); // set as p_extra1 during checkout
+
+        // Reject incomplete payloads silently (ePayco test pings may be empty)
+        if (!requestId || !refPayco || !transactionId || !signature) {
+            console.warn("[epayco-confirmation] Incomplete payload — ignoring", {
+                requestId,
+                refPayco,
+                transactionId,
+                hasSignature: Boolean(signature),
+            });
+            return res.status(200).json({ success: false, message: "Incomplete payload" });
+        }
+
+        // Validate signature
+        const custId = `${process.env.EPAYCO_P_CUST_ID || ""}`.trim();
+        const privateKey = `${process.env.EPAYCO_PRIVATE_KEY || ""}`.trim();
+
+        const signatureValid = validateEpaycoSignature({
+            custId,
+            privateKey,
+            refPayco,
+            transactionId,
+            amount,
+            currencyCode,
+            signature,
+        });
+
+        if (!signatureValid) {
+            console.warn("[epayco-confirmation] Invalid signature for requestId:", requestId);
+            return res.status(200).json({ success: false, message: "Invalid signature" });
+        }
+
+        // Load the upgrade request
+        const existingRequest = await prisma.planUpgradeRequest.findUnique({
+            where: { id: requestId },
+            select: { id: true, status: true, paymentSessionId: true, paymentStatus: true },
+        });
+
+        if (!existingRequest) {
+            console.warn("[epayco-confirmation] Request not found:", requestId);
+            return res.status(200).json({ success: false, message: "Request not found" });
+        }
+
+        // Idempotency guard: do not process the same successful payment twice
+        if (existingRequest.status === "closed" && existingRequest.paymentStatus === "paid") {
+            return res.status(200).json({ success: true, message: "Already processed" });
+        }
+
+        if (isEpaycoTransactionApproved(stateCode)) {
+            // Transaction accepted — activate the plan
+            await closeApprovedRequestAndActivatePlan({
+                requestId,
+                actedBy: "epayco-confirmation",
+                paymentSessionId: refPayco,
+                paymentProvider: "epayco",
+                paymentStatus: "paid",
+            });
+
+            console.log("[epayco-confirmation] Plan activated for requestId:", requestId);
+        } else if (stateCode === EPAYCO_STATE.REJECTED) {
+            await prisma.planUpgradeRequest.updateMany({
+                where: { id: requestId, status: "approved" },
+                data: { paymentStatus: "rejected" },
+            });
+        } else if (stateCode === EPAYCO_STATE.FAILED) {
+            await prisma.planUpgradeRequest.updateMany({
+                where: { id: requestId, status: "approved" },
+                data: { paymentStatus: "failed" },
+            });
+        }
+        // stateCode === PENDING (3): no action — wait for the final confirmation
+
+        return res.status(200).json({ success: true });
+    } catch (error) {
+        // Always return 200 to prevent ePayco from retrying indefinitely
+        console.error("[epayco-confirmation] Unexpected error", error);
+        return res.status(200).json({ success: false, message: "Processing error" });
+    }
+};
+
+/**
+ * GET|POST /subscriptions/payments/epayco/response
+ *
+ * Browser redirect called by ePayco after the user completes (or cancels)
+ * the payment flow. This is NOT trusted for plan activation — use only to
+ * redirect the user to the appropriate frontend page.
+ *
+ * x_extra1 contains our upgradeRequestId (set as p_extra1 during checkout).
+ */
+export const handleEpaycoResponse = (req, res) => {
+    const data = req.method === "POST" ? req.body || {} : req.query || {};
+    const requestId = `${data.x_extra1 || ""}`.trim();
+    const stateCode = parseInt(`${data.x_cod_transaction_state || 0}`, 10);
+    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
+
+    if (!requestId) {
+        return res.redirect(`${frontendBase}/billing`);
+    }
+
+    // State 1 = Accepted, 3 = Pending (awaiting bank confirmation)
+    if (stateCode === EPAYCO_STATE.ACCEPTED || stateCode === EPAYCO_STATE.PENDING) {
+        return res.redirect(
+            `${frontendBase}/billing/payment-success?requestId=${encodeURIComponent(requestId)}`
+        );
+    }
+
+    // Any other state (rejected, failed, expired, etc.) → cancelled
+    return res.redirect(
+        `${frontendBase}/billing?payment=cancelled&requestId=${encodeURIComponent(requestId)}`
+    );
+};

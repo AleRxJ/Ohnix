@@ -34,6 +34,7 @@ const Reports = lazy(() => import("./pages/Reports"));
 const Billing = lazy(() => import("./pages/Billing"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
+const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
 
 const RouteLoadingFallback = () => (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center text-sm text-[#A9B3B8]">
@@ -106,6 +107,7 @@ function App() {
                                 <Route path="reports/*" element={<Reports />} />
                                 <Route path="billing" element={<Billing />} />
                                 <Route path="billing/payment-success" element={<PaymentSuccess />} />
+                                <Route path="billing/epayco-checkout" element={<EpaycoCheckout />} />
                                 <Route path="admin/management" element={<AdminManagement />} />
                             </Route>
 

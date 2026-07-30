@@ -6,6 +6,7 @@ import {
     createMyUpgradeCheckoutSession,
     createUpgradeRequest,
     getCheckoutPaymentMethods,
+    getEpaycoCheckoutParams,
     getMyUpgradeCheckoutStatus,
     getMyUpgradeRequests,
     getMySubscription,
@@ -30,6 +31,8 @@ router.route("/me/checkout-payment-methods").get(getCheckoutPaymentMethods);
 router.route("/me/upgrade-requests/:id/checkout-session").post(createMyUpgradeCheckoutSession);
 router.route("/me/upgrade-requests/:id/checkout-status").get(getMyUpgradeCheckoutStatus);
 router.route("/me/upgrade-requests/:id/verify-activate").post(verifyAndActivateBySession);
+// ePayco: fetch widget params for the checkout page (auth-protected)
+router.route("/me/upgrade-requests/:id/epayco-params").get(getEpaycoCheckoutParams);
 router.route("/me/pause").patch(pauseMySubscription);
 router.route("/me/cancel").patch(cancelMySubscription);
 router.route("/me/reactivate").patch(reactivateMySubscription);

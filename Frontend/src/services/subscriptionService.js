@@ -101,4 +101,11 @@ export const subscriptionService = {
         );
         return response.data;
     },
+
+    async getEpaycoCheckoutParams(requestId) {
+        const response = await api.get(
+            `/subscriptions/me/upgrade-requests/${requestId}/epayco-params`
+        );
+        return response.data;
+    },
 };

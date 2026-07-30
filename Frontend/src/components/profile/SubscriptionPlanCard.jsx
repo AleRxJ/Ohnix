@@ -10,6 +10,8 @@ import {
     CheckCircleOutlined,
     LockOutlined,
     ClockCircleOutlined,
+    WarningOutlined,
+    FireOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import { PLAN_FEATURES, FEATURE_MINIMUM_PLAN } from "../../hooks/useSubscription";
@@ -84,13 +86,18 @@ const SubscriptionPlanCard = ({
     const { t, currentLanguage } = useI18n();
     const lang = currentLanguage === "es" ? "es" : "en";
 
+    // plan must be declared before effectivePlan uses it
+    const plan   = subscription?.plan || "starter";
+
     // Effective plan (trial may give higher access than stored plan)
     const effectivePlan = subscription?.effectivePlan || plan;
-    const trialEndsAt   = subscription?.trialEndsAt ?? null;
-    const trialActive   = trialEndsAt && new Date() < new Date(trialEndsAt);
-    const trialDaysLeft = trialActive
+    const trialEndsAt    = subscription?.trialEndsAt ?? null;
+    const trialActive    = trialEndsAt && new Date() < new Date(trialEndsAt);
+    const trialExpired   = trialEndsAt && !trialActive && plan === "starter";
+    const trialDaysLeft  = trialActive
         ? Math.max(1, Math.ceil((new Date(trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
         : 0;
+    const trialUrgent    = trialActive && trialDaysLeft <= 3;
 
     const planFeatures = PLAN_FEATURES[effectivePlan] || PLAN_FEATURES.starter;
 
@@ -130,14 +137,64 @@ const SubscriptionPlanCard = ({
         return compact ? rows.slice(0, 3) : rows;
     }, [usage, t]);
 
-    const plan   = subscription?.plan || "starter";
     const status = subscription?.status || "active";
     const canRequestUpgrade = plan !== "enterprise";
 
     return (
         <Card className="mt-4 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-white/10 bg-white/[0.04] text-white">
-            {/* Trial banner */}
-            {trialActive && (
+            {/* Trial expired banner */}
+            {trialExpired && (
+                <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3">
+                    <div className="flex items-start gap-3">
+                        <WarningOutlined className="mt-0.5 text-lg text-red-400" />
+                        <div className="flex-1">
+                            <Text className="block text-sm font-semibold text-red-300">
+                                {lang === "es" ? "Tu prueba gratuita ha terminado" : "Your free trial has ended"}
+                            </Text>
+                            <Text className="block text-xs text-red-400/80 mt-0.5">
+                                {lang === "es"
+                                    ? "Contrata un plan para seguir usando Ohnix sin interrupciones."
+                                    : "Subscribe to a plan to keep using Ohnix without interruptions."}
+                            </Text>
+                        </div>
+                        {onRequestUpgrade && (
+                            <Button
+                                size="small"
+                                onClick={onRequestUpgrade}
+                                className="shrink-0 border-red-400/60 text-red-300 hover:border-red-300 hover:text-red-200 bg-transparent"
+                            >
+                                {lang === "es" ? "Contratar" : "Subscribe"}
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Trial urgency banner (≤3 days left) */}
+            {trialUrgent && (
+                <div className="mb-4 rounded-xl border border-orange-400/40 bg-orange-400/10 px-4 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                        <FireOutlined className="text-orange-400" />
+                        <Text className="flex-1 text-sm text-orange-300">
+                            {lang === "es"
+                                ? `¡Solo quedan ${trialDaysLeft} día${trialDaysLeft !== 1 ? "s" : ""} de prueba! Contrata ahora para no perder el acceso.`
+                                : `Only ${trialDaysLeft} day${trialDaysLeft !== 1 ? "s" : ""} left in your trial! Subscribe now to keep access.`}
+                        </Text>
+                        {onRequestUpgrade && (
+                            <Button
+                                size="small"
+                                onClick={onRequestUpgrade}
+                                className="shrink-0 border-orange-400/60 text-orange-300 hover:border-orange-300 hover:text-orange-200 bg-transparent"
+                            >
+                                {lang === "es" ? "Contratar" : "Subscribe"}
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Normal active trial banner */}
+            {trialActive && !trialUrgent && (
                 <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-[#29D8D5]/25 bg-[#29D8D5]/8 px-4 py-2.5">
                     <ClockCircleOutlined className="text-[#44F3F0]" />
                     <Text className="text-sm text-[#44F3F0]">
@@ -225,6 +282,21 @@ const SubscriptionPlanCard = ({
                             {t("profile.subscription.manage_plan")}
                         </Button>
                         <div className="flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] px-3 text-xs text-[#A9B3B8]">
+                            {t("profile.subscription.support_note")}
+                        </div>
+                    </div>
+                ) : trialExpired ? (
+                    /* Trial expired — only show upgrade CTA, hide pause/cancel */
+                    <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <Button
+                            icon={<RocketOutlined />}
+                            onClick={onRequestUpgrade}
+                            size="large"
+                            className="h-11 rounded-xl border-[#29D8D5]/50 bg-[#29D8D5]/15 text-[#44F3F0] font-semibold col-span-1 sm:col-span-2"
+                        >
+                            {lang === "es" ? "Contratar un plan ahora" : "Subscribe to a plan now"}
+                        </Button>
+                        <div className="flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] px-3 text-xs text-[#A9B3B8] col-span-1 sm:col-span-2">
                             {t("profile.subscription.support_note")}
                         </div>
                     </div>

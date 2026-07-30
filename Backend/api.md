@@ -300,6 +300,59 @@ COLOMBIA_DIRECT_BANCOLOMBIA_ENDPOINT=/payments/bancolombia/checkout
 COLOMBIA_DIRECT_TIMEOUT_MS=15000
 ```
 
+---
+
+### ePayco Integration (Colombia only)
+
+| Method   | Endpoint                                             | Description | Auth | Role |
+| -------- | ---------------------------------------------------- | ----------- | ---- | ---- |
+| **GET**  | `/subscriptions/me/upgrade-requests/:id/epayco-params` | Returns ePayco widget params for the checkout page | ✅ | User |
+| **POST** | `/subscriptions/payments/epayco/confirmation`        | Server-to-server confirmation callback from ePayco | ❌ | System |
+| **GET**  | `/subscriptions/payments/epayco/response`            | Browser redirect after ePayco payment (Success/Cancel) | ❌ | System |
+| **POST** | `/subscriptions/payments/epayco/response`            | Same as GET, handles form POST variant | ❌ | System |
+
+#### ePayco checkout flow
+
+1. User selects country `CO` + method `epayco` in Billing.
+2. Frontend calls `POST /me/upgrade-requests/:id/checkout-session` with `{ country: "CO", paymentMethod: "epayco" }`.
+3. Backend generates a unique reference and returns `checkoutUrl = /billing/epayco-checkout?requestId=...`.
+4. Frontend redirects to `/billing/epayco-checkout`.
+5. That page fetches params via `GET /me/upgrade-requests/:id/epayco-params` and opens the ePayco JS widget.
+6. User pays. ePayco calls `EPAYCO_CONFIRMATION_URL` (server-to-server) — **this is the only trusted activation source**.
+7. Backend validates SHA-256 signature, activates plan, sends activation email.
+8. ePayco redirects browser to `EPAYCO_RESPONSE_URL` which redirects to `/billing/payment-success?requestId=...`.
+9. `PaymentSuccess.jsx` polls for plan activation and shows success screen.
+
+#### ePayco Signature Validation
+
+```
+SHA-256(p_cust_id_cliente ^ p_key ^ x_ref_payco ^ x_transaction_id ^ x_amount ^ x_currency_code)
+```
+
+The `^` is a literal caret separator. The private key (`EPAYCO_PRIVATE_KEY`) is **never** sent to the frontend.
+
+#### Required Environment Variables
+
+```bash
+# ePayco credentials — from your ePayco dashboard
+EPAYCO_PUBLIC_KEY=your_public_key
+EPAYCO_PRIVATE_KEY=your_private_key
+EPAYCO_P_CUST_ID=your_customer_id
+
+# "TRUE" for sandbox/test mode, "FALSE" for production
+EPAYCO_TEST=TRUE
+
+# Public URLs where ePayco will call back
+# These must be accessible from ePayco's servers (no localhost in prod)
+EPAYCO_RESPONSE_URL=https://api.ohnix.co/api/v1/subscriptions/payments/epayco/response
+EPAYCO_CONFIRMATION_URL=https://api.ohnix.co/api/v1/subscriptions/payments/epayco/confirmation
+
+# Amount in COP (smallest unit, no decimals)
+# If not set, falls back to STRIPE_AMOUNT_*_COP
+EPAYCO_AMOUNT_GROWTH_COP=99000
+EPAYCO_AMOUNT_ENTERPRISE_COP=299000
+```
+
 ### Stripe Dashboard Requirements (CO/ES)
 
 Enable these payment methods in Stripe for the account/environment being tested:

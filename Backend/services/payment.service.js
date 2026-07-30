@@ -1,4 +1,8 @@
 import Stripe from "stripe";
+import {
+    createEpaycoCheckoutSession,
+    isEpaycoConfigured,
+} from "./epayco.service.js";
 
 const getStripe = () => {
     const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -14,7 +18,8 @@ const getStripe = () => {
 const COUNTRY_CONFIG = {
     CO: {
         currency: "cop",
-        supportedMethods: ["pse", "bancolombia_button", "card"],
+        // epayco is the first option for CO so it appears first in the UI
+        supportedMethods: ["epayco", "pse", "bancolombia_button", "card"],
     },
     ES: {
         currency: "eur",
@@ -258,7 +263,7 @@ const createColombiaDirectCheckoutSession = async ({
 
 export const isAutonomousCheckoutConfigured = () => {
     const stripe = getStripe();
-    return Boolean(stripe);
+    return Boolean(stripe) || isEpaycoConfigured();
 };
 
 export const verifyStripeSession = async (sessionId) => {
@@ -292,6 +297,12 @@ export const createUpgradeCheckoutSession = async ({
     if (!countryConfig.supportedMethods.includes(normalizedPaymentMethod)) {
         throw new Error("Selected payment method is not available for this country");
     }
+
+    // ── ePayco: Colombia-only provider ─────────────────────────────────────
+    if (normalizedPaymentMethod === "epayco") {
+        return createEpaycoCheckoutSession({ request, user });
+    }
+    // ───────────────────────────────────────────────────────────────────────
 
     const stripePaymentMethodCandidates = getStripeMethodCandidates({
         paymentMethod: normalizedPaymentMethod,

@@ -43,11 +43,19 @@ const SLA_HOURS_BY_TARGET_PLAN = {
 const TRACKER_STEP_KEYS = ["submitted", "reviewing", "approved", "activated"];
 
 const PAYMENT_METHOD_LABELS = {
+    epayco: "Pagar con ePayco",
     card: "Tarjeta / Card",
     pse: "ACH (PSE - otros bancos)",
     bancolombia_button: "Pasarela Bancolombia",
     bizum: "Bizum",
     sepa_debit: "SEPA Débito",
+};
+
+// COP display prices — keep in sync with EPAYCO_AMOUNT_*_COP in .env
+const PLAN_COP_DISPLAY = {
+    growth: "COP $99.000",
+    scale: "COP $249.000",
+    enterprise: "COP $299.000",
 };
 
 const formatEtaDuration = (remainingMs, t) => {
@@ -412,6 +420,34 @@ const Billing = () => {
         }));
     };
 
+    // Colombia-specific handler: always sends CO + epayco, no state races
+    const handleStartCheckoutColombia = async (request) => {
+        if (!request?.id) {
+            return;
+        }
+
+        try {
+            setCheckoutLoadingRequestId(request.id);
+            const response = await subscriptionService.createUpgradeCheckoutSessionWithMethod(
+                request.id,
+                { country: "CO", paymentMethod: "epayco" }
+            );
+            const checkoutUrl = response?.data?.checkoutUrl;
+            if (!checkoutUrl) {
+                toast.error(t("profile.subscription.checkout_unavailable"));
+                return;
+            }
+            window.location.assign(checkoutUrl);
+        } catch (error) {
+            toast.error(
+                error.response?.data?.message ||
+                    t("profile.subscription.checkout_unavailable")
+            );
+        } finally {
+            setCheckoutLoadingRequestId("");
+        }
+    };
+
     const handleStartCheckout = async (request) => {
         if (!request?.id) {
             return;
@@ -674,71 +710,180 @@ const Billing = () => {
                                             </div>
 
                                             {item.status === "approved" && !isPlanAlreadyActiveForRequest(item) ? (
-                                                <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-500/10 p-3">
-                                                    <div className="text-sm font-medium text-emerald-200">
-                                                        {t("profile.subscription.payment_ready_title")}
-                                                    </div>
-                                                    <div className="mt-1 text-xs text-emerald-100/90">
-                                                        {t("profile.subscription.payment_ready_description")}
-                                                    </div>
-                                                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                                        <Select
-                                                            size="small"
-                                                            value={selection.country}
-                                                            options={Object.keys(checkoutMethodsByCountry).map(
-                                                                (countryCode) => ({
-                                                                    value: countryCode,
-                                                                    label: countryCode === "CO"
-                                                                        ? "Colombia"
-                                                                        : countryCode === "ES"
-                                                                          ? "España"
-                                                                          : countryCode,
-                                                                })
-                                                            )}
-                                                            onChange={(country) =>
-                                                                updateCheckoutCountry(item.id, country)
-                                                            }
-                                                        />
-                                                        <Select
-                                                            size="small"
-                                                            value={selection.method}
-                                                            options={methodsForCountry.map((method) => ({
-                                                                value: method,
-                                                                label:
-                                                                    PAYMENT_METHOD_LABELS[method] || method,
-                                                            }))}
-                                                            onChange={(method) =>
-                                                                updateCheckoutMethod(item.id, method)
-                                                            }
-                                                        />
-                                                    </div>
-                                                    {paymentUrl ? (
-                                                        <Button
-                                                            size="small"
-                                                            type="primary"
-                                                            loading={checkoutLoadingRequestId === item.id}
-                                                            onClick={() => handleStartCheckout(item)}
-                                                            className="!mt-2 !rounded-lg !bg-[#29D8D5] !text-[#021314] hover:!bg-[#44F3F0]"
-                                                        >
-                                                            {t("profile.subscription.checkout_cta")}
-                                                        </Button>
-                                                    ) : (
-                                                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                                                            <Button
-                                                                size="small"
-                                                                type="primary"
-                                                                loading={checkoutLoadingRequestId === item.id}
-                                                                onClick={() => handleStartCheckout(item)}
-                                                                className="!rounded-lg !bg-[#29D8D5] !text-[#021314] hover:!bg-[#44F3F0]"
-                                                            >
-                                                                {t("profile.subscription.checkout_cta")}
-                                                            </Button>
-                                                            <span className="text-xs text-[#CDEFEF]">
-                                                                {t("profile.subscription.payment_link_missing")}
-                                                            </span>
+                                                (() => {
+                                                    const isColombiaFlow = selection.country === "CO";
+                                                    const copPrice = PLAN_COP_DISPLAY[item.targetPlan];
+                                                    const isLoading = checkoutLoadingRequestId === item.id;
+
+                                                    if (isColombiaFlow) {
+                                                        return (
+                                                            <div className="mt-4">
+                                                                <div className="relative overflow-hidden rounded-2xl border border-[#29D8D5]/25 bg-gradient-to-br from-[#050e1a] to-[#050c14] p-5">
+                                                                    {/* Glow */}
+                                                                    <div className="pointer-events-none absolute -top-12 left-1/2 h-28 w-72 -translate-x-1/2 rounded-full bg-[#29D8D5]/8 blur-3xl" />
+
+                                                                    {/* Header pill */}
+                                                                    <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#29D8D5]/20 bg-[#29D8D5]/8 px-3 py-1">
+                                                                        <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_5px_#29D8D5]" />
+                                                                        <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#29D8D5]">
+                                                                            Completar pago
+                                                                        </span>
+                                                                    </div>
+
+                                                                    {/* Plan row */}
+                                                                    <div className="mb-5 flex items-center justify-between gap-3">
+                                                                        <div>
+                                                                            <div className="text-sm text-[#A9B3B8]">
+                                                                                {t(`profile.subscription.plan_${item.currentPlan}`)}
+                                                                                {" "}
+                                                                                <span className="text-[#29D8D5]">→</span>
+                                                                                {" "}
+                                                                                <span className="font-semibold text-white">
+                                                                                    {t(`profile.subscription.plan_${item.targetPlan}`)}
+                                                                                </span>
+                                                                            </div>
+                                                                            {copPrice && (
+                                                                                <div className="mt-0.5 text-xs text-[#6b8090]">
+                                                                                    {copPrice}
+                                                                                    <span className="text-[#4a5e69]">/mes</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="shrink-0 rounded-full border border-[#29D8D5]/20 bg-[#29D8D5]/5 px-2.5 py-1 text-[10px] font-medium text-[#29D8D5]">
+                                                                            Colombia
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* ePayco button */}
+                                                                    <button
+                                                                        onClick={() => !isLoading && handleStartCheckoutColombia(item)}
+                                                                        disabled={isLoading}
+                                                                        className={[
+                                                                            "group relative w-full overflow-hidden rounded-xl border px-5 py-4 text-left transition-all duration-200",
+                                                                            isLoading
+                                                                                ? "cursor-not-allowed border-[#00AFF0]/20 bg-[#00AFF0]/5 opacity-60"
+                                                                                : "cursor-pointer border-[#00AFF0]/35 bg-[#00AFF0]/8 hover:border-[#00AFF0]/60 hover:bg-[#00AFF0]/15",
+                                                                        ].join(" ")}
+                                                                    >
+                                                                        {/* Shimmer on hover */}
+                                                                        <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+
+                                                                        <div className="flex items-center justify-between">
+                                                                            <div className="flex items-center gap-3">
+                                                                                {/* ePayco wordmark */}
+                                                                                <div className="flex items-baseline gap-0.5">
+                                                                                    <span className="text-xl font-black leading-none text-[#00AFF0]">e</span>
+                                                                                    <span className="text-base font-bold leading-none text-white">Payco</span>
+                                                                                </div>
+                                                                                <div className="h-4 w-px bg-white/10" />
+                                                                                <span className="text-sm font-medium text-white/90">
+                                                                                    {isLoading ? "Redirigiendo..." : "Pagar con ePayco"}
+                                                                                </span>
+                                                                            </div>
+                                                                            {isLoading ? (
+                                                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#00AFF0]/30 border-t-[#00AFF0]" />
+                                                                            ) : (
+                                                                                <svg className="h-4 w-4 text-[#00AFF0] transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                                                                </svg>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="mt-2 flex items-center gap-1.5 text-[10px] text-[#4a6070]">
+                                                                            {["PSE", "Tarjeta", "Nequi", "Daviplata"].map((m, i, arr) => (
+                                                                                <React.Fragment key={m}>
+                                                                                    <span>{m}</span>
+                                                                                    {i < arr.length - 1 && <span className="text-[#2a3a44]">·</span>}
+                                                                                </React.Fragment>
+                                                                            ))}
+                                                                        </div>
+                                                                    </button>
+
+                                                                    {/* Security footer */}
+                                                                    <div className="mt-3.5 flex items-center gap-2 text-[10px] text-[#3a4e58]">
+                                                                        <svg className="h-3 w-3 shrink-0 text-[#3a5060]" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944z" clipRule="evenodd" />
+                                                                        </svg>
+                                                                        <span>Transacción cifrada · PCI DSS · ePayco Colombia</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    // ── Otros países (Stripe) ────────────────────────────
+                                                    const nonEpaycoMethods = methodsForCountry.filter((m) => m !== "epayco");
+                                                    const canCheckout = Object.keys(checkoutMethodsByCountry).length > 0 || Boolean(paymentUrl);
+
+                                                    return (
+                                                        <div className="mt-4">
+                                                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                                {/* Header pill */}
+                                                                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#29D8D5]/20 bg-[#29D8D5]/8 px-3 py-1">
+                                                                    <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_5px_#29D8D5]" />
+                                                                    <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#29D8D5]">
+                                                                        Completar pago
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Plan row */}
+                                                                <div className="mb-3 text-sm text-[#A9B3B8]">
+                                                                    {t(`profile.subscription.plan_${item.currentPlan}`)}
+                                                                    {" "}<span className="text-[#29D8D5]">→</span>{" "}
+                                                                    <span className="font-semibold text-white">
+                                                                        {t(`profile.subscription.plan_${item.targetPlan}`)}
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Selectors */}
+                                                                <div className="mb-3 grid grid-cols-2 gap-2">
+                                                                    <Select
+                                                                        size="small"
+                                                                        value={selection.country}
+                                                                        options={Object.keys(checkoutMethodsByCountry)
+                                                                            .filter((c) => c !== "CO")
+                                                                            .map((countryCode) => ({
+                                                                                value: countryCode,
+                                                                                label: countryCode === "ES" ? "España" : countryCode,
+                                                                            }))}
+                                                                        onChange={(country) => updateCheckoutCountry(item.id, country)}
+                                                                    />
+                                                                    <Select
+                                                                        size="small"
+                                                                        value={selection.method}
+                                                                        options={nonEpaycoMethods.map((method) => ({
+                                                                            value: method,
+                                                                            label: PAYMENT_METHOD_LABELS[method] || method,
+                                                                        }))}
+                                                                        onChange={(method) => updateCheckoutMethod(item.id, method)}
+                                                                    />
+                                                                </div>
+
+                                                                {canCheckout ? (
+                                                                    <Button
+                                                                        type="primary"
+                                                                        loading={isLoading}
+                                                                        onClick={() => handleStartCheckout(item)}
+                                                                        className="!w-full !h-10 !rounded-xl !bg-[#29D8D5] !text-[#021314] !font-semibold hover:!bg-[#44F3F0] !border-0"
+                                                                    >
+                                                                        {t("profile.subscription.checkout_cta")}
+                                                                    </Button>
+                                                                ) : (
+                                                                    <span className="block text-xs text-[#CDEFEF]">
+                                                                        {t("profile.subscription.payment_link_missing")}
+                                                                    </span>
+                                                                )}
+
+                                                                {/* Security footer */}
+                                                                <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-[#3a4e58]">
+                                                                    <svg className="h-3 w-3 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944z" clipRule="evenodd" />
+                                                                    </svg>
+                                                                    <span>Pago seguro · Stripe</span>
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                </div>
+                                                    );
+                                                })()
                                             ) : null}
                                         </div>
                                         <Tag color={REQUEST_STATUS_COLORS[item.status] || "default"}>
