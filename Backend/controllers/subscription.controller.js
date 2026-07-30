@@ -1088,15 +1088,21 @@ export const handleEpaycoResponse = (req, res) => {
         return res.redirect(`${frontendBase}/billing`);
     }
 
-    // State 1 = Accepted, 3 = Pending (awaiting bank confirmation)
-    if (stateCode === EPAYCO_STATE.ACCEPTED || stateCode === EPAYCO_STATE.PENDING) {
+    // Codes that are definitely a failure — ePayco sends these explicitly
+    // 2=Rejected, 4=Failed, 6=Reversed, 9=Expired, 10=Abandoned
+    const FAILED_STATES = new Set([2, 4, 6, 9, 10]);
+
+    if (FAILED_STATES.has(stateCode)) {
         return res.redirect(
-            `${frontendBase}/billing/payment-success?requestId=${encodeURIComponent(requestId)}`
+            `${frontendBase}/billing?payment=cancelled&requestId=${encodeURIComponent(requestId)}`
         );
     }
 
-    // Any other state (rejected, failed, expired, etc.) → cancelled
+    // State 1=Accepted, 3=Pending, 7=Retained, 8=Started, or 0=unknown
+    // (ePayco sometimes omits x_cod_transaction_state in test mode)
+    // → Always go to success page; the polling there checks the real status
+    //   via the confirmation webhook that already activated the plan.
     return res.redirect(
-        `${frontendBase}/billing?payment=cancelled&requestId=${encodeURIComponent(requestId)}`
+        `${frontendBase}/billing/payment-success?requestId=${encodeURIComponent(requestId)}`
     );
 };
