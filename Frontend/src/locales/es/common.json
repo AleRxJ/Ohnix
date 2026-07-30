@@ -204,9 +204,10 @@
       "title": "Plan y uso",
       "description": "Consulta el estado de tu plan y cuánto cupo está consumiendo tu equipo.",
       "load_failed": "No se pudieron cargar los datos de suscripción",
-      "plan_starter": "Inicial",
-      "plan_growth": "Crecimiento",
-      "plan_enterprise": "Empresarial",
+      "plan_starter": "Emprendedor",
+      "plan_growth": "Negocio",
+      "plan_scale": "Escala",
+      "plan_enterprise": "Enterprise",
       "status_active": "Activo",
       "status_paused": "Pausado",
       "status_canceled": "Cancelado",
@@ -1197,51 +1198,76 @@
     },
     "pricing": {
       "eyebrow": "Precios",
-      "title": "Planes claros para cada etapa operativa",
-      "description": "Diferenciados por nivel de acompanamiento, capacidad operativa recomendada y necesidades de integracion.",
+      "title": "Un plan para cada etapa de tu negocio",
+      "description": "Prueba cualquier plan 14 días sin tarjeta de crédito. Cambia o cancela cuando quieras.",
       "most_popular": "Más popular",
+      "trial_note": "14 días gratis · Sin tarjeta",
       "plans": {
         "starter": {
-          "name": "Inicial",
-          "subtitle": "Para equipos que comienzan a ordenar su operacion",
-          "price": "$0",
+          "name": "Emprendedor",
+          "subtitle": "Para negocios que formalizan su inventario",
+          "price": "$19",
           "billing": "/mes",
-          "description": "Incluye el flujo core de Ohnix para operar inventario y ventas en una operacion pequena.",
+          "description": "Control completo de stock, pedidos y compras desde el primer día. Sin complejidad.",
           "features": {
-            "workspace": "Flujo core: productos, compras, pedidos y facturas PDF",
-            "tracking": "Reportes base y alertas de stock bajo",
-            "support": "Soporte por correo en horario habil",
-            "access": "Implementacion autogestionada"
+            "limits": "75 productos · 50 clientes · 20 proveedores",
+            "core": "Pedidos y compras con actualización de stock",
+            "reports": "Dashboard básico + reporte de stock",
+            "pdf": "PDF de pedidos estándar",
+            "alerts": "Alertas de stock bajo en app",
+            "support": "Soporte por correo (72h)"
           },
-          "cta": "Empezar gratis"
+          "cta": "Empezar prueba gratis"
         },
         "growth": {
-          "name": "Crecimiento",
-          "subtitle": "Para operaciones en crecimiento con mayor ritmo",
-          "price": "$29",
+          "name": "Negocio",
+          "subtitle": "Para operaciones activas con más volumen",
+          "price": "$49",
           "billing": "/mes",
-          "description": "Mantiene el flujo core con mayor acompanamiento operativo y respuesta prioritaria para equipos con mas volumen.",
+          "description": "Reportes completos, exportaciones y automatizaciones para negocios establecidos.",
           "features": {
-            "unlimited": "Incluye todo Inicial",
-            "reports": "Analisis operativo avanzado y seguimiento de tendencias",
-            "priority": "Soporte prioritario",
-            "mobile": "Sesiones de adopcion y revision operativa periodica"
+            "unlimited": "Todo en Emprendedor",
+            "limits": "500 productos · 300 clientes · 100 proveedores",
+            "reports": "Todos los reportes: ventas, compras, top productos",
+            "export": "Exportación CSV · Carga masiva de productos",
+            "pdf": "PDF con logo de la empresa",
+            "alerts": "Alertas automáticas de stock bajo por email",
+            "support": "Soporte prioritario (24h)"
           },
-          "cta": "Solicitar Crecimiento"
+          "cta": "Empezar prueba gratis"
+        },
+        "scale": {
+          "name": "Escala",
+          "subtitle": "Para empresas en crecimiento con equipo",
+          "price": "$99",
+          "billing": "/mes",
+          "description": "API, reportes avanzados y personalización completa para equipos de 5 a 20 personas.",
+          "features": {
+            "unlimited": "Todo en Negocio",
+            "limits": "2,000 productos · 1,000 clientes · 400 proveedores",
+            "reports": "Reportes avanzados + exportación Excel",
+            "pdf": "PDF completamente personalizable",
+            "api": "API REST (1,000 req/día)",
+            "alerts": "Alertas con umbral configurable por producto",
+            "support": "Soporte 12h · Onboarding asistido"
+          },
+          "cta": "Empezar prueba gratis"
         },
         "enterprise": {
-          "name": "Empresarial",
-          "subtitle": "Para operaciones multi-equipo o con requisitos especiales",
-          "price": "Personalizado",
+          "name": "Enterprise",
+          "subtitle": "Para operaciones complejas o multi-sucursal",
+          "price": "A medida",
           "billing": "",
-          "description": "Pensado para empresas que requieren despliegue guiado, integraciones y acuerdos de servicio.",
+          "description": "Todo ilimitado, integraciones personalizadas y account manager dedicado.",
           "features": {
-            "onboarding": "Onboarding y plan de despliegue dedicado",
-            "implementation": "Implementacion tecnica asistida",
-            "workflows": "Diseno de flujos y permisos por areas",
-            "integrations": "Integraciones y requerimientos a medida"
+            "unlimited": "Todo ilimitado (productos, pedidos, usuarios)",
+            "api": "API sin restricciones de rate limit",
+            "integrations": "Integraciones personalizadas (ERP, e-commerce, contabilidad)",
+            "manager": "Account manager dedicado",
+            "sla": "SLA garantizado < 4 horas",
+            "onboarding": "Onboarding completo asistido"
           },
-          "cta": "Solicitar Empresarial"
+          "cta": "Contactar ventas"
         }
       }
     },

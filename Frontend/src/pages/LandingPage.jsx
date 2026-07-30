@@ -56,7 +56,7 @@ const LandingPage = () => {
     ];
 
     const handlePlanCta = (planKey) => {
-        const normalizedPlan = ["starter", "growth", "enterprise"].includes(planKey)
+        const normalizedPlan = ["starter", "growth", "scale", "enterprise"].includes(planKey)
             ? planKey
             : "starter";
 
@@ -199,13 +199,16 @@ const LandingPage = () => {
             billing: t("landing.pricing.plans.starter.billing"),
             description: t("landing.pricing.plans.starter.description"),
             features: [
-                t("landing.pricing.plans.starter.features.workspace"),
-                t("landing.pricing.plans.starter.features.tracking"),
+                t("landing.pricing.plans.starter.features.limits"),
+                t("landing.pricing.plans.starter.features.core"),
+                t("landing.pricing.plans.starter.features.reports"),
+                t("landing.pricing.plans.starter.features.pdf"),
+                t("landing.pricing.plans.starter.features.alerts"),
                 t("landing.pricing.plans.starter.features.support"),
-                t("landing.pricing.plans.starter.features.access"),
             ],
             cta: t("landing.pricing.plans.starter.cta"),
-            icon: brandIcons.pricing,
+            note: t("landing.pricing.trial_note"),
+            icon: brandIcons.action,
         },
         {
             key: "growth",
@@ -216,13 +219,37 @@ const LandingPage = () => {
             description: t("landing.pricing.plans.growth.description"),
             features: [
                 t("landing.pricing.plans.growth.features.unlimited"),
+                t("landing.pricing.plans.growth.features.limits"),
                 t("landing.pricing.plans.growth.features.reports"),
-                t("landing.pricing.plans.growth.features.priority"),
-                t("landing.pricing.plans.growth.features.mobile"),
+                t("landing.pricing.plans.growth.features.export"),
+                t("landing.pricing.plans.growth.features.pdf"),
+                t("landing.pricing.plans.growth.features.alerts"),
+                t("landing.pricing.plans.growth.features.support"),
             ],
             cta: t("landing.pricing.plans.growth.cta"),
-            icon: brandIcons.growth,
+            note: t("landing.pricing.trial_note"),
+            icon: brandIcons.observability,
             featured: true,
+        },
+        {
+            key: "scale",
+            name: t("landing.pricing.plans.scale.name"),
+            subtitle: t("landing.pricing.plans.scale.subtitle"),
+            price: t("landing.pricing.plans.scale.price"),
+            billing: t("landing.pricing.plans.scale.billing"),
+            description: t("landing.pricing.plans.scale.description"),
+            features: [
+                t("landing.pricing.plans.scale.features.unlimited"),
+                t("landing.pricing.plans.scale.features.limits"),
+                t("landing.pricing.plans.scale.features.reports"),
+                t("landing.pricing.plans.scale.features.pdf"),
+                t("landing.pricing.plans.scale.features.api"),
+                t("landing.pricing.plans.scale.features.alerts"),
+                t("landing.pricing.plans.scale.features.support"),
+            ],
+            cta: t("landing.pricing.plans.scale.cta"),
+            note: t("landing.pricing.trial_note"),
+            icon: brandIcons.adaptive,
         },
         {
             key: "enterprise",
@@ -232,10 +259,12 @@ const LandingPage = () => {
             billing: t("landing.pricing.plans.enterprise.billing"),
             description: t("landing.pricing.plans.enterprise.description"),
             features: [
-                t("landing.pricing.plans.enterprise.features.onboarding"),
-                t("landing.pricing.plans.enterprise.features.implementation"),
-                t("landing.pricing.plans.enterprise.features.workflows"),
+                t("landing.pricing.plans.enterprise.features.unlimited"),
+                t("landing.pricing.plans.enterprise.features.api"),
                 t("landing.pricing.plans.enterprise.features.integrations"),
+                t("landing.pricing.plans.enterprise.features.manager"),
+                t("landing.pricing.plans.enterprise.features.sla"),
+                t("landing.pricing.plans.enterprise.features.onboarding"),
             ],
             cta: t("landing.pricing.plans.enterprise.cta"),
             icon: brandIcons.trust,

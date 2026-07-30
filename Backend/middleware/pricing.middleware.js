@@ -2,38 +2,73 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
+// Plan display names and prices — used by frontend and email templates.
+// Technical names (starter, growth, scale, enterprise) map to DB enum values.
+export const PLAN_DISPLAY_NAMES = {
+    starter:    { es: "Emprendedor", en: "Starter"    },
+    growth:     { es: "Negocio",     en: "Business"   },
+    scale:      { es: "Escala",      en: "Scale"      },
+    enterprise: { es: "Enterprise",  en: "Enterprise" },
+};
+
+export const PLAN_PRICES_USD = {
+    starter:    19,
+    growth:     49,
+    scale:      99,
+    enterprise: null, // custom — set per negotiation
+};
+
 export const PLAN_LIMITS = {
+    // $19/mes — Emprendedor / Starter
+    // Solo emprendedor, catálogo pequeño, operación inicial.
     starter: {
-        maxProducts: 300,
-        maxCustomers: 200,
-        maxSuppliers: 120,
-        maxCategories: 40,
-        maxUnits: 30,
-        maxOrders: 1500,
-        maxPurchases: 1000,
-        maxMonthlyOrders: 200,
-        maxMonthlyPurchases: 120,
+        maxProducts:          75,
+        maxCustomers:         50,
+        maxSuppliers:         20,
+        maxCategories:        15,
+        maxUnits:             10,
+        maxOrders:           600,   // lifetime cumulative (~10 months at full monthly rate)
+        maxPurchases:        300,   // lifetime cumulative
+        maxMonthlyOrders:     60,   // ~2 per day
+        maxMonthlyPurchases:  30,   // ~1 per day
     },
+    // $49/mes — Negocio / Business
+    // Negocio establecido, todos los reportes, exportación CSV, alertas email.
     growth: {
-        maxProducts: 5000,
-        maxCustomers: 2000,
-        maxSuppliers: 1200,
-        maxCategories: 200,
-        maxUnits: 120,
-        maxOrders: 25000,
-        maxPurchases: 12000,
-        maxMonthlyOrders: 2500,
-        maxMonthlyPurchases: 1500,
+        maxProducts:         500,
+        maxCustomers:        300,
+        maxSuppliers:        100,
+        maxCategories:        40,
+        maxUnits:             25,
+        maxOrders:         10000,   // lifetime cumulative
+        maxPurchases:       5000,   // lifetime cumulative
+        maxMonthlyOrders:    300,   // ~10 per day
+        maxMonthlyPurchases: 150,
     },
+    // $99/mes — Escala / Scale  (requires DB migration: ALTER TYPE "PlanType" ADD VALUE 'scale')
+    // Empresa en crecimiento, API, reportes avanzados, multi-usuario próximamente.
+    scale: {
+        maxProducts:        2000,
+        maxCustomers:       1000,
+        maxSuppliers:        400,
+        maxCategories:        80,
+        maxUnits:             50,
+        maxOrders:          null,   // unlimited
+        maxPurchases:       null,   // unlimited
+        maxMonthlyOrders:   1000,   // ~33 per day
+        maxMonthlyPurchases: 500,
+    },
+    // Custom desde $249/mes — Enterprise
+    // Todo ilimitado, API sin restricciones, account manager.
     enterprise: {
-        maxProducts: null,
-        maxCustomers: null,
-        maxSuppliers: null,
-        maxCategories: null,
-        maxUnits: null,
-        maxOrders: null,
-        maxPurchases: null,
-        maxMonthlyOrders: null,
+        maxProducts:         null,
+        maxCustomers:        null,
+        maxSuppliers:        null,
+        maxCategories:       null,
+        maxUnits:            null,
+        maxOrders:           null,
+        maxPurchases:        null,
+        maxMonthlyOrders:    null,
         maxMonthlyPurchases: null,
     },
 };

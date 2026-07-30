@@ -205,7 +205,8 @@
       "description": "Track your plan status and how much quota your team is consuming.",
       "load_failed": "Failed to load subscription data",
       "plan_starter": "Starter",
-      "plan_growth": "Growth",
+      "plan_growth": "Business",
+      "plan_scale": "Scale",
       "plan_enterprise": "Enterprise",
       "status_active": "Active",
       "status_paused": "Paused",
@@ -1203,51 +1204,76 @@
     },
     "pricing": {
       "eyebrow": "Pricing",
-      "title": "Clear plans for each operating stage",
-      "description": "Differentiated by support level, recommended operating capacity, and integration needs.",
+      "title": "A plan for every stage of your business",
+      "description": "Try any plan free for 14 days. No credit card required. Upgrade or cancel anytime.",
       "most_popular": "Most Popular",
+      "trial_note": "14-day free trial · No credit card",
       "plans": {
         "starter": {
           "name": "Starter",
-          "subtitle": "For teams getting their operations in order",
-          "price": "$0",
+          "subtitle": "For businesses formalizing their inventory",
+          "price": "$19",
           "billing": "/month",
-          "description": "Includes the core Ohnix flow to run inventory and sales in a small operation.",
+          "description": "Full stock, order, and purchase control from day one. No complexity.",
           "features": {
-            "workspace": "Core flow: products, purchases, orders, and PDF invoices",
-            "tracking": "Baseline reports and low-stock alerts",
-            "support": "Business-hours email support",
-            "access": "Self-serve implementation"
+            "limits": "75 products · 50 customers · 20 suppliers",
+            "core": "Orders and purchases with automatic stock updates",
+            "reports": "Basic dashboard + stock report",
+            "pdf": "Standard order PDF",
+            "alerts": "In-app low-stock alerts",
+            "support": "Email support (72h)"
           },
-          "cta": "Start free"
+          "cta": "Start free trial"
         },
         "growth": {
-          "name": "Growth",
-          "subtitle": "For growing operations with higher daily throughput",
-          "price": "$29",
+          "name": "Business",
+          "subtitle": "For active operations with higher throughput",
+          "price": "$49",
           "billing": "/month",
-          "description": "Keeps the core flow while adding stronger operational guidance and faster response for higher-volume teams.",
+          "description": "Full analytics, exports, and automations for established businesses.",
           "features": {
             "unlimited": "Everything in Starter",
-            "reports": "Advanced operational analysis and trend follow-up",
-            "priority": "Priority support",
-            "mobile": "Adoption sessions and periodic operations review"
+            "limits": "500 products · 300 customers · 100 suppliers",
+            "reports": "All reports: sales, purchases, top products",
+            "export": "CSV export · Bulk product upload",
+            "pdf": "Order PDF with company logo",
+            "alerts": "Automatic low-stock email alerts",
+            "support": "Priority support (24h)"
           },
-          "cta": "Request Growth"
+          "cta": "Start free trial"
+        },
+        "scale": {
+          "name": "Scale",
+          "subtitle": "For growing companies with a team",
+          "price": "$99",
+          "billing": "/month",
+          "description": "API access, advanced reports, and full customization for teams of 5–20.",
+          "features": {
+            "unlimited": "Everything in Business",
+            "limits": "2,000 products · 1,000 customers · 400 suppliers",
+            "reports": "Advanced report filters + Excel export",
+            "pdf": "Fully customizable PDF templates",
+            "api": "REST API (1,000 req/day)",
+            "alerts": "Per-product configurable stock thresholds",
+            "support": "12h support · Assisted onboarding"
+          },
+          "cta": "Start free trial"
         },
         "enterprise": {
           "name": "Enterprise",
-          "subtitle": "For multi-team operations or special requirements",
+          "subtitle": "For complex or multi-location operations",
           "price": "Custom",
           "billing": "",
-          "description": "Designed for companies that need guided rollout, integrations, and service-level commitments.",
+          "description": "Unlimited everything, custom integrations, and a dedicated account manager.",
           "features": {
-            "onboarding": "Dedicated onboarding and rollout plan",
-            "implementation": "Assisted technical implementation",
-            "workflows": "Cross-team workflow and permissions design",
-            "integrations": "Custom integrations and requirements"
+            "unlimited": "Unlimited products, orders, and users",
+            "api": "Unrestricted API access",
+            "integrations": "Custom integrations (ERP, e-commerce, accounting)",
+            "manager": "Dedicated account manager",
+            "sla": "Guaranteed SLA < 4 hours",
+            "onboarding": "Fully assisted onboarding"
           },
-          "cta": "Request Enterprise"
+          "cta": "Contact sales"
         }
       }
     },

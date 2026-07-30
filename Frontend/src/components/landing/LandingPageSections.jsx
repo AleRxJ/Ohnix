@@ -1026,11 +1026,11 @@ export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) 
             description={heading.description}
         />
 
-        <div ref={ref} className="mt-14 grid gap-5 lg:grid-cols-3">
+        <div ref={ref} className="mt-14 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {plans.map((plan, i) => (
                 <article
-                    key={plan.name}
-                    className={`relative overflow-hidden rounded-[32px] border p-7 transition-all duration-500 hover:-translate-y-2 ${
+                    key={plan.key ?? plan.name}
+                    className={`relative flex flex-col overflow-hidden rounded-[28px] border p-6 transition-all duration-500 hover:-translate-y-2 ${
                         plan.featured
                             ? "border-[#29D8D5]/40 bg-[linear-gradient(180deg,rgba(41,216,213,0.12),rgba(255,255,255,0.03))] shadow-[0_0_0_1px_rgba(41,216,213,0.08),0_18px_50px_rgba(0,0,0,0.38)]"
                             : "border-white/8 bg-white/[0.03]"
@@ -1039,55 +1039,72 @@ export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) 
                 >
                     {/* Shimmer sweep on featured card */}
                     {plan.featured && (
-                        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[32px]">
+                        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[28px]">
                             <div className="absolute top-0 h-full w-[45%] -skew-x-12 bg-gradient-to-r from-transparent via-[#29D8D5]/6 to-transparent animate-sweep" />
                         </div>
                     )}
-                    {plan.featured ? (
-                        <div className="absolute right-5 top-5 z-10 rounded-full border border-[#29D8D5]/30 bg-[#29D8D5]/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-[#44F3F0]">
-                            {featuredLabel}
-                        </div>
-                    ) : null}
 
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-[#44F3F0]">
+                    {/* Header row: icon + name */}
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-[#44F3F0]">
                             {plan.icon}
                         </div>
-                        <div>
-                            <h3 className="text-2xl font-semibold text-white">{plan.name}</h3>
-                            <p className="text-sm text-[#A9B3B8]">{plan.subtitle}</p>
+                        <div className="min-w-0 flex-1 pt-0.5">
+                            <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
+                            <p className="mt-0.5 text-[11px] leading-snug text-[#6B7880]">{plan.subtitle}</p>
+                            {plan.featured && (
+                                <span className="mt-2 inline-flex rounded-full border border-[#29D8D5]/30 bg-[#29D8D5]/10 px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#44F3F0]">
+                                    {featuredLabel}
+                                </span>
+                            )}
                         </div>
                     </div>
 
-                    <div className="mt-6 flex items-end gap-2">
-                        <span className="text-5xl font-semibold tracking-tight text-white">{plan.price}</span>
-                        <span className="pb-1 text-sm text-[#A9B3B8]">{plan.billing}</span>
+                    {/* Price */}
+                    <div className="mt-5 flex items-baseline gap-1.5">
+                        <span className={`font-semibold tracking-tight text-white ${plan.billing ? "text-4xl" : "text-2xl"}`}>
+                            {plan.price}
+                        </span>
+                        {plan.billing && (
+                            <span className="text-sm text-[#6B7880]">{plan.billing}</span>
+                        )}
                     </div>
 
-                    <p className="mt-4 text-sm leading-7 text-[#D4DBDF]">{plan.description}</p>
+                    {/* Description */}
+                    <p className="mt-3 text-[12px] leading-relaxed text-[#8A9BA8]">{plan.description}</p>
 
-                    <ul className="mt-6 space-y-3">
+                    {/* Divider */}
+                    <div className="mt-5 border-t border-white/[0.06]" />
+
+                    {/* Features — flex-1 so all cards align CTA to bottom */}
+                    <ul className="mt-4 flex-1 space-y-2">
                         {plan.features.map((feature) => (
-                            <li key={feature} className="flex items-start gap-3 text-sm text-[#D4DBDF]">
-                                <span className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#29D8D5]/12 text-[#44F3F0]">
-                                    <CheckOutlined className="text-[10px]" />
+                            <li key={feature} className="flex items-start gap-2 text-[12px] text-[#C4CDD2]">
+                                <span className="mt-[3px] flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#29D8D5]/15 text-[#44F3F0]">
+                                    <CheckOutlined className="text-[7px]" />
                                 </span>
-                                <span>{feature}</span>
+                                <span className="leading-snug">{feature}</span>
                             </li>
                         ))}
                     </ul>
 
-                    <button
-                        type="button"
-                        onClick={() => onPlanSelect?.(plan.key)}
-                        className={`mt-7 w-full rounded-full px-5 py-3 text-sm font-semibold transition-all duration-300 ${
-                            plan.featured
-                                ? "bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0]"
-                                : "border border-white/12 bg-white/[0.03] text-white hover:border-[#29D8D5]/35 hover:bg-white/[0.06]"
-                        }`}
-                    >
-                        {plan.cta}
-                    </button>
+                    {/* CTA — always flush to bottom */}
+                    <div className="mt-6">
+                        <button
+                            type="button"
+                            onClick={() => onPlanSelect?.(plan.key)}
+                            className={`w-full rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 ${
+                                plan.featured
+                                    ? "bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0]"
+                                    : "border border-white/12 bg-white/[0.03] text-white hover:border-[#29D8D5]/35 hover:bg-white/[0.06]"
+                            }`}
+                        >
+                            {plan.cta}
+                        </button>
+                        {plan.note && (
+                            <p className="mt-2 text-center text-[10px] text-[#4A5560]">{plan.note}</p>
+                        )}
+                    </div>
                 </article>
             ))}
         </div>
