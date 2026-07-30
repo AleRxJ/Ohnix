@@ -13,18 +13,14 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return
 
-          // React must be chunked first so rc-* chunks can always resolve it
+          // React + antd + rc-* MUST live in the same chunk.
+          // rc-util reads React.version at module init time (top-level code).
+          // If React is in a separate chunk it can still be undefined when that
+          // line runs, causing "Cannot read properties of undefined ('version')".
           if (
             id.includes('/react/') ||
             id.includes('/react-dom/') ||
-            id.includes('/react-router/')
-          ) {
-            return 'vendor-react-core'
-          }
-
-          // rc-* MUST be in the same chunk as antd — they are tightly coupled
-          // and splitting them causes circular init errors (React.version undefined)
-          if (
+            id.includes('/scheduler/') ||
             id.includes('/antd/') ||
             id.includes('/rc-') ||
             id.includes('/@rc-component/') ||
