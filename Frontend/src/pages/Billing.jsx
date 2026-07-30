@@ -28,13 +28,15 @@ const REQUEST_STATUS_OPTIONS = [
 ];
 
 const UPGRADE_OPTIONS_BY_PLAN = {
-    starter: ["growth", "enterprise"],
-    growth: ["enterprise"],
+    starter:    ["growth", "scale", "enterprise"],
+    growth:     ["scale", "enterprise"],
+    scale:      ["enterprise"],
     enterprise: [],
 };
 
 const SLA_HOURS_BY_TARGET_PLAN = {
-    growth: 48,
+    growth:     48,
+    scale:      24,
     enterprise: 72,
 };
 

@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {
     ensureUserSubscription,
+    getEffectivePlan,
     getMonthBounds,
     getPlanLimits,
 } from "../middleware/pricing.middleware.js";
@@ -78,8 +79,9 @@ const UPGRADE_REQUEST_SELECT = {
     updatedAt: true,
 };
 
-const getUsageSnapshot = async (userId, plan) => {
-    const limits = getPlanLimits(plan);
+const getUsageSnapshot = async (userId, subscription) => {
+    const effectivePlan = getEffectivePlan(subscription);
+    const limits = getPlanLimits(effectivePlan);
     const { start, end } = getMonthBounds();
 
     const [
@@ -149,7 +151,9 @@ const getUsageSnapshot = async (userId, plan) => {
     }, {});
 
     return {
-        plan,
+        plan: subscription?.plan,
+        effectivePlan,
+        trialEndsAt: subscription?.trialEndsAt ?? null,
         limits,
         usage: withProgress,
         monthlyWindow: {
@@ -250,14 +254,17 @@ const closeApprovedRequestAndActivatePlan = async ({
 
 export const getMySubscription = asyncHandler(async (req, res) => {
     const subscription = await ensureUserSubscription(req.user.prismaId);
+    const effectivePlan = getEffectivePlan(subscription);
 
     return res.status(200).json(
         new ApiResponse(
             200,
             {
                 plan: subscription.plan,
+                effectivePlan,
                 status: subscription.status,
-                limits: getPlanLimits(subscription.plan),
+                trialEndsAt: subscription.trialEndsAt ?? null,
+                limits: getPlanLimits(effectivePlan),
             },
             "Subscription fetched successfully"
         )
@@ -267,7 +274,7 @@ export const getMySubscription = asyncHandler(async (req, res) => {
 export const getMyUsage = asyncHandler(async (req, res) => {
     const subscription = await ensureUserSubscription(req.user.prismaId);
 
-    const usage = await getUsageSnapshot(req.user.prismaId, subscription.plan);
+    const usage = await getUsageSnapshot(req.user.prismaId, subscription);
 
     return res
         .status(200)
@@ -363,7 +370,7 @@ export const getUserUsageAdmin = asyncHandler(async (req, res, next) => {
     }
 
     const subscription = await ensureUserSubscription(targetUser.id);
-    const usage = await getUsageSnapshot(targetUser.id, subscription.plan);
+    const usage = await getUsageSnapshot(targetUser.id, subscription);
 
     return res.status(200).json(
         new ApiResponse(

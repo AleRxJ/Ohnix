@@ -144,12 +144,29 @@ export const ensureUserSubscription = async (userId) =>
             userId,
             plan: "starter",
             status: "active",
+            trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
         },
         select: {
             plan: true,
             status: true,
+            trialEndsAt: true,
         },
     });
+
+/**
+ * Returns the plan that should be used for limit/feature checks.
+ * During an active trial the user gets Negocio (growth) access regardless of
+ * their stored plan, so they experience the full value before paying.
+ */
+export const getEffectivePlan = (subscription) => {
+    if (
+        subscription?.trialEndsAt &&
+        new Date() < new Date(subscription.trialEndsAt)
+    ) {
+        return "growth"; // trial gives Negocio-level access
+    }
+    return subscription?.plan ?? "starter";
+};
 
 export const getPlanLimits = (plan) => PLAN_LIMITS[plan] || PLAN_LIMITS.starter;
 
@@ -186,7 +203,7 @@ export const enforceEntityLimit = (resourceKey, incrementResolver = () => 1) =>
         const subscription = await ensureUserSubscription(req.user.prismaId);
         ensureActiveSubscription(subscription);
 
-        const planLimits = getPlanLimits(subscription.plan);
+        const planLimits = getPlanLimits(getEffectivePlan(subscription));
         const limit = planLimits[config.limitKey];
 
         if (limit === null) {
@@ -221,7 +238,7 @@ export const enforceMonthlyLimit = (resourceKey, incrementResolver = () => 1) =>
         const subscription = await ensureUserSubscription(req.user.prismaId);
         ensureActiveSubscription(subscription);
 
-        const planLimits = getPlanLimits(subscription.plan);
+        const planLimits = getPlanLimits(getEffectivePlan(subscription));
         const limitKey =
             resourceKey === "orders" ? "maxMonthlyOrders" : "maxMonthlyPurchases";
         const limit = planLimits[limitKey];
@@ -265,7 +282,7 @@ export const enforcePlanFeature = (featureKey) =>
         const subscription = await ensureUserSubscription(req.user.prismaId);
         ensureActiveSubscription(subscription);
 
-        const features = getPlanFeatures(subscription.plan);
+        const features = getPlanFeatures(getEffectivePlan(subscription));
         if (!features[featureKey]) {
             return next(
                 new ApiError(

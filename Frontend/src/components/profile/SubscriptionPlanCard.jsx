@@ -7,16 +7,31 @@ import {
     StopOutlined,
     RocketOutlined,
     ReloadOutlined,
+    CheckCircleOutlined,
+    LockOutlined,
+    ClockCircleOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import { PLAN_FEATURES, FEATURE_MINIMUM_PLAN } from "../../hooks/useSubscription";
 
 const { Title, Text } = Typography;
 
 const PLAN_COLORS = {
-    starter: "#9ca3af",
-    growth: "#29D8D5",
+    starter:    "#9ca3af",
+    growth:     "#29D8D5",
+    scale:      "#7C6AF7",
     enterprise: "#f59e0b",
 };
+
+// Feature labels for the features panel (key → i18n label)
+const FEATURE_ROWS = [
+    { key: "reportSales",       es: "Reportes de ventas y compras",    en: "Sales & purchase reports"     },
+    { key: "exportCsv",         es: "Exportación CSV",                 en: "CSV export"                   },
+    { key: "bulkUpload",        es: "Carga masiva de productos",       en: "Bulk product upload"          },
+    { key: "autoEmailAlerts",   es: "Alertas email automáticas",       en: "Automatic email alerts"       },
+    { key: "configurableAlerts",es: "Alertas por umbral configurable", en: "Configurable stock thresholds" },
+    { key: "apiAccess",         es: "Acceso a API REST",               en: "REST API access"              },
+];
 
 const StatusTag = ({ status, t }) => {
     const color =
@@ -66,7 +81,18 @@ const SubscriptionPlanCard = ({
     compact = false,
     onOpenBilling,
 }) => {
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
+    const lang = currentLanguage === "es" ? "es" : "en";
+
+    // Effective plan (trial may give higher access than stored plan)
+    const effectivePlan = subscription?.effectivePlan || plan;
+    const trialEndsAt   = subscription?.trialEndsAt ?? null;
+    const trialActive   = trialEndsAt && new Date() < new Date(trialEndsAt);
+    const trialDaysLeft = trialActive
+        ? Math.max(1, Math.ceil((new Date(trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
+        : 0;
+
+    const planFeatures = PLAN_FEATURES[effectivePlan] || PLAN_FEATURES.starter;
 
     const usageRows = useMemo(() => {
         if (!usage?.usage) {
@@ -104,12 +130,23 @@ const SubscriptionPlanCard = ({
         return compact ? rows.slice(0, 3) : rows;
     }, [usage, t]);
 
-    const plan = subscription?.plan || "starter";
+    const plan   = subscription?.plan || "starter";
     const status = subscription?.status || "active";
     const canRequestUpgrade = plan !== "enterprise";
 
     return (
         <Card className="mt-4 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-white/10 bg-white/[0.04] text-white">
+            {/* Trial banner */}
+            {trialActive && (
+                <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-[#29D8D5]/25 bg-[#29D8D5]/8 px-4 py-2.5">
+                    <ClockCircleOutlined className="text-[#44F3F0]" />
+                    <Text className="text-sm text-[#44F3F0]">
+                        {lang === "es"
+                            ? `Prueba gratuita activa — ${trialDaysLeft} día${trialDaysLeft !== 1 ? "s" : ""} restante${trialDaysLeft !== 1 ? "s" : ""} · Acceso completo al plan Negocio`
+                            : `Free trial active — ${trialDaysLeft} day${trialDaysLeft !== 1 ? "s" : ""} remaining · Full Business plan access`}
+                    </Text>
+                </div>
+            )}
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5">
@@ -145,6 +182,38 @@ const SubscriptionPlanCard = ({
                         <UsageRow key={row.key} label={row.label} value={row.value} />
                     ))}
                 </div>
+
+                {/* Features panel — only shown in full (non-compact) view */}
+                {!compact && (
+                    <div className="mt-5 rounded-xl border border-white/8 bg-white/[0.02] p-4">
+                        <Text className="text-xs uppercase tracking-[0.18em] text-[#A9B3B8]">
+                            {lang === "es" ? "Funcionalidades de tu plan" : "Your plan features"}
+                        </Text>
+                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {FEATURE_ROWS.map(({ key, es, en }) => {
+                                const enabled = planFeatures[key] ?? false;
+                                const minPlan  = FEATURE_MINIMUM_PLAN[key];
+                                return (
+                                    <div key={key} className={`flex items-center gap-2.5 text-xs ${enabled ? "text-[#D4DBDF]" : "text-[#4A5560]"}`}>
+                                        {enabled ? (
+                                            <CheckCircleOutlined className="text-[#29D8D5]" style={{ fontSize: 13 }} />
+                                        ) : (
+                                            <LockOutlined className="text-[#4A5560]" style={{ fontSize: 13 }} />
+                                        )}
+                                        <span>{lang === "es" ? es : en}</span>
+                                        {!enabled && minPlan && (
+                                            <Tag color="default" className="ml-auto text-[9px] px-1.5 py-0 capitalize leading-none">
+                                                {lang === "es"
+                                                    ? { growth: "Negocio", scale: "Escala", enterprise: "Enterprise" }[minPlan]
+                                                    : { growth: "Business", scale: "Scale", enterprise: "Enterprise" }[minPlan]}
+                                            </Tag>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {compact ? (
                     <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">

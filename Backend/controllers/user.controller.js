@@ -120,7 +120,7 @@ const normalizePreferredLanguage = (value) => {
 
 const normalizeRole = (role) => (role === "admin" ? "admin" : "user");
 const normalizePlan = (plan) =>
-    ["starter", "growth", "enterprise"].includes(plan) ? plan : "starter";
+    ["starter", "growth", "scale", "enterprise"].includes(plan) ? plan : "starter";
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -238,7 +238,13 @@ const registerUser = asyncHandler(async (req, res, next) => {
     const normalizedPreferredLanguage = normalizePreferredLanguage(
         preferredLanguage || req.headers["accept-language"]
     );
-    const signupRequestStatus = normalizedDesiredPlan ? "approved" : null;
+    // Only create an upgrade request when the user picked a paid plan above starter.
+    // Registering with ?plan=starter (or no plan) must NOT create a pending request.
+    const shouldCreateUpgradeRequest = normalizedDesiredPlan && normalizedDesiredPlan !== "starter";
+    const signupRequestStatus = shouldCreateUpgradeRequest ? "approved" : null;
+
+    const TRIAL_DAYS = 14;
+    const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
 
     const user = await prisma.user.create({
         data: {
@@ -251,9 +257,10 @@ const registerUser = asyncHandler(async (req, res, next) => {
                 create: {
                     plan: "starter",
                     status: "active",
+                    trialEndsAt,
                 },
             },
-            ...(normalizedDesiredPlan
+            ...(shouldCreateUpgradeRequest
                 ? {
                       planUpgradeRequests: {
                           create: {
