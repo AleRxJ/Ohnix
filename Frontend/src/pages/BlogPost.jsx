@@ -6,7 +6,7 @@ import SeoHead from "../components/common/SeoHead";
 import BreadcrumbNav from "../components/common/BreadcrumbNav";
 import useI18n from "../hooks/useI18n";
 import { ContentSection } from "../components/landing/LandingPageSections";
-import { blogPosts, getBlogPostBySlug } from "../data/blogPosts";
+import { getBlogPostBySlug, getRelatedBlogPosts } from "../data/blogPosts";
 
 const { Content } = Layout;
 
@@ -21,6 +21,7 @@ const BlogPost = () => {
     }
 
     const canonicalPath = `/blog/${post.slug}`;
+    const relatedPosts = getRelatedBlogPosts(post.slug, 4);
 
     const articleStructuredData = {
         "@context": "https://schema.org",
@@ -44,6 +45,25 @@ const BlogPost = () => {
         mainEntityOfPage: `https://www.ohnix.co${canonicalPath}`,
     };
 
+    const faqStructuredData = post.faqs?.length
+        ? {
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: post.faqs.map((faq) => ({
+                  "@type": "Question",
+                  name: faq.question,
+                  acceptedAnswer: {
+                      "@type": "Answer",
+                      text: faq.answer,
+                  },
+              })),
+          }
+        : null;
+
+    const structuredData = faqStructuredData
+        ? [articleStructuredData, faqStructuredData]
+        : articleStructuredData;
+
     return (
         <Layout className="min-h-screen bg-[#050505]">
             <SeoHead
@@ -51,7 +71,7 @@ const BlogPost = () => {
                 description={post.description}
                 canonicalPath={canonicalPath}
                 lang={currentLanguage || "es"}
-                structuredData={articleStructuredData}
+                structuredData={structuredData}
             />
             <Navbar />
             <Content className="bg-[#050505] pt-20">
@@ -88,6 +108,20 @@ const BlogPost = () => {
                             ))}
                         </div>
 
+                        {post.faqs?.length ? (
+                            <section className="mt-12 rounded-[24px] border border-white/10 bg-white/[0.03] p-6">
+                                <h2 className="text-2xl font-semibold text-white">Preguntas frecuentes</h2>
+                                <div className="mt-6 space-y-4">
+                                    {post.faqs.map((faq) => (
+                                        <article key={faq.question} className="rounded-[18px] border border-white/10 bg-black/20 p-4">
+                                            <h3 className="text-base font-semibold text-white">{faq.question}</h3>
+                                            <p className="mt-2 text-sm leading-7 text-[#A9B3B8]">{faq.answer}</p>
+                                        </article>
+                                    ))}
+                                </div>
+                            </section>
+                        ) : null}
+
                         <div className="mt-12 rounded-[24px] border border-white/10 bg-white/[0.03] p-6">
                             <h2 className="text-xl font-semibold text-white">Siguiente paso recomendado</h2>
                             <p className="mt-3 text-sm leading-7 text-[#A9B3B8]">
@@ -113,10 +147,7 @@ const BlogPost = () => {
                     <section className="mx-auto mt-12 max-w-4xl">
                         <h2 className="text-2xl font-semibold text-white">Mas articulos del blog</h2>
                         <div className="mt-6 grid gap-4 md:grid-cols-2">
-                            {blogPosts
-                                .filter((candidate) => candidate.slug !== post.slug)
-                                .slice(0, 4)
-                                .map((candidate) => (
+                            {relatedPosts.map((candidate) => (
                                     <article
                                         key={candidate.slug}
                                         className="rounded-[20px] border border-white/10 bg-white/[0.03] p-5"

@@ -5,8 +5,21 @@ export const blogPosts = [
         description:
             "Guia practica para migrar de hojas de calculo a una plataforma de inventario sin afectar el dia a dia del equipo.",
         category: "Implementacion",
+        tags: ["migracion", "excel", "adopcion", "inventario"],
         publishDate: "2026-07-30",
         readTime: "8 min",
+        faqs: [
+            {
+                question: "Cuanto tarda una pyme en migrar de Excel a software de inventario?",
+                answer:
+                    "Depende del volumen y orden de datos, pero una adopcion por etapas suele dar resultados visibles en 2 a 4 semanas.",
+            },
+            {
+                question: "Es necesario migrar todo el catalogo al inicio?",
+                answer:
+                    "No. Es recomendable iniciar con productos de mayor rotacion y procesos criticos para reducir riesgo operativo.",
+            },
+        ],
         sections: [
             {
                 heading: "Por que Excel deja de ser suficiente",
@@ -36,6 +49,7 @@ export const blogPosts = [
         description:
             "Los indicadores clave que toda pyme debe monitorear para reducir perdidas, optimizar compras y mejorar rentabilidad.",
         category: "Analitica",
+        tags: ["kpis", "reportes", "rentabilidad", "inventario"],
         publishDate: "2026-07-30",
         readTime: "7 min",
         sections: [
@@ -65,6 +79,7 @@ export const blogPosts = [
         description:
             "Metodo practico para reducir faltantes de inventario y mejorar disponibilidad sin inflar compras.",
         category: "Inventario",
+        tags: ["stock", "reposicion", "compras", "disponibilidad"],
         publishDate: "2026-07-30",
         readTime: "6 min",
         sections: [
@@ -94,6 +109,7 @@ export const blogPosts = [
         description:
             "Como conectar inventario y ventas en un mismo flujo para evitar inconsistencias y mejorar velocidad operativa.",
         category: "Operacion",
+        tags: ["ventas", "integracion", "flujo", "trazabilidad"],
         publishDate: "2026-07-30",
         readTime: "8 min",
         sections: [
@@ -123,8 +139,21 @@ export const blogPosts = [
         description:
             "Aprende los fallos mas frecuentes en adopcion de software de inventario y como prevenirlos desde el primer mes.",
         category: "Implementacion",
+        tags: ["implementacion", "adopcion", "errores", "inventario"],
         publishDate: "2026-07-30",
         readTime: "7 min",
+        faqs: [
+            {
+                question: "Cual es el error mas frecuente al implementar software de inventario?",
+                answer:
+                    "Intentar migrar toda la operacion en un solo corte. Un enfoque gradual reduce errores y facilita adopcion.",
+            },
+            {
+                question: "Como evitar que el equipo abandone el nuevo sistema?",
+                answer:
+                    "Define responsables, reglas operativas claras y revisiones semanales de KPIs para sostener el habito de uso.",
+            },
+        ],
         sections: [
             {
                 heading: "Error 1: migrar todo de una sola vez",
@@ -152,8 +181,21 @@ export const blogPosts = [
         description:
             "Lista de verificacion para evaluar plataformas de inventario segun crecimiento, control operativo e integraciones.",
         category: "Seleccion",
+        tags: ["software", "seleccion", "evaluacion", "pymes"],
         publishDate: "2026-07-30",
         readTime: "9 min",
+        faqs: [
+            {
+                question: "Que debe priorizar una pyme al elegir software de inventario?",
+                answer:
+                    "Ajuste real al proceso operativo, facilidad de adopcion y visibilidad para decisiones de compra y reposicion.",
+            },
+            {
+                question: "Conviene elegir por precio o por capacidad de crecimiento?",
+                answer:
+                    "El precio importa, pero la escalabilidad y control operativo suelen tener mayor impacto en rentabilidad a mediano plazo.",
+            },
+        ],
         sections: [
             {
                 heading: "Criterio 1: ajuste al proceso real",
@@ -178,3 +220,26 @@ export const blogPosts = [
 ];
 
 export const getBlogPostBySlug = (slug) => blogPosts.find((post) => post.slug === slug);
+
+export const getRelatedBlogPosts = (slug, limit = 4) => {
+    const sourcePost = getBlogPostBySlug(slug);
+    if (!sourcePost) return [];
+
+    const sourceTags = sourcePost.tags || [];
+
+    const ranked = blogPosts
+        .filter((candidate) => candidate.slug !== slug)
+        .map((candidate) => {
+            const candidateTags = candidate.tags || [];
+            const overlap = candidateTags.filter((tag) => sourceTags.includes(tag)).length;
+            const sameCategoryBonus = candidate.category === sourcePost.category ? 3 : 0;
+
+            return {
+                candidate,
+                score: overlap * 2 + sameCategoryBonus,
+            };
+        })
+        .sort((a, b) => b.score - a.score);
+
+    return ranked.slice(0, limit).map((entry) => entry.candidate);
+};

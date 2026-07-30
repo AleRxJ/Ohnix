@@ -22,12 +22,6 @@ const Navbar = () => {
         { label: t("landing.nav.contact"), path: "contact" },
     ];
 
-    const seoLinks = [
-        { label: "Software pymes", route: "/software-inventario-pymes" },
-        { label: "Precios", route: "/precios" },
-        { label: "Blog", route: "/blog" },
-    ];
-
     const scrollToSection = (id) => {
         const anchor = document.getElementById(id);
         if (anchor) {
@@ -83,9 +77,9 @@ const Navbar = () => {
                     />
                 </button>
 
-                <div className="hidden md:flex items-center gap-8">
+                <div className="hidden lg:flex items-center gap-5 xl:gap-8">
                     <nav>
-                        <ul className="flex items-center gap-8">
+                        <ul className="flex items-center gap-5 xl:gap-7">
                             {navLinks.map((link) => (
                                 <li key={link.path}>
                                     <a
@@ -96,7 +90,7 @@ const Navbar = () => {
                                                 scrollToSection(link.path);
                                             }
                                         }}
-                                        className={`text-sm font-medium transition-all duration-200 relative group ${
+                                        className={`whitespace-nowrap text-sm font-medium transition-all duration-200 relative group ${
                                             scrolled
                                                 ? "text-[#A9B3B8] hover:text-white"
                                                 : "text-white/80 hover:text-white"
@@ -113,18 +107,7 @@ const Navbar = () => {
                             ))}
                         </ul>
                     </nav>
-                    <div className="hidden lg:flex items-center gap-3">
-                        {seoLinks.map((link) => (
-                            <Button
-                                key={link.route}
-                                onClick={() => handleNavigation(link.route)}
-                                className="h-10 px-4 text-sm font-medium border-white/12 text-white rounded-full bg-white/[0.03] hover:border-[#29D8D5]/35"
-                            >
-                                {link.label}
-                            </Button>
-                        ))}
-                    </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 xl:gap-3">
                         <Dropdown
                             menu={{
                                 items: [
@@ -151,7 +134,7 @@ const Navbar = () => {
                         </Dropdown>
                         <Button
                             onClick={() => handleNavigation("/login")}
-                            className={`h-10 px-5 text-sm font-medium border rounded-full transition-all duration-200 ${
+                            className={`h-10 px-4 xl:px-5 whitespace-nowrap text-sm font-medium border rounded-full transition-all duration-200 ${
                                 scrolled
                                     ? "border-white/12 text-white hover:border-[#29D8D5]/35 hover:text-white bg-white/[0.03]"
                                     : "border-white/16 text-white hover:border-[#29D8D5]/35 hover:bg-white/[0.08] bg-white/[0.02]"
@@ -161,7 +144,7 @@ const Navbar = () => {
                         </Button>
                         <Button
                             onClick={() => handleNavigation("/signup")}
-                            className={`h-10 px-5 text-sm font-medium rounded-full border-0 transition-all duration-200 shadow-sm hover:shadow ${
+                            className={`h-10 px-4 xl:px-5 whitespace-nowrap text-sm font-medium rounded-full border-0 transition-all duration-200 shadow-sm hover:shadow ${
                                 scrolled
                                     ? "bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0]"
                                     : "bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0]"

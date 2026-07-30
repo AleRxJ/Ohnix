@@ -1,38 +1,45 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n/config.js";
-import Login from "./pages/auth/Login";
-import EmailVerify from "./pages/auth/EmailVerify";
-import ResetPassword from "./pages/auth/ResetPassword";
-import Signup from "./pages/auth/Signup";
-import SignupRequestStatus from "./pages/auth/SignupRequestStatus";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import AntdConfigProvider from "./components/common/AntdConfigProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorPage from "./components/error/ErrorPage";
-import LandingPage from "./pages/LandingPage";
-import Demo from "./pages/Demo";
-import Blog from "./pages/Blog";
-import BlogPost from "./pages/BlogPost";
-import Precios from "./pages/Precios";
-import SoftwareInventarioPymes from "./pages/SoftwareInventarioPymes";
-import OhnixVsAlegra from "./pages/OhnixVsAlegra";
-import ProfilePage from "./components/ProfilePage";
-import Dashboard from "./pages/Dashboard";
-import DashboardLayout from "./components/layout/DashboardLayout";
-import Products from "./pages/Products";
-import Orders from "./pages/Orders";
-import Purchase from "./pages/Purchase";
-import Customers from "./pages/Customers";
-import Suppliers from "./pages/Suppliers";
-import Category from "./pages/Category";
-import Reports from "./pages/Reports";
-import Billing from "./pages/Billing";
-import AdminManagement from "./pages/AdminManagement";
-import PaymentSuccess from "./pages/PaymentSuccess";
+
+const Login = lazy(() => import("./pages/auth/Login"));
+const EmailVerify = lazy(() => import("./pages/auth/EmailVerify"));
+const ResetPassword = lazy(() => import("./pages/auth/ResetPassword"));
+const Signup = lazy(() => import("./pages/auth/Signup"));
+const SignupRequestStatus = lazy(() => import("./pages/auth/SignupRequestStatus"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const Demo = lazy(() => import("./pages/Demo"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
+const Precios = lazy(() => import("./pages/Precios"));
+const SoftwareInventarioPymes = lazy(() => import("./pages/SoftwareInventarioPymes"));
+const OhnixVsAlegra = lazy(() => import("./pages/OhnixVsAlegra"));
+const ProfilePage = lazy(() => import("./components/ProfilePage"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DashboardLayout = lazy(() => import("./components/layout/DashboardLayout"));
+const Products = lazy(() => import("./pages/Products"));
+const Orders = lazy(() => import("./pages/Orders"));
+const Purchase = lazy(() => import("./pages/Purchase"));
+const Customers = lazy(() => import("./pages/Customers"));
+const Suppliers = lazy(() => import("./pages/Suppliers"));
+const Category = lazy(() => import("./pages/Category"));
+const Reports = lazy(() => import("./pages/Reports"));
+const Billing = lazy(() => import("./pages/Billing"));
+const AdminManagement = lazy(() => import("./pages/AdminManagement"));
+const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
+
+const RouteLoadingFallback = () => (
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center text-sm text-[#A9B3B8]">
+        Cargando pagina...
+    </div>
+);
 
 function App() {
     return (
@@ -42,6 +49,7 @@ function App() {
                     <AntdConfigProvider>
                     <BrowserRouter>
                         <Toaster />
+                        <Suspense fallback={<RouteLoadingFallback />}>
                         <div>
                             <Routes>
                             {/* Public routes */}
@@ -105,6 +113,7 @@ function App() {
                             <Route path="/*" element={<ErrorPage />} />
                             </Routes>
                         </div>
+                        </Suspense>
                     </BrowserRouter>
                     </AntdConfigProvider>
                 </AuthProvider>
