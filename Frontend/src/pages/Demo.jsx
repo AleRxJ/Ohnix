@@ -3,6 +3,7 @@ import { ArrowRightOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
+import SeoHead from "../components/common/SeoHead";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
 import useI18n from "../hooks/useI18n";
 
@@ -10,10 +11,16 @@ const { Content } = Layout;
 
 const Demo = () => {
     const navigate = useNavigate();
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
 
     return (
         <Layout className="min-h-screen bg-[#050505]">
+            <SeoHead
+                title="Demo de Ohnix | Inventario, compras y ventas en accion"
+                description="Conoce como Ohnix organiza inventario, compras, pedidos y reportes en una sola experiencia operativa para pymes."
+                canonicalPath="/demo"
+                lang={currentLanguage || "es"}
+            />
             <Navbar />
             <Content className="bg-[#050505] pt-20">
                 <ContentSection id="demo" shell={false}>

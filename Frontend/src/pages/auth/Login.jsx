@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import AuthContext from "../../context/AuthContext";
 import AuthLayout from "../../components/auth/AuthLayout";
 import AuthCard from "../../components/auth/AuthCard";
+import SeoHead from "../../components/common/SeoHead";
 import { EmailInput, PasswordInput } from "../../components/auth/FormItems";
 import AuthButton from "../../components/auth/AuthButton";
 import useI18n from "../../hooks/useI18n";
@@ -15,7 +16,7 @@ const Login = () => {
     const { login } = useContext(AuthContext);
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
 
     useEffect(() => {
         const emailFromQuery = searchParams.get("email");
@@ -41,6 +42,13 @@ const Login = () => {
 
     return (
         <AuthLayout>
+            <SeoHead
+                title="Iniciar sesion | Ohnix"
+                description="Accede a tu cuenta de Ohnix para gestionar inventario, compras y ventas."
+                canonicalPath="/login"
+                lang={currentLanguage || "es"}
+                noIndex={true}
+            />
             <AuthCard
                 title={t('auth.login')}
                 subtitle={t('auth.login_success')}

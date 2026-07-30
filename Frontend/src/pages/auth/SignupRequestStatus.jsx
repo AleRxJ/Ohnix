@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import AuthLayout from "../../components/auth/AuthLayout";
 import AuthCard from "../../components/auth/AuthCard";
+import SeoHead from "../../components/common/SeoHead";
 import useI18n from "../../hooks/useI18n";
 
 const { Text, Title } = Typography;
@@ -16,7 +17,7 @@ const PLAN_SLA_KEY = {
 const SignupRequestStatus = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
 
     const requestedPlan = useMemo(() => {
         const plan = searchParams.get("plan");
@@ -30,6 +31,13 @@ const SignupRequestStatus = () => {
 
     return (
         <AuthLayout>
+            <SeoHead
+                title="Estado de registro | Ohnix"
+                description="Consulta el estado de tu solicitud de registro y los siguientes pasos para activar tu cuenta en Ohnix."
+                canonicalPath="/signup/request-status"
+                lang={currentLanguage || "es"}
+                noIndex={true}
+            />
             <AuthCard
                 title={
                     hasUpgradeRequest

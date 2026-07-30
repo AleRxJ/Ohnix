@@ -4,6 +4,7 @@ import { useState } from "react";
 import useI18n from "../hooks/useI18n";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
+import SeoHead from "../components/common/SeoHead";
 import {
     OrbitalHero,
     CardGrid,
@@ -30,7 +31,7 @@ const { Content } = Layout;
 
 const LandingPage = () => {
     const navigate = useNavigate();
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const [showDemo, setShowDemo] = useState(false);
 
     const handleGetStarted = () => {
@@ -241,8 +242,64 @@ const LandingPage = () => {
         },
     ];
 
+    const landingDescription =
+        "Ohnix centraliza inventario, compras, pedidos y reportes para pymes en una sola plataforma con trazabilidad en tiempo real.";
+
+    const faqStructuredData = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: faqItems.map((item) => ({
+            "@type": "Question",
+            name: item.question,
+            acceptedAnswer: {
+                "@type": "Answer",
+                text: item.answer,
+            },
+        })),
+    };
+
+    const organizationStructuredData = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: "Ohnix",
+        url: "https://www.ohnix.co",
+        logo: "https://www.ohnix.co/Ohnix_FullLogo.png",
+        contactPoint: {
+            "@type": "ContactPoint",
+            contactType: "sales",
+            email: "alejandrovallejo10@outlook.com",
+            availableLanguage: ["es", "en"],
+        },
+    };
+
+    const softwareStructuredData = {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Ohnix",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        offers: {
+            "@type": "Offer",
+            price: "0",
+            priceCurrency: "USD",
+        },
+        description: landingDescription,
+        url: "https://www.ohnix.co",
+    };
+
     return (
         <Layout className="min-h-screen bg-[#050505]">
+            <SeoHead
+                title="Software de inventario y ventas para pymes | Ohnix"
+                description={landingDescription}
+                canonicalPath="/"
+                lang={currentLanguage || "es"}
+                structuredData={[
+                    organizationStructuredData,
+                    softwareStructuredData,
+                    faqStructuredData,
+                ]}
+            />
             <PageOrbitalLayer />
             <VideoModal
                 isOpen={showDemo}

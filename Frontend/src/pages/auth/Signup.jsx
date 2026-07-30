@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import AuthLayout from "../../components/auth/AuthLayout";
 import AuthCard from "../../components/auth/AuthCard";
+import SeoHead from "../../components/common/SeoHead";
 import {
     EmailInput,
     PasswordInput,
@@ -88,6 +89,13 @@ const Signup = () => {
 
     return (
         <AuthLayout>
+            <SeoHead
+                title="Crear cuenta | Ohnix"
+                description="Crea tu cuenta en Ohnix y comienza a centralizar inventario, compras y ventas en minutos."
+                canonicalPath="/signup"
+                lang={currentLanguage || "es"}
+                noIndex={true}
+            />
             <AuthCard
                 title={t("auth.create_account")}
                 subtitle={t("auth.join_platform")}

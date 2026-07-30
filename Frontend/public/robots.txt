@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard
+Disallow: /products
+Disallow: /orders
+Disallow: /purchases
+Disallow: /customers
+Disallow: /suppliers
+Disallow: /categories
+Disallow: /reports
+Disallow: /billing
+Disallow: /admin
+Disallow: /profile
+Disallow: /login
+Disallow: /signup
+Disallow: /email-verify
+Disallow: /reset-password
+
+Sitemap: https://www.ohnix.co/sitemap.xml
