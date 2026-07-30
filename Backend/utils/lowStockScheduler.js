@@ -23,7 +23,7 @@ class LowStockScheduler {
 
     async sendUserLowStockAlert(userId, userEmail, username) {
         if (!isMailConfigured()) {
-            console.warn(`[low-stock-alert] Skipped for ${username}: mail not configured (check info@itcycle.co / SENDER_PASSWORD env vars).`);
+            console.warn(`[low-stock-alert] Skipped for ${username}: mail not configured (check SENDER_EMAIL / SENDER_PASSWORD env vars).`);
             return { sent: false, reason: "mail_not_configured" };
         }
         try {
@@ -70,7 +70,7 @@ class LowStockScheduler {
                 .join("");
 
             const mailOptions = {
-                from: `Ohnix by iTCycle <${process.env.info@itcycle.co}>`,
+                from: `Ohnix by iTCycle <${process.env.SENDER_EMAIL}>`,
                 to: userEmail,
                 subject: "Weekly Low Stock Alert - Action Required",
                 html: `
@@ -335,7 +335,7 @@ export const sendRealtimeLowStockAlert = async (items) => {
                 </tr>`).join("");
 
             await transporter.sendMail({
-                from: `Ohnix <${process.env.info@itcycle.co}>`,
+                from: `Ohnix <${process.env.SENDER_EMAIL}>`,
                 to: userEmail,
                 subject,
                 html: `

@@ -326,7 +326,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     // Sending Welcome Email
     const mailOptions = {
-        from: process.env.info@itcycle.co,
+        from: process.env.SENDER_EMAIL,
         to: createdUser.email,
         subject: "Welcome to our platform",
         text: `Hello ${createdUser.username}, Welcome to our platform`,
@@ -875,7 +875,7 @@ const sendVerifyOtp = asyncHandler(async (req, res, next) => {
         });
 
         const mailOptions = {
-            from: `Ohnix <${process.env.info@itcycle.co}>`,
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
             to: user.email,
             subject: user.preferredLanguage === "en"
                 ? "Ohnix — Verify your email"
@@ -946,7 +946,7 @@ const sendChangePasswordOtp = asyncHandler(async (req, res, next) => {
         });
 
         const mailOptions = {
-            from: `Ohnix <${process.env.info@itcycle.co}>`,
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
             to: user.email,
             subject: user.preferredLanguage === "en"
                 ? "Ohnix — Change password OTP"
@@ -1138,7 +1138,7 @@ const sendResetOtp = asyncHandler(async (req, res, next) => {
         });
 
         const mailOptions = {
-            from: `Ohnix <${process.env.info@itcycle.co}>`,
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
             to: email,
             subject: user.preferredLanguage === "en"
                 ? "Ohnix — Reset your password"
