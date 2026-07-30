@@ -133,6 +133,12 @@ const SoftwareInventarioPymes = () => {
                             >
                                 Ver planes y precios
                             </button>
+                                <Link
+                                    to="/blog"
+                                    className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.03] px-6 py-3 text-sm font-semibold text-white transition hover:border-[#29D8D5]/35"
+                                >
+                                    Leer recomendaciones practicas
+                                </Link>
                         </div>
                     </div>
 

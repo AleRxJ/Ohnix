@@ -15,6 +15,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorPage from "./components/error/ErrorPage";
 import LandingPage from "./pages/LandingPage";
 import Demo from "./pages/Demo";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 import Precios from "./pages/Precios";
 import SoftwareInventarioPymes from "./pages/SoftwareInventarioPymes";
 import OhnixVsAlegra from "./pages/OhnixVsAlegra";
@@ -45,6 +47,8 @@ function App() {
                             {/* Public routes */}
                             <Route path="/" element={<LandingPage />} />
                             <Route path="/precios" element={<Precios />} />
+                            <Route path="/blog" element={<Blog />} />
+                            <Route path="/blog/:slug" element={<BlogPost />} />
                             <Route path="/software-inventario-pymes" element={<SoftwareInventarioPymes />} />
                             <Route path="/comparativa/ohnix-vs-alegra" element={<OhnixVsAlegra />} />
                             <Route path="/login" element={<Login />} />

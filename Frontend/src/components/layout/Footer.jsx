@@ -105,6 +105,9 @@ const Footer = () => {
                         <Link to="/comparativa/ohnix-vs-alegra" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
                             Ohnix vs Alegra
                         </Link>
+                        <Link to="/blog" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                            Blog
+                        </Link>
                     </div>
                 </div>
             </div>

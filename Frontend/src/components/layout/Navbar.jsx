@@ -25,6 +25,7 @@ const Navbar = () => {
     const seoLinks = [
         { label: "Software pymes", route: "/software-inventario-pymes" },
         { label: "Precios", route: "/precios" },
+        { label: "Blog", route: "/blog" },
     ];
 
     const scrollToSection = (id) => {
