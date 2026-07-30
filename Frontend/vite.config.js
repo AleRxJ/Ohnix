@@ -1,9 +1,53 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// Packages that MUST stay in the single vendor chunk.
+// rc-util reads React.version at module init time (top-level code), so any
+// chunk split between these packages causes TDZ / undefined errors in prod.
+const REACT_ECOSYSTEM_PKGS = [
+  '/react/',
+  '/react-dom/',
+  '/scheduler/',
+  '/antd/',
+  '/rc-',
+  '/@rc-component/',
+  '/@ant-design/',
+]
+
+/**
+ * Build-time guard: fails the build if any React-ecosystem package ends up in
+ * a chunk other than "vendor".  Catches bad manualChunks changes before prod.
+ */
+function chunkSafetyGuard() {
+  return {
+    name: 'chunk-safety-guard',
+    generateBundle(_, bundle) {
+      for (const [fileName, chunk] of Object.entries(bundle)) {
+        if (chunk.type !== 'chunk') continue
+        // Only the vendor chunk is allowed to contain these packages.
+        // Vite prefixes chunk filenames with "assets/", e.g. "assets/vendor-abc123.js"
+        if (/(?:^|\/)vendor[-.][^/]+\.js$/.test(fileName)) continue
+
+        for (const moduleId of Object.keys(chunk.modules ?? {})) {
+          if (!moduleId.includes('node_modules')) continue
+          const offender = REACT_ECOSYSTEM_PKGS.find(pkg => moduleId.includes(pkg))
+          if (offender) {
+            this.error(
+              `[chunk-safety-guard] "${offender.trim()}" leaked into chunk "${fileName}".\n` +
+              `React-ecosystem packages must stay in the single "vendor" chunk.\n` +
+              `A split here causes TDZ / "Cannot read properties of undefined" errors in production.\n` +
+              `Fix: do not add manualChunks rules for React, antd, rc-*, or @ant-design/*.`
+            )
+          }
+        }
+      }
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), chunkSafetyGuard()],
   resolve: {
     dedupe: ['react', 'react-dom'],
   },
