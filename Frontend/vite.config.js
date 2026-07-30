@@ -14,9 +14,17 @@ const REACT_ECOSYSTEM_PKGS = [
   '/@ant-design/',
 ]
 
+// @antv/* packages also have circular class-inheritance dependencies at init time.
+// @antv/g2 extends classes from @antv/g-lite; splitting them causes
+// "Class extends value undefined is not a constructor or null".
+const ANTV_PKGS = [
+  '/@antv/',
+  '/@ant-design/plots/',
+]
+
 /**
- * Build-time guard: fails the build if any React-ecosystem package ends up in
- * a chunk other than "vendor".  Catches bad manualChunks changes before prod.
+ * Build-time guard: fails the build if any React-ecosystem or @antv package
+ * ends up in a chunk other than its designated vendor chunk.
  */
 function chunkSafetyGuard() {
   return {
@@ -24,19 +32,28 @@ function chunkSafetyGuard() {
     generateBundle(_, bundle) {
       for (const [fileName, chunk] of Object.entries(bundle)) {
         if (chunk.type !== 'chunk') continue
-        // Only the vendor chunk is allowed to contain these packages.
-        // Vite prefixes chunk filenames with "assets/", e.g. "assets/vendor-abc123.js"
-        if (/(?:^|\/)vendor[-.][^/]+\.js$/.test(fileName)) continue
+
+        const isVendor      = /(?:^|\/)vendor[-.][^/]+\.js$/.test(fileName)
+        const isChartsAntv  = /(?:^|\/)vendor-charts-antv[-.][^/]+\.js$/.test(fileName)
 
         for (const moduleId of Object.keys(chunk.modules ?? {})) {
           if (!moduleId.includes('node_modules')) continue
-          const offender = REACT_ECOSYSTEM_PKGS.find(pkg => moduleId.includes(pkg))
-          if (offender) {
+
+          const reactOffender = REACT_ECOSYSTEM_PKGS.find(pkg => moduleId.includes(pkg))
+          if (reactOffender && !isVendor) {
             this.error(
-              `[chunk-safety-guard] "${offender.trim()}" leaked into chunk "${fileName}".\n` +
-              `React-ecosystem packages must stay in the single "vendor" chunk.\n` +
-              `A split here causes TDZ / "Cannot read properties of undefined" errors in production.\n` +
+              `[chunk-safety-guard] "${reactOffender.trim()}" leaked into "${fileName}".\n` +
+              `React-ecosystem packages must stay in the "vendor" chunk.\n` +
               `Fix: do not add manualChunks rules for React, antd, rc-*, or @ant-design/*.`
+            )
+          }
+
+          const antvOffender = ANTV_PKGS.find(pkg => moduleId.includes(pkg))
+          if (antvOffender && !isChartsAntv && !isVendor) {
+            this.error(
+              `[chunk-safety-guard] "${antvOffender.trim()}" leaked into "${fileName}".\n` +
+              `@antv/* packages must stay in the "vendor-charts-antv" chunk.\n` +
+              `Fix: do not split @antv/* or @ant-design/plots across separate chunks.`
             )
           }
         }
@@ -68,12 +85,14 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return
 
-          // Heavy chart libraries are self-contained — keep them separate
-          // so they only load on pages that need them.
-          if (id.includes('/@antv/g2/'))    return 'vendor-charts-g2'
-          if (id.includes('/@antv/g-lite/')) return 'vendor-charts-g-lite'
-          if (id.includes('/@antv/'))        return 'vendor-charts-antv'
-          if (id.includes('/@ant-design/plots/')) return 'vendor-charts-plots'
+          // @antv/* and @ant-design/plots ALL go into one chunk.
+          // @antv/g2 extends classes from @antv/g-lite at module init time;
+          // splitting them causes "Class extends value undefined" in prod.
+          if (
+            id.includes('/@antv/') ||
+            id.includes('/@ant-design/plots/')
+          ) return 'vendor-charts-antv'
+
           if (
             id.includes('/recharts/') ||
             id.includes('/d3-') ||
