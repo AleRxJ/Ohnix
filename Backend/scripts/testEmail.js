@@ -7,20 +7,20 @@ dotenv.config();
 
 import nodemailer from "nodemailer";
 
-const senderEmail = process.env.SENDER_EMAIL;
+const senderEmail = process.env.info@itcycle.co;
 const senderPassword = process.env.SENDER_PASSWORD;
 const recipient = process.argv[2] || senderEmail;
 
 console.log("─────────────────────────────────────────");
 console.log("  Ohnix — Test de correo");
 console.log("─────────────────────────────────────────");
-console.log(`  SENDER_EMAIL   : ${senderEmail || "❌ NO CONFIGURADO"}`);
+console.log(`  info@itcycle.co   : ${senderEmail || "❌ NO CONFIGURADO"}`);
 console.log(`  SENDER_PASSWORD: ${senderPassword ? `✅ SET (${senderPassword.length} chars)` : "❌ NO CONFIGURADO"}`);
 console.log(`  Destinatario   : ${recipient}`);
 console.log("─────────────────────────────────────────\n");
 
 if (!senderEmail || senderEmail === "change_me@gmail.com") {
-    console.error("❌ SENDER_EMAIL no está configurado en .env");
+    console.error("❌ info@itcycle.co no está configurado en .env");
     process.exit(1);
 }
 if (!senderPassword || senderPassword === "change_me") {

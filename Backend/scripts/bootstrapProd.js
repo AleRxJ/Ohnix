@@ -16,8 +16,8 @@ const normalizeEmail = (email) => `${email || ""}`.trim().toLowerCase();
 const printConfigWarnings = () => {
     const warnings = [];
 
-    if (isPlaceholder(process.env.SENDER_EMAIL) || isPlaceholder(process.env.SENDER_PASSWORD)) {
-        warnings.push("Email SMTP is not fully configured (SENDER_EMAIL/SENDER_PASSWORD)");
+    if (isPlaceholder(process.env.info@itcycle.co) || isPlaceholder(process.env.SENDER_PASSWORD)) {
+        warnings.push("Email SMTP is not fully configured (info@itcycle.co/SENDER_PASSWORD)");
     }
 
     if (

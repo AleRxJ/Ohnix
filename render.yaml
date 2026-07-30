@@ -33,7 +33,7 @@ services:
         value: America/Mexico_City
       - key: AUTH_DEBUG
         value: "false"
-      - key: SENDER_EMAIL
+      - key: info@itcycle.co
         sync: false
       - key: SENDER_PASSWORD
         sync: false

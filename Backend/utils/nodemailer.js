@@ -8,16 +8,15 @@ const isPlaceholder = (value) => {
 };
 
 export const isMailConfigured = () =>
-    !isPlaceholder(process.env.SENDER_EMAIL) &&
+    !isPlaceholder(process.env.info@itcycle.co) &&
     !isPlaceholder(process.env.SENDER_PASSWORD);
 
 const transporter = nodemailer.createTransport({
-    service: "Gmail",
-    host: "smtp.gmail.com",
+    host: "smtp.spacemail.com",
     port: 465,
     secure: true,
     auth: {
-        user: process.env.SENDER_EMAIL,
+        user: process.env.info@itcycle.co,
         pass: process.env.SENDER_PASSWORD,
     },
 });
@@ -26,7 +25,7 @@ export const sendMailSafe = async (mailOptions, context = "email") => {
     if (!isMailConfigured()) {
         if (process.env.NODE_ENV !== "production") {
             console.warn(
-                `[mail:${context}] Skipped: SENDER_EMAIL/SENDER_PASSWORD are not configured.`
+                `[mail:${context}] Skipped: info@itcycle.co/SENDER_PASSWORD are not configured.`
             );
         }
         return { skipped: true };

@@ -19,7 +19,7 @@ export const notifyUserPlanActivated = async ({ user, targetPlan, locale }) => {
     const footer = isEN ? "Ohnix by iTCycle" : "Ohnix by iTCycle";
     try {
         await transporter.sendMail({
-            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            from: `Ohnix <${process.env.info@itcycle.co}>`,
             to: user.email,
             subject,
             html: `
@@ -50,7 +50,7 @@ export const notifyUserEmailVerified = async ({ user, locale }) => {
         : `Hola <strong>${user.username || ""}</strong>, tu correo fue verificado exitosamente. Tu cuenta está completamente activa.`;
     try {
         await transporter.sendMail({
-            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            from: `Ohnix <${process.env.info@itcycle.co}>`,
             to: user.email,
             subject,
             html: `
@@ -81,7 +81,7 @@ export const notifyAdminsNewUserRegistered = async ({ user }) => {
         ]));
         if (!recipients.length) return;
         await transporter.sendMail({
-            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            from: `Ohnix <${process.env.info@itcycle.co}>`,
             bcc: recipients,
             subject: `[Ohnix] Nuevo usuario registrado: ${user.username}`,
             html: `
@@ -303,7 +303,7 @@ export const notifyAdminsUpgradeRequestCreated = async ({
         });
 
         await transporter.sendMail({
-            from: process.env.SENDER_EMAIL,
+            from: process.env.info@itcycle.co,
             bcc: recipients,
             subject,
             text,
@@ -372,7 +372,7 @@ export const notifyUserUpgradeRequestResolved = async ({
         });
 
         await transporter.sendMail({
-            from: process.env.SENDER_EMAIL,
+            from: process.env.info@itcycle.co,
             to: user.email,
             subject,
             text,

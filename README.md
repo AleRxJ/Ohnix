@@ -6,10 +6,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen.svg" alt="Node" />
+  <img src="https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg" alt="Node" />
   <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/license-ISC-lightgrey.svg" alt="License" />
-  <img src="https://img.shields.io/badge/deployed-Vercel-black.svg" alt="Deploy" />
+  <img src="https://img.shields.io/badge/deployed-Vercel%20%2B%20Render-black.svg" alt="Deploy" />
 </p>
 
 <blockquote align="center">
@@ -26,6 +26,7 @@
 | Operaciones | Compras, ventas, devoluciones y reportes en un solo flujo |
 | Automatización | Alertas de bajo stock, OTP, PDFs e integración con correo |
 | Seguridad | JWT, RBAC, cookies HTTP-only y aislamiento por usuario |
+| Suscripciones | Trial 14 días + 4 planes de pago con límites por tier |
 
 ---
 
@@ -33,11 +34,11 @@
 
 <table>
   <tr>
-    <td width="50%"><strong>Control real de stock</strong><br>Las mutaciones de inventario usan validaciones atómicas y sesiones de MongoDB para evitar estados inconsistentes.</td>
+    <td width="50%"><strong>Control real de stock</strong><br>Las mutaciones de inventario usan transacciones atómicas de PostgreSQL para evitar estados inconsistentes.</td>
     <td width="50%"><strong>Flujos completos</strong><br>Compras, órdenes, retornos y alertas se diseñaron como procesos operativos, no como CRUD aislado.</td>
   </tr>
   <tr>
-    <td><strong>Arquitectura clara</strong><br>Controllers, services, models y middleware mantienen la lógica separada y fácil de extender.</td>
+    <td><strong>Arquitectura clara</strong><br>Controllers, services, middleware y Prisma mantienen la lógica separada y fácil de extender.</td>
     <td><strong>Salida profesional</strong><br>PDF de facturas, carga masiva CSV y notificaciones por correo para cerrar el ciclo operativo.</td>
   </tr>
 </table>
@@ -51,6 +52,7 @@
 - **Productos**: catálogo con categorías, unidades, precios y carga masiva por CSV.
 - **Reportes**: métricas para decisiones rápidas sobre ventas, compras y stock bajo.
 - **Usuarios**: autenticación con verificación por OTP, roles y aislamiento por propietario.
+- **Suscripciones**: trial de 14 días con acceso Negocio; upgrade a plan de pago vía Stripe.
 
 ---
 
@@ -59,11 +61,11 @@
 ```mermaid
 flowchart TD
   A[Frontend React + Vite] --> B[Express API]
-  B --> C[Middleware: auth / RBAC / uploads]
+  B --> C[Middleware: auth / RBAC / pricing / uploads]
   C --> D[Controllers]
   D --> E[Services]
-  E --> F[Models + Mongoose]
-  F --> G[(MongoDB)]
+  E --> F[Prisma ORM]
+  F --> G[(PostgreSQL)]
   E --> H[PDF / Email / Cron]
 ```
 
@@ -74,16 +76,31 @@ flowchart TD
 | Layer | Stack |
 |---|---|
 | Backend | Node.js, Express, ESM |
-| Database | MongoDB, Mongoose |
+| Database | PostgreSQL, Prisma ORM |
 | Auth | JWT, bcryptjs, OTP |
 | Files | Multer, Cloudinary |
 | Reports | PDFKit |
-| Email | Nodemailer (Gmail SMTP) |
-| Scheduling | node-cron, Vercel Cron |
+| Email | Nodemailer (Spacemail SMTP) |
+| Payments | Stripe (PSE, Card, Bizum, SEPA) |
+| Scheduling | node-cron |
 | Frontend | React 18, Vite, React Router v7 |
 | UI | Ant Design 5.x, Tailwind CSS 3.x |
 | Charts | Recharts, @ant-design/plots |
 | HTTP | Axios |
+
+---
+
+## Subscription Plans
+
+| Plan | Display name | Price | Highlights |
+|---|---|---|---|
+| Trial | — | Free 14 days | Negocio-level access during trial |
+| `starter` | Emprendedor | $19/mo | 75 products, 50 customers, basic ops |
+| `growth` | Negocio | $49/mo | 500 products, reports, CSV export, email alerts |
+| `scale` | Escala | $99/mo | 2 000 products, API access, configurable thresholds |
+| `enterprise` | Enterprise | Custom | Unlimited, dedicated support |
+
+Feature gates (reports, CSV export, bulk upload, email alerts) are enforced per plan by `pricing.middleware.js`.
 
 ---
 
@@ -112,32 +129,28 @@ Base URL: `https://localhost:3001/api/v1`
 | Orders | `/orders` | Sales orders and invoice generation |
 | Reports | `/reports` | Dashboard KPIs and analytics |
 | Scheduler | `/scheduler` | Low-stock alert control |
+| Subscriptions | `/subscriptions` | Plan management and upgrade requests |
+| Company | `/company` | Company profile |
 
 ---
 
 ## Payments (CO + ES)
 
-### Most Common Methods
+### Supported Methods
 
 - Colombia: `PSE`, `Card`
 - Spain: `Card`, `Bizum`, `SEPA Debit`
 
-The current checkout flow already supports these country/method combinations in-app.
-
 ### Developer Mode Setup (Stripe)
 
 1. Create a Stripe account and enable **Test mode**.
-2. Configure payment methods in Stripe Dashboard:
-- `PSE` and `Card` for Colombia
-- `Bizum`, `SEPA Debit`, and `Card` for Spain
+2. Configure payment methods in the Stripe Dashboard for Colombia and Spain.
 3. Fill backend variables from `Backend/.env.example`:
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_AMOUNT_GROWTH_COP`
-- `STRIPE_AMOUNT_ENTERPRISE_COP`
-- `STRIPE_AMOUNT_GROWTH_EUR`
-- `STRIPE_AMOUNT_ENTERPRISE_EUR`
-4. Start webhook forwarding in local development:
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_WEBHOOK_SECRET`
+   - `STRIPE_AMOUNT_GROWTH_COP`, `STRIPE_AMOUNT_SCALE_COP`, `STRIPE_AMOUNT_ENTERPRISE_COP`
+   - `STRIPE_AMOUNT_GROWTH_EUR`, `STRIPE_AMOUNT_SCALE_EUR`, `STRIPE_AMOUNT_ENTERPRISE_EUR`
+4. Start webhook forwarding locally:
 
 ```bash
 stripe listen --forward-to http://localhost:3001/api/v1/subscriptions/payments/webhook
@@ -147,14 +160,11 @@ stripe listen --forward-to http://localhost:3001/api/v1/subscriptions/payments/w
 
 ### End-to-End Test
 
-1. Create an upgrade request (Growth or Enterprise).
-2. Approve it from admin queue.
-3. In Billing, choose country + payment method and click `Pay and activate now`.
+1. Create an upgrade request (Growth, Scale, or Enterprise).
+2. Approve it from the admin queue.
+3. In Billing, choose country + payment method and click **Pay and activate now**.
 4. Complete test checkout.
-5. Verify automatic transition:
-- request `approved -> closed`
-- subscription `plan -> targetPlan`
-- payment success screen with activation checklist
+5. Verify: request `approved → closed`, subscription `plan → targetPlan`, payment success screen.
 
 ---
 
@@ -162,7 +172,8 @@ stripe listen --forward-to http://localhost:3001/api/v1/subscriptions/payments/w
 
 | Model | Notes |
 |---|---|
-| User | Roles, refresh token, OTP fields |
+| User | Roles, OTP fields, company link |
+| Subscription | Plan, status, trial window, upgrade requests |
 | Category | Scoped by creator |
 | Unit | Scoped by creator |
 | Product | Stock, purchase and sale prices, tenant isolation |
@@ -182,6 +193,7 @@ stripe listen --forward-to http://localhost:3001/api/v1/subscriptions/payments/w
 ```bash
 cd Backend
 npm install
+npx prisma generate
 npm run dev
 ```
 
@@ -189,7 +201,7 @@ Create `Backend/.env`:
 
 ```env
 PORT=3001
-MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net
+DATABASE_URL=postgresql://<user>:<pass>@localhost:5432/ohnix
 NODE_ENV=development
 
 ACCESS_TOKEN_SECRET=<secret>
@@ -201,11 +213,14 @@ CLOUDINARY_CLOUD_NAME=<name>
 CLOUDINARY_API_KEY=<key>
 CLOUDINARY_API_SECRET=<secret>
 
-SENDER_EMAIL=<gmail>
-SENDER_PASSWORD=<app-password>
+SENDER_EMAIL=info@itcycle.co
+SENDER_PASSWORD=<spacemail-password>
+
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 
 FRONTEND_URL=http://localhost:5173
-TIMEZONE=Asia/Kolkata
+TIMEZONE=America/Bogota
 ```
 
 ### Frontend
@@ -216,46 +231,44 @@ npm install
 npm run dev
 ```
 
-## Free Deployment
+Create `Frontend/.env`:
 
-This repo is prepared for a low-cost setup:
+```env
+VITE_BACKEND_URL=http://localhost:3001
+```
 
-- Frontend: Vercel free tier.
-- Backend: Vercel (recommended), Render or Railway.
-- Database: MongoDB Atlas free tier.
+---
 
-For Vercel frontend, import the repository at the root and keep the default root config. The app builds the React frontend from `Frontend/` and expects the backend URL in `VITE_BACKEND_URL`.
+## Deployment
 
-For Vercel backend, create a second Vercel project using `Backend/` as the project root. The backend is now serverless-ready for Vercel and uses `Backend/vercel.json`.
+| Layer | Service |
+|---|---|
+| Frontend | Vercel (free tier) — root: `Frontend/` |
+| Backend | Render — config: `render.yaml` at repo root |
+| Database | PostgreSQL on Render or Neon |
 
-For the backend, `render.yaml` is already included at the repo root so Render can deploy the `Backend/` service directly.
+Production env vars for the backend:
+
+```env
+DATABASE_URL=<postgres-connection-string>
+FRONTEND_URL=https://www.ohnix.co
+ALLOWED_ORIGINS=https://www.ohnix.co,https://ohnix.co,https://*.vercel.app
+NODE_ENV=production
+START_SCHEDULER=true
+```
 
 Production env vars for the frontend:
 
 ```env
-VITE_BACKEND_URL=https://<your-backend-domain>
+VITE_BACKEND_URL=https://ohnix.onrender.com
 ```
-
-Production env vars for the backend should point to Atlas and your frontend domain:
-
-```env
-MONGODB_URI=<atlas-connection-string>
-FRONTEND_URL=https://<your-vercel-domain>
-ALLOWED_ORIGINS=https://<your-vercel-domain>,https://*.vercel.app
-NODE_ENV=production
-START_SCHEDULER=false
-```
-
-Notes:
-- Keep `START_SCHEDULER=false` on Vercel serverless to avoid duplicate schedulers per invocation.
-- If you use Vercel preview deployments, keep `https://*.vercel.app` in `ALLOWED_ORIGINS`.
 
 ---
 
 ## Why It Feels Fast
 
-- Atomic stock updates prevent overselling.
-- Service-layer transactions keep multi-step operations consistent.
+- Atomic stock updates via PostgreSQL transactions prevent overselling.
+- Service-layer logic keeps multi-step operations consistent.
 - Bulk upload returns partial success instead of failing everything.
 - Scheduled alerts keep inventory visible without manual checks.
 
@@ -273,8 +286,8 @@ Notes:
 ## Contact
 
 **GitHub**: [AleRxJ/Ohnix](https://github.com/AleRxJ/Ohnix)  
-**Email**: alejandrosoftware.engineering@gmail.com
+**Email**: info@itcycle.co
 
 <p align="center">
-  Made with care by <strong>Alejandro Vallejo</strong> · Ohnix API v1.0.0
+  Made with care by <strong>Alejandro Vallejo</strong> · Ohnix v1.0.0
 </p>
