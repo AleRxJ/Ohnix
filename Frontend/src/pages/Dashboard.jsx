@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
     Card,
     Row,
@@ -44,6 +44,7 @@ const Dashboard = () => {
     const { token } = useToken();
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
+    const location = useLocation();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [dashboardData, setDashboardData] = useState({
@@ -61,6 +62,7 @@ const Dashboard = () => {
     const [timeframe, setTimeframe] = useState("30days");
     const [subscriptionSnapshot, setSubscriptionSnapshot] = useState(null);
     const [requestSnapshot, setRequestSnapshot] = useState([]);
+    const [isPolling, setIsPolling] = useState(false);
 
     useEffect(() => {
         fetchDashboardData();
@@ -69,6 +71,46 @@ const Dashboard = () => {
     useEffect(() => {
         fetchSubscriptionSnapshot();
     }, []);
+
+    // Refetch subscription when page becomes visible (user returns to tab)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                fetchSubscriptionSnapshot();
+            }
+        };
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+    }, []);
+
+    // Auto-poll subscription if there's an active request
+    useEffect(() => {
+        const hasActiveRequest = requestSnapshot.some((req) =>
+            ["open", "reviewing", "approved"].includes(req.status)
+        );
+
+        if (!hasActiveRequest) {
+            setIsPolling(false);
+            return;
+        }
+
+        setIsPolling(true);
+        const interval = setInterval(() => {
+            fetchSubscriptionSnapshot();
+        }, 3000); // Poll every 3 seconds
+
+        return () => clearInterval(interval);
+    }, [requestSnapshot]);
+
+    // Aggressive refetch after returning from PaymentSuccess
+    useEffect(() => {
+        if (location.state?.fromPayment) {
+            // Refetch immediately and after 2 seconds for backend processing
+            fetchSubscriptionSnapshot();
+            const timer = setTimeout(() => fetchSubscriptionSnapshot(), 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [location.state?.fromPayment]);
 
     const fetchSubscriptionSnapshot = async () => {
         try {
@@ -350,13 +392,22 @@ const Dashboard = () => {
                                     )}
                                 </div>
 
-                                <Button
-                                    type="default"
-                                    onClick={() => navigate("/billing")}
-                                    className="rounded-full border border-white/10 bg-white/[0.04] text-white hover:border-[#29D8D5]/40 hover:text-[#E9FEFE]"
-                                >
-                                    {t("dashboard.manage_plan_cta")}
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="default"
+                                        icon={<ReloadOutlined spin={isPolling} />}
+                                        onClick={fetchSubscriptionSnapshot}
+                                        title={t("common.refresh")}
+                                        className="rounded-full border border-white/10 bg-white/[0.04] text-white hover:border-[#29D8D5]/40 hover:text-[#E9FEFE]"
+                                    />
+                                    <Button
+                                        type="default"
+                                        onClick={() => navigate("/billing")}
+                                        className="rounded-full border border-white/10 bg-white/[0.04] text-white hover:border-[#29D8D5]/40 hover:text-[#E9FEFE]"
+                                    >
+                                        {t("dashboard.manage_plan_cta")}
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 

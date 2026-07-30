@@ -1101,6 +1101,563 @@ export const PlusIcon = () => (
     </svg>
 );
 
+// ─────── Feature Hub Section ─────────────────────────────────────────────
+export const FeatureHubSection = ({ heading }) => {
+    const [ref, visible] = useScrollReveal();
+    const [active, setActive] = useState(0);
+
+    const features = [
+        {
+            title: "Control de Acceso",
+            label: "RBAC",
+            description: "Gestiona permisos granulares por rol. Define quién puede ver, crear, editar o eliminar según su posición en la empresa — sin comprometer la seguridad.",
+            highlights: ["Roles personalizados", "Permisos por módulo", "Auditoría de acceso"],
+            accent: "#29D8D5",
+            icon: (
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                    <circle cx="12" cy="10" r="4" />
+                    <circle cx="22" cy="10" r="4" />
+                    <path d="M4 26c0-4 3.6-7 8-7h4" />
+                    <rect x="17" y="19" width="12" height="9" rx="2" />
+                    <path d="M23 22v3" />
+                    <circle cx="23" cy="21.5" r="0.8" fill="currentColor" stroke="none" />
+                </svg>
+            ),
+        },
+        {
+            title: "Insights Automáticos",
+            label: "ANALYTICS",
+            description: "Análisis inteligente en tiempo real. Detecta tendencias, alertas de stock bajo y oportunidades de optimización sin necesidad de reportes manuales.",
+            highlights: ["Análisis en tiempo real", "Alertas automáticas", "Tendencias de venta"],
+            accent: "#7C6AF7",
+            icon: (
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                    <polyline points="4,24 10,16 15,20 21,10 28,14" />
+                    <circle cx="28" cy="14" r="1.5" fill="currentColor" stroke="none" />
+                    <circle cx="21" cy="10" r="1.5" fill="currentColor" stroke="none" />
+                    <line x1="4" y1="28" x2="28" y2="28" />
+                    <line x1="4" y1="10" x2="4" y2="28" />
+                </svg>
+            ),
+        },
+        {
+            title: "Calculadora Ad Hoc",
+            label: "CALC",
+            description: "Construye cálculos personalizados sobre tus datos reales. Simula escenarios, proyecta resultados y exporta en segundos sin salir de la plataforma.",
+            highlights: ["Fórmulas personalizadas", "Simulaciones", "Exportar resultados"],
+            accent: "#F97316",
+            icon: (
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                    <rect x="6" y="4" width="20" height="24" rx="3" />
+                    <rect x="9" y="7" width="14" height="5" rx="1" />
+                    <circle cx="11" cy="17" r="1.2" fill="currentColor" stroke="none" />
+                    <circle cx="16" cy="17" r="1.2" fill="currentColor" stroke="none" />
+                    <circle cx="21" cy="17" r="1.2" fill="currentColor" stroke="none" />
+                    <circle cx="11" cy="22" r="1.2" fill="currentColor" stroke="none" />
+                    <circle cx="16" cy="22" r="1.2" fill="currentColor" stroke="none" />
+                    <circle cx="21" cy="22" r="1.2" fill="currentColor" stroke="none" />
+                </svg>
+            ),
+        },
+    ];
+
+    return (
+        <ContentSection id="feature-hub">
+            <div ref={ref} className="space-y-12">
+                <SectionHeading
+                    eyebrow={heading?.eyebrow || "CAPACIDADES AVANZADAS"}
+                    title={heading?.title || "Hub de Funcionalidades"}
+                    description={heading?.description || "Herramientas diseñadas para operar con precisión"}
+                />
+
+                {/* Layout: selector izquierda + detalle derecha */}
+                <div className={`grid grid-cols-1 gap-6 lg:grid-cols-5 transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+
+                    {/* Columna izquierda — tabs */}
+                    <div className="flex flex-col gap-3 lg:col-span-2">
+                        {features.map((f, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => setActive(idx)}
+                                className="group relative flex items-center gap-4 rounded-xl px-5 py-4 text-left transition-all duration-300"
+                                style={{
+                                    background: active === idx
+                                        ? "linear-gradient(90deg,rgba(41,216,213,0.08) 0%,rgba(41,216,213,0.02) 100%)"
+                                        : "transparent",
+                                    border: active === idx
+                                        ? `1px solid ${f.accent}40`
+                                        : "1px solid rgba(255,255,255,0.06)",
+                                }}
+                            >
+                                {/* Acento lateral */}
+                                <div
+                                    className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-full transition-all duration-300"
+                                    style={{
+                                        height: active === idx ? "60%" : "0%",
+                                        background: f.accent,
+                                    }}
+                                />
+
+                                {/* Ícono */}
+                                <div
+                                    className="shrink-0 rounded-lg p-2 transition-colors duration-300"
+                                    style={{
+                                        background: active === idx ? `${f.accent}18` : "rgba(255,255,255,0.04)",
+                                        color: active === idx ? f.accent : "#6B7280",
+                                    }}
+                                >
+                                    {f.icon}
+                                </div>
+
+                                {/* Texto */}
+                                <div>
+                                    <span
+                                        className="block text-[10px] font-semibold tracking-widest mb-0.5 transition-colors duration-300"
+                                        style={{ color: active === idx ? f.accent : "#4B5563" }}
+                                    >
+                                        {f.label}
+                                    </span>
+                                    <span
+                                        className="block text-sm font-medium transition-colors duration-300"
+                                        style={{ color: active === idx ? "#fff" : "#9CA3AF" }}
+                                    >
+                                        {f.title}
+                                    </span>
+                                </div>
+
+                                {/* Flecha activa */}
+                                {active === idx && (
+                                    <svg viewBox="0 0 16 16" fill="none" stroke={f.accent} strokeWidth="1.5" strokeLinecap="round" className="w-4 h-4 ml-auto shrink-0">
+                                        <path d="M3 8h10M8 3l5 5-5 5" />
+                                    </svg>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Columna derecha — detalle animado */}
+                    <div className="lg:col-span-3">
+                        {features.map((f, idx) => (
+                            <div
+                                key={idx}
+                                className="h-full rounded-2xl p-7 transition-all duration-500"
+                                style={{
+                                    display: active === idx ? "block" : "none",
+                                    background: "linear-gradient(135deg,rgba(255,255,255,0.04) 0%,rgba(255,255,255,0.01) 100%)",
+                                    border: `1px solid ${f.accent}25`,
+                                    boxShadow: `0 0 40px ${f.accent}08`,
+                                }}
+                            >
+                                {/* Badge label */}
+                                <span
+                                    className="inline-block rounded-full px-3 py-1 text-[10px] font-bold tracking-widest mb-4"
+                                    style={{
+                                        background: `${f.accent}15`,
+                                        color: f.accent,
+                                        border: `1px solid ${f.accent}30`,
+                                    }}
+                                >
+                                    {f.label}
+                                </span>
+
+                                <h3 className="text-2xl font-bold text-white mb-3">{f.title}</h3>
+                                <p className="text-sm text-[#A9B3B8] leading-relaxed mb-6">{f.description}</p>
+
+                                {/* Highlights como pills */}
+                                <div className="flex flex-wrap gap-2 mb-6">
+                                    {f.highlights.map((h, i) => (
+                                        <span
+                                            key={i}
+                                            className="rounded-full px-3 py-1.5 text-xs font-medium"
+                                            style={{
+                                                background: "rgba(255,255,255,0.05)",
+                                                color: "#D1D5DB",
+                                                border: "1px solid rgba(255,255,255,0.10)",
+                                            }}
+                                        >
+                                            {h}
+                                        </span>
+                                    ))}
+                                </div>
+
+                                {/* Línea decorativa inferior con color del acento */}
+                                <div
+                                    className="h-px w-full rounded-full"
+                                    style={{ background: `linear-gradient(90deg,${f.accent}50,transparent)` }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </ContentSection>
+    );
+};
+
+// ─────── WhatsApp Support Button ─────────────────────────────────────────
+export const WhatsAppSupportButton = ({
+    phoneNumber = "+573142193936",
+    message = "Hola, vi Ohnix y tengo preguntas 👋",
+}) => {
+    const [hovered, setHovered] = useState(false);
+    const whatsappUrl = `https://wa.me/${phoneNumber.replace(/[^\d]/g, "")}?text=${encodeURIComponent(message)}`;
+
+    return (
+        <>
+            {/* ── Desktop: tarjeta flotante personalizada ── */}
+            <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Contactar por WhatsApp"
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+                className="fixed bottom-8 right-8 z-50 hidden sm:flex items-center gap-3 no-underline"
+                style={{
+                    background: hovered
+                        ? "linear-gradient(135deg,#071f1f 0%,#0a2e2c 60%,#071a1a 100%)"
+                        : "linear-gradient(135deg,#050f0f 0%,#071a1a 60%,#050b0b 100%)",
+                    border: hovered
+                        ? "1px solid rgba(41,216,213,0.55)"
+                        : "1px solid rgba(41,216,213,0.22)",
+                    borderRadius: "18px",
+                    padding: "12px 18px 12px 14px",
+                    boxShadow: hovered
+                        ? "0 0 0 1px rgba(41,216,213,0.12), 0 12px 40px rgba(41,216,213,0.22), 0 4px 16px rgba(0,0,0,0.6)"
+                        : "0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(41,216,213,0.06)",
+                    transition: "all 0.35s cubic-bezier(0.4,0,0.2,1)",
+                    transform: hovered ? "translateY(-2px)" : "translateY(0)",
+                    backdropFilter: "blur(12px)",
+                    textDecoration: "none",
+                }}
+            >
+                {/* Icono tipo "burbuja de chat" custom con teal */}
+                <div
+                    className="relative shrink-0"
+                    style={{
+                        width: 40,
+                        height: 40,
+                    }}
+                >
+                    {/* Fondo del icono */}
+                    <div
+                        style={{
+                            position: "absolute",
+                            inset: 0,
+                            borderRadius: "12px",
+                            background: hovered
+                                ? "linear-gradient(135deg,#29D8D5 0%,#1ab8b5 100%)"
+                                : "linear-gradient(135deg,rgba(41,216,213,0.18) 0%,rgba(26,184,181,0.10) 100%)",
+                            border: "1px solid rgba(41,216,213,0.35)",
+                            transition: "all 0.35s ease",
+                        }}
+                    />
+                    {/* Burbuja de mensaje custom — icono Ohnix en vez de logo WA */}
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke={hovered ? "#050f0f" : "#29D8D5"}
+                        strokeWidth="1.7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={{
+                            position: "absolute",
+                            inset: "8px",
+                            transition: "stroke 0.3s ease",
+                        }}
+                    >
+                        {/* Burbuja de chat */}
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        {/* Puntos dentro */}
+                        <circle cx="9" cy="10" r="0.7" fill={hovered ? "#050f0f" : "#29D8D5"} stroke="none" />
+                        <circle cx="12" cy="10" r="0.7" fill={hovered ? "#050f0f" : "#29D8D5"} stroke="none" />
+                        <circle cx="15" cy="10" r="0.7" fill={hovered ? "#050f0f" : "#29D8D5"} stroke="none" />
+                    </svg>
+                    {/* Dot verde vivo de "online" */}
+                    <span
+                        style={{
+                            position: "absolute",
+                            top: -3,
+                            right: -3,
+                            width: 10,
+                            height: 10,
+                            borderRadius: "50%",
+                            background: "#4ade80",
+                            border: "2px solid #050f0f",
+                            boxShadow: "0 0 6px rgba(74,222,128,0.6)",
+                        }}
+                    />
+                </div>
+
+                {/* Texto */}
+                <div>
+                    <p
+                        style={{
+                            margin: 0,
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            color: hovered ? "#29D8D5" : "#e5e7eb",
+                            letterSpacing: "0.02em",
+                            lineHeight: 1,
+                            transition: "color 0.3s ease",
+                            whiteSpace: "nowrap",
+                        }}
+                    >
+                        Hablar con soporte
+                    </p>
+                    <p
+                        style={{
+                            margin: "3px 0 0",
+                            fontSize: "10px",
+                            color: "#6b7280",
+                            whiteSpace: "nowrap",
+                            lineHeight: 1,
+                        }}
+                    >
+                        Respuesta en minutos
+                    </p>
+                </div>
+
+                {/* Flecha sutil */}
+                <svg
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    stroke={hovered ? "#29D8D5" : "#374151"}
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    style={{
+                        width: 14,
+                        height: 14,
+                        marginLeft: 2,
+                        transition: "all 0.3s ease",
+                        transform: hovered ? "translateX(2px)" : "translateX(0)",
+                    }}
+                >
+                    <path d="M3 8h10M8 3l5 5-5 5" />
+                </svg>
+            </a>
+
+            {/* ── Mobile: barra inferior personalizada ── */}
+            <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="fixed bottom-0 left-0 right-0 z-50 flex sm:hidden items-center justify-between px-5 no-underline"
+                style={{
+                    minHeight: 64,
+                    background: "linear-gradient(90deg,#050f0f 0%,#071f1e 50%,#050f0f 100%)",
+                    borderTop: "1px solid rgba(41,216,213,0.25)",
+                    boxShadow: "0 -6px 32px rgba(41,216,213,0.10), 0 -1px 0 rgba(41,216,213,0.08)",
+                    textDecoration: "none",
+                }}
+            >
+                <div className="flex items-center gap-3">
+                    {/* Icono burbuja mobile */}
+                    <div
+                        style={{
+                            position: "relative",
+                            width: 38,
+                            height: 38,
+                            borderRadius: "11px",
+                            background: "linear-gradient(135deg,rgba(41,216,213,0.15) 0%,rgba(41,216,213,0.07) 100%)",
+                            border: "1px solid rgba(41,216,213,0.3)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                        }}
+                    >
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#29D8D5"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={{ width: 18, height: 18 }}
+                        >
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                            <circle cx="9" cy="10" r="0.8" fill="#29D8D5" stroke="none" />
+                            <circle cx="12" cy="10" r="0.8" fill="#29D8D5" stroke="none" />
+                            <circle cx="15" cy="10" r="0.8" fill="#29D8D5" stroke="none" />
+                        </svg>
+                        <span
+                            style={{
+                                position: "absolute",
+                                top: -3,
+                                right: -3,
+                                width: 9,
+                                height: 9,
+                                borderRadius: "50%",
+                                background: "#4ade80",
+                                border: "2px solid #050f0f",
+                            }}
+                        />
+                    </div>
+                    <div>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", lineHeight: 1 }}>
+                            Hablar con soporte
+                        </p>
+                        <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6b7280", lineHeight: 1 }}>
+                            Respuesta en minutos
+                        </p>
+                    </div>
+                </div>
+
+                {/* CTA pill */}
+                <div
+                    style={{
+                        borderRadius: 999,
+                        padding: "8px 16px",
+                        background: "linear-gradient(135deg,#29D8D5 0%,#1ab8b5 100%)",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#050f0f",
+                        letterSpacing: "0.03em",
+                        whiteSpace: "nowrap",
+                    }}
+                >
+                    Escribir →
+                </div>
+            </a>
+        </>
+    );
+};
+
+// ─────── Advanced Contact Section with Form ──────────────────────────────
+export const ContactFormSection = ({ heading, primaryCta, contact }) => {
+    const [ref, visible] = useScrollReveal();
+    const [formData, setFormData] = useState({ name: "", email: "", message: "", company: "" });
+    const [submitted, setSubmitted] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            // Simular envío del formulario (integrar con API real)
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            setSubmitted(true);
+            setFormData({ name: "", email: "", message: "", company: "" });
+            setTimeout(() => setSubmitted(false), 3000);
+        } catch (error) {
+            console.error("Error sending form:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <ContentSection className={sectionShell}>
+            <div ref={ref} className="space-y-12">
+                <SectionHeading
+                    eyebrow={heading?.eyebrow || "COMIENZA HOY"}
+                    title={heading?.title || "Únete a Ohnix"}
+                    description={heading?.description || "Contacta con nuestro equipo para empezar tu transformación"}
+                />
+
+                <div className="grid grid-cols-1 gap-12 md:grid-cols-2 items-center">
+                    {/* Formulario */}
+                    <div className={`space-y-6 transition-all duration-500 ${visible ? "translate-x-0 opacity-100" : "-translate-x-8 opacity-0"}`}>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-white mb-2">Nombre</label>
+                                <input
+                                    type="text"
+                                    name="name"
+                                    value={formData.name}
+                                    onChange={handleInputChange}
+                                    placeholder="Tu nombre"
+                                    required
+                                    className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/10 text-white placeholder-[#6B7280] focus:border-[#29D8D5] focus:outline-none transition-colors"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-white mb-2">Email</label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={formData.email}
+                                    onChange={handleInputChange}
+                                    placeholder="tu@empresa.com"
+                                    required
+                                    className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/10 text-white placeholder-[#6B7280] focus:border-[#29D8D5] focus:outline-none transition-colors"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-white mb-2">Empresa</label>
+                                <input
+                                    type="text"
+                                    name="company"
+                                    value={formData.company}
+                                    onChange={handleInputChange}
+                                    placeholder="Nombre de tu empresa"
+                                    className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/10 text-white placeholder-[#6B7280] focus:border-[#29D8D5] focus:outline-none transition-colors"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-white mb-2">Mensaje</label>
+                                <textarea
+                                    name="message"
+                                    value={formData.message}
+                                    onChange={handleInputChange}
+                                    placeholder="Cuéntanos qué necesitas..."
+                                    rows="4"
+                                    required
+                                    className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/10 text-white placeholder-[#6B7280] focus:border-[#29D8D5] focus:outline-none transition-colors resize-none"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full px-6 py-3 rounded-full bg-[#29D8D5] text-[#021314] font-semibold hover:bg-[#44F3F0] disabled:opacity-50 transition-all duration-300"
+                            >
+                                {loading ? "Enviando..." : "Contactar Ahora"}
+                            </button>
+                            {submitted && <div className="text-[#29D8D5] text-sm text-center">✓ Gracias! Te contactaremos pronto.</div>}
+                        </form>
+                    </div>
+
+                    {/* Información de contacto */}
+                    <div className={`space-y-8 transition-all duration-500 ${visible ? "translate-x-0 opacity-100" : "translate-x-8 opacity-0"}`}>
+                        <div>
+                            <h3 className="text-2xl font-bold text-white mb-2">¿Preguntas?</h3>
+                            <p className="text-[#A9B3B8]">Contáctanos por:</p>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-lg bg-[#29D8D5]/12 flex items-center justify-center text-[#29D8D5]">
+                                    <MailOutlined className="text-xl" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-[#A9B3B8]">Email</p>
+                                    <a href="mailto:alejandrovallejo10@outlook.com" className="text-white font-medium hover:text-[#29D8D5]">alejandrovallejo10@outlook.com</a>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-lg bg-[#25D366]/12 flex items-center justify-center text-[#25D366]">
+                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.67-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.076 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421-7.403h-.004a9.87 9.87 0 00-9.746 9.798c0 2.737.732 5.363 2.124 7.596l-.303 1.11 1.142-.312a9.86 9.86 0 007.277 3.028c5.434 0 9.937-4.479 9.937-10 0-2.67-.957-5.156-2.714-7.121-1.757-1.964-4.126-3.089-6.713-3.089z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-[#A9B3B8]">WhatsApp</p>
+                                    <a href="https://wa.me/573142193936" target="_blank" rel="noopener noreferrer" className="text-white font-medium hover:text-[#29D8D5]">+57 314 219 3936</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </ContentSection>
+    );
+};
+
 export const brandIcons = {
     lifecycle: <SyncOutlined />,
     assets: <DatabaseOutlined />,

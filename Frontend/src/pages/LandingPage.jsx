@@ -21,6 +21,9 @@ import {
     MarqueeStrip,
     HeroDashboard,
     PageOrbitalLayer,
+    FeatureHubSection,
+    WhatsAppSupportButton,
+    ContactFormSection,
 } from "../components/landing/LandingPageSections";
 
 const { Content } = Layout;
@@ -279,6 +282,14 @@ const LandingPage = () => {
                     metrics={impactMetrics}
                 />
 
+                <FeatureHubSection
+                    heading={{
+                        eyebrow: t("landing.hub.eyebrow", "CAPACIDADES AVANZADAS"),
+                        title: t("landing.hub.title", "Hub de Funcionalidades"),
+                        description: t("landing.hub.description", "Herramientas poderosas para potenciar tu negocio"),
+                    }}
+                />
+
                 <ContentSection id="features">
                     <SectionHeading
                         eyebrow={t("landing.solutions.eyebrow")}
@@ -328,22 +339,20 @@ const LandingPage = () => {
                     testimonials={testimonials}
                 />
 
-                <ContactSection
+                <ContactFormSection
                     heading={{
-                        eyebrow: t("landing.contact.eyebrow"),
-                        title: t("landing.contact.title"),
-                        description: t("landing.contact.description"),
+                        eyebrow: t("landing.contact.eyebrow", "COMIENZA HOY"),
+                        title: t("landing.contact.title", "Únete a Ohnix"),
+                        description: t("landing.contact.description", "Contacta con nuestro equipo para empezar tu transformación"),
                     }}
-                    primaryCta={t("landing.contact.primary_cta")}
-                    secondaryCta={t("landing.contact.secondary_cta")}
-                    onPrimary={handleGetStarted}
-                    onSecondary={handleWatchDemo}
                     contact={{
-                        emailLabel: t("landing.contact.email_label"),
-                        email: t("landing.contact.email"),
-                        signalLabel: t("landing.contact.signal_label"),
-                        signalDescription: t("landing.contact.signal_description"),
+                        email: "alejandrovallejo10@outlook.com",
                     }}
+                />
+
+                <WhatsAppSupportButton
+                    phoneNumber="+573142193936"
+                    message="Hola, vi Ohnix y tengo preguntas 👋"
                 />
             </Content>
             <MobileStickyCta

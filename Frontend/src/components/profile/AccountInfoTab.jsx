@@ -80,7 +80,7 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
     };
 
     const handleRequestUpgrade = () => {
-        const email = "hello@itcycle.com";
+        const email = "alejandrovallejo10@outlook.com";
         const subject = encodeURIComponent("Upgrade request - Ohnix plan");
         const body = encodeURIComponent(
             `Hello team, I would like to upgrade my plan.\n\nCurrent user: ${user?.email || "N/A"}\nCurrent plan: ${subscription?.plan || "starter"}`

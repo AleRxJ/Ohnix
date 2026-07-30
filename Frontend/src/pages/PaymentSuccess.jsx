@@ -295,7 +295,7 @@ const PaymentSuccess = () => {
                                 <Button
                                     type="primary"
                                     className="!rounded-xl !border-0 !bg-[#29D8D5] !px-5 !text-[#041316] hover:!bg-[#44F3F0]"
-                                    onClick={() => navigate("/dashboard")}
+                                    onClick={() => navigate("/dashboard", { state: { fromPayment: true } })}
                                 >
                                     {t("profile.subscription.payment_success_primary_cta")}
                                 </Button>
