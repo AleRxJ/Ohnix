@@ -9,6 +9,7 @@ import {
     Button,
     Space,
     Input,
+    Tooltip,
 } from "antd";
 import {
     SearchOutlined,
@@ -19,10 +20,12 @@ import {
     ReloadOutlined,
     InboxOutlined,
     DollarOutlined,
+    LockOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/api";
 import AuthContext from "../../context/AuthContext";
 import { useCurrency } from "../../context/CurrencyContext";
+import useSubscription from "../../hooks/useSubscription";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
@@ -34,8 +37,9 @@ const StockReport = () => {
     const [searchText, setSearchText] = useState("");
     const [filteredData, setFilteredData] = useState([]);
     const { user } = useContext(AuthContext);
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const { formatCurrency } = useCurrency();
+    const { can } = useSubscription();
 
     const statusLabelByValue = {
         "Out of Stock": t("reports.out_of_stock"),
@@ -352,15 +356,36 @@ const StockReport = () => {
                             <span className="sm:hidden">{t("common.refresh")}</span>
                         </Button>
                     </div>
-                    <Button
-                        icon={<FileExcelOutlined />}
-                        onClick={exportToCSV}
-                        disabled={filteredData.length === 0}
-                        className="bg-green-500 text-white hover:bg-green-600 w-full sm:w-auto"
-                    >
-                        <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
-                        <span className="sm:hidden">{t("common.export")}</span>
-                    </Button>
+                    {can("exportCsv") ? (
+                        <Button
+                            icon={<FileExcelOutlined />}
+                            onClick={exportToCSV}
+                            disabled={filteredData.length === 0}
+                            className="bg-green-500 text-white hover:bg-green-600 w-full sm:w-auto"
+                        >
+                            <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
+                            <span className="sm:hidden">{t("common.export")}</span>
+                        </Button>
+                    ) : (
+                        <Tooltip
+                            title={
+                                currentLanguage === "es"
+                                    ? "Exportar CSV disponible desde el plan Negocio"
+                                    : "CSV export available from the Business plan"
+                            }
+                        >
+                            <span>
+                                <Button
+                                    disabled
+                                    icon={<LockOutlined />}
+                                    className="w-full sm:w-auto"
+                                >
+                                    <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
+                                    <span className="sm:hidden">{t("common.export")}</span>
+                                </Button>
+                            </span>
+                        </Tooltip>
+                    )}
                 </div>
             </Card>
 

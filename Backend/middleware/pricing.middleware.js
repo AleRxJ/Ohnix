@@ -73,6 +73,59 @@ export const PLAN_LIMITS = {
     },
 };
 
+// ── Feature flags per plan ──────────────────────────────────────────────
+// These control which product features are accessible on each tier.
+// When adding a new feature, add its key here and set true from the first plan
+// that should have access to it.
+export const PLAN_FEATURES = {
+    // $19/mes — Emprendedor: core inventory only
+    starter: {
+        reportSales:        false,
+        reportPurchases:    false,
+        reportTopProducts:  false,
+        exportCsv:          false,
+        bulkUpload:         false,
+        autoEmailAlerts:    false,
+        configurableAlerts: false,
+        apiAccess:          false,
+    },
+    // $49/mes — Negocio: full analytics + exports
+    growth: {
+        reportSales:        true,
+        reportPurchases:    true,
+        reportTopProducts:  true,
+        exportCsv:          true,
+        bulkUpload:         true,
+        autoEmailAlerts:    true,
+        configurableAlerts: false,
+        apiAccess:          false,
+    },
+    // $99/mes — Escala: API + advanced reports
+    scale: {
+        reportSales:        true,
+        reportPurchases:    true,
+        reportTopProducts:  true,
+        exportCsv:          true,
+        bulkUpload:         true,
+        autoEmailAlerts:    true,
+        configurableAlerts: true,
+        apiAccess:          true,
+    },
+    // Custom — Enterprise: everything
+    enterprise: {
+        reportSales:        true,
+        reportPurchases:    true,
+        reportTopProducts:  true,
+        exportCsv:          true,
+        bulkUpload:         true,
+        autoEmailAlerts:    true,
+        configurableAlerts: true,
+        apiAccess:          true,
+    },
+};
+
+export const getPlanFeatures = (plan) => PLAN_FEATURES[plan] ?? PLAN_FEATURES.starter;
+
 const RESOURCE_CONFIG = {
     products: { model: "product", limitKey: "maxProducts", label: "products" },
     customers: { model: "customer", limitKey: "maxCustomers", label: "customers" },
@@ -200,5 +253,26 @@ export const enforceMonthlyLimit = (resourceKey, incrementResolver = () => 1) =>
             );
         }
 
+        return next();
+    });
+
+// ── Feature-based access gate ─────────────────────────────────────────────
+// Usage: router.get('/reports/sales', enforcePlanFeature('reportSales'), handler)
+export const enforcePlanFeature = (featureKey) =>
+    asyncHandler(async (req, _, next) => {
+        if (req.user?.role === "admin") return next();
+
+        const subscription = await ensureUserSubscription(req.user.prismaId);
+        ensureActiveSubscription(subscription);
+
+        const features = getPlanFeatures(subscription.plan);
+        if (!features[featureKey]) {
+            return next(
+                new ApiError(
+                    403,
+                    `Feature not available on the ${subscription.plan} plan. Please upgrade to access it.`
+                )
+            );
+        }
         return next();
     });

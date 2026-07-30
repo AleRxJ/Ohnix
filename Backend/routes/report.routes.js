@@ -9,6 +9,7 @@ import {
 } from "../controllers/report.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
+import { enforcePlanFeature } from "../middleware/pricing.middleware.js";
 
 const router = express.Router();
 
@@ -20,14 +21,14 @@ router.route("/dashboard").get(getDashboardMetrics);
 // Stock report
 router.route("/stock").get(getStockReport);
 
-// Sales report
-router.route("/sales").get(getSalesReport);
+// Sales report — Negocio ($49) and above
+router.route("/sales").get(enforcePlanFeature("reportSales"), getSalesReport);
 
-// Purchase report
-router.route("/purchases").get(getPurchaseReport);
+// Purchase report — Negocio ($49) and above
+router.route("/purchases").get(enforcePlanFeature("reportPurchases"), getPurchaseReport);
 
-// Top products report
-router.route("/top-products").get(getTopProducts);
+// Top products report — Negocio ($49) and above
+router.route("/top-products").get(enforcePlanFeature("reportTopProducts"), getTopProducts);
 
 // Low stock alerts with optional email notification
 router.route("/low-stock-alerts").get(getLowStockAlerts);

@@ -169,10 +169,14 @@ class LowStockScheduler {
         try {
             console.log("Starting weekly low stock alert process...");
 
+            // Only send email alerts to users on Negocio ($49) plan and above.
+            // Starter ($19) plan does not include automatic email alerts.
             const users = await prisma.user.findMany({
                 where: {
-                    email: {
-                        not: "",
+                    email: { not: "" },
+                    subscription: {
+                        status: "active",
+                        plan: { not: "starter" },
                     },
                 },
                 select: {

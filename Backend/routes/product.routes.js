@@ -9,14 +9,15 @@ import {
 import { bulkUploadProducts } from "../controllers/product.bulk.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
-import { enforceEntityLimit } from "../middleware/pricing.middleware.js";
+import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.middleware.js";
 import { upload, csvUpload } from "../middleware/multer.middleware.js";
 
 const router = Router();
 
 router.use(verifyJWT);
 
-router.route("/bulk-upload").post(csvUpload.single("file"), bulkUploadProducts);
+// Bulk upload — Negocio ($49) and above
+router.route("/bulk-upload").post(enforcePlanFeature("bulkUpload"), csvUpload.single("file"), bulkUploadProducts);
 
 router
     .route("/")

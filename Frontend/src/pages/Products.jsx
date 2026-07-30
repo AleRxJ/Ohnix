@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from "react";
-import { Layout, Card, Button, Form, message } from "antd";
-import { PlusOutlined, ProductOutlined } from "@ant-design/icons";
+import { Layout, Card, Button, Form, message, Tooltip } from "antd";
+import { PlusOutlined, ProductOutlined, LockOutlined } from "@ant-design/icons";
 
 import ProductSearchBar from "../components/products/ProductSearchBar";
 import ProductsTable from "../components/products/ProductsTable";
@@ -13,6 +13,7 @@ import { useProducts } from "../hooks/products/useProducts";
 import { useCategories } from "../hooks/products/useCategories";
 import { useUnits } from "../hooks/products/useUnits";
 import useI18n from "../hooks/useI18n";
+import useSubscription from "../hooks/useSubscription";
 
 import {
     prepareProductFormData,
@@ -32,7 +33,8 @@ const Products = () => {
     } = useProducts();
     const { categories } = useCategories();
     const { units } = useUnits();
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
+    const { can } = useSubscription();
 
     const [form] = Form.useForm();
 
@@ -186,13 +188,34 @@ const Products = () => {
                             </p>
                         </div>
                         <div className="flex-shrink-0 flex gap-2">
-                            <Button
-                                onClick={() => setIsBulkUploadVisible(true)}
-                                size="large"
-                                className="w-full sm:w-auto"
-                            >
-                                {t("products.bulk_upload")}
-                            </Button>
+                            {can("bulkUpload") ? (
+                                <Button
+                                    onClick={() => setIsBulkUploadVisible(true)}
+                                    size="large"
+                                    className="w-full sm:w-auto"
+                                >
+                                    {t("products.bulk_upload")}
+                                </Button>
+                            ) : (
+                                <Tooltip
+                                    title={
+                                        currentLanguage === "es"
+                                            ? "Carga masiva disponible desde el plan Negocio"
+                                            : "Bulk upload available from the Business plan"
+                                    }
+                                >
+                                    <span>
+                                        <Button
+                                            disabled
+                                            icon={<LockOutlined />}
+                                            size="large"
+                                            className="w-full sm:w-auto"
+                                        >
+                                            {t("products.bulk_upload")}
+                                        </Button>
+                                    </span>
+                                </Tooltip>
+                            )}
                             <Button
                                 type="primary"
                                 icon={<PlusOutlined />}

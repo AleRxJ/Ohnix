@@ -16,10 +16,12 @@ import StockReport from "../components/reports/StockReport";
 import SalesReport from "../components/reports/SalesReport";
 import PurchaseReport from "../components/reports/PurchaseReport";
 import TopProductsReport from "../components/reports/TopProductsReport";
+import PlanGate from "../components/common/PlanGate";
 import AuthContext from "../context/AuthContext";
 import { api } from "../api/api";
 import toast from "react-hot-toast";
 import useI18n from "../hooks/useI18n";
+import useSubscription from "../hooks/useSubscription";
 
 const Reports = () => {
     const [activeTab, setActiveTab] = useState("stock");
@@ -27,6 +29,7 @@ const Reports = () => {
     const [schedulerStatus, setSchedulerStatus] = useState(null);
     const { user } = useContext(AuthContext);
     const { t, currentLanguage } = useI18n();
+    const { can } = useSubscription();
     const isMobile = window.innerWidth < 768;
 
     const tabLabelByKey = {
@@ -106,7 +109,7 @@ const Reports = () => {
                     {tabLabelByKey.sales}
                 </span>
             ),
-            children: <SalesReport />,
+            children: can("reportSales") ? <SalesReport /> : <PlanGate featureKey="reportSales" />,
         },
         {
             key: "purchases",
@@ -120,7 +123,7 @@ const Reports = () => {
                     {tabLabelByKey.purchases}
                 </span>
             ),
-            children: <PurchaseReport />,
+            children: can("reportPurchases") ? <PurchaseReport /> : <PlanGate featureKey="reportPurchases" />,
         },
         {
             key: "top-products",
@@ -134,7 +137,7 @@ const Reports = () => {
                     {tabLabelByKey["top-products"]}
                 </span>
             ),
-            children: <TopProductsReport />,
+            children: can("reportTopProducts") ? <TopProductsReport /> : <PlanGate featureKey="reportTopProducts" />,
         },
     ];
 
