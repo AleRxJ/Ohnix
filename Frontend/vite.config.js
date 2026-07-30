@@ -8,46 +8,20 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   build: {
+    // Only split out the heavy chart libraries — they are truly independent
+    // and don't call React APIs at module initialization time.
+    // All React-dependent packages (antd, rc-*, icons, i18n, utils, etc.)
+    // are left to Vite's automatic chunking so it can guarantee correct
+    // initialization order and avoid "Cannot read properties of undefined" errors.
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return
 
-          // React + antd + rc-* MUST live in the same chunk.
-          // rc-util reads React.version at module init time (top-level code).
-          // If React is in a separate chunk it can still be undefined when that
-          // line runs, causing "Cannot read properties of undefined ('version')".
-          if (
-            id.includes('/react/') ||
-            id.includes('/react-dom/') ||
-            id.includes('/scheduler/') ||
-            id.includes('/antd/') ||
-            id.includes('/rc-') ||
-            id.includes('/@rc-component/') ||
-            id.includes('/@ant-design/cssinjs/')
-          ) {
-            return 'vendor-antd-core'
-          }
-
-          if (id.includes('/@ant-design/icons/')) {
-            return 'vendor-ant-icons'
-          }
-
-          if (id.includes('/@ant-design/plots/')) {
-            return 'vendor-charts-antd-plots'
-          }
-
-          if (id.includes('/@antv/g2/')) {
-            return 'vendor-charts-antv-g2'
-          }
-
-          if (id.includes('/@antv/g-lite/')) {
-            return 'vendor-charts-antv-g-lite'
-          }
-
-          if (id.includes('/@antv/')) {
-            return 'vendor-charts-antv-misc'
-          }
+          if (id.includes('/@ant-design/plots/')) return 'vendor-charts-antd-plots'
+          if (id.includes('/@antv/g2/'))          return 'vendor-charts-antv-g2'
+          if (id.includes('/@antv/g-lite/'))       return 'vendor-charts-antv-g-lite'
+          if (id.includes('/@antv/'))              return 'vendor-charts-antv-misc'
 
           if (
             id.includes('/recharts/') ||
@@ -56,20 +30,6 @@ export default defineConfig({
           ) {
             return 'vendor-charts-recharts'
           }
-
-          if (id.includes('/i18next/') || id.includes('/react-i18next/')) {
-            return 'vendor-i18n'
-          }
-
-          if (
-            id.includes('/axios/') ||
-            id.includes('/dayjs/') ||
-            id.includes('/lodash/')
-          ) {
-            return 'vendor-utils'
-          }
-
-          return 'vendor-misc'
         },
       },
     },
