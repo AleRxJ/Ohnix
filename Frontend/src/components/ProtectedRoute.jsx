@@ -31,3 +31,24 @@ const ProtectedRoute = ({ children, requireVerified = false }) => {
 };
 
 export default ProtectedRoute;
+
+/**
+ * Redirects authenticated users away from guest-only pages (login, signup).
+ */
+export const GuestRoute = ({ children }) => {
+    const { authenticated, loading } = useContext(AuthContext);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-screen">
+                <Spin size="large" tip="Loading..." />
+            </div>
+        );
+    }
+
+    if (authenticated) {
+        return <Navigate to="/dashboard" replace />;
+    }
+
+    return children;
+};

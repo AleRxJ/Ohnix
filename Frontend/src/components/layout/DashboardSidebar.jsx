@@ -18,6 +18,11 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
         navigate("/dashboard");
     };
 
+    const handleLogout = async () => {
+        await logout();
+        navigate("/login");
+    };
+
     return (
         <Sider
             collapsible
@@ -56,7 +61,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                 />
             </div>
 
-            {!collapsed && <SidebarUserProfile user={user} logout={logout} t={t} />}
+            {!collapsed && <SidebarUserProfile user={user} logout={handleLogout} t={t} />}
         </Sider>
     );
 };
