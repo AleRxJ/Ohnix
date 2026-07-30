@@ -1,16 +1,15 @@
 // Frontend/src/pages/EpaycoCheckout.jsx
 //
 // Dedicated checkout page for ePayco (Colombia only).
-// Loaded when the user selects "epayco" as payment method and the backend
-// returns checkoutUrl pointing to /billing/epayco-checkout?requestId=...
 //
 // Flow:
 //  1. Reads requestId from the query string
 //  2. Fetches checkout params from the backend (JWT-authenticated)
-//  3. Dynamically loads the ePayco JS widget script
-//  4. Opens the payment modal automatically
-//  5. On completion, ePayco redirects the browser to EPAYCO_RESPONSE_URL
-//     which then redirects to /billing/payment-success or /billing
+//  3. Dynamically loads the ePayco JS widget and opens it automatically
+//  4. Starts background polling: as soon as the ePayco confirmation webhook
+//     fires and the plan is activated, the page redirects automatically to
+//     /billing/payment-success — no action required from the user.
+//  5. Primary path: ePayco also redirects the browser via EPAYCO_RESPONSE_URL.
 
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -21,6 +20,9 @@ import useI18n from "../hooks/useI18n";
 const EPAYCO_SCRIPT_URL = "https://checkout.epayco.co/checkout.js";
 const EPAYCO_SCRIPT_ID = "epayco-checkout-script";
 
+const POLL_INTERVAL_MS = 4000;
+const POLL_MAX_ATTEMPTS = 23; // ~92 s total
+
 const EpaycoCheckout = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -30,9 +32,53 @@ const EpaycoCheckout = () => {
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [polling, setPolling] = useState(false);
 
-    // Keep a reference to the handler so it is not recreated on re-renders
     const handlerRef = useRef(null);
+    const pollTimerRef = useRef(null);
+    const pollCountRef = useRef(0);
+
+    const stopPolling = () => {
+        if (pollTimerRef.current) {
+            clearTimeout(pollTimerRef.current);
+            pollTimerRef.current = null;
+        }
+        setPolling(false);
+    };
+
+    const startPolling = (rid) => {
+        if (!rid) return;
+        setPolling(true);
+        pollCountRef.current = 0;
+
+        const tick = async () => {
+            if (pollCountRef.current >= POLL_MAX_ATTEMPTS) {
+                setPolling(false);
+                return;
+            }
+            pollCountRef.current += 1;
+
+            try {
+                const res = await subscriptionService.getUpgradeCheckoutStatus(rid);
+                const { request, targetPlanActive } = res?.data || {};
+
+                if (request?.status === "closed" && targetPlanActive) {
+                    // Plan activated — redirect to success automatically
+                    navigate(
+                        `/billing/payment-success?requestId=${encodeURIComponent(rid)}`,
+                        { replace: true }
+                    );
+                    return;
+                }
+            } catch {
+                // Ignore errors, keep polling
+            }
+
+            pollTimerRef.current = setTimeout(tick, POLL_INTERVAL_MS);
+        };
+
+        pollTimerRef.current = setTimeout(tick, POLL_INTERVAL_MS);
+    };
 
     useEffect(() => {
         if (!requestId) {
@@ -45,24 +91,17 @@ const EpaycoCheckout = () => {
 
         const init = async () => {
             try {
-                // 1. Fetch checkout params from the backend
                 const response = await subscriptionService.getEpaycoCheckoutParams(requestId);
                 const params = response?.data;
 
-                if (!isMounted) {
-                    return;
-                }
+                if (!isMounted) return;
 
                 if (!params?.publicKey || !params?.reference) {
                     throw new Error("Los parámetros de pago están incompletos. Intenta de nuevo.");
                 }
 
-                // 2. Load ePayco script (only once)
                 const openWidget = () => {
-                    if (!isMounted) {
-                        return;
-                    }
-
+                    if (!isMounted) return;
                     const handler = window.ePayco.checkout.configure({
                         key: params.publicKey,
                         test: params.test === "TRUE",
@@ -80,9 +119,6 @@ const EpaycoCheckout = () => {
                         tax: "0",
                         country: "CO",
                         lang: "es",
-                        // external: "true" means ePayco will use the response and
-                        // confirmation URLs set here (or from configure) instead of
-                        // an embedded iframe
                         external: "true",
                         response: params.responseUrl,
                         confirmation: params.confirmationUrl,
@@ -94,13 +130,12 @@ const EpaycoCheckout = () => {
 
                     if (isMounted) {
                         setLoading(false);
+                        startPolling(requestId);
                     }
                 };
 
                 const existingScript = document.getElementById(EPAYCO_SCRIPT_ID);
-
                 if (existingScript && window.ePayco) {
-                    // Script already loaded
                     openWidget();
                     return;
                 }
@@ -109,34 +144,23 @@ const EpaycoCheckout = () => {
                 script.id = EPAYCO_SCRIPT_ID;
                 script.src = EPAYCO_SCRIPT_URL;
                 script.async = true;
-
-                script.onload = () => {
-                    if (!isMounted) {
-                        return;
-                    }
-                    openWidget();
-                };
-
+                script.onload = () => { if (isMounted) openWidget(); };
                 script.onerror = () => {
-                    if (!isMounted) {
-                        return;
-                    }
+                    if (!isMounted) return;
                     setError(
                         "No se pudo cargar la pasarela de pago ePayco. " +
-                            "Verifica tu conexión e intenta de nuevo."
+                        "Verifica tu conexión e intenta de nuevo."
                     );
                     setLoading(false);
                 };
-
                 document.head.appendChild(script);
+
             } catch (err) {
-                if (!isMounted) {
-                    return;
-                }
+                if (!isMounted) return;
                 setError(
                     err?.response?.data?.message ||
-                        err?.message ||
-                        "Error al cargar los parámetros de pago."
+                    err?.message ||
+                    "Error al cargar los parámetros de pago."
                 );
                 setLoading(false);
             }
@@ -146,10 +170,10 @@ const EpaycoCheckout = () => {
 
         return () => {
             isMounted = false;
+            stopPolling();
         };
-    }, [requestId]);
+    }, [requestId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Error state
     if (error) {
         return (
             <div className="min-h-screen bg-[#050608] text-white flex flex-col items-center justify-center gap-5 px-4">
@@ -167,7 +191,7 @@ const EpaycoCheckout = () => {
     }
 
     return (
-        <div className="min-h-screen bg-[#050608] text-white flex flex-col items-center justify-center gap-4 px-4">
+        <div className="min-h-screen bg-[#050608] text-white flex flex-col items-center justify-center gap-6 px-4">
             {loading && (
                 <div className="flex flex-col items-center gap-4">
                     <Spin size="large" />
@@ -188,15 +212,24 @@ const EpaycoCheckout = () => {
                 </div>
             )}
 
-            {/* Once the widget is open the page stays visible in the background */}
             {!loading && (
-                <div className="flex flex-col items-center gap-3 text-center">
+                <div className="flex flex-col items-center gap-4 text-center max-w-sm">
                     <p className="text-[#A9B3B8] text-sm">
                         Completa el pago en la ventana de ePayco.
                     </p>
+
+                    {polling && (
+                        <div className="flex items-center gap-2 rounded-full border border-[#29D8D5]/20 bg-[#29D8D5]/8 px-4 py-2">
+                            <div className="h-2 w-2 animate-pulse rounded-full bg-[#29D8D5]" />
+                            <span className="text-xs text-[#29D8D5]">
+                                Verificando pago automáticamente...
+                            </span>
+                        </div>
+                    )}
+
                     <button
-                        onClick={() => navigate("/billing")}
-                        className="text-xs text-[#A9B3B8] underline hover:text-white transition-colors"
+                        onClick={() => { stopPolling(); navigate("/billing"); }}
+                        className="text-xs text-[#6b7a80] underline hover:text-white transition-colors"
                     >
                         Cancelar y volver
                     </button>
