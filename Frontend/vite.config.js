@@ -22,20 +22,19 @@ export default defineConfig({
             return 'vendor-react-core'
           }
 
-          if (id.includes('/antd/')) {
+          // rc-* MUST be in the same chunk as antd — they are tightly coupled
+          // and splitting them causes circular init errors (React.version undefined)
+          if (
+            id.includes('/antd/') ||
+            id.includes('/rc-') ||
+            id.includes('/@rc-component/') ||
+            id.includes('/@ant-design/cssinjs/')
+          ) {
             return 'vendor-antd-core'
           }
 
           if (id.includes('/@ant-design/icons/')) {
             return 'vendor-ant-icons'
-          }
-
-          if (id.includes('/@ant-design/cssinjs/')) {
-            return 'vendor-ant-cssinjs'
-          }
-
-          if (id.includes('/rc-') || id.includes('/@rc-component/')) {
-            return 'vendor-ant-rc'
           }
 
           if (id.includes('/@ant-design/plots/')) {
