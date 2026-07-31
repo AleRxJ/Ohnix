@@ -18,6 +18,7 @@ import {
     updateUpgradeRequestAdmin,
     updateUserPlan,
     verifyAndActivateBySession,
+    verifyAndActivateByEpayco,
 } from "../controllers/subscription.controller.js";
 
 const router = Router();
@@ -33,6 +34,8 @@ router.route("/me/upgrade-requests/:id/checkout-status").get(getMyUpgradeCheckou
 router.route("/me/upgrade-requests/:id/verify-activate").post(verifyAndActivateBySession);
 // ePayco: fetch widget params for the checkout page (auth-protected)
 router.route("/me/upgrade-requests/:id/epayco-params").get(getEpaycoCheckoutParams);
+// ePayco: fallback verification when confirmation webhook is delayed
+router.route("/me/upgrade-requests/:id/epayco-verify").post(verifyAndActivateByEpayco);
 router.route("/me/pause").patch(pauseMySubscription);
 router.route("/me/cancel").patch(cancelMySubscription);
 router.route("/me/reactivate").patch(reactivateMySubscription);

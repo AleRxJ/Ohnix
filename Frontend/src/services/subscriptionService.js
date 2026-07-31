@@ -108,4 +108,11 @@ export const subscriptionService = {
         );
         return response.data;
     },
+
+    async verifyEpaycoAndActivate(requestId) {
+        const response = await api.post(
+            `/subscriptions/me/upgrade-requests/${requestId}/epayco-verify`
+        );
+        return response.data;
+    },
 };

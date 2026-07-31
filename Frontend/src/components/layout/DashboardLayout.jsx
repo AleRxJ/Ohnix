@@ -213,14 +213,19 @@ const DashboardLayout = () => {
     // Admins and users on billing page are never blocked
     const isBlocked = trialExpired && user?.role !== "admin" && currentPage !== "billing";
 
-    // Show expired banner on every page except billing (no dismiss — must act)
-    const showExpiredBanner = trialExpired && user?.role !== "admin" && currentPage !== "billing";
+    // Never show trial banners on the payment-success page (user just paid)
+    const isOnPaymentSuccess = location.pathname.includes("payment-success");
 
-    // Show urgency banner when ≤3 days left (dismissable for the session)
+    // Show expired banner on every page except billing (no dismiss — must act)
+    const showExpiredBanner = trialExpired && !isOnPaymentSuccess && user?.role !== "admin" && currentPage !== "billing";
+
+    // Show urgency banner when ≤3 days left AND still on starter (dismissable for the session)
     const showUrgencyBanner =
         trialUrgent &&
         !trialExpired &&
         !bannerDismissed &&
+        !isOnPaymentSuccess &&
+        (subscription?.plan ?? "starter") === "starter" &&
         user?.role !== "admin";
 
     const handleDismissBanner = () => {

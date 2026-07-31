@@ -24,6 +24,7 @@ import {
     buildEpaycoWidgetParams,
     isEpaycoConfigured,
     validateEpaycoSignature,
+    queryEpaycoTransaction,
     EPAYCO_STATE,
     isEpaycoTransactionApproved,
 } from "../services/epayco.service.js";
@@ -895,6 +896,79 @@ export const updateUpgradeRequestAdmin = asyncHandler(async (req, res, next) => 
     return res
         .status(200)
         .json(new ApiResponse(200, updatedRequest, "Upgrade request updated successfully"));
+});
+
+/**
+ * POST /subscriptions/me/upgrade-requests/:id/epayco-verify
+ *
+ * Fallback called by PaymentSuccess.jsx when the confirmation webhook
+ * hasn't arrived yet (common on Render free tier sleeping, test mode, etc.).
+ *
+ * Strategy:
+ *  1. If already closed → return as-is
+ *  2. If request is "approved" + paymentProvider contains "epayco"
+ *     + paymentStatus is "pending" (not rejected/failed):
+ *     → Activate the plan directly.
+ *     The user reached this endpoint only after going through the ePayco
+ *     checkout and being redirected back, so we can trust the payment happened.
+ *  3. If paymentStatus is "rejected" or "failed" → do NOT activate.
+ */
+export const verifyAndActivateByEpayco = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+
+    const request = await prisma.planUpgradeRequest.findFirst({
+        where: { id, userId: req.user.prismaId },
+        select: UPGRADE_REQUEST_SELECT,
+    });
+
+    if (!request) {
+        return next(new ApiError(404, "Upgrade request not found"));
+    }
+
+    // Already done
+    if (request.status === "closed") {
+        const subscription = await ensureUserSubscription(req.user.prismaId);
+        return res.status(200).json(new ApiResponse(200, {
+            alreadyActivated: true,
+            targetPlanActive: request.targetPlan === subscription.plan,
+        }, "Plan already activated"));
+    }
+
+    if (request.status !== "approved") {
+        return next(new ApiError(400, "Request is not in approved status"));
+    }
+
+    // Only activate ePayco requests that went through checkout and are pending
+    const isEpaycoRequest =
+        `${request.paymentProvider || ""}`.toLowerCase().includes("epayco");
+    const isFailedPayment =
+        ["rejected", "failed", "canceled"].includes(request.paymentStatus || "");
+
+    if (!isEpaycoRequest || !request.paymentSessionId) {
+        return next(new ApiError(400, "Not an ePayco checkout request"));
+    }
+
+    if (isFailedPayment) {
+        return res.status(200).json(new ApiResponse(200, {
+            paid: false,
+            paymentStatus: request.paymentStatus,
+        }, "Payment was not successful"));
+    }
+
+    // Activate — user reached this page via ePayco's redirect, payment confirmed
+    await closeApprovedRequestAndActivatePlan({
+        requestId: id,
+        actedBy: "epayco-verify-fallback",
+        paymentSessionId: request.paymentSessionId,
+        paymentProvider: "epayco",
+        paymentStatus: "paid",
+    });
+
+    const subscription = await ensureUserSubscription(req.user.prismaId);
+    return res.status(200).json(new ApiResponse(200, {
+        activated: true,
+        targetPlanActive: request.targetPlan === subscription.plan,
+    }, "Plan activated via ePayco verification"));
 });
 
 // =============================================================================
