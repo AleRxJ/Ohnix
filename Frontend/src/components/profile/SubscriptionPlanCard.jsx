@@ -92,7 +92,8 @@ const SubscriptionPlanCard = ({
     // Effective plan (trial may give higher access than stored plan)
     const effectivePlan = subscription?.effectivePlan || plan;
     const trialEndsAt    = subscription?.trialEndsAt ?? null;
-    const trialActive    = trialEndsAt && new Date() < new Date(trialEndsAt);
+    // Only show trial banners when the user is still on the starter plan
+    const trialActive    = trialEndsAt && new Date() < new Date(trialEndsAt) && plan === "starter";
     const trialExpired   = trialEndsAt && !trialActive && plan === "starter";
     const trialDaysLeft  = trialActive
         ? Math.max(1, Math.ceil((new Date(trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
