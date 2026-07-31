@@ -180,6 +180,9 @@ const closeApprovedRequestAndActivatePlan = async ({
     paymentLink,
     adminResponse,
 }) => {
+    // Paid plans renew every 30 days — set endsAt on activation
+    const SUBSCRIPTION_PERIOD_DAYS = 30;
+    const endsAt = new Date(Date.now() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000);
     const result = await prisma.$transaction(async (tx) => {
         const existing = await tx.planUpgradeRequest.findUnique({
             where: { id: requestId },
@@ -199,12 +202,14 @@ const closeApprovedRequestAndActivatePlan = async ({
             update: {
                 plan: existing.targetPlan,
                 status: "active",
-                endsAt: null,
+                endsAt,   // 30 days from now
+                trialEndsAt: null, // clear trial once a paid plan is active
             },
             create: {
                 userId: existing.userId,
                 plan: existing.targetPlan,
                 status: "active",
+                endsAt,
             },
         });
 

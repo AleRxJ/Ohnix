@@ -92,6 +92,7 @@ const SubscriptionPlanCard = ({
     // Effective plan (trial may give higher access than stored plan)
     const effectivePlan = subscription?.effectivePlan || plan;
     const trialEndsAt    = subscription?.trialEndsAt ?? null;
+    const planEndsAt     = subscription?.endsAt ?? null;
     // Only show trial banners when the user is still on the starter plan
     const trialActive    = trialEndsAt && new Date() < new Date(trialEndsAt) && plan === "starter";
     const trialExpired   = trialEndsAt && !trialActive && plan === "starter";
@@ -99,6 +100,12 @@ const SubscriptionPlanCard = ({
         ? Math.max(1, Math.ceil((new Date(trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
         : 0;
     const trialUrgent    = trialActive && trialDaysLeft <= 3;
+
+    // Renewal banner: only for paid plans with endsAt set within 7 days
+    const renewalDaysLeft = planEndsAt && plan !== "starter"
+        ? Math.ceil((new Date(planEndsAt) - Date.now()) / (1000 * 60 * 60 * 24))
+        : null;
+    const showRenewalBanner = renewalDaysLeft !== null && renewalDaysLeft <= 7 && renewalDaysLeft > -5;
 
     const planFeatures = PLAN_FEATURES[effectivePlan] || PLAN_FEATURES.starter;
 
@@ -165,6 +172,44 @@ const SubscriptionPlanCard = ({
                                 className="shrink-0 border-red-400/60 text-red-300 hover:border-red-300 hover:text-red-200 bg-transparent"
                             >
                                 {lang === "es" ? "Contratar" : "Subscribe"}
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Renewal reminder banner — paid plans expiring soon */}
+            {showRenewalBanner && (
+                <div className={`mb-4 rounded-xl border px-4 py-2.5 ${
+                    renewalDaysLeft <= 0
+                        ? "border-red-500/40 bg-red-500/8"
+                        : renewalDaysLeft <= 3
+                            ? "border-orange-400/40 bg-orange-400/8"
+                            : "border-amber-400/30 bg-amber-400/6"
+                }`}>
+                    <div className="flex items-center gap-2.5">
+                        <svg className={`h-4 w-4 shrink-0 ${renewalDaysLeft <= 0 ? "text-red-400" : "text-amber-400"}`}
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className={`flex-1 text-sm ${renewalDaysLeft <= 0 ? "text-red-300" : "text-amber-200"}`}>
+                            {lang === "es"
+                                ? renewalDaysLeft <= 0
+                                    ? `Tu plan ${plan.charAt(0).toUpperCase() + plan.slice(1)} venció. Renueva para mantener el acceso.`
+                                    : `Tu plan vence en ${renewalDaysLeft} día${renewalDaysLeft !== 1 ? "s" : ""}. Renueva para continuar.`
+                                : renewalDaysLeft <= 0
+                                    ? `Your ${plan} plan has expired. Renew to keep access.`
+                                    : `Your plan expires in ${renewalDaysLeft} day${renewalDaysLeft !== 1 ? "s" : ""}. Renew to continue.`}
+                        </span>
+                        {onRequestUpgrade && (
+                            <Button size="small"
+                                onClick={onRequestUpgrade}
+                                className={`shrink-0 bg-transparent ${
+                                    renewalDaysLeft <= 0
+                                        ? "border-red-400/60 text-red-300 hover:border-red-300"
+                                        : "border-amber-400/60 text-amber-300 hover:border-amber-300"
+                                }`}>
+                                {lang === "es" ? "Renovar" : "Renew"}
                             </Button>
                         )}
                     </div>

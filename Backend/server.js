@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import connectDB from "./db/index.js";
 import { app } from "./app.js";
 import lowStockScheduler from "./utils/lowStockScheduler.js";
+import renewalScheduler from "./utils/subscriptionRenewalScheduler.js";
 import { reconcileLegacyApprovedRequests } from "./utils/subscriptionReconcile.js";
 
 dotenv.config({
@@ -44,6 +45,8 @@ connectDB()
             if (process.env.START_SCHEDULER !== "false") {
                 console.log("🚀 Starting low stock alert scheduler...");
                 lowStockScheduler.start();
+                console.log("🔄 Starting subscription renewal scheduler...");
+                renewalScheduler.start();
             }
         });
     })
@@ -53,13 +56,15 @@ connectDB()
 
 // Graceful shutdown for local/node runtime.
 process.on("SIGTERM", () => {
-    console.log("🛑 SIGTERM received, stopping low stock scheduler...");
+    console.log("🛑 SIGTERM received, stopping schedulers...");
     lowStockScheduler.stop();
+    renewalScheduler.stop();
     process.exit(0);
 });
 
 process.on("SIGINT", () => {
-    console.log("🛑 SIGINT received, stopping low stock scheduler...");
+    console.log("🛑 SIGINT received, stopping schedulers...");
     lowStockScheduler.stop();
+    renewalScheduler.stop();
     process.exit(0);
 });

@@ -1,6 +1,46 @@
 import transporter, { isMailConfigured } from "./nodemailer.js";
 import { prisma } from "../db/prisma.js";
 
+// ─── Plan renewal reminder ────────────────────────────────────────────────────
+export const notifyUserRenewalReminder = async ({ user, plan, endsAt, daysLeft, locale }) => {
+    if (!isMailConfigured() || !user?.email) return;
+    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
+    const planLabel = plan ? plan.charAt(0).toUpperCase() + plan.slice(1) : "";
+    const endsAtFormatted = new Date(endsAt).toLocaleDateString(isEN ? "en-US" : "es-CO", {
+        year: "numeric", month: "long", day: "numeric",
+    });
+    const subject = isEN
+        ? `[Ohnix] Your ${planLabel} plan renews in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`
+        : `[Ohnix] Tu plan ${planLabel} se renueva en ${daysLeft} día${daysLeft !== 1 ? "s" : ""}`;
+    const title = isEN ? `Renewal reminder · ${planLabel}` : `Recordatorio de renovación · ${planLabel}`;
+    const body = isEN
+        ? `Hello <strong>${user.username || "there"}</strong>, your <strong>${planLabel}</strong> plan expires on <strong>${endsAtFormatted}</strong>. To keep all your data and access, renew before that date.`
+        : `Hola <strong>${user.username || ""}</strong>, tu plan <strong>${planLabel}</strong> vence el <strong>${endsAtFormatted}</strong>. Para conservar todos tus datos y acceso, renueva antes de esa fecha.`;
+    const cta = isEN ? "Renew my plan" : "Renovar mi plan";
+    const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
+    try {
+        await transporter.sendMail({
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            to: user.email,
+            subject,
+            html: `
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
+                    <h2 style="color:#f59e0b;margin:0 0 12px;">⏳ ${title}</h2>
+                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;">${body}</p>
+                    <div style="text-align:center;margin:28px 0;">
+                        <a href="${frontendBase}/billing" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;">${cta}</a>
+                    </div>
+                    <p style="color:#6b7280;font-size:13px;text-align:center;">Si ya renovaste, ignora este mensaje.</p>
+                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. Todos los derechos reservados.</p>
+                </div>
+            `,
+        });
+    } catch (err) {
+        console.error("[renewal-reminder] Failed to send:", err?.message);
+    }
+};
+
 // ─── Plan activated confirmation ────────────────────────────────────────────
 export const notifyUserPlanActivated = async ({ user, targetPlan, locale }) => {
     if (!isMailConfigured() || !user?.email) return;

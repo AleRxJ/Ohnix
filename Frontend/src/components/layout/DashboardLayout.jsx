@@ -43,7 +43,7 @@ const TrialExpiredScreen = ({ onGoToBilling, lang }) => (
  *   expired: no dismiss, red/dark brutal design, lock icon
  *   urgent:  dismissable, teal/purple gradient, fire icon
  */
-const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang }) => {
+const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = false }) => {
     const isExpired = mode === "expired";
 
     const borderGradient = isExpired
@@ -106,21 +106,31 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang }) => {
                     {/* Text */}
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-white m-0 leading-snug">
-                            {isExpired
-                                ? (lang === "es" ? "🔒 Tu acceso está bloqueado" : "🔒 Your access is blocked")
-                                : (lang === "es"
-                                    ? `⏳ Tu prueba termina en ${daysLeft} día${daysLeft !== 1 ? "s" : ""}`
-                                    : `⏳ Your trial ends in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`)
+                            {isRenewal
+                                ? isExpired
+                                    ? (lang === "es" ? "🔒 Tu plan venció" : "🔒 Your plan has expired")
+                                    : (lang === "es"
+                                        ? `⏳ Tu plan vence en ${daysLeft} día${daysLeft !== 1 ? "s" : ""}`
+                                        : `⏳ Your plan expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`)
+                                : isExpired
+                                    ? (lang === "es" ? "🔒 Tu acceso está bloqueado" : "🔒 Your access is blocked")
+                                    : (lang === "es"
+                                        ? `⏳ Tu prueba termina en ${daysLeft} día${daysLeft !== 1 ? "s" : ""}`
+                                        : `⏳ Your trial ends in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`)
                             }
                         </p>
                         <p className="text-xs m-0 mt-0.5 truncate" style={{ color: isExpired ? "#f87171aa" : "#8B95A1" }}>
-                            {isExpired
-                                ? (lang === "es"
-                                    ? "Los 14 días de prueba terminaron. Contrata un plan para recuperar el acceso."
-                                    : "The 14-day trial ended. Subscribe to restore full access.")
-                                : (lang === "es"
-                                    ? "Contrata ahora y no pierdas tus datos ni acceso."
-                                    : "Subscribe now and keep all your data and access.")
+                            {isRenewal
+                                ? isExpired
+                                    ? (lang === "es" ? "Renueva tu plan para recuperar el acceso completo." : "Renew your plan to restore full access.")
+                                    : (lang === "es" ? "Renueva antes de que venza para no perder el acceso." : "Renew before it expires to keep your access.")
+                                : isExpired
+                                    ? (lang === "es"
+                                        ? "Los 14 días de prueba terminaron. Contrata un plan para recuperar el acceso."
+                                        : "The 14-day trial ended. Subscribe to restore full access.")
+                                    : (lang === "es"
+                                        ? "Contrata ahora y no pierdas tus datos ni acceso."
+                                        : "Subscribe now and keep all your data and access.")
                             }
                         </p>
                     </div>
@@ -138,6 +148,10 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang }) => {
                             minWidth: 110,
                         }}
                     >
+                        {isRenewal
+                            ? (lang === "es" ? "Renovar" : "Renew")
+                            : (lang === "es" ? "Contratar" : "Subscribe")
+                        }
                         {lang === "es" ? "Contratar" : "Subscribe"}
                     </Button>
 
@@ -201,6 +215,7 @@ const DashboardLayout = () => {
 
     // Trial expired = trialEndsAt set, past expiry, still on starter plan
     const trialEndsAt    = subscription?.trialEndsAt ?? null;
+    const planEndsAt     = subscription?.endsAt ?? null;
     const trialExpired   =
         trialEndsAt &&
         new Date() > new Date(trialEndsAt) &&
@@ -209,6 +224,17 @@ const DashboardLayout = () => {
         ? Math.max(1, Math.ceil((new Date(trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
         : 0;
     const trialUrgent    = trialDaysLeft > 0 && trialDaysLeft <= 3;
+
+    // Renewal banner for paid plans expiring soon
+    const renewalDaysLeft = planEndsAt && (subscription?.plan ?? "starter") !== "starter"
+        ? Math.ceil((new Date(planEndsAt) - Date.now()) / (1000 * 60 * 60 * 24))
+        : null;
+    const showRenewalBanner =
+        renewalDaysLeft !== null &&
+        renewalDaysLeft <= 7 &&
+        renewalDaysLeft > -5 &&
+        !bannerDismissed &&
+        user?.role !== "admin";
 
     // Admins and users on billing page are never blocked
     const isBlocked = trialExpired && user?.role !== "admin" && currentPage !== "billing";
@@ -278,6 +304,16 @@ const DashboardLayout = () => {
                     lang={lang}
                     onUpgrade={() => navigate("/billing")}
                     onDismiss={handleDismissBanner}
+                />
+            )}
+            {showRenewalBanner && (
+                <TrialBanner
+                    mode={renewalDaysLeft <= 0 ? "expired" : "urgent"}
+                    daysLeft={renewalDaysLeft > 0 ? renewalDaysLeft : 0}
+                    isRenewal
+                    lang={lang}
+                    onUpgrade={() => navigate("/billing")}
+                    onDismiss={renewalDaysLeft > 3 ? handleDismissBanner : undefined}
                 />
             )}
         </Layout>
