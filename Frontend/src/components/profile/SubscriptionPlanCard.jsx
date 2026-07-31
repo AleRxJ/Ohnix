@@ -107,7 +107,7 @@ const SubscriptionPlanCard = ({
     const renewalDaysLeft = planEndsAt && plan !== "starter"
         ? Math.ceil((new Date(planEndsAt) - Date.now()) / (1000 * 60 * 60 * 24))
         : null;
-    const showRenewalBanner = renewalDaysLeft !== null && renewalDaysLeft <= 7 && renewalDaysLeft > -5;
+    const showRenewalBanner = renewalDaysLeft !== null && renewalDaysLeft <= 7;
 
     const planFeatures = PLAN_FEATURES[effectivePlan] || PLAN_FEATURES.starter;
 

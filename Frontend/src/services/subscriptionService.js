@@ -115,4 +115,9 @@ export const subscriptionService = {
         );
         return response.data;
     },
+
+    async createRenewalCheckout(payload = {}) {
+        const response = await api.post("/subscriptions/me/renew", payload);
+        return response.data;
+    },
 };

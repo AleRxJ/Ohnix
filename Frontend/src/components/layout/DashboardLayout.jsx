@@ -8,23 +8,30 @@ import DashboardSidebar from "./DashboardSidebar";
 import MobileMenu from "./MobileMenu";
 import AuthContext from "../../context/AuthContext";
 import { subscriptionService } from "../../services/subscriptionService";
+import { toast } from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 
 const { Content } = Layout;
 
-const TrialExpiredScreen = ({ onGoToBilling, lang }) => (
+const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false }) => (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] gap-6 px-6 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10">
             <WarningOutlined className="text-4xl text-red-400" />
         </div>
         <div className="max-w-md">
             <h2 className="text-2xl font-bold text-white mb-2">
-                {lang === "es" ? "Tu prueba gratuita ha terminado" : "Your free trial has ended"}
+                {isRenewal
+                    ? (lang === "es" ? "Tu plan ha vencido" : "Your plan has expired")
+                    : (lang === "es" ? "Tu prueba gratuita ha terminado" : "Your free trial has ended")}
             </h2>
             <p className="text-[#A9B3B8] text-sm leading-relaxed">
-                {lang === "es"
-                    ? "Tu período de prueba de 14 días ha concluido. Contrata un plan para seguir gestionando tu inventario, ventas y reportes sin interrupciones."
-                    : "Your 14-day trial has ended. Subscribe to a plan to keep managing your inventory, sales, and reports without interruption."}
+                {isRenewal
+                    ? (lang === "es"
+                        ? "Tu período de gracia terminó. Renueva tu plan para recuperar el acceso completo a tu inventario, ventas y reportes."
+                        : "Your grace period has ended. Renew your plan to restore full access to your inventory, sales, and reports.")
+                    : (lang === "es"
+                        ? "Tu período de prueba de 14 días ha concluido. Contrata un plan para seguir gestionando tu inventario, ventas y reportes sin interrupciones."
+                        : "Your 14-day trial has ended. Subscribe to a plan to keep managing your inventory, sales, and reports without interruption.")}
             </p>
         </div>
         <Button
@@ -33,7 +40,9 @@ const TrialExpiredScreen = ({ onGoToBilling, lang }) => (
             onClick={onGoToBilling}
             className="bg-[#29D8D5] border-[#29D8D5] text-[#021314] font-semibold hover:bg-[#44F3F0] hover:border-[#44F3F0] px-8"
         >
-            {lang === "es" ? "Ver planes y contratar" : "See plans and subscribe"}
+            {isRenewal
+                ? (lang === "es" ? "Renovar mi plan" : "Renew my plan")
+                : (lang === "es" ? "Ver planes y contratar" : "See plans and subscribe")}
         </Button>
     </div>
 );
@@ -42,7 +51,7 @@ const TrialExpiredScreen = ({ onGoToBilling, lang }) => (
  * Floating contextual banner — covers all subscription states:
  *   trial active, trial urgent, trial expired, renewal soon, renewal expired
  */
-const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = false, planLabel = "" }) => {
+const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = false, planLabel = "", loading = false, daysOverdue = 0 }) => {
     const isExpired = mode === "expired";
     const isUrgent  = !isExpired && daysLeft <= 3;
 
@@ -71,6 +80,9 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = f
 
     const headline = (() => {
         if (isRenewal) {
+            if (daysOverdue >= 5) return lang === "es"
+                ? `🚫 ${plan} lleva ${daysOverdue} días vencido · Acceso bloqueado`
+                : `🚫 ${plan} expired ${daysOverdue} days ago · Access blocked`;
             if (isExpired) return lang === "es" ? `🔒 ${plan} venció · Acceso limitado` : `🔒 ${plan} expired · Limited access`;
             if (daysLeft === 1) return lang === "es" ? `🚨 ${plan} vence mañana` : `🚨 ${plan} expires tomorrow`;
             if (isUrgent) return lang === "es" ? `🔥 ${plan} vence en ${daysLeft} días` : `🔥 ${plan} expires in ${daysLeft} days`;
@@ -84,7 +96,10 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = f
 
     const subtext = (() => {
         if (isRenewal) {
-            if (isExpired) return lang === "es" ? "Renueva ahora para recuperar todas las funcionalidades de tu plan." : "Renew now to restore all plan features.";
+            if (daysOverdue >= 5) return lang === "es"
+                ? "Tu período de gracia terminó. Renueva ahora para recuperar el acceso completo a tus datos y reportes."
+                : "Your grace period ended. Renew now to restore full access to your data and reports.";
+            if (isExpired) return lang === "es" ? "Tienes pocos días antes del bloqueo total. Renueva para no perder el acceso." : "You have a few days before full block. Renew to keep access.";
             if (isUrgent) return lang === "es" ? "Renueva hoy para no perder tus datos ni el acceso." : "Renew today to keep your data and access.";
             return lang === "es" ? "Renueva antes de que venza para continuar sin interrupciones." : "Renew before it expires to continue without interruption.";
         }
@@ -127,11 +142,13 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = f
                     <Button
                         size="small"
                         onClick={onUpgrade}
-                        icon={<RocketOutlined />}
+                        icon={loading ? null : <RocketOutlined />}
+                        loading={loading}
+                        disabled={loading}
                         className="shrink-0 h-9 px-4 rounded-xl font-semibold border-0"
                         style={{ background: ctaBg, boxShadow: ctaGlow, color: ctaColor, minWidth: 100 }}
                     >
-                        {ctaLabel}
+                        {loading ? (lang === "es" ? "Procesando..." : "Processing...") : ctaLabel}
                     </Button>
 
                     {/* Dismiss */}
@@ -159,6 +176,7 @@ const DashboardLayout = () => {
     );
     // Renewal banner dismiss is in-memory only — resets on page reload
     const [renewalBannerDismissed, setRenewalBannerDismissed] = useState(false);
+    const [renewalLoading, setRenewalLoading] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
@@ -214,12 +232,18 @@ const DashboardLayout = () => {
     const showRenewalBanner =
         renewalDaysLeft !== null &&
         renewalDaysLeft <= 7 &&
-        renewalDaysLeft > -5 &&
         !renewalBannerDismissed &&
         user?.role !== "admin";
 
+    // Block access when renewal is more than 5 days past expiry (grace period exhausted)
+    const renewalExpiredBlock =
+        renewalDaysLeft !== null &&
+        renewalDaysLeft <= -5 &&
+        user?.role !== "admin" &&
+        currentPage !== "billing";
+
     // Admins and users on billing page are never blocked
-    const isBlocked = trialExpired && user?.role !== "admin" && currentPage !== "billing";
+    const isBlocked = (trialExpired || renewalExpiredBlock) && user?.role !== "admin" && currentPage !== "billing";
 
     // Never show trial banners on the payment-success page (user just paid)
     const isOnPaymentSuccess = location.pathname.includes("payment-success");
@@ -243,6 +267,28 @@ const DashboardLayout = () => {
 
     const handleDismissRenewalBanner = () => {
         setRenewalBannerDismissed(true);
+    };
+
+    const handleRenew = async () => {
+        try {
+            setRenewalLoading(true);
+            const res = await subscriptionService.createRenewalCheckout({
+                country: "CO",
+                paymentMethod: "epayco",
+            });
+            const checkoutUrl = res?.data?.checkoutUrl;
+            if (checkoutUrl) {
+                window.location.assign(checkoutUrl);
+            } else {
+                navigate("/billing");
+            }
+        } catch (err) {
+            const msg = err?.response?.data?.message;
+            if (msg) toast.error(msg);
+            navigate("/billing");
+        } finally {
+            setRenewalLoading(false);
+        }
     };
 
     return (
@@ -269,7 +315,7 @@ const DashboardLayout = () => {
                 <Content className="mx-3 my-3 sm:mx-5 sm:my-5 lg:mx-7 lg:my-7">
                     <div className="overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,11,11,0.9),rgba(8,8,8,0.96))] min-h-[calc(100vh-8rem)] shadow-[0_20px_45px_rgba(0,0,0,0.42)] transition-shadow duration-300 hover:shadow-[0_24px_54px_rgba(0,0,0,0.5)] reveal-card">
                         {isBlocked
-                            ? <TrialExpiredScreen lang={lang} onGoToBilling={() => navigate("/billing")} />
+                            ? <TrialExpiredScreen lang={lang} onGoToBilling={() => navigate("/billing")} isRenewal={renewalExpiredBlock} />
                             : <Outlet />
                         }
                     </div>
@@ -296,13 +342,15 @@ const DashboardLayout = () => {
                 <TrialBanner
                     mode={renewalDaysLeft <= 0 ? "expired" : "urgent"}
                     daysLeft={renewalDaysLeft > 0 ? renewalDaysLeft : 0}
+                    daysOverdue={renewalDaysLeft < 0 ? Math.abs(renewalDaysLeft) : 0}
                     isRenewal
                     planLabel={lang === "es"
                         ? { growth: "Plan Negocio", scale: "Plan Escala", enterprise: "Plan Enterprise" }[subscription?.plan] || "tu plan"
                         : { growth: "Business plan", scale: "Scale plan", enterprise: "Enterprise plan" }[subscription?.plan] || "your plan"
                     }
                     lang={lang}
-                    onUpgrade={() => navigate("/billing")}
+                    onUpgrade={handleRenew}
+                    loading={renewalLoading}
                     onDismiss={renewalDaysLeft > 0 ? handleDismissRenewalBanner : undefined}
                 />
             )}

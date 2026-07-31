@@ -180,9 +180,12 @@ const closeApprovedRequestAndActivatePlan = async ({
     paymentLink,
     adminResponse,
 }) => {
-    // Paid plans renew every 30 days — set endsAt on activation
+    // Paid plans renew every 30 days — set endsAt on activation.
+    // For renewals (currentPlan === targetPlan), extend from the current endsAt
+    // so the user doesn't lose unused days. Computed inside the transaction below.
     const SUBSCRIPTION_PERIOD_DAYS = 30;
-    const endsAt = new Date(Date.now() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+    const defaultEndsAt = new Date(Date.now() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+
     const result = await prisma.$transaction(async (tx) => {
         const existing = await tx.planUpgradeRequest.findUnique({
             where: { id: requestId },
@@ -197,13 +200,27 @@ const closeApprovedRequestAndActivatePlan = async ({
             return { request: existing, activated: false };
         }
 
+        // For renewals: extend from current endsAt so no days are lost
+        const isRenewal = existing.currentPlan === existing.targetPlan;
+        let endsAt = defaultEndsAt;
+        if (isRenewal) {
+            const currentSub = await tx.subscription.findUnique({
+                where: { userId: existing.userId },
+                select: { endsAt: true },
+            });
+            const base = currentSub?.endsAt && new Date(currentSub.endsAt) > new Date()
+                ? new Date(currentSub.endsAt)   // still active → extend from expiry
+                : new Date();                    // already expired → extend from now
+            endsAt = new Date(base.getTime() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+        }
+
         await tx.subscription.upsert({
             where: { userId: existing.userId },
             update: {
                 plan: existing.targetPlan,
                 status: "active",
-                endsAt,   // 30 days from now
-                trialEndsAt: null, // clear trial once a paid plan is active
+                endsAt,
+                trialEndsAt: null,
             },
             create: {
                 userId: existing.userId,
@@ -975,6 +992,95 @@ export const verifyAndActivateByEpayco = asyncHandler(async (req, res, next) => 
         activated: true,
         targetPlanActive: request.targetPlan === subscription.plan,
     }, "Plan activated via ePayco verification"));
+});
+
+/**
+ * POST /subscriptions/me/renew
+ *
+ * Creates an auto-approved renewal request for the current plan and
+ * immediately returns a checkout URL. Handles the case where the
+ * user's plan is still active (extends from endsAt) or already expired
+ * (extends from now).
+ */
+export const createRenewalCheckout = asyncHandler(async (req, res, next) => {
+    const { country, paymentMethod } = req.body || {};
+
+    const subscription = await ensureUserSubscription(req.user.prismaId);
+
+    if (subscription.plan === "starter") {
+        return next(new ApiError(400, "El plan Emprendedor no tiene renovación. Selecciona un plan de pago."));
+    }
+
+    if (!isAutonomousCheckoutConfigured()) {
+        return next(new ApiError(503, "Autonomous checkout is not configured."));
+    }
+
+    // Block if there's already an open/approved request
+    const existingOpen = await prisma.planUpgradeRequest.findFirst({
+        where: {
+            userId: req.user.prismaId,
+            status: { in: ["open", "reviewing", "approved"] },
+        },
+        select: { id: true },
+    });
+
+    if (existingOpen) {
+        return next(new ApiError(409, "Ya tienes una solicitud de upgrade en proceso."));
+    }
+
+    const requester = await prisma.user.findUnique({
+        where: { id: req.user.prismaId },
+        select: { id: true, email: true, username: true },
+    });
+
+    if (!requester?.email) {
+        return next(new ApiError(400, "Se requiere un email válido para el checkout."));
+    }
+
+    // Create auto-approved renewal request (currentPlan === targetPlan signals renewal)
+    const request = await prisma.planUpgradeRequest.create({
+        data: {
+            userId: req.user.prismaId,
+            currentPlan: subscription.plan,
+            targetPlan: subscription.plan,
+            status: "approved",
+            adminResponse: "Renovación automática. Completa el pago para extender tu plan 30 días.",
+            paymentStatus: "awaiting_checkout",
+        },
+        select: UPGRADE_REQUEST_SELECT,
+    });
+
+    let checkout;
+    try {
+        checkout = await createUpgradeCheckoutSessionProvider({
+            request,
+            user: requester,
+            country: country || "CO",
+            paymentMethod: paymentMethod || "epayco",
+        });
+    } catch (error) {
+        // Clean up the created request if checkout fails
+        await prisma.planUpgradeRequest.delete({ where: { id: request.id } }).catch(() => {});
+        console.error("[renew] Checkout creation failed", error);
+        return next(new ApiError(502, error?.message || "No se pudo crear el checkout de renovación."));
+    }
+
+    await prisma.planUpgradeRequest.update({
+        where: { id: request.id },
+        data: {
+            paymentProvider: `${checkout.provider}:${checkout.paymentMethod}:${checkout.country}`,
+            paymentSessionId: checkout.sessionId,
+            paymentStatus: "pending",
+            paymentLink: checkout.checkoutUrl,
+        },
+    });
+
+    return res.status(200).json(new ApiResponse(200, {
+        requestId: request.id,
+        checkoutUrl: checkout.checkoutUrl,
+        provider: checkout.provider,
+        currentPlan: subscription.plan,
+    }, "Checkout de renovación creado correctamente."));
 });
 
 // =============================================================================

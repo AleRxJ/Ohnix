@@ -4,6 +4,7 @@ import { isAdmin } from "../middleware/admin.middleware.js";
 import {
     cancelMySubscription,
     createMyUpgradeCheckoutSession,
+    createRenewalCheckout,
     createUpgradeRequest,
     getCheckoutPaymentMethods,
     getEpaycoCheckoutParams,
@@ -36,6 +37,8 @@ router.route("/me/upgrade-requests/:id/verify-activate").post(verifyAndActivateB
 router.route("/me/upgrade-requests/:id/epayco-params").get(getEpaycoCheckoutParams);
 // ePayco: fallback verification when confirmation webhook is delayed
 router.route("/me/upgrade-requests/:id/epayco-verify").post(verifyAndActivateByEpayco);
+// Renewal: creates checkout for the same current plan
+router.route("/me/renew").post(createRenewalCheckout);
 router.route("/me/pause").patch(pauseMySubscription);
 router.route("/me/cancel").patch(cancelMySubscription);
 router.route("/me/reactivate").patch(reactivateMySubscription);
