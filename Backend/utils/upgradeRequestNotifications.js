@@ -10,12 +10,12 @@ export const notifyUserRenewalReminder = async ({ user, plan, endsAt, daysLeft, 
         year: "numeric", month: "long", day: "numeric",
     });
     const subject = isEN
-        ? `[Ohnix] Your ${planLabel} plan renews in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`
-        : `[Ohnix] Tu plan ${planLabel} se renueva en ${daysLeft} día${daysLeft !== 1 ? "s" : ""}`;
-    const title = isEN ? `Renewal reminder · ${planLabel}` : `Recordatorio de renovación · ${planLabel}`;
+        ? `[Ohnix] Your ${planLabel} plan has expired — renew to keep access`
+        : `[Ohnix] Tu plan ${planLabel} venció — renueva para mantener el acceso`;
+    const title = isEN ? `Your ${planLabel} plan has expired` : `Tu plan ${planLabel} venció`;
     const body = isEN
-        ? `Hello <strong>${user.username || "there"}</strong>, your <strong>${planLabel}</strong> plan expires on <strong>${endsAtFormatted}</strong>. To keep all your data and access, renew before that date.`
-        : `Hola <strong>${user.username || ""}</strong>, tu plan <strong>${planLabel}</strong> vence el <strong>${endsAtFormatted}</strong>. Para conservar todos tus datos y acceso, renueva antes de esa fecha.`;
+        ? `Hello <strong>${user.username || "there"}</strong>, your <strong>${planLabel}</strong> plan expired yesterday. You have a few days to renew before losing full access to your data and features.`
+        : `Hola <strong>${user.username || ""}</strong>, tu plan <strong>${planLabel}</strong> venció ayer. Tienes unos días para renovar antes de perder el acceso completo a tus datos y funcionalidades.`;
     const cta = isEN ? "Renew my plan" : "Renovar mi plan";
     const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
     try {

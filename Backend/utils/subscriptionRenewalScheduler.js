@@ -11,16 +11,17 @@ import { prisma } from "../db/prisma.js";
 import { notifyUserRenewalReminder } from "./upgradeRequestNotifications.js";
 import { isMailConfigured } from "./nodemailer.js";
 
-const REMINDER_DAYS_BEFORE = 7;   // send reminder email X days before expiry
-const GRACE_PERIOD_DAYS    = 5;   // days after expiry before downgrading
+const REMINDER_DAYS_AFTER_EXPIRY = 1;  // send email 1 day after plan expires
+const GRACE_PERIOD_DAYS           = 5;  // days after expiry before downgrading
 
-// ── Reminder: subscriptions expiring in 7 days ───────────────────────────────
+// ── Reminder: subscriptions that expired ~1 day ago ──────────────────────────
 async function sendRenewalReminders() {
     const now = new Date();
-    const windowStart = new Date(now.getTime() + (REMINDER_DAYS_BEFORE - 1) * 24 * 60 * 60 * 1000);
-    const windowEnd   = new Date(now.getTime() + (REMINDER_DAYS_BEFORE + 1) * 24 * 60 * 60 * 1000);
+    // Window: between 1 and 2 days past expiry
+    const windowStart = new Date(now.getTime() - (REMINDER_DAYS_AFTER_EXPIRY + 1) * 24 * 60 * 60 * 1000);
+    const windowEnd   = new Date(now.getTime() - REMINDER_DAYS_AFTER_EXPIRY * 24 * 60 * 60 * 1000);
 
-    const expiringSoon = await prisma.subscription.findMany({
+    const recentlyExpired = await prisma.subscription.findMany({
         where: {
             status: "active",
             plan: { not: "starter" },
@@ -32,21 +33,20 @@ async function sendRenewalReminders() {
     });
 
     let sent = 0;
-    for (const sub of expiringSoon) {
+    for (const sub of recentlyExpired) {
         if (!sub.user?.email) continue;
-        const daysLeft = Math.max(1, Math.ceil((new Date(sub.endsAt) - now) / (1000 * 60 * 60 * 24)));
         await notifyUserRenewalReminder({
             user: sub.user,
             plan: sub.plan,
             endsAt: sub.endsAt,
-            daysLeft,
+            daysLeft: 0, // already expired
             locale: sub.user.preferredLanguage,
         });
         sent++;
     }
 
     if (sent > 0) {
-        console.log(`[renewal-scheduler] Sent ${sent} renewal reminder email(s).`);
+        console.log(`[renewal-scheduler] Sent ${sent} post-expiry renewal reminder(s).`);
     }
 
     return sent;

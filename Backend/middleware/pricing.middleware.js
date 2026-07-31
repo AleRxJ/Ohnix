@@ -150,6 +150,7 @@ export const ensureUserSubscription = async (userId) =>
             plan: true,
             status: true,
             trialEndsAt: true,
+            endsAt: true,
         },
     });
 

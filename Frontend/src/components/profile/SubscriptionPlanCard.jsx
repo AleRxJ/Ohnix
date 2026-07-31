@@ -92,7 +92,6 @@ const SubscriptionPlanCard = ({
     // Effective plan (trial may give higher access than stored plan)
     const effectivePlan = subscription?.effectivePlan || plan;
     const trialEndsAt    = subscription?.trialEndsAt ?? null;
-    const planEndsAt     = subscription?.endsAt ?? null;
     // Only show trial banners when the user is still on the starter plan
     const trialActive    = trialEndsAt && new Date() < new Date(trialEndsAt) && plan === "starter";
     const trialExpired   = trialEndsAt && !trialActive && plan === "starter";
@@ -101,7 +100,10 @@ const SubscriptionPlanCard = ({
         : 0;
     const trialUrgent    = trialActive && trialDaysLeft <= 3;
 
-    // Renewal banner: only for paid plans with endsAt set within 7 days
+    // Renewal banner: only for paid plans with endsAt set within 7 days.
+    // Require endsAt to be a real ISO string (not undefined/null from stale cache)
+    // so the banner never flickers on initial render from user context data.
+    const planEndsAt = typeof subscription?.endsAt === "string" ? subscription.endsAt : null;
     const renewalDaysLeft = planEndsAt && plan !== "starter"
         ? Math.ceil((new Date(planEndsAt) - Date.now()) / (1000 * 60 * 60 * 24))
         : null;

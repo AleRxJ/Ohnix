@@ -277,6 +277,7 @@ export const getMySubscription = asyncHandler(async (req, res) => {
                 effectivePlan,
                 status: subscription.status,
                 trialEndsAt: subscription.trialEndsAt ?? null,
+                endsAt: subscription.endsAt ?? null,
                 limits: getPlanLimits(effectivePlan),
             },
             "Subscription fetched successfully"
