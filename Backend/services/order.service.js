@@ -1,6 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { sendRealtimeLowStockAlert } from "../utils/lowStockScheduler.js";
+import { issueElectronicInvoiceForOrder } from "./electronicInvoicing.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -47,6 +48,21 @@ const findOrderByAnyId = async (id) =>
             orderStatus: true,
         },
     });
+
+const triggerElectronicInvoicingIfCompleted = ({ orderId, userId, userRole, trigger }) => {
+    issueElectronicInvoiceForOrder({
+        orderId,
+        requesterUserId: userId,
+        requesterRole: userRole,
+        trigger,
+    }).catch((error) => {
+        console.warn("[electronic-invoicing] async issuance skipped/failed", {
+            orderId,
+            trigger,
+            message: error?.message || error,
+        });
+    });
+};
 
 class OrderService {
     async createOrder(orderData, userId, userRole) {
@@ -200,6 +216,13 @@ class OrderService {
                     sendRealtimeLowStockAlert(lowItems).catch(() => {});
                 }
             }
+
+            triggerElectronicInvoicingIfCompleted({
+                orderId: order.id,
+                userId,
+                userRole,
+                trigger: "order_create_completed",
+            });
         }
 
         return {
@@ -296,6 +319,13 @@ class OrderService {
                         updatedById: userId,
                     },
                 });
+            });
+
+            triggerElectronicInvoicingIfCompleted({
+                orderId: updated.id,
+                userId,
+                userRole,
+                trigger: "order_status_completed",
             });
 
             return {

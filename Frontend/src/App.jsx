@@ -1,9 +1,10 @@
-import React, { Suspense, lazy } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import React, { Suspense, lazy, useContext } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n/config.js";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
+import AuthContext from "./context/AuthContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import AntdConfigProvider from "./components/common/AntdConfigProvider";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
@@ -35,12 +36,21 @@ const Billing = lazy(() => import("./pages/Billing"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
+const ElectronicInvoices = lazy(() => import("./pages/ElectronicInvoices"));
 
 const RouteLoadingFallback = () => (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center text-sm text-[#A9B3B8]">
         Cargando pagina...
     </div>
 );
+
+const ColombiaInvoiceRoute = ({ children }) => {
+    const { user, loading } = useContext(AuthContext);
+    if (loading) return <RouteLoadingFallback />;
+    return user?.company?.countryCode === "CO"
+        ? children
+        : <Navigate to="/dashboard" replace />;
+};
 
 function App() {
     return (
@@ -100,6 +110,7 @@ function App() {
                                 <Route path="dashboard" element={<Dashboard />} />
                                 <Route path="products" element={<Products />} />
                                 <Route path="orders" element={<Orders />} />
+                                <Route path="electronic-invoices" element={<ColombiaInvoiceRoute><ElectronicInvoices /></ColombiaInvoiceRoute>} />
                                 <Route path="purchases" element={<Purchase />} />
                                 <Route path="customers" element={<Customers />} />
                                 <Route path="suppliers" element={<Suppliers />} />

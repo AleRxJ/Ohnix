@@ -56,7 +56,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
                                 theme="dark"
                                 selectedKeys={[currentPage]}
                                 mode="inline"
-                                items={getMenuItems(t, user?.role)}
+                                items={getMenuItems(t, user?.role, user?.company?.countryCode === "CO")}
                                 onClick={onClose}
                                 className="border-r-0"
                                 style={{

@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useContext } from "react";
 import { Modal, Form, Input, Select, InputNumber, Row, Col } from "antd";
 import ProductImageUpload from "./ProductImageUpload";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { getCurrencyInputProps } from "../../utils/currency";
+import AuthContext from "../../context/AuthContext";
 
 const { Option } = Select;
 
@@ -22,7 +23,10 @@ const ProductModal = ({
 }) => {
     const { t } = useI18n();
     const { currency } = useCurrency();
+    const { user } = useContext(AuthContext);
     const currencyInputProps = getCurrencyInputProps(currency.code);
+    const usesColombianEInvoicing =
+        user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
 
     return (
         <Modal
@@ -288,6 +292,40 @@ const ProductModal = ({
                                     </Col>
                                 </Row>
                             </div>
+
+                            {usesColombianEInvoicing && (
+                                <div className="module-shell p-4 reveal-card border border-[#29D8D5]/15">
+                                    <div className="flex items-center justify-between gap-3 mb-3 pb-2 border-b border-white/8">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1 h-4 bg-[#44F3F0] rounded-full"></div>
+                                            <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">Clasificación DIAN</h3>
+                                        </div>
+                                        <span className="text-[11px] text-[#44F3F0]">Factus V2</span>
+                                    </div>
+                                    <Row gutter={12}>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="unit_measure_code" label={<span className="text-xs text-[#A9B3B8]">Unidad DIAN</span>} initialValue="94" rules={[{ required: true, message: "Ingresa la unidad DIAN" }]}>
+                                                <Input size="large" className="auth-ohnix-input" placeholder="94" />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="standard_code" label={<span className="text-xs text-[#A9B3B8]">Código estándar</span>} initialValue="999" rules={[{ required: true, message: "Ingresa el código estándar" }]}>
+                                                <Input size="large" className="auth-ohnix-input" placeholder="999" />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="tax_code" label={<span className="text-xs text-[#A9B3B8]">Impuesto</span>} initialValue="01">
+                                                <Select size="large" className="auth-ohnix-input" options={[{ value: "01", label: "IVA" }, { value: "04", label: "INC" }]} />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item name="tax_rate" label={<span className="text-xs text-[#A9B3B8]">Tarifa (%)</span>} initialValue={0}>
+                                                <InputNumber min={0} max={100} precision={2} size="large" className="w-full auth-ohnix-input" />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                </div>
+                            )}
                         </div>
                     </Col>
 

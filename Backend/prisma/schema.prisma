@@ -46,6 +46,16 @@ enum PurchaseStatus {
   returned
 }
 
+enum ElectronicInvoiceStatus {
+  draft
+  issuing
+  submitted
+  accepted
+  rejected
+  error
+  cancelled
+}
+
 model User {
   id                 String    @id @default(cuid())
   legacyMongoId      String?   @unique @map("legacy_mongo_id")
@@ -88,13 +98,21 @@ model Company {
   id          String   @id @default(cuid())
   name        String   @unique
   legalName   String?  @map("legal_name")
+  countryCode String?  @map("country_code")
   contactEmail String? @map("contact_email")
   phone       String?
+  electronicInvoicingEnabled Boolean @default(false) @map("electronic_invoicing_enabled")
+  factusNumberingRangeId String? @map("factus_numbering_range_id")
+  factusDocumentType String @default("01") @map("factus_document_type")
+  factusOperationType String @default("10") @map("factus_operation_type")
+  factusPaymentForm String @default("1") @map("factus_payment_form")
+  factusPaymentMethodCode String @default("42") @map("factus_payment_method_code")
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   users       User[]
+  electronicInvoices ElectronicInvoice[]
 
   @@map("companies")
 }
@@ -204,6 +222,12 @@ model Customer {
   accountHolder  String?  @map("account_holder")
   accountNumber  String?  @map("account_number")
   photo          String
+  identificationDocumentCode String? @map("identification_document_code")
+  identification String? @map("identification")
+  legalOrganizationCode String? @map("legal_organization_code")
+  tributeCode String? @map("tribute_code")
+  municipalityCode String? @map("municipality_code")
+  countryCode String? @map("country_code")
   createdById    String   @map("created_by")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
@@ -225,6 +249,11 @@ model Product {
   sellingPrice  Decimal  @map("selling_price") @db.Decimal(12, 2)
   stock         Int      @default(0)
   productImage  String   @default("default-product.png") @map("product_image")
+  unitMeasureCode String @default("94") @map("unit_measure_code")
+  standardCode String @default("999") @map("standard_code")
+  taxCode String? @default("01") @map("tax_code")
+  taxRate Decimal? @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  isTaxExcluded Boolean @default(false) @map("is_tax_excluded")
   createdById   String   @map("created_by")
   updatedById   String?  @map("updated_by")
   createdAt     DateTime @default(now()) @map("created_at")
@@ -302,6 +331,7 @@ model Order {
   createdBy     User        @relation("OrderCreatedBy", fields: [createdById], references: [id])
   updatedBy     User?       @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
   orderDetails  OrderDetail[]
+  electronicInvoice ElectronicInvoice?
 
   @@map("orders")
 }
@@ -321,4 +351,49 @@ model OrderDetail {
   product       Product  @relation(fields: [productId], references: [id])
 
   @@map("order_details")
+}
+
+model ElectronicInvoice {
+  id              String                @id @default(cuid())
+  orderId         String                @unique @map("order_id")
+  companyId       String                @map("company_id")
+  countryCode     String                @map("country_code")
+  provider        String
+  status          ElectronicInvoiceStatus @default(draft)
+  externalId      String?               @unique @map("external_id")
+  referenceCode   String                @unique @map("reference_code")
+  invoiceNumber   String?               @map("invoice_number")
+  cufe            String?
+  qrUrl           String?               @map("qr_url") @db.Text
+  pdfUrl          String?               @map("pdf_url") @db.Text
+  xmlUrl          String?               @map("xml_url") @db.Text
+  rawRequest      Json?                 @map("raw_request")
+  rawResponse     Json?                 @map("raw_response")
+  fiscalSnapshot  Json?                 @map("fiscal_snapshot")
+  errorMessage    String?               @map("error_message") @db.Text
+  issuedAt        DateTime?             @map("issued_at")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  order           Order                 @relation(fields: [orderId], references: [id])
+  company         Company               @relation(fields: [companyId], references: [id])
+  events          ElectronicInvoiceEvent[]
+
+  @@index([companyId, createdAt])
+  @@index([countryCode, provider])
+  @@map("electronic_invoices")
+}
+
+model ElectronicInvoiceEvent {
+  id                  String             @id @default(cuid())
+  electronicInvoiceId String             @map("electronic_invoice_id")
+  eventType           String             @map("event_type")
+  status              ElectronicInvoiceStatus?
+  payload             Json?
+  createdAt           DateTime           @default(now()) @map("created_at")
+
+  electronicInvoice   ElectronicInvoice  @relation(fields: [electronicInvoiceId], references: [id], onDelete: Cascade)
+
+  @@index([electronicInvoiceId, createdAt])
+  @@map("electronic_invoice_events")
 }

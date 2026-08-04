@@ -16,6 +16,12 @@ const mapCustomer = (customer) => ({
     store_name: customer.storeName,
     account_holder: customer.accountHolder,
     account_number: customer.accountNumber,
+    identification_document_code: customer.identificationDocumentCode,
+    identification: customer.identification,
+    legal_organization_code: customer.legalOrganizationCode,
+    tribute_code: customer.tributeCode,
+    municipality_code: customer.municipalityCode,
+    country_code: customer.countryCode,
     photo: customer.photo,
     created_by: {
         _id: toExternalId(customer.createdBy),
@@ -36,6 +42,25 @@ const findCustomerByAnyId = async (id) =>
             },
         },
     });
+
+const fiscalCustomerData = (body) => {
+    const fields = {
+        identification_document_code: "identificationDocumentCode",
+        identification: "identification",
+        legal_organization_code: "legalOrganizationCode",
+        tribute_code: "tributeCode",
+        municipality_code: "municipalityCode",
+        country_code: "countryCode",
+    };
+    return Object.fromEntries(
+        Object.entries(fields)
+            .filter(([input]) => body[input] !== undefined)
+            .map(([input, field]) => [
+                field,
+                `${body[input] || ""}`.trim().toUpperCase() || null,
+            ])
+    );
+};
 
 const createCustomer = asyncHandler(async (req, res, next) => {
     const {
@@ -88,6 +113,7 @@ const createCustomer = asyncHandler(async (req, res, next) => {
                 accountNumber: account_number?.trim() || null,
                 photo: photoUrl,
                 createdById: req.user.prismaId,
+                ...fiscalCustomerData(req.body),
             },
             include: {
                 createdBy: {
@@ -206,6 +232,7 @@ const updateCustomer = asyncHandler(async (req, res, next) => {
                     accountNumber: updateData.account_number?.trim() || null,
                 }),
                 ...(updateData.photo !== undefined && { photo: updateData.photo }),
+                ...fiscalCustomerData(updateData),
             },
             include: {
                 createdBy: {

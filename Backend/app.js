@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import errorHandler from "./middleware/error.middleware.js";
 import { handlePaymentWebhook, handleEpaycoConfirmation, handleEpaycoResponse } from "./controllers/subscription.controller.js";
+import { handleFactusWebhook } from "./controllers/electronicInvoice.controller.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,6 +111,13 @@ app.post(
     handleEpaycoResponse
 );
 
+// Factus webhook for Colombia electronic invoicing updates.
+app.post(
+   "/api/v1/electronic-invoicing/factus/webhook",
+   express.json({ limit: "16kb" }),
+   handleFactusWebhook
+);
+
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -128,6 +136,7 @@ import reportRouter from "./routes/report.routes.js";
 import schedulerRouter from "./routes/scheduler.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import companyRouter from "./routes/company.routes.js";
+import electronicInvoiceRouter from "./routes/electronicInvoice.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -142,6 +151,7 @@ app.use("/api/v1/reports", reportRouter);
 app.use("/api/v1/scheduler", schedulerRouter);
 app.use("/api/v1/subscriptions", subscriptionRouter);
 app.use("/api/v1/companies", companyRouter);
+app.use("/api/v1/electronic-invoices", electronicInvoiceRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________

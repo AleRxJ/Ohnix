@@ -30,11 +30,16 @@ const AdminManagement = () => {
 
     const [companyModalOpen, setCompanyModalOpen] = useState(false);
     const [companySubmitting, setCompanySubmitting] = useState(false);
+    const [editingCompany, setEditingCompany] = useState(null);
     const [userModalOpen, setUserModalOpen] = useState(false);
     const [userSubmitting, setUserSubmitting] = useState(false);
+    const [assignmentUser, setAssignmentUser] = useState(null);
+    const [assignmentSubmitting, setAssignmentSubmitting] = useState(false);
 
     const [companyForm] = Form.useForm();
     const [userForm] = Form.useForm();
+    const [assignmentForm] = Form.useForm();
+    const selectedCompanyCountry = Form.useWatch("countryCode", companyForm);
 
     const isAdmin = user?.role === "admin";
 
@@ -80,9 +85,15 @@ const AdminManagement = () => {
     const handleCreateCompany = async (values) => {
         try {
             setCompanySubmitting(true);
-            await adminService.createCompany(values);
-            toast.success(t("admin.company_created"));
+            if (editingCompany) {
+                await adminService.updateCompany(editingCompany.id, values);
+                toast.success("Configuración de compañía actualizada");
+            } else {
+                await adminService.createCompany(values);
+                toast.success(t("admin.company_created"));
+            }
             setCompanyModalOpen(false);
+            setEditingCompany(null);
             companyForm.resetFields();
             await fetchData();
         } catch (error) {
@@ -90,6 +101,13 @@ const AdminManagement = () => {
         } finally {
             setCompanySubmitting(false);
         }
+    };
+
+    const openCompanyModal = (company = null) => {
+        setEditingCompany(company);
+        companyForm.resetFields();
+        companyForm.setFieldsValue(company || { countryCode: "CO", electronicInvoicingEnabled: false });
+        setCompanyModalOpen(true);
     };
 
     const handleCreateUser = async (values) => {
@@ -129,6 +147,26 @@ const AdminManagement = () => {
         }
     };
 
+    const openCompanyAssignment = (targetUser) => {
+        setAssignmentUser(targetUser);
+        assignmentForm.setFieldsValue({ companyId: targetUser.company?.id || undefined });
+    };
+
+    const assignCompanyToUser = async ({ companyId }) => {
+        try {
+            setAssignmentSubmitting(true);
+            await adminService.updateUser(assignmentUser.id, { companyId: companyId || null });
+            toast.success("Empresa asignada al usuario");
+            setAssignmentUser(null);
+            assignmentForm.resetFields();
+            await fetchData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setAssignmentSubmitting(false);
+        }
+    };
+
     if (!isAdmin) {
         return (
             <div className="p-6 sm:p-8">
@@ -165,7 +203,7 @@ const AdminManagement = () => {
                                     </Text>
                                     <Button
                                         icon={<PlusOutlined />}
-                                        onClick={() => setCompanyModalOpen(true)}
+                                        onClick={() => openCompanyModal()}
                                         className="rounded-xl border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0]"
                                     >
                                         {t("admin.add_company")}
@@ -185,10 +223,23 @@ const AdminManagement = () => {
                                                         {company.legalName || "-"} | {company.contactEmail || "-"}
                                                     </div>
                                                     <div className="text-xs text-[#A9B3B8]">
+                                                        Country: {company.countryCode || "-"}
+                                                    </div>
+                                                    {company.countryCode === "CO" && (
+                                                        <div className="mt-1">
+                                                            <Tag color={company.electronicInvoicingEnabled ? "cyan" : "default"}>
+                                                                {company.electronicInvoicingEnabled ? "Facturación electrónica activa" : "Facturación electrónica desactivada"}
+                                                            </Tag>
+                                                        </div>
+                                                    )}
+                                                    <div className="text-xs text-[#A9B3B8]">
                                                         {t("admin.users_count")} {company._count?.users || 0}
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3">
+                                                    <Button type="text" className="!text-[#44F3F0]" onClick={() => openCompanyModal(company)}>
+                                                        Configurar
+                                                    </Button>
                                                     <Tag color={company.isActive ? "green" : "default"}>
                                                         {company.isActive
                                                             ? t("admin.active")
@@ -242,6 +293,9 @@ const AdminManagement = () => {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
+                                                    <Button type="text" className="!text-[#44F3F0]" onClick={() => openCompanyAssignment(item)}>
+                                                        Empresa
+                                                    </Button>
                                                     <Tag color={item.role === "admin" ? "gold" : "blue"}>
                                                         {item.role}
                                                     </Tag>
@@ -266,14 +320,20 @@ const AdminManagement = () => {
             />
 
             <Modal
-                title={t("admin.add_company")}
+                title={editingCompany ? "Configurar compañía" : t("admin.add_company")}
                 open={companyModalOpen}
-                onCancel={() => setCompanyModalOpen(false)}
+                onCancel={() => { setCompanyModalOpen(false); setEditingCompany(null); companyForm.resetFields(); }}
                 onOk={() => companyForm.submit()}
                 confirmLoading={companySubmitting}
                 okText={t("common.save")}
                 cancelText={t("common.cancel")}
                 destroyOnClose
+                width={640}
+                styles={{
+                    content: { background: "linear-gradient(145deg, #111b20 0%, #090a0c 58%, #111027 100%)", border: "1px solid rgba(41,216,213,0.22)", borderRadius: 24, boxShadow: "0 28px 80px rgba(0,0,0,.62)" },
+                    header: { background: "transparent", borderBottom: "1px solid rgba(255,255,255,.08)", padding: "22px 24px" },
+                    body: { padding: 24 },
+                }}
             >
                 <Form form={companyForm} layout="vertical" onFinish={handleCreateCompany}>
                     <Form.Item
@@ -286,12 +346,68 @@ const AdminManagement = () => {
                     <Form.Item name="legalName" label={t("admin.company_legal_name")}>
                         <Input />
                     </Form.Item>
+                    <Form.Item
+                        name="countryCode"
+                        label="Country (ISO-2)"
+                        initialValue="CO"
+                        rules={[
+                            {
+                                pattern: /^[A-Za-z]{2}$/,
+                                message: "Use a 2-letter country code (for example CO, ES)",
+                            },
+                        ]}
+                    >
+                        <Select
+                            showSearch
+                            options={[
+                                { value: "CO", label: "CO - Colombia" },
+                                { value: "ES", label: "ES - Espana" },
+                            ]}
+                            filterOption={(input, option) =>
+                                `${option?.label || ""}`
+                                    .toLowerCase()
+                                    .includes(input.toLowerCase())
+                            }
+                        />
+                    </Form.Item>
                     <Form.Item name="contactEmail" label={t("admin.company_contact_email")}>
                         <Input type="email" />
                     </Form.Item>
                     <Form.Item name="phone" label={t("admin.company_phone")}>
                         <Input />
                     </Form.Item>
+                    {selectedCompanyCountry === "CO" && (
+                        <div className="relative overflow-hidden rounded-2xl border border-[#29D8D5]/25 bg-[radial-gradient(circle_at_90%_10%,rgba(41,216,213,.20),transparent_35%),linear-gradient(135deg,rgba(16,39,43,.9),rgba(14,12,31,.88))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.07)]">
+                            <div className="absolute right-[-22px] top-[-25px] h-24 w-24 rounded-full border border-[#44F3F0]/20" />
+                            <div className="relative mb-1 flex items-center gap-2 text-sm font-bold text-white"><span className="h-2 w-2 rounded-full bg-[#44F3F0] shadow-[0_0_14px_#44F3F0]" />Facturación electrónica DIAN</div>
+                            <p className="relative mb-4 text-xs text-[#A9B3B8]">
+                                Actívala solo cuando el rango de numeración Factus esté listo en sandbox o producción.
+                            </p>
+                            <Form.Item name="electronicInvoicingEnabled" valuePropName="checked" initialValue={false}>
+                                <Switch checkedChildren="Activa" unCheckedChildren="Inactiva" />
+                            </Form.Item>
+                            <Form.Item
+                                name="factusNumberingRangeId"
+                                label="ID del rango de numeración Factus"
+                            >
+                                <Input placeholder="Ej. 389" />
+                            </Form.Item>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Form.Item name="factusDocumentType" label="Documento" initialValue="01">
+                                    <Select options={[{ value: "01", label: "Factura electrónica" }]} />
+                                </Form.Item>
+                                <Form.Item name="factusOperationType" label="Operación" initialValue="10">
+                                    <Select options={[{ value: "10", label: "Estándar" }, { value: "11", label: "Mandato" }]} />
+                                </Form.Item>
+                                <Form.Item name="factusPaymentForm" label="Forma de pago" initialValue="1">
+                                    <Select options={[{ value: "1", label: "Contado" }, { value: "2", label: "Crédito" }]} />
+                                </Form.Item>
+                                <Form.Item name="factusPaymentMethodCode" label="Medio de pago" initialValue="42">
+                                    <Input placeholder="42" />
+                                </Form.Item>
+                            </div>
+                        </div>
+                    )}
                 </Form>
             </Modal>
 
@@ -358,6 +474,25 @@ const AdminManagement = () => {
                                 { value: "en", label: "English" },
                             ]}
                         />
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title={`Asignar empresa a ${assignmentUser?.username || "usuario"}`}
+                open={Boolean(assignmentUser)}
+                onCancel={() => { setAssignmentUser(null); assignmentForm.resetFields(); }}
+                onOk={() => assignmentForm.submit()}
+                confirmLoading={assignmentSubmitting}
+                okText="Guardar asignación"
+                destroyOnClose
+            >
+                <p className="mb-4 text-sm text-[#A9B3B8]">
+                    El usuario facturará con la configuración y el país de esta empresa. Nunca verá datos de las demás.
+                </p>
+                <Form form={assignmentForm} layout="vertical" onFinish={assignCompanyToUser}>
+                    <Form.Item name="companyId" label="Empresa">
+                        <Select allowClear placeholder="Selecciona una empresa" options={companyOptions} />
                     </Form.Item>
                 </Form>
             </Modal>

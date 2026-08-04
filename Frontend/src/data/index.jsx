@@ -12,6 +12,7 @@ import {
     CheckCircleOutlined,
     ClockCircleOutlined,
     UndoOutlined,
+    FileTextOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 
@@ -84,7 +85,7 @@ export const steps = [
     },
 ];
 
-export const getMenuItems = (t, role) => {
+export const getMenuItems = (t, role, showElectronicInvoicing = false) => {
     const items = [
         {
             key: "dashboard",
@@ -101,6 +102,11 @@ export const getMenuItems = (t, role) => {
             icon: <ShoppingCartOutlined />,
             label: <Link to="/orders">{t("common.orders")}</Link>,
         },
+        ...(showElectronicInvoicing ? [{
+            key: "electronic-invoices",
+            icon: <FileTextOutlined />,
+            label: <Link to="/electronic-invoices">Documentos electrónicos</Link>,
+        }] : []),
         {
             key: "purchases",
             icon: <ShoppingOutlined />,

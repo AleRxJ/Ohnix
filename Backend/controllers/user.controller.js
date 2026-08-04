@@ -89,6 +89,8 @@ const userPublicSelect = {
             id: true,
             name: true,
             legalName: true,
+            countryCode: true,
+            electronicInvoicingEnabled: true,
         },
     },
     createdAt: true,

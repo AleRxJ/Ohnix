@@ -167,6 +167,8 @@ Sales order management with invoice generation and status tracking.
 | **GET**   | `/orders/:id/details` | Get complete order details with items                        | ✅   | User  |
 | **PATCH** | `/orders/:id/status`  | Update order status (pending/processing/completed/cancelled) | ✅   | User  |
 | **GET**   | `/orders/:id/invoice` | Generate and download order invoice                          | ✅   | User  |
+| **GET**   | `/orders/:id/electronic-invoice` | Get electronic invoicing status for the order (Factus, CO only) | ✅ | User |
+| **POST**  | `/orders/:id/electronic-invoice/issue` | Send order to Factus for DIAN electronic invoicing (CO only) | ✅ | User |
 | **GET**   | `/orders/all`         | Get all orders across all users                              | ✅   | Admin |
 
 ---
@@ -352,6 +354,47 @@ EPAYCO_CONFIRMATION_URL=https://api.ohnix.co/api/v1/subscriptions/payments/epayc
 EPAYCO_AMOUNT_GROWTH_COP=99000
 EPAYCO_AMOUNT_ENTERPRISE_COP=299000
 ```
+
+---
+
+### Factus Integration (Colombia Electronic Invoicing)
+
+| Method   | Endpoint                                             | Description | Auth | Role |
+| -------- | ---------------------------------------------------- | ----------- | ---- | ---- |
+| **POST** | `/electronic-invoicing/factus/webhook`              | Factus status callback webhook (updates DIAN status) | ❌ | System |
+
+#### Required Environment Variables
+
+```bash
+# Factus base URL and endpoints
+FACTUS_BASE_URL=https://api-sandbox.factus.com.co
+FACTUS_AUTH_PATH=/oauth/token
+FACTUS_INVOICE_PATH=/v2/bills/validate
+FACTUS_INVOICE_STATUS_PATH=/v2/bills/{number}
+
+# Auth mode: client_credentials | password
+FACTUS_AUTH_MODE=password
+
+# Use static token OR OAuth credentials
+FACTUS_ACCESS_TOKEN=
+FACTUS_CLIENT_ID=
+FACTUS_CLIENT_SECRET=
+
+# Required only when FACTUS_AUTH_MODE=password
+FACTUS_USERNAME=
+FACTUS_PASSWORD=
+
+# Optional
+FACTUS_API_KEY=
+FACTUS_TIMEOUT_MS=20000
+FACTUS_WEBHOOK_SECRET=
+```
+
+Factus V2 issuance is enabled only when the company has `countryCode=CO`,
+`electronicInvoicingEnabled=true` and a `factusNumberingRangeId`. The customer
+must have its DIAN identification and municipality fields, and each product must
+have its DIAN unit/tax configuration. The webhook is rejected until
+`FACTUS_WEBHOOK_SECRET` is configured.
 
 ### Stripe Dashboard Requirements (CO/ES)
 

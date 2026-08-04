@@ -195,6 +195,23 @@ const ProductDetailsDrawer = ({
                     </div>
                 </div>
 
+                {(product.unit_measure_code || product.standard_code) && (
+                    <div className="module-shell rounded-3xl border border-[#29D8D5]/15">
+                        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <CheckCircleOutlined className="text-[#44F3F0]" />
+                                <Text className="text-sm font-bold text-white">Clasificación electrónica</Text>
+                            </div>
+                            <Text className="text-xs text-[#44F3F0]">DIAN</Text>
+                        </div>
+                        <div className="p-5 space-y-3">
+                            <div className="flex justify-between"><Text className="text-sm text-[#A9B3B8]">Unidad</Text><Text className="text-sm text-white">{product.unit_measure_code || "—"}</Text></div>
+                            <div className="flex justify-between"><Text className="text-sm text-[#A9B3B8]">Código estándar</Text><Text className="text-sm text-white">{product.standard_code || "—"}</Text></div>
+                            <div className="flex justify-between"><Text className="text-sm text-[#A9B3B8]">Impuesto</Text><Text className="text-sm text-white">{product.is_tax_excluded ? "Excluido" : `${product.tax_code || "01"} · ${product.tax_rate ?? 0}%`}</Text></div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="module-shell rounded-3xl border border-white/10">
                     <div className="px-5 py-4 border-b border-white/10">
                         <div className="flex items-center gap-2">

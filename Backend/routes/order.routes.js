@@ -7,6 +7,10 @@ import {
     getOrderDetails,
     updateOrderStatus,
 } from "../controllers/order.controller.js";
+import {
+    getOrderElectronicInvoice,
+    issueOrderElectronicInvoice,
+} from "../controllers/electronicInvoice.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import {
@@ -24,6 +28,8 @@ router.get("/", getAllOrders);
 router.get("/:id/details", getOrderDetails);
 router.patch("/:id/status", updateOrderStatus);
 router.route("/:id/invoice").get(generateInvoice);
+router.route("/:id/electronic-invoice").get(getOrderElectronicInvoice);
+router.route("/:id/electronic-invoice/issue").post(issueOrderElectronicInvoice);
 
 // Admin-only routes
 router.get("/all", isAdmin, getAllOrdersAdmin);
