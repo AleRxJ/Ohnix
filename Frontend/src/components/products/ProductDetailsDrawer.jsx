@@ -26,7 +26,7 @@ const ProductDetailsDrawer = ({
 }) => {
     if (!product) return null;
     const { formatCurrency } = useCurrency();
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
 
     const getStockStatus = (stock) => {
         if (stock === 0) {
@@ -108,7 +108,7 @@ const ProductDetailsDrawer = ({
                                     className="w-full h-full object-cover"
                                     fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6U"
                                     preview={{
-                                        mask: <div className="text-white text-xs font-medium">Preview</div>,
+                                        mask: <div className="text-white text-xs font-medium">{t("products.preview")}</div>,
                                     }}
                                 />
                             </div>
@@ -143,7 +143,7 @@ const ProductDetailsDrawer = ({
                             <div className="w-10 h-10 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center mb-2">
                                 <InboxOutlined className="text-[#29D8D5] text-lg" />
                             </div>
-                            <Text className="text-xs text-[#A9B3B8] mb-1 font-bold">Stock</Text>
+                            <Text className="text-xs text-[#A9B3B8] mb-1 font-bold">{t("products.stock")}</Text>
                             <Text className="text-xl font-bold text-white">{product.stock}</Text>
                         </div>
                     </div>
@@ -200,14 +200,14 @@ const ProductDetailsDrawer = ({
                         <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <CheckCircleOutlined className="text-[#44F3F0]" />
-                                <Text className="text-sm font-bold text-white">Clasificación electrónica</Text>
+                                <Text className="text-sm font-bold text-white">{t("products.dian_classification")}</Text>
                             </div>
                             <Text className="text-xs text-[#44F3F0]">DIAN</Text>
                         </div>
                         <div className="p-5 space-y-3">
-                            <div className="flex justify-between"><Text className="text-sm text-[#A9B3B8]">Unidad</Text><Text className="text-sm text-white">{product.unit_measure_code || "—"}</Text></div>
-                            <div className="flex justify-between"><Text className="text-sm text-[#A9B3B8]">Código estándar</Text><Text className="text-sm text-white">{product.standard_code || "—"}</Text></div>
-                            <div className="flex justify-between"><Text className="text-sm text-[#A9B3B8]">Impuesto</Text><Text className="text-sm text-white">{product.is_tax_excluded ? "Excluido" : `${product.tax_code || "01"} · ${product.tax_rate ?? 0}%`}</Text></div>
+                            <div className="flex justify-between"><Text className="text-sm text-[#A9B3B8]">{t("products.unit")}</Text><Text className="text-sm text-white">{product.unit_measure_code || "—"}</Text></div>
+                            <div className="flex justify-between"><Text className="text-sm text-[#A9B3B8]">{t("products.dian_standard_code")}</Text><Text className="text-sm text-white">{product.standard_code || "—"}</Text></div>
+                            <div className="flex justify-between"><Text className="text-sm text-[#A9B3B8]">{t("products.dian_tax")}</Text><Text className="text-sm text-white">{product.is_tax_excluded ? t("products.dian_excluded") : `${product.tax_code || "01"} · ${product.tax_rate ?? 0}%`}</Text></div>
                         </div>
                     </div>
                 )}
@@ -250,7 +250,7 @@ const ProductDetailsDrawer = ({
                             <div className="flex items-center justify-between">
                                 <Text className="text-sm text-[#A9B3B8]">{t("products.created")}</Text>
                                 <Text className="text-sm font-medium text-white">
-                                    {new Date(product.createdAt).toLocaleDateString("en-US", {
+                                    {new Date(product.createdAt).toLocaleDateString(currentLanguage, {
                                         year: "numeric",
                                         month: "short",
                                         day: "numeric",
@@ -261,7 +261,7 @@ const ProductDetailsDrawer = ({
                             <div className="flex items-center justify-between">
                                 <Text className="text-sm text-[#A9B3B8]">{t("products.last_updated")}</Text>
                                 <Text className="text-sm font-medium text-white">
-                                    {new Date(product.updatedAt).toLocaleDateString("en-US", {
+                                    {new Date(product.updatedAt).toLocaleDateString(currentLanguage, {
                                         year: "numeric",
                                         month: "short",
                                         day: "numeric",

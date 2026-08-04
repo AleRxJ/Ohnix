@@ -345,10 +345,10 @@ const CustomerForm = ({
                             <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center text-white">
                                     <IdcardOutlined className="mr-3 text-[#44F3F0] text-lg" />
-                                    <span className="text-lg font-semibold text-white">Datos DIAN</span>
+                                    <span className="text-lg font-semibold text-white">{t("customers.dian_data")}</span>
                                 </div>
                                 <span className="text-xs text-[#44F3F0] bg-[#29D8D5]/10 px-3 py-1 rounded-full border border-[#29D8D5]/20">
-                                    Facturación electrónica CO
+                                    {t("customers.dian_badge")}
                                 </span>
                             </div>
                         }
@@ -356,32 +356,32 @@ const CustomerForm = ({
                         headStyle={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "transparent" }}
                     >
                         <p className="text-sm text-[#A9B3B8] mb-4">
-                            Estos datos se usan únicamente al emitir el documento electrónico.
+                            {t("customers.dian_hint")}
                         </p>
                         <Row gutter={[24, 16]}>
                             <Col xs={24} sm={8}>
-                                <Form.Item name="identification_document_code" label="Tipo de documento" rules={[{ required: true, message: "Selecciona el documento DIAN" }]}>
-                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "13", label: "Cédula de ciudadanía" }, { value: "31", label: "NIT" }, { value: "22", label: "Cédula de extranjería" }, { value: "41", label: "Pasaporte" }]} />
+                                <Form.Item name="identification_document_code" label={t("customers.dian_document_type")} rules={[{ required: true, message: t("customers.dian_document_type_required") }]}>
+                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "13", label: t("customers.dian_doc_cc") }, { value: "31", label: t("customers.dian_doc_nit") }, { value: "22", label: t("customers.dian_doc_ce") }, { value: "41", label: t("customers.dian_doc_passport") }]} />
                                 </Form.Item>
                             </Col>
                             <Col xs={24} sm={8}>
-                                <Form.Item name="identification" label="Número de identificación" rules={[{ required: true, message: "Ingresa la identificación" }]}>
+                                <Form.Item name="identification" label={t("customers.dian_identification")} rules={[{ required: true, message: t("customers.dian_identification_required") }]}>
                                     <Input size="large" className="auth-ohnix-input" />
                                 </Form.Item>
                             </Col>
                             <Col xs={24} sm={8}>
-                                <Form.Item name="municipality_code" label="Código municipio DIAN" rules={[{ required: true, message: "Ingresa el municipio DIAN" }]}>
+                                <Form.Item name="municipality_code" label={t("customers.dian_municipality_code")} rules={[{ required: true, message: t("customers.dian_municipality_code_required") }]}>
                                     <Input size="large" placeholder="Ej. 11001" className="auth-ohnix-input" />
                                 </Form.Item>
                             </Col>
                             <Col xs={24} sm={12}>
-                                <Form.Item name="legal_organization_code" label="Organización" rules={[{ required: true, message: "Selecciona la organización" }]}>
-                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "1", label: "Persona jurídica" }, { value: "2", label: "Persona natural" }]} />
+                                <Form.Item name="legal_organization_code" label={t("customers.dian_organization")} rules={[{ required: true, message: t("customers.dian_organization_required") }]}>
+                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "1", label: t("customers.dian_org_legal") }, { value: "2", label: t("customers.dian_org_natural") }]} />
                                 </Form.Item>
                             </Col>
                             <Col xs={24} sm={12}>
-                                <Form.Item name="tribute_code" label="Responsabilidad tributaria" rules={[{ required: true, message: "Selecciona la responsabilidad" }]}>
-                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "ZZ", label: "No responsable de IVA" }, { value: "01", label: "IVA" }]} />
+                                <Form.Item name="tribute_code" label={t("customers.dian_tax_liability")} rules={[{ required: true, message: t("customers.dian_tax_liability_required") }]}>
+                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "ZZ", label: t("customers.dian_tax_not_liable") }, { value: "01", label: t("customers.dian_tax_vat") }]} />
                                 </Form.Item>
                             </Col>
                         </Row>

@@ -485,7 +485,7 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
             .text(`$${orderDetails.sub_total.toFixed(2)}`, 470, summaryY + 10, {
                 align: "right",
             })
-            .text("GST (18%)", 370, summaryY + 30)
+            .text("Tax", 370, summaryY + 30)
             .text(
                 `$${(orderDetails.total - orderDetails.sub_total).toFixed(2)}`,
                 470,

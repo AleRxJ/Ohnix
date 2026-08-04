@@ -34,8 +34,34 @@ const findProductByAnyId = async (id) =>
             productCode: true,
             createdById: true,
             stock: true,
+            taxRate: true,
+            taxCode: true,
+            isTaxExcluded: true,
         },
     });
+
+// The order's tax total must always be derived from each product's own tax
+// rate (Product.taxRate/isTaxExcluded), never a flat assumed percentage -
+// this is what gets validated against Factus/DIAN at invoicing time.
+const computeOrderTotals = (resolvedItems) => {
+    let subTotal = 0;
+    let gst = 0;
+
+    for (const item of resolvedItems) {
+        const lineTotal = item.quantity * item.unitcost;
+        subTotal += lineTotal;
+        if (!item.product.isTaxExcluded) {
+            const rate = Number(item.product.taxRate) || 0;
+            gst += (lineTotal * rate) / 100;
+        }
+    }
+
+    subTotal = Number(subTotal.toFixed(2));
+    gst = Number(gst.toFixed(2));
+    const total = Number((subTotal + gst).toFixed(2));
+
+    return { subTotal, gst, total };
+};
 
 const findOrderByAnyId = async (id) =>
     prisma.order.findFirst({
@@ -66,8 +92,7 @@ const triggerElectronicInvoicingIfCompleted = ({ orderId, userId, userRole, trig
 
 class OrderService {
     async createOrder(orderData, userId, userRole) {
-        const { customer_id, sub_total, gst, total, order_status, orderItems } =
-            orderData;
+        const { customer_id, order_status, orderItems } = orderData;
 
         if (!customer_id || !Array.isArray(orderItems) || orderItems.length === 0) {
             throw new ApiError(400, "Invalid order data");
@@ -154,6 +179,8 @@ class OrderService {
             }
         }
 
+        const { subTotal, gst, total } = computeOrderTotals(resolvedItems);
+
         const order = await prisma.$transaction(async (tx) => {
             const createdOrder = await tx.order.create({
                 data: {
@@ -161,9 +188,9 @@ class OrderService {
                     orderDate: new Date(),
                     orderStatus: initialStatus,
                     totalProducts: orderItems.length,
-                    subTotal: Number(sub_total),
-                    gst: Number(gst || 0),
-                    total: Number(total),
+                    subTotal,
+                    gst,
+                    total,
                     invoiceNo,
                     createdById: userId,
                     updatedById: userId,

@@ -298,28 +298,30 @@ const ProductModal = ({
                                     <div className="flex items-center justify-between gap-3 mb-3 pb-2 border-b border-white/8">
                                         <div className="flex items-center gap-2">
                                             <div className="w-1 h-4 bg-[#44F3F0] rounded-full"></div>
-                                            <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">Clasificación DIAN</h3>
+                                            <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">{t("products.dian_classification")}</h3>
                                         </div>
                                         <span className="text-[11px] text-[#44F3F0]">Factus V2</span>
                                     </div>
                                     <Row gutter={12}>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item name="unit_measure_code" label={<span className="text-xs text-[#A9B3B8]">Unidad DIAN</span>} initialValue="94" rules={[{ required: true, message: "Ingresa la unidad DIAN" }]}>
+                                            <Form.Item name="unit_measure_code" label={<span className="text-xs text-[#A9B3B8]">{t("products.dian_unit")}</span>} initialValue="94" rules={[{ required: true, message: t("products.dian_unit_required") }]}>
                                                 <Input size="large" className="auth-ohnix-input" placeholder="94" />
                                             </Form.Item>
                                         </Col>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item name="standard_code" label={<span className="text-xs text-[#A9B3B8]">Código estándar</span>} initialValue="999" rules={[{ required: true, message: "Ingresa el código estándar" }]}>
+                                            <Form.Item name="standard_code" label={<span className="text-xs text-[#A9B3B8]">{t("products.dian_standard_code")}</span>} initialValue="999" rules={[{ required: true, message: t("products.dian_standard_code_required") }]}>
                                                 <Input size="large" className="auth-ohnix-input" placeholder="999" />
                                             </Form.Item>
                                         </Col>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item name="tax_code" label={<span className="text-xs text-[#A9B3B8]">Impuesto</span>} initialValue="01">
-                                                <Select size="large" className="auth-ohnix-input" options={[{ value: "01", label: "IVA" }, { value: "04", label: "INC" }]} />
+                                            <Form.Item name="tax_code" label={<span className="text-xs text-[#A9B3B8]">{t("products.dian_tax")}</span>} initialValue="01">
+                                                <Select size="large" className="auth-ohnix-input" options={[{ value: "01", label: t("customers.dian_tax_vat") }, { value: "04", label: "INC" }]} />
                                             </Form.Item>
                                         </Col>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item name="tax_rate" label={<span className="text-xs text-[#A9B3B8]">Tarifa (%)</span>} initialValue={0}>
+                                            {/* Defaults to Colombia's general VAT rate since this block only
+                                                renders for CO companies with electronic invoicing enabled. */}
+                                            <Form.Item name="tax_rate" label={<span className="text-xs text-[#A9B3B8]">{t("products.dian_tax_rate")}</span>} initialValue={19}>
                                                 <InputNumber min={0} max={100} precision={2} size="large" className="w-full auth-ohnix-input" />
                                             </Form.Item>
                                         </Col>
@@ -334,7 +336,7 @@ const ProductModal = ({
                             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/8">
                                 <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
                                 <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">
-                                    Product Image
+                                    {t("products.product_image")}
                                 </h3>
                             </div>
                             <ProductImageUpload

@@ -45,10 +45,14 @@ export const useOrderOperations = (refreshOrders) => {
         }
     };
 
-    const createOrder = async (values) => {
+    const createOrder = async (values, products = []) => {
         try {
+            const productsById = Object.fromEntries(
+                products.map((product) => [product._id, product])
+            );
             const { subTotal, gst, total } = calculateOrderTotals(
-                values.orderItems
+                values.orderItems,
+                productsById
             );
 
             const orderData = {

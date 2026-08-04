@@ -8,12 +8,24 @@ export const getStatusColor = (status) => {
     return colors[status] || "default";
 };
 
-export const calculateOrderTotals = (orderItems) => {
-    const subTotal = orderItems.reduce(
-        (sum, item) => sum + item.quantity * item.unitcost,
-        0
-    );
-    const gst = subTotal * 0.18;
+// This is only a client-side preview shown while building the order - the
+// backend always recomputes subTotal/gst/total from each product's own
+// taxRate/isTaxExcluded before persisting, so it stays the source of truth.
+export const calculateOrderTotals = (orderItems, productsById = {}) => {
+    let subTotal = 0;
+    let gst = 0;
+
+    for (const item of orderItems) {
+        const lineTotal = item.quantity * item.unitcost;
+        subTotal += lineTotal;
+
+        const product = productsById[item.product_id];
+        if (product && !product.is_tax_excluded) {
+            const rate = Number(product.tax_rate) || 0;
+            gst += (lineTotal * rate) / 100;
+        }
+    }
+
     const total = subTotal + gst;
     return { subTotal, gst, total };
 };

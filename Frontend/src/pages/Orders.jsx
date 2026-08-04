@@ -75,7 +75,7 @@ const Orders = () => {
     };
 
     const handleCreateOrder = async (values) => {
-        const success = await createOrder(values);
+        const success = await createOrder(values, products);
         if (success) {
             setCreateModalVisible(false);
             createForm.resetFields();

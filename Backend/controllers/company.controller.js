@@ -3,7 +3,11 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
-const normalizeCountryCode = (value) => {
+// Deliberately distinct from companyCountry.service.js#normalizeCountryCode:
+// that one just normalizes an already-stored value for fiscal checks, while
+// this one validates the ISO-2 *format* of user-submitted input and rejects
+// anything malformed.
+const parseIsoCountryCode = (value) => {
     const normalized = `${value || ""}`.trim().toUpperCase();
     if (!normalized) {
         return null;
@@ -79,7 +83,7 @@ export const createCompanyAdmin = asyncHandler(async (req, res, next) => {
     }
 
     const normalizedName = name.trim();
-    const normalizedCountryCode = normalizeCountryCode(countryCode);
+    const normalizedCountryCode = parseIsoCountryCode(countryCode);
     const normalizedContactEmail = contactEmail?.trim().toLowerCase() || null;
     const hasExplicitCountry =
         countryCode !== undefined && `${countryCode || ""}`.trim() !== "";
@@ -134,7 +138,7 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
     const { companyId } = req.params;
     const { name, legalName, countryCode, contactEmail, phone, isActive } = req.body;
 
-    const normalizedCountryCode = normalizeCountryCode(countryCode);
+    const normalizedCountryCode = parseIsoCountryCode(countryCode);
     const hasExplicitCountry =
         countryCode !== undefined && `${countryCode || ""}`.trim() !== "";
 

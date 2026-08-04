@@ -3,8 +3,30 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
 import { prisma } from "../db/prisma.js";
+import { normalizeCountryCode } from "../services/companyCountry.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
+
+const COLOMBIA_DEFAULT_TAX_RATE = 19;
+
+// Product.taxRate defaults to 0 at the schema level so it stays neutral for
+// companies outside Colombia. When a CO company creates a product without an
+// explicit tax rate, default it to the DIAN general VAT rate here instead -
+// silently leaving it at 0 would understate IVA on every electronic invoice.
+const resolveDefaultTaxRate = async (userId, explicitTaxRate) => {
+    if (explicitTaxRate !== undefined) {
+        return Number(explicitTaxRate);
+    }
+
+    const creator = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { company: { select: { countryCode: true } } },
+    });
+
+    return normalizeCountryCode(creator?.company?.countryCode) === "CO"
+        ? COLOMBIA_DEFAULT_TAX_RATE
+        : undefined;
+};
 
 const mapProduct = (product) => ({
     _id: toExternalId(product),
@@ -187,6 +209,8 @@ const createProduct = asyncHandler(async (req, res, next) => {
             }
         }
 
+        const resolvedTaxRate = await resolveDefaultTaxRate(req.user.prismaId, tax_rate !== undefined ? tax_rate : undefined);
+
         const product = await prisma.product.create({
             data: {
                 productName: String(product_name).trim(),
@@ -201,7 +225,7 @@ const createProduct = asyncHandler(async (req, res, next) => {
                 ...(unit_measure_code !== undefined && { unitMeasureCode: String(unit_measure_code).trim() }),
                 ...(standard_code !== undefined && { standardCode: String(standard_code).trim() }),
                 ...(tax_code !== undefined && { taxCode: String(tax_code).trim() || null }),
-                ...(tax_rate !== undefined && { taxRate: Number(tax_rate) }),
+                ...(resolvedTaxRate !== undefined && { taxRate: resolvedTaxRate }),
                 ...(typeof is_tax_excluded === "boolean" && { isTaxExcluded: is_tax_excluded }),
             },
             include: {

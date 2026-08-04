@@ -378,6 +378,7 @@ model ElectronicInvoice {
   order           Order                 @relation(fields: [orderId], references: [id])
   company         Company               @relation(fields: [companyId], references: [id])
   events          ElectronicInvoiceEvent[]
+  creditNotes     ElectronicCreditNote[]
 
   @@index([companyId, createdAt])
   @@index([countryCode, provider])
@@ -396,4 +397,29 @@ model ElectronicInvoiceEvent {
 
   @@index([electronicInvoiceId, createdAt])
   @@map("electronic_invoice_events")
+}
+
+model ElectronicCreditNote {
+  id                    String                  @id @default(cuid())
+  invoiceId             String                  @map("invoice_id")
+  correctionConceptCode String                  @map("correction_concept_code")
+  referenceCode         String                  @unique @map("reference_code")
+  status                ElectronicInvoiceStatus @default(draft)
+  externalId            String?                 @unique @map("external_id")
+  creditNoteNumber      String?                 @map("credit_note_number")
+  cufe                  String?
+  pdfUrl                String?                 @map("pdf_url") @db.Text
+  xmlUrl                String?                 @map("xml_url") @db.Text
+  observation           String?                 @db.Text
+  rawRequest            Json?                   @map("raw_request")
+  rawResponse           Json?                   @map("raw_response")
+  errorMessage          String?                 @map("error_message") @db.Text
+  issuedAt              DateTime?               @map("issued_at")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
+
+  invoice               ElectronicInvoice       @relation(fields: [invoiceId], references: [id])
+
+  @@index([invoiceId, createdAt])
+  @@map("electronic_credit_notes")
 }

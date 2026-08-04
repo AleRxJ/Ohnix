@@ -1,10 +1,27 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
-import { createFactusInvoice, FactusError, isFactusConfigured } from "./factus.service.js";
+import {
+    createFactusInvoice,
+    createFactusCreditNote,
+    getFactusInvoiceStatus,
+    FactusError,
+    isFactusConfigured,
+} from "./factus.service.js";
 import { normalizeCountryCode } from "./companyCountry.service.js";
 
 const FACTUS_PROVIDER = "factus";
 const TERMINAL_STATUSES = ["accepted", "cancelled"];
+
+// DIAN's standard correction-concept catalog for credit notes. Verify these
+// codes against the Factus sandbox response/docs before relying on them in
+// production - Factus may expose its own catalog endpoint.
+export const CREDIT_NOTE_CONCEPT_CODES = [
+    { code: "1", labelKey: "partial_return" },
+    { code: "2", labelKey: "cancellation" },
+    { code: "3", labelKey: "discount" },
+    { code: "4", labelKey: "price_adjustment" },
+    { code: "5", labelKey: "other" },
+];
 
 const toNumber = (value) => {
     const result = Number(value);
@@ -36,6 +53,28 @@ const mapFactusResponse = (raw) => {
         rawResponse: raw,
     };
 };
+
+const mapFactusCreditNoteResponse = (raw) => {
+    const envelope = pickFactusEnvelope(raw);
+    const note = envelope.credit_note || envelope.document || envelope.bill || envelope;
+    return {
+        externalId: text(note.id || note.uuid || note.document_id || note.track_id) || null,
+        creditNoteNumber: text(note.number || note.credit_note_number || note.consecutive) || null,
+        cufe: text(note.cufe || note.cude || note.cufe_code) || null,
+        pdfUrl: text(note.pdf_url || note.pdfUrl) || null,
+        xmlUrl: text(note.xml_url || note.xmlUrl) || null,
+        status: normalizeProviderStatus(note.status || note.state || raw?.status || raw?.state),
+        rawResponse: raw,
+    };
+};
+
+const serializeCreditNote = (note) => !note ? null : ({
+    id: note.id, invoiceId: note.invoiceId, correctionConceptCode: note.correctionConceptCode,
+    referenceCode: note.referenceCode, status: note.status, externalId: note.externalId,
+    creditNoteNumber: note.creditNoteNumber, cufe: note.cufe, pdfUrl: note.pdfUrl, xmlUrl: note.xmlUrl,
+    observation: note.observation, errorMessage: note.errorMessage, issuedAt: note.issuedAt,
+    createdAt: note.createdAt, updatedAt: note.updatedAt,
+});
 
 const canManageOrder = (order, userId, role) => role === "admin" || order.createdById === userId;
 
@@ -121,8 +160,15 @@ const getOrderWithRelations = (orderId) => prisma.order.findFirst({
         customer: true,
         orderDetails: { include: { product: true } },
         createdBy: { select: { id: true, companyId: true, company: true } },
-        electronicInvoice: true,
+        electronicInvoice: { include: { events: { orderBy: { createdAt: "asc" } } } },
     },
+});
+
+const serializeEvent = (event) => ({
+    id: event.id,
+    eventType: event.eventType,
+    status: event.status,
+    createdAt: event.createdAt,
 });
 
 const serialize = (invoice) => !invoice ? null : ({
@@ -132,6 +178,7 @@ const serialize = (invoice) => !invoice ? null : ({
     qrUrl: invoice.qrUrl, pdfUrl: invoice.pdfUrl, xmlUrl: invoice.xmlUrl,
     errorMessage: invoice.errorMessage, issuedAt: invoice.issuedAt,
     createdAt: invoice.createdAt, updatedAt: invoice.updatedAt,
+    events: Array.isArray(invoice.events) ? invoice.events.map(serializeEvent) : undefined,
 });
 
 export const getElectronicInvoiceForOrder = async ({ orderId, requesterUserId, requesterRole }) => {
@@ -161,7 +208,10 @@ export const listElectronicInvoices = async ({ requesterUserId, requesterRole, s
     const invoices = await prisma.electronicInvoice.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        include: { order: { select: { invoiceNo: true, total: true, customer: { select: { name: true } } } } },
+        include: {
+            order: { select: { invoiceNo: true, total: true, customer: { select: { name: true } } } },
+            events: { orderBy: { createdAt: "asc" } },
+        },
     });
     return invoices.map((invoice) => ({ ...serialize(invoice), order: invoice.order ? { invoiceNo: invoice.order.invoiceNo, total: Number(invoice.order.total), customerName: invoice.order.customer?.name || null } : null }));
 };
@@ -203,15 +253,178 @@ export const issueElectronicInvoiceForOrder = async ({ orderId, requesterUserId,
     if (!claim.claimed) return { reused: true, trigger, countryCode: "CO", invoice: serialize(claim.invoice) };
     try {
         const mapped = mapFactusResponse(await createFactusInvoice({ payload }));
-        const invoice = await prisma.electronicInvoice.update({ where: { id: claim.invoice.id }, data: { ...mapped, errorMessage: null, issuedAt: mapped.status === "accepted" ? new Date() : null } });
-        await prisma.electronicInvoiceEvent.create({ data: { electronicInvoiceId: invoice.id, eventType: "provider_response", status: invoice.status, payload: mapped.rawResponse } });
+        const invoice = await prisma.$transaction(async (tx) => {
+            const updated = await tx.electronicInvoice.update({ where: { id: claim.invoice.id }, data: { ...mapped, errorMessage: null, issuedAt: mapped.status === "accepted" ? new Date() : null } });
+            await tx.electronicInvoiceEvent.create({ data: { electronicInvoiceId: updated.id, eventType: "provider_response", status: updated.status, payload: mapped.rawResponse } });
+            return updated;
+        });
         return { reused: false, trigger, countryCode: "CO", invoice: serialize(invoice) };
     } catch (error) {
         const providerPayload = error instanceof FactusError ? error.payload : null;
-        const invoice = await prisma.electronicInvoice.update({ where: { id: claim.invoice.id }, data: { status: "error", rawResponse: providerPayload, errorMessage: error.message || "Unknown Factus error" } });
-        await prisma.electronicInvoiceEvent.create({ data: { electronicInvoiceId: invoice.id, eventType: "provider_error", status: "error", payload: providerPayload } });
+        const invoice = await prisma.$transaction(async (tx) => {
+            const updated = await tx.electronicInvoice.update({ where: { id: claim.invoice.id }, data: { status: "error", rawResponse: providerPayload, errorMessage: error.message || "Unknown Factus error" } });
+            await tx.electronicInvoiceEvent.create({ data: { electronicInvoiceId: updated.id, eventType: "provider_error", status: "error", payload: providerPayload } });
+            return updated;
+        });
         throw new ApiError(502, invoice.errorMessage);
     }
+};
+
+export const syncElectronicInvoiceStatus = async ({ orderId, requesterUserId, requesterRole }) => {
+    const order = await getOrderWithRelations(orderId);
+    if (!order) throw new ApiError(404, "Order not found");
+    if (!canManageOrder(order, requesterUserId, requesterRole)) throw new ApiError(403, "You are not authorized to access this order");
+
+    const invoice = order.electronicInvoice;
+    if (!invoice) throw new ApiError(404, "This order has no electronic invoice to sync");
+    if (!["issuing", "submitted"].includes(invoice.status)) {
+        throw new ApiError(409, `Electronic invoice status "${invoice.status}" cannot be synced`);
+    }
+    if (!invoice.invoiceNumber) {
+        throw new ApiError(409, "This invoice does not have a provider invoice number yet");
+    }
+    if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
+
+    try {
+        const mapped = mapFactusResponse(await getFactusInvoiceStatus({ invoiceNumber: invoice.invoiceNumber }));
+        const updated = await prisma.$transaction(async (tx) => {
+            const updatedInvoice = await tx.electronicInvoice.update({
+                where: { id: invoice.id },
+                data: {
+                    ...mapped,
+                    errorMessage: mapped.status === "rejected" ? "Invoice rejected by provider" : null,
+                    issuedAt: mapped.status === "accepted" ? new Date() : invoice.issuedAt,
+                },
+            });
+            await tx.electronicInvoiceEvent.create({ data: { electronicInvoiceId: updatedInvoice.id, eventType: "manual_sync", status: updatedInvoice.status, payload: mapped.rawResponse } });
+            return updatedInvoice;
+        });
+        return { invoice: serialize(updated) };
+    } catch (error) {
+        const providerPayload = error instanceof FactusError ? error.payload : null;
+        await prisma.electronicInvoiceEvent.create({
+            data: {
+                electronicInvoiceId: invoice.id,
+                eventType: "manual_sync_error",
+                status: invoice.status,
+                payload: providerPayload || { message: error.message },
+            },
+        });
+        throw new ApiError(502, error.message || "Failed to sync invoice status with Factus");
+    }
+};
+
+const buildCreditNotePayload = (order, invoice, company, { conceptCode, observation, items }) => {
+    const referenceCode = `${invoice.referenceCode}-CN-${Date.now().toString(36).toUpperCase()}`;
+    const productsByOrderDetailId = new Map(
+        (order.orderDetails || []).map((detail) => [detail.id, detail])
+    );
+
+    const payload = {
+        reference_code: referenceCode,
+        bill_id: invoice.externalId || undefined,
+        // Factus links a credit note to the original invoice via its provider
+        // number/reference - both are sent so either lookup strategy works.
+        invoice_reference_code: invoice.referenceCode,
+        invoice_number: invoice.invoiceNumber || undefined,
+        numbering_range_id: company.factusNumberingRangeId,
+        correction_concept_code: conceptCode,
+        payment_method_code: company.factusPaymentMethodCode,
+        observation: observation || `Nota credito Ohnix ${referenceCode}`,
+    };
+
+    if (Array.isArray(items) && items.length) {
+        payload.items = items
+            .map(({ orderDetailId, quantity }) => {
+                const detail = productsByOrderDetailId.get(orderDetailId);
+                if (!detail) return null;
+                return {
+                    code_reference: detail.product.productCode || detail.productId,
+                    name: detail.product.productName,
+                    quantity: Number(quantity || detail.quantity).toFixed(2),
+                    price: money(detail.unitcost),
+                    unit_measure_code: detail.product.unitMeasureCode,
+                    standard_code: detail.product.standardCode,
+                    taxes: detail.product.isTaxExcluded
+                        ? [{ is_excluded: true }]
+                        : [{ code: detail.product.taxCode, rate: money(detail.product.taxRate) }],
+                };
+            })
+            .filter(Boolean);
+    }
+
+    return payload;
+};
+
+export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requesterRole, conceptCode, observation, items }) => {
+    if (!text(conceptCode)) throw new ApiError(400, "conceptCode is required to issue a credit note");
+
+    const order = await getOrderWithRelations(orderId);
+    if (!order) throw new ApiError(404, "Order not found");
+    if (!canManageOrder(order, requesterUserId, requesterRole)) throw new ApiError(403, "You are not authorized to issue a credit note for this order");
+
+    const invoice = order.electronicInvoice;
+    if (!invoice) throw new ApiError(404, "This order has no electronic invoice");
+    if (invoice.status !== "accepted") throw new ApiError(409, "A credit note can only be issued for an accepted electronic invoice");
+    if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
+
+    const company = order.createdBy.company;
+    const payload = buildCreditNotePayload(order, invoice, company, { conceptCode, observation, items });
+
+    const draft = await prisma.electronicCreditNote.create({
+        data: {
+            invoiceId: invoice.id,
+            correctionConceptCode: conceptCode,
+            referenceCode: payload.reference_code,
+            status: "issuing",
+            observation: payload.observation,
+            rawRequest: payload,
+        },
+    });
+
+    try {
+        const mapped = mapFactusCreditNoteResponse(await createFactusCreditNote({ payload }));
+        const updated = await prisma.$transaction(async (tx) => {
+            const updatedNote = await tx.electronicCreditNote.update({
+                where: { id: draft.id },
+                data: { ...mapped, errorMessage: null, issuedAt: mapped.status === "accepted" ? new Date() : null },
+            });
+            await tx.electronicInvoiceEvent.create({
+                data: { electronicInvoiceId: invoice.id, eventType: "credit_note_issued", status: invoice.status, payload: { creditNoteId: updatedNote.id, ...mapped.rawResponse } },
+            });
+            return updatedNote;
+        });
+        return { creditNote: serializeCreditNote(updated) };
+    } catch (error) {
+        const providerPayload = error instanceof FactusError ? error.payload : null;
+        const updated = await prisma.$transaction(async (tx) => {
+            const updatedNote = await tx.electronicCreditNote.update({
+                where: { id: draft.id },
+                data: { status: "error", rawResponse: providerPayload, errorMessage: error.message || "Unknown Factus error" },
+            });
+            await tx.electronicInvoiceEvent.create({
+                data: { electronicInvoiceId: invoice.id, eventType: "credit_note_error", status: invoice.status, payload: { creditNoteId: updatedNote.id, ...providerPayload } },
+            });
+            return updatedNote;
+        });
+        throw new ApiError(502, updated.errorMessage);
+    }
+};
+
+export const listCreditNotesForInvoice = async ({ orderId, requesterUserId, requesterRole }) => {
+    const order = await getOrderWithRelations(orderId);
+    if (!order) throw new ApiError(404, "Order not found");
+    if (!canManageOrder(order, requesterUserId, requesterRole)) throw new ApiError(403, "You are not authorized to access this order");
+
+    const invoice = order.electronicInvoice;
+    if (!invoice) return { creditNotes: [] };
+
+    const creditNotes = await prisma.electronicCreditNote.findMany({
+        where: { invoiceId: invoice.id },
+        orderBy: { createdAt: "desc" },
+    });
+
+    return { creditNotes: creditNotes.map(serializeCreditNote) };
 };
 
 const validateFactusWebhookSecret = (headers) => {
@@ -230,7 +443,9 @@ export const processFactusWebhook = async ({ payload = {}, headers = {} }) => {
     if (!invoice) return { updated: false, reason: "invoice_not_found" };
     const status = normalizeProviderStatus(data.status || data.state || payload.status || payload.state);
     if (TERMINAL_STATUSES.includes(invoice.status) && invoice.status !== status) return { updated: false, reason: "terminal_status" };
-    const updated = await prisma.electronicInvoice.update({ where: { id: invoice.id }, data: { status, rawResponse: payload, errorMessage: status === "rejected" ? "Invoice rejected by provider" : null, issuedAt: status === "accepted" ? new Date() : undefined } });
-    await prisma.electronicInvoiceEvent.create({ data: { electronicInvoiceId: updated.id, eventType: "webhook", status, payload } });
+    await prisma.$transaction(async (tx) => {
+        const updated = await tx.electronicInvoice.update({ where: { id: invoice.id }, data: { status, rawResponse: payload, errorMessage: status === "rejected" ? "Invoice rejected by provider" : null, issuedAt: status === "accepted" ? new Date() : undefined } });
+        await tx.electronicInvoiceEvent.create({ data: { electronicInvoiceId: updated.id, eventType: "webhook", status, payload } });
+    });
     return { updated: true, status };
 };

@@ -3,8 +3,11 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import {
     getElectronicInvoiceForOrder,
     issueElectronicInvoiceForOrder,
+    syncElectronicInvoiceStatus,
     processFactusWebhook,
     listElectronicInvoices,
+    issueCreditNoteForInvoice,
+    listCreditNotesForInvoice,
 } from "../services/electronicInvoicing.service.js";
 
 export const getOrderElectronicInvoice = asyncHandler(async (req, res) => {
@@ -34,6 +37,52 @@ export const issueOrderElectronicInvoice = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(new ApiResponse(200, data, "Electronic invoice sent to Factus successfully"));
+});
+
+export const syncOrderElectronicInvoice = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const data = await syncElectronicInvoiceStatus({
+        orderId: id,
+        requesterUserId: req.user.prismaId,
+        requesterRole: req.user.role,
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, data, "Electronic invoice status synced successfully"));
+});
+
+export const issueOrderCreditNote = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { concept_code, observation, items } = req.body;
+
+    const data = await issueCreditNoteForInvoice({
+        orderId: id,
+        requesterUserId: req.user.prismaId,
+        requesterRole: req.user.role,
+        conceptCode: concept_code,
+        observation,
+        items,
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, data, "Credit note sent to Factus successfully"));
+});
+
+export const getOrderCreditNotes = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const data = await listCreditNotesForInvoice({
+        orderId: id,
+        requesterUserId: req.user.prismaId,
+        requesterRole: req.user.role,
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, data, "Credit notes fetched successfully"));
 });
 
 export const handleFactusWebhook = async (req, res) => {

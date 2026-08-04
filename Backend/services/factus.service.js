@@ -30,6 +30,7 @@ const getFactusConfig = () => ({
     authPath: `${process.env.FACTUS_AUTH_PATH || "/oauth/token"}`.trim(),
     invoicePath: `${process.env.FACTUS_INVOICE_PATH || "/v2/bills/validate"}`.trim(),
     invoiceStatusPathTemplate: `${process.env.FACTUS_INVOICE_STATUS_PATH || "/v2/bills/{number}"}`.trim(),
+    creditNotePath: `${process.env.FACTUS_CREDIT_NOTE_PATH || "/v1/credit-notes/validate"}`.trim(),
     authMode: `${process.env.FACTUS_AUTH_MODE || "password"}`
         .trim()
         .toLowerCase(),
@@ -162,6 +163,40 @@ export const createFactusInvoice = async ({ payload }) => {
             raw?.message ||
                 raw?.error ||
                 `Factus invoice creation failed with HTTP ${response.status}`,
+            { status: response.status, payload: raw }
+        );
+    }
+
+    return raw;
+};
+
+export const createFactusCreditNote = async ({ payload }) => {
+    const config = getFactusConfig();
+
+    if (!isFactusConfigured()) {
+        throw new Error("Factus is not configured");
+    }
+
+    const token = await getAccessToken();
+
+    const response = await withTimeout(
+        (signal) =>
+            fetch(buildAbsoluteUrl(config.baseUrl, config.creditNotePath), {
+                method: "POST",
+                headers: buildFactusAuthHeaders(token, config.apiKey),
+                body: JSON.stringify(payload),
+                signal,
+            }),
+        config.timeoutMs
+    );
+
+    const raw = await toJsonOrNull(response);
+
+    if (!response.ok) {
+        throw new FactusError(
+            raw?.message ||
+                raw?.error ||
+                `Factus credit note creation failed with HTTP ${response.status}`,
             { status: response.status, payload: raw }
         );
     }

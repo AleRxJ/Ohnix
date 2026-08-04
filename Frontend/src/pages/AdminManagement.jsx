@@ -87,7 +87,7 @@ const AdminManagement = () => {
             setCompanySubmitting(true);
             if (editingCompany) {
                 await adminService.updateCompany(editingCompany.id, values);
-                toast.success("Configuración de compañía actualizada");
+                toast.success(t("admin.company_updated"));
             } else {
                 await adminService.createCompany(values);
                 toast.success(t("admin.company_created"));
@@ -156,7 +156,7 @@ const AdminManagement = () => {
         try {
             setAssignmentSubmitting(true);
             await adminService.updateUser(assignmentUser.id, { companyId: companyId || null });
-            toast.success("Empresa asignada al usuario");
+            toast.success(t("admin.company_assigned"));
             setAssignmentUser(null);
             assignmentForm.resetFields();
             await fetchData();
@@ -223,12 +223,12 @@ const AdminManagement = () => {
                                                         {company.legalName || "-"} | {company.contactEmail || "-"}
                                                     </div>
                                                     <div className="text-xs text-[#A9B3B8]">
-                                                        Country: {company.countryCode || "-"}
+                                                        {t("admin.country_label")} {company.countryCode || "-"}
                                                     </div>
                                                     {company.countryCode === "CO" && (
                                                         <div className="mt-1">
                                                             <Tag color={company.electronicInvoicingEnabled ? "cyan" : "default"}>
-                                                                {company.electronicInvoicingEnabled ? "Facturación electrónica activa" : "Facturación electrónica desactivada"}
+                                                                {company.electronicInvoicingEnabled ? t("admin.dian_enabled") : t("admin.dian_disabled")}
                                                             </Tag>
                                                         </div>
                                                     )}
@@ -238,7 +238,7 @@ const AdminManagement = () => {
                                                 </div>
                                                 <div className="flex items-center gap-3">
                                                     <Button type="text" className="!text-[#44F3F0]" onClick={() => openCompanyModal(company)}>
-                                                        Configurar
+                                                        {t("admin.configure")}
                                                     </Button>
                                                     <Tag color={company.isActive ? "green" : "default"}>
                                                         {company.isActive
@@ -294,7 +294,7 @@ const AdminManagement = () => {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <Button type="text" className="!text-[#44F3F0]" onClick={() => openCompanyAssignment(item)}>
-                                                        Empresa
+                                                        {t("admin.assign_company_button")}
                                                     </Button>
                                                     <Tag color={item.role === "admin" ? "gold" : "blue"}>
                                                         {item.role}
@@ -320,7 +320,7 @@ const AdminManagement = () => {
             />
 
             <Modal
-                title={editingCompany ? "Configurar compañía" : t("admin.add_company")}
+                title={editingCompany ? t("admin.configure_company") : t("admin.add_company")}
                 open={companyModalOpen}
                 onCancel={() => { setCompanyModalOpen(false); setEditingCompany(null); companyForm.resetFields(); }}
                 onOk={() => companyForm.submit()}
@@ -348,12 +348,12 @@ const AdminManagement = () => {
                     </Form.Item>
                     <Form.Item
                         name="countryCode"
-                        label="Country (ISO-2)"
+                        label={t("admin.country_iso_label")}
                         initialValue="CO"
                         rules={[
                             {
                                 pattern: /^[A-Za-z]{2}$/,
-                                message: "Use a 2-letter country code (for example CO, ES)",
+                                message: t("admin.country_iso_hint"),
                             },
                         ]}
                     >
@@ -379,30 +379,30 @@ const AdminManagement = () => {
                     {selectedCompanyCountry === "CO" && (
                         <div className="relative overflow-hidden rounded-2xl border border-[#29D8D5]/25 bg-[radial-gradient(circle_at_90%_10%,rgba(41,216,213,.20),transparent_35%),linear-gradient(135deg,rgba(16,39,43,.9),rgba(14,12,31,.88))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.07)]">
                             <div className="absolute right-[-22px] top-[-25px] h-24 w-24 rounded-full border border-[#44F3F0]/20" />
-                            <div className="relative mb-1 flex items-center gap-2 text-sm font-bold text-white"><span className="h-2 w-2 rounded-full bg-[#44F3F0] shadow-[0_0_14px_#44F3F0]" />Facturación electrónica DIAN</div>
+                            <div className="relative mb-1 flex items-center gap-2 text-sm font-bold text-white"><span className="h-2 w-2 rounded-full bg-[#44F3F0] shadow-[0_0_14px_#44F3F0]" />{t("admin.dian_section_title")}</div>
                             <p className="relative mb-4 text-xs text-[#A9B3B8]">
-                                Actívala solo cuando el rango de numeración Factus esté listo en sandbox o producción.
+                                {t("admin.dian_section_hint")}
                             </p>
                             <Form.Item name="electronicInvoicingEnabled" valuePropName="checked" initialValue={false}>
-                                <Switch checkedChildren="Activa" unCheckedChildren="Inactiva" />
+                                <Switch checkedChildren={t("admin.dian_toggle_active")} unCheckedChildren={t("admin.dian_toggle_inactive")} />
                             </Form.Item>
                             <Form.Item
                                 name="factusNumberingRangeId"
-                                label="ID del rango de numeración Factus"
+                                label={t("admin.dian_numbering_range_id")}
                             >
-                                <Input placeholder="Ej. 389" />
+                                <Input placeholder={t("admin.dian_numbering_range_placeholder")} />
                             </Form.Item>
                             <div className="grid grid-cols-2 gap-3">
-                                <Form.Item name="factusDocumentType" label="Documento" initialValue="01">
-                                    <Select options={[{ value: "01", label: "Factura electrónica" }]} />
+                                <Form.Item name="factusDocumentType" label={t("admin.dian_document_type")} initialValue="01">
+                                    <Select options={[{ value: "01", label: t("admin.dian_doc_invoice") }]} />
                                 </Form.Item>
-                                <Form.Item name="factusOperationType" label="Operación" initialValue="10">
-                                    <Select options={[{ value: "10", label: "Estándar" }, { value: "11", label: "Mandato" }]} />
+                                <Form.Item name="factusOperationType" label={t("admin.dian_operation_type")} initialValue="10">
+                                    <Select options={[{ value: "10", label: t("admin.dian_operation_standard") }, { value: "11", label: t("admin.dian_operation_mandate") }]} />
                                 </Form.Item>
-                                <Form.Item name="factusPaymentForm" label="Forma de pago" initialValue="1">
-                                    <Select options={[{ value: "1", label: "Contado" }, { value: "2", label: "Crédito" }]} />
+                                <Form.Item name="factusPaymentForm" label={t("admin.dian_payment_form")} initialValue="1">
+                                    <Select options={[{ value: "1", label: t("admin.dian_payment_cash") }, { value: "2", label: t("admin.dian_payment_credit") }]} />
                                 </Form.Item>
-                                <Form.Item name="factusPaymentMethodCode" label="Medio de pago" initialValue="42">
+                                <Form.Item name="factusPaymentMethodCode" label={t("admin.dian_payment_method")} initialValue="42">
                                     <Input placeholder="42" />
                                 </Form.Item>
                             </div>
@@ -479,20 +479,20 @@ const AdminManagement = () => {
             </Modal>
 
             <Modal
-                title={`Asignar empresa a ${assignmentUser?.username || "usuario"}`}
+                title={t("admin.assign_company_title", { username: assignmentUser?.username || t("admin.assign_company_default_user") })}
                 open={Boolean(assignmentUser)}
                 onCancel={() => { setAssignmentUser(null); assignmentForm.resetFields(); }}
                 onOk={() => assignmentForm.submit()}
                 confirmLoading={assignmentSubmitting}
-                okText="Guardar asignación"
+                okText={t("admin.assign_company_save")}
                 destroyOnClose
             >
                 <p className="mb-4 text-sm text-[#A9B3B8]">
-                    El usuario facturará con la configuración y el país de esta empresa. Nunca verá datos de las demás.
+                    {t("admin.assign_company_hint")}
                 </p>
                 <Form form={assignmentForm} layout="vertical" onFinish={assignCompanyToUser}>
-                    <Form.Item name="companyId" label="Empresa">
-                        <Select allowClear placeholder="Selecciona una empresa" options={companyOptions} />
+                    <Form.Item name="companyId" label={t("admin.company_field")}>
+                        <Select allowClear placeholder={t("admin.assign_company_placeholder")} options={companyOptions} />
                     </Form.Item>
                 </Form>
             </Modal>

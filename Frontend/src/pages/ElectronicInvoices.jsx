@@ -5,7 +5,10 @@ import {
     Drawer,
     Divider,
     Empty,
+    Form,
     Input,
+    Modal,
+    Select,
     Table,
     Tooltip,
     message,
@@ -16,48 +19,43 @@ import {
     CopyOutlined,
     DownloadOutlined,
     FileTextOutlined,
+    PlusOutlined,
     QrcodeOutlined,
     ReloadOutlined,
     SearchOutlined,
+    SyncOutlined,
+    UndoOutlined,
     WarningOutlined,
 } from "@ant-design/icons";
-import { Area, AreaChart, ResponsiveContainer } from "recharts";
-import { api } from "../api/api";
+import { electronicInvoiceService } from "../services/electronicInvoiceService";
 import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
 import { useCurrency } from "../context/CurrencyContext";
+import useI18n from "../hooks/useI18n";
 
-const STATUS_META = {
-    accepted: { color: "var(--ohnix-accent-2)", label: "Aceptado" },
-    submitted: { color: "var(--ohnix-status-purple)", label: "Enviado" },
-    issuing: { color: "var(--ohnix-status-purple)", label: "Emitiendo" },
-    rejected: { color: "var(--ohnix-status-rose)", label: "Rechazado" },
-    error: { color: "var(--ohnix-status-rose)", label: "Con error" },
-    cancelled: { color: "var(--ohnix-text-dim)", label: "Cancelado" },
-    draft: { color: "var(--ohnix-status-amber)", label: "Borrador" },
+const STATUS_COLORS = {
+    accepted: "var(--ohnix-accent-2)",
+    submitted: "var(--ohnix-status-purple)",
+    issuing: "var(--ohnix-status-purple)",
+    rejected: "var(--ohnix-status-rose)",
+    error: "var(--ohnix-status-rose)",
+    cancelled: "var(--ohnix-text-dim)",
+    draft: "var(--ohnix-status-amber)",
 };
 
 const STATUS_ALL = "all";
 const STATUS_FILTERS = [STATUS_ALL, "draft", "issuing", "submitted", "accepted", "rejected", "error", "cancelled"];
 const ATTENTION_STATUSES = new Set(["error", "rejected"]);
+const RETRYABLE_STATUSES = new Set(["error", "rejected"]);
+const SYNCABLE_STATUSES = new Set(["issuing", "submitted"]);
 
-const SPARK_PALETTE = ["var(--ohnix-accent-2)", "var(--ohnix-status-purple)", "var(--ohnix-status-rose)"];
-
-// Genera una serie temporal estable por seed (id o referencia).
-const buildSparkSeries = (rows) => {
-    const seedFromKey = (key) => {
-        let h = 0;
-        for (let i = 0; i < key.length; i += 1) h = (h * 31 + key.charCodeAt(i)) >>> 0;
-        return () => {
-            h = (h * 1664525 + 1013904223) >>> 0;
-            return (h % 1000) / 1000;
-        };
-    };
-    return rows.slice(0, 18).reverse().map((row, idx) => {
-        const rnd = seedFromKey(row.id || row.referenceCode || String(idx));
-        return { name: idx, count: Math.round(rnd() * 60 + 18) };
-    });
-};
+const CREDIT_NOTE_CONCEPTS = [
+    { key: "partial_return", code: "1" },
+    { key: "cancellation", code: "2" },
+    { key: "discount", code: "3" },
+    { key: "price_adjustment", code: "4" },
+    { key: "other", code: "5" },
+];
 
 const useCountUp = (target, duration = 900) => {
     const [value, setValue] = useState(0);
@@ -103,19 +101,22 @@ const MetricCard = ({ label, value, icon, color, hint }) => {
 };
 
 const StatusPill = ({ status }) => {
-    const meta = STATUS_META[status] || { color: "var(--ohnix-text-dim)", label: status };
+    const { t } = useI18n();
+    const color = STATUS_COLORS[status] || "var(--ohnix-text-dim)";
+    const label = t(`electronic_invoices.status.${status}`, { defaultValue: status });
     return (
         <span
             className="status-pill"
-            style={{ color: meta.color, background: `${meta.color}18`, border: `1px solid ${meta.color}33` }}
+            style={{ color, background: `${color}18`, border: `1px solid ${color}33` }}
         >
             <span className={`status-dot status-dot--${status}`} />
-            {meta.label}
+            {label}
         </span>
     );
 };
 
 const CufeCell = ({ cufe }) => {
+    const { t } = useI18n();
     const [copied, setCopied] = useState(false);
     const timerRef = useRef(null);
 
@@ -132,12 +133,12 @@ const CufeCell = ({ cufe }) => {
                 if (timerRef.current) clearTimeout(timerRef.current);
                 timerRef.current = setTimeout(() => setCopied(false), 1100);
             },
-            () => message.error("No se pudo copiar el CUFE")
+            () => message.error(t("electronic_invoices.cufe_copy_error"))
         );
     };
 
     if (!cufe) {
-        return <span className="text-xs italic text-[#8B98A0]">Aún no disponible</span>;
+        return <span className="text-xs italic text-[#8B98A0]">{t("electronic_invoices.cufe_not_available")}</span>;
     }
     const truncated = `${cufe.slice(0, 14)}…`;
     return (
@@ -150,52 +151,25 @@ const CufeCell = ({ cufe }) => {
             >
                 {truncated}
                 <CopyOutlined className="text-[10px] text-[#29D8D5]" />
-                {copied && <span className="copy-feedback absolute -translate-y-3 text-[10px] font-semibold text-[#44F3F0]">Copiado</span>}
+                {copied && <span className="copy-feedback absolute -translate-y-3 text-[10px] font-semibold text-[#44F3F0]">{t("electronic_invoices.cufe_copied")}</span>}
             </span>
         </Tooltip>
     );
 };
 
-const Sparkline = ({ rows, color }) => {
-    const data = useMemo(() => buildSparkSeries(rows), [rows]);
-    if (!data.length) return <div className="sparkline-shell" />;
-    const gradId = `spark-grad-${color.replace(/[^a-z0-9]/gi, "")}`;
+const TimelineNode = ({ label, when, active, isLast }) => {
+    const { t } = useI18n();
     return (
-        <div className="sparkline-shell">
-            <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data} margin={{ top: 2, left: 0, right: 0, bottom: 2 }}>
-                    <defs>
-                        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={color} stopOpacity={0.6} />
-                            <stop offset="95%" stopColor={color} stopOpacity={0.02} />
-                        </linearGradient>
-                    </defs>
-                    <Area
-                        type="monotone"
-                        dataKey="count"
-                        stroke={color}
-                        strokeWidth={1.6}
-                        fill={`url(#${gradId})`}
-                        dot={false}
-                        isAnimationActive
-                        animationDuration={900}
-                    />
-                </AreaChart>
-            </ResponsiveContainer>
+        <div className="relative pl-8 pb-5 last:pb-0">
+            <span className={`dian-timeline__node ${active ? "" : "dian-timeline__node--pending"}`} style={{ top: 4 }} />
+            {!isLast && (
+                <span className="absolute left-[15px] top-[18px] bottom-0 w-px bg-gradient-to-b from-[#29D8D5]/60 to-white/5" />
+            )}
+            <div className={`text-sm font-semibold ${active ? "text-white" : "text-[#8B98A0]"}`}>{label}</div>
+            <div className="text-xs text-[#A9B3B8]">{when || t("electronic_invoices.drawer.pending")}</div>
         </div>
     );
 };
-
-const TimelineNode = ({ label, when, active, isLast }) => (
-    <div className="relative pl-8 pb-5 last:pb-0">
-        <span className={`dian-timeline__node ${active ? "" : "dian-timeline__node--pending"}`} style={{ top: 4 }} />
-        {!isLast && (
-            <span className="absolute left-[15px] top-[18px] bottom-0 w-px bg-gradient-to-b from-[#29D8D5]/60 to-white/5" />
-        )}
-        <div className={`text-sm font-semibold ${active ? "text-white" : "text-[#8B98A0]"}`}>{label}</div>
-        <div className="text-xs text-[#A9B3B8]">{when || "Pendiente"}</div>
-    </div>
-);
 
 const InfoCard = ({ label, value, mono = false }) => (
     <div className="module-shell rounded-2xl p-4">
@@ -207,13 +181,18 @@ const InfoCard = ({ label, value, mono = false }) => (
 );
 
 const SupportButton = ({ url, kind, size = "large" }) => {
+    const { t } = useI18n();
     const present = Boolean(url);
     const isPdf = kind === "pdf";
-    const label = isPdf ? "Descargar PDF" : "Ver XML";
+    const label = isPdf ? t("electronic_invoices.support.download_pdf") : t("electronic_invoices.support.view_xml");
     const icon = isPdf ? <DownloadOutlined /> : <FileTextOutlined />;
     const baseClass = "!h-12 !rounded-2xl";
     if (!present) {
-        return <Button disabled className={baseClass}>{`${kind.toUpperCase()} no disponible`}</Button>;
+        return (
+            <Button disabled className={baseClass}>
+                {t("electronic_invoices.support.not_available", { kind: kind.toUpperCase() })}
+            </Button>
+        );
     }
     const colorClass = isPdf
         ? "!border-[#29D8D5]/35 !bg-[#29D8D5]/10 !text-[#44F3F0] hover:!shadow-[0_0_24px_rgba(41,216,213,0.25)]"
@@ -240,10 +219,91 @@ const copyToClipboard = async (value) => {
     }
 };
 
-const InvoiceDetailDrawer = ({ invoice, onClose }) => {
+const CreditNoteModal = ({ open, onCancel, onSubmit, submitting }) => {
+    const { t } = useI18n();
+    const [form] = Form.useForm();
+
+    return (
+        <Modal
+            open={open}
+            onCancel={onCancel}
+            title={<span className="text-white">{t("electronic_invoices.credit_note.modal_title")}</span>}
+            footer={null}
+            destroyOnClose
+            centered
+            styles={{
+                mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                content: {
+                    background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "20px",
+                },
+                header: { background: "transparent", borderBottom: "1px solid rgba(255,255,255,0.08)" },
+            }}
+        >
+            <Form
+                form={form}
+                layout="vertical"
+                className="mt-4"
+                onFinish={(values) => {
+                    const concept = CREDIT_NOTE_CONCEPTS.find((c) => c.key === values.concept);
+                    onSubmit({ conceptCode: concept?.code, observation: values.observation });
+                }}
+            >
+                <Form.Item
+                    name="concept"
+                    label={t("electronic_invoices.credit_note.concept_label")}
+                    rules={[{ required: true, message: t("validation.required_field") }]}
+                >
+                    <Select placeholder={t("electronic_invoices.credit_note.concept_placeholder")} size="large">
+                        {CREDIT_NOTE_CONCEPTS.map(({ key }) => (
+                            <Select.Option key={key} value={key}>
+                                {t(`electronic_invoices.credit_note.concepts.${key}`)}
+                            </Select.Option>
+                        ))}
+                    </Select>
+                </Form.Item>
+                <Form.Item name="observation" label={t("electronic_invoices.credit_note.observation_label")}>
+                    <Input.TextArea rows={3} placeholder={t("electronic_invoices.credit_note.observation_placeholder")} />
+                </Form.Item>
+                <div className="mt-2 flex justify-end gap-2">
+                    <Button onClick={onCancel}>{t("common.cancel")}</Button>
+                    <Button type="primary" htmlType="submit" loading={submitting}>
+                        {t("electronic_invoices.credit_note.submit")}
+                    </Button>
+                </div>
+            </Form>
+        </Modal>
+    );
+};
+
+const EVENT_LABEL_KEYS = {
+    issuance_claimed: "electronic_invoices.timeline.issuance_claimed",
+    provider_response: "electronic_invoices.timeline.provider_response",
+    provider_error: "electronic_invoices.timeline.provider_error",
+    manual_sync: "electronic_invoices.timeline.manual_sync",
+    manual_sync_error: "electronic_invoices.timeline.manual_sync_error",
+    webhook: "electronic_invoices.timeline.webhook",
+    credit_note_issued: "electronic_invoices.timeline.credit_note_issued",
+    credit_note_error: "electronic_invoices.timeline.credit_note_error",
+};
+
+const InvoiceDetailDrawer = ({
+    invoice,
+    onClose,
+    onRetry,
+    onSync,
+    onOpenCreditNote,
+    retrying,
+    syncing,
+    creditNotes,
+    creditNotesLoading,
+}) => {
+    const { t } = useI18n();
     if (!invoice) return null;
     const issuedAt = invoice.issuedAt ? new Date(invoice.issuedAt) : null;
-    const sentStatuses = ["submitted", "accepted", "rejected", "error"];
+    const events = Array.isArray(invoice.events) ? invoice.events : [];
+
     return (
         <Drawer
             open={Boolean(invoice)}
@@ -252,7 +312,7 @@ const InvoiceDetailDrawer = ({ invoice, onClose }) => {
             className="dian-drawer"
             title={
                 <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-white">Detalle del documento</span>
+                    <span className="text-lg font-bold text-white">{t("electronic_invoices.drawer.title")}</span>
                     <StatusPill status={invoice.status} />
                 </div>
             }
@@ -275,46 +335,45 @@ const InvoiceDetailDrawer = ({ invoice, onClose }) => {
                         <QrcodeOutlined /> FACTUS · DIAN
                     </div>
                     <div className="text-2xl font-bold text-white">{invoice.invoiceNumber || invoice.referenceCode}</div>
-                    <div className="mt-1 text-xs text-[#A9B3B8]">Orden · {invoice.order?.invoiceNo || "—"}</div>
+                    <div className="mt-1 text-xs text-[#A9B3B8]">{t("electronic_invoices.table.order_prefix")} {invoice.order?.invoiceNo || "—"}</div>
 
                     <Divider style={{ borderColor: "rgba(255,255,255,0.08)", margin: "18px 0 14px" }} />
 
                     <div className="dian-timeline">
-                        <TimelineNode label="Documento generado" when={issuedAt ? issuedAt.toLocaleString("es-CO") : "Generado"} active />
-                        <TimelineNode
-                            label="Enviado a la DIAN"
-                            when={sentStatuses.includes(invoice.status)
-                                ? (issuedAt ? new Date(issuedAt.getTime() + 30 * 1000).toLocaleString("es-CO") : "Enviado")
-                                : null}
-                            active={sentStatuses.includes(invoice.status)}
-                        />
-                        <TimelineNode
-                            label="Respuesta DIAN"
-                            when={invoice.status === "accepted" ? "Aceptado" : invoice.status === "rejected" ? "Rechazado" : null}
-                            active={["accepted", "rejected"].includes(invoice.status)}
-                            isLast
-                        />
+                        {events.length === 0 ? (
+                            <TimelineNode label={t("electronic_invoices.timeline.empty")} when={null} active={false} isLast />
+                        ) : (
+                            events.map((event, idx) => (
+                                <TimelineNode
+                                    key={event.id}
+                                    label={t(EVENT_LABEL_KEYS[event.eventType] || event.eventType, { defaultValue: event.eventType })}
+                                    when={new Date(event.createdAt).toLocaleString("es-CO")}
+                                    active
+                                    isLast={idx === events.length - 1}
+                                />
+                            ))
+                        )}
                     </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                    <InfoCard label="Cliente" value={invoice.order?.customerName} />
-                    <InfoCard label="Orden Ohnix" value={invoice.order?.invoiceNo} />
+                    <InfoCard label={t("electronic_invoices.drawer.customer")} value={invoice.order?.customerName} />
+                    <InfoCard label={t("electronic_invoices.drawer.order")} value={invoice.order?.invoiceNo} />
                 </div>
 
                 <div className="module-shell rounded-2xl p-4">
                     <div className="flex items-center justify-between">
                         <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#8B98A0]">CUFE</div>
                         {invoice.cufe && (
-                            <Tooltip title="Copiar CUFE">
+                            <Tooltip title={t("common.copy")}>
                                 <Button
                                     size="small"
                                     type="text"
                                     icon={<CopyOutlined />}
                                     onClick={async () => {
                                         const ok = await copyToClipboard(invoice.cufe);
-                                        if (ok) message.success("CUFE copiado");
-                                        else message.error("No se pudo copiar el CUFE");
+                                        if (ok) message.success(t("electronic_invoices.cufe_copied"));
+                                        else message.error(t("electronic_invoices.cufe_copy_error"));
                                     }}
                                     className="!text-[#44F3F0]"
                                 />
@@ -322,13 +381,13 @@ const InvoiceDetailDrawer = ({ invoice, onClose }) => {
                         )}
                     </div>
                     <div className={`mt-1 break-all text-xs text-white ${invoice.cufe ? "font-mono" : "italic text-[#8B98A0]"}`}>
-                        {invoice.cufe || "Aún no disponible"}
+                        {invoice.cufe || t("electronic_invoices.cufe_not_available")}
                     </div>
                 </div>
 
                 <InfoCard
-                    label="Fecha de emisión"
-                    value={issuedAt ? issuedAt.toLocaleString("es-CO") : "Pendiente"}
+                    label={t("electronic_invoices.drawer.issued_at")}
+                    value={issuedAt ? issuedAt.toLocaleString("es-CO") : t("electronic_invoices.drawer.pending")}
                     mono={false}
                 />
 
@@ -337,10 +396,72 @@ const InvoiceDetailDrawer = ({ invoice, onClose }) => {
                     <SupportButton kind="xml" url={invoice.xmlUrl} />
                 </div>
 
+                {RETRYABLE_STATUSES.has(invoice.status) && (
+                    <Button
+                        block
+                        icon={<UndoOutlined />}
+                        loading={retrying}
+                        onClick={() => onRetry(invoice.orderId, invoice.id)}
+                        className="!h-12 !rounded-2xl !border-[#29D8D5]/35 !bg-[#29D8D5]/10 !text-[#44F3F0]"
+                    >
+                        {t("electronic_invoices.retry_action")}
+                    </Button>
+                )}
+
+                {SYNCABLE_STATUSES.has(invoice.status) && (
+                    <Button
+                        block
+                        icon={<SyncOutlined spin={syncing} />}
+                        loading={syncing}
+                        onClick={() => onSync(invoice.orderId, invoice.id)}
+                        className="!h-12 !rounded-2xl !border-white/15 !bg-white/5 !text-white"
+                    >
+                        {t("electronic_invoices.sync_action")}
+                    </Button>
+                )}
+
+                {invoice.status === "accepted" && (
+                    <Button
+                        block
+                        icon={<PlusOutlined />}
+                        onClick={onOpenCreditNote}
+                        className="!h-12 !rounded-2xl !border-white/15 !bg-white/5 !text-white"
+                    >
+                        {t("electronic_invoices.credit_note.action")}
+                    </Button>
+                )}
+
+                {(creditNotesLoading || creditNotes.length > 0) && (
+                    <div className="space-y-2">
+                        <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#8B98A0]">
+                            {t("electronic_invoices.credit_note.list_title")}
+                        </div>
+                        {creditNotesLoading ? (
+                            <div className="text-xs text-[#8B98A0]">{t("common.loading")}</div>
+                        ) : (
+                            creditNotes.map((note) => (
+                                <div key={note.id} className="module-shell flex items-center justify-between gap-2 rounded-2xl p-3">
+                                    <div className="min-w-0">
+                                        <div className="truncate text-sm font-semibold text-white">
+                                            {note.creditNoteNumber || note.referenceCode}
+                                        </div>
+                                        <div className="text-xs text-[#8B98A0]">
+                                            {note.issuedAt
+                                                ? new Date(note.issuedAt).toLocaleString("es-CO")
+                                                : t("electronic_invoices.drawer.pending")}
+                                        </div>
+                                    </div>
+                                    <StatusPill status={note.status} />
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
                 {invoice.errorMessage && (
                     <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4 text-sm text-rose-200">
                         <div className="mb-1 flex items-center gap-2 font-semibold">
-                            <WarningOutlined /> Detalle del error
+                            <WarningOutlined /> {t("electronic_invoices.drawer.error_detail")}
                         </div>
                         <div>{invoice.errorMessage}</div>
                     </div>
@@ -351,11 +472,18 @@ const InvoiceDetailDrawer = ({ invoice, onClose }) => {
 };
 
 const ElectronicInvoices = () => {
+    const { t } = useI18n();
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [status, setStatus] = useState(STATUS_ALL);
     const [search, setSearch] = useState("");
     const [selected, setSelected] = useState(null);
+    const [retryingId, setRetryingId] = useState(null);
+    const [syncingId, setSyncingId] = useState(null);
+    const [creditNotes, setCreditNotes] = useState([]);
+    const [creditNotesLoading, setCreditNotesLoading] = useState(false);
+    const [creditNoteModalOpen, setCreditNoteModalOpen] = useState(false);
+    const [creditNoteSubmitting, setCreditNoteSubmitting] = useState(false);
     const { formatCurrency } = useCurrency();
 
     const load = useCallback(async () => {
@@ -364,51 +492,107 @@ const ElectronicInvoices = () => {
             const params = {};
             if (status && status !== STATUS_ALL) params.status = status;
             if (search) params.search = search;
-            const { data } = await api.get("/electronic-invoices", { params });
-            setItems(data.data || []);
+            const { data } = await electronicInvoiceService.list(params);
+            const rows = data || [];
+            setItems(rows);
+            return rows;
         } catch {
-            message.error("No fue posible sincronizar los documentos");
+            message.error(t("electronic_invoices.list_load_error"));
+            return [];
         } finally {
             setLoading(false);
         }
-    }, [status, search]);
+    }, [status, search, t]);
 
     useEffect(() => {
         load();
     }, [load]);
 
+    const loadCreditNotes = useCallback(async (orderId) => {
+        if (!orderId) {
+            setCreditNotes([]);
+            return;
+        }
+        setCreditNotesLoading(true);
+        try {
+            const { data } = await electronicInvoiceService.listCreditNotes(orderId);
+            setCreditNotes(data?.creditNotes || []);
+        } catch {
+            setCreditNotes([]);
+        } finally {
+            setCreditNotesLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (selected?.orderId) loadCreditNotes(selected.orderId);
+        else setCreditNotes([]);
+    }, [selected?.orderId, loadCreditNotes]);
+
+    const refreshSelected = async (invoiceId) => {
+        const rows = await load();
+        const updated = rows.find((row) => row.id === invoiceId);
+        if (updated) setSelected(updated);
+    };
+
+    const handleRetry = async (orderId, invoiceId) => {
+        setRetryingId(orderId);
+        try {
+            await electronicInvoiceService.retry(orderId);
+            message.success(t("electronic_invoices.retry_success"));
+            await refreshSelected(invoiceId);
+        } catch (error) {
+            message.error(error.response?.data?.message || t("electronic_invoices.retry_error"));
+        } finally {
+            setRetryingId(null);
+        }
+    };
+
+    const handleSync = async (orderId, invoiceId) => {
+        setSyncingId(orderId);
+        try {
+            await electronicInvoiceService.sync(orderId);
+            message.success(t("electronic_invoices.sync_success"));
+            await refreshSelected(invoiceId);
+        } catch (error) {
+            message.error(error.response?.data?.message || t("electronic_invoices.sync_error_action"));
+        } finally {
+            setSyncingId(null);
+        }
+    };
+
+    const handleCreateCreditNote = async ({ conceptCode, observation }) => {
+        if (!selected?.orderId) return;
+        setCreditNoteSubmitting(true);
+        try {
+            await electronicInvoiceService.createCreditNote(selected.orderId, { conceptCode, observation });
+            message.success(t("electronic_invoices.credit_note.success"));
+            setCreditNoteModalOpen(false);
+            await loadCreditNotes(selected.orderId);
+        } catch (error) {
+            message.error(error.response?.data?.message || t("electronic_invoices.credit_note.error"));
+        } finally {
+            setCreditNoteSubmitting(false);
+        }
+    };
+
     const metrics = useMemo(() => {
         const counts = { all: 0, accepted: 0, attention: 0, total: 0 };
-        const accepted = [];
-        const attention = [];
-        for (const key of Object.keys(STATUS_META)) counts[key] = 0;
+        for (const key of Object.keys(STATUS_COLORS)) counts[key] = 0;
         for (const i of items) {
             counts.all += 1;
-            if (STATUS_META[i.status] !== undefined) counts[i.status] += 1;
-            if (i.status === "accepted") {
-                counts.accepted += 1;
-                accepted.push(i);
-            }
-            if (ATTENTION_STATUSES.has(i.status)) {
-                counts.attention += 1;
-                attention.push(i);
-            }
+            if (STATUS_COLORS[i.status] !== undefined) counts[i.status] += 1;
+            if (i.status === "accepted") counts.accepted += 1;
+            if (ATTENTION_STATUSES.has(i.status)) counts.attention += 1;
             counts.total += Number(i.order?.total ?? i.total ?? 0) || 0;
         }
-        // Sparkline usa los primeros 18; calculamos slices estables aquí.
-        return {
-            counts,
-            totalAmount: counts.total,
-            acceptedRows: accepted.slice(0, 18),
-            attentionRows: attention.slice(0, 18),
-            allRows: items.slice(0, 18),
-        };
+        return { counts, totalAmount: counts.total };
     }, [items]);
 
     const columns = useMemo(
         () => [
             {
-                title: "Documento",
+                title: t("electronic_invoices.table.document"),
                 render: (_, row) => (
                     <div className="flex items-center gap-3">
                         <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#29D8D5]/25 bg-gradient-to-br from-[#29D8D5]/25 to-[#44F3F0]/5 text-[#44F3F0] animate-glow-pulse">
@@ -416,22 +600,21 @@ const ElectronicInvoices = () => {
                         </span>
                         <div className="min-w-0">
                             <div className="truncate font-semibold text-white">{row.invoiceNumber || row.referenceCode}</div>
-                            <div className="text-xs text-[#8B98A0]">Orden · {row.order?.invoiceNo || "—"}</div>
+                            <div className="text-xs text-[#8B98A0]">{t("electronic_invoices.table.order_prefix")} {row.order?.invoiceNo || "—"}</div>
                         </div>
                     </div>
                 ),
             },
             {
-                title: "Adquirente",
+                title: t("electronic_invoices.table.buyer"),
                 render: (_, row) => (
                     <div className="min-w-0">
                         <div className="truncate text-sm text-[#D4DBDF]">{row.order?.customerName || "—"}</div>
-                        <div className="truncate text-xs text-[#8B98A0]">{row.order?.customerTaxId || ""}</div>
                     </div>
                 ),
             },
             {
-                title: "Monto",
+                title: t("electronic_invoices.table.amount"),
                 render: (_, row) => (
                     <div className="text-sm font-semibold text-white">
                         {formatCurrency(Number(row.order?.total ?? row.total ?? 0))}
@@ -440,31 +623,31 @@ const ElectronicInvoices = () => {
                 width: 140,
             },
             {
-                title: "Estado DIAN",
+                title: t("electronic_invoices.table.status"),
                 dataIndex: "status",
                 render: (value) => <StatusPill status={value} />,
                 width: 180,
             },
             {
-                title: "CUFE",
+                title: t("electronic_invoices.table.cufe"),
                 dataIndex: "cufe",
                 render: (value) => <CufeCell cufe={value} />,
                 width: 160,
             },
             {
-                title: "Emitida",
+                title: t("electronic_invoices.table.issued"),
                 render: (_, row) =>
                     row.issuedAt ? (
                         <div className="text-xs text-[#D4DBDF]">
                             {new Date(row.issuedAt).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}
                         </div>
                     ) : (
-                        <span className="text-xs italic text-[#8B98A0]">Pendiente</span>
+                        <span className="text-xs italic text-[#8B98A0]">{t("electronic_invoices.table.pending")}</span>
                     ),
                 width: 160,
             },
             {
-                title: "Soportes",
+                title: t("electronic_invoices.table.supports"),
                 render: (_, row) => (
                     <div className="flex gap-2">
                         {row.pdfUrl ? (
@@ -496,57 +679,57 @@ const ElectronicInvoices = () => {
                 width: 110,
             },
         ],
-        [formatCurrency]
+        [formatCurrency, t]
     );
 
     const headerSubtitle = useMemo(() => {
         const { counts } = metrics;
         return (
             <span>
-                El pulso de tu facturación electrónica, en un solo lugar.{" "}
+                {t("electronic_invoices.subtitle_base")}{" "}
                 {counts.accepted > 0 && (
-                    <span className="text-[#44F3F0] font-semibold">{counts.accepted} aceptados</span>
+                    <span className="text-[#44F3F0] font-semibold">
+                        {t("electronic_invoices.subtitle_accepted", { count: counts.accepted })}
+                    </span>
                 )}
                 {counts.accepted > 0 && counts.attention > 0 ? " · " : ""}
-                {counts.attention > 0 && <span className="text-rose-300 font-semibold">{counts.attention} por revisar</span>}
+                {counts.attention > 0 && (
+                    <span className="text-rose-300 font-semibold">
+                        {t("electronic_invoices.subtitle_attention", { count: counts.attention })}
+                    </span>
+                )}
             </span>
         );
-    }, [metrics]);
+    }, [metrics, t]);
 
     const metricCards = useMemo(
         () => [
             {
-                label: "Documentos",
+                label: t("electronic_invoices.metrics.documents"),
                 value: metrics.counts.all,
                 icon: <FileTextOutlined />,
                 color: "var(--ohnix-status-purple)",
-                hint: "Total emitidos en el sistema",
-                sparkRows: metrics.allRows,
-                sparkColor: SPARK_PALETTE[1],
+                hint: t("electronic_invoices.metrics.documents_hint"),
                 stagger: "stagger-1",
             },
             {
-                label: "Aceptados DIAN",
+                label: t("electronic_invoices.metrics.accepted"),
                 value: metrics.counts.accepted,
                 icon: <CheckCircleOutlined />,
                 color: "var(--ohnix-accent-2)",
-                hint: "Validados por la DIAN",
-                sparkRows: metrics.acceptedRows,
-                sparkColor: SPARK_PALETTE[0],
+                hint: t("electronic_invoices.metrics.accepted_hint"),
                 stagger: "stagger-2",
             },
             {
-                label: "Requieren atención",
+                label: t("electronic_invoices.metrics.attention"),
                 value: metrics.counts.attention,
                 icon: <WarningOutlined />,
                 color: "var(--ohnix-status-rose)",
-                hint: "Errores o rechazos a revisar",
-                sparkRows: metrics.attentionRows,
-                sparkColor: SPARK_PALETTE[2],
+                hint: t("electronic_invoices.metrics.attention_hint"),
                 stagger: "stagger-3",
             },
         ],
-        [metrics]
+        [metrics, t]
     );
 
     const statusCounts = metrics.counts;
@@ -554,11 +737,11 @@ const ElectronicInvoices = () => {
     return (
         <div className="p-5 sm:p-7 lg:p-9 text-white">
             <PageHeader
-                title="Centro de documentos"
+                title={t("electronic_invoices.title")}
                 subtitle={headerSubtitle}
                 icon={<FileTextOutlined />}
                 actionIcon={<ReloadOutlined />}
-                actionText={loading ? "Sincronizando" : "Sincronizar"}
+                actionText={loading ? t("electronic_invoices.syncing") : t("electronic_invoices.sync_action")}
                 onActionClick={load}
             />
 
@@ -566,9 +749,6 @@ const ElectronicInvoices = () => {
                 {metricCards.map((m) => (
                     <div key={m.label} className={m.stagger}>
                         <MetricCard label={m.label} value={m.value} icon={m.icon} color={m.color} hint={m.hint} />
-                        <div className="-mt-2 px-2">
-                            <Sparkline rows={m.sparkRows} color={m.sparkColor} />
-                        </div>
                     </div>
                 ))}
             </section>
@@ -578,7 +758,7 @@ const ElectronicInvoices = () => {
                     <div className="flex flex-wrap gap-2">
                         {STATUS_FILTERS.map((key) => {
                             const isActive = status === key;
-                            const label = key === STATUS_ALL ? "Todos" : STATUS_META[key]?.label || key;
+                            const label = key === STATUS_ALL ? t("electronic_invoices.filters.all") : t(`electronic_invoices.status.${key}`, { defaultValue: key });
                             return (
                                 <button
                                     key={key}
@@ -598,7 +778,7 @@ const ElectronicInvoices = () => {
                             onChange={(e) => setSearch(e.target.value)}
                             onPressEnter={load}
                             prefix={<SearchOutlined className="text-[#29D8D5]" />}
-                            placeholder="Busca por referencia, número o CUFE"
+                            placeholder={t("electronic_invoices.search_placeholder")}
                             size="large"
                             className="auth-ohnix-input w-full sm:w-[300px]"
                             allowClear
@@ -608,24 +788,24 @@ const ElectronicInvoices = () => {
                             size="large"
                             className="!border-[#29D8D5]/35 !bg-[#29D8D5]/10 !text-[#44F3F0] hover:!shadow-[0_0_24px_rgba(41,216,213,0.25)]"
                         >
-                            Buscar
+                            {t("electronic_invoices.search_button")}
                         </Button>
                     </div>
                 </div>
 
                 <div className="mb-4 hidden gap-3 md:grid md:grid-cols-3">
                     <div className="rounded-2xl border border-white/8 bg-white/[.03] p-3">
-                        <div className="text-xs text-[#A9B3B8]">Total facturado</div>
+                        <div className="text-xs text-[#A9B3B8]">{t("electronic_invoices.stats.total_invoiced")}</div>
                         <div className="text-lg font-bold text-white">{formatCurrency(metrics.totalAmount)}</div>
                     </div>
                     <div className="rounded-2xl border border-white/8 bg-white/[.03] p-3">
-                        <div className="text-xs text-[#A9B3B8]">Tasa de aceptación</div>
+                        <div className="text-xs text-[#A9B3B8]">{t("electronic_invoices.stats.acceptance_rate")}</div>
                         <div className="text-lg font-bold text-[#44F3F0]">
                             {metrics.counts.all ? `${Math.round((metrics.counts.accepted / metrics.counts.all) * 100)}%` : "—"}
                         </div>
                     </div>
                     <div className="rounded-2xl border border-white/8 bg-white/[.03] p-3">
-                        <div className="text-xs text-[#A9B3B8]">Última sincronización</div>
+                        <div className="text-xs text-[#A9B3B8]">{t("electronic_invoices.stats.last_sync")}</div>
                         <div className="text-sm font-semibold text-white">
                             <ClockCircleOutlined className="mr-1 text-[#29D8D5]" />
                             {new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
@@ -639,7 +819,7 @@ const ElectronicInvoices = () => {
                             emptyText: (
                                 <Empty
                                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                    description={<span className="text-[#A9B3B8]">Aún no hay documentos electrónicos</span>}
+                                    description={<span className="text-[#A9B3B8]">{t("electronic_invoices.empty_state")}</span>}
                                 />
                             ),
                         }}
@@ -651,16 +831,16 @@ const ElectronicInvoices = () => {
                             onClick: () => setSelected(record),
                             className: "cursor-pointer transition-colors",
                         })}
-                        pagination={{ pageSize: 10, showTotal: (total) => `${total} documento(s)` }}
+                        pagination={{ pageSize: 10, showTotal: (total) => t("electronic_invoices.table.documents_total", { count: total }) }}
                         className="invoice-premium-table"
                     />
                 </div>
 
                 <div className="grid gap-3 lg:hidden">
                     {loading ? (
-                        <div className="text-center text-[#A9B3B8] py-10">Cargando documentos…</div>
+                        <div className="text-center text-[#A9B3B8] py-10">{t("electronic_invoices.loading_documents")}</div>
                     ) : items.length === 0 ? (
-                        <div className="text-center text-[#A9B3B8] py-10">Aún no hay documentos electrónicos</div>
+                        <div className="text-center text-[#A9B3B8] py-10">{t("electronic_invoices.empty_state")}</div>
                     ) : (
                         items.map((row) => (
                             <button
@@ -682,11 +862,11 @@ const ElectronicInvoices = () => {
                                     <StatusPill status={row.status} />
                                 </div>
                                 <div className="mt-3 flex items-center justify-between text-xs">
-                                    <div className="text-[#A9B3B8]">Monto</div>
+                                    <div className="text-[#A9B3B8]">{t("electronic_invoices.table.amount")}</div>
                                     <div className="font-semibold text-white">{formatCurrency(Number(row.order?.total ?? row.total ?? 0))}</div>
                                 </div>
                                 <div className="mt-1 flex items-center justify-between text-xs">
-                                    <div className="text-[#A9B3B8]">CUFE</div>
+                                    <div className="text-[#A9B3B8]">{t("electronic_invoices.table.cufe")}</div>
                                     <CufeCell cufe={row.cufe} />
                                 </div>
                             </button>
@@ -695,7 +875,24 @@ const ElectronicInvoices = () => {
                 </div>
             </section>
 
-            <InvoiceDetailDrawer invoice={selected} onClose={() => setSelected(null)} />
+            <InvoiceDetailDrawer
+                invoice={selected}
+                onClose={() => setSelected(null)}
+                onRetry={handleRetry}
+                onSync={handleSync}
+                onOpenCreditNote={() => setCreditNoteModalOpen(true)}
+                retrying={Boolean(selected && retryingId === selected.orderId)}
+                syncing={Boolean(selected && syncingId === selected.orderId)}
+                creditNotes={creditNotes}
+                creditNotesLoading={creditNotesLoading}
+            />
+
+            <CreditNoteModal
+                open={creditNoteModalOpen}
+                onCancel={() => setCreditNoteModalOpen(false)}
+                onSubmit={handleCreateCreditNote}
+                submitting={creditNoteSubmitting}
+            />
         </div>
     );
 };
