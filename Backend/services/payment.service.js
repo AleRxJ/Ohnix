@@ -109,6 +109,11 @@ const PLAN_ONE_TIME_AMOUNT_BY_CURRENCY = {
         usd: () => Number(process.env.STRIPE_AMOUNT_GROWTH_USD),
         eur: () => Number(process.env.STRIPE_AMOUNT_GROWTH_EUR),
     },
+    scale: {
+        cop: () => Number(process.env.STRIPE_AMOUNT_SCALE_COP),
+        usd: () => Number(process.env.STRIPE_AMOUNT_SCALE_USD),
+        eur: () => Number(process.env.STRIPE_AMOUNT_SCALE_EUR),
+    },
     enterprise: {
         cop: () => Number(process.env.STRIPE_AMOUNT_ENTERPRISE_COP),
         usd: () => Number(process.env.STRIPE_AMOUNT_ENTERPRISE_USD),

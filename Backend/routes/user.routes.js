@@ -22,10 +22,17 @@ import {
 import { upload } from "../middleware/multer.middleware.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
+import {
+    loginRateLimiter,
+    registerRateLimiter,
+    otpRequestRateLimiter,
+    otpVerifyRateLimiter,
+} from "../middleware/rateLimit.middleware.js";
 
 const router = Router();
 
 router.route("/register").post(
+    registerRateLimiter,
     upload.fields([
         {
             name: "avatar",
@@ -35,7 +42,7 @@ router.route("/register").post(
     registerUser
 );
 
-router.route("/login").post(loginUser);
+router.route("/login").post(loginRateLimiter, loginUser);
 
 //secured routes
 router.route("/logout").post(verifyJWT, logoutUser);
@@ -55,19 +62,19 @@ router
     .post(verifyJWT, isAdmin, createUserAdmin);
 router.route("/admin/users/:userId").patch(verifyJWT, isAdmin, updateUserAdmin);
 
-router.route("/send-verify-otp").post(verifyJWT, sendVerifyOtp);
-router.route("/verify-email").post(verifyJWT, verifyEmail);
+router.route("/send-verify-otp").post(verifyJWT, otpRequestRateLimiter, sendVerifyOtp);
+router.route("/verify-email").post(verifyJWT, otpVerifyRateLimiter, verifyEmail);
 
 router.route("/is-auth").post(verifyJWT, isAuthenticated);
 
-router.route("/send-reset-otp").post(sendResetOtp);
-router.route("/reset-password").post(resetPassword);
+router.route("/send-reset-otp").post(otpRequestRateLimiter, sendResetOtp);
+router.route("/reset-password").post(otpVerifyRateLimiter, resetPassword);
 
 router
     .route("/send-change-password-otp")
-    .post(verifyJWT, sendChangePasswordOtp);
+    .post(verifyJWT, otpRequestRateLimiter, sendChangePasswordOtp);
 router
     .route("/verify-change-password-otp")
-    .post(verifyJWT, verifyChangePasswordOtp);
+    .post(verifyJWT, otpVerifyRateLimiter, verifyChangePasswordOtp);
 
 export default router;

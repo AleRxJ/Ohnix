@@ -27,15 +27,17 @@ class LowStockScheduler {
             return { sent: false, reason: "mail_not_configured" };
         }
         try {
-            const lowStockProducts = await prisma.product.findMany({
-                where: {
-                    createdById: userId,
-                    stock: { lt: this.threshold },
-                },
+            // Per-product thresholds (Escala+ feature) can't be expressed as a
+            // single Prisma `where` comparison against a column, so fetch the
+            // user's catalog and filter in JS - fine even at the largest plan's
+            // 2,000-product cap, and this only runs once a week per user.
+            const allProducts = await prisma.product.findMany({
+                where: { createdById: userId },
                 select: {
                     productName: true,
                     productCode: true,
                     stock: true,
+                    lowStockThreshold: true,
                     category: {
                         select: {
                             categoryName: true,
@@ -44,6 +46,10 @@ class LowStockScheduler {
                 },
                 orderBy: { stock: "asc" },
             });
+
+            const lowStockProducts = allProducts.filter(
+                (product) => product.stock < (product.lowStockThreshold ?? this.threshold)
+            );
 
             if (lowStockProducts.length === 0) {
                 console.log(`No low stock products found for user: ${username}`);
@@ -96,7 +102,7 @@ class LowStockScheduler {
                             </p>
 
                             <p style="font-size: 16px; color: #374151; line-height: 1.6; margin-bottom: 24px;">
-                                Hello <strong>${username}</strong>, here's your weekly low stock report. The following <strong>${lowStockProducts.length}</strong> products have fallen below the stock threshold of ${this.threshold} units:
+                                Hello <strong>${username}</strong>, here's your weekly low stock report. The following <strong>${lowStockProducts.length}</strong> products have fallen below their stock alert threshold:
                             </p>
 
                             <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">

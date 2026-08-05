@@ -2,6 +2,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { uploadToCloudinary } from "../utils/cloudinary.js";
 
 // Deliberately distinct from companyCountry.service.js#normalizeCountryCode:
 // that one just normalizes an already-stored value for fiscal checks, while
@@ -19,6 +20,7 @@ const parseIsoCountryCode = (value) => {
 const companyFiscalSelect = {
     electronicInvoicingEnabled: true,
     factusNumberingRangeId: true,
+    factusCreditNoteNumberingRangeId: true,
     factusDocumentType: true,
     factusOperationType: true,
     factusPaymentForm: true,
@@ -29,6 +31,9 @@ const normalizeFactusConfig = (body) => {
     const config = {};
     if (body.factusNumberingRangeId !== undefined) {
         config.factusNumberingRangeId = `${body.factusNumberingRangeId || ""}`.trim() || null;
+    }
+    if (body.factusCreditNoteNumberingRangeId !== undefined) {
+        config.factusCreditNoteNumberingRangeId = `${body.factusCreditNoteNumberingRangeId || ""}`.trim() || null;
     }
     for (const [input, field] of [
         ["factusDocumentType", "factusDocumentType"],
@@ -56,6 +61,8 @@ export const listCompaniesAdmin = asyncHandler(async (_req, res) => {
             contactEmail: true,
             phone: true,
             isActive: true,
+            logoUrl: true,
+            pdfFooterText: true,
             ...companyFiscalSelect,
             createdAt: true,
             updatedAt: true,
@@ -136,7 +143,7 @@ export const createCompanyAdmin = asyncHandler(async (req, res, next) => {
 
 export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
     const { companyId } = req.params;
-    const { name, legalName, countryCode, contactEmail, phone, isActive } = req.body;
+    const { name, legalName, countryCode, contactEmail, phone, isActive, pdfFooterText } = req.body;
 
     const normalizedCountryCode = parseIsoCountryCode(countryCode);
     const hasExplicitCountry =
@@ -185,6 +192,7 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
                 : {}),
             ...(phone !== undefined ? { phone: phone?.trim() || null } : {}),
             ...(typeof isActive === "boolean" ? { isActive } : {}),
+            ...(pdfFooterText !== undefined ? { pdfFooterText: pdfFooterText?.trim() || null } : {}),
             ...normalizeFactusConfig(req.body),
         },
         select: {
@@ -195,6 +203,8 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
             contactEmail: true,
             phone: true,
             isActive: true,
+            logoUrl: true,
+            pdfFooterText: true,
             ...companyFiscalSelect,
             createdAt: true,
             updatedAt: true,
@@ -204,4 +214,36 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
     return res
         .status(200)
         .json(new ApiResponse(200, company, "Company updated successfully"));
+});
+
+export const updateCompanyLogoAdmin = asyncHandler(async (req, res, next) => {
+    const { companyId } = req.params;
+
+    if (!req.file) {
+        return next(new ApiError(400, "Logo image is required"));
+    }
+
+    const existing = await prisma.company.findUnique({
+        where: { id: companyId },
+        select: { id: true },
+    });
+
+    if (!existing) {
+        return next(new ApiError(404, "Company not found"));
+    }
+
+    const image = await uploadToCloudinary(req.file);
+    if (!image) {
+        return next(new ApiError(500, "Failed to upload logo"));
+    }
+
+    const company = await prisma.company.update({
+        where: { id: companyId },
+        data: { logoUrl: image.url },
+        select: { id: true, logoUrl: true },
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, company, "Company logo updated successfully"));
 });

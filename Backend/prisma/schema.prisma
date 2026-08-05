@@ -90,6 +90,7 @@ model User {
   ordersCreated      Order[]    @relation("OrderCreatedBy")
   ordersUpdated      Order[]    @relation("OrderUpdatedBy")
   planUpgradeRequests PlanUpgradeRequest[]
+  apiKeys            ApiKey[]
 
   @@map("users")
 }
@@ -103,18 +104,49 @@ model Company {
   phone       String?
   electronicInvoicingEnabled Boolean @default(false) @map("electronic_invoicing_enabled")
   factusNumberingRangeId String? @map("factus_numbering_range_id")
+  // Factus requires a distinct numbering range per document type (invoices
+  // are document code 21, credit notes are 22) - they cannot share a range.
+  factusCreditNoteNumberingRangeId String? @map("factus_credit_note_numbering_range_id")
   factusDocumentType String @default("01") @map("factus_document_type")
   factusOperationType String @default("10") @map("factus_operation_type")
   factusPaymentForm String @default("1") @map("factus_payment_form")
   factusPaymentMethodCode String @default("42") @map("factus_payment_method_code")
+  // Order PDF branding (Negocio+): logo + legal data replace the generic
+  // template. pdfFooterText is the Escala+ "personalizable" extra.
+  logoUrl     String?  @db.Text @map("logo_url")
+  pdfFooterText String? @db.Text @map("pdf_footer_text")
   isActive    Boolean  @default(true) @map("is_active")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   users       User[]
   electronicInvoices ElectronicInvoice[]
+  apiKeys     ApiKey[]
 
   @@map("companies")
+}
+
+model ApiKey {
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id")
+  companyId      String?   @map("company_id")
+  name           String
+  // Only the prefix is stored in plaintext (shown to the user to tell keys
+  // apart); the full key is only ever shown once, at creation time.
+  keyPrefix      String    @map("key_prefix")
+  keyHash        String    @map("key_hash")
+  requestsToday  Int       @default(0) @map("requests_today")
+  requestsResetAt DateTime @default(now()) @map("requests_reset_at")
+  lastUsedAt     DateTime? @map("last_used_at")
+  revokedAt      DateTime? @map("revoked_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  user           User      @relation(fields: [userId], references: [id])
+  company        Company?  @relation(fields: [companyId], references: [id])
+
+  @@unique([keyHash])
+  @@index([userId])
+  @@map("api_keys")
 }
 
 model PlanUpgradeRequest {
@@ -254,6 +286,9 @@ model Product {
   taxCode String? @default("01") @map("tax_code")
   taxRate Decimal? @default(0) @map("tax_rate") @db.Decimal(5, 2)
   isTaxExcluded Boolean @default(false) @map("is_tax_excluded")
+  // Per-product override for the low-stock alert threshold (Escala+ plan
+  // feature). Null means "use the account-wide default threshold".
+  lowStockThreshold Int? @map("low_stock_threshold")
   createdById   String   @map("created_by")
   updatedById   String?  @map("updated_by")
   createdAt     DateTime @default(now()) @map("created_at")

@@ -102,7 +102,7 @@ function App() {
                             <Route
                                 path="/"
                                 element={
-                                    <ProtectedRoute>
+                                    <ProtectedRoute requireVerified>
                                         <DashboardLayout />
                                     </ProtectedRoute>
                                 }

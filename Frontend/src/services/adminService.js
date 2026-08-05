@@ -16,6 +16,15 @@ export const adminService = {
         return response.data;
     },
 
+    async updateCompanyLogo(companyId, file) {
+        const formData = new FormData();
+        formData.append("logo", file);
+        const response = await api.patch(`/companies/admin/${companyId}/logo`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        });
+        return response.data;
+    },
+
     async listUsers() {
         const response = await api.get("/users/admin/users");
         return response.data;

@@ -410,15 +410,6 @@ const loginUser = asyncHandler(async (req, res, next) => {
         return next(new ApiError(404, "User does not exist"));
     }
 
-    // Temporary bypass for email verification during deployment/testing
-    if (!user.isVerified) {
-        await prisma.user.update({
-            where: { id: user.id },
-            data: { isVerified: true },
-        });
-        user.isVerified = true;
-    }
-
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
@@ -565,15 +556,15 @@ const refreshAccessToken = asyncHandler(async (req, res, next) => {
 });
 
 const changeCurrentPassword = asyncHandler(async (req, res, next) => {
-    const { oldPassword, newPassword } = req.body;
+    const { oldPassword, newPassword, otp } = req.body;
 
-    if (!oldPassword || !newPassword) {
-        return next(new ApiError(400, "Old password and new password are required"));
+    if (!oldPassword || !newPassword || !otp) {
+        return next(new ApiError(400, "Old password, new password and OTP are required"));
     }
 
     const user = await prisma.user.findFirst({
         where: userLookupByTokenId(req.user?._id),
-        select: { id: true, password: true },
+        select: { id: true, password: true, verifyOtp: true, verifyOtpExpiry: true },
     });
 
     if (!user) {
@@ -586,10 +577,29 @@ const changeCurrentPassword = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "Invalid old password"));
     }
 
+    // The frontend shows an OTP step that looked mandatory, but this
+    // endpoint never actually checked it - anyone with a valid access token
+    // and the old password could change the password without ever
+    // requesting or entering an OTP. Validate it for real here instead of
+    // relying on the separate verify-change-password-otp call.
+    if (!user.verifyOtp || user.verifyOtp !== otp) {
+        return next(new ApiError(400, "Invalid OTP"));
+    }
+    if (Number(user.verifyOtpExpiry) < Date.now()) {
+        return next(new ApiError(400, "OTP expired"));
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
         where: { id: user.id },
-        data: { password: hashedPassword },
+        data: {
+            password: hashedPassword,
+            verifyOtp: "",
+            verifyOtpExpiry: BigInt(0),
+            // A refresh token stolen before the password change must not
+            // keep working after it - force re-login on every other device.
+            refreshToken: null,
+        },
     });
 
     return res
@@ -1225,6 +1235,9 @@ const resetPassword = asyncHandler(async (req, res, next) => {
                 password: hashedPassword,
                 resetOtp: "",
                 resetOtpExpiry: BigInt(0),
+                // A refresh token stolen before the reset must not keep
+                // working after it - force re-login on every other device.
+                refreshToken: null,
             },
         });
 

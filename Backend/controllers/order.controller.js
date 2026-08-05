@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import orderService from "../services/order.service.js";
 import PDFDocument from "pdfkit";
 import { prisma } from "../db/prisma.js";
+import { ensureUserSubscription, getEffectivePlan } from "../middleware/pricing.middleware.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -75,6 +76,16 @@ const findOrderByAnyId = async (id) =>
                     id: true,
                     legacyMongoId: true,
                     username: true,
+                    company: {
+                        select: {
+                            name: true,
+                            legalName: true,
+                            contactEmail: true,
+                            phone: true,
+                            logoUrl: true,
+                            pdfFooterText: true,
+                        },
+                    },
                 },
             },
             updatedBy: {
@@ -360,6 +371,26 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
             })),
         };
 
+        // Order PDF branding is plan-gated: Emprendedor keeps the generic
+        // template ("PDF de pedidos estándar"), Negocio+ gets the company's
+        // name/legal data/logo, Escala+ additionally gets a custom footer.
+        const subscription = await ensureUserSubscription(order.createdById);
+        const effectivePlan = getEffectivePlan(subscription);
+        const company = effectivePlan !== "starter" ? order.createdBy?.company : null;
+        const showCustomFooter = ["scale", "enterprise"].includes(effectivePlan);
+
+        let logoBuffer = null;
+        if (company?.logoUrl) {
+            try {
+                const logoResponse = await fetch(company.logoUrl);
+                if (logoResponse.ok) {
+                    logoBuffer = Buffer.from(await logoResponse.arrayBuffer());
+                }
+            } catch {
+                // Falls back to text-only header below.
+            }
+        }
+
         const doc = new PDFDocument({
             margin: 50,
             size: "A4",
@@ -379,12 +410,37 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
         const subtleColor = "#95a5a6";
         const highlightColor = "#2980b9";
 
-        doc.fontSize(32)
-            .fillColor(primaryColor)
-            .font("Helvetica-Bold")
-            .text("Inventory", 50, 50, { continued: true })
-            .fillColor(accentColor)
-            .text("Pro", { align: "left" });
+        if (company) {
+            const textX = logoBuffer ? 130 : 50;
+            if (logoBuffer) {
+                try {
+                    doc.image(logoBuffer, 50, 45, { fit: [70, 45] });
+                } catch {
+                    // Corrupt/unsupported image format - continue without it.
+                }
+            }
+            doc.fontSize(20)
+                .fillColor(primaryColor)
+                .font("Helvetica-Bold")
+                .text(company.name, textX, 50, { width: 550 - textX });
+
+            const legalLine = [company.legalName, company.contactEmail, company.phone]
+                .filter(Boolean)
+                .join("  ·  ");
+            if (legalLine) {
+                doc.fontSize(8)
+                    .fillColor(subtleColor)
+                    .font("Helvetica")
+                    .text(legalLine, textX, 76, { width: 550 - textX });
+            }
+        } else {
+            doc.fontSize(32)
+                .fillColor(primaryColor)
+                .font("Helvetica-Bold")
+                .text("Inventory", 50, 50, { continued: true })
+                .fillColor(accentColor)
+                .text("Pro", { align: "left" });
+        }
 
         doc.moveTo(50, 90)
             .lineTo(550, 90)
@@ -526,6 +582,17 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
             .font("Helvetica-Bold")
             .fillColor(accentColor)
             .text("Thank you for your business!", 50, noteY + 50);
+
+        // Escala+ custom footer text, set by the company in Admin.
+        if (showCustomFooter && company?.pdfFooterText) {
+            doc.fontSize(9)
+                .fillColor(primaryColor)
+                .font("Helvetica")
+                .text(company.pdfFooterText, 50, 685, {
+                    align: "center",
+                    width: 500,
+                });
+        }
 
         doc.fontSize(8)
             .fillColor(subtleColor)

@@ -5,6 +5,10 @@ import { issueElectronicInvoiceForOrder } from "./electronicInvoicing.service.js
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
+// Account-wide fallback when a product has no per-product override. Kept in
+// sync with lowStockScheduler.js's own default.
+const DEFAULT_LOW_STOCK_THRESHOLD = 10;
+
 const generateInvoiceNo = () => {
     const ts = Date.now().toString(36).toUpperCase();
     const rand = Math.random().toString(36).substring(2, 5).toUpperCase();
@@ -37,6 +41,7 @@ const findProductByAnyId = async (id) =>
             taxRate: true,
             taxCode: true,
             isTaxExcluded: true,
+            lowStockThreshold: true,
         },
     });
 
@@ -223,7 +228,6 @@ class OrderService {
 
         // Check for low stock after deduction and alert (fire and forget)
         if (shouldDeductStock) {
-            const LOW_STOCK_THRESHOLD = 10;
             const user = await prisma.user.findUnique({
                 where: { id: userId },
                 select: { email: true, username: true, preferredLanguage: true },
@@ -234,11 +238,13 @@ class OrderService {
                         productName: item.product.productName,
                         productCode: item.product.productCode,
                         stock: item.product.stock - item.quantity,
+                        // Escala+ can override the account-wide default per product.
+                        threshold: item.product.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
                         userEmail: user.email,
                         username: user.username,
                         locale: user.preferredLanguage,
                     }))
-                    .filter((item) => item.stock >= 0 && item.stock < LOW_STOCK_THRESHOLD);
+                    .filter((item) => item.stock >= 0 && item.stock < item.threshold);
                 if (lowItems.length > 0) {
                     sendRealtimeLowStockAlert(lowItems).catch(() => {});
                 }

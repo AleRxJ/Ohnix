@@ -87,6 +87,11 @@ const Products = () => {
             unit_id: product.unit_id._id,
             buying_price: product.buying_price,
             selling_price: product.selling_price,
+            unit_measure_code: product.unit_measure_code,
+            standard_code: product.standard_code,
+            tax_code: product.tax_code,
+            tax_rate: product.tax_rate,
+            low_stock_threshold: product.low_stock_threshold,
         });
         setIsModalVisible(true);
     };

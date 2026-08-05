@@ -84,6 +84,7 @@ export const PLAN_FEATURES = {
         reportPurchases:    false,
         reportTopProducts:  false,
         exportCsv:          false,
+        exportExcel:        false,
         bulkUpload:         false,
         autoEmailAlerts:    false,
         configurableAlerts: false,
@@ -95,6 +96,7 @@ export const PLAN_FEATURES = {
         reportPurchases:    true,
         reportTopProducts:  true,
         exportCsv:          true,
+        exportExcel:        false,
         bulkUpload:         true,
         autoEmailAlerts:    true,
         configurableAlerts: false,
@@ -106,6 +108,7 @@ export const PLAN_FEATURES = {
         reportPurchases:    true,
         reportTopProducts:  true,
         exportCsv:          true,
+        exportExcel:        true,
         bulkUpload:         true,
         autoEmailAlerts:    true,
         configurableAlerts: true,
@@ -117,6 +120,7 @@ export const PLAN_FEATURES = {
         reportPurchases:    true,
         reportTopProducts:  true,
         exportCsv:          true,
+        exportExcel:        true,
         bulkUpload:         true,
         autoEmailAlerts:    true,
         configurableAlerts: true,
@@ -171,7 +175,7 @@ export const getEffectivePlan = (subscription) => {
 
 export const getPlanLimits = (plan) => PLAN_LIMITS[plan] || PLAN_LIMITS.starter;
 
-const ensureActiveSubscription = (subscription) => {
+export const ensureActiveSubscription = (subscription) => {
     if (!subscription || subscription.status !== "active") {
         throw new ApiError(
             403,

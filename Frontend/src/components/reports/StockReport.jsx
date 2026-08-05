@@ -9,27 +9,25 @@ import {
     Button,
     Space,
     Input,
-    Tooltip,
 } from "antd";
 import {
     SearchOutlined,
     WarningOutlined,
     CheckCircleOutlined,
     StopOutlined,
-    FileExcelOutlined,
     ReloadOutlined,
     InboxOutlined,
     DollarOutlined,
-    LockOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/api";
 import AuthContext from "../../context/AuthContext";
 import { useCurrency } from "../../context/CurrencyContext";
-import useSubscription from "../../hooks/useSubscription";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
 import useI18n from "../../hooks/useI18n";
+import ReportExportButtons from "./ReportExportButtons";
+import { downloadCsv, downloadExcel } from "../../utils/exportReport";
 
 const StockReport = () => {
     const [stockData, setStockData] = useState([]);
@@ -37,9 +35,8 @@ const StockReport = () => {
     const [searchText, setSearchText] = useState("");
     const [filteredData, setFilteredData] = useState([]);
     const { user } = useContext(AuthContext);
-    const { t, currentLanguage } = useI18n();
+    const { t } = useI18n();
     const { formatCurrency } = useCurrency();
-    const { can } = useSubscription();
 
     const statusLabelByValue = {
         "Out of Stock": t("reports.out_of_stock"),
@@ -86,30 +83,22 @@ const StockReport = () => {
         }
     };
 
-    const exportToCSV = () => {
-        if (filteredData.length === 0) {
-            toast.error(t("reports.no_data_to_export"));
-            return;
-        }
+    const buildReportRows = () => {
+        const rows = [];
 
-        // Prepare CSV data
-        const csvData = [];
-
-        // Add summary
-        csvData.push([t("reports.stock_report_summary")]);
+        rows.push([t("reports.stock_report_summary")]);
         const summary = calculateSummary();
-        csvData.push([t("reports.total_products"), summary.totalProducts]);
-        csvData.push([t("reports.products_in_stock"), summary.inStock]);
-        csvData.push([t("reports.products_low_stock"), summary.lowStock]);
-        csvData.push([t("reports.products_out_of_stock"), summary.outOfStock]);
-        csvData.push([
+        rows.push([t("reports.total_products"), summary.totalProducts]);
+        rows.push([t("reports.products_in_stock"), summary.inStock]);
+        rows.push([t("reports.products_low_stock"), summary.lowStock]);
+        rows.push([t("reports.products_out_of_stock"), summary.outOfStock]);
+        rows.push([
             t("reports.total_inventory_value"),
             formatCurrency(summary.totalInventoryValue),
         ]);
-        csvData.push([""]);
+        rows.push([""]);
 
-        // Add headers
-        csvData.push([
+        rows.push([
             t("products.product_code"),
             t("products.product_name"),
             t("common.category"),
@@ -121,9 +110,8 @@ const StockReport = () => {
             t("common.status"),
         ]);
 
-        // Add stock data
         filteredData.forEach((item) => {
-            csvData.push([
+            rows.push([
                 item.product_code,
                 item.product_name,
                 item.category_name,
@@ -136,28 +124,28 @@ const StockReport = () => {
             ]);
         });
 
-        // Convert to CSV string
-        const csvContent = csvData
-            .map((row) => row.map((field) => `"${field}"`).join(","))
-            .join("\n");
+        return rows;
+    };
 
-        // Download CSV
-        const blob = new Blob([csvContent], {
-            type: "text/csv;charset=utf-8;",
-        });
-        const link = document.createElement("a");
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute(
-                "download",
-                `stock-report-${dayjs().format("YYYY-MM-DD")}.csv`
-            );
-            link.style.visibility = "hidden";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+    const exportToCSV = () => {
+        if (filteredData.length === 0) {
+            toast.error(t("reports.no_data_to_export"));
+            return;
         }
+        downloadCsv(buildReportRows(), `stock-report-${dayjs().format("YYYY-MM-DD")}.csv`);
+        toast.success(t("reports.stock_report_exported"));
+    };
+
+    const exportToExcel = () => {
+        if (filteredData.length === 0) {
+            toast.error(t("reports.no_data_to_export"));
+            return;
+        }
+        downloadExcel(
+            buildReportRows(),
+            `stock-report-${dayjs().format("YYYY-MM-DD")}.xlsx`,
+            t("reports.stock_report_summary")
+        );
         toast.success(t("reports.stock_report_exported"));
     };
 
@@ -356,36 +344,11 @@ const StockReport = () => {
                             <span className="sm:hidden">{t("common.refresh")}</span>
                         </Button>
                     </div>
-                    {can("exportCsv") ? (
-                        <Button
-                            icon={<FileExcelOutlined />}
-                            onClick={exportToCSV}
-                            disabled={filteredData.length === 0}
-                            className="bg-green-500 text-white hover:bg-green-600 w-full sm:w-auto"
-                        >
-                            <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
-                            <span className="sm:hidden">{t("common.export")}</span>
-                        </Button>
-                    ) : (
-                        <Tooltip
-                            title={
-                                currentLanguage === "es"
-                                    ? "Exportar CSV disponible desde el plan Negocio"
-                                    : "CSV export available from the Business plan"
-                            }
-                        >
-                            <span>
-                                <Button
-                                    disabled
-                                    icon={<LockOutlined />}
-                                    className="w-full sm:w-auto"
-                                >
-                                    <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
-                                    <span className="sm:hidden">{t("common.export")}</span>
-                                </Button>
-                            </span>
-                        </Tooltip>
-                    )}
+                    <ReportExportButtons
+                        hasData={filteredData.length > 0}
+                        onExportCsv={exportToCSV}
+                        onExportExcel={exportToExcel}
+                    />
                 </div>
             </Card>
 

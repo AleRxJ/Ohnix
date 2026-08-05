@@ -5,6 +5,7 @@ import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { getCurrencyInputProps } from "../../utils/currency";
 import AuthContext from "../../context/AuthContext";
+import useSubscription from "../../hooks/useSubscription";
 
 const { Option } = Select;
 
@@ -24,6 +25,7 @@ const ProductModal = ({
     const { t } = useI18n();
     const { currency } = useCurrency();
     const { user } = useContext(AuthContext);
+    const { can } = useSubscription();
     const currencyInputProps = getCurrencyInputProps(currency.code);
     const usesColombianEInvoicing =
         user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
@@ -291,6 +293,40 @@ const ProductModal = ({
                                         </Form.Item>
                                     </Col>
                                 </Row>
+                            </div>
+
+                            <div className="module-shell p-4 reveal-card border border-white/10">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/8">
+                                    <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
+                                    <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">
+                                        {t("products.low_stock_alert")}
+                                    </h3>
+                                </div>
+                                <Form.Item
+                                    name="low_stock_threshold"
+                                    label={
+                                        <span className="text-xs font-medium text-[#A9B3B8]">
+                                            {t("products.low_stock_threshold")}
+                                        </span>
+                                    }
+                                    extra={
+                                        <span className="text-[#8B98A0]">
+                                            {can("configurableAlerts")
+                                                ? t("products.low_stock_threshold_hint")
+                                                : t("products.low_stock_threshold_upsell")}
+                                        </span>
+                                    }
+                                    className="mb-0"
+                                >
+                                    <InputNumber
+                                        min={0}
+                                        precision={0}
+                                        size="large"
+                                        className="w-full auth-ohnix-input"
+                                        placeholder={t("products.low_stock_threshold_placeholder")}
+                                        disabled={!can("configurableAlerts")}
+                                    />
+                                </Form.Item>
                             </div>
 
                             {usesColombianEInvoicing && (

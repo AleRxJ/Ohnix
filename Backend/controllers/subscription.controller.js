@@ -25,6 +25,7 @@ import {
     isEpaycoConfigured,
     validateEpaycoSignature,
     queryEpaycoTransaction,
+    getEpaycoAmount,
     EPAYCO_STATE,
     isEpaycoTransactionApproved,
 } from "../services/epayco.service.js";
@@ -214,6 +215,39 @@ const closeApprovedRequestAndActivatePlan = async ({
             endsAt = new Date(base.getTime() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000);
         }
 
+        // Atomically claim the request before touching the subscription.
+        // Postgres re-evaluates this WHERE clause against the latest
+        // committed row when acquiring the update's row lock, so if two
+        // concurrent callers (e.g. the ePayco confirmation webhook and the
+        // epayco-verify fallback landing near-simultaneously) both passed
+        // the `existing.status !== "approved"` check above, only one of
+        // them will actually match here - the other gets count: 0 and
+        // backs off instead of upserting the subscription a second time
+        // and duplicating the renewal period.
+        const claim = await tx.planUpgradeRequest.updateMany({
+            where: { id: existing.id, status: "approved" },
+            data: {
+                status: "closed",
+                paymentProvider,
+                paymentSessionId: paymentSessionId || existing.paymentSessionId,
+                paymentStatus,
+                paymentLink: paymentLink || existing.paymentLink,
+                paidAt: paymentStatus === "paid" ? new Date() : existing.paidAt,
+                adminResponse:
+                    adminResponse?.trim() ||
+                    existing.adminResponse ||
+                    "Payment confirmed automatically. Plan activated.",
+            },
+        });
+
+        if (claim.count === 0) {
+            const current = await tx.planUpgradeRequest.findUnique({
+                where: { id: existing.id },
+                select: UPGRADE_REQUEST_SELECT,
+            });
+            return { request: current, activated: false };
+        }
+
         await tx.subscription.upsert({
             where: { userId: existing.userId },
             update: {
@@ -230,20 +264,8 @@ const closeApprovedRequestAndActivatePlan = async ({
             },
         });
 
-        const closedRequest = await tx.planUpgradeRequest.update({
+        const closedRequest = await tx.planUpgradeRequest.findUnique({
             where: { id: existing.id },
-            data: {
-                status: "closed",
-                paymentProvider,
-                paymentSessionId: paymentSessionId || existing.paymentSessionId,
-                paymentStatus,
-                paymentLink: paymentLink || existing.paymentLink,
-                paidAt: paymentStatus === "paid" ? new Date() : existing.paidAt,
-                adminResponse:
-                    adminResponse?.trim() ||
-                    existing.adminResponse ||
-                    "Payment confirmed automatically. Plan activated.",
-            },
             select: UPGRADE_REQUEST_SELECT,
         });
 
@@ -316,11 +338,22 @@ const setMyStatus = (status, message) =>
     asyncHandler(async (req, res) => {
         const subscription = await ensureUserSubscription(req.user.prismaId);
 
+        // Reactivating a paid plan must NOT clear endsAt. Doing so hid the
+        // subscription from subscriptionRenewalScheduler's downgrade query
+        // (`endsAt: { lt: cutoff }` never matches NULL), so a user could
+        // pause/cancel a paid plan and reactivate it to get free, indefinite
+        // access that no automated process would ever catch. Only starter
+        // (free, no expiry) should end up with endsAt: null on activation.
+        const nextEndsAt =
+            status === "active"
+                ? (subscription.plan === "starter" ? null : subscription.endsAt)
+                : subscription.endsAt || new Date();
+
         const updated = await prisma.subscription.update({
             where: { userId: req.user.prismaId },
             data: {
                 status,
-                endsAt: status === "active" ? null : subscription.endsAt || new Date(),
+                endsAt: nextEndsAt,
             },
             select: {
                 plan: true,
@@ -352,7 +385,7 @@ export const updateUserPlan = asyncHandler(async (req, res, next) => {
     const { userId } = req.params;
     const { plan } = req.body;
 
-    if (!plan || !["starter", "growth", "enterprise"].includes(plan)) {
+    if (!plan || !["starter", "growth", "scale", "enterprise"].includes(plan)) {
         return next(new ApiError(400, "A valid plan is required"));
     }
 
@@ -419,9 +452,9 @@ export const getUserUsageAdmin = asyncHandler(async (req, res, next) => {
 export const createUpgradeRequest = asyncHandler(async (req, res, next) => {
     const { targetPlan, notes, requiresManualReview } = req.body;
 
-    if (!targetPlan || !["growth", "enterprise"].includes(targetPlan)) {
+    if (!targetPlan || !["growth", "scale", "enterprise"].includes(targetPlan)) {
         return next(
-            new ApiError(400, "A valid target plan is required (growth or enterprise)")
+            new ApiError(400, "A valid target plan is required (growth, scale or enterprise)")
         );
     }
 
@@ -927,14 +960,20 @@ export const updateUpgradeRequestAdmin = asyncHandler(async (req, res, next) => 
  * Fallback called by PaymentSuccess.jsx when the confirmation webhook
  * hasn't arrived yet (common on Render free tier sleeping, test mode, etc.).
  *
- * Strategy:
- *  1. If already closed → return as-is
- *  2. If request is "approved" + paymentProvider contains "epayco"
- *     + paymentStatus is "pending" (not rejected/failed):
- *     → Activate the plan directly.
- *     The user reached this endpoint only after going through the ePayco
- *     checkout and being redirected back, so we can trust the payment happened.
- *  3. If paymentStatus is "rejected" or "failed" → do NOT activate.
+ * This used to activate the plan just because the user reached this
+ * endpoint, on the theory that they could only have gotten here via
+ * ePayco's redirect. That's false: any authenticated user could call this
+ * route directly for any of their own "approved" requests without ever
+ * paying. It now independently confirms the payment against ePayco's
+ * transaction-query API (same one `queryEpaycoTransaction` was written for
+ * but never wired up) before activating anything, mirroring what
+ * `verifyAndActivateBySession` already does correctly for Stripe.
+ *
+ * NOTE: ePayco's transaction-query response has historically used Spanish
+ * field names (cod_respuesta/valor/moneda) distinct from the webhook's
+ * x_-prefixed English ones - both are checked below, but this should be
+ * confirmed against one real sandbox response before relying on it in
+ * production.
  */
 export const verifyAndActivateByEpayco = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
@@ -961,7 +1000,7 @@ export const verifyAndActivateByEpayco = asyncHandler(async (req, res, next) => 
         return next(new ApiError(400, "Request is not in approved status"));
     }
 
-    // Only activate ePayco requests that went through checkout and are pending
+    // Only attempt ePayco requests that went through checkout and are pending
     const isEpaycoRequest =
         `${request.paymentProvider || ""}`.toLowerCase().includes("epayco");
     const isFailedPayment =
@@ -978,7 +1017,37 @@ export const verifyAndActivateByEpayco = asyncHandler(async (req, res, next) => 
         }, "Payment was not successful"));
     }
 
-    // Activate — user reached this page via ePayco's redirect, payment confirmed
+    let transaction;
+    try {
+        transaction = await queryEpaycoTransaction(request.paymentSessionId);
+    } catch (error) {
+        console.error("[epayco-verify] Transaction query failed", { requestId: id, message: error.message });
+        return next(new ApiError(502, "Could not verify the payment with ePayco. Please try again shortly."));
+    }
+
+    const txData = transaction?.data || transaction || {};
+    const stateCode = parseInt(
+        `${txData.x_cod_transaction_state ?? txData.cod_respuesta ?? txData.estado_codigo ?? 0}`,
+        10
+    );
+    const paidAmount = Number(txData.x_amount ?? txData.valor ?? txData.amount ?? 0);
+    const currencyCode = `${txData.x_currency_code ?? txData.moneda ?? txData.currency ?? ""}`.toUpperCase();
+
+    const expectedAmount = getEpaycoAmount(request.targetPlan);
+    const amountMatches = expectedAmount !== null && Math.abs(Math.round(paidAmount) - expectedAmount) <= 1;
+    const currencyMatches = currencyCode === "COP";
+    const stateApproved = isEpaycoTransactionApproved(stateCode);
+
+    if (!stateApproved || !amountMatches || !currencyMatches) {
+        console.warn("[epayco-verify] Payment not confirmed by ePayco — refusing to activate", {
+            requestId: id, stateCode, paidAmount, expectedAmount, currencyCode,
+        });
+        return res.status(200).json(new ApiResponse(200, {
+            paid: false,
+            reason: !stateApproved ? "not_approved" : "amount_mismatch",
+        }, "Payment could not be verified"));
+    }
+
     await closeApprovedRequestAndActivatePlan({
         requestId: id,
         actedBy: "epayco-verify-fallback",
@@ -1202,7 +1271,7 @@ export const handleEpaycoConfirmation = async (req, res) => {
         // Load the upgrade request
         const existingRequest = await prisma.planUpgradeRequest.findUnique({
             where: { id: requestId },
-            select: { id: true, status: true, paymentSessionId: true, paymentStatus: true },
+            select: { id: true, status: true, paymentSessionId: true, paymentStatus: true, targetPlan: true },
         });
 
         if (!existingRequest) {
@@ -1216,6 +1285,28 @@ export const handleEpaycoConfirmation = async (req, res) => {
         }
 
         if (isEpaycoTransactionApproved(stateCode)) {
+            // The signature only proves the payload wasn't tampered with in
+            // transit - it says nothing about whether the amount actually
+            // paid matches what this plan costs. Without this check, a
+            // manipulated `amount` sent to ePayco's widget in the browser
+            // (see EpaycoCheckout.jsx) would still produce a validly-signed
+            // confirmation for whatever lower amount was actually charged.
+            const expectedAmount = getEpaycoAmount(existingRequest.targetPlan);
+            const paidAmount = Math.round(Number(amount));
+            const amountMatches = expectedAmount !== null && Math.abs(paidAmount - expectedAmount) <= 1;
+            const currencyMatches = currencyCode.toUpperCase() === "COP";
+
+            if (!amountMatches || !currencyMatches) {
+                console.error("[epayco-confirmation] Amount/currency mismatch — refusing to activate", {
+                    requestId, targetPlan: existingRequest.targetPlan, expectedAmount, paidAmount, currencyCode,
+                });
+                await prisma.planUpgradeRequest.updateMany({
+                    where: { id: requestId, status: "approved" },
+                    data: { paymentStatus: "amount_mismatch" },
+                });
+                return res.status(200).json({ success: false, message: "Amount mismatch" });
+            }
+
             // Transaction accepted — activate the plan
             await closeApprovedRequestAndActivatePlan({
                 requestId,

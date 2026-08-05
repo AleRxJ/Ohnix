@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
 import { prisma } from "../db/prisma.js";
 import { normalizeCountryCode } from "../services/companyCountry.service.js";
+import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -26,6 +27,22 @@ const resolveDefaultTaxRate = async (userId, explicitTaxRate) => {
     return normalizeCountryCode(creator?.company?.countryCode) === "CO"
         ? COLOMBIA_DEFAULT_TAX_RATE
         : undefined;
+};
+
+// configurableAlerts is an Escala+ feature - silently drop the field for
+// lower plans instead of hard-failing the whole product save, so a
+// downgraded account doesn't suddenly get 400s on an otherwise valid form.
+const resolveLowStockThreshold = async (userId, role, rawValue) => {
+    if (rawValue === undefined) return undefined;
+    if (role === "admin") {
+        return rawValue === null || rawValue === "" ? null : Number(rawValue);
+    }
+
+    const subscription = await ensureUserSubscription(userId);
+    const canConfigure = getPlanFeatures(getEffectivePlan(subscription)).configurableAlerts;
+    if (!canConfigure) return undefined;
+
+    return rawValue === null || rawValue === "" ? null : Number(rawValue);
 };
 
 const mapProduct = (product) => ({
@@ -53,6 +70,7 @@ const mapProduct = (product) => ({
     tax_code: product.taxCode,
     tax_rate: product.taxRate === null ? null : Number(product.taxRate),
     is_tax_excluded: product.isTaxExcluded,
+    low_stock_threshold: product.lowStockThreshold,
     created_by: product.createdBy
         ? {
               _id: toExternalId(product.createdBy),
@@ -155,6 +173,7 @@ const createProduct = asyncHandler(async (req, res, next) => {
         tax_code,
         tax_rate,
         is_tax_excluded,
+        low_stock_threshold,
     } = req.body;
 
     if (
@@ -210,6 +229,7 @@ const createProduct = asyncHandler(async (req, res, next) => {
         }
 
         const resolvedTaxRate = await resolveDefaultTaxRate(req.user.prismaId, tax_rate !== undefined ? tax_rate : undefined);
+        const resolvedLowStockThreshold = await resolveLowStockThreshold(req.user.prismaId, req.user.role, low_stock_threshold);
 
         const product = await prisma.product.create({
             data: {
@@ -227,6 +247,7 @@ const createProduct = asyncHandler(async (req, res, next) => {
                 ...(tax_code !== undefined && { taxCode: String(tax_code).trim() || null }),
                 ...(resolvedTaxRate !== undefined && { taxRate: resolvedTaxRate }),
                 ...(typeof is_tax_excluded === "boolean" && { isTaxExcluded: is_tax_excluded }),
+                ...(resolvedLowStockThreshold !== undefined && { lowStockThreshold: resolvedLowStockThreshold }),
             },
             include: {
                 category: {
@@ -376,6 +397,12 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             }
         }
 
+        const resolvedLowStockThreshold = await resolveLowStockThreshold(
+            req.user.prismaId,
+            req.user.role,
+            updateData.low_stock_threshold
+        );
+
         const payload = {
             ...(updateData.product_name !== undefined && {
                 productName: String(updateData.product_name).trim(),
@@ -407,6 +434,7 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             ...(typeof updateData.is_tax_excluded === "boolean" && {
                 isTaxExcluded: updateData.is_tax_excluded,
             }),
+            ...(resolvedLowStockThreshold !== undefined && { lowStockThreshold: resolvedLowStockThreshold }),
             productImage,
             updatedById: req.user.prismaId,
         };

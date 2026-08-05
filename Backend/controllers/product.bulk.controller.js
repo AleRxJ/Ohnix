@@ -3,6 +3,12 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import fs from "fs";
+import {
+    ensureUserSubscription,
+    ensureActiveSubscription,
+    getEffectivePlan,
+    getPlanLimits,
+} from "../middleware/pricing.middleware.js";
 
 const parseCSV = (csvText) => {
     const lines = csvText
@@ -249,10 +255,42 @@ export const bulkUploadProducts = asyncHandler(async (req, res, next) => {
             );
     }
 
+    // enforceEntityLimit only guards the single-product POST /products
+    // route - this endpoint bypassed the plan's product cap entirely and
+    // could insert up to 500 products per call regardless of plan. Trim to
+    // whatever room is actually left instead of rejecting the whole batch.
+    let productsToInsert = validProducts;
+    if (req.user.role !== "admin") {
+        const subscription = await ensureUserSubscription(userId);
+        ensureActiveSubscription(subscription);
+        const limit = getPlanLimits(getEffectivePlan(subscription)).maxProducts;
+
+        if (limit !== null) {
+            const existingCount = await prisma.product.count({
+                where: { createdById: userId },
+            });
+            const remaining = Math.max(0, limit - existingCount);
+
+            if (validProducts.length > remaining) {
+                const overflow = validProducts.slice(remaining);
+                productsToInsert = validProducts.slice(0, remaining);
+                for (const item of overflow) {
+                    errors.push({
+                        row: item.row,
+                        product_code: item.data.productCode,
+                        errors: [
+                            `Plan limit reached for products. ${subscription.plan} allows up to ${limit}.`,
+                        ],
+                    });
+                }
+            }
+        }
+    }
+
     let insertedCount = 0;
     const dbErrors = [];
 
-    for (const rowItem of validProducts) {
+    for (const rowItem of productsToInsert) {
         try {
             await prisma.product.create({ data: rowItem.data });
             insertedCount += 1;

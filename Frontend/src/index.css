@@ -813,3 +813,32 @@ body {
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
+/* Admin Management Tabs */
+.admin-tabs .ant-tabs {
+  color: #ffffff;
+}
+
+.admin-tabs .ant-tabs-nav::before {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.admin-tabs .ant-tabs-tab {
+  color: #a9b3b8 !important;
+}
+
+.admin-tabs .ant-tabs-tab:hover {
+  color: #44f3f0 !important;
+}
+
+.admin-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #44f3f0 !important;
+}
+
+.admin-tabs .ant-tabs-ink-bar {
+  background: linear-gradient(90deg, #29d8d5, #44f3f0) !important;
+}
+
+.admin-tabs .ant-tabs-content {
+  background: transparent;
+}
+

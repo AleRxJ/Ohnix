@@ -5,7 +5,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import errorHandler from "./middleware/error.middleware.js";
 import { handlePaymentWebhook, handleEpaycoConfirmation, handleEpaycoResponse } from "./controllers/subscription.controller.js";
-import { handleFactusWebhook } from "./controllers/electronicInvoice.controller.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,13 +37,17 @@ const configuredOrigins = [
    .map(normalizeOrigin)
    .filter(Boolean);
 
+// No wildcard *.vercel.app here on purpose: with credentials:true, that
+// would let anyone who deploys a free Vercel project make authenticated
+// cross-site requests using a victim's session cookies. Add specific
+// preview-deployment URLs to ALLOWED_ORIGINS (comma-separated) if needed
+// instead of wildcarding the whole domain.
 const defaultOrigins = [
    "http://localhost:3000",
    "http://localhost:5173",
    "https://ohnix.co",
    "https://www.ohnix.co",
    "https://ohnix.vercel.app",
-   "https://*.vercel.app",
 ];
 
 const allowedOrigins = [...new Set([...configuredOrigins, ...defaultOrigins])];
@@ -111,12 +114,14 @@ app.post(
     handleEpaycoResponse
 );
 
-// Factus webhook for Colombia electronic invoicing updates.
-app.post(
-   "/api/v1/electronic-invoicing/factus/webhook",
-   express.json({ limit: "16kb" }),
-   handleFactusWebhook
-);
+// NOTE: There is no Factus webhook endpoint here (there used to be one).
+// The official Factus V2 Postman collection (source of truth for this
+// integration) has zero webhook/event-push endpoints, and every document
+// creation call ("Crear y validar") responds synchronously with the final
+// validation result in the same HTTP response - there is nothing async to
+// receive a callback for. If Factus support ever confirms a real webhook
+// feature, reintroduce this route plus FACTUS_WEBHOOK_SECRET and the
+// corresponding service/controller functions (removed on 2026-08-04).
 
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
@@ -137,6 +142,8 @@ import schedulerRouter from "./routes/scheduler.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import companyRouter from "./routes/company.routes.js";
 import electronicInvoiceRouter from "./routes/electronicInvoice.routes.js";
+import apiKeyRouter from "./routes/apiKey.routes.js";
+import publicApiRouter from "./routes/publicApi.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -152,6 +159,8 @@ app.use("/api/v1/scheduler", schedulerRouter);
 app.use("/api/v1/subscriptions", subscriptionRouter);
 app.use("/api/v1/companies", companyRouter);
 app.use("/api/v1/electronic-invoices", electronicInvoiceRouter);
+app.use("/api/v1/api-keys", apiKeyRouter);
+app.use("/api/v1/public", publicApiRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________

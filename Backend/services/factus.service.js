@@ -25,12 +25,16 @@ const withTimeout = async (promiseFactory, timeoutMs) => {
     }
 };
 
+// Endpoint paths are verified against the official Factus V2 Postman
+// collection (api-factus-v2.json) - do not change these defaults without
+// checking that collection first, it is the source of truth, not the
+// public docs site (which disagrees with it in places, e.g. credit notes).
 const getFactusConfig = () => ({
     baseUrl: normalizeUrl(process.env.FACTUS_BASE_URL || "https://api-sandbox.factus.com.co"),
     authPath: `${process.env.FACTUS_AUTH_PATH || "/oauth/token"}`.trim(),
     invoicePath: `${process.env.FACTUS_INVOICE_PATH || "/v2/bills/validate"}`.trim(),
     invoiceStatusPathTemplate: `${process.env.FACTUS_INVOICE_STATUS_PATH || "/v2/bills/{number}"}`.trim(),
-    creditNotePath: `${process.env.FACTUS_CREDIT_NOTE_PATH || "/v1/credit-notes/validate"}`.trim(),
+    creditNotePath: `${process.env.FACTUS_CREDIT_NOTE_PATH || "/v2/credit-notes/validate"}`.trim(),
     authMode: `${process.env.FACTUS_AUTH_MODE || "password"}`
         .trim()
         .toLowerCase(),
@@ -39,7 +43,6 @@ const getFactusConfig = () => ({
     username: `${process.env.FACTUS_USERNAME || ""}`.trim(),
     password: `${process.env.FACTUS_PASSWORD || ""}`.trim(),
     staticToken: `${process.env.FACTUS_ACCESS_TOKEN || ""}`.trim(),
-    apiKey: `${process.env.FACTUS_API_KEY || ""}`.trim(),
     timeoutMs: Number(process.env.FACTUS_TIMEOUT_MS || FACTUS_DEFAULT_TIMEOUT_MS),
 });
 
@@ -124,11 +127,13 @@ const getAccessToken = async () => {
     return `${token}`;
 };
 
-const buildFactusAuthHeaders = (token, apiKey) => ({
+// Every request in the official collection only ever carries Authorization +
+// Accept/Content-Type - there is no x-api-key header anywhere in it, so we
+// don't send one.
+const buildFactusAuthHeaders = (token) => ({
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
     Accept: "application/json",
-    ...(apiKey ? { "x-api-key": apiKey } : {}),
 });
 
 export const isFactusConfigured = () => {
@@ -149,7 +154,7 @@ export const createFactusInvoice = async ({ payload }) => {
         (signal) =>
             fetch(buildAbsoluteUrl(config.baseUrl, config.invoicePath), {
                 method: "POST",
-                headers: buildFactusAuthHeaders(token, config.apiKey),
+                headers: buildFactusAuthHeaders(token),
                 body: JSON.stringify(payload),
                 signal,
             }),
@@ -183,7 +188,7 @@ export const createFactusCreditNote = async ({ payload }) => {
         (signal) =>
             fetch(buildAbsoluteUrl(config.baseUrl, config.creditNotePath), {
                 method: "POST",
-                headers: buildFactusAuthHeaders(token, config.apiKey),
+                headers: buildFactusAuthHeaders(token),
                 body: JSON.stringify(payload),
                 signal,
             }),
@@ -222,7 +227,7 @@ export const getFactusInvoiceStatus = async ({ invoiceNumber }) => {
         (signal) =>
             fetch(buildAbsoluteUrl(config.baseUrl, statusPath), {
                 method: "GET",
-                headers: buildFactusAuthHeaders(token, config.apiKey),
+                headers: buildFactusAuthHeaders(token),
                 signal,
             }),
         config.timeoutMs

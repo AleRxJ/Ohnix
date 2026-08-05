@@ -28,7 +28,6 @@ import {
     CalendarOutlined,
     ShoppingCartOutlined,
     DollarOutlined,
-    FileExcelOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/api";
 import AuthContext from "../../context/AuthContext";
@@ -37,6 +36,8 @@ import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
 import useI18n from "../../hooks/useI18n";
+import ReportExportButtons from "./ReportExportButtons";
+import { downloadCsv, downloadExcel } from "../../utils/exportReport";
 
 const { RangePicker } = DatePicker;
 
@@ -99,65 +100,56 @@ const SalesReport = () => {
         }
     };
 
-    const exportToCSV = () => {
-        if (!salesData) {
-            toast.error(t("reports.no_data_to_export"));
-            return;
-        }
+    const buildReportRows = () => {
+        const rows = [];
 
-        // Prepare CSV data
-        const csvData = [];
-
-        // Add summary
-        csvData.push([t("reports.sales_report_summary")]);
-        csvData.push([
+        rows.push([t("reports.sales_report_summary")]);
+        rows.push([
             t("reports.total_sales"),
             formatCurrency(salesData.summary.totalSales),
         ]);
-        csvData.push([t("orders.total_orders"), salesData.summary.totalOrders]);
-        csvData.push([""]);
+        rows.push([t("orders.total_orders"), salesData.summary.totalOrders]);
+        rows.push([""]);
 
-        // Add sales by date
-        csvData.push([t("reports.sales_by_date")]);
-        csvData.push([t("common.date"), t("reports.total_sales"), t("orders.number_of_orders")]);
+        rows.push([t("reports.sales_by_date")]);
+        rows.push([t("common.date"), t("reports.total_sales"), t("orders.number_of_orders")]);
         salesData.salesByDate.forEach((item) => {
-            csvData.push([item._id, formatCurrency(item.total), item.orders]);
+            rows.push([item._id, formatCurrency(item.total), item.orders]);
         });
-        csvData.push([""]);
+        rows.push([""]);
 
-        // Add sales by product
-        csvData.push([t("reports.top_selling_products")]);
-        csvData.push([t("products.product_name"), t("reports.quantity_sold"), t("reports.total_sales")]);
+        rows.push([t("reports.top_selling_products")]);
+        rows.push([t("products.product_name"), t("reports.quantity_sold"), t("reports.total_sales")]);
         salesData.salesByProduct.forEach((item) => {
-            csvData.push([
+            rows.push([
                 item.product_name,
                 item.quantity,
                 formatCurrency(item.total),
             ]);
         });
 
-        // Convert to CSV string
-        const csvContent = csvData
-            .map((row) => row.map((field) => `"${field}"`).join(","))
-            .join("\n");
+        return rows;
+    };
 
-        // Download CSV
-        const blob = new Blob([csvContent], {
-            type: "text/csv;charset=utf-8;",
-        });
-        const link = document.createElement("a");
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute(
-                "download",
-                `sales-report-${dayjs().format("YYYY-MM-DD")}.csv`
-            );
-            link.style.visibility = "hidden";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+    const exportToCSV = () => {
+        if (!salesData) {
+            toast.error(t("reports.no_data_to_export"));
+            return;
         }
+        downloadCsv(buildReportRows(), `sales-report-${dayjs().format("YYYY-MM-DD")}.csv`);
+        toast.success(t("reports.sales_report_exported"));
+    };
+
+    const exportToExcel = () => {
+        if (!salesData) {
+            toast.error(t("reports.no_data_to_export"));
+            return;
+        }
+        downloadExcel(
+            buildReportRows(),
+            `sales-report-${dayjs().format("YYYY-MM-DD")}.xlsx`,
+            t("reports.sales_report_summary")
+        );
         toast.success(t("reports.sales_report_exported"));
     };
 
@@ -237,15 +229,11 @@ const SalesReport = () => {
                             <span className="sm:hidden">{t("common.refresh")}</span>
                         </Button>
                     </div>
-                    <Button
-                        icon={<FileExcelOutlined />}
-                        onClick={exportToCSV}
-                        disabled={!salesData}
-                        className="bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0] w-full sm:w-auto border-0"
-                    >
-                        <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
-                        <span className="sm:hidden">{t("common.export")}</span>
-                    </Button>
+                    <ReportExportButtons
+                        hasData={!!salesData}
+                        onExportCsv={exportToCSV}
+                        onExportExcel={exportToExcel}
+                    />
                 </div>
             </Card>
 

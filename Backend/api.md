@@ -169,6 +169,9 @@ Sales order management with invoice generation and status tracking.
 | **GET**   | `/orders/:id/invoice` | Generate and download order invoice                          | ✅   | User  |
 | **GET**   | `/orders/:id/electronic-invoice` | Get electronic invoicing status for the order (Factus, CO only) | ✅ | User |
 | **POST**  | `/orders/:id/electronic-invoice/issue` | Send order to Factus for DIAN electronic invoicing (CO only) | ✅ | User |
+| **POST**  | `/orders/:id/electronic-invoice/sync` | Re-fetch the invoice status from Factus (`issuing`/`submitted` only) | ✅ | User |
+| **POST**  | `/orders/:id/electronic-invoice/credit-notes` | Issue a credit note against an `accepted` invoice | ✅ | User |
+| **GET**   | `/orders/:id/electronic-invoice/credit-notes` | List credit notes issued for the order's invoice | ✅ | User |
 | **GET**   | `/orders/all`         | Get all orders across all users                              | ✅   | Admin |
 
 ---
@@ -359,42 +362,66 @@ EPAYCO_AMOUNT_ENTERPRISE_COP=299000
 
 ### Factus Integration (Colombia Electronic Invoicing)
 
-| Method   | Endpoint                                             | Description | Auth | Role |
-| -------- | ---------------------------------------------------- | ----------- | ---- | ---- |
-| **POST** | `/electronic-invoicing/factus/webhook`              | Factus status callback webhook (updates DIAN status) | ❌ | System |
+There is no webhook endpoint. Every request/field below is verified against
+the official Factus V2 Postman collection (`api-factus-v2.json`), which is
+the source of truth for this integration - it disagrees with the public docs
+site in places (e.g. the docs site advertises `/v1/credit-notes/validate`;
+the collection and the real API only expose `/v2/credit-notes/validate`).
+The collection has zero webhook/event-push endpoints, and every "crear y
+validar" call (bills, credit notes, debit notes, support documents) responds
+synchronously with the final validation result in the same HTTP response -
+there is nothing async to receive a callback for. A webhook route existed
+here previously and was removed on 2026-08-04 for that reason; if Factus
+support ever confirms a real async event-push feature, reintroduce it and
+its own env var.
+
+Order-scoped invoicing/credit-note endpoints are listed in the Orders table
+above (`/orders/:id/electronic-invoice*`). `GET /electronic-invoices` lists
+all invoices for the requester (or all companies for admins).
 
 #### Required Environment Variables
 
 ```bash
-# Factus base URL and endpoints
-FACTUS_BASE_URL=https://api-sandbox.factus.com.co
+# Sandbox vs production: switch by uncommenting one FACTUS_BASE_URL line,
+# no code changes needed anywhere - everything reads from this variable.
+# FACTUS_BASE_URL=https://api-sandbox.factus.com.co
+FACTUS_BASE_URL=https://api.factus.com.co
 FACTUS_AUTH_PATH=/oauth/token
 FACTUS_INVOICE_PATH=/v2/bills/validate
 FACTUS_INVOICE_STATUS_PATH=/v2/bills/{number}
+FACTUS_CREDIT_NOTE_PATH=/v2/credit-notes/validate
 
-# Auth mode: client_credentials | password
+# grant_type used against /oauth/token. The official collection only ever
+# demonstrates "password" (+ "refresh_token" to renew) - it does NOT include
+# a client_credentials example anywhere. Keep this as "password" unless
+# Factus support explicitly confirms client_credentials works for your
+# account.
 FACTUS_AUTH_MODE=password
 
-# Use static token OR OAuth credentials
-FACTUS_ACCESS_TOKEN=
+# Real credentials, obtained from your Factus account/portal (or Factus
+# support). Treat as secrets.
 FACTUS_CLIENT_ID=
 FACTUS_CLIENT_SECRET=
-
-# Required only when FACTUS_AUTH_MODE=password
 FACTUS_USERNAME=
 FACTUS_PASSWORD=
 
-# Optional
-FACTUS_API_KEY=
+# Optional dev/testing shortcut ONLY - Factus access tokens expire hourly,
+# so this is not viable for production.
+FACTUS_ACCESS_TOKEN=
+
 FACTUS_TIMEOUT_MS=20000
-FACTUS_WEBHOOK_SECRET=
 ```
 
+There is no `FACTUS_API_KEY` - no request in the official collection carries
+an `x-api-key` header, only `Authorization: Bearer <token>`.
+
 Factus V2 issuance is enabled only when the company has `countryCode=CO`,
-`electronicInvoicingEnabled=true` and a `factusNumberingRangeId`. The customer
-must have its DIAN identification and municipality fields, and each product must
-have its DIAN unit/tax configuration. The webhook is rejected until
-`FACTUS_WEBHOOK_SECRET` is configured.
+`electronicInvoicingEnabled=true` and a `factusNumberingRangeId`. Credit
+notes additionally require `factusCreditNoteNumberingRangeId` - Factus
+requires a numbering range dedicated to each document type (invoices are
+document code 21, credit notes are 22; they cannot share a range). The
+customer must have its DIAN identification and municipality fields, and each
+product must have its DIAN unit/tax configuration.
 
 ### Stripe Dashboard Requirements (CO/ES)
 

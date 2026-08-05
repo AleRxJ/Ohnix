@@ -1,5 +1,15 @@
 import { prisma } from "../db/prisma.js";
 
+// Closes "approved" upgrade requests whose target plan the user's
+// subscription already reflects (e.g. left behind by an older activation
+// path that updated the subscription but never closed the request).
+//
+// This used to instead revert the subscription back to request.currentPlan
+// whenever it found this situation - which is backwards: the subscription
+// already matching the target plan means the upgrade succeeded, so
+// reverting it would downgrade a customer who paid correctly. It now only
+// closes the stale request to match reality and never touches the
+// subscription itself.
 export const reconcileLegacyApprovedRequests = async () => {
     const approvedRequests = await prisma.planUpgradeRequest.findMany({
         where: { status: "approved" },
@@ -31,7 +41,7 @@ export const reconcileLegacyApprovedRequests = async () => {
         subscriptions.map((item) => [item.userId, item])
     );
 
-    const requestsToFix = approvedRequests.filter((request) => {
+    const requestsToClose = approvedRequests.filter((request) => {
         const subscription = subscriptionByUserId[request.userId];
         if (!subscription) {
             return false;
@@ -43,19 +53,18 @@ export const reconcileLegacyApprovedRequests = async () => {
         );
     });
 
-    for (const request of requestsToFix) {
-        await prisma.subscription.update({
-            where: { userId: request.userId },
+    for (const request of requestsToClose) {
+        await prisma.planUpgradeRequest.update({
+            where: { id: request.id },
             data: {
-                plan: request.currentPlan,
-                status: "active",
-                endsAt: null,
+                status: "closed",
+                paymentStatus: "paid",
             },
         });
     }
 
     return {
         checked: approvedRequests.length,
-        fixed: requestsToFix.length,
+        fixed: requestsToClose.length,
     };
 };

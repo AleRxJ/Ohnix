@@ -7,6 +7,7 @@ import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
 import { subscriptionService } from "../services/subscriptionService";
 import SubscriptionPlanCard from "../components/profile/SubscriptionPlanCard";
+import ApiKeysPanel from "../components/billing/ApiKeysPanel";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -571,6 +572,8 @@ const Billing = () => {
                         onReactivate={handleReactivate}
                         onRequestUpgrade={handleRequestUpgrade}
                     />
+
+                    <ApiKeysPanel />
 
                     {latestActiveRequest ? (
                         <div className="mt-6 rounded-2xl border border-[#29D8D5]/20 bg-[#29D8D5]/8 p-4 sm:p-5">

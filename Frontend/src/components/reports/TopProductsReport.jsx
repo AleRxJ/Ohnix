@@ -28,7 +28,6 @@ import {
     ShoppingCartOutlined,
     DollarOutlined,
     ReloadOutlined,
-    FileExcelOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/api";
 import AuthContext from "../../context/AuthContext";
@@ -37,6 +36,8 @@ import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
 import useI18n from "../../hooks/useI18n";
+import ReportExportButtons from "./ReportExportButtons";
+import { downloadCsv, downloadExcel } from "../../utils/exportReport";
 
 const { Option } = Select;
 
@@ -84,28 +85,20 @@ const TopProductsReport = () => {
         }
     };
 
-    const exportToCSV = () => {
-        if (topProducts.length === 0) {
-            toast.error(t("reports.no_data_to_export"));
-            return;
-        }
+    const buildReportRows = () => {
+        const rows = [];
 
-        // Prepare CSV data
-        const csvData = [];
-
-        // Add summary
-        csvData.push([t("reports.top_products_report_summary")]);
+        rows.push([t("reports.top_products_report_summary")]);
         const summary = calculateSummary();
-        csvData.push([t("reports.total_products"), summary.totalProducts]);
-        csvData.push([t("reports.total_quantity_sold"), summary.totalQuantitySold]);
-        csvData.push([
+        rows.push([t("reports.total_products"), summary.totalProducts]);
+        rows.push([t("reports.total_quantity_sold"), summary.totalQuantitySold]);
+        rows.push([
             t("reports.total_revenue"),
             formatCurrency(summary.totalRevenue),
         ]);
-        csvData.push([""]);
+        rows.push([""]);
 
-        // Add headers
-        csvData.push([
+        rows.push([
             t("reports.rank"),
             t("products.product_code"),
             t("products.product_name"),
@@ -114,13 +107,12 @@ const TopProductsReport = () => {
             t("reports.average_price_rupees"),
         ]);
 
-        // Add product data
         topProducts.forEach((item, index) => {
             const avgPrice =
                 item.quantity_sold > 0
                     ? item.total_sales / item.quantity_sold
                     : 0;
-            csvData.push([
+            rows.push([
                 index + 1,
                 item.product_code,
                 item.product_name,
@@ -130,28 +122,28 @@ const TopProductsReport = () => {
             ]);
         });
 
-        // Convert to CSV string
-        const csvContent = csvData
-            .map((row) => row.map((field) => `"${field}"`).join(","))
-            .join("\n");
+        return rows;
+    };
 
-        // Download CSV
-        const blob = new Blob([csvContent], {
-            type: "text/csv;charset=utf-8;",
-        });
-        const link = document.createElement("a");
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute(
-                "download",
-                `top-products-report-${dayjs().format("YYYY-MM-DD")}.csv`
-            );
-            link.style.visibility = "hidden";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+    const exportToCSV = () => {
+        if (topProducts.length === 0) {
+            toast.error(t("reports.no_data_to_export"));
+            return;
         }
+        downloadCsv(buildReportRows(), `top-products-report-${dayjs().format("YYYY-MM-DD")}.csv`);
+        toast.success(t("reports.top_products_report_exported"));
+    };
+
+    const exportToExcel = () => {
+        if (topProducts.length === 0) {
+            toast.error(t("reports.no_data_to_export"));
+            return;
+        }
+        downloadExcel(
+            buildReportRows(),
+            `top-products-report-${dayjs().format("YYYY-MM-DD")}.xlsx`,
+            t("reports.top_products_report_summary")
+        );
         toast.success(t("reports.top_products_report_exported"));
     };
 
@@ -335,16 +327,11 @@ const TopProductsReport = () => {
                             <span className="sm:hidden">{t("common.refresh")}</span>
                         </Button>
                     </div>
-                    <Button
-                        icon={<FileExcelOutlined />}
-                        onClick={exportToCSV}
-                        disabled={topProducts.length === 0}
-                        className="bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0] w-full sm:w-auto border-0 font-semibold"
-                        size={window.innerWidth < 768 ? "middle" : "large"}
-                    >
-                        <span className="hidden sm:inline">{t("reports.export_to_csv")}</span>
-                        <span className="sm:hidden">{t("common.export")}</span>
-                    </Button>
+                    <ReportExportButtons
+                        hasData={topProducts.length > 0}
+                        onExportCsv={exportToCSV}
+                        onExportExcel={exportToExcel}
+                    />
                 </div>
             </Card>
 

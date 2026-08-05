@@ -195,6 +195,21 @@ const ProductDetailsDrawer = ({
                     </div>
                 </div>
 
+                {typeof product.low_stock_threshold === "number" && (
+                    <div className="module-shell rounded-3xl border border-white/10">
+                        <div className="px-5 py-4 border-b border-white/10 flex items-center gap-2">
+                            <WarningOutlined className="text-[#44F3F0]" />
+                            <Text className="text-sm font-bold text-white">{t("products.low_stock_alert")}</Text>
+                        </div>
+                        <div className="p-5">
+                            <div className="flex justify-between">
+                                <Text className="text-sm text-[#A9B3B8]">{t("products.low_stock_threshold")}</Text>
+                                <Text className="text-sm text-white">{product.low_stock_threshold}</Text>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {(product.unit_measure_code || product.standard_code) && (
                     <div className="module-shell rounded-3xl border border-[#29D8D5]/15">
                         <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">

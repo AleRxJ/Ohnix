@@ -28,12 +28,12 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false
       - key: START_SCHEDULER
-        value: "false"
+        value: "true"
       - key: TIMEZONE
         value: America/Mexico_City
       - key: AUTH_DEBUG
         value: "false"
-      - key: info@itcycle.co
+      - key: SENDER_EMAIL
         sync: false
       - key: SENDER_PASSWORD
         sync: false

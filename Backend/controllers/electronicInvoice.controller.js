@@ -4,7 +4,6 @@ import {
     getElectronicInvoiceForOrder,
     issueElectronicInvoiceForOrder,
     syncElectronicInvoiceStatus,
-    processFactusWebhook,
     listElectronicInvoices,
     issueCreditNoteForInvoice,
     listCreditNotesForInvoice,
@@ -84,25 +83,6 @@ export const getOrderCreditNotes = asyncHandler(async (req, res) => {
         .status(200)
         .json(new ApiResponse(200, data, "Credit notes fetched successfully"));
 });
-
-export const handleFactusWebhook = async (req, res) => {
-    try {
-        const result = await processFactusWebhook({
-            payload: req.body || {},
-            headers: req.headers || {},
-        });
-
-        return res.status(200).json({
-            received: true,
-            ...result,
-        });
-    } catch (error) {
-        return res.status(error?.statusCode || 400).json({
-            received: false,
-            message: error?.message || "Invalid Factus webhook payload",
-        });
-    }
-};
 
 export const getElectronicInvoices = asyncHandler(async (req, res) => {
     const data = await listElectronicInvoices({

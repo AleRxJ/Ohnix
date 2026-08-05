@@ -30,6 +30,17 @@ const toNumber = (value) => {
 const money = (value) => toNumber(value).toFixed(2);
 const text = (value) => `${value || ""}`.trim();
 
+// The official Factus V2 collection sends numbering_range_id as a bare JSON
+// number for bills/credit notes created against legacy numeric ranges (e.g.
+// 389), but some other document types (payrolls) show ULID-style string IDs
+// - normalize numeric-looking values to a real number and leave anything
+// else (e.g. a ULID) as a string, since we can't assume every account's
+// ranges are numeric.
+const toNumberingRangeId = (value) => {
+    const trimmed = text(value);
+    return /^\d+$/.test(trimmed) ? Number(trimmed) : trimmed;
+};
+
 const normalizeProviderStatus = (value) => {
     const status = text(value).toLowerCase();
     if (["accepted", "approved", "valid", "success", "issued"].includes(status)) return "accepted";
@@ -127,7 +138,7 @@ const buildFactusPayload = (order) => {
     return {
         reference_code: referenceCode,
         document: company.factusDocumentType,
-        numbering_range_id: company.factusNumberingRangeId,
+        numbering_range_id: toNumberingRangeId(company.factusNumberingRangeId),
         operation_type: company.factusOperationType,
         send_email: false,
         payment_details: [{
@@ -322,12 +333,20 @@ const buildCreditNotePayload = (order, invoice, company, { conceptCode, observat
 
     const payload = {
         reference_code: referenceCode,
-        bill_id: invoice.externalId || undefined,
-        // Factus links a credit note to the original invoice via its provider
-        // number/reference - both are sent so either lookup strategy works.
-        invoice_reference_code: invoice.referenceCode,
-        invoice_number: invoice.invoiceNumber || undefined,
-        numbering_range_id: company.factusNumberingRangeId,
+        // Per the official Factus V2 Postman collection, a credit note links
+        // to the original invoice via "bill_number" - there is no bill_id or
+        // reference-code based lookup.
+        bill_number: invoice.invoiceNumber,
+        // DIAN's UBL customization ID catalog for credit notes (Anexo
+        // Tecnico Factura Electronica de Venta, Resolucion 000012 de 2021):
+        // "20" = credit note that references an electronic invoice. Every
+        // credit note Ohnix issues is against an already-accepted
+        // electronic invoice (enforced above), so "20" is the only value
+        // that ever applies here - it is not a per-request choice, unlike
+        // correction_concept_code. Confirmed against the official Factus
+        // Postman collection's own example, which always sends "20".
+        customization_id: "20",
+        numbering_range_id: toNumberingRangeId(company.factusCreditNoteNumberingRangeId),
         correction_concept_code: conceptCode,
         payment_method_code: company.factusPaymentMethodCode,
         observation: observation || `Nota credito Ohnix ${referenceCode}`,
@@ -366,9 +385,16 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
     const invoice = order.electronicInvoice;
     if (!invoice) throw new ApiError(404, "This order has no electronic invoice");
     if (invoice.status !== "accepted") throw new ApiError(409, "A credit note can only be issued for an accepted electronic invoice");
+    if (!invoice.invoiceNumber) throw new ApiError(409, "This invoice does not have a provider bill number yet");
     if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
 
     const company = order.createdBy.company;
+    if (!text(company?.factusCreditNoteNumberingRangeId)) {
+        // Factus requires a dedicated numbering range per document type
+        // (invoices = document code 21, credit notes = 22) - they cannot
+        // share company.factusNumberingRangeId.
+        throw new ApiError(422, "company.factusCreditNoteNumberingRangeId is required to issue credit notes");
+    }
     const payload = buildCreditNotePayload(order, invoice, company, { conceptCode, observation, items });
 
     const draft = await prisma.electronicCreditNote.create({
@@ -427,25 +453,12 @@ export const listCreditNotesForInvoice = async ({ orderId, requesterUserId, requ
     return { creditNotes: creditNotes.map(serializeCreditNote) };
 };
 
-const validateFactusWebhookSecret = (headers) => {
-    const expected = text(process.env.FACTUS_WEBHOOK_SECRET);
-    const incoming = text(headers["x-factus-secret"] || headers["x-webhook-secret"]);
-    return Boolean(expected && incoming && expected === incoming);
-};
-
-export const processFactusWebhook = async ({ payload = {}, headers = {} }) => {
-    if (!validateFactusWebhookSecret(headers)) throw new ApiError(401, "Factus webhook authentication is not configured or is invalid");
-    const data = pickFactusEnvelope(payload);
-    const externalId = text(data.id || data.document_id || data.invoice_id || data.track_id);
-    const invoiceNo = text(data.number || data.invoice_number);
-    if (!externalId && !invoiceNo) return { updated: false, reason: "missing_external_reference" };
-    const invoice = await prisma.electronicInvoice.findFirst({ where: { OR: [...(externalId ? [{ externalId }] : []), ...(invoiceNo ? [{ invoiceNumber: invoiceNo }] : [])] } });
-    if (!invoice) return { updated: false, reason: "invoice_not_found" };
-    const status = normalizeProviderStatus(data.status || data.state || payload.status || payload.state);
-    if (TERMINAL_STATUSES.includes(invoice.status) && invoice.status !== status) return { updated: false, reason: "terminal_status" };
-    await prisma.$transaction(async (tx) => {
-        const updated = await tx.electronicInvoice.update({ where: { id: invoice.id }, data: { status, rawResponse: payload, errorMessage: status === "rejected" ? "Invoice rejected by provider" : null, issuedAt: status === "accepted" ? new Date() : undefined } });
-        await tx.electronicInvoiceEvent.create({ data: { electronicInvoiceId: updated.id, eventType: "webhook", status, payload } });
-    });
-    return { updated: true, status };
-};
+// Removed processFactusWebhook/validateFactusWebhookSecret on 2026-08-04:
+// the official Factus V2 Postman collection has no webhook/event-push
+// endpoints anywhere, and every document creation call ("Crear y validar")
+// responds synchronously with the final validation result in the same HTTP
+// response body (handled by issueElectronicInvoiceForOrder/
+// issueCreditNoteForInvoice already). Status can also be re-checked on
+// demand via syncElectronicInvoiceStatus (GET /v2/bills/:number). If Factus
+// support ever confirms a real async webhook feature exists, reintroduce
+// this pair of functions plus the app.js route and FACTUS_WEBHOOK_SECRET.

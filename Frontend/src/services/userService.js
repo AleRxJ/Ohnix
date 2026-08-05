@@ -89,11 +89,12 @@ export const userService = {
         }
     },
 
-    async changePassword(oldPassword, newPassword) {
+    async changePassword(oldPassword, newPassword, otp) {
         try {
             const response = await api.post("/users/change-password", {
                 oldPassword,
                 newPassword,
+                otp,
             });
 
             if (response.data.success) {

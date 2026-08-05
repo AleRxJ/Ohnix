@@ -102,19 +102,26 @@ const ProfilePage = () => {
     const handleVerifyOtp = async (values) => {
         try {
             setLoading(true);
-            const verifyResponse = await userService.verifyOtp(values.otp);
 
-            if (verifyResponse.success) {
-                if (newPasswordData) {
-                    await userService.changePassword(
-                        newPasswordData.oldPassword,
-                        newPasswordData.newPassword
-                    );
+            if (newPasswordData) {
+                // change-password validates the OTP itself (and consumes
+                // it) as part of the same request, so there's no separate
+                // "verify" round-trip here - that used to leave a gap where
+                // change-password never actually checked the OTP at all.
+                const response = await userService.changePassword(
+                    newPasswordData.oldPassword,
+                    newPasswordData.newPassword,
+                    values.otp
+                );
+                if (response.success) {
                     passwordForm.resetFields();
                     setShowOtpModal(false);
                     setNewPasswordData(null);
                     refreshUser();
-                } else {
+                }
+            } else {
+                const verifyResponse = await userService.verifyOtp(values.otp);
+                if (verifyResponse.success) {
                     toast.success("Your email has been verified successfully", {
                         position: "top-right",
                         duration: 3000,
