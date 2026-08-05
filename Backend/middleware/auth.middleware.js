@@ -58,12 +58,26 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
                 preferredLanguage: true,
                 createdAt: true,
                 updatedAt: true,
+                tokenVersion: true,
             },
         });
 
         if (!user) {
             return next(
                 new ApiError(401, "Invalid Access Token - User not found")
+            );
+        }
+
+        // Tokens minted before this field existed have no tokenVersion claim
+        // - treat that as 0 (the default every user starts at) so existing
+        // sessions keep working until their next password change, instead of
+        // mass-logging-out everyone the moment this deploys. A password
+        // change/reset bumps User.tokenVersion, which immediately makes every
+        // access token issued before that point - old or new format - fail
+        // this check, revoking them across every device at once.
+        if ((decodedToken.tokenVersion ?? 0) !== user.tokenVersion) {
+            return next(
+                new ApiError(401, "Access token has been revoked - please log in again")
             );
         }
 

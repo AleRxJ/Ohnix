@@ -61,8 +61,11 @@ export const useOrders = () => {
             };
 
             const response = await api.get("/orders", { params });
-            const { orders: ordersData, pagination: paginationData } =
-                response.data.data;
+            const {
+                orders: ordersData,
+                pagination: paginationData,
+                stats: statsData,
+            } = response.data.data;
 
             setOrders(ordersData);
             setPagination({
@@ -70,7 +73,11 @@ export const useOrders = () => {
                 pageSize: paginationData.limit,
                 total: paginationData.total,
             });
-            setStats(calculateStats(ordersData, paginationData));
+            // Computed backend-side over every matching order, not just this
+            // page - see GET /orders (order.controller.js getAllOrders).
+            setStats(
+                statsData || calculateStats(ordersData, paginationData)
+            );
         } catch (error) {
             toast.error("Failed to fetch orders");
             console.error("Error fetching orders:", error);

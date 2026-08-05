@@ -103,6 +103,7 @@ const userForTokenSelect = {
     username: true,
     email: true,
     refreshToken: true,
+    tokenVersion: true,
 };
 
 const userLookupByTokenId = (tokenUserId) => ({
@@ -146,6 +147,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
                 _id: tokenUserId,
                 email: user.email,
                 username: user.username,
+                tokenVersion: user.tokenVersion,
             },
             process.env.ACCESS_TOKEN_SECRET,
             {
@@ -464,10 +466,13 @@ const logoutUser = asyncHandler(async (req, res, next) => {
         });
     }
 
+    // Must match the attributes the cookie was actually set with (login,
+    // above) - a clearCookie call with a different sameSite/secure than the
+    // original cookie is not guaranteed to remove it in every browser.
     const options = {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     };
 
     return res
@@ -599,6 +604,11 @@ const changeCurrentPassword = asyncHandler(async (req, res, next) => {
             // A refresh token stolen before the password change must not
             // keep working after it - force re-login on every other device.
             refreshToken: null,
+            // Bumping tokenVersion invalidates every access token already
+            // issued (verifyJWT rejects any token whose tokenVersion doesn't
+            // match), not just the refresh token above - otherwise a stolen
+            // access token kept working for up to its full 24h expiry.
+            tokenVersion: { increment: 1 },
         },
     });
 
@@ -1238,6 +1248,9 @@ const resetPassword = asyncHandler(async (req, res, next) => {
                 // A refresh token stolen before the reset must not keep
                 // working after it - force re-login on every other device.
                 refreshToken: null,
+                // Also revokes every access token already issued (see the
+                // matching comment in changeCurrentPassword above).
+                tokenVersion: { increment: 1 },
             },
         });
 

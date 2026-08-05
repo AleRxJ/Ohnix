@@ -65,6 +65,7 @@ async function downgradeExpiredSubscriptions() {
         data: {
             plan: "starter",
             endsAt: null,
+            cancelAtPeriodEnd: false,
         },
     });
 

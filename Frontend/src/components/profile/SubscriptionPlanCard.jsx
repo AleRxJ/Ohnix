@@ -104,10 +104,17 @@ const SubscriptionPlanCard = ({
     // Require endsAt to be a real ISO string (not undefined/null from stale cache)
     // so the banner never flickers on initial render from user context data.
     const planEndsAt = typeof subscription?.endsAt === "string" ? subscription.endsAt : null;
+    const cancelAtPeriodEnd = Boolean(subscription?.cancelAtPeriodEnd);
     const renewalDaysLeft = planEndsAt && plan !== "starter"
         ? Math.ceil((new Date(planEndsAt) - Date.now()) / (1000 * 60 * 60 * 24))
         : null;
-    const showRenewalBanner = renewalDaysLeft !== null && renewalDaysLeft <= 7;
+    // A cancellation already scheduled its own "your plan ends soon" banner
+    // below - don't also show the renewal-reminder banner, which reads like
+    // an accidental-lapse warning rather than the outcome the user asked for.
+    const showRenewalBanner = renewalDaysLeft !== null && renewalDaysLeft <= 7 && !cancelAtPeriodEnd;
+    const cancelDateLabel = planEndsAt
+        ? new Date(planEndsAt).toLocaleDateString(lang === "es" ? "es-CO" : "en-US")
+        : "";
 
     const planFeatures = PLAN_FEATURES[effectivePlan] || PLAN_FEATURES.starter;
 
@@ -212,6 +219,27 @@ const SubscriptionPlanCard = ({
                                         : "border-amber-400/60 text-amber-300 hover:border-amber-300"
                                 }`}>
                                 {lang === "es" ? "Renovar" : "Renew"}
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Cancellation scheduled banner — plan stays fully active until endsAt */}
+            {cancelAtPeriodEnd && (
+                <div className="mb-4 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                        <ClockCircleOutlined className="text-[#A9B3B8]" />
+                        <span className="flex-1 text-sm text-[#D4DBDF]">
+                            {t("profile.subscription.cancel_scheduled_banner", { date: cancelDateLabel })}
+                        </span>
+                        {onReactivate && (
+                            <Button
+                                size="small"
+                                onClick={onReactivate}
+                                className="shrink-0 border-[#29D8D5]/45 text-[#44F3F0] hover:border-[#29D8D5] bg-transparent"
+                            >
+                                {t("profile.subscription.undo_cancellation")}
                             </Button>
                         )}
                     </div>
@@ -368,19 +396,29 @@ const SubscriptionPlanCard = ({
                             </Button>
                         )}
 
-                        <Popconfirm
-                            title={t("profile.subscription.confirm_cancel")}
-                            okText={t("common.yes")}
-                            cancelText={t("common.no")}
-                            onConfirm={onCancel}
-                        >
+                        {cancelAtPeriodEnd ? (
                             <Button
-                                icon={<StopOutlined />}
-                                className="h-10 rounded-xl border-red-400/30 bg-red-500/10 text-red-200"
+                                icon={<PlayCircleOutlined />}
+                                onClick={onReactivate}
+                                className="h-10 rounded-xl border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0]"
                             >
-                                {t("profile.subscription.cancel")}
+                                {t("profile.subscription.undo_cancellation")}
                             </Button>
-                        </Popconfirm>
+                        ) : plan !== "starter" ? (
+                            <Popconfirm
+                                title={t("profile.subscription.confirm_cancel")}
+                                okText={t("common.yes")}
+                                cancelText={t("common.no")}
+                                onConfirm={onCancel}
+                            >
+                                <Button
+                                    icon={<StopOutlined />}
+                                    className="h-10 rounded-xl border-red-400/30 bg-red-500/10 text-red-200"
+                                >
+                                    {t("profile.subscription.cancel")}
+                                </Button>
+                            </Popconfirm>
+                        ) : null}
 
                         <Button
                             icon={<RocketOutlined />}

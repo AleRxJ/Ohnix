@@ -1,15 +1,8 @@
-import { execSync } from "node:child_process";
-
-const provider = (process.env.DB_PROVIDER || "mongo").toLowerCase();
-
-if (provider === "postgres" || provider === "prisma") {
-    console.log("🔧 Syncing Prisma schema before startup...");
-    try {
-        execSync("npx prisma db push", { stdio: "inherit" });
-    } catch (error) {
-        console.error("❎ Prisma schema sync failed. Aborting startup.");
-        process.exit(1);
-    }
-}
+// Schema sync used to run here on every process boot via `prisma db push`,
+// duplicating render.yaml's preDeployCommand (which now runs
+// `prisma migrate deploy` instead - reviewed, versioned migrations, not an
+// unreviewed schema push straight to production on every deploy AND every
+// restart). Running it twice was pure risk with no benefit once the
+// pre-deploy step already syncs the schema before this process even starts.
 
 await import("../server.js");

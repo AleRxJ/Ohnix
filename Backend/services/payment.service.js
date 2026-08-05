@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import Stripe from "stripe";
 import {
     createEpaycoCheckoutSession,
@@ -158,7 +159,7 @@ const resolveCountryConfig = (country) => {
     return COUNTRY_CONFIG[normalized] ? { country: normalized, ...COUNTRY_CONFIG[normalized] } : null;
 };
 
-const getAmountForPlanAndCurrency = (targetPlan, currency) => {
+export const getAmountForPlanAndCurrency = (targetPlan, currency) => {
     const planConfig = PLAN_ONE_TIME_AMOUNT_BY_CURRENCY[targetPlan];
     const resolver = planConfig?.[currency];
     if (typeof resolver !== "function") {
@@ -444,15 +445,18 @@ export const parseStripeWebhookEvent = ({ rawBody, signature }) => {
     }
 
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    if (webhookSecret && signature) {
-        return stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    if (!webhookSecret) {
+        throw new Error("STRIPE_WEBHOOK_SECRET is not configured - refusing to process an unsigned webhook");
+    }
+    if (!signature) {
+        throw new Error("Missing stripe-signature header - refusing to process an unsigned webhook");
     }
 
-    const parsedBody = Buffer.isBuffer(rawBody)
-        ? JSON.parse(rawBody.toString("utf8"))
-        : rawBody;
-
-    return parsedBody;
+    // stripe.webhooks.constructEvent cryptographically verifies rawBody was
+    // actually sent by Stripe using webhookSecret - this is the only thing
+    // standing between "anyone on the internet" and a free plan activation
+    // (see closeApprovedRequestAndActivatePlan), so there is no fallback path.
+    return stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
 };
 
 const isDirectProviderWebhook = (headers = {}, parsedBody = null) => {
@@ -466,14 +470,29 @@ const isDirectProviderWebhook = (headers = {}, parsedBody = null) => {
 
 const validateDirectWebhookSecret = (headers = {}) => {
     const configuredSecret = `${process.env.COLOMBIA_DIRECT_WEBHOOK_SECRET || ""}`.trim();
+    // Fail closed: an unset secret must never mean "trust the request" - that
+    // would let anyone claiming to be co_direct activate a plan for free.
     if (!configuredSecret) {
-        return true;
+        return false;
     }
 
     const incomingSecret =
         `${headers["x-webhook-secret"] || headers["x-signature-token"] || ""}`.trim();
+    if (!incomingSecret) {
+        return false;
+    }
 
-    return incomingSecret && incomingSecret === configuredSecret;
+    const configuredBuffer = Buffer.from(configuredSecret);
+    const incomingBuffer = Buffer.from(incomingSecret);
+    if (configuredBuffer.length !== incomingBuffer.length) {
+        return false;
+    }
+
+    try {
+        return crypto.timingSafeEqual(configuredBuffer, incomingBuffer);
+    } catch {
+        return false;
+    }
 };
 
 export const parsePaymentWebhookEvent = ({ rawBody, headers = {}, signature }) => {

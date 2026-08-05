@@ -15,6 +15,7 @@ import {
 } from "../utils/upgradeRequestNotifications.js";
 import {
     createUpgradeCheckoutSession as createUpgradeCheckoutSessionProvider,
+    getAmountForPlanAndCurrency,
     getSupportedPaymentMethodsByCountry,
     isAutonomousCheckoutConfigured,
     parsePaymentWebhookEvent,
@@ -317,6 +318,7 @@ export const getMySubscription = asyncHandler(async (req, res) => {
                 status: subscription.status,
                 trialEndsAt: subscription.trialEndsAt ?? null,
                 endsAt: subscription.endsAt ?? null,
+                cancelAtPeriodEnd: subscription.cancelAtPeriodEnd ?? false,
                 limits: getPlanLimits(effectivePlan),
             },
             "Subscription fetched successfully"
@@ -354,32 +356,73 @@ const setMyStatus = (status, message) =>
             data: {
                 status,
                 endsAt: nextEndsAt,
+                // Reactivating always undoes a pending cancel-at-period-end.
+                ...(status === "active" && { cancelAtPeriodEnd: false }),
             },
             select: {
                 plan: true,
                 status: true,
                 startedAt: true,
                 endsAt: true,
+                cancelAtPeriodEnd: true,
             },
         });
 
         return res.status(200).json(new ApiResponse(200, updated, message));
     });
 
+// Pause is an explicit "stop using this right now" action - it cuts access
+// immediately, same as before. Reactivate clears both `status` and any
+// pending cancellation.
 export const pauseMySubscription = setMyStatus(
     "paused",
     "Subscription paused successfully"
-);
-
-export const cancelMySubscription = setMyStatus(
-    "canceled",
-    "Subscription canceled successfully"
 );
 
 export const reactivateMySubscription = setMyStatus(
     "active",
     "Subscription reactivated successfully"
 );
+
+// Cancel means "don't renew", not "cut off what I already paid for". Unlike
+// pause/reactivate above, this must NOT flip `status` away from "active" -
+// ensureActiveSubscription (pricing.middleware.js) gates all plan features
+// on status === "active", so doing that would revoke access the same
+// instant a customer cancels, instead of at the end of the period they
+// already paid for. Setting cancelAtPeriodEnd instead lets
+// subscriptionRenewalScheduler's existing downgradeExpiredSubscriptions job
+// downgrade to starter once `endsAt` (+ grace period) actually passes - the
+// same natural-expiry path a non-renewal would take, no scheduler changes
+// needed.
+export const cancelMySubscription = asyncHandler(async (req, res, next) => {
+    const subscription = await ensureUserSubscription(req.user.prismaId);
+
+    if (subscription.plan === "starter") {
+        return next(
+            new ApiError(400, "The free plan has nothing to cancel.")
+        );
+    }
+
+    const updated = await prisma.subscription.update({
+        where: { userId: req.user.prismaId },
+        data: { cancelAtPeriodEnd: true },
+        select: {
+            plan: true,
+            status: true,
+            startedAt: true,
+            endsAt: true,
+            cancelAtPeriodEnd: true,
+        },
+    });
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            updated,
+            "Your plan will not renew, but you keep full access until it expires."
+        )
+    );
+});
 
 export const updateUserPlan = asyncHandler(async (req, res, next) => {
     const { userId } = req.params;
@@ -810,16 +853,62 @@ export const handlePaymentWebhook = async (req, res) => {
                 session?.requestId;
 
             if (upgradeRequestId) {
-                await closeApprovedRequestAndActivatePlan({
-                    requestId: upgradeRequestId,
-                    actedBy: "payment-webhook",
-                    paymentSessionId:
-                        session?.id || session?.sessionId || session?.reference,
-                    paymentProvider: provider,
-                    paymentStatus: "paid",
-                    paymentLink:
-                        session?.url || session?.checkoutUrl || session?.paymentUrl || null,
+                const existingRequest = await prisma.planUpgradeRequest.findUnique({
+                    where: { id: upgradeRequestId },
+                    select: { id: true, status: true, paymentStatus: true, targetPlan: true },
                 });
+
+                // Idempotency guard: a Stripe webhook can be redelivered - do
+                // not reprocess a payment that already activated the plan.
+                const alreadyProcessed =
+                    existingRequest?.status === "closed" && existingRequest?.paymentStatus === "paid";
+
+                if (existingRequest && !alreadyProcessed) {
+                    // A verified Stripe signature proves the payload wasn't
+                    // tampered with in transit, but not that the checkout
+                    // session was actually created for the price this plan
+                    // costs - cross-check the paid amount/currency the same
+                    // way the ePayco confirmation path already does, as a
+                    // defense-in-depth guard against a bug elsewhere in
+                    // checkout-session creation activating the wrong plan.
+                    let amountOk = true;
+                    if (provider === "stripe") {
+                        const currency = `${session?.currency || ""}`.toLowerCase();
+                        const expectedAmount = getAmountForPlanAndCurrency(
+                            existingRequest.targetPlan,
+                            currency
+                        );
+                        const paidAmount = Math.round(Number(session?.amount_total));
+                        amountOk =
+                            expectedAmount !== null &&
+                            Number.isFinite(paidAmount) &&
+                            Math.abs(paidAmount - expectedAmount) <= 1;
+                    }
+
+                    if (!amountOk) {
+                        console.error("[payment-webhook] Amount/currency mismatch — refusing to activate", {
+                            upgradeRequestId,
+                            targetPlan: existingRequest.targetPlan,
+                            currency: session?.currency,
+                            paidAmount: session?.amount_total,
+                        });
+                        await prisma.planUpgradeRequest.updateMany({
+                            where: { id: upgradeRequestId, status: "approved" },
+                            data: { paymentStatus: "amount_mismatch" },
+                        });
+                    } else {
+                        await closeApprovedRequestAndActivatePlan({
+                            requestId: upgradeRequestId,
+                            actedBy: "payment-webhook",
+                            paymentSessionId:
+                                session?.id || session?.sessionId || session?.reference,
+                            paymentProvider: provider,
+                            paymentStatus: "paid",
+                            paymentLink:
+                                session?.url || session?.checkoutUrl || session?.paymentUrl || null,
+                        });
+                    }
+                }
             }
         }
 

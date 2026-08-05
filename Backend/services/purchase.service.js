@@ -190,6 +190,29 @@ class PurchaseService {
         let returnInfo = null;
 
         const updatedPurchase = await prisma.$transaction(async (tx) => {
+            // Atomically claim this transition before touching any stock or
+            // refund data - the purchaseStatus/validTransitions check above
+            // read from a query executed before this transaction started, so
+            // by itself it can't stop two concurrent "returned" (or
+            // "completed") requests for the same purchase from both passing
+            // it and both mutating stock/refunds. This UPDATE ... WHERE
+            // forces Postgres to serialize concurrent callers on this row -
+            // the loser's WHERE clause re-evaluates against the
+            // already-committed new status once it can proceed, matching 0
+            // rows (same technique already used by
+            // subscription.controller.js's closeApprovedRequestAndActivatePlan).
+            const claim = await tx.purchase.updateMany({
+                where: { id: purchase.id, purchaseStatus: purchase.purchaseStatus },
+                data: { purchaseStatus: newStatus, updatedById: userId },
+            });
+
+            if (claim.count === 0) {
+                throw new ApiError(
+                    409,
+                    "This purchase was already updated by another request. Please refresh and try again."
+                );
+            }
+
             if (newStatus === "returned") {
                 const details = await tx.purchaseDetail.findMany({
                     where: { purchaseId: purchase.id },
@@ -290,13 +313,9 @@ class PurchaseService {
                 }
             }
 
-            return tx.purchase.update({
-                where: { id: purchase.id },
-                data: {
-                    purchaseStatus: newStatus,
-                    updatedById: userId,
-                },
-            });
+            // Status/updatedById were already written atomically by the
+            // claim above - just read back the current row for the response.
+            return tx.purchase.findUniqueOrThrow({ where: { id: purchase.id } });
         });
 
         return {

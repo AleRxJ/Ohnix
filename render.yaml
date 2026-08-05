@@ -4,7 +4,18 @@ services:
     runtime: node
     rootDir: Backend
     buildCommand: npm install && npx prisma generate
-    preDeployCommand: npx prisma db push
+    # This database has been managed with `prisma migrate deploy` (not
+    # `db push`) since 2026-08-05, so its `_prisma_migrations` table already
+    # correctly tracks every migration under Backend/prisma/migrations/ -
+    # `npx prisma migrate status` confirms "up to date". No baseline step is
+    # needed here. If this service is ever pointed at a genuinely fresh
+    # database that only ever saw `db push` before, baseline it first with
+    # `npx prisma migrate resolve --applied <name>` for each existing
+    # migration (in order) before switching its preDeployCommand to this -
+    # otherwise the first deploy fails trying to re-run migrations whose
+    # tables/columns already exist (safe failure, no data at risk, but it
+    # blocks deploys until baselined).
+    preDeployCommand: npx prisma migrate deploy
     startCommand: npm start
     healthCheckPath: /api/v1/test
     autoDeploy: true
@@ -44,4 +55,28 @@ services:
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Stripe autonomous checkout - STRIPE_WEBHOOK_SECRET in particular is
+      # not optional: without it, incoming webhooks are rejected outright
+      # (see payment.service.js parseStripeWebhookEvent) rather than silently
+      # trusted, so payments cannot activate a plan until this is set here.
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      # ePayco autonomous checkout (Colombia)
+      - key: EPAYCO_PUBLIC_KEY
+        sync: false
+      - key: EPAYCO_PRIVATE_KEY
+        sync: false
+      - key: EPAYCO_P_CUST_ID
+        sync: false
+      # Factus V2 / DIAN electronic invoicing (Colombia)
+      - key: FACTUS_CLIENT_ID
+        sync: false
+      - key: FACTUS_CLIENT_SECRET
+        sync: false
+      - key: FACTUS_USERNAME
+        sync: false
+      - key: FACTUS_PASSWORD
         sync: false

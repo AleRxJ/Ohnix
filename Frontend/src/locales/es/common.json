@@ -238,6 +238,8 @@
       "request_upgrade": "Solicitar upgrade",
       "manage_plan": "Administrar plan",
       "confirm_cancel": "¿Deseas cancelar tu plan actual?",
+      "cancel_scheduled_banner": "Tu plan no se renovará y pasará a Emprendedor el {{date}}. Conservas todas tus funciones hasta entonces.",
+      "undo_cancellation": "Deshacer cancelación",
       "support_note": "¿Necesitas un cupo personalizado? Contacta ventas.",
       "top_plan_reached": "Ya tienes el plan mas alto.",
       "requests_title": "Solicitudes de upgrade",

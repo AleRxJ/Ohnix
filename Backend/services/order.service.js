@@ -113,7 +113,13 @@ class OrderService {
         }
 
         for (const item of orderItems) {
-            if (!item.product_id || !item.quantity || !item.unitcost) {
+            if (
+                !item.product_id ||
+                item.quantity === undefined ||
+                item.quantity === null ||
+                item.unitcost === undefined ||
+                item.unitcost === null
+            ) {
                 throw new ApiError(400, "Invalid order item data");
             }
             if (Number(item.quantity) < 1) {
@@ -214,12 +220,37 @@ class OrderService {
                 });
 
                 if (shouldDeductStock) {
-                    await tx.product.update({
-                        where: { id: item.product.id },
+                    // Guarded conditional update instead of a plain decrement:
+                    // the stock read used for the pre-check above happened
+                    // before this transaction started, so it cannot protect
+                    // against a concurrent request decrementing the same
+                    // product in between. Requiring stock >= quantity in the
+                    // WHERE clause makes the claim atomic - if another
+                    // transaction already took the stock, count is 0 here
+                    // and the whole order rolls back instead of overselling.
+                    const claim = await tx.product.updateMany({
+                        where: { id: item.product.id, stock: { gte: item.quantity } },
                         data: {
                             stock: { decrement: item.quantity },
                         },
                     });
+
+                    if (claim.count === 0) {
+                        throw new ApiError(
+                            422,
+                            "Insufficient stock for one or more products",
+                            [
+                                {
+                                    product_id: toExternalId(item.product),
+                                    product_name: item.product.productName,
+                                    product_code: item.product.productCode,
+                                    requested: item.quantity,
+                                    available: null,
+                                    reason: "insufficient_stock",
+                                },
+                            ]
+                        );
+                    }
                 }
             }
 
@@ -337,12 +368,33 @@ class OrderService {
 
             const updated = await prisma.$transaction(async (tx) => {
                 for (const detail of details) {
-                    await tx.product.update({
-                        where: { id: detail.product.id },
+                    // Same guarded claim as createOrder: the stock read above
+                    // predates this transaction, so a concurrent completion
+                    // of another order for the same product could otherwise
+                    // race past this check and oversell.
+                    const claim = await tx.product.updateMany({
+                        where: { id: detail.product.id, stock: { gte: detail.quantity } },
                         data: {
                             stock: { decrement: detail.quantity },
                         },
                     });
+
+                    if (claim.count === 0) {
+                        throw new ApiError(
+                            422,
+                            "Insufficient stock for one or more products",
+                            [
+                                {
+                                    product_id: toExternalId(detail.product),
+                                    product_name: detail.product.productName,
+                                    product_code: detail.product.productCode,
+                                    requested: detail.quantity,
+                                    available: null,
+                                    reason: "insufficient_stock",
+                                },
+                            ]
+                        );
+                    }
                 }
 
                 return tx.order.update({

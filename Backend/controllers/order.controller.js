@@ -184,7 +184,7 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
     const skip = (pageNum - 1) * limitNum;
 
     try {
-        const [orders, total] = await Promise.all([
+        const [orders, total, statusCounts, revenueAgg] = await Promise.all([
             prisma.order.findMany({
                 where,
                 include: {
@@ -215,7 +215,25 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
                 take: limitNum,
             }),
             prisma.order.count({ where }),
+            // Same `where` as the paginated query above but without
+            // skip/take - stats.pending/completed/revenue must reflect every
+            // matching order, not just the current page (the frontend used
+            // to derive them from the page slice it got back, so "Total
+            // Revenue" silently under-reported for any account with more
+            // than one page of orders).
+            prisma.order.groupBy({
+                by: ["orderStatus"],
+                where,
+                _count: { _all: true },
+            }),
+            prisma.order.aggregate({
+                where: { ...where, orderStatus: { not: "cancelled" } },
+                _sum: { total: true },
+            }),
         ]);
+
+        const countByStatus = (targetStatus) =>
+            statusCounts.find((row) => row.orderStatus === targetStatus)?._count._all || 0;
 
         return res.status(200).json(
             new ApiResponse(
@@ -227,6 +245,12 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
                         page: pageNum,
                         limit: limitNum,
                         pages: Math.ceil(total / limitNum),
+                    },
+                    stats: {
+                        total,
+                        pending: countByStatus("pending"),
+                        completed: countByStatus("completed"),
+                        revenue: Number(revenueAgg._sum.total || 0),
                     },
                 },
                 "Orders fetched successfully"

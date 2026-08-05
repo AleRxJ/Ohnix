@@ -155,6 +155,7 @@ export const ensureUserSubscription = async (userId) =>
             status: true,
             trialEndsAt: true,
             endsAt: true,
+            cancelAtPeriodEnd: true,
         },
     });
 

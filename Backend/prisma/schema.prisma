@@ -72,6 +72,9 @@ model User {
   resetOtpExpiry     BigInt    @default(0) @map("reset_otp_expiry")
   avatar             String
   refreshToken       String?   @map("refresh_token")
+  // Bumped on password change/reset to invalidate every access token issued
+  // before that point (embedded in the JWT payload, compared in verifyJWT).
+  tokenVersion       Int       @default(0) @map("token_version")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
   subscription       Subscription?
@@ -179,6 +182,10 @@ model Subscription {
   startedAt          DateTime           @default(now()) @map("started_at")
   endsAt             DateTime?          @map("ends_at")
   trialEndsAt        DateTime?          @map("trial_ends_at")
+  // When true, the user asked to cancel but keeps `status: active` and full
+  // plan access until `endsAt` - subscriptionRenewalScheduler's existing
+  // expiry job downgrades to starter then, same as a natural non-renewal.
+  cancelAtPeriodEnd  Boolean            @default(false) @map("cancel_at_period_end")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
@@ -200,6 +207,7 @@ model Category {
   updatedBy     User?    @relation("CategoryUpdatedBy", fields: [updatedById], references: [id])
   products      Product[]
 
+  @@index([createdById])
   @@map("categories")
 }
 
@@ -216,6 +224,7 @@ model Unit {
   updatedBy     User?    @relation("UnitUpdatedBy", fields: [updatedById], references: [id])
   products      Product[]
 
+  @@index([createdById])
   @@map("units")
 }
 
@@ -239,6 +248,7 @@ model Supplier {
   createdBy      User      @relation(fields: [createdById], references: [id])
   purchases      Purchase[]
 
+  @@index([createdById])
   @@map("suppliers")
 }
 
@@ -267,6 +277,7 @@ model Customer {
   createdBy      User     @relation(fields: [createdById], references: [id])
   orders         Order[]
 
+  @@index([createdById])
   @@map("customers")
 }
 
@@ -302,6 +313,9 @@ model Product {
   purchaseDetails PurchaseDetail[]
 
   @@unique([productCode, createdById])
+  @@index([createdById])
+  @@index([categoryId])
+  @@index([unitId])
   @@map("products")
 }
 
@@ -322,6 +336,8 @@ model Purchase {
   updatedBy      User?           @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
   purchaseDetails PurchaseDetail[]
 
+  @@index([createdById])
+  @@index([supplierId])
   @@map("purchases")
 }
 
@@ -343,6 +359,8 @@ model PurchaseDetail {
   purchase        Purchase  @relation(fields: [purchaseId], references: [id])
   product         Product   @relation(fields: [productId], references: [id])
 
+  @@index([purchaseId])
+  @@index([productId])
   @@map("purchase_details")
 }
 
@@ -368,6 +386,8 @@ model Order {
   orderDetails  OrderDetail[]
   electronicInvoice ElectronicInvoice?
 
+  @@index([createdById])
+  @@index([customerId])
   @@map("orders")
 }
 
@@ -385,6 +405,8 @@ model OrderDetail {
   order         Order    @relation(fields: [orderId], references: [id])
   product       Product  @relation(fields: [productId], references: [id])
 
+  @@index([orderId])
+  @@index([productId])
   @@map("order_details")
 }
 

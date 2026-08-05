@@ -22,16 +22,16 @@ export const subscriptionService = {
 
     async cancelMySubscription() {
         const response = await api.patch("/subscriptions/me/cancel");
-        if (response.data?.success) {
-            toast.success("Subscription canceled");
+        if (response.data?.success && response.data?.message) {
+            toast.success(response.data.message);
         }
         return response.data;
     },
 
     async reactivateMySubscription() {
         const response = await api.patch("/subscriptions/me/reactivate");
-        if (response.data?.success) {
-            toast.success("Subscription reactivated");
+        if (response.data?.success && response.data?.message) {
+            toast.success(response.data.message);
         }
         return response.data;
     },

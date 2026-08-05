@@ -238,6 +238,8 @@
       "request_upgrade": "Request upgrade",
       "manage_plan": "Manage plan",
       "confirm_cancel": "Do you want to cancel your current plan?",
+      "cancel_scheduled_banner": "Your plan won't renew and will move to Starter on {{date}}. You keep every feature until then.",
+      "undo_cancellation": "Undo cancellation",
       "support_note": "Need a custom quota? Contact sales.",
       "top_plan_reached": "You are already on the highest plan.",
       "requests_title": "Upgrade requests",
