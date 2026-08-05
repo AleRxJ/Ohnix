@@ -31,6 +31,14 @@ const Precios = () => {
             featured: true,
         },
         {
+            key: "scale",
+            name: t("landing.pricing.plans.scale.name"),
+            price: t("landing.pricing.plans.scale.price"),
+            billing: t("landing.pricing.plans.scale.billing"),
+            description: t("landing.pricing.plans.scale.description"),
+            cta: "Escalar operacion",
+        },
+        {
             key: "enterprise",
             name: t("landing.pricing.plans.enterprise.name"),
             price: t("landing.pricing.plans.enterprise.price"),
@@ -81,7 +89,7 @@ const Precios = () => {
                         description={description}
                     />
 
-                    <div className="mt-10 grid gap-5 lg:grid-cols-3">
+                    <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
                         {plans.map((plan) => (
                             <article
                                 key={plan.key}

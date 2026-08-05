@@ -234,7 +234,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const normalizedDesiredPlan = ["growth", "enterprise"].includes(
+    const normalizedDesiredPlan = ["growth", "scale", "enterprise"].includes(
         desiredPlan?.toLowerCase?.()
     )
         ? desiredPlan.toLowerCase()

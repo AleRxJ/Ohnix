@@ -84,6 +84,7 @@ const findOrderByAnyId = async (id) =>
                             phone: true,
                             logoUrl: true,
                             pdfFooterText: true,
+                            pdfAccentColor: true,
                         },
                     },
                 },
@@ -402,6 +403,14 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
         const effectivePlan = getEffectivePlan(subscription);
         const company = effectivePlan !== "starter" ? order.createdBy?.company : null;
         const showCustomFooter = ["scale", "enterprise"].includes(effectivePlan);
+        // Escala+ "fully customizable" PDF: brand color replaces the fixed
+        // accent/highlight blues below when set and valid; anyone without
+        // one configured (or below Escala) keeps the current default look.
+        const isValidHexColor = (value) => /^#[0-9A-Fa-f]{6}$/.test(value || "");
+        const brandAccentColor =
+            showCustomFooter && isValidHexColor(company?.pdfAccentColor)
+                ? company.pdfAccentColor
+                : null;
 
         let logoBuffer = null;
         if (company?.logoUrl) {
@@ -430,9 +439,9 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
         doc.pipe(res);
 
         const primaryColor = "#34495e";
-        const accentColor = "#3498db";
+        const accentColor = brandAccentColor || "#3498db";
         const subtleColor = "#95a5a6";
-        const highlightColor = "#2980b9";
+        const highlightColor = brandAccentColor || "#2980b9";
 
         if (company) {
             const textX = logoBuffer ? 130 : 50;

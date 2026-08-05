@@ -367,36 +367,49 @@ export const createUpgradeCheckoutSession = async ({
 
         for (const candidateMethod of stripePaymentMethodCandidates) {
             try {
-                session = await stripe.checkout.sessions.create({
-                    mode: "payment",
-                    customer_email: user.email,
-                    payment_method_types: [candidateMethod],
-                    line_items: [
-                        {
-                            price_data: {
-                                currency: candidateCurrency,
-                                product_data: {
-                                    name: `Ohnix ${request.targetPlan} upgrade`,
-                                    description: `Plan upgrade from ${request.currentPlan} to ${request.targetPlan}`,
+                // Minute-bucketed so a double-click or a browser's automatic
+                // retry of this same request within that window reuses the
+                // same Stripe session instead of creating a second one -
+                // but a genuinely new attempt later still gets a fresh key.
+                // Varies per candidate too, since Stripe rejects reusing a
+                // key with different request parameters.
+                const idempotencyKey = `checkout_${request.id}_${candidateCurrency}_${candidateMethod}_${new Date()
+                    .toISOString()
+                    .slice(0, 16)}`;
+
+                session = await stripe.checkout.sessions.create(
+                    {
+                        mode: "payment",
+                        customer_email: user.email,
+                        payment_method_types: [candidateMethod],
+                        line_items: [
+                            {
+                                price_data: {
+                                    currency: candidateCurrency,
+                                    product_data: {
+                                        name: `Ohnix ${request.targetPlan} upgrade`,
+                                        description: `Plan upgrade from ${request.currentPlan} to ${request.targetPlan}`,
+                                    },
+                                    unit_amount: amount,
                                 },
-                                unit_amount: amount,
+                                quantity: 1,
                             },
-                            quantity: 1,
+                        ],
+                        success_url: getSuccessUrl(request.id),
+                        cancel_url: getCancelUrl(request.id),
+                        metadata: {
+                            upgradeRequestId: request.id,
+                            userId: request.userId,
+                            currentPlan: request.currentPlan,
+                            targetPlan: request.targetPlan,
+                            checkoutCountry: countryConfig.country,
+                            checkoutPaymentMethod: normalizedPaymentMethod,
+                            checkoutPaymentMethodResolved: candidateMethod,
+                            checkoutCurrencyResolved: candidateCurrency,
                         },
-                    ],
-                    success_url: getSuccessUrl(request.id),
-                    cancel_url: getCancelUrl(request.id),
-                    metadata: {
-                        upgradeRequestId: request.id,
-                        userId: request.userId,
-                        currentPlan: request.currentPlan,
-                        targetPlan: request.targetPlan,
-                        checkoutCountry: countryConfig.country,
-                        checkoutPaymentMethod: normalizedPaymentMethod,
-                        checkoutPaymentMethodResolved: candidateMethod,
-                        checkoutCurrencyResolved: candidateCurrency,
                     },
-                });
+                    { idempotencyKey }
+                );
                 resolvedStripeMethod = candidateMethod;
                 resolvedCurrency = candidateCurrency;
                 break;

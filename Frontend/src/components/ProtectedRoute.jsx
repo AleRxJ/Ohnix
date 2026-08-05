@@ -23,7 +23,7 @@ const ProtectedRoute = ({ children, requireVerified = false }) => {
 
     // If verification is required but user is not verified, redirect to verification page
     if (requireVerified && user && !user.isVerified) {
-        return <Navigate to="/verify-email" replace />;
+        return <Navigate to="/email-verify" replace />;
     }
 
     // If authenticated (and verified if required), render the children

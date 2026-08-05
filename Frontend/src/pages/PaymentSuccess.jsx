@@ -49,6 +49,7 @@ const PaymentSuccess = () => {
     const [statusData, setStatusData] = useState(null);
     const [usageData, setUsageData] = useState(null);
     const [errorMessage, setErrorMessage] = useState("");
+    const [pollTimedOut, setPollTimedOut] = useState(false);
     const [manualChecklistDone, setManualChecklistDone] = useState(() => readStoredChecklist());
 
     useEffect(() => {
@@ -117,6 +118,21 @@ const PaymentSuccess = () => {
                 if (!(requestStatus === "closed" && targetPlanActive) && pollCount < 15) {
                     pollCount += 1;
                     pollTimer = setTimeout(load, 4000);
+                } else if (!(requestStatus === "closed" && targetPlanActive)) {
+                    // Polling gave up without an activation - distinguish a
+                    // definite rejection/failure (show it, the user needs to
+                    // know) from a payment that's still genuinely pending
+                    // (delayed bank methods can take hours; don't keep
+                    // showing the "confirming, seconds away" animation).
+                    const finalPaymentStatus = statusResponse?.data?.request?.paymentStatus;
+                    if (["rejected", "failed", "amount_mismatch"].includes(finalPaymentStatus)) {
+                        setErrorMessage(
+                            t(`profile.subscription.payment_status_${finalPaymentStatus}`)
+                        );
+                    } else {
+                        setPollTimedOut(true);
+                    }
+                    setLoading(false);
                 } else {
                     setLoading(false);
                 }
@@ -362,7 +378,7 @@ const PaymentSuccess = () => {
 
             <div className="relative mx-auto w-full max-w-5xl space-y-6">
                 <Card className="!rounded-3xl !border !border-[#29D8D5]/20 !bg-[linear-gradient(145deg,rgba(7,19,23,0.92)_0%,rgba(8,30,36,0.85)_55%,rgba(9,14,17,0.95)_100%)] !shadow-[0_35px_120px_rgba(8,20,24,0.65)] !overflow-hidden">
-                    {loading || (!activated && !errorMessage) ? (
+                    {loading || (!activated && !errorMessage && !pollTimedOut) ? (
                         /* ── PENDIENTE / CARGANDO: diseño full dramático ── */
                         <div className="relative min-h-[420px] flex flex-col items-center justify-center gap-8 py-14 px-6 text-center overflow-hidden">
                             <div className="pointer-events-none absolute inset-0">
@@ -427,6 +443,27 @@ const PaymentSuccess = () => {
                         </div>
                     ) : errorMessage ? (
                         <Alert type="error" message={errorMessage} showIcon className="!rounded-xl !border !border-red-300/25 !bg-red-500/10 !text-white" />
+                    ) : pollTimedOut ? (
+                        <div className="flex flex-col items-center gap-4 py-12 px-6 text-center">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-500/10">
+                                <svg className="h-7 w-7 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <h2 className="text-2xl font-bold text-white">
+                                {t("profile.subscription.payment_still_pending_title")}
+                            </h2>
+                            <p className="max-w-md text-sm text-[#A9B3B8]">
+                                {t("profile.subscription.payment_still_pending_description")}
+                            </p>
+                            <Button
+                                type="primary"
+                                className="!mt-2 !rounded-xl !border-0 !bg-[#29D8D5] !px-7 !text-[#041316] !font-semibold hover:!bg-[#44F3F0]"
+                                onClick={() => navigate("/billing")}
+                            >
+                                {t("profile.subscription.back_to_billing")}
+                            </Button>
+                        </div>
                     ) : (
                         /* ── ACTIVADO: celebración ── */
                         <div className="relative overflow-hidden">

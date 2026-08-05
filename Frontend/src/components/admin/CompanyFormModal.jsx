@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Form, Input, Select, Switch, Upload, Button } from "antd";
+import { Modal, Form, Input, Select, Switch, Upload, Button, ColorPicker } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
@@ -112,9 +112,18 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                         name="pdfFooterText"
                         label={t("admin.pdf_footer_text")}
                         extra={<span className="text-[#8B98A0]">{t("admin.pdf_footer_text_hint")}</span>}
-                        className="mb-0"
                     >
                         <Input.TextArea rows={2} className="auth-ohnix-input" placeholder={t("admin.pdf_footer_text_placeholder")} />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="pdfAccentColor"
+                        label={t("admin.pdf_accent_color")}
+                        extra={<span className="text-[#8B98A0]">{t("admin.pdf_accent_color_hint")}</span>}
+                        getValueFromEvent={(_, hex) => hex}
+                        className="mb-0"
+                    >
+                        <ColorPicker format="hex" showText />
                     </Form.Item>
                 </div>
 

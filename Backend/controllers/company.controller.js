@@ -63,6 +63,7 @@ export const listCompaniesAdmin = asyncHandler(async (_req, res) => {
             isActive: true,
             logoUrl: true,
             pdfFooterText: true,
+            pdfAccentColor: true,
             ...companyFiscalSelect,
             createdAt: true,
             updatedAt: true,
@@ -143,7 +144,8 @@ export const createCompanyAdmin = asyncHandler(async (req, res, next) => {
 
 export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
     const { companyId } = req.params;
-    const { name, legalName, countryCode, contactEmail, phone, isActive, pdfFooterText } = req.body;
+    const { name, legalName, countryCode, contactEmail, phone, isActive, pdfFooterText, pdfAccentColor } =
+        req.body;
 
     const normalizedCountryCode = parseIsoCountryCode(countryCode);
     const hasExplicitCountry =
@@ -151,6 +153,11 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
 
     if (hasExplicitCountry && !normalizedCountryCode) {
         return next(new ApiError(400, "countryCode must be a valid ISO-2 code (e.g. CO, ES)"));
+    }
+
+    const trimmedAccentColor = pdfAccentColor?.trim();
+    if (trimmedAccentColor && !/^#[0-9A-Fa-f]{6}$/.test(trimmedAccentColor)) {
+        return next(new ApiError(400, "pdfAccentColor must be a hex color like #29D8D5"));
     }
 
     const existing = await prisma.company.findUnique({
@@ -193,6 +200,7 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
             ...(phone !== undefined ? { phone: phone?.trim() || null } : {}),
             ...(typeof isActive === "boolean" ? { isActive } : {}),
             ...(pdfFooterText !== undefined ? { pdfFooterText: pdfFooterText?.trim() || null } : {}),
+            ...(pdfAccentColor !== undefined ? { pdfAccentColor: trimmedAccentColor || null } : {}),
             ...normalizeFactusConfig(req.body),
         },
         select: {
@@ -205,6 +213,7 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
             isActive: true,
             logoUrl: true,
             pdfFooterText: true,
+            pdfAccentColor: true,
             ...companyFiscalSelect,
             createdAt: true,
             updatedAt: true,

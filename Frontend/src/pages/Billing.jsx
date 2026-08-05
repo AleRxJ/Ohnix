@@ -138,6 +138,11 @@ const Billing = () => {
     const safeAdminRequests = Array.isArray(adminRequests) ? adminRequests : [];
     const isPlanAlreadyActiveForRequest = (request) =>
         subscription?.plan === request?.targetPlan && subscription?.status === "active";
+    // A previous checkout for this request hasn't resolved yet (some
+    // methods, e.g. PSE bank transfers, can take hours) - the backend
+    // rejects starting a second one while this is true, to avoid a real
+    // double charge, so the button is hidden here too instead of failing.
+    const isPaymentPendingForRequest = (request) => request?.paymentStatus === "pending";
 
     const isRequestInProgress = (request) => {
         if (!request) {
@@ -712,7 +717,13 @@ const Billing = () => {
                                                     : t(`profile.subscription.request_status_help_${item.status}`)}
                                             </div>
 
-                                            {item.status === "approved" && !isPlanAlreadyActiveForRequest(item) ? (
+                                            {item.status === "approved" &&
+                                            !isPlanAlreadyActiveForRequest(item) &&
+                                            isPaymentPendingForRequest(item) ? (
+                                                <div className="mt-4 rounded-2xl border border-amber-400/25 bg-amber-500/8 p-4 text-sm text-amber-100">
+                                                    {t("profile.subscription.payment_pending_notice")}
+                                                </div>
+                                            ) : item.status === "approved" && !isPlanAlreadyActiveForRequest(item) ? (
                                                 (() => {
                                                     const isColombiaFlow = selection.country === "CO";
                                                     const copPrice = PLAN_COP_DISPLAY[item.targetPlan];

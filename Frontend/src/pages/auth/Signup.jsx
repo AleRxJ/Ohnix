@@ -23,7 +23,7 @@ const Signup = () => {
     const [searchParams] = useSearchParams();
     const { t, currentLanguage } = useI18n();
 
-    const initialDesiredPlan = ["starter", "growth", "enterprise"].includes(
+    const initialDesiredPlan = ["starter", "growth", "scale", "enterprise"].includes(
         searchParams.get("plan")
     )
         ? searchParams.get("plan")
@@ -58,7 +58,7 @@ const Signup = () => {
 
             if (response.data.success) {
                 const requestedPlan = values.desiredPlan || "starter";
-                if (["growth", "enterprise"].includes(requestedPlan)) {
+                if (["growth", "scale", "enterprise"].includes(requestedPlan)) {
                     toast.success(t("auth.account_created_plan_request"));
                 } else {
                     toast.success(t("auth.account_created"));
@@ -132,6 +132,10 @@ const Signup = () => {
                                     {
                                         value: "growth",
                                         label: t("profile.subscription.plan_growth"),
+                                    },
+                                    {
+                                        value: "scale",
+                                        label: t("profile.subscription.plan_scale"),
                                     },
                                     {
                                         value: "enterprise",

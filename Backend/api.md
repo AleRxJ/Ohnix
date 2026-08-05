@@ -281,10 +281,12 @@ STRIPE_WEBHOOK_SECRET=whsec_xxx
 # One-time upgrade amounts in the smallest currency unit
 # COP has no decimals (example: 99000 = COP 99,000)
 STRIPE_AMOUNT_GROWTH_COP=99000
+STRIPE_AMOUNT_SCALE_COP=200000
 STRIPE_AMOUNT_ENTERPRISE_COP=299000
 
 # EUR uses cents (example: 2900 = EUR 29.00)
 STRIPE_AMOUNT_GROWTH_EUR=2900
+STRIPE_AMOUNT_SCALE_EUR=5900
 STRIPE_AMOUNT_ENTERPRISE_EUR=9900
 
 # Optional USD fallback when COP is not supported by the Stripe account
@@ -355,6 +357,7 @@ EPAYCO_CONFIRMATION_URL=https://api.ohnix.co/api/v1/subscriptions/payments/epayc
 # Amount in COP (smallest unit, no decimals)
 # If not set, falls back to STRIPE_AMOUNT_*_COP
 EPAYCO_AMOUNT_GROWTH_COP=99000
+EPAYCO_AMOUNT_SCALE_COP=200000
 EPAYCO_AMOUNT_ENTERPRISE_COP=299000
 ```
 

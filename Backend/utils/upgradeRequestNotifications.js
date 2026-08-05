@@ -79,6 +79,46 @@ export const notifyUserPlanActivated = async ({ user, targetPlan, locale }) => {
     }
 };
 
+// ─── Payment failed / rejected ───────────────────────────────────────────────
+// Fired when a webhook (ePayco confirmation, Stripe async_payment_failed)
+// determines a payment did NOT go through - without this, a user whose
+// delayed-method payment (PSE, bank transfer) fails hours after checkout has
+// no way of finding out short of noticing PaymentSuccess.jsx never resolved.
+export const notifyUserPaymentFailed = async ({ request, user, locale }) => {
+    if (!isMailConfigured() || !user?.email || !request?.targetPlan) return;
+    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
+    const planLabel = request.targetPlan.charAt(0).toUpperCase() + request.targetPlan.slice(1);
+    const subject = isEN
+        ? `[Ohnix] Your payment for the ${planLabel} plan could not be confirmed`
+        : `[Ohnix] No pudimos confirmar tu pago del plan ${planLabel}`;
+    const title = isEN ? "Payment not confirmed" : "Pago no confirmado";
+    const body = isEN
+        ? `Hello <strong>${user.username || "there"}</strong>, your payment to upgrade to <strong>${planLabel}</strong> could not be confirmed by our payment provider. No charge was activated on your account. You can try again with the same or a different payment method.`
+        : `Hola <strong>${user.username || ""}</strong>, no pudimos confirmar tu pago para actualizar a <strong>${planLabel}</strong> con nuestro proveedor de pagos. No se activó ningún cargo en tu cuenta. Puedes intentarlo de nuevo con el mismo método u otro distinto.`;
+    const cta = isEN ? "Try again" : "Intentar de nuevo";
+    const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
+    try {
+        await transporter.sendMail({
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            to: user.email,
+            subject,
+            html: `
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
+                    <h2 style="color:#ef4444;margin:0 0 12px;">⚠️ ${title}</h2>
+                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;">${body}</p>
+                    <div style="text-align:center;margin:28px 0;">
+                        <a href="${frontendBase}/billing" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;">${cta}</a>
+                    </div>
+                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. Todos los derechos reservados.</p>
+                </div>
+            `,
+        });
+    } catch (err) {
+        console.error("[payment-failed] Failed to send notification:", err?.message);
+    }
+};
+
 // ─── Email verified confirmation ─────────────────────────────────────────────
 export const notifyUserEmailVerified = async ({ user, locale }) => {
     if (!isMailConfigured() || !user?.email) return;

@@ -12,6 +12,7 @@ import {
     notifyAdminsUpgradeRequestCreated,
     notifyUserUpgradeRequestResolved,
     notifyUserPlanActivated,
+    notifyUserPaymentFailed,
 } from "../utils/upgradeRequestNotifications.js";
 import {
     createUpgradeCheckoutSession as createUpgradeCheckoutSessionProvider,
@@ -682,6 +683,21 @@ export const createMyUpgradeCheckoutSession = asyncHandler(async (req, res, next
         return next(new ApiError(409, "Your target plan is already active"));
     }
 
+    // A prior checkout for this request is still awaiting confirmation - a
+    // second one would create a second real charge (or, for delayed methods
+    // like PSE, a second pending bank transfer) for the same upgrade before
+    // the first has even resolved. Let the existing payment resolve (or
+    // expire/fail, which clears paymentStatus off "pending") before another
+    // session can be created.
+    if (request.paymentStatus === "pending") {
+        return next(
+            new ApiError(
+                409,
+                "A previous payment for this request is still being verified. Please wait for it to complete before trying again."
+            )
+        );
+    }
+
     const requester = await prisma.user.findUnique({
         where: { id: req.user.prismaId },
         select: {
@@ -831,6 +847,93 @@ export const verifyAndActivateBySession = asyncHandler(async (req, res, next) =>
     }, "Plan activated successfully"));
 });
 
+const extractUpgradeRequestId = (session) =>
+    session?.metadata?.upgradeRequestId || session?.upgradeRequestId || session?.requestId;
+
+// Shared by the immediate (checkout.session.completed) and deferred
+// (checkout.session.async_payment_succeeded) success paths so the
+// idempotency guard and amount/currency cross-check only live in one place.
+const activateFromCheckoutSession = async ({ session, provider }) => {
+    const upgradeRequestId = extractUpgradeRequestId(session);
+    if (!upgradeRequestId) return;
+
+    const existingRequest = await prisma.planUpgradeRequest.findUnique({
+        where: { id: upgradeRequestId },
+        select: { id: true, status: true, paymentStatus: true, targetPlan: true },
+    });
+
+    // Idempotency guard: a Stripe webhook can be redelivered - do not
+    // reprocess a payment that already activated the plan.
+    const alreadyProcessed =
+        existingRequest?.status === "closed" && existingRequest?.paymentStatus === "paid";
+
+    if (!existingRequest || alreadyProcessed) return;
+
+    // A verified Stripe signature proves the payload wasn't tampered with in
+    // transit, but not that the checkout session was actually created for
+    // the price this plan costs - cross-check the paid amount/currency the
+    // same way the ePayco confirmation path already does, as a
+    // defense-in-depth guard against a bug elsewhere in checkout-session
+    // creation activating the wrong plan.
+    let amountOk = true;
+    if (provider === "stripe") {
+        const currency = `${session?.currency || ""}`.toLowerCase();
+        const expectedAmount = getAmountForPlanAndCurrency(existingRequest.targetPlan, currency);
+        const paidAmount = Math.round(Number(session?.amount_total));
+        amountOk =
+            expectedAmount !== null &&
+            Number.isFinite(paidAmount) &&
+            Math.abs(paidAmount - expectedAmount) <= 1;
+    }
+
+    if (!amountOk) {
+        console.error("[payment-webhook] Amount/currency mismatch — refusing to activate", {
+            upgradeRequestId,
+            targetPlan: existingRequest.targetPlan,
+            currency: session?.currency,
+            paidAmount: session?.amount_total,
+        });
+        await prisma.planUpgradeRequest.updateMany({
+            where: { id: upgradeRequestId, status: "approved" },
+            data: { paymentStatus: "amount_mismatch" },
+        });
+        return;
+    }
+
+    await closeApprovedRequestAndActivatePlan({
+        requestId: upgradeRequestId,
+        actedBy: "payment-webhook",
+        paymentSessionId: session?.id || session?.sessionId || session?.reference,
+        paymentProvider: provider,
+        paymentStatus: "paid",
+        paymentLink: session?.url || session?.checkoutUrl || session?.paymentUrl || null,
+    });
+};
+
+const markCheckoutFailed = async ({ session, paymentStatus }) => {
+    const upgradeRequestId = extractUpgradeRequestId(session);
+    if (!upgradeRequestId) return;
+
+    const updated = await prisma.planUpgradeRequest.updateMany({
+        where: { id: upgradeRequestId, status: "approved" },
+        data: { paymentStatus },
+    });
+
+    if (updated.count > 0) {
+        const request = await prisma.planUpgradeRequest.findUnique({
+            where: { id: upgradeRequestId },
+            select: UPGRADE_REQUEST_SELECT,
+        });
+        const user = request
+            ? await prisma.user.findUnique({
+                  where: { id: request.userId },
+                  select: { email: true, username: true, preferredLanguage: true },
+              })
+            : null;
+        notifyUserPaymentFailed({ request, user, locale: user?.preferredLanguage }).catch(() => {});
+    }
+};
+
 export const handlePaymentWebhook = async (req, res) => {
     try {
         const signature = req.headers["stripe-signature"];
@@ -841,99 +944,47 @@ export const handlePaymentWebhook = async (req, res) => {
         });
 
         const provider = event?.provider || "stripe";
+        const session = event.data?.object;
 
         if (
             event?.type === "checkout.session.completed" ||
             event?.type === "payment.succeeded"
         ) {
-            const session = event.data?.object;
-            const upgradeRequestId =
-                session?.metadata?.upgradeRequestId ||
-                session?.upgradeRequestId ||
-                session?.requestId;
+            // Stripe's delayed-notification payment methods (PSE, Bizum,
+            // SEPA Debit - all configured in COUNTRY_CONFIG) fire
+            // checkout.session.completed immediately on redirect with
+            // payment_status "unpaid"; the real result only arrives later
+            // via checkout.session.async_payment_succeeded/_failed below.
+            // Activating here for those would grant access before - or
+            // without - the payment actually clearing. This check only
+            // applies to real Stripe events; co_direct's synthetic
+            // "payment.succeeded" type has no payment_status field.
+            const isUnconfirmedStripeSession =
+                provider === "stripe" &&
+                session?.payment_status &&
+                session.payment_status !== "paid";
 
-            if (upgradeRequestId) {
-                const existingRequest = await prisma.planUpgradeRequest.findUnique({
-                    where: { id: upgradeRequestId },
-                    select: { id: true, status: true, paymentStatus: true, targetPlan: true },
-                });
-
-                // Idempotency guard: a Stripe webhook can be redelivered - do
-                // not reprocess a payment that already activated the plan.
-                const alreadyProcessed =
-                    existingRequest?.status === "closed" && existingRequest?.paymentStatus === "paid";
-
-                if (existingRequest && !alreadyProcessed) {
-                    // A verified Stripe signature proves the payload wasn't
-                    // tampered with in transit, but not that the checkout
-                    // session was actually created for the price this plan
-                    // costs - cross-check the paid amount/currency the same
-                    // way the ePayco confirmation path already does, as a
-                    // defense-in-depth guard against a bug elsewhere in
-                    // checkout-session creation activating the wrong plan.
-                    let amountOk = true;
-                    if (provider === "stripe") {
-                        const currency = `${session?.currency || ""}`.toLowerCase();
-                        const expectedAmount = getAmountForPlanAndCurrency(
-                            existingRequest.targetPlan,
-                            currency
-                        );
-                        const paidAmount = Math.round(Number(session?.amount_total));
-                        amountOk =
-                            expectedAmount !== null &&
-                            Number.isFinite(paidAmount) &&
-                            Math.abs(paidAmount - expectedAmount) <= 1;
-                    }
-
-                    if (!amountOk) {
-                        console.error("[payment-webhook] Amount/currency mismatch — refusing to activate", {
-                            upgradeRequestId,
-                            targetPlan: existingRequest.targetPlan,
-                            currency: session?.currency,
-                            paidAmount: session?.amount_total,
-                        });
-                        await prisma.planUpgradeRequest.updateMany({
-                            where: { id: upgradeRequestId, status: "approved" },
-                            data: { paymentStatus: "amount_mismatch" },
-                        });
-                    } else {
-                        await closeApprovedRequestAndActivatePlan({
-                            requestId: upgradeRequestId,
-                            actedBy: "payment-webhook",
-                            paymentSessionId:
-                                session?.id || session?.sessionId || session?.reference,
-                            paymentProvider: provider,
-                            paymentStatus: "paid",
-                            paymentLink:
-                                session?.url || session?.checkoutUrl || session?.paymentUrl || null,
-                        });
-                    }
-                }
+            if (!isUnconfirmedStripeSession) {
+                await activateFromCheckoutSession({ session, provider });
             }
+        }
+
+        if (event?.type === "checkout.session.async_payment_succeeded") {
+            await activateFromCheckoutSession({ session, provider });
+        }
+
+        if (event?.type === "checkout.session.async_payment_failed") {
+            await markCheckoutFailed({ session, paymentStatus: "failed" });
         }
 
         if (
             event?.type === "checkout.session.expired" ||
             event?.type === "payment.failed"
         ) {
-            const session = event.data?.object;
-            const upgradeRequestId =
-                session?.metadata?.upgradeRequestId ||
-                session?.upgradeRequestId ||
-                session?.requestId;
-
-            if (upgradeRequestId) {
-                await prisma.planUpgradeRequest.updateMany({
-                    where: {
-                        id: upgradeRequestId,
-                        status: "approved",
-                    },
-                    data: {
-                        paymentStatus:
-                            event?.type === "payment.failed" ? "failed" : "expired",
-                    },
-                });
-            }
+            await markCheckoutFailed({
+                session,
+                paymentStatus: event?.type === "payment.failed" ? "failed" : "expired",
+            });
         }
 
         return res.status(200).json({ received: true });
@@ -1406,16 +1457,30 @@ export const handleEpaycoConfirmation = async (req, res) => {
             });
 
             console.log("[epayco-confirmation] Plan activated for requestId:", requestId);
-        } else if (stateCode === EPAYCO_STATE.REJECTED) {
-            await prisma.planUpgradeRequest.updateMany({
+        } else if (stateCode === EPAYCO_STATE.REJECTED || stateCode === EPAYCO_STATE.FAILED) {
+            const paymentStatus = stateCode === EPAYCO_STATE.REJECTED ? "rejected" : "failed";
+            const updated = await prisma.planUpgradeRequest.updateMany({
                 where: { id: requestId, status: "approved" },
-                data: { paymentStatus: "rejected" },
+                data: { paymentStatus },
             });
-        } else if (stateCode === EPAYCO_STATE.FAILED) {
-            await prisma.planUpgradeRequest.updateMany({
-                where: { id: requestId, status: "approved" },
-                data: { paymentStatus: "failed" },
-            });
+
+            if (updated.count > 0) {
+                const failedRequest = await prisma.planUpgradeRequest.findUnique({
+                    where: { id: requestId },
+                    select: UPGRADE_REQUEST_SELECT,
+                });
+                const failedUser = failedRequest
+                    ? await prisma.user.findUnique({
+                          where: { id: failedRequest.userId },
+                          select: { email: true, username: true, preferredLanguage: true },
+                      })
+                    : null;
+                notifyUserPaymentFailed({
+                    request: failedRequest,
+                    user: failedUser,
+                    locale: failedUser?.preferredLanguage,
+                }).catch(() => {});
+            }
         }
         // stateCode === PENDING (3): no action — wait for the final confirmation
 

@@ -21,6 +21,7 @@ const EmailVerify = () => {
     const [otpSent, setOtpSent] = useState(false);
     const [verifying, setVerifying] = useState(false);
     const [justVerified, setJustVerified] = useState(false);
+    const [devOtp, setDevOtp] = useState("");
     const navigate = useNavigate();
     const { user, setUser } = useContext(AuthContext);
     const { t } = useI18n();
@@ -51,6 +52,16 @@ const EmailVerify = () => {
             const data = response.data;
 
             if (data.success) {
+                // Local/dev fallback: the backend returns the OTP directly
+                // in the response when email delivery isn't configured or
+                // fails, instead of leaving the user stuck with no way to
+                // get their code. Never present in production (that path
+                // returns a 503 instead).
+                if (data.data?.devOtp) {
+                    setDevOtp(data.data.devOtp);
+                } else {
+                    setDevOtp("");
+                }
                 toast.success(data.message || t("auth.otp_sent"));
                 setOtpSent(true);
             } else {
@@ -135,6 +146,16 @@ const EmailVerify = () => {
                                 onFinish={onFinish}
                                 layout="vertical"
                             >
+                                {devOtp && (
+                                    <div className="mb-4 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-center">
+                                        <Text className="block text-xs uppercase tracking-wide text-amber-300">
+                                            {t("auth.dev_otp_notice")}
+                                        </Text>
+                                        <Text className="mt-1 block text-2xl font-bold tracking-[0.3em] text-white">
+                                            {devOtp}
+                                        </Text>
+                                    </div>
+                                )}
                                 <div className="mb-8">
                                     <OtpInput />
                                 </div>
