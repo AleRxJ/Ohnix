@@ -46,10 +46,10 @@ services:
         value: "false"
       - key: SENDER_EMAIL
         sync: false
-      # Resend API key - replaced SENDER_PASSWORD (SMTP) on 2026-08-05 because
-      # Render's outbound connections to the old SMTP host were timing out in
-      # production. See Backend/utils/nodemailer.js.
-      - key: RESEND_API_KEY
+      # Brevo API key - replaced SENDER_PASSWORD (SMTP, timeouts) then Resend
+      # (account permanently rejected by their anti-fraud review) on
+      # 2026-08-06. See Backend/utils/nodemailer.js.
+      - key: BREVO_API_KEY
         sync: false
       - key: EMAIL_USER
         sync: false

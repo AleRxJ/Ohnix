@@ -105,7 +105,7 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = f
         }
         if (isExpired) return lang === "es" ? "Los 14 días de prueba terminaron. Contrata un plan para recuperar el acceso." : "The 14-day trial ended. Subscribe to restore full access.";
         if (isUrgent) return lang === "es" ? "Contrata ahora y no pierdas tus datos ni acceso." : "Subscribe now and keep all your data and access.";
-        return lang === "es" ? "Acceso completo al plan Negocio durante la prueba." : "Full Business plan access during your trial.";
+        return lang === "es" ? "Estás en el plan Emprendedor sin costo." : "You're on the Starter plan at no cost.";
     })();
 
     const ctaLabel = isRenewal
@@ -199,65 +199,72 @@ const DashboardLayout = () => {
         };
     }, []);
 
-    // Fetch subscription once to know trial status globally
+    // Fetch subscription to know trial/block status globally. Also re-fetches
+    // when PaymentSuccess.jsx navigates here with fromPayment - otherwise a
+    // user who just paid while blocked (subscription.status === "paused")
+    // would still see the block screen with the stale pre-payment status
+    // until a hard page refresh remounted this component.
     useEffect(() => {
         if (!user || user.role === "admin") return;
         subscriptionService
             .getMySubscription()
             .then((res) => setSubscription(res?.data ?? null))
             .catch(() => {});
-    }, [user?.id]);
+    }, [user?.id, location.state?.fromPayment]);
 
     const currentPath = location.pathname;
     const pathSegments = currentPath.split("/").filter(Boolean);
     const currentPage = pathSegments.length > 0 ? pathSegments[0] : "dashboard";
 
-    // Trial expired = trialEndsAt set, past expiry, still on starter plan
-    const trialEndsAt    = subscription?.trialEndsAt ?? null;
-    const trialExpired   =
-        trialEndsAt &&
-        new Date() > new Date(trialEndsAt) &&
-        (subscription?.plan ?? "starter") === "starter";
-    const trialDaysLeft  = trialEndsAt && !trialExpired
+    const trialEndsAt = subscription?.trialEndsAt ?? null;
+    const planEndsAt = typeof subscription?.endsAt === "string" ? subscription.endsAt : null;
+    const isStarterPlan = (subscription?.plan ?? "starter") === "starter";
+    const isActive = subscription?.status === "active";
+
+    // The ONLY thing allowed to actually block access. Mirrors the backend's
+    // ensureActiveSubscription (pricing.middleware.js) exactly - every
+    // create/report/API route gates on subscription.status === "active", and
+    // subscriptionRenewalScheduler.js's blockLapsedSubscriptions is what
+    // flips it to "paused" after a 5-day grace period (trial or paid plan
+    // alike). This used to be computed from trialEndsAt/endsAt date math
+    // directly, which had zero grace period for trials and hard-locked
+    // legitimate users out of the whole app up to 5 days before the backend
+    // would have actually blocked them.
+    const isBlocked = subscription?.status === "paused" && user?.role !== "admin" && currentPage !== "billing";
+    const isRenewalBlock = isBlocked && !isStarterPlan;
+
+    // Trial ended but still inside the backend's grace period - informational
+    // banner only, access isn't actually blocked yet (isBlocked above).
+    const trialGraceActive = isStarterPlan && isActive && trialEndsAt && new Date() > new Date(trialEndsAt);
+    const trialDaysLeft = trialEndsAt && !trialGraceActive
         ? Math.max(1, Math.ceil((new Date(trialEndsAt) - Date.now()) / (1000 * 60 * 60 * 24)))
         : 0;
-    const trialUrgent    = trialDaysLeft > 0 && trialDaysLeft <= 3;
+    const trialUrgent = trialDaysLeft > 0 && trialDaysLeft <= 3;
 
-    // Renewal banner for paid plans expiring soon.
-    // Only use endsAt if it comes from the real API response (string), not stale cache.
-    const planEndsAt = typeof subscription?.endsAt === "string" ? subscription.endsAt : null;
-    const renewalDaysLeft = planEndsAt && (subscription?.plan ?? "starter") !== "starter"
+    // Renewal banner for paid plans expiring soon or in their grace period.
+    const renewalDaysLeft = planEndsAt && !isStarterPlan
         ? Math.ceil((new Date(planEndsAt) - Date.now()) / (1000 * 60 * 60 * 24))
         : null;
     const showRenewalBanner =
+        isActive &&
         renewalDaysLeft !== null &&
         renewalDaysLeft <= 7 &&
         !renewalBannerDismissed &&
         user?.role !== "admin";
 
-    // Block access when renewal is more than 5 days past expiry (grace period exhausted)
-    const renewalExpiredBlock =
-        renewalDaysLeft !== null &&
-        renewalDaysLeft <= -5 &&
-        user?.role !== "admin" &&
-        currentPage !== "billing";
-
-    // Admins and users on billing page are never blocked
-    const isBlocked = (trialExpired || renewalExpiredBlock) && user?.role !== "admin" && currentPage !== "billing";
-
     // Never show trial banners on the payment-success page (user just paid)
     const isOnPaymentSuccess = location.pathname.includes("payment-success");
 
     // Show expired banner on every page except billing (no dismiss — must act)
-    const showExpiredBanner = trialExpired && !isOnPaymentSuccess && user?.role !== "admin" && currentPage !== "billing";
+    const showExpiredBanner = trialGraceActive && !isOnPaymentSuccess && user?.role !== "admin" && currentPage !== "billing";
 
     // Show urgency banner when ≤3 days left AND still on starter (dismissable for the session)
     const showUrgencyBanner =
         trialUrgent &&
-        !trialExpired &&
+        !trialGraceActive &&
         !bannerDismissed &&
         !isOnPaymentSuccess &&
-        (subscription?.plan ?? "starter") === "starter" &&
+        isStarterPlan &&
         user?.role !== "admin";
 
     const handleDismissBanner = () => {
@@ -315,7 +322,7 @@ const DashboardLayout = () => {
                 <Content className="mx-3 my-3 sm:mx-5 sm:my-5 lg:mx-7 lg:my-7">
                     <div className="overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,11,11,0.9),rgba(8,8,8,0.96))] min-h-[calc(100vh-8rem)] shadow-[0_20px_45px_rgba(0,0,0,0.42)] transition-shadow duration-300 hover:shadow-[0_24px_54px_rgba(0,0,0,0.5)] reveal-card">
                         {isBlocked
-                            ? <TrialExpiredScreen lang={lang} onGoToBilling={() => navigate("/billing")} isRenewal={renewalExpiredBlock} />
+                            ? <TrialExpiredScreen lang={lang} onGoToBilling={() => navigate("/billing")} isRenewal={isRenewalBlock} />
                             : <Outlet />
                         }
                     </div>
