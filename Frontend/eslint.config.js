@@ -35,4 +35,12 @@ export default [
       ],
     },
   },
+  // Build-time Node scripts (e.g. scripts/prerender.js) run under Node, not
+  // the browser - they need `process`, `console`, `import.meta`, etc.
+  {
+    files: ['scripts/**/*.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ]

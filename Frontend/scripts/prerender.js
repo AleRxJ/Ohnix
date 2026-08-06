@@ -21,7 +21,36 @@ import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import puppeteer from "puppeteer";
+
+// Two Chromium paths, picked at runtime:
+// - Local/dev (Windows/macOS/full Linux desktop): full `puppeteer`, which
+//   bundles its own Chromium download that Just Works there.
+// - Vercel's build container: that same bundled Chromium fails with
+//   "error while loading shared libraries: libnspr4.so" - it's built for a
+//   full desktop Linux, not Vercel's minimal build image. @sparticuz/chromium
+//   ships a Chromium built specifically for serverless/minimal-Linux
+//   environments (no missing shared libs), used via puppeteer-core.
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+const launchBrowser = async () => {
+    if (isServerless) {
+        const [{ default: chromium }, { default: puppeteerCore }] = await Promise.all([
+            import("@sparticuz/chromium"),
+            import("puppeteer-core"),
+        ]);
+        return puppeteerCore.launch({
+            args: chromium.args,
+            executablePath: await chromium.executablePath(),
+            headless: true,
+        });
+    }
+
+    const { default: puppeteer } = await import("puppeteer");
+    return puppeteer.launch({
+        headless: true,
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+};
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
@@ -74,10 +103,7 @@ const run = async () => {
     try {
         await waitForServer(HOST);
 
-        browser = await puppeteer.launch({
-            headless: true,
-            args: ["--no-sandbox", "--disable-setuid-sandbox"],
-        });
+        browser = await launchBrowser();
 
         for (const route of ROUTES) {
             const page = await browser.newPage();
