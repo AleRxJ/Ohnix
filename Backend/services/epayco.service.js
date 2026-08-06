@@ -51,6 +51,17 @@ const getEpaycoConfig = () => {
     return {
         publicKey: `${process.env.EPAYCO_PUBLIC_KEY || ""}`.trim(),
         privateKey: `${process.env.EPAYCO_PRIVATE_KEY || ""}`.trim(),
+        // P_KEY is a distinct secret from Private Key, found alongside
+        // P_CUST_ID_CLIENTE/PUBLIC_KEY in the ePayco dashboard under
+        // Configuración > Personalizaciones > Llaves Secretas (or
+        // Integraciones > Llaves API > Llaves Secretas) - it's the value
+        // ePayco actually signs confirmation webhooks with, confirmed
+        // against their own PHP reference implementation
+        // (github.com/epayco/resources). Falls back to privateKey only so
+        // this doesn't hard-break for anyone who genuinely has the same
+        // value for both - but confirmed-mismatched signatures in
+        // production logs point to this being the real fix.
+        signatureKey: `${process.env.EPAYCO_P_KEY || process.env.EPAYCO_PRIVATE_KEY || ""}`.trim(),
         custId: `${process.env.EPAYCO_P_CUST_ID || ""}`.trim(),
         // ePayco expects the string "TRUE" or "FALSE"
         test: `${process.env.EPAYCO_TEST || "TRUE"}`.trim().toUpperCase() === "TRUE" ? "TRUE" : "FALSE",

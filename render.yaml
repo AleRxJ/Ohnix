@@ -72,6 +72,11 @@ services:
         sync: false
       - key: EPAYCO_PRIVATE_KEY
         sync: false
+      # Distinct from EPAYCO_PRIVATE_KEY - the secret ePayco actually signs
+      # confirmation webhooks with (Configuración > Personalizaciones >
+      # Llaves Secretas in their dashboard). See epayco.service.js.
+      - key: EPAYCO_P_KEY
+        sync: false
       - key: EPAYCO_P_CUST_ID
         sync: false
       # Factus V2 / DIAN electronic invoicing (Colombia)

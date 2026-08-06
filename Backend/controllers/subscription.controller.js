@@ -1405,9 +1405,11 @@ export const handleEpaycoConfirmation = async (req, res) => {
             return res.status(200).json({ success: false, message: "Incomplete payload" });
         }
 
-        // Validate signature
+        // Validate signature. EPAYCO_P_KEY is the dedicated signing secret
+        // ePayco uses for this checksum - distinct from EPAYCO_PRIVATE_KEY
+        // (used for REST API auth) - see getEpaycoConfig in epayco.service.js.
         const custId = `${process.env.EPAYCO_P_CUST_ID || ""}`.trim();
-        const privateKey = `${process.env.EPAYCO_PRIVATE_KEY || ""}`.trim();
+        const privateKey = `${process.env.EPAYCO_P_KEY || process.env.EPAYCO_PRIVATE_KEY || ""}`.trim();
 
         const signatureValid = validateEpaycoSignature({
             custId,
