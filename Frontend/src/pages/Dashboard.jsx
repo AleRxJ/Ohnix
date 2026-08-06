@@ -131,32 +131,49 @@ const Dashboard = () => {
         try {
             setLoading(true);
 
-            const [
-                dashboardResponse,
-                topProductsResponse,
-                salesReportResponse,
-            ] = await Promise.all([
-                api.get("/reports/dashboard", { params: { timeframe } }),
+            // /reports/dashboard is the only call every plan can make (it's
+            // ungated) - top-products/sales require reportTopProducts/
+            // reportSales (Negocio+), which Starter/trial users don't have.
+            // These used to always be fetched together via Promise.all, so
+            // one 403 from either gated call failed the whole dashboard with
+            // a full-page error - broke the very first thing a new Starter
+            // signup sees. Now the base metrics load unconditionally, and
+            // the two gated calls are still attempted (the backend is the
+            // only authoritative answer on whether the plan allows them,
+            // avoiding a race against useSubscription's own async plan
+            // fetch) but a 403 from either just means "no data for this
+            // section", not a page-wide error.
+            const dashboardResponse = await api.get("/reports/dashboard", { params: { timeframe } });
+
+            if (!dashboardResponse.data.success) {
+                setError(t("dashboard.failed_fetch_dashboard_data"));
+                toast.error(t("dashboard.failed_load_data"));
+                return;
+            }
+
+            const metricsData = dashboardResponse.data.data;
+            let topProductsData = [];
+            let salesReportData = {};
+
+            const [topProductsResult, salesReportResult] = await Promise.allSettled([
                 api.get("/reports/top-products", { params: { timeframe } }),
                 api.get("/reports/sales", { params: { timeframe } }),
             ]);
 
-            if (dashboardResponse.data.success) {
-                const metricsData = dashboardResponse.data.data;
-                const topProductsData = topProductsResponse.data.data || [];
-                const salesReportData = salesReportResponse.data.data || {};
-
-                setDashboardData({
-                    ...metricsData,
-                    topProducts: topProductsData,
-                    salesData: salesReportData,
-                });
-
-                toast.success(t("dashboard.data_loaded_successfully"));
-            } else {
-                setError(t("dashboard.failed_fetch_dashboard_data"));
-                toast.error(t("dashboard.failed_load_data"));
+            if (topProductsResult.status === "fulfilled") {
+                topProductsData = topProductsResult.value.data.data || [];
             }
+            if (salesReportResult.status === "fulfilled") {
+                salesReportData = salesReportResult.value.data.data || {};
+            }
+
+            setDashboardData({
+                ...metricsData,
+                topProducts: topProductsData,
+                salesData: salesReportData,
+            });
+
+            toast.success(t("dashboard.data_loaded_successfully"));
         } catch (err) {
             console.error("Dashboard data fetch error:", err);
             const errorMessage =
