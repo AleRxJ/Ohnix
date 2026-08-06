@@ -1,5 +1,4 @@
 import React from "react";
-import { Layout, Row, Col, Space, Divider } from "antd";
 import { Link } from "react-router-dom";
 import {
     GithubOutlined,
@@ -10,83 +9,80 @@ import {
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
-const { Footer: AntFooter } = Layout;
-
+// Plain HTML/Tailwind instead of antd (Layout/Row/Col/Space/Divider) - see
+// Navbar.jsx for why: this is public marketing chrome, and antd's vendor
+// chunk was being pulled into every marketing page just for basic layout.
 const Footer = () => {
     const { t } = useI18n();
 
     return (
-        <AntFooter className="border-t border-white/5 bg-[#050505] pt-16 pb-8 text-[#A9B3B8]">
+        <footer className="border-t border-white/5 bg-[#050505] pt-16 pb-8 text-[#A9B3B8]">
             <div className="container mx-auto max-w-7xl px-6">
-                <Row gutter={[64, 32]} justify="space-between" align="middle">
-                    <Col xs={24} md={12} lg={14}>
-                        <div>
-                            <img
-                                src="/Ohnix_FullLogo.svg"
-                                alt="Ohnix logo"
-                                className="mb-4 h-10 w-auto"
-                            />
-                            <p className="max-w-md text-sm leading-relaxed text-[#A9B3B8]">
-                                {t("landing.footer.tagline")}
-                            </p>
-                            <Space size="large" className="mt-8 text-3xl">
-                                <a
-                                    href="https://github.com/iTCycle/Ohnix"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    aria-label="GitHub"
-                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
-                                >
-                                    <GithubOutlined className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
-                                </a>
-                                <a
-                                    href="https://github.com/iTCycle/Ohnix"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    aria-label="Twitter"
-                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
-                                >
-                                    <TwitterOutlined className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
-                                </a>
-                                <a
-                                    href="https://github.com/iTCycle/Ohnix"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    aria-label="Instagram"
-                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
-                                >
-                                    <InstagramFilled className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
-                                </a>
-                                <a
-                                    href="https://github.com/iTCycle/Ohnix"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    aria-label="LinkedIn"
-                                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
-                                >
-                                    <LinkedinFilled className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
-                                </a>
-                            </Space>
-                        </div>
-                    </Col>
-
-                    <Col xs={24} md={12} lg={8}>
-                        <div className="flex flex-col items-start md:items-end">
-                            <h2 className="mb-5 text-xs font-semibold uppercase tracking-[0.35em] text-white">
-                                {t("landing.footer.contact_title")}
-                            </h2>
+                <div className="flex flex-col items-start gap-12 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <img
+                            src="/Ohnix_FullLogo.svg"
+                            alt="Ohnix logo"
+                            className="mb-4 h-10 w-auto"
+                        />
+                        <p className="max-w-md text-sm leading-relaxed text-[#A9B3B8]">
+                            {t("landing.footer.tagline")}
+                        </p>
+                        <div className="mt-8 flex items-center gap-4 text-3xl">
                             <a
-                                href={`mailto:${t("landing.footer.email")}`}
-                                className="group flex items-center gap-2 text-sm text-[#A9B3B8] transition-colors duration-200 hover:text-white"
+                                href="https://github.com/iTCycle/Ohnix"
+                                target="_blank"
+                                rel="noreferrer"
+                                aria-label="GitHub"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
                             >
-                                <MailOutlined className="text-base transition-transform duration-200 group-hover:scale-110" />
-                                {t("landing.footer.email")}
+                                <GithubOutlined className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
+                            </a>
+                            <a
+                                href="https://github.com/iTCycle/Ohnix"
+                                target="_blank"
+                                rel="noreferrer"
+                                aria-label="Twitter"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
+                            >
+                                <TwitterOutlined className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
+                            </a>
+                            <a
+                                href="https://github.com/iTCycle/Ohnix"
+                                target="_blank"
+                                rel="noreferrer"
+                                aria-label="Instagram"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
+                            >
+                                <InstagramFilled className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
+                            </a>
+                            <a
+                                href="https://github.com/iTCycle/Ohnix"
+                                target="_blank"
+                                rel="noreferrer"
+                                aria-label="LinkedIn"
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
+                            >
+                                <LinkedinFilled className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
                             </a>
                         </div>
-                    </Col>
-                </Row>
+                    </div>
 
-                <Divider className="my-10 border-white/8 opacity-40" />
+                    <div className="flex flex-col items-start md:items-end">
+                        <h2 className="mb-5 text-xs font-semibold uppercase tracking-[0.35em] text-white">
+                            {t("landing.footer.contact_title")}
+                        </h2>
+                        <a
+                            href={`mailto:${t("landing.footer.email")}`}
+                            className="group flex items-center gap-2 text-sm text-[#A9B3B8] transition-colors duration-200 hover:text-white"
+                        >
+                            <MailOutlined className="text-base transition-transform duration-200 group-hover:scale-110" />
+                            {t("landing.footer.email")}
+                        </a>
+                    </div>
+                </div>
+
+                <hr className="my-10 border-white/8 opacity-40" />
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <p className="text-sm text-[#6F7A81]">
@@ -111,7 +107,7 @@ const Footer = () => {
                     </div>
                 </div>
             </div>
-        </AntFooter>
+        </footer>
     );
 };
 

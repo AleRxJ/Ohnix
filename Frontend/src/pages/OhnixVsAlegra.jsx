@@ -1,12 +1,9 @@
-import { Layout } from "antd";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
 import useI18n from "../hooks/useI18n";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
-
-const { Content } = Layout;
 
 const OhnixVsAlegra = () => {
     const navigate = useNavigate();
@@ -58,7 +55,7 @@ const OhnixVsAlegra = () => {
     };
 
     return (
-        <Layout className="min-h-screen bg-[#050505]">
+        <div className="min-h-screen bg-[#050505]">
             <SeoHead
                 title="Ohnix vs Alegra | Comparativa para pymes"
                 description={description}
@@ -67,9 +64,10 @@ const OhnixVsAlegra = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <Content className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-20">
                 <ContentSection id="comparativa-ohnix-alegra" shell={false}>
                     <SectionHeading
+                        as="h1"
                         align="left"
                         eyebrow="COMPARATIVA"
                         title="Ohnix vs Alegra"
@@ -124,9 +122,9 @@ const OhnixVsAlegra = () => {
                         </div>
                     </div>
                 </ContentSection>
-            </Content>
+            </main>
             <Footer />
-        </Layout>
+        </div>
     );
 };
 

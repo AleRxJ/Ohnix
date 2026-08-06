@@ -4,6 +4,17 @@ import react from '@vitejs/plugin-react'
 // Packages that MUST stay in the single vendor chunk.
 // rc-util reads React.version at module init time (top-level code), so any
 // chunk split between these packages causes TDZ / undefined errors in prod.
+//
+// CONFIRMED AGAIN on 2026-08-06: tried splitting antd into its own
+// "vendor-antd" chunk (to keep it out of the marketing pages' bundle, since
+// they don't use antd anymore) and verified with a real headless-browser
+// load - both a marketing page AND /login threw
+// "Cannot read properties of undefined (reading 'version')" on load,
+// confirming this split is not safe with the current Rollup/Vite version
+// no matter how the two chunks are ordered. Do not attempt this again
+// without a real Rollup/Vite upgrade path and the same kind of real-browser
+// verification (build succeeding is not enough - this crash only shows up
+// at runtime, not at build time).
 const REACT_ECOSYSTEM_PKGS = [
   '/react/',
   '/react-dom/',

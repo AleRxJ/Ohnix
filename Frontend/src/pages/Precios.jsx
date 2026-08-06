@@ -1,12 +1,9 @@
-import { Layout } from "antd";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
 import useI18n from "../hooks/useI18n";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
-
-const { Content } = Layout;
 
 const Precios = () => {
     const navigate = useNavigate();
@@ -51,27 +48,53 @@ const Precios = () => {
     const description =
         "Conoce los planes de Ohnix para controlar inventario, compras y ventas en pymes con claridad operativa y escalabilidad.";
 
-    const structuredData = {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        itemListElement: [
-            {
-                "@type": "ListItem",
-                position: 1,
-                name: "Inicio",
-                item: "https://www.ohnix.co/",
-            },
-            {
-                "@type": "ListItem",
-                position: 2,
-                name: "Precios",
-                item: "https://www.ohnix.co/precios",
-            },
-        ],
-    };
+    // Numeric prices (USD/mo) mirror Backend/middleware/pricing.middleware.js's
+    // PLAN_PRICES_USD - schema.org Offer.price needs a bare number, not the
+    // display string ("$19") already used for the on-page cards. Enterprise
+    // has no fixed price (t(...).price is "A medida") so it's excluded from
+    // Offer pricing rather than putting a placeholder number in front of search results.
+    const PLAN_OFFER_PRICE_USD = { starter: "19", growth: "49", scale: "99" };
+
+    const structuredData = [
+        {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+                {
+                    "@type": "ListItem",
+                    position: 1,
+                    name: "Inicio",
+                    item: "https://www.ohnix.co/",
+                },
+                {
+                    "@type": "ListItem",
+                    position: 2,
+                    name: "Precios",
+                    item: "https://www.ohnix.co/precios",
+                },
+            ],
+        },
+        ...plans
+            .filter((plan) => PLAN_OFFER_PRICE_USD[plan.key])
+            .map((plan) => ({
+                "@context": "https://schema.org",
+                "@type": "Product",
+                name: `Ohnix ${plan.name}`,
+                description: plan.description,
+                brand: { "@type": "Brand", name: "Ohnix" },
+                offers: {
+                    "@type": "Offer",
+                    url: "https://www.ohnix.co/precios",
+                    priceCurrency: "USD",
+                    price: PLAN_OFFER_PRICE_USD[plan.key],
+                    priceValidUntil: "2026-12-31",
+                    availability: "https://schema.org/InStock",
+                },
+            })),
+    ];
 
     return (
-        <Layout className="min-h-screen bg-[#050505]">
+        <div className="min-h-screen bg-[#050505]">
             <SeoHead
                 title="Precios de Ohnix | Planes para inventario y ventas"
                 description={description}
@@ -80,9 +103,10 @@ const Precios = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <Content className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-20">
                 <ContentSection id="precios" shell={false}>
                     <SectionHeading
+                        as="h1"
                         align="left"
                         eyebrow="PLANES OHNIX"
                         title="Precios claros para cada etapa operativa"
@@ -148,9 +172,9 @@ const Precios = () => {
                         </div>
                     </div>
                 </ContentSection>
-            </Content>
+            </main>
             <Footer />
-        </Layout>
+        </div>
     );
 };
 

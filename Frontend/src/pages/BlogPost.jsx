@@ -1,4 +1,3 @@
-import { Layout } from "antd";
 import { Link, Navigate, useParams } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
@@ -7,8 +6,6 @@ import BreadcrumbNav from "../components/common/BreadcrumbNav";
 import useI18n from "../hooks/useI18n";
 import { ContentSection } from "../components/landing/LandingPageSections";
 import { getBlogPostBySlug, getRelatedBlogPosts } from "../data/blogPosts";
-
-const { Content } = Layout;
 
 const BlogPost = () => {
     const { slug } = useParams();
@@ -65,7 +62,7 @@ const BlogPost = () => {
         : articleStructuredData;
 
     return (
-        <Layout className="min-h-screen bg-[#050505]">
+        <div className="min-h-screen bg-[#050505]">
             <SeoHead
                 title={`${post.title} | Ohnix`}
                 description={post.description}
@@ -74,7 +71,7 @@ const BlogPost = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <Content className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-20">
                 <ContentSection id={`blog-${post.slug}`} shell={false}>
                     <BreadcrumbNav
                         items={[
@@ -165,9 +162,9 @@ const BlogPost = () => {
                         </div>
                     </section>
                 </ContentSection>
-            </Content>
+            </main>
             <Footer />
-        </Layout>
+        </div>
     );
 };
 

@@ -435,7 +435,12 @@ export const MarqueeStrip = ({ items }) => {
     );
 };
 
-export const SectionHeading = ({ eyebrow, title, description, align = "center" }) => {
+// `as="h1"` on pages that use SectionHeading as their sole/primary heading
+// (Precios, Demo, SoftwareInventarioPymes, OhnixVsAlegra, Blog - none of
+// which render OrbitalHero) - those pages had zero <h1> on them otherwise.
+// Defaults to h2 for its normal use as a sub-section heading (e.g. inside
+// LandingPage.jsx, which already has its own h1 via OrbitalHero).
+export const SectionHeading = ({ eyebrow, title, description, align = "center", as: HeadingTag = "h2" }) => {
     const [ref, visible] = useScrollReveal(0.1);
     const alignment = align === "left" ? "items-start text-left" : "items-center text-center";
 
@@ -451,9 +456,9 @@ export const SectionHeading = ({ eyebrow, title, description, align = "center" }
                 </span>
             ) : null}
             <div className="max-w-4xl">
-                <h2 className="text-3xl font-semibold tracking-tight md:text-5xl md:leading-[1.05] bg-gradient-to-br from-white via-[#E8EDEE] to-[#29D8D5]/55 bg-clip-text text-transparent">
+                <HeadingTag className="text-3xl font-semibold tracking-tight md:text-5xl md:leading-[1.05] bg-gradient-to-br from-white via-[#E8EDEE] to-[#29D8D5]/55 bg-clip-text text-transparent">
                     {title}
-                </h2>
+                </HeadingTag>
                 {description ? (
                     <p className="mt-4 text-sm leading-7 text-[#A9B3B8] md:text-lg">
                         {description}

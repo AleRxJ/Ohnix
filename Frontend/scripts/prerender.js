@@ -1,0 +1,107 @@
+// Build-time prerendering for marketing pages.
+//
+// The app is a pure CSR SPA (Vite + React, no SSR/SSG) - SeoHead.jsx sets
+// title/description/OG tags via useEffect, so anything that doesn't execute
+// JS (Facebook/WhatsApp/LinkedIn/Slack link previews, and Bing/slower
+// crawlers) only ever sees the generic homepage markup from index.html for
+// every route. This script runs after `vite build`, boots the built app in
+// a local preview server, visits each indexable marketing route with a
+// headless browser, and writes the fully-rendered HTML to its own
+// dist/<route>/index.html - Vercel serves that static file directly for an
+// exact path match (checked before the SPA catch-all rewrite in
+// vercel.json), so crawlers and share-preview bots get real per-page
+// content without any client-side JS. The app itself is unaffected: React
+// still mounts with createRoot() on load and takes over normally.
+//
+// Only marketing/indexable routes are listed here - everything else
+// (dashboard, billing, login, etc.) is blocked in robots.txt and was never
+// meant to be indexed, so it doesn't need prerendering.
+
+import { spawn } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import puppeteer from "puppeteer";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = join(__dirname, "..");
+const distDir = join(rootDir, "dist");
+const PORT = 4173;
+const HOST = `http://localhost:${PORT}`;
+
+const BLOG_SLUGS = [
+    "como-pasar-de-excel-a-software-inventario",
+    "kpis-inventario-para-pymes",
+    "como-evitar-quiebres-de-stock",
+    "inventario-y-ventas-sincronizados",
+    "errores-comunes-implementar-software-inventario",
+    "checklist-elegir-software-inventario",
+];
+
+const ROUTES = [
+    "/",
+    "/precios",
+    "/demo",
+    "/software-inventario-pymes",
+    "/comparativa/ohnix-vs-alegra",
+    "/blog",
+    ...BLOG_SLUGS.map((slug) => `/blog/${slug}`),
+];
+
+const waitForServer = async (url, attempts = 60) => {
+    for (let i = 0; i < attempts; i += 1) {
+        try {
+            const res = await fetch(url);
+            if (res.ok) return;
+        } catch {
+            // Server not up yet - keep polling.
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    throw new Error(`Preview server at ${url} never became ready`);
+};
+
+const run = async () => {
+    console.log("[prerender] Starting vite preview server...");
+    const server = spawn("npx", ["vite", "preview", "--port", String(PORT), "--strictPort"], {
+        cwd: rootDir,
+        stdio: "inherit",
+        shell: true,
+    });
+
+    let browser;
+    try {
+        await waitForServer(HOST);
+
+        browser = await puppeteer.launch({
+            headless: true,
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        });
+
+        for (const route of ROUTES) {
+            const page = await browser.newPage();
+            const url = `${HOST}${route}`;
+            console.log(`[prerender] Rendering ${route}`);
+            await page.goto(url, { waitUntil: "networkidle0", timeout: 30000 });
+            // Give SeoHead's useEffect (title/meta/structured data) and any
+            // lazy-loaded route chunk a beat to settle after network idle.
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            const html = await page.content();
+            await page.close();
+
+            const outDir = route === "/" ? distDir : join(distDir, route);
+            mkdirSync(outDir, { recursive: true });
+            writeFileSync(join(outDir, "index.html"), html, "utf8");
+        }
+
+        console.log(`[prerender] Done - ${ROUTES.length} route(s) prerendered.`);
+    } finally {
+        if (browser) await browser.close();
+        server.kill();
+    }
+};
+
+run().catch((err) => {
+    console.error("[prerender] Failed:", err);
+    process.exit(1);
+});

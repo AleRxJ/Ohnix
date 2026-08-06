@@ -1,4 +1,3 @@
-import { Layout } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import useI18n from "../hooks/useI18n";
@@ -26,8 +25,6 @@ import {
     WhatsAppSupportButton,
     ContactFormSection,
 } from "../components/landing/LandingPageSections";
-
-const { Content } = Layout;
 
 const LandingPage = () => {
     const navigate = useNavigate();
@@ -317,7 +314,7 @@ const LandingPage = () => {
     };
 
     return (
-        <Layout className="min-h-screen bg-[#050505]">
+        <div className="min-h-screen bg-[#050505]">
             <SeoHead
                 title="Software de inventario y ventas para pymes | Ohnix"
                 description={landingDescription}
@@ -340,7 +337,7 @@ const LandingPage = () => {
                 title="Demo Ohnix"
             />
             <Navbar />
-            <Content className="bg-[#050505] pb-24 md:pb-0">
+            <main className="bg-[#050505] pb-24 md:pb-0">
                 <OrbitalHero
                     eyebrow={t("landing.hero.eyebrow")}
                     title={t("landing.hero.title")}
@@ -475,7 +472,7 @@ const LandingPage = () => {
                     phoneNumber="+573142193936"
                     message="Hola, vi Ohnix y tengo preguntas 👋"
                 />
-            </Content>
+            </main>
             <MobileStickyCta
                 primaryCta={t("landing.hero.primary_cta")}
                 secondaryCta={t("landing.hero.secondary_cta")}
@@ -483,7 +480,7 @@ const LandingPage = () => {
                 onSecondary={handleWatchDemo}
             />
             <Footer />
-        </Layout>
+        </div>
     );
 };
 

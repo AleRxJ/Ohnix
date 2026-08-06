@@ -1,14 +1,24 @@
 import React, { Suspense, lazy, useContext } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n/config.js";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import AuthContext from "./context/AuthContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
-import AntdConfigProvider from "./components/common/AntdConfigProvider";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
-import ErrorPage from "./components/error/ErrorPage";
+
+// Lazy: ErrorPage uses antd (Result/Button) - same reasoning as
+// AntdConfigProvider below, a static import here would defeat the
+// vendor-antd split by bundling it into App.jsx's always-loaded chunk.
+const ErrorPage = lazy(() => import("./components/error/ErrorPage"));
+
+// Lazy, not a static import: a regular `import` here would bundle antd into
+// App.jsx's own chunk, which is always loaded first - defeating the point
+// of splitting "vendor-antd" out in vite.config.js. Lazy-loading it means
+// its module (and antd) is only fetched once AntdRoutesLayout actually
+// renders, i.e. once a non-marketing route is hit.
+const AntdConfigProvider = lazy(() => import("./components/common/AntdConfigProvider"));
 
 const Login = lazy(() => import("./pages/auth/Login"));
 const EmailVerify = lazy(() => import("./pages/auth/EmailVerify"));
@@ -52,26 +62,40 @@ const ColombiaInvoiceRoute = ({ children }) => {
         : <Navigate to="/dashboard" replace />;
 };
 
+// AntdConfigProvider pulls in the whole "vendor-antd" chunk (see
+// vite.config.js) - the marketing pages below (LandingPage, Precios, Demo,
+// SoftwareInventarioPymes, OhnixVsAlegra, Blog, BlogPost, and their shared
+// Navbar/Footer) don't use any antd components anymore, so this layout
+// route wraps only the routes that still do (auth pages, the authenticated
+// app). Marketing routes are siblings outside it and never fetch that chunk.
+const AntdRoutesLayout = () => (
+    <AntdConfigProvider>
+        <Outlet />
+    </AntdConfigProvider>
+);
+
 function App() {
     return (
         <I18nextProvider i18n={i18n}>
             <CurrencyProvider>
                 <AuthProvider>
-                    <AntdConfigProvider>
                     <BrowserRouter>
                         <Toaster />
                         <Suspense fallback={<RouteLoadingFallback />}>
                         <div>
                             <Routes>
-                            {/* Public routes */}
+                            {/* Public marketing routes - no antd usage, kept outside AntdRoutesLayout */}
                             <Route path="/" element={<LandingPage />} />
                             <Route path="/precios" element={<Precios />} />
                             <Route path="/blog" element={<Blog />} />
                             <Route path="/blog/:slug" element={<BlogPost />} />
                             <Route path="/software-inventario-pymes" element={<SoftwareInventarioPymes />} />
                             <Route path="/comparativa/ohnix-vs-alegra" element={<OhnixVsAlegra />} />
-                            <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
                             <Route path="/demo" element={<Demo />} />
+
+                            {/* Everything below uses antd components (Form, Table, etc.) */}
+                            <Route element={<AntdRoutesLayout />}>
+                            <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
                             <Route path="/signup" element={<GuestRoute><Signup /></GuestRoute>} />
                             <Route path="/signup/request-status" element={<SignupRequestStatus />} />
                             <Route
@@ -122,13 +146,13 @@ function App() {
                                 <Route path="admin/management" element={<AdminManagement />} />
                             </Route>
 
-                            {/* catch all */}
+                            {/* catch all - uses antd (Result/Button), stays inside AntdRoutesLayout */}
                             <Route path="/*" element={<ErrorPage />} />
+                            </Route>
                             </Routes>
                         </div>
                         </Suspense>
                     </BrowserRouter>
-                    </AntdConfigProvider>
                 </AuthProvider>
             </CurrencyProvider>
         </I18nextProvider>

@@ -1,12 +1,9 @@
-import { Layout } from "antd";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
 import useI18n from "../hooks/useI18n";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
-
-const { Content } = Layout;
 
 const SoftwareInventarioPymes = () => {
     const navigate = useNavigate();
@@ -83,7 +80,7 @@ const SoftwareInventarioPymes = () => {
     ];
 
     return (
-        <Layout className="min-h-screen bg-[#050505]">
+        <div className="min-h-screen bg-[#050505]">
             <SeoHead
                 title="Software de inventario para pymes | Ohnix"
                 description={description}
@@ -92,9 +89,10 @@ const SoftwareInventarioPymes = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <Content className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-20">
                 <ContentSection id="software-inventario-pymes" shell={false}>
                     <SectionHeading
+                        as="h1"
                         align="left"
                         eyebrow="SOLUCION PARA PYMES"
                         title="Software de inventario para pymes"
@@ -157,9 +155,9 @@ const SoftwareInventarioPymes = () => {
                         </div>
                     </div>
                 </ContentSection>
-            </Content>
+            </main>
             <Footer />
-        </Layout>
+        </div>
     );
 };
 

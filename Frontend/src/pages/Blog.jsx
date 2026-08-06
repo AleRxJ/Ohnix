@@ -1,4 +1,3 @@
-import { Layout } from "antd";
 import { Link } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
@@ -7,8 +6,6 @@ import BreadcrumbNav from "../components/common/BreadcrumbNav";
 import useI18n from "../hooks/useI18n";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
 import { blogPosts } from "../data/blogPosts";
-
-const { Content } = Layout;
 
 const Blog = () => {
     const { currentLanguage } = useI18n();
@@ -25,7 +22,7 @@ const Blog = () => {
     };
 
     return (
-        <Layout className="min-h-screen bg-[#050505]">
+        <div className="min-h-screen bg-[#050505]">
             <SeoHead
                 title="Blog de inventario para pymes | Ohnix"
                 description={description}
@@ -34,10 +31,11 @@ const Blog = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <Content className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-20">
                 <ContentSection id="blog" shell={false}>
                     <BreadcrumbNav items={[{ label: "Inicio", to: "/" }, { label: "Blog" }]} />
                     <SectionHeading
+                        as="h1"
                         align="left"
                         eyebrow="BLOG OHNIX"
                         title="Guias para controlar inventario, compras y ventas"
@@ -67,9 +65,9 @@ const Blog = () => {
                         ))}
                     </div>
                 </ContentSection>
-            </Content>
+            </main>
             <Footer />
-        </Layout>
+        </div>
     );
 };
 

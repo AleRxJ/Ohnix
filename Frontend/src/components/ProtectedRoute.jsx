@@ -1,7 +1,18 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
-import { Spin } from "antd";
+
+// Plain CSS spinner instead of antd's <Spin> - this file is imported
+// eagerly (not React.lazy, since it wraps route elements directly) by
+// App.jsx, so any antd import here would bundle antd into the app's
+// always-loaded entry chunk, defeating the "vendor-antd" split in
+// vite.config.js that keeps it out of the marketing pages' initial load.
+const LoadingSpinner = () => (
+    <div className="flex items-center justify-center h-screen gap-3 text-[#A9B3B8]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[#29D8D5]" />
+        <span className="text-sm">Loading...</span>
+    </div>
+);
 
 const ProtectedRoute = ({ children, requireVerified = false }) => {
     const { authenticated, loading, user } = useContext(AuthContext);
@@ -9,11 +20,7 @@ const ProtectedRoute = ({ children, requireVerified = false }) => {
 
     // If still loading, show a spinner
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <Spin size="large" tip="Loading..." />
-            </div>
-        );
+        return <LoadingSpinner />;
     }
 
     // If not authenticated, redirect to login
@@ -39,11 +46,7 @@ export const GuestRoute = ({ children }) => {
     const { authenticated, loading } = useContext(AuthContext);
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-screen">
-                <Spin size="large" tip="Loading..." />
-            </div>
-        );
+        return <LoadingSpinner />;
     }
 
     if (authenticated) {
