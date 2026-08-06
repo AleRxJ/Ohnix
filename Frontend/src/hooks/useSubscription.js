@@ -5,62 +5,72 @@ import { subscriptionService } from "../services/subscriptionService";
 // Mirror of Backend PLAN_FEATURES — keep in sync with pricing.middleware.js
 export const PLAN_FEATURES = {
     starter: {
-        reportSales:        false,
-        reportPurchases:    false,
-        reportTopProducts:  false,
-        exportCsv:          false,
-        exportExcel:        false,
-        bulkUpload:         false,
-        autoEmailAlerts:    false,
-        configurableAlerts: false,
-        apiAccess:          false,
+        reportSales:         false,
+        reportPurchases:     false,
+        reportTopProducts:   false,
+        exportCsv:           false,
+        exportExcel:         false,
+        bulkUpload:          false,
+        autoEmailAlerts:     false,
+        configurableAlerts:  false,
+        apiAccess:           false,
+        electronicInvoicing: false,
+        advancedReports:     false,
     },
     growth: {
-        reportSales:        true,
-        reportPurchases:    true,
-        reportTopProducts:  true,
-        exportCsv:          true,
-        exportExcel:        false,
-        bulkUpload:         true,
-        autoEmailAlerts:    true,
-        configurableAlerts: false,
-        apiAccess:          false,
+        reportSales:         true,
+        reportPurchases:     true,
+        reportTopProducts:   true,
+        exportCsv:           true,
+        exportExcel:         false,
+        bulkUpload:          true,
+        autoEmailAlerts:     true,
+        configurableAlerts:  false,
+        apiAccess:           false,
+        electronicInvoicing: true,
+        advancedReports:     false,
     },
     scale: {
-        reportSales:        true,
-        reportPurchases:    true,
-        reportTopProducts:  true,
-        exportCsv:          true,
-        exportExcel:        true,
-        bulkUpload:         true,
-        autoEmailAlerts:    true,
-        configurableAlerts: true,
-        apiAccess:          true,
+        reportSales:         true,
+        reportPurchases:     true,
+        reportTopProducts:   true,
+        exportCsv:           true,
+        exportExcel:         true,
+        bulkUpload:          true,
+        autoEmailAlerts:     true,
+        configurableAlerts:  true,
+        apiAccess:           true,
+        electronicInvoicing: true,
+        advancedReports:     true,
     },
     enterprise: {
-        reportSales:        true,
-        reportPurchases:    true,
-        reportTopProducts:  true,
-        exportCsv:          true,
-        exportExcel:        true,
-        bulkUpload:         true,
-        autoEmailAlerts:    true,
-        configurableAlerts: true,
-        apiAccess:          true,
+        reportSales:         true,
+        reportPurchases:     true,
+        reportTopProducts:   true,
+        exportCsv:           true,
+        exportExcel:         true,
+        bulkUpload:          true,
+        autoEmailAlerts:     true,
+        configurableAlerts:  true,
+        apiAccess:           true,
+        electronicInvoicing: true,
+        advancedReports:     true,
     },
 };
 
 // The minimum plan that unlocks each feature (used for "upgrade to X" messages)
 export const FEATURE_MINIMUM_PLAN = {
-    reportSales:        "growth",
-    reportPurchases:    "growth",
-    reportTopProducts:  "growth",
-    exportCsv:          "growth",
-    exportExcel:        "scale",
-    bulkUpload:         "growth",
-    autoEmailAlerts:    "growth",
-    configurableAlerts: "scale",
-    apiAccess:          "scale",
+    reportSales:         "growth",
+    reportPurchases:     "growth",
+    reportTopProducts:   "growth",
+    exportCsv:           "growth",
+    exportExcel:         "scale",
+    bulkUpload:          "growth",
+    autoEmailAlerts:     "growth",
+    configurableAlerts:  "scale",
+    apiAccess:           "scale",
+    electronicInvoicing: "growth",
+    advancedReports:     "scale",
 };
 
 const useSubscription = () => {
@@ -81,7 +91,12 @@ const useSubscription = () => {
         }
         subscriptionService
             .getMyUsage()
-            .then((res) => setPlan(res?.data?.plan ?? "starter"))
+            // effectivePlan (not plan) reflects an active trial's temporary
+            // Negocio-level access - using the raw stored plan here hid
+            // trial users' own trial features behind PlanGate even though
+            // the backend already granted them (pricing.middleware.js's
+            // getEffectivePlan), contradicting "full access during trial".
+            .then((res) => setPlan(res?.data?.effectivePlan ?? res?.data?.plan ?? "starter"))
             .catch(() => setPlan("starter"))
             .finally(() => setLoading(false));
     }, [user?.id]);

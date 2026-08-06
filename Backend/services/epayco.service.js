@@ -72,6 +72,12 @@ export const isEpaycoConfigured = () => {
 // ---------------------------------------------------------------------------
 
 const EPAYCO_AMOUNT_RESOLVER = {
+    starter: () =>
+        Number(
+            process.env.EPAYCO_AMOUNT_STARTER_COP ||
+                process.env.STRIPE_AMOUNT_STARTER_COP ||
+                0
+        ),
     growth: () =>
         Number(
             process.env.EPAYCO_AMOUNT_GROWTH_COP ||

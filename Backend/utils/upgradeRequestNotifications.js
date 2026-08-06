@@ -41,6 +41,47 @@ export const notifyUserRenewalReminder = async ({ user, plan, endsAt, daysLeft, 
     }
 };
 
+// ─── Trial ending soon ────────────────────────────────────────────────────
+// Starter is a paid plan ($19/mo, see pricing.middleware.js) - once the
+// 14-day trial ends, staying on Ohnix requires a subscription. Sent a few
+// days before trialEndsAt so the user isn't blocked with zero warning.
+export const notifyUserTrialEndingSoon = async ({ user, trialEndsAt, daysLeft, locale }) => {
+    if (!isMailConfigured() || !user?.email) return;
+    const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
+    const endsAtFormatted = new Date(trialEndsAt).toLocaleDateString(isEN ? "en-US" : "es-CO", {
+        year: "numeric", month: "long", day: "numeric",
+    });
+    const subject = isEN
+        ? `[Ohnix] Your free trial ends in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`
+        : `[Ohnix] Tu prueba gratuita termina en ${daysLeft} día${daysLeft !== 1 ? "s" : ""}`;
+    const title = isEN ? "Your free trial is ending soon" : "Tu prueba gratuita está por terminar";
+    const body = isEN
+        ? `Hello <strong>${user.username || "there"}</strong>, your 14-day free trial ends on <strong>${endsAtFormatted}</strong>. Subscribe to the Starter plan ($19/mo) or a higher tier to keep using Ohnix without interruptions.`
+        : `Hola <strong>${user.username || ""}</strong>, tu prueba gratuita de 14 días termina el <strong>${endsAtFormatted}</strong>. Suscríbete al plan Emprendedor ($19/mes) o a uno superior para seguir usando Ohnix sin interrupciones.`;
+    const cta = isEN ? "Subscribe now" : "Suscribirme ahora";
+    const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
+    try {
+        await transporter.sendMail({
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            to: user.email,
+            subject,
+            html: `
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
+                    <h2 style="color:#f59e0b;margin:0 0 12px;">⏳ ${title}</h2>
+                    <p style="color:#e5e7eb;font-size:15px;line-height:1.6;">${body}</p>
+                    <div style="text-align:center;margin:28px 0;">
+                        <a href="${frontendBase}/billing" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;">${cta}</a>
+                    </div>
+                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. Todos los derechos reservados.</p>
+                </div>
+            `,
+        });
+    } catch (err) {
+        console.error("[trial-ending] Failed to send:", err?.message);
+    }
+};
+
 // ─── Plan activated confirmation ────────────────────────────────────────────
 export const notifyUserPlanActivated = async ({ user, targetPlan, locale }) => {
     if (!isMailConfigured() || !user?.email) return;

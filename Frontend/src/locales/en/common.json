@@ -955,6 +955,24 @@
     "unit_day": "Day"
   },
   "reports": {
+    "advanced": {
+      "tab_label": "Advanced",
+      "description": "Profit margin, top customers, sales by team, and period comparison",
+      "failed": "Failed to load advanced reports",
+      "margin_tab": "Profit margin",
+      "customers_tab": "Top customers",
+      "team_tab": "Sales by team",
+      "comparison_tab": "Period comparison",
+      "margin": "Margin",
+      "margin_percent": "Margin %",
+      "margin_by_product": "Margin by product",
+      "top_customers_by_revenue": "Top customers by revenue",
+      "sales_by_team": "Sales by team member",
+      "team_member": "Team member",
+      "orders_count": "Order count",
+      "avg_order_value": "Average order value",
+      "vs_previous_period": "vs. previous period"
+    },
     "reports": "Reports",
     "sales": "Sales",
     "purchases": "Purchases",
@@ -1365,7 +1383,7 @@
     "pricing": {
       "eyebrow": "Pricing",
       "title": "A plan for every stage of your business",
-      "description": "14 days free with full access to the Business plan, no credit card required. Change or cancel anytime.",
+      "description": "14 days free on the Starter plan, no credit card required. Change or cancel anytime.",
       "most_popular": "Most Popular",
       "trial_note": "14-day free trial · No credit card",
       "plans": {
@@ -1398,9 +1416,10 @@
             "export": "CSV export · Bulk product upload",
             "pdf": "Order PDF with company logo",
             "alerts": "Automatic low-stock email alerts",
+            "invoicing": "DIAN electronic invoicing (Colombia)",
             "support": "Priority support (24h)"
           },
-          "cta": "Start free trial"
+          "cta": "Choose Business"
         },
         "scale": {
           "name": "Scale",
@@ -1415,9 +1434,10 @@
             "pdf": "Fully customizable PDF templates",
             "api": "REST API (1,000 req/day)",
             "alerts": "Per-product configurable stock thresholds",
+            "invoicing": "DIAN electronic invoicing (Colombia)",
             "support": "12h support · Assisted onboarding"
           },
-          "cta": "Start free trial"
+          "cta": "Choose Scale"
         },
         "enterprise": {
           "name": "Enterprise",

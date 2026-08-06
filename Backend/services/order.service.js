@@ -2,6 +2,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { sendRealtimeLowStockAlert } from "../utils/lowStockScheduler.js";
 import { issueElectronicInvoiceForOrder } from "./electronicInvoicing.service.js";
+import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -277,7 +278,17 @@ class OrderService {
                     }))
                     .filter((item) => item.stock >= 0 && item.stock < item.threshold);
                 if (lowItems.length > 0) {
-                    sendRealtimeLowStockAlert(lowItems).catch(() => {});
+                    // autoEmailAlerts is a Negocio+ feature (see pricing.middleware.js) -
+                    // the weekly digest in lowStockScheduler.js already filters
+                    // plan !== "starter", but this real-time path had no such
+                    // check and was emailing every plan, Starter included.
+                    ensureUserSubscription(userId)
+                        .then((subscription) => {
+                            if (getPlanFeatures(getEffectivePlan(subscription)).autoEmailAlerts) {
+                                sendRealtimeLowStockAlert(lowItems).catch(() => {});
+                            }
+                        })
+                        .catch(() => {});
                 }
             }
 

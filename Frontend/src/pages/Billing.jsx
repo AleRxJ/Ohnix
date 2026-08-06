@@ -55,7 +55,7 @@ const PAYMENT_METHOD_LABELS = {
 // COP display prices — keep in sync with EPAYCO_AMOUNT_*_COP in .env
 const PLAN_COP_DISPLAY = {
     growth: "COP $99.000",
-    scale: "COP $249.000",
+    scale: "COP $200.000",
     enterprise: "COP $299.000",
 };
 
@@ -427,6 +427,35 @@ const Billing = () => {
     };
 
     // Colombia-specific handler: always sends CO + epayco, no state races
+    // Renews (or, for a first-time-paid Starter, activates) the user's
+    // CURRENT plan - distinct from handleRequestUpgrade, which always
+    // defaults to the next tier up and has no "same plan" option at all
+    // (createUpgradeRequest rejects targetPlan === current plan).
+    const handleRenew = async () => {
+        try {
+            setCheckoutLoadingRequestId("renew");
+            const fallbackCountry = Object.keys(checkoutMethodsByCountry)[0] || "CO";
+            const fallbackMethod = checkoutMethodsByCountry[fallbackCountry]?.[0] || "epayco";
+            const response = await subscriptionService.createRenewalCheckout({
+                country: fallbackCountry,
+                paymentMethod: fallbackMethod,
+            });
+            const checkoutUrl = response?.data?.checkoutUrl;
+            if (!checkoutUrl) {
+                toast.error(t("profile.subscription.checkout_unavailable"));
+                return;
+            }
+            window.location.assign(checkoutUrl);
+        } catch (error) {
+            toast.error(
+                error.response?.data?.message ||
+                    t("profile.subscription.checkout_unavailable")
+            );
+        } finally {
+            setCheckoutLoadingRequestId("");
+        }
+    };
+
     const handleStartCheckoutColombia = async (request) => {
         if (!request?.id) {
             return;
@@ -576,6 +605,7 @@ const Billing = () => {
                         onCancel={handleCancel}
                         onReactivate={handleReactivate}
                         onRequestUpgrade={handleRequestUpgrade}
+                        onRenew={handleRenew}
                     />
 
                     <ApiKeysPanel />

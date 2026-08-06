@@ -16,6 +16,7 @@ import StockReport from "../components/reports/StockReport";
 import SalesReport from "../components/reports/SalesReport";
 import PurchaseReport from "../components/reports/PurchaseReport";
 import TopProductsReport from "../components/reports/TopProductsReport";
+import AdvancedReports from "../components/reports/AdvancedReports";
 import PlanGate from "../components/common/PlanGate";
 import AuthContext from "../context/AuthContext";
 import { api } from "../api/api";
@@ -39,6 +40,7 @@ const Reports = () => {
         "top-products": isMobile
             ? t("reports.top")
             : t("reports.top_products"),
+        advanced: t("reports.advanced.tab_label"),
     };
 
     // New function for admin to manually trigger alerts (for testing)
@@ -139,6 +141,20 @@ const Reports = () => {
             ),
             children: can("reportTopProducts") ? <TopProductsReport /> : <PlanGate featureKey="reportTopProducts" />,
         },
+        {
+            key: "advanced",
+            label: (
+                <span
+                    className={`flex items-center ${isMobile ? "text-xs" : "text-sm"}`}
+                >
+                    <BarChartOutlined
+                        className={`${isMobile ? "mr-1 text-xs" : "mr-1 text-sm"}`}
+                    />
+                    {tabLabelByKey.advanced}
+                </span>
+            ),
+            children: can("advancedReports") ? <AdvancedReports /> : <PlanGate featureKey="advancedReports" />,
+        },
     ];
 
     const reportDescriptions = {
@@ -146,6 +162,7 @@ const Reports = () => {
         sales: t("reports.report_description_sales"),
         purchases: t("reports.report_description_purchases"),
         "top-products": t("reports.report_description_top_products"),
+        advanced: t("reports.advanced.description"),
     };
 
     return (

@@ -956,6 +956,24 @@
     "unit_day": "Día"
   },
   "reports": {
+    "advanced": {
+      "tab_label": "Avanzado",
+      "description": "Margen de ganancia, mejores clientes, ventas por equipo y comparación de periodos",
+      "failed": "No se pudieron cargar los reportes avanzados",
+      "margin_tab": "Margen de ganancia",
+      "customers_tab": "Top clientes",
+      "team_tab": "Ventas por equipo",
+      "comparison_tab": "Comparación de periodos",
+      "margin": "Margen",
+      "margin_percent": "% de margen",
+      "margin_by_product": "Margen por producto",
+      "top_customers_by_revenue": "Mejores clientes por ingresos",
+      "sales_by_team": "Ventas por miembro del equipo",
+      "team_member": "Miembro del equipo",
+      "orders_count": "N.º de pedidos",
+      "avg_order_value": "Valor promedio de pedido",
+      "vs_previous_period": "vs. periodo anterior"
+    },
     "reports": "Reportes",
     "sales": "Ventas",
     "purchases": "Compras",
@@ -1359,7 +1377,7 @@
     "pricing": {
       "eyebrow": "Precios",
       "title": "Un plan para cada etapa de tu negocio",
-      "description": "14 días de prueba gratis con acceso completo al plan Negocio, sin tarjeta de crédito. Cambia o cancela cuando quieras.",
+      "description": "14 días de prueba gratis del plan Emprendedor, sin tarjeta de crédito. Cambia o cancela cuando quieras.",
       "most_popular": "Más popular",
       "trial_note": "14 días gratis · Sin tarjeta",
       "plans": {
@@ -1392,9 +1410,10 @@
             "export": "Exportación CSV · Carga masiva de productos",
             "pdf": "PDF con logo de la empresa",
             "alerts": "Alertas automáticas de stock bajo por email",
+            "invoicing": "Facturación electrónica DIAN (Colombia)",
             "support": "Soporte prioritario (24h)"
           },
-          "cta": "Empezar prueba gratis"
+          "cta": "Elegir plan Negocio"
         },
         "scale": {
           "name": "Escala",
@@ -1409,9 +1428,10 @@
             "pdf": "PDF completamente personalizable",
             "api": "API REST (1,000 req/día)",
             "alerts": "Alertas con umbral configurable por producto",
+            "invoicing": "Facturación electrónica DIAN (Colombia)",
             "support": "Soporte 12h · Onboarding asistido"
           },
-          "cta": "Empezar prueba gratis"
+          "cta": "Elegir plan Escala"
         },
         "enterprise": {
           "name": "Enterprise",

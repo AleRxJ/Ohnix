@@ -511,7 +511,7 @@ const getLowStockAlerts = asyncHandler(async (req, res, next) => {
                         enabled: true,
                         schedule: "Every Monday at 9:00 AM",
                         timezone: process.env.TIMEZONE || "Asia/Kolkata",
-                        note: "Low stock email alerts are sent automatically to all users",
+                        note: "Automatic low stock email alerts are available on the Negocio plan and above",
                     },
                 },
                 "Low stock alerts fetched successfully"
@@ -523,6 +523,250 @@ const getLowStockAlerts = asyncHandler(async (req, res, next) => {
     }
 });
 
+// ── Escala+ advanced reports ────────────────────────────────────────────────
+// Gated behind PLAN_FEATURES.advancedReports (report.routes.js) - unlike the
+// base sales/purchase/top-products reports (Negocio+), these are exclusive
+// to Escala and Enterprise.
+
+const buildDateFilter = (start_date, end_date) => {
+    const filter = {};
+    if (start_date && end_date) {
+        filter.gte = new Date(start_date);
+        filter.lte = new Date(end_date);
+    }
+    return filter;
+};
+
+// Profit margin per product: revenue (order line total) minus cost
+// (product.buyingPrice * quantity sold), for the selected period.
+const getProfitMarginReport = asyncHandler(async (req, res, next) => {
+    const { start_date, end_date } = req.query;
+    const userId = req.user.prismaId;
+    const isAdmin = req.user.role === "admin";
+    const dateFilter = buildDateFilter(start_date, end_date);
+
+    try {
+        const orders = await prisma.order.findMany({
+            where: {
+                ...(isAdmin ? {} : { createdById: userId }),
+                orderStatus: { not: "cancelled" },
+                ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
+            },
+            include: {
+                orderDetails: {
+                    include: {
+                        product: {
+                            select: { id: true, legacyMongoId: true, productName: true, buyingPrice: true },
+                        },
+                    },
+                },
+            },
+        });
+
+        const byProductMap = new Map();
+
+        for (const order of orders) {
+            for (const detail of order.orderDetails) {
+                if (!detail.product) continue;
+                const productId = detail.productId;
+                const current = byProductMap.get(productId) || {
+                    _id: toExternalId(detail.product),
+                    product_name: detail.product.productName,
+                    quantity: 0,
+                    revenue: 0,
+                    cost: 0,
+                };
+                const revenue = Number(detail.total);
+                const cost = Number(detail.product.buyingPrice) * detail.quantity;
+                current.quantity += detail.quantity;
+                current.revenue += revenue;
+                current.cost += cost;
+                byProductMap.set(productId, current);
+            }
+        }
+
+        const byProduct = [...byProductMap.values()]
+            .map((item) => ({
+                ...item,
+                margin: item.revenue - item.cost,
+                marginPercent: item.revenue > 0 ? Number((((item.revenue - item.cost) / item.revenue) * 100).toFixed(2)) : 0,
+            }))
+            .sort((a, b) => b.margin - a.margin);
+
+        const summary = byProduct.reduce(
+            (acc, item) => ({
+                totalRevenue: acc.totalRevenue + item.revenue,
+                totalCost: acc.totalCost + item.cost,
+                totalMargin: acc.totalMargin + item.margin,
+            }),
+            { totalRevenue: 0, totalCost: 0, totalMargin: 0 }
+        );
+        summary.marginPercent = summary.totalRevenue > 0
+            ? Number(((summary.totalMargin / summary.totalRevenue) * 100).toFixed(2))
+            : 0;
+
+        return res.status(200).json(new ApiResponse(200, { byProduct, summary }, "Profit margin report fetched successfully"));
+    } catch (error) {
+        console.error("Profit margin report error:", error);
+        return next(new ApiError(500, error.message));
+    }
+});
+
+// Top customers by revenue and order frequency for the selected period.
+const getTopCustomersReport = asyncHandler(async (req, res, next) => {
+    const { start_date, end_date, limit = 10 } = req.query;
+    const userId = req.user.prismaId;
+    const isAdmin = req.user.role === "admin";
+    const dateFilter = buildDateFilter(start_date, end_date);
+
+    try {
+        const orders = await prisma.order.findMany({
+            where: {
+                ...(isAdmin ? {} : { createdById: userId }),
+                orderStatus: { not: "cancelled" },
+                ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
+            },
+            include: {
+                customer: { select: { id: true, legacyMongoId: true, name: true } },
+            },
+        });
+
+        const byCustomerMap = new Map();
+
+        for (const order of orders) {
+            if (!order.customer) continue;
+            const customerId = order.customerId;
+            const current = byCustomerMap.get(customerId) || {
+                _id: toExternalId(order.customer),
+                customer_name: order.customer.name,
+                totalRevenue: 0,
+                orderCount: 0,
+            };
+            current.totalRevenue += Number(order.total);
+            current.orderCount += 1;
+            byCustomerMap.set(customerId, current);
+        }
+
+        const customers = [...byCustomerMap.values()]
+            .map((item) => ({
+                ...item,
+                avgOrderValue: item.orderCount > 0 ? Number((item.totalRevenue / item.orderCount).toFixed(2)) : 0,
+            }))
+            .sort((a, b) => b.totalRevenue - a.totalRevenue)
+            .slice(0, Number.parseInt(limit, 10) || 10);
+
+        return res.status(200).json(new ApiResponse(200, { customers }, "Top customers report fetched successfully"));
+    } catch (error) {
+        console.error("Top customers report error:", error);
+        return next(new ApiError(500, error.message));
+    }
+});
+
+// Sales broken down by the team member who created each order - meaningful
+// for multi-user companies (Escala targets teams of 5-20).
+const getSalesByTeamReport = asyncHandler(async (req, res, next) => {
+    const { start_date, end_date } = req.query;
+    const userId = req.user.prismaId;
+    const isAdmin = req.user.role === "admin";
+    const dateFilter = buildDateFilter(start_date, end_date);
+
+    try {
+        const orders = await prisma.order.findMany({
+            where: {
+                ...(isAdmin ? {} : { createdById: userId }),
+                orderStatus: { not: "cancelled" },
+                ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
+            },
+            include: {
+                createdBy: { select: { id: true, legacyMongoId: true, username: true } },
+            },
+        });
+
+        const byMemberMap = new Map();
+
+        for (const order of orders) {
+            if (!order.createdBy) continue;
+            const memberId = order.createdById;
+            const current = byMemberMap.get(memberId) || {
+                _id: toExternalId(order.createdBy),
+                username: order.createdBy.username,
+                totalRevenue: 0,
+                orderCount: 0,
+            };
+            current.totalRevenue += Number(order.total);
+            current.orderCount += 1;
+            byMemberMap.set(memberId, current);
+        }
+
+        const members = [...byMemberMap.values()].sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+        return res.status(200).json(new ApiResponse(200, { members }, "Sales by team report fetched successfully"));
+    } catch (error) {
+        console.error("Sales by team report error:", error);
+        return next(new ApiError(500, error.message));
+    }
+});
+
+// Current period vs. the immediately preceding period of equal length.
+const getPeriodComparisonReport = asyncHandler(async (req, res, next) => {
+    const { start_date, end_date } = req.query;
+    const userId = req.user.prismaId;
+    const isAdmin = req.user.role === "admin";
+
+    if (!start_date || !end_date) {
+        return next(new ApiError(400, "start_date and end_date are required"));
+    }
+
+    try {
+        const currentStart = new Date(start_date);
+        const currentEnd = new Date(end_date);
+        const periodMs = currentEnd.getTime() - currentStart.getTime();
+        const previousEnd = new Date(currentStart.getTime() - 1);
+        const previousStart = new Date(previousEnd.getTime() - periodMs);
+
+        const fetchTotals = async (gte, lte) => {
+            const result = await prisma.order.aggregate({
+                where: {
+                    ...(isAdmin ? {} : { createdById: userId }),
+                    orderStatus: { not: "cancelled" },
+                    orderDate: { gte, lte },
+                },
+                _sum: { total: true },
+                _count: { id: true },
+            });
+            return {
+                totalSales: Number(result._sum.total || 0),
+                totalOrders: result._count.id || 0,
+            };
+        };
+
+        const [current, previous] = await Promise.all([
+            fetchTotals(currentStart, currentEnd),
+            fetchTotals(previousStart, previousEnd),
+        ]);
+
+        const percentChange = (curr, prev) => (prev > 0 ? Number((((curr - prev) / prev) * 100).toFixed(2)) : curr > 0 ? 100 : 0);
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                {
+                    current: { ...current, startDate: currentStart, endDate: currentEnd },
+                    previous: { ...previous, startDate: previousStart, endDate: previousEnd },
+                    change: {
+                        sales: percentChange(current.totalSales, previous.totalSales),
+                        orders: percentChange(current.totalOrders, previous.totalOrders),
+                    },
+                },
+                "Period comparison report fetched successfully"
+            )
+        );
+    } catch (error) {
+        console.error("Period comparison report error:", error);
+        return next(new ApiError(500, error.message));
+    }
+});
+
 export {
     getDashboardMetrics,
     getStockReport,
@@ -530,4 +774,8 @@ export {
     getTopProducts,
     getPurchaseReport,
     getLowStockAlerts,
+    getProfitMarginReport,
+    getTopCustomersReport,
+    getSalesByTeamReport,
+    getPeriodComparisonReport,
 };

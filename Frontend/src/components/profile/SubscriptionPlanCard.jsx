@@ -33,6 +33,8 @@ const FEATURE_ROWS = [
     { key: "autoEmailAlerts",   es: "Alertas email automáticas",       en: "Automatic email alerts"       },
     { key: "configurableAlerts",es: "Alertas por umbral configurable", en: "Configurable stock thresholds" },
     { key: "apiAccess",         es: "Acceso a API REST",               en: "REST API access"              },
+    { key: "electronicInvoicing", es: "Facturación electrónica DIAN",  en: "DIAN electronic invoicing"    },
+    { key: "advancedReports",   es: "Reportes avanzados (margen, clientes, equipo)", en: "Advanced reports (margin, customers, team)" },
 ];
 
 const StatusTag = ({ status, t }) => {
@@ -80,6 +82,7 @@ const SubscriptionPlanCard = ({
     onCancel,
     onReactivate,
     onRequestUpgrade,
+    onRenew,
     compact = false,
     onOpenBilling,
 }) => {
@@ -105,7 +108,9 @@ const SubscriptionPlanCard = ({
     // so the banner never flickers on initial render from user context data.
     const planEndsAt = typeof subscription?.endsAt === "string" ? subscription.endsAt : null;
     const cancelAtPeriodEnd = Boolean(subscription?.cancelAtPeriodEnd);
-    const renewalDaysLeft = planEndsAt && plan !== "starter"
+    // Starter is a paid plan too (see pricing.middleware.js PLAN_PRICES_USD)
+    // and can carry a real endsAt once paid, so it gets no special case here.
+    const renewalDaysLeft = planEndsAt
         ? Math.ceil((new Date(planEndsAt) - Date.now()) / (1000 * 60 * 60 * 24))
         : null;
     // A cancellation already scheduled its own "your plan ends soon" banner
@@ -174,10 +179,10 @@ const SubscriptionPlanCard = ({
                                     : "Subscribe to a plan to keep using Ohnix without interruptions."}
                             </Text>
                         </div>
-                        {onRequestUpgrade && (
+                        {onRenew && (
                             <Button
                                 size="small"
-                                onClick={onRequestUpgrade}
+                                onClick={onRenew}
                                 className="shrink-0 border-red-400/60 text-red-300 hover:border-red-300 hover:text-red-200 bg-transparent"
                             >
                                 {lang === "es" ? "Contratar" : "Subscribe"}
@@ -210,9 +215,9 @@ const SubscriptionPlanCard = ({
                                     ? `Your ${plan} plan has expired. Renew to keep access.`
                                     : `Your plan expires in ${renewalDaysLeft} day${renewalDaysLeft !== 1 ? "s" : ""}. Renew to continue.`}
                         </span>
-                        {onRequestUpgrade && (
+                        {onRenew && (
                             <Button size="small"
-                                onClick={onRequestUpgrade}
+                                onClick={onRenew}
                                 className={`shrink-0 bg-transparent ${
                                     renewalDaysLeft <= 0
                                         ? "border-red-400/60 text-red-300 hover:border-red-300"
@@ -256,10 +261,10 @@ const SubscriptionPlanCard = ({
                                 ? `¡Solo quedan ${trialDaysLeft} día${trialDaysLeft !== 1 ? "s" : ""} de prueba! Contrata ahora para no perder el acceso.`
                                 : `Only ${trialDaysLeft} day${trialDaysLeft !== 1 ? "s" : ""} left in your trial! Subscribe now to keep access.`}
                         </Text>
-                        {onRequestUpgrade && (
+                        {onRenew && (
                             <Button
                                 size="small"
-                                onClick={onRequestUpgrade}
+                                onClick={onRenew}
                                 className="shrink-0 border-orange-400/60 text-orange-300 hover:border-orange-300 hover:text-orange-200 bg-transparent"
                             >
                                 {lang === "es" ? "Contratar" : "Subscribe"}
@@ -275,8 +280,8 @@ const SubscriptionPlanCard = ({
                     <ClockCircleOutlined className="text-[#44F3F0]" />
                     <Text className="text-sm text-[#44F3F0]">
                         {lang === "es"
-                            ? `Prueba gratuita activa — ${trialDaysLeft} día${trialDaysLeft !== 1 ? "s" : ""} restante${trialDaysLeft !== 1 ? "s" : ""} · Acceso completo al plan Negocio`
-                            : `Free trial active — ${trialDaysLeft} day${trialDaysLeft !== 1 ? "s" : ""} remaining · Full Business plan access`}
+                            ? `Prueba gratuita activa — ${trialDaysLeft} día${trialDaysLeft !== 1 ? "s" : ""} restante${trialDaysLeft !== 1 ? "s" : ""} · Plan Emprendedor sin costo`
+                            : `Free trial active — ${trialDaysLeft} day${trialDaysLeft !== 1 ? "s" : ""} remaining · Starter plan at no cost`}
                     </Text>
                 </div>
             )}
@@ -366,7 +371,7 @@ const SubscriptionPlanCard = ({
                     <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <Button
                             icon={<RocketOutlined />}
-                            onClick={onRequestUpgrade}
+                            onClick={onRenew}
                             size="large"
                             className="h-11 rounded-xl border-[#29D8D5]/50 bg-[#29D8D5]/15 text-[#44F3F0] font-semibold col-span-1 sm:col-span-2"
                         >
@@ -404,7 +409,10 @@ const SubscriptionPlanCard = ({
                             >
                                 {t("profile.subscription.undo_cancellation")}
                             </Button>
-                        ) : plan !== "starter" ? (
+                        ) : planEndsAt ? (
+                            /* Nothing to cancel until there's an actual paid
+                               period in progress (matches the backend's
+                               cancelMySubscription check on subscription.endsAt) */
                             <Popconfirm
                                 title={t("profile.subscription.confirm_cancel")}
                                 okText={t("common.yes")}

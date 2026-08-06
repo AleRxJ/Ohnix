@@ -190,7 +190,12 @@ const generateAccessAndRefreshTokens = async (userId) => {
 const registerUser = asyncHandler(async (req, res, next) => {
     const { email, username, password, desiredPlan, preferredLanguage } = req.body;
 
-    if ([email, username, password].some((field) => field?.trim() === "")) {
+    // field?.trim() === "" only catches an empty string - if the field is
+    // missing entirely (undefined/null, e.g. a malformed request body),
+    // optional chaining short-circuits to undefined and the check silently
+    // passes, so email.toLowerCase() below threw an unhandled TypeError
+    // instead of a clean 400.
+    if ([email, username, password].some((field) => !field?.trim())) {
         return next(new ApiError(400, "All fields are required"));
     }
 

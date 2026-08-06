@@ -1,20 +1,24 @@
 // Backend/utils/subscriptionRenewalScheduler.js
 //
 // Runs daily:
-//  1. Sends renewal reminder emails 7 days before a paid plan expires.
-//  2. After a 5-day grace period past expiry, downgrades to starter.
+//  1. Sends renewal reminder emails 1 day after a paid plan (any plan,
+//     including Starter - see pricing.middleware.js PLAN_PRICES_USD) expires.
+//  2. Sends "your trial is ending" emails a few days before an unpaid trial
+//     (Starter, never activated with a real payment) runs out.
+//  3. After a 5-day grace period past expiry/trial end, blocks access
+//     (status: "paused") for anything that was never renewed/paid.
 //
 // Grace period avoids penalizing users who renew 1-2 days late.
 
 import cron from "node-cron";
 import { prisma } from "../db/prisma.js";
-import { notifyUserRenewalReminder } from "./upgradeRequestNotifications.js";
-import { isMailConfigured } from "./nodemailer.js";
+import { notifyUserRenewalReminder, notifyUserTrialEndingSoon } from "./upgradeRequestNotifications.js";
 
 const REMINDER_DAYS_AFTER_EXPIRY = 1;  // send email 1 day after plan expires
-const GRACE_PERIOD_DAYS           = 5;  // days after expiry before downgrading
+const TRIAL_REMINDER_DAYS_BEFORE = 3;  // send email 3 days before trial ends
+const GRACE_PERIOD_DAYS          = 5;  // days after expiry/trial end before blocking access
 
-// ── Reminder: subscriptions that expired ~1 day ago ──────────────────────────
+// ── Reminder: paid subscriptions (any plan) that expired ~1 day ago ─────────
 async function sendRenewalReminders() {
     const now = new Date();
     // Window: between 1 and 2 days past expiry
@@ -24,7 +28,6 @@ async function sendRenewalReminders() {
     const recentlyExpired = await prisma.subscription.findMany({
         where: {
             status: "active",
-            plan: { not: "starter" },
             endsAt: { gte: windowStart, lte: windowEnd },
         },
         include: {
@@ -52,28 +55,86 @@ async function sendRenewalReminders() {
     return sent;
 }
 
-// ── Expiry: downgrade subscriptions past grace period ────────────────────────
-async function downgradeExpiredSubscriptions() {
-    const graceCutoff = new Date(Date.now() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+// ── Reminder: free trials (never paid) ending in a few days ─────────────────
+async function sendTrialEndingReminders() {
+    const now = new Date();
+    // Window: trial ends between 3 and 4 days from now (narrow enough that
+    // the daily cron only catches each subscription once).
+    const windowStart = new Date(now.getTime() + TRIAL_REMINDER_DAYS_BEFORE * 24 * 60 * 60 * 1000);
+    const windowEnd   = new Date(now.getTime() + (TRIAL_REMINDER_DAYS_BEFORE + 1) * 24 * 60 * 60 * 1000);
 
-    const result = await prisma.subscription.updateMany({
+    const endingTrials = await prisma.subscription.findMany({
         where: {
             status: "active",
-            plan: { not: "starter" },
+            plan: "starter",
+            endsAt: null, // never actually paid - still on the free trial
+            trialEndsAt: { gte: windowStart, lte: windowEnd },
+        },
+        include: {
+            user: { select: { id: true, email: true, username: true, preferredLanguage: true } },
+        },
+    });
+
+    let sent = 0;
+    for (const sub of endingTrials) {
+        if (!sub.user?.email) continue;
+        await notifyUserTrialEndingSoon({
+            user: sub.user,
+            trialEndsAt: sub.trialEndsAt,
+            daysLeft: TRIAL_REMINDER_DAYS_BEFORE,
+            locale: sub.user.preferredLanguage,
+        });
+        sent++;
+    }
+
+    if (sent > 0) {
+        console.log(`[renewal-scheduler] Sent ${sent} trial-ending reminder(s).`);
+    }
+
+    return sent;
+}
+
+// ── Block: paid periods and trials that lapsed past the grace period ────────
+// Every plan (Starter included) requires payment - there is no free tier to
+// fall back to anymore, so a lapsed subscription is blocked (status: "paused",
+// which pricing.middleware.js's ensureActiveSubscription already gates all
+// product/report/API access on) rather than silently downgraded to a
+// still-free "starter". The plan value is left untouched so the user's
+// billing page still shows what they were on when reactivating.
+async function blockLapsedSubscriptions() {
+    const graceCutoff = new Date(Date.now() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+
+    const expiredPaid = await prisma.subscription.updateMany({
+        where: {
+            status: "active",
             endsAt: { lt: graceCutoff },
         },
         data: {
-            plan: "starter",
-            endsAt: null,
+            status: "paused",
             cancelAtPeriodEnd: false,
         },
     });
 
-    if (result.count > 0) {
-        console.log(`[renewal-scheduler] Downgraded ${result.count} expired subscription(s) to starter.`);
+    const expiredTrials = await prisma.subscription.updateMany({
+        where: {
+            status: "active",
+            plan: "starter",
+            endsAt: null,
+            trialEndsAt: { lt: graceCutoff },
+        },
+        data: {
+            status: "paused",
+        },
+    });
+
+    const total = expiredPaid.count + expiredTrials.count;
+    if (total > 0) {
+        console.log(
+            `[renewal-scheduler] Blocked ${expiredPaid.count} lapsed paid subscription(s) and ${expiredTrials.count} expired trial(s).`
+        );
     }
 
-    return result.count;
+    return total;
 }
 
 // ── Scheduler ────────────────────────────────────────────────────────────────
@@ -100,7 +161,8 @@ class SubscriptionRenewalScheduler {
             console.log("[renewal-scheduler] Running daily renewal checks...");
             try {
                 await sendRenewalReminders();
-                await downgradeExpiredSubscriptions();
+                await sendTrialEndingReminders();
+                await blockLapsedSubscriptions();
             } catch (err) {
                 console.error("[renewal-scheduler] Error during daily run:", err?.message);
             }
@@ -119,8 +181,9 @@ class SubscriptionRenewalScheduler {
     // Manual trigger for testing
     async runNow() {
         const reminders = await sendRenewalReminders();
-        const downgrades = await downgradeExpiredSubscriptions();
-        return { reminders, downgrades };
+        const trialReminders = await sendTrialEndingReminders();
+        const blocked = await blockLapsedSubscriptions();
+        return { reminders, trialReminders, blocked };
     }
 }
 

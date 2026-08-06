@@ -345,12 +345,12 @@ const setMyStatus = (status, message) =>
         // subscription from subscriptionRenewalScheduler's downgrade query
         // (`endsAt: { lt: cutoff }` never matches NULL), so a user could
         // pause/cancel a paid plan and reactivate it to get free, indefinite
-        // access that no automated process would ever catch. Only starter
-        // (free, no expiry) should end up with endsAt: null on activation.
+        // access that no automated process would ever catch. Starter is a
+        // paid plan too (see pricing.middleware.js PLAN_PRICES_USD), so it
+        // gets no special case here - only a subscription that was never
+        // paid at all (still endsAt: null, e.g. mid-trial) stays null.
         const nextEndsAt =
-            status === "active"
-                ? (subscription.plan === "starter" ? null : subscription.endsAt)
-                : subscription.endsAt || new Date();
+            status === "active" ? subscription.endsAt : subscription.endsAt || new Date();
 
         const updated = await prisma.subscription.update({
             where: { userId: req.user.prismaId },
@@ -391,16 +391,20 @@ export const reactivateMySubscription = setMyStatus(
 // on status === "active", so doing that would revoke access the same
 // instant a customer cancels, instead of at the end of the period they
 // already paid for. Setting cancelAtPeriodEnd instead lets
-// subscriptionRenewalScheduler's existing downgradeExpiredSubscriptions job
-// downgrade to starter once `endsAt` (+ grace period) actually passes - the
-// same natural-expiry path a non-renewal would take, no scheduler changes
-// needed.
+// subscriptionRenewalScheduler's blockLapsedSubscriptions job block access
+// once `endsAt` (+ grace period) actually passes - the same natural-expiry
+// path a non-renewal would take, no scheduler changes needed.
 export const cancelMySubscription = asyncHandler(async (req, res, next) => {
     const subscription = await ensureUserSubscription(req.user.prismaId);
 
-    if (subscription.plan === "starter") {
+    // "Nothing to cancel" now means "no paid period in progress" rather than
+    // "plan === starter" - Starter is a paid plan too (see pricing.middleware.js
+    // PLAN_PRICES_USD), so a paying Starter subscriber can cancel just like
+    // any other plan. Only a subscription that was never actually paid for
+    // (still on the free trial, no endsAt yet) has nothing to cancel.
+    if (!subscription.endsAt) {
         return next(
-            new ApiError(400, "The free plan has nothing to cancel.")
+            new ApiError(400, "There is no active paid period to cancel.")
         );
     }
 
@@ -1215,10 +1219,6 @@ export const createRenewalCheckout = asyncHandler(async (req, res, next) => {
     const { country, paymentMethod } = req.body || {};
 
     const subscription = await ensureUserSubscription(req.user.prismaId);
-
-    if (subscription.plan === "starter") {
-        return next(new ApiError(400, "El plan Emprendedor no tiene renovación. Selecciona un plan de pago."));
-    }
 
     if (!isAutonomousCheckoutConfigured()) {
         return next(new ApiError(503, "Autonomous checkout is not configured."));

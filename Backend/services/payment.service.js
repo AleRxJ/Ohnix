@@ -105,6 +105,11 @@ const normalizePaymentMethod = (value) => {
 };
 
 const PLAN_ONE_TIME_AMOUNT_BY_CURRENCY = {
+    starter: {
+        cop: () => Number(process.env.STRIPE_AMOUNT_STARTER_COP),
+        usd: () => Number(process.env.STRIPE_AMOUNT_STARTER_USD),
+        eur: () => Number(process.env.STRIPE_AMOUNT_STARTER_EUR),
+    },
     growth: {
         cop: () => Number(process.env.STRIPE_AMOUNT_GROWTH_COP),
         usd: () => Number(process.env.STRIPE_AMOUNT_GROWTH_USD),

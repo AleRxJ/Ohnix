@@ -80,51 +80,64 @@ export const PLAN_LIMITS = {
 export const PLAN_FEATURES = {
     // $19/mes — Emprendedor: core inventory only
     starter: {
-        reportSales:        false,
-        reportPurchases:    false,
-        reportTopProducts:  false,
-        exportCsv:          false,
-        exportExcel:        false,
-        bulkUpload:         false,
-        autoEmailAlerts:    false,
-        configurableAlerts: false,
-        apiAccess:          false,
+        reportSales:         false,
+        reportPurchases:     false,
+        reportTopProducts:   false,
+        exportCsv:           false,
+        exportExcel:         false,
+        bulkUpload:          false,
+        autoEmailAlerts:     false,
+        configurableAlerts:  false,
+        apiAccess:           false,
+        electronicInvoicing: false,
+        advancedReports:     false,
     },
-    // $49/mes — Negocio: full analytics + exports
+    // $49/mes — Negocio: full analytics + exports + DIAN e-invoicing
+    // (electronicInvoicing costs real money per document via Alanube - never
+    // give it away on Starter or during the trial, see getEffectivePlan)
     growth: {
-        reportSales:        true,
-        reportPurchases:    true,
-        reportTopProducts:  true,
-        exportCsv:          true,
-        exportExcel:        false,
-        bulkUpload:         true,
-        autoEmailAlerts:    true,
-        configurableAlerts: false,
-        apiAccess:          false,
+        reportSales:         true,
+        reportPurchases:     true,
+        reportTopProducts:   true,
+        exportCsv:           true,
+        exportExcel:         false,
+        bulkUpload:          true,
+        autoEmailAlerts:     true,
+        configurableAlerts:  false,
+        apiAccess:           false,
+        electronicInvoicing: true,
+        advancedReports:     false,
     },
-    // $99/mes — Escala: API + advanced reports
+    // $99/mes — Escala: API + advanced reports (profit margin, top
+    // customers, sales-by-team-member, period comparison - see
+    // report.controller.js's getProfitMarginReport/getTopCustomersReport/
+    // getSalesByTeamReport/getPeriodComparisonReport)
     scale: {
-        reportSales:        true,
-        reportPurchases:    true,
-        reportTopProducts:  true,
-        exportCsv:          true,
-        exportExcel:        true,
-        bulkUpload:         true,
-        autoEmailAlerts:    true,
-        configurableAlerts: true,
-        apiAccess:          true,
+        reportSales:         true,
+        reportPurchases:     true,
+        reportTopProducts:   true,
+        exportCsv:           true,
+        exportExcel:         true,
+        bulkUpload:          true,
+        autoEmailAlerts:     true,
+        configurableAlerts:  true,
+        apiAccess:           true,
+        electronicInvoicing: true,
+        advancedReports:     true,
     },
     // Custom — Enterprise: everything
     enterprise: {
-        reportSales:        true,
-        reportPurchases:    true,
-        reportTopProducts:  true,
-        exportCsv:          true,
-        exportExcel:        true,
-        bulkUpload:         true,
-        autoEmailAlerts:    true,
-        configurableAlerts: true,
-        apiAccess:          true,
+        reportSales:         true,
+        reportPurchases:     true,
+        reportTopProducts:   true,
+        exportCsv:           true,
+        exportExcel:         true,
+        bulkUpload:          true,
+        autoEmailAlerts:     true,
+        configurableAlerts:  true,
+        apiAccess:           true,
+        electronicInvoicing: true,
+        advancedReports:     true,
     },
 };
 
@@ -161,18 +174,15 @@ export const ensureUserSubscription = async (userId) =>
 
 /**
  * Returns the plan that should be used for limit/feature checks.
- * During an active trial the user gets Negocio (growth) access regardless of
- * their stored plan, so they experience the full value before paying.
+ *
+ * The 14-day trial (trialEndsAt) only ever applies to the Starter plan - it
+ * is a grace period before Starter's $19/mo is required, not a preview of
+ * Negocio/Escala. Growth and Scale are paid from day one, no trial. This
+ * also means a trialing user's effective plan is always "starter", so
+ * Starter-gated features (electronicInvoicing, etc.) are never available
+ * during trial without any extra check needed.
  */
-export const getEffectivePlan = (subscription) => {
-    if (
-        subscription?.trialEndsAt &&
-        new Date() < new Date(subscription.trialEndsAt)
-    ) {
-        return "growth"; // trial gives Negocio-level access
-    }
-    return subscription?.plan ?? "starter";
-};
+export const getEffectivePlan = (subscription) => subscription?.plan ?? "starter";
 
 export const getPlanLimits = (plan) => PLAN_LIMITS[plan] || PLAN_LIMITS.starter;
 

@@ -18,6 +18,22 @@ import {
 } from "./alanube.service.js";
 import { computeNitCheckDigit } from "../utils/nit.util.js";
 import { normalizeCountryCode } from "./companyCountry.service.js";
+import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
+
+// Electronic invoicing costs real money per document (Alanube bills per
+// emission), unlike the other plan-gated features - so this is checked
+// directly here rather than only at the route layer, and applies even to
+// admins issuing on a user's behalf, since the cost is the same either way.
+const ensureElectronicInvoicingPlan = async (userId) => {
+    const subscription = await ensureUserSubscription(userId);
+    const effectivePlan = getEffectivePlan(subscription);
+    if (!getPlanFeatures(effectivePlan).electronicInvoicing) {
+        throw new ApiError(
+            403,
+            "Electronic invoicing is available starting on the Negocio plan. Upgrade to issue DIAN invoices."
+        );
+    }
+};
 
 const FACTUS_PROVIDER = "factus";
 const ALANUBE_PROVIDER = "alanube";
@@ -483,6 +499,9 @@ export const issueElectronicInvoiceForOrder = async ({ orderId, requesterUserId,
     if (!canManageOrder(order, requesterUserId, requesterRole)) throw new ApiError(403, "You are not authorized to issue this order invoice");
     if (order.orderStatus !== "completed") throw new ApiError(409, "Electronic invoicing is only available for completed orders");
     if (normalizeCountryCode(order.createdBy?.company?.countryCode) !== "CO") throw new ApiError(409, "Electronic invoicing requires an explicitly configured Colombia company");
+    // Gated on the order owner's plan (not the requester's) - an admin
+    // issuing on someone's behalf still costs that company's Alanube usage.
+    await ensureElectronicInvoicingPlan(order.createdById);
 
     const company = order.createdBy.company;
     const provider = providerFor(company);
@@ -636,6 +655,7 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
     if (!invoice) throw new ApiError(404, "This order has no electronic invoice");
     if (invoice.status !== "accepted") throw new ApiError(409, "A credit note can only be issued for an accepted electronic invoice");
     if (!invoice.invoiceNumber) throw new ApiError(409, "This invoice does not have a provider bill number yet");
+    await ensureElectronicInvoicingPlan(order.createdById);
 
     const company = order.createdBy.company;
     const provider = invoice.provider;
