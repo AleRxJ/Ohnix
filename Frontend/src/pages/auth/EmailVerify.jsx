@@ -22,6 +22,7 @@ const EmailVerify = () => {
     const [verifying, setVerifying] = useState(false);
     const [justVerified, setJustVerified] = useState(false);
     const [devOtp, setDevOtp] = useState("");
+    const [resendCooldown, setResendCooldown] = useState(0);
     const navigate = useNavigate();
     const { user, setUser } = useContext(AuthContext);
     const { t } = useI18n();
@@ -35,7 +36,16 @@ const EmailVerify = () => {
         }
     }, [user, navigate, justVerified, t]);
 
+    useEffect(() => {
+        if (resendCooldown <= 0) return;
+        const interval = setInterval(() => {
+            setResendCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [resendCooldown]);
+
     const sendVerificationOtp = async () => {
+        if (resendCooldown > 0) return;
         setLoading(true);
         try {
             const response = await api.post(
@@ -64,13 +74,19 @@ const EmailVerify = () => {
                 }
                 toast.success(data.message || t("auth.otp_sent"));
                 setOtpSent(true);
+                setResendCooldown(45);
             } else {
                 toast.error(data.message || t("auth.failed_send_otp"));
             }
         } catch (error) {
-            toast.error(
-                error.response?.data?.message || t("common.error")
-            );
+            if (error.response?.status === 429) {
+                toast.error(t("auth.otp_rate_limited"));
+                setResendCooldown(60);
+            } else {
+                toast.error(
+                    error.response?.data?.message || t("common.error")
+                );
+            }
             console.error(error);
         } finally {
             setLoading(false);
@@ -174,10 +190,12 @@ const EmailVerify = () => {
                                     <button
                                         type="button"
                                         onClick={sendVerificationOtp}
-                                        disabled={loading}
+                                        disabled={loading || resendCooldown > 0}
                                         className="text-[#44F3F0] hover:text-[#29D8D5] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {t("auth.resend_code")}
+                                        {resendCooldown > 0
+                                            ? t("auth.resend_code_cooldown", { seconds: resendCooldown })
+                                            : t("auth.resend_code")}
                                     </button>
                                     <span className="text-white/20">|</span>
                                     <button

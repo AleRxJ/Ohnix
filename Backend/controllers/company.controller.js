@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
+import { registerCompanyWithAlanube } from "../services/electronicInvoicing.service.js";
 
 // Deliberately distinct from companyCountry.service.js#normalizeCountryCode:
 // that one just normalizes an already-stored value for fiscal checks, while
@@ -19,12 +20,19 @@ const parseIsoCountryCode = (value) => {
 
 const companyFiscalSelect = {
     electronicInvoicingEnabled: true,
+    electronicInvoicingProvider: true,
     factusNumberingRangeId: true,
     factusCreditNoteNumberingRangeId: true,
     factusDocumentType: true,
     factusOperationType: true,
     factusPaymentForm: true,
     factusPaymentMethodCode: true,
+    taxIdentification: true,
+    taxIdentificationDv: true,
+    alanubeCompanyId: true,
+    alanubeTestSetId: true,
+    alanubeInvoiceResolution: true,
+    alanubeCreditNoteResolution: true,
 };
 
 const normalizeFactusConfig = (body) => {
@@ -47,6 +55,30 @@ const normalizeFactusConfig = (body) => {
     }
     if (typeof body.electronicInvoicingEnabled === "boolean") {
         config.electronicInvoicingEnabled = body.electronicInvoicingEnabled;
+    }
+    return config;
+};
+
+const normalizeAlanubeConfig = (body) => {
+    const config = {};
+    if (body.electronicInvoicingProvider !== undefined) {
+        const provider = `${body.electronicInvoicingProvider || ""}`.trim().toLowerCase();
+        config.electronicInvoicingProvider = provider === "factus" ? "factus" : "alanube";
+    }
+    if (body.taxIdentification !== undefined) {
+        config.taxIdentification = `${body.taxIdentification || ""}`.trim() || null;
+    }
+    if (body.taxIdentificationDv !== undefined) {
+        config.taxIdentificationDv = `${body.taxIdentificationDv || ""}`.trim() || null;
+    }
+    if (body.alanubeTestSetId !== undefined) {
+        config.alanubeTestSetId = `${body.alanubeTestSetId || ""}`.trim() || null;
+    }
+    if (body.alanubeInvoiceResolution !== undefined) {
+        config.alanubeInvoiceResolution = body.alanubeInvoiceResolution || null;
+    }
+    if (body.alanubeCreditNoteResolution !== undefined) {
+        config.alanubeCreditNoteResolution = body.alanubeCreditNoteResolution || null;
     }
     return config;
 };
@@ -122,6 +154,7 @@ export const createCompanyAdmin = asyncHandler(async (req, res, next) => {
             contactEmail: normalizedContactEmail,
             phone: phone?.trim() || null,
             ...normalizeFactusConfig(req.body),
+            ...normalizeAlanubeConfig(req.body),
             isActive: true,
         },
         select: {
@@ -202,6 +235,7 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
             ...(pdfFooterText !== undefined ? { pdfFooterText: pdfFooterText?.trim() || null } : {}),
             ...(pdfAccentColor !== undefined ? { pdfAccentColor: trimmedAccentColor || null } : {}),
             ...normalizeFactusConfig(req.body),
+            ...normalizeAlanubeConfig(req.body),
         },
         select: {
             id: true,
@@ -223,6 +257,19 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
     return res
         .status(200)
         .json(new ApiResponse(200, company, "Company updated successfully"));
+});
+
+export const registerCompanyWithAlanubeAdmin = asyncHandler(async (req, res) => {
+    const { companyId } = req.params;
+
+    const data = await registerCompanyWithAlanube({
+        companyId,
+        requesterRole: req.user.role,
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, data, "Company registered with Alanube successfully"));
 });
 
 export const updateCompanyLogoAdmin = asyncHandler(async (req, res, next) => {

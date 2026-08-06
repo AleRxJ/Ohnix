@@ -25,6 +25,11 @@ export const adminService = {
         return response.data;
     },
 
+    async registerCompanyWithAlanube(companyId) {
+        const response = await api.post(`/companies/admin/${companyId}/alanube/register`);
+        return response.data;
+    },
+
     async listUsers() {
         const response = await api.get("/users/admin/users");
         return response.data;

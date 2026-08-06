@@ -19,6 +19,13 @@ const transporter = nodemailer.createTransport({
         user: process.env.SENDER_EMAIL,
         pass: process.env.SENDER_PASSWORD,
     },
+    // Without these, a stalled SMTP handshake (slow/unreachable host) hangs
+    // the connection indefinitely instead of failing - since the frontend
+    // axios instance also has no timeout, that leaves the user staring at a
+    // spinner forever with no error and no way out.
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
 });
 
 export const sendMailSafe = async (mailOptions, context = "email") => {

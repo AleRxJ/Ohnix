@@ -20,4 +20,10 @@ export const api = axios.create({
     headers: {
         "Content-Type": "application/json",
     },
+    // No default timeout meant a stalled backend request (SMTP hang, Render
+    // cold start, dropped connection) left the UI spinning forever with no
+    // error and no way to retry. 30s comfortably covers a cold start and
+    // normal requests; calls expected to run longer (large exports) can
+    // still override this per-request via the axios config argument.
+    timeout: 30000,
 });

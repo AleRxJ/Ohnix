@@ -98,6 +98,22 @@ const AdminManagement = () => {
         }
     };
 
+    const handleRegisterCompanyAlanube = async (companyId) => {
+        try {
+            setCompanySubmitting(true);
+            const response = await adminService.registerCompanyWithAlanube(companyId);
+            toast.success(t("admin.alanube_registered"));
+            setEditingCompany((prev) =>
+                prev && prev.id === companyId ? { ...prev, ...response?.data } : prev
+            );
+            await fetchData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setCompanySubmitting(false);
+        }
+    };
+
     const handleSubmitCompany = async (values) => {
         try {
             setCompanySubmitting(true);
@@ -242,6 +258,7 @@ const AdminManagement = () => {
                 form={companyForm}
                 editingCompany={editingCompany}
                 onUploadLogo={handleUploadCompanyLogo}
+                onRegisterAlanube={handleRegisterCompanyAlanube}
             />
 
             <UserFormModal

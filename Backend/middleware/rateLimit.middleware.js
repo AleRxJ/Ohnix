@@ -31,7 +31,11 @@ export const registerRateLimiter = makeLimiter(60, 10);
 
 // OTP request surfaces: the actual abuse vector is spamming *someone else's*
 // inbox, so this stays tight regardless of whether the caller is authed.
-export const otpRequestRateLimiter = makeLimiter(60, 5);
+// 5/hour proved too tight in practice - EmailVerify.jsx auto-sends one OTP
+// on every page load/mount (not just on explicit "resend" clicks), so a
+// couple of reloads plus one or two manual resends was enough to lock a
+// legitimate user out for an hour.
+export const otpRequestRateLimiter = makeLimiter(60, 8);
 
 // OTP consumption (guessing the 6-digit code itself).
 export const otpVerifyRateLimiter = makeLimiter(15, 10);

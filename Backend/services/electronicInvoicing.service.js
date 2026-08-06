@@ -7,10 +7,26 @@ import {
     FactusError,
     isFactusConfigured,
 } from "./factus.service.js";
+import {
+    createAlanubeCompany,
+    createAlanubeTestSet,
+    createAlanubeInvoice,
+    createAlanubeCreditNote,
+    getAlanubeInvoiceStatus,
+    AlanubeError,
+    isAlanubeConfigured,
+} from "./alanube.service.js";
+import { computeNitCheckDigit } from "../utils/nit.util.js";
 import { normalizeCountryCode } from "./companyCountry.service.js";
 
 const FACTUS_PROVIDER = "factus";
+const ALANUBE_PROVIDER = "alanube";
+// Sandbox test-set id published in Alanube's onboarding guide - swap for the
+// real DIAN-issued id once habilitación is completed in production.
+const ALANUBE_SANDBOX_TEST_SET_ID = "a70562e0-631e-4ceb-aa65-36887b57dc17";
 const TERMINAL_STATUSES = ["accepted", "cancelled"];
+
+const providerFor = (company) => (company?.electronicInvoicingProvider === FACTUS_PROVIDER ? FACTUS_PROVIDER : ALANUBE_PROVIDER);
 
 // DIAN's standard correction-concept catalog for credit notes. Verify these
 // codes against the Factus sandbox response/docs before relying on them in
@@ -165,6 +181,215 @@ const buildFactusPayload = (order) => {
     };
 };
 
+// ---------------------------------------------------------------------------
+// Alanube (Alegra e-provider) mapping. UNVERIFIED against a live sandbox
+// response as of 2026-08-05 (no Alanube credentials issued yet) - built from
+// developer.alanube.co/v1.0-COL's published schemas. Before relying on this
+// in production, confirm at least: identificationType/organizationType/
+// taxCode.id values match Ohnix's DIAN-catalog customer fields 1:1 (they
+// appear to, since Factus's identification_document_code/legal_organization_
+// code/tribute_code already use DIAN's own catalogs), and that
+// customer.address.city really expects municipalityCode as sent (docs only
+// describe it as "city", not explicitly the DIVIPOLA code).
+const buildAlanubeCustomerPayload = (customer) => {
+    const organizationType = customer.legalOrganizationCode === "1" ? 1 : 2;
+    const payload = {
+        name: customer.name,
+        organizationType,
+        identificationType: customer.identificationDocumentCode,
+        identificationNumber: customer.identification,
+        taxCode: customer.tributeCode ? { id: customer.tributeCode } : undefined,
+        email: customer.email || undefined,
+        phone: customer.phone || undefined,
+        address: {
+            address: customer.address || "N/A",
+            city: text(customer.municipalityCode),
+        },
+    };
+    if (organizationType === 1) payload.tradeName = customer.storeName || customer.name;
+    return payload;
+};
+
+const buildAlanubeItems = (order) => order.orderDetails.map((item) => {
+    const quantity = toNumber(item.quantity);
+    const price = toNumber(item.unitcost);
+    const subtotal = toNumber(quantity * price);
+    const taxRate = item.product.isTaxExcluded ? 0 : toNumber(item.product.taxRate);
+    const taxAmount = item.product.isTaxExcluded ? 0 : toNumber((subtotal * taxRate) / 100);
+    return {
+        code: item.product.productCode || item.productId,
+        standardCode: { identificationId: "999", id: item.product.standardCode },
+        description: item.product.productName,
+        price,
+        quantity,
+        unitCode: item.product.unitMeasureCode,
+        subtotal,
+        taxAmount,
+        total: toNumber(subtotal + taxAmount),
+        taxes: item.product.isTaxExcluded
+            ? []
+            : [{ taxCode: item.product.taxCode, taxAmount, taxPercentage: money(taxRate) }],
+    };
+});
+
+const buildAlanubeTotals = (items) => {
+    const grossTotal = toNumber(items.reduce((sum, item) => sum + item.subtotal, 0));
+    const taxTotal = toNumber(items.reduce((sum, item) => sum + item.taxAmount, 0));
+    return {
+        grossTotal,
+        taxableTotal: grossTotal,
+        taxTotal,
+        discountTotal: 0,
+        chargeTotal: 0,
+        advanceTotal: 0,
+        payableTotal: toNumber(grossTotal + taxTotal),
+        currencyCode: "COP",
+    };
+};
+
+const buildAlanubePayments = (company) => [{
+    paymentForm: company.factusPaymentForm === "2" ? "2" : "1",
+    paymentMethod: company.factusPaymentMethodCode,
+}];
+
+const alanubeFiscalErrors = (order) => {
+    const errors = [];
+    const company = order.createdBy?.company;
+    const customer = order.customer;
+    if (!company?.electronicInvoicingEnabled) errors.push("company.electronicInvoicingEnabled must be enabled");
+    if (!text(company?.alanubeCompanyId)) errors.push("company.alanubeCompanyId is required - register the company with Alanube first");
+    if (!company?.alanubeInvoiceResolution?.resolutionNumber) errors.push("company.alanubeInvoiceResolution is required");
+    for (const field of ["identificationDocumentCode", "identification", "legalOrganizationCode", "tributeCode", "municipalityCode"]) {
+        if (!text(customer?.[field])) errors.push(`customer.${field} is required`);
+    }
+    if (!order.orderDetails?.length) errors.push("order must have at least one item");
+    for (const item of order.orderDetails || []) {
+        const label = item.product?.productCode || item.productId;
+        if (!text(item.product?.unitMeasureCode)) errors.push(`product ${label}: unitMeasureCode is required`);
+        if (!text(item.product?.standardCode)) errors.push(`product ${label}: standardCode is required`);
+        if (!item.product?.isTaxExcluded && (!text(item.product?.taxCode) || item.product?.taxRate === null)) {
+            errors.push(`product ${label}: taxCode and taxRate are required`);
+        }
+    }
+    return errors;
+};
+
+// Claims the next document number for a company inside a resolution's
+// [minNumber, maxNumber] range, persisting the counter in the same
+// transaction the invoice/credit-note record is written in so two concurrent
+// issuances never get the same number.
+const claimAlanubeNumber = async (tx, { companyId, counterField, resolution }) => {
+    if (!resolution?.minNumber) throw new ApiError(422, "A numbering resolution with minNumber/maxNumber is required");
+    const company = await tx.company.findUnique({ where: { id: companyId }, select: { [counterField]: true } });
+    const next = company[counterField] ?? Number(resolution.minNumber);
+    if (next > Number(resolution.maxNumber)) {
+        throw new ApiError(409, "Alanube numbering range exhausted for this company - request a new DIAN resolution");
+    }
+    await tx.company.update({ where: { id: companyId }, data: { [counterField]: next + 1 } });
+    return next;
+};
+
+const buildAlanubePayload = (order, { number }) => {
+    const errors = alanubeFiscalErrors(order);
+    if (errors.length) throw new ApiError(422, "Fiscal data is incomplete for Alanube", errors);
+
+    const company = order.createdBy.company;
+    const resolution = company.alanubeInvoiceResolution;
+    const items = buildAlanubeItems(order);
+
+    return {
+        documentType: "01",
+        number,
+        resolution: {
+            resolutionNumber: resolution.resolutionNumber,
+            prefix: resolution.prefix,
+            minNumber: Number(resolution.minNumber),
+            maxNumber: Number(resolution.maxNumber),
+            startDate: resolution.startDate,
+            endDate: resolution.endDate,
+            technicalKey: resolution.technicalKey,
+        },
+        company: { id: company.alanubeCompanyId },
+        customer: buildAlanubeCustomerPayload(order.customer),
+        items,
+        totalAmounts: buildAlanubeTotals(items),
+        payments: buildAlanubePayments(company),
+    };
+};
+
+const pickAlanubeEnvelope = (raw) => raw?.data || raw || {};
+
+const normalizeAlanubeStatus = (status, legalStatus) => {
+    const ls = text(legalStatus).toUpperCase();
+    if (["ACCEPTED", "ACCEPTED_WITH_OBSERVATIONS"].includes(ls)) return "accepted";
+    if (ls === "REJECTED") return "rejected";
+    if (text(status).toUpperCase() === "FAILED") return "rejected";
+    return "submitted";
+};
+
+const mapAlanubeResponse = (raw) => {
+    const doc = pickAlanubeEnvelope(raw);
+    return {
+        externalId: text(doc.id) || null,
+        invoiceNumber: text(doc.fullNumber || doc.number) || null,
+        cufe: text(doc.cufe || doc.cude) || null,
+        qrUrl: text(doc.qrCodeContent) || null,
+        pdfUrl: text(doc.pdfFileName) || null,
+        xmlUrl: text(doc.xmlFileName) || null,
+        status: normalizeAlanubeStatus(doc.status, doc.legalStatus),
+        rawResponse: raw,
+    };
+};
+
+const buildAlanubeCreditNotePayload = (order, invoice, company, { conceptCode, observation, items }, number) => {
+    const productsByOrderDetailId = new Map((order.orderDetails || []).map((detail) => [detail.id, detail]));
+    const sourceDetails = Array.isArray(items) && items.length
+        ? items.map(({ orderDetailId, quantity }) => {
+            const detail = productsByOrderDetailId.get(orderDetailId);
+            return detail ? { ...detail, quantity: quantity || detail.quantity } : null;
+        }).filter(Boolean)
+        : order.orderDetails;
+
+    const lineItems = buildAlanubeItems({ orderDetails: sourceDetails });
+    const resolution = company.alanubeCreditNoteResolution || company.alanubeInvoiceResolution;
+
+    return {
+        documentType: "91",
+        number,
+        prefix: resolution?.prefix,
+        conceptCode,
+        company: { id: company.alanubeCompanyId },
+        customer: buildAlanubeCustomerPayload(order.customer),
+        items: lineItems,
+        totalAmounts: buildAlanubeTotals(lineItems),
+        payments: buildAlanubePayments(company),
+        note: observation ? [observation] : undefined,
+        // "Reference to original invoice with date, documentType, number,
+        // prefix, and uuid" per Alanube's docs - mandatory for documentType
+        // 91. uuid is the original invoice's cufe.
+        associatedDocuments: [{
+            documentType: "01",
+            number: invoice.invoiceNumber,
+            uuid: invoice.cufe,
+            date: invoice.issuedAt ? invoice.issuedAt.toISOString().slice(0, 10) : undefined,
+        }],
+    };
+};
+
+const mapAlanubeCreditNoteResponse = (raw) => {
+    const doc = pickAlanubeEnvelope(raw);
+    return {
+        externalId: text(doc.id) || null,
+        creditNoteNumber: text(doc.fullNumber || doc.number) || null,
+        cufe: text(doc.cude || doc.cufe) || null,
+        pdfUrl: text(doc.pdfFileName) || null,
+        xmlUrl: text(doc.xmlFileName) || null,
+        status: normalizeAlanubeStatus(doc.status, doc.legalStatus),
+        rawResponse: raw,
+    };
+};
+// ---------------------------------------------------------------------------
+
 const getOrderWithRelations = (orderId) => prisma.order.findFirst({
     where: { OR: [{ id: orderId }, { legacyMongoId: orderId }] },
     include: {
@@ -227,11 +452,11 @@ export const listElectronicInvoices = async ({ requesterUserId, requesterRole, s
     return invoices.map((invoice) => ({ ...serialize(invoice), order: invoice.order ? { invoiceNo: invoice.order.invoiceNo, total: Number(invoice.order.total), customerName: invoice.order.customer?.name || null } : null }));
 };
 
-const claimInvoice = async ({ order, payload }) => {
+const claimInvoice = async ({ order, payload, provider }) => {
     const existing = order.electronicInvoice;
     if (existing && (TERMINAL_STATUSES.includes(existing.status) || ["submitted", "issuing"].includes(existing.status))) return { invoice: existing, claimed: false };
     const data = {
-        countryCode: "CO", provider: FACTUS_PROVIDER, status: "issuing", rawRequest: payload,
+        countryCode: "CO", provider, status: "issuing", rawRequest: payload,
         fiscalSnapshot: { company: order.createdBy.company, customer: order.customer, items: order.orderDetails },
         errorMessage: null,
     };
@@ -258,12 +483,31 @@ export const issueElectronicInvoiceForOrder = async ({ orderId, requesterUserId,
     if (!canManageOrder(order, requesterUserId, requesterRole)) throw new ApiError(403, "You are not authorized to issue this order invoice");
     if (order.orderStatus !== "completed") throw new ApiError(409, "Electronic invoicing is only available for completed orders");
     if (normalizeCountryCode(order.createdBy?.company?.countryCode) !== "CO") throw new ApiError(409, "Electronic invoicing requires an explicitly configured Colombia company");
-    if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
-    const payload = buildFactusPayload(order);
-    const claim = await claimInvoice({ order, payload });
+
+    const company = order.createdBy.company;
+    const provider = providerFor(company);
+
+    let claim;
+    let submit;
+    if (provider === FACTUS_PROVIDER) {
+        if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
+        const payload = buildFactusPayload(order);
+        claim = await claimInvoice({ order, payload, provider });
+        submit = () => createFactusInvoice({ payload }).then(mapFactusResponse);
+    } else {
+        if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");
+        const resolution = company.alanubeInvoiceResolution;
+        const number = await prisma.$transaction((tx) =>
+            claimAlanubeNumber(tx, { companyId: company.id, counterField: "alanubeNextInvoiceNumber", resolution })
+        );
+        const payload = buildAlanubePayload(order, { number });
+        claim = await claimInvoice({ order, payload, provider });
+        submit = () => createAlanubeInvoice({ payload }).then(mapAlanubeResponse);
+    }
+
     if (!claim.claimed) return { reused: true, trigger, countryCode: "CO", invoice: serialize(claim.invoice) };
     try {
-        const mapped = mapFactusResponse(await createFactusInvoice({ payload }));
+        const mapped = await submit();
         const invoice = await prisma.$transaction(async (tx) => {
             const updated = await tx.electronicInvoice.update({ where: { id: claim.invoice.id }, data: { ...mapped, errorMessage: null, issuedAt: mapped.status === "accepted" ? new Date() : null } });
             await tx.electronicInvoiceEvent.create({ data: { electronicInvoiceId: updated.id, eventType: "provider_response", status: updated.status, payload: mapped.rawResponse } });
@@ -271,9 +515,9 @@ export const issueElectronicInvoiceForOrder = async ({ orderId, requesterUserId,
         });
         return { reused: false, trigger, countryCode: "CO", invoice: serialize(invoice) };
     } catch (error) {
-        const providerPayload = error instanceof FactusError ? error.payload : null;
+        const providerPayload = error instanceof FactusError || error instanceof AlanubeError ? error.payload : null;
         const invoice = await prisma.$transaction(async (tx) => {
-            const updated = await tx.electronicInvoice.update({ where: { id: claim.invoice.id }, data: { status: "error", rawResponse: providerPayload, errorMessage: error.message || "Unknown Factus error" } });
+            const updated = await tx.electronicInvoice.update({ where: { id: claim.invoice.id }, data: { status: "error", rawResponse: providerPayload, errorMessage: error.message || `Unknown ${provider} error` } });
             await tx.electronicInvoiceEvent.create({ data: { electronicInvoiceId: updated.id, eventType: "provider_error", status: "error", payload: providerPayload } });
             return updated;
         });
@@ -291,13 +535,19 @@ export const syncElectronicInvoiceStatus = async ({ orderId, requesterUserId, re
     if (!["issuing", "submitted"].includes(invoice.status)) {
         throw new ApiError(409, `Electronic invoice status "${invoice.status}" cannot be synced`);
     }
-    if (!invoice.invoiceNumber) {
-        throw new ApiError(409, "This invoice does not have a provider invoice number yet");
-    }
-    if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
+    const provider = invoice.provider;
 
     try {
-        const mapped = mapFactusResponse(await getFactusInvoiceStatus({ invoiceNumber: invoice.invoiceNumber }));
+        let mapped;
+        if (provider === FACTUS_PROVIDER) {
+            if (!invoice.invoiceNumber) throw new ApiError(409, "This invoice does not have a provider invoice number yet");
+            if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
+            mapped = mapFactusResponse(await getFactusInvoiceStatus({ invoiceNumber: invoice.invoiceNumber }));
+        } else {
+            if (!invoice.externalId) throw new ApiError(409, "This invoice does not have a provider id yet");
+            if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");
+            mapped = mapAlanubeResponse(await getAlanubeInvoiceStatus({ invoiceId: invoice.externalId }));
+        }
         const updated = await prisma.$transaction(async (tx) => {
             const updatedInvoice = await tx.electronicInvoice.update({
                 where: { id: invoice.id },
@@ -312,7 +562,7 @@ export const syncElectronicInvoiceStatus = async ({ orderId, requesterUserId, re
         });
         return { invoice: serialize(updated) };
     } catch (error) {
-        const providerPayload = error instanceof FactusError ? error.payload : null;
+        const providerPayload = error instanceof FactusError || error instanceof AlanubeError ? error.payload : null;
         await prisma.electronicInvoiceEvent.create({
             data: {
                 electronicInvoiceId: invoice.id,
@@ -321,7 +571,7 @@ export const syncElectronicInvoiceStatus = async ({ orderId, requesterUserId, re
                 payload: providerPayload || { message: error.message },
             },
         });
-        throw new ApiError(502, error.message || "Failed to sync invoice status with Factus");
+        throw new ApiError(502, error.message || `Failed to sync invoice status with ${provider}`);
     }
 };
 
@@ -386,30 +636,46 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
     if (!invoice) throw new ApiError(404, "This order has no electronic invoice");
     if (invoice.status !== "accepted") throw new ApiError(409, "A credit note can only be issued for an accepted electronic invoice");
     if (!invoice.invoiceNumber) throw new ApiError(409, "This invoice does not have a provider bill number yet");
-    if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
 
     const company = order.createdBy.company;
-    if (!text(company?.factusCreditNoteNumberingRangeId)) {
-        // Factus requires a dedicated numbering range per document type
-        // (invoices = document code 21, credit notes = 22) - they cannot
-        // share company.factusNumberingRangeId.
-        throw new ApiError(422, "company.factusCreditNoteNumberingRangeId is required to issue credit notes");
+    const provider = invoice.provider;
+
+    let payload;
+    let submit;
+    if (provider === FACTUS_PROVIDER) {
+        if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
+        if (!text(company?.factusCreditNoteNumberingRangeId)) {
+            // Factus requires a dedicated numbering range per document type
+            // (invoices = document code 21, credit notes = 22) - they cannot
+            // share company.factusNumberingRangeId.
+            throw new ApiError(422, "company.factusCreditNoteNumberingRangeId is required to issue credit notes");
+        }
+        payload = buildCreditNotePayload(order, invoice, company, { conceptCode, observation, items });
+        submit = () => createFactusCreditNote({ payload }).then(mapFactusCreditNoteResponse);
+    } else {
+        if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");
+        const resolution = company.alanubeCreditNoteResolution || company.alanubeInvoiceResolution;
+        if (!resolution?.resolutionNumber) throw new ApiError(422, "company.alanubeCreditNoteResolution is required to issue credit notes");
+        const number = await prisma.$transaction((tx) =>
+            claimAlanubeNumber(tx, { companyId: company.id, counterField: "alanubeNextCreditNoteNumber", resolution })
+        );
+        payload = buildAlanubeCreditNotePayload(order, invoice, company, { conceptCode, observation, items }, number);
+        submit = () => createAlanubeCreditNote({ payload }).then(mapAlanubeCreditNoteResponse);
     }
-    const payload = buildCreditNotePayload(order, invoice, company, { conceptCode, observation, items });
 
     const draft = await prisma.electronicCreditNote.create({
         data: {
             invoiceId: invoice.id,
             correctionConceptCode: conceptCode,
-            referenceCode: payload.reference_code,
+            referenceCode: payload.reference_code || `${invoice.referenceCode}-CN-${payload.number}`,
             status: "issuing",
-            observation: payload.observation,
+            observation: payload.observation || observation,
             rawRequest: payload,
         },
     });
 
     try {
-        const mapped = mapFactusCreditNoteResponse(await createFactusCreditNote({ payload }));
+        const mapped = await submit();
         const updated = await prisma.$transaction(async (tx) => {
             const updatedNote = await tx.electronicCreditNote.update({
                 where: { id: draft.id },
@@ -422,11 +688,11 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
         });
         return { creditNote: serializeCreditNote(updated) };
     } catch (error) {
-        const providerPayload = error instanceof FactusError ? error.payload : null;
+        const providerPayload = error instanceof FactusError || error instanceof AlanubeError ? error.payload : null;
         const updated = await prisma.$transaction(async (tx) => {
             const updatedNote = await tx.electronicCreditNote.update({
                 where: { id: draft.id },
-                data: { status: "error", rawResponse: providerPayload, errorMessage: error.message || "Unknown Factus error" },
+                data: { status: "error", rawResponse: providerPayload, errorMessage: error.message || `Unknown ${provider} error` },
             });
             await tx.electronicInvoiceEvent.create({
                 data: { electronicInvoiceId: invoice.id, eventType: "credit_note_error", status: invoice.status, payload: { creditNoteId: updatedNote.id, ...providerPayload } },
@@ -451,6 +717,63 @@ export const listCreditNotesForInvoice = async ({ orderId, requesterUserId, requ
     });
 
     return { creditNotes: creditNotes.map(serializeCreditNote) };
+};
+
+// Step 1+2 of Alanube's company onboarding in one call: registers the
+// company (POST /companies) and immediately enables it for invoice emission
+// against a test set (POST /test-sets). Uses Alanube/Alegra's shared digital
+// certificate (useAlegraCertificate: true) so client companies don't need to
+// buy or upload their own. Admin-only since it writes company.alanubeCompanyId.
+export const registerCompanyWithAlanube = async ({ companyId, requesterRole }) => {
+    if (requesterRole !== "admin") throw new ApiError(403, "Only admins can register a company with Alanube");
+    if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) throw new ApiError(404, "Company not found");
+    if (!text(company.taxIdentification)) {
+        throw new ApiError(422, "company.taxIdentification (NIT) is required before registering with Alanube");
+    }
+
+    const dv = text(company.taxIdentificationDv) || computeNitCheckDigit(company.taxIdentification);
+
+    let created;
+    try {
+        created = await createAlanubeCompany({
+            payload: {
+                name: company.legalName || company.name,
+                tradeName: company.name,
+                identification: company.taxIdentification,
+                dv,
+                useAlegraCertificate: true,
+            },
+        });
+    } catch (error) {
+        const providerPayload = error instanceof AlanubeError ? error.payload : null;
+        throw new ApiError(502, error.message || "Failed to register company with Alanube", providerPayload ? [providerPayload] : undefined);
+    }
+
+    const alanubeCompanyId = text(created?.id || created?.data?.id);
+    if (!alanubeCompanyId) throw new ApiError(502, "Alanube did not return a company id");
+
+    const testSetId = text(company.alanubeTestSetId) || ALANUBE_SANDBOX_TEST_SET_ID;
+    try {
+        await createAlanubeTestSet({ companyId: alanubeCompanyId, type: "invoices", governmentId: testSetId });
+    } catch (error) {
+        const providerPayload = error instanceof AlanubeError ? error.payload : null;
+        throw new ApiError(502, error.message || "Company was created in Alanube but enabling the invoice test set failed", providerPayload ? [providerPayload] : undefined);
+    }
+
+    const updated = await prisma.company.update({
+        where: { id: companyId },
+        data: { taxIdentificationDv: dv, alanubeCompanyId, alanubeTestSetId: testSetId },
+    });
+
+    return {
+        companyId: updated.id,
+        alanubeCompanyId: updated.alanubeCompanyId,
+        alanubeTestSetId: updated.alanubeTestSetId,
+        taxIdentificationDv: updated.taxIdentificationDv,
+    };
 };
 
 // Removed processFactusWebhook/validateFactusWebhookSecret on 2026-08-04:

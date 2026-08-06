@@ -35,7 +35,7 @@ export const issueOrderElectronicInvoice = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .json(new ApiResponse(200, data, "Electronic invoice sent to Factus successfully"));
+        .json(new ApiResponse(200, data, "Electronic invoice sent successfully"));
 });
 
 export const syncOrderElectronicInvoice = asyncHandler(async (req, res) => {
@@ -67,7 +67,7 @@ export const issueOrderCreditNote = asyncHandler(async (req, res) => {
 
     return res
         .status(200)
-        .json(new ApiResponse(200, data, "Credit note sent to Factus successfully"));
+        .json(new ApiResponse(200, data, "Credit note sent successfully"));
 });
 
 export const getOrderCreditNotes = asyncHandler(async (req, res) => {
