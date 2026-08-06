@@ -46,7 +46,10 @@ services:
         value: "false"
       - key: SENDER_EMAIL
         sync: false
-      - key: SENDER_PASSWORD
+      # Resend API key - replaced SENDER_PASSWORD (SMTP) on 2026-08-05 because
+      # Render's outbound connections to the old SMTP host were timing out in
+      # production. See Backend/utils/nodemailer.js.
+      - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_USER
         sync: false

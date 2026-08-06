@@ -11,6 +11,14 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Render puts a single reverse proxy in front of the app, which sets
+// X-Forwarded-For. Without this, Express ignores that header and req.ip
+// resolves to the proxy's own address for every request - meaning every
+// visitor looks like the same IP to express-rate-limit, so IP-based limits
+// (login, OTP requests, etc.) end up shared across all users instead of
+// per-visitor, and express-rate-limit logs a ValidationError on every hit.
+app.set("trust proxy", 1);
+
 app.get("/", (req, res) => {
    res.json({
       message: "Hello World !!",
