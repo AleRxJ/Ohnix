@@ -534,6 +534,7 @@ body {
 .dashboard-app .ant-input-affix-wrapper,
 .dashboard-app .ant-input-number,
 .dashboard-app .ant-input-number-input,
+.dashboard-app .ant-input-number-affix-wrapper,
 .dashboard-app .ant-picker,
 .dashboard-app .ant-select-selector,
 .dashboard-app .ant-input-password {
@@ -551,6 +552,7 @@ body {
 
 .dashboard-app .ant-input:hover,
 .dashboard-app .ant-input-affix-wrapper:hover,
+.dashboard-app .ant-input-number-affix-wrapper:hover,
 .dashboard-app .ant-picker:hover,
 .dashboard-app .ant-select-selector:hover {
   border-color: rgba(41, 216, 213, 0.45) !important;
@@ -558,6 +560,7 @@ body {
 
 .dashboard-app .ant-input:focus,
 .dashboard-app .ant-input-affix-wrapper-focused,
+.dashboard-app .ant-input-number-affix-wrapper-focused,
 .dashboard-app .ant-picker-focused,
 .dashboard-app .ant-select-focused .ant-select-selector {
   border-color: #29d8d5 !important;
@@ -841,7 +844,498 @@ body {
   background: linear-gradient(90deg, #29d8d5, #44f3f0) !important;
 }
 
+.custom-tabs .ant-tabs-nav::before {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.custom-tabs .ant-tabs-tab {
+  color: #a9b3b8 !important;
+}
+
+.custom-tabs .ant-tabs-tab:hover {
+  color: #44f3f0 !important;
+}
+
+.custom-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #44f3f0 !important;
+}
+
+.custom-tabs .ant-tabs-ink-bar {
+  background: linear-gradient(90deg, #29d8d5, #44f3f0) !important;
+}
+
 .admin-tabs .ant-tabs-content {
   background: transparent;
 }
 
+/* antd Steps ships light-theme title colors by default and the compact
+   container it was given here left the circle icon overlapping the title
+   text at this width. */
+.reset-password-steps .ant-steps-item-title {
+  color: #d4dbdf !important;
+}
+.reset-password-steps .ant-steps-item-finish .ant-steps-item-title,
+.reset-password-steps .ant-steps-item-process .ant-steps-item-title {
+  color: #ffffff !important;
+}
+.reset-password-steps .ant-steps-item-wait .ant-steps-item-icon {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+.reset-password-steps .ant-steps-item-wait .ant-steps-item-icon .ant-steps-icon {
+  color: #a9b3b8 !important;
+}
+.reset-password-steps .ant-steps-item-tail::after {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Dark-theme override for antd Alert - default type="info"/"success" Alerts
+   render with a light background, which reads as a broken white box against
+   this app's dark theme. antd sets explicit (non-inherited) colors on the
+   inner message/description/icon nodes, so overriding just the outer
+   .ant-alert background/text isn't enough - each inner node needs its own
+   override. */
+.dark-alert.ant-alert {
+  border-radius: 12px !important;
+  background: transparent !important;
+}
+.dark-alert .ant-alert-message {
+  color: #ffffff !important;
+}
+.dark-alert .ant-alert-description {
+  color: #d4dbdf !important;
+}
+.dark-alert-teal.ant-alert {
+  border: 1px solid rgba(41, 216, 213, 0.25) !important;
+  background: rgba(41, 216, 213, 0.08) !important;
+}
+.dark-alert-teal .ant-alert-icon {
+  color: #29d8d5 !important;
+}
+.dark-alert-purple.ant-alert {
+  border: 1px solid rgba(124, 106, 247, 0.25) !important;
+  background: rgba(124, 106, 247, 0.1) !important;
+}
+.dark-alert-purple .ant-alert-icon {
+  color: #7c6af7 !important;
+}
+
+/* Moved out of CategoryTable.jsx's inline `<style jsx>` (Next.js-only
+   syntax that isn't valid in this plain Vite/React app - React was passing
+   `jsx` through as a literal DOM attribute on <style>, logging a console
+   warning on every render of the Categories page). */
+.category-table .ant-table,
+.category-table .ant-table-container,
+.category-table .ant-table-content,
+.category-table .ant-table-body,
+.category-table .ant-table-container::before,
+.category-table .ant-table-container::after {
+  background: transparent !important;
+}
+.category-table .ant-empty {
+  color: #a9b3b8 !important;
+}
+.category-table .ant-empty-description,
+.category-table .ant-empty-image {
+  color: #a9b3b8 !important;
+}
+.category-table .ant-table {
+  font-size: 14px;
+}
+.category-table .ant-table-thead > tr > th {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 600;
+  color: #e5eef1;
+  font-size: 14px;
+  padding: 20px 24px;
+  border-top: none;
+}
+.category-table .ant-table-thead > tr > th:first-child {
+  border-top-left-radius: 0;
+}
+.category-table .ant-table-thead > tr > th:last-child {
+  border-top-right-radius: 0;
+}
+.category-table .ant-table-tbody > tr > td {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: middle;
+}
+.category-table .ant-table-tbody > tr:last-child > td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.category-table .ant-table-tbody > tr:hover > td {
+  background-color: rgba(41, 216, 213, 0.04) !important;
+}
+.category-table .ant-pagination {
+  margin: 0 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.category-table .ant-pagination .ant-pagination-item {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.category-table .ant-pagination .ant-pagination-item-active {
+  background: #29d8d5;
+  border-color: #29d8d5;
+}
+.category-table .ant-pagination .ant-pagination-item-active a {
+  color: #021314;
+}
+
+@media (max-width: 768px) {
+  .category-table .ant-table-thead > tr > th,
+  .category-table .ant-table-tbody > tr > td {
+    padding: 16px 12px;
+  }
+
+  .category-table .ant-table-tbody > tr > td:first-child > div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .category-table .ant-table-thead > tr > th,
+  .category-table .ant-table-tbody > tr > td {
+    padding: 12px 8px;
+  }
+
+  .category-table .ant-pagination {
+    padding: 16px 8px;
+  }
+}
+
+
+/* Moved out of src/components/orders/CreateOrderModal.jsx's inline <style jsx> (invalid Next.js-only syntax
+   in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
+
+                .create-order-modal .ant-modal-header {
+                    border-bottom: 1px solid #f0f0f0;
+                    padding: 20px 24px;
+                }
+                .create-order-modal .ant-modal-body {
+                    padding: 24px;
+                    max-height: calc(100vh - 200px);
+                    overflow-y: auto;
+                }
+                .create-order-modal .ant-form-item-label > label {
+                    font-size: 14px;
+                }
+                @media (max-width: 640px) {
+                    .create-order-modal .ant-modal {
+                        max-width: calc(100vw - 32px);
+                        margin: 16px;
+                    }
+                    .create-order-modal .ant-modal-body {
+                        padding: 16px;
+                        max-height: calc(100vh - 150px);
+                    }
+                }
+            
+
+/* Moved out of src/components/customers/CustomerForm.jsx's inline <style jsx> (invalid Next.js-only syntax
+   in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
+
+                .avatar-uploader .ant-upload-select {
+                    width: 120px !important;
+                    height: 120px !important;
+                    border-radius: 12px !important;
+                }
+                .ant-card-head {
+                    min-height: auto;
+                    padding: 16px 24px;
+                }
+                .ant-card-body {
+                    padding: 24px;
+                }
+                .ant-form-item-label > label {
+                    height: auto;
+                    color: rgba(255, 255, 255, 0.72);
+                }
+                .ant-input-affix-wrapper {
+                    border-radius: 8px;
+                }
+                .ant-select-selector {
+                    border-radius: 8px !important;
+                }
+                .ant-input {
+                    border-radius: 8px;
+                }
+            
+
+/* Moved out of src/components/units/UnitViewModal.jsx's inline <style jsx> (invalid Next.js-only syntax
+   in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
+
+                .unit-view-modal .ant-modal-content {
+                    border-radius: 16px;
+                    overflow: hidden;
+                    box-shadow:
+                        0 20px 25px -5px rgb(0 0 0 / 0.1),
+                        0 8px 10px -6px rgb(0 0 0 / 0.1);
+                }
+
+                @media (max-width: 768px) {
+                    .unit-view-modal {
+                        margin: 16px;
+                    }
+                    .unit-view-modal .ant-modal-content {
+                        border-radius: 12px;
+                    }
+                }
+            
+
+/* Moved out of src/components/units/UnitTable.jsx's inline <style jsx> (invalid Next.js-only syntax
+   in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
+
+                .unit-table .ant-table,
+                .unit-table .ant-table-container,
+                .unit-table .ant-table-content,
+                .unit-table .ant-table-body,
+                .unit-table .ant-table-container::before,
+                .unit-table .ant-table-container::after {
+                    background: transparent !important;
+                }
+                .unit-table .ant-empty {
+                    color: #a9b3b8 !important;
+                }
+                .unit-table .ant-empty-description,
+                .unit-table .ant-empty-image {
+                    color: #a9b3b8 !important;
+                }
+                .unit-table .ant-table {
+                    font-size: 14px;
+                }
+                .unit-table .ant-table-thead > tr > th {
+                    background: rgba(255,255,255,0.03);
+                    border-bottom: 1px solid rgba(255,255,255,0.08);
+                    font-weight: 600;
+                    color: #e5eef1;
+                    font-size: 14px;
+                    padding: 20px 24px;
+                    border-top: none;
+                }
+                .unit-table .ant-table-thead > tr > th:first-child {
+                    border-top-left-radius: 0;
+                }
+                .unit-table .ant-table-thead > tr > th:last-child {
+                    border-top-right-radius: 0;
+                }
+                .unit-table .ant-table-tbody > tr > td {
+                    padding: 20px 24px;
+                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                    vertical-align: middle;
+                }
+                .unit-table .ant-table-tbody > tr:last-child > td {
+                    border-bottom: 1px solid rgba(255,255,255,0.08);
+                }
+                .unit-table .ant-table-tbody > tr:hover > td {
+                    background-color: rgba(68, 243, 240, 0.04) !important;
+                }
+                .unit-table .ant-pagination {
+                    margin: 0 !important;
+                    border-top: 1px solid rgba(255,255,255,0.08);
+                }
+                .unit-table .ant-pagination .ant-pagination-item {
+                    border-radius: 8px;
+                    border: 1px solid rgba(255,255,255,0.08);
+                }
+                .unit-table .ant-pagination .ant-pagination-item-active {
+                    background: #44F3F0;
+                    border-color: #44F3F0;
+                }
+                .unit-table .ant-pagination .ant-pagination-item-active a {
+                    color: #021314;
+                }
+
+                @media (max-width: 768px) {
+                    .unit-table .ant-table-thead > tr > th,
+                    .unit-table .ant-table-tbody > tr > td {
+                        padding: 16px 12px;
+                    }
+
+                    .unit-table .ant-table-tbody > tr > td:first-child > div {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        space-x: 0;
+                        gap: 8px;
+                    }
+                }
+
+                @media (max-width: 640px) {
+                    .unit-table .ant-table-thead > tr > th,
+                    .unit-table .ant-table-tbody > tr > td {
+                        padding: 12px 8px;
+                    }
+
+                    .unit-table .ant-pagination {
+                        padding: 16px 8px;
+                    }
+                }
+            
+
+/* Moved out of src/components/suppliers/SupplierForm.jsx's inline <style jsx> (invalid Next.js-only syntax
+   in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
+
+                    .avatar-uploader .ant-upload-select {
+                        width: 120px !important;
+                        height: 120px !important;
+                        border-radius: 12px !important;
+                    }
+                
+
+/* Moved out of src/components/customers/CustomerViewModal.jsx's inline <style jsx> (invalid Next.js-only syntax
+   in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
+
+                .customer-view-modal .ant-modal-body {
+                    padding: 0;
+                }
+                .customer-view-modal .ant-modal-footer {
+                    border-top: none;
+                    padding: 0 24px 24px 24px;
+                }
+                .customer-view-modal .ant-typography {
+                    color: rgba(255, 255, 255, 0.92);
+                }
+            
+
+/* Moved out of src/components/categories/CategoryViewModal.jsx's inline <style jsx> (invalid Next.js-only syntax
+   in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
+
+                .category-view-modal .ant-modal-content {
+                    border-radius: 16px;
+                    overflow: hidden;
+                    box-shadow:
+                        0 20px 25px -5px rgb(0 0 0 / 0.1),
+                        0 8px 10px -6px rgb(0 0 0 / 0.1);
+                }
+
+                @media (max-width: 768px) {
+                    .category-view-modal {
+                        margin: 16px;
+                    }
+                    .category-view-modal .ant-modal-content {
+                        border-radius: 12px;
+                    }
+                }
+            
+
+/* Moved out of src/components/Purchase/ReturnPreview.jsx's inline <style jsx> (invalid Next.js-only syntax
+   in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
+
+                .return-preview-modal .ant-modal-body {
+                    padding: 24px;
+                }
+                
+                .return-preview-table .ant-table-thead > tr > th {
+                    background-color: #f8fafc;
+                    border-bottom: 2px solid #e5e7eb;
+                    font-weight: 600;
+                    color: #374151;
+                }
+                
+                .return-preview-table .ant-table-tbody > tr > td {
+                    border-bottom: 1px solid #f3f4f6;
+                }
+                
+                .return-preview-table .ant-table-tbody > tr:hover > td {
+                    background-color: #eff6ff !important;
+                }
+                
+                @media (max-width: 768px) {
+                    .return-preview-modal .ant-modal-body {
+                        padding: 16px;
+                    }
+                    
+                    .return-preview-table .ant-table-thead > tr > th,
+                    .return-preview-table .ant-table-tbody > tr > td {
+                        padding: 8px 12px;
+                    }
+                }
+                
+                @media (max-width: 576px) {
+                    .return-preview-table .ant-table-thead > tr > th,
+                    .return-preview-table .ant-table-tbody > tr > td {
+                        padding: 6px 8px;
+                    }
+                }
+            
+
+/* Moved out of src/components/Purchase/PurchaseForm.jsx's inline <style jsx> (invalid Next.js-only syntax
+   in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
+
+                .purchase-form-modal .ant-modal-close {
+                    color: #a9b3b8;
+                }
+                .purchase-form-modal .ant-modal-title {
+                    color: #ffffff;
+                }
+                .purchase-form-modal .ant-form-item-label > label {
+                    color: #d4dbdf;
+                }
+                .purchase-form-modal .ant-input,
+                .purchase-form-modal .ant-input-affix-wrapper,
+                .purchase-form-modal .ant-input-number,
+                .purchase-form-modal .ant-select-selector {
+                    background: #111214 !important;
+                    color: #ffffff !important;
+                    border-color: rgba(255, 255, 255, 0.12) !important;
+                }
+                .purchase-form-modal .ant-select-selection-placeholder,
+                .purchase-form-modal .ant-input::placeholder,
+                .purchase-form-modal .ant-input-number-input::placeholder {
+                    color: #8b98a0 !important;
+                }
+                .purchase-form-modal .ant-card {
+                    background: rgba(255, 255, 255, 0.03) !important;
+                    border-color: rgba(255, 255, 255, 0.1) !important;
+                    color: #ffffff !important;
+                }
+                .purchase-form-modal .ant-divider-inner-text {
+                    color: #ffffff !important;
+                }
+                .purchase-form-modal .ant-input-number-handler-wrap,
+                .purchase-form-modal .ant-select-arrow,
+                .purchase-form-modal .ant-select-clear,
+                .purchase-form-modal .ant-input-clear-icon {
+                    color: #8b98a0 !important;
+                }
+                .purchase-form-modal .ant-btn-default {
+                    background: rgba(255, 255, 255, 0.04);
+                    color: #ffffff;
+                    border-color: rgba(255, 255, 255, 0.1);
+                }
+            
+
+/* Moved out of src/components/Purchase/PurchaseDetails.jsx's inline <style jsx> (invalid Next.js-only syntax
+   in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
+
+                .purchase-details-modal .ant-modal-body {
+                    padding: 24px;
+                }
+
+                    .purchase-info .ant-descriptions-item-label {
+                    font-weight: 600;
+                    color: #e5eef1;
+                    background-color: rgba(255,255,255,0.03);
+                }
+
+                .purchase-items-table .ant-table-thead > tr > th {
+                    background-color: rgba(255,255,255,0.03);
+                    border-bottom: 1px solid rgba(255,255,255,0.08);
+                    font-weight: 600;
+                    color: #e5eef1;
+                }
+
+                .purchase-items-table .ant-table-tbody > tr > td {
+                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                }
+
+                @media (max-width: 768px) {
+                    .purchase-details-modal .ant-modal-body {
+                        padding: 16px;
+                    }
+                }
+            

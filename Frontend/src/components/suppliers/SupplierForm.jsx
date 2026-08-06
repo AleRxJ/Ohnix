@@ -355,13 +355,6 @@ const SupplierForm = ({
                     </div>
                 </Form.Item>
 
-                <style jsx>{`
-                    .avatar-uploader .ant-upload-select {
-                        width: 120px !important;
-                        height: 120px !important;
-                        border-radius: 12px !important;
-                    }
-                `}</style>
             </Form>
         </Modal>
     );

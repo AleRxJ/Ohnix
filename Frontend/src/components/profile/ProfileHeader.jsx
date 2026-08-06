@@ -14,10 +14,7 @@ import {
     EditOutlined,
     MailOutlined,
     CheckCircleOutlined,
-    CalendarOutlined,
     CameraOutlined,
-    IdcardOutlined,
-    SecurityScanOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
@@ -37,21 +34,18 @@ const ProfileHeader = ({
     const getAvatarSrc = () => {
         if (user?.avatar && user.avatar.trim()) {
             let avatarUrl = user.avatar;
-            console.log("[ProfileHeader] Using existing avatar:", avatarUrl);
-            
+
             // Si es una ruta relativa local, convertirla a URL HTTP
             if (avatarUrl.startsWith("/") && !avatarUrl.startsWith("//")) {
                 // Es una ruta relativa local, agregar el API base URL
                 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
                 avatarUrl = `${apiBaseUrl}${avatarUrl}`;
-                console.log("[ProfileHeader] Converted to full URL:", avatarUrl);
             }
-            
+
             return avatarUrl;
         }
         // Fallback: generar usando ui-avatars.com
         const name = encodeURIComponent(user?.username || "User");
-        console.log("[ProfileHeader] Using generated avatar for:", name);
         return `https://ui-avatars.com/api/?background=29D8D5&color=021314&name=${name}&size=128`;
     };
 
@@ -168,72 +162,6 @@ const ProfileHeader = ({
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="px-5 sm:px-6 lg:px-8 pb-5 sm:pb-6 lg:pb-8 bg-[#0B0B0B]/78">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                        <div className="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-[#29D8D5]/15 rounded-xl border border-[#29D8D5]/20">
-                            <CalendarOutlined className="text-[#44F3F0] text-lg" />
-                        </div>
-                        <div className="min-w-0">
-                            <Text className="text-[11px] text-[#A9B3B8] uppercase tracking-[0.22em] block mb-1">
-                                {t("profile.member_since")}
-                            </Text>
-                            <p className="text-sm font-medium text-white truncate">
-                                {user?.createdAt
-                                    ? new Date(user.createdAt).toLocaleDateString()
-                                    : t("common.na")}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                        <div className="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-white/5 rounded-xl border border-white/10">
-                            <IdcardOutlined className="text-white/80 text-lg" />
-                        </div>
-                        <div className="min-w-0">
-                            <Text className="text-[11px] text-[#A9B3B8] uppercase tracking-[0.22em] block mb-1">
-                                {t("profile.account_type")}
-                            </Text>
-                            <p className="text-sm font-medium text-white capitalize truncate">
-                                {user?.role || t("common.unknown")}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                        <div
-                            className={`flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-xl border ${
-                                isVerified
-                                    ? "bg-emerald-500/15 border-emerald-500/20"
-                                    : "bg-amber-500/15 border-amber-500/20"
-                            }`}
-                        >
-                            <SecurityScanOutlined
-                                className={`text-lg ${
-                                    isVerified
-                                        ? "text-emerald-300"
-                                        : "text-amber-300"
-                                }`}
-                            />
-                        </div>
-                        <div className="min-w-0">
-                            <Text className="text-[11px] text-[#A9B3B8] uppercase tracking-[0.22em] block mb-1">
-                                {t("profile.verification_status")}
-                            </Text>
-                            <p
-                                className={`text-sm font-medium truncate ${
-                                    isVerified
-                                        ? "text-emerald-300"
-                                        : "text-amber-300"
-                                }`}
-                            >
-                                {isVerified ? t("profile.verified") : t("profile.unverified")}
-                            </p>
                         </div>
                     </div>
                 </div>

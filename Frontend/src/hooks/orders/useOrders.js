@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { api } from "../../api/api";
 import { calculateStats } from "../../utils/orderHelpers";
@@ -30,11 +30,18 @@ export const useOrders = () => {
 
     const { user } = useContext(AuthContext);
 
+    // Guards against out-of-order responses: e.g. the initial mount fetch
+    // and a fetch triggered right after creating an order can race, and
+    // without this the slower response (even if it's the stale pre-create
+    // snapshot) would land last and silently overwrite the fresher one.
+    const latestRequestId = useRef(0);
+
     const fetchOrders = async (
         page = 1,
         pageSize = 10,
         currentFilters = filters
     ) => {
+        const requestId = ++latestRequestId.current;
         setLoading(true);
         try {
             const params = {
@@ -61,6 +68,13 @@ export const useOrders = () => {
             };
 
             const response = await api.get("/orders", { params });
+
+            // A newer fetchOrders call started after this one - e.g. the
+            // refresh right after creating an order overlapping with the
+            // initial page-load fetch. Drop this stale response instead of
+            // letting it clobber the fresher state.
+            if (requestId !== latestRequestId.current) return;
+
             const {
                 orders: ordersData,
                 pagination: paginationData,
@@ -79,10 +93,11 @@ export const useOrders = () => {
                 statsData || calculateStats(ordersData, paginationData)
             );
         } catch (error) {
+            if (requestId !== latestRequestId.current) return;
             toast.error("Failed to fetch orders");
             console.error("Error fetching orders:", error);
         } finally {
-            setLoading(false);
+            if (requestId === latestRequestId.current) setLoading(false);
         }
     };
 

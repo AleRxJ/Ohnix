@@ -210,34 +210,6 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                 }}
             />
 
-            <style jsx>{`
-                .purchase-details-modal .ant-modal-body {
-                    padding: 24px;
-                }
-
-                    .purchase-info .ant-descriptions-item-label {
-                    font-weight: 600;
-                    color: #e5eef1;
-                    background-color: rgba(255,255,255,0.03);
-                }
-
-                .purchase-items-table .ant-table-thead > tr > th {
-                    background-color: rgba(255,255,255,0.03);
-                    border-bottom: 1px solid rgba(255,255,255,0.08);
-                    font-weight: 600;
-                    color: #e5eef1;
-                }
-
-                .purchase-items-table .ant-table-tbody > tr > td {
-                    border-bottom: 1px solid rgba(255,255,255,0.06);
-                }
-
-                @media (max-width: 768px) {
-                    .purchase-details-modal .ant-modal-body {
-                        padding: 16px;
-                    }
-                }
-            `}</style>
         </Modal>
     );
 };

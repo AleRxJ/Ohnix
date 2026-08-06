@@ -105,7 +105,7 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false) => {
         ...(showElectronicInvoicing ? [{
             key: "electronic-invoices",
             icon: <FileTextOutlined />,
-            label: <Link to="/electronic-invoices">Documentos electrónicos</Link>,
+            label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
         }] : []),
         {
             key: "purchases",

@@ -151,7 +151,7 @@ const ResetPassword = () => {
                     <Steps
                         current={currentStep}
                         size="small"
-                        className="max-w-xs mx-auto"
+                        className="reset-password-steps max-w-sm mx-auto"
                     >
                         {steps.map((item) => (
                             <Step key={item.title} title={item.title} />

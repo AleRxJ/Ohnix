@@ -442,33 +442,6 @@ const CustomerForm = ({
                 </div>
             </Form>
 
-            <style jsx>{`
-                .avatar-uploader .ant-upload-select {
-                    width: 120px !important;
-                    height: 120px !important;
-                    border-radius: 12px !important;
-                }
-                .ant-card-head {
-                    min-height: auto;
-                    padding: 16px 24px;
-                }
-                .ant-card-body {
-                    padding: 24px;
-                }
-                .ant-form-item-label > label {
-                    height: auto;
-                    color: rgba(255, 255, 255, 0.72);
-                }
-                .ant-input-affix-wrapper {
-                    border-radius: 8px;
-                }
-                .ant-select-selector {
-                    border-radius: 8px !important;
-                }
-                .ant-input {
-                    border-radius: 8px;
-                }
-            `}</style>
         </div>
     );
 };

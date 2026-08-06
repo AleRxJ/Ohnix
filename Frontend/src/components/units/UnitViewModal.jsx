@@ -168,24 +168,6 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                 </div>
             </div>
 
-            <style jsx>{`
-                .unit-view-modal .ant-modal-content {
-                    border-radius: 16px;
-                    overflow: hidden;
-                    box-shadow:
-                        0 20px 25px -5px rgb(0 0 0 / 0.1),
-                        0 8px 10px -6px rgb(0 0 0 / 0.1);
-                }
-
-                @media (max-width: 768px) {
-                    .unit-view-modal {
-                        margin: 16px;
-                    }
-                    .unit-view-modal .ant-modal-content {
-                        border-radius: 12px;
-                    }
-                }
-            `}</style>
         </Modal>
     );
 };

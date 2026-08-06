@@ -210,6 +210,7 @@ const OrdersTable = ({
                     <Table
                         columns={columns}
                         dataSource={orders}
+                        rowKey="_id"
                         loading={loading}
                         pagination={{
                             current: pagination.current,

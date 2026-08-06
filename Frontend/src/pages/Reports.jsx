@@ -195,7 +195,7 @@ const Reports = () => {
                     }
                     type="info"
                     showIcon
-                    className="mb-4 sm:mb-6"
+                    className="mb-4 sm:mb-6 dark-alert dark-alert-purple"
                 />
             )}
 
@@ -256,7 +256,7 @@ const Reports = () => {
                 type="success"
                 showIcon
                 icon={<ClockCircleOutlined />}
-                className="mb-4 sm:mb-6"
+                className="mb-4 sm:mb-6 dark-alert dark-alert-teal"
             />
 
             {/* Quick Actions */}

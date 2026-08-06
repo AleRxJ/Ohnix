@@ -303,44 +303,6 @@ const ReturnPreview = ({
                 </div>
             )}
 
-            <style jsx>{`
-                .return-preview-modal .ant-modal-body {
-                    padding: 24px;
-                }
-                
-                .return-preview-table .ant-table-thead > tr > th {
-                    background-color: #f8fafc;
-                    border-bottom: 2px solid #e5e7eb;
-                    font-weight: 600;
-                    color: #374151;
-                }
-                
-                .return-preview-table .ant-table-tbody > tr > td {
-                    border-bottom: 1px solid #f3f4f6;
-                }
-                
-                .return-preview-table .ant-table-tbody > tr:hover > td {
-                    background-color: #eff6ff !important;
-                }
-                
-                @media (max-width: 768px) {
-                    .return-preview-modal .ant-modal-body {
-                        padding: 16px;
-                    }
-                    
-                    .return-preview-table .ant-table-thead > tr > th,
-                    .return-preview-table .ant-table-tbody > tr > td {
-                        padding: 8px 12px;
-                    }
-                }
-                
-                @media (max-width: 576px) {
-                    .return-preview-table .ant-table-thead > tr > th,
-                    .return-preview-table .ant-table-tbody > tr > td {
-                        padding: 6px 8px;
-                    }
-                }
-            `}</style>
         </Modal>
     );
 };

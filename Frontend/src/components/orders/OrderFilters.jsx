@@ -40,7 +40,7 @@ const OrderFilters = ({
                     />
 
                     <Select
-                        placeholder={t("customers.select_customer")}
+                        placeholder={t("orders.select_customer")}
                         onChange={(value) =>
                             onFilterChange("customer_id", value)
                         }

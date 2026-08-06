@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { message } from "antd";
 import toast from "react-hot-toast";
 import { api } from "../../api/api.js";
@@ -22,11 +22,18 @@ export const usePurchase = () => {
 
     const { user } = useContext(AuthContext);
 
+    // Guards against the initial mount fetch and a post-create refetch
+    // racing and resolving out of order - see useOrders.js for the
+    // confirmed real-world case this prevents.
+    const latestRequestId = useRef(0);
+
     // Fetch all purchases
     const fetchPurchases = async () => {
+        const requestId = ++latestRequestId.current;
         setLoading(true);
         try {
             const response = await api.get("/purchases");
+            if (requestId !== latestRequestId.current) return;
             if (response.data.success) {
                 setPurchases(response.data.data);
                 setStats(calculateStats(response.data.data));
@@ -34,10 +41,11 @@ export const usePurchase = () => {
                 toast.error("Failed to fetch purchases");
             }
         } catch (error) {
+            if (requestId !== latestRequestId.current) return;
             toast.error("Error fetching purchases");
             console.error("Error:", error);
         } finally {
-            setLoading(false);
+            if (requestId === latestRequestId.current) setLoading(false);
         }
     };
 

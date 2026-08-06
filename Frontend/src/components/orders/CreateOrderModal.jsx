@@ -74,7 +74,7 @@ const CreateOrderModal = ({
                                 ]}
                             >
                                 <Select
-                                    placeholder={t("customers.select_customer")}
+                                    placeholder={t("orders.select_customer")}
                                     showSearch
                                     optionFilterProp="children"
                                     className="w-full auth-ohnix-input"
@@ -168,30 +168,6 @@ const CreateOrderModal = ({
                 </div>
             </Form>
 
-            <style jsx>{`
-                .create-order-modal :global(.ant-modal-header) {
-                    border-bottom: 1px solid #f0f0f0;
-                    padding: 20px 24px;
-                }
-                .create-order-modal :global(.ant-modal-body) {
-                    padding: 24px;
-                    max-height: calc(100vh - 200px);
-                    overflow-y: auto;
-                }
-                .create-order-modal :global(.ant-form-item-label > label) {
-                    font-size: 14px;
-                }
-                @media (max-width: 640px) {
-                    .create-order-modal :global(.ant-modal) {
-                        max-width: calc(100vw - 32px);
-                        margin: 16px;
-                    }
-                    .create-order-modal :global(.ant-modal-body) {
-                        padding: 16px;
-                        max-height: calc(100vh - 150px);
-                    }
-                }
-            `}</style>
         </Modal>
     );
 };

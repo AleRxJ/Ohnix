@@ -200,18 +200,6 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                 </Row>
             </div>
 
-            <style jsx>{`
-                .customer-view-modal .ant-modal-body {
-                    padding: 0;
-                }
-                .customer-view-modal .ant-modal-footer {
-                    border-top: none;
-                    padding: 0 24px 24px 24px;
-                }
-                .customer-view-modal :global(.ant-typography) {
-                    color: rgba(255, 255, 255, 0.92);
-                }
-            `}</style>
         </Modal>
     );
 };

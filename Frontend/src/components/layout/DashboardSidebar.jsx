@@ -92,21 +92,18 @@ const SidebarUserProfile = ({ user, logout, t }) => {
     const getAvatarSrc = () => {
         if (user?.avatar && user.avatar.trim()) {
             let avatarUrl = user.avatar;
-            console.log("[SidebarUserProfile] Using existing avatar:", avatarUrl);
-            
+
             // Si es una ruta relativa local, convertirla a URL HTTP
             if (avatarUrl.startsWith("/") && !avatarUrl.startsWith("//")) {
                 // Es una ruta relativa local, agregar el API base URL
                 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin;
                 avatarUrl = `${apiBaseUrl}${avatarUrl}`;
-                console.log("[SidebarUserProfile] Converted to full URL:", avatarUrl);
             }
-            
+
             return avatarUrl;
         }
         // Fallback: generar usando ui-avatars.com
         const name = encodeURIComponent(user?.username || "User");
-        console.log("[SidebarUserProfile] Using generated avatar for:", name);
         return `https://ui-avatars.com/api/?background=29D8D5&color=021314&name=${name}&size=128`;
     };
 

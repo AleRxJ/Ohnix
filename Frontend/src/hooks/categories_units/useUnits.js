@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { api } from "../../api/api";
 import { useAuth } from "../useAuth";
 import toast from "react-hot-toast";
@@ -9,42 +9,42 @@ export const useUnits = () => {
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState("");
     const [filter, setFilter] = useState("all");
+    // Guards against the initial mount fetch and a post-create refetch
+    // racing and resolving out of order - see useOrders.js for the
+    // confirmed real-world case this prevents.
+    const latestRequestId = useRef(0);
 
     // Función interna que no depende de otras dependencias
     const loadUnitsInternal = useCallback(async () => {
+        const requestId = ++latestRequestId.current;
         setLoading(true);
         try {
-            console.log("[useUnits] Loading units");
             const response = await api.get("/units");
-            console.log("[useUnits] Response:", response.data);
+            if (requestId !== latestRequestId.current) return [];
 
             if (response.data.success) {
-                console.log(`[useUnits] Setting ${response.data.data.length} units`);
                 setUnits(response.data.data);
                 return response.data.data;
             } else {
-                console.warn("[useUnits] API returned success=false:", response.data);
                 return [];
             }
         } catch (error) {
+            if (requestId !== latestRequestId.current) return [];
             console.error("[useUnits] Error:", error);
             toast.error("Failed to load units");
             return [];
         } finally {
-            setLoading(false);
+            if (requestId === latestRequestId.current) setLoading(false);
         }
     }, []);
 
-    // Wrapper que siempre usa el último valor 
+    // Wrapper que siempre usa el último valor
     const loadUnits = useCallback(async () => {
         return loadUnitsInternal();
     }, [loadUnitsInternal]);
 
     // Load units on mount only
     useEffect(() => {
-        console.log("[useUnits] Component mounted, loading initial units");
-        console.log("[useUnits] Current user:", user);
-        console.log("[useUnits] isAdmin:", isAdmin);
         loadUnitsInternal();
     }, []); // Empty dependency array - only run once
 
@@ -52,20 +52,15 @@ export const useUnits = () => {
         async (values) => {
             const loadingToast = toast.loading("Creating unit...");
             try {
-                console.log("[useUnits] Creating unit with values:", values);
                 const response = await api.post("/units", values);
-                console.log("[useUnits] Create response:", response.data);
-                
+
                 if (response.data.success) {
                     toast.success("Unit created successfully", {
                         id: loadingToast,
                     });
-                    console.log("[useUnits] Calling loadUnits after create");
-                    const result = await loadUnits();
-                    console.log("[useUnits] loadUnits returned:", result);
+                    await loadUnits();
                     return { success: true, data: response.data.data };
                 } else {
-                    console.warn("[useUnits] Create returned success=false:", response.data);
                     toast.error(response.data.message || "Failed to create unit", { id: loadingToast });
                     return { success: false, error: response.data.message };
                 }
@@ -150,21 +145,13 @@ export const useUnits = () => {
     const stats = useMemo(() => {
         const calculated = {
             total: units.length,
-            mine: units.filter((unit) => {
-                const match = unit.created_by._id === user?._id;
-                console.log(`[useUnits] Comparing: "${unit.created_by._id}" === "${user?._id}" = ${match}`);
-                return match;
-            }).length,
+            mine: units.filter((unit) => unit.created_by._id === user?._id)
+                .length,
             others: units.filter((unit) => unit.created_by._id !== user?._id)
                 .length,
         };
-        console.log("[useUnits] Stats calculated:", calculated);
-        console.log("[useUnits] Total units in state:", units.length);
-        console.log("[useUnits] Units:", units);
         return calculated;
     }, [units, user?._id]);
-
-    console.log("[useUnits] About to return - stats:", stats, "units.length:", units.length);
 
     return {
         units: filteredUnits,

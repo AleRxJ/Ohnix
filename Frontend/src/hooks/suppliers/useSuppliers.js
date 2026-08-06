@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { api } from "../../api/api";
 
@@ -11,6 +11,11 @@ export const useSuppliers = (isAdmin = false) => {
         retail: 0,
         company: 0,
     });
+    // Guards against the initial mount fetch and a post-create refetch
+    // racing and resolving out of order - see useOrders.js for the
+    // confirmed real-world case this prevents (a slower stale response
+    // landing after a faster fresh one and clobbering it).
+    const latestRequestId = useRef(0);
 
     const calculateStats = (suppliersData) => {
         const individual = suppliersData.filter(
@@ -28,18 +33,21 @@ export const useSuppliers = (isAdmin = false) => {
     };
 
     const fetchSuppliers = async () => {
+        const requestId = ++latestRequestId.current;
         setLoading(true);
         try {
             // Use admin route if user is admin, otherwise use regular route
             const endpoint = isAdmin ? "/suppliers/admin/all" : "/suppliers";
             const response = await api.get(endpoint);
+            if (requestId !== latestRequestId.current) return;
             setSuppliers(response.data.data);
             calculateStats(response.data.data);
         } catch (error) {
+            if (requestId !== latestRequestId.current) return;
             toast.error("Failed to fetch suppliers");
             console.error("Error fetching suppliers:", error);
         } finally {
-            setLoading(false);
+            if (requestId === latestRequestId.current) setLoading(false);
         }
     };
 

@@ -125,7 +125,7 @@ const PurchaseForm = ({
                                 <Select placeholder={t("purchases.select_supplier")} size="large" className="rounded-lg purchase-form-input" showSearch optionFilterProp="children">
                                     {suppliers.map((supplier) => (
                                         <Option key={supplier._id} value={supplier._id}>
-                                            {supplier.name} ({supplier.shopname})
+                                            {supplier.shopname ? `${supplier.name} (${supplier.shopname})` : supplier.name}
                                         </Option>
                                     ))}
                                 </Select>
@@ -274,49 +274,6 @@ const PurchaseForm = ({
                 </Form.Item>
             </Form>
 
-            <style jsx>{`
-                .purchase-form-modal .ant-modal-close {
-                    color: #a9b3b8;
-                }
-                .purchase-form-modal .ant-modal-title {
-                    color: #ffffff;
-                }
-                .purchase-form-modal .ant-form-item-label > label {
-                    color: #d4dbdf;
-                }
-                .purchase-form-modal .ant-input,
-                .purchase-form-modal .ant-input-affix-wrapper,
-                .purchase-form-modal .ant-input-number,
-                .purchase-form-modal .ant-select-selector {
-                    background: #111214 !important;
-                    color: #ffffff !important;
-                    border-color: rgba(255, 255, 255, 0.12) !important;
-                }
-                .purchase-form-modal .ant-select-selection-placeholder,
-                .purchase-form-modal .ant-input::placeholder,
-                .purchase-form-modal .ant-input-number-input::placeholder {
-                    color: #8b98a0 !important;
-                }
-                .purchase-form-modal .ant-card {
-                    background: rgba(255, 255, 255, 0.03) !important;
-                    border-color: rgba(255, 255, 255, 0.1) !important;
-                    color: #ffffff !important;
-                }
-                .purchase-form-modal .ant-divider-inner-text {
-                    color: #ffffff !important;
-                }
-                .purchase-form-modal .ant-input-number-handler-wrap,
-                .purchase-form-modal .ant-select-arrow,
-                .purchase-form-modal .ant-select-clear,
-                .purchase-form-modal .ant-input-clear-icon {
-                    color: #8b98a0 !important;
-                }
-                .purchase-form-modal .ant-btn-default {
-                    background: rgba(255, 255, 255, 0.04);
-                    color: #ffffff;
-                    border-color: rgba(255, 255, 255, 0.1);
-                }
-            `}</style>
         </Modal>
     );
 };

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { api } from "../../api/api";
 import { useAuth } from "../useAuth";
 import toast from "react-hot-toast";
@@ -9,31 +9,33 @@ export const useCategories = () => {
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState("");
     const [filter, setFilter] = useState("all");
+    // Guards against the initial mount fetch and a post-create refetch
+    // racing and resolving out of order - see useOrders.js for the
+    // confirmed real-world case this prevents.
+    const latestRequestId = useRef(0);
 
     // Función interna que no depende de otras dependencias
     const loadCategoriesInternal = useCallback(async (admin) => {
+        const requestId = ++latestRequestId.current;
         setLoading(true);
         try {
             const endpoint = admin ? "/categories/admin/all" : "/categories/user";
-            console.log(`[useCategories] Loading from ${endpoint}, isAdmin=${admin}`);
-            
             const response = await api.get(endpoint);
-            console.log(`[useCategories] Response:`, response.data);
+            if (requestId !== latestRequestId.current) return [];
 
             if (response.data.success) {
-                console.log(`[useCategories] Setting ${response.data.data.length} categories`);
                 setCategories(response.data.data);
                 return response.data.data;
             } else {
-                console.warn(`[useCategories] API returned success=false:`, response.data);
                 return [];
             }
         } catch (error) {
+            if (requestId !== latestRequestId.current) return [];
             console.error("[useCategories] Error:", error);
             toast.error("Failed to load categories");
             return [];
         } finally {
-            setLoading(false);
+            if (requestId === latestRequestId.current) setLoading(false);
         }
     }, []);
 
@@ -44,9 +46,6 @@ export const useCategories = () => {
 
     // Load categories on mount only
     useEffect(() => {
-        console.log("[useCategories] Component mounted, loading initial categories");
-        console.log("[useCategories] Current user:", user);
-        console.log("[useCategories] isAdmin:", isAdmin);
         loadCategoriesInternal(isAdmin);
     }, []); // Empty dependency array - only run once
 
@@ -54,20 +53,15 @@ export const useCategories = () => {
         async (values) => {
             const loadingToast = toast.loading("Creating category...");
             try {
-                console.log("[useCategories] Creating category with values:", values);
                 const response = await api.post("/categories", values);
-                console.log("[useCategories] Create response:", response.data);
-                
+
                 if (response.data.success) {
                     toast.success("Category created successfully", {
                         id: loadingToast,
                     });
-                    console.log("[useCategories] Calling loadCategories after create");
-                    const result = await loadCategories();
-                    console.log("[useCategories] loadCategories returned:", result);
+                    await loadCategories();
                     return { success: true, data: response.data.data };
                 } else {
-                    console.warn("[useCategories] Create returned success=false:", response.data);
                     toast.error(response.data.message || "Failed to create category", { id: loadingToast });
                     return { success: false, error: response.data.message };
                 }
@@ -163,21 +157,13 @@ export const useCategories = () => {
     const stats = useMemo(() => {
         const calculated = {
             total: categories.length,
-            mine: categories.filter((cat) => {
-                const match = cat.created_by._id === user?._id;
-                console.log(`[useCategories] Comparing: "${cat.created_by._id}" === "${user?._id}" = ${match}`);
-                return match;
-            }).length,
+            mine: categories.filter((cat) => cat.created_by._id === user?._id)
+                .length,
             others: categories.filter((cat) => cat.created_by._id !== user?._id)
                 .length,
         };
-        console.log("[useCategories] Stats calculated:", calculated);
-        console.log("[useCategories] Total categories in state:", categories.length);
-        console.log("[useCategories] Categories:", categories);
         return calculated;
     }, [categories, user?._id]);
-
-    console.log("[useCategories] About to return - stats:", stats, "categories.length:", categories.length);
 
     return {
         categories: filteredCategories,
