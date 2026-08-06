@@ -43,6 +43,7 @@ const ROUTES = [
     "/precios",
     "/demo",
     "/software-inventario-pymes",
+    "/facturacion-electronica-dian",
     "/comparativa/ohnix-vs-alegra",
     "/blog",
     ...BLOG_SLUGS.map((slug) => `/blog/${slug}`),
@@ -102,6 +103,12 @@ const run = async () => {
 };
 
 run().catch((err) => {
-    console.error("[prerender] Failed:", err);
-    process.exit(1);
+    // Non-fatal: prerendering is an SEO/share-preview enhancement on top of
+    // the CSR build `vite build` already produced above, not something the
+    // app depends on to function. Build hosts (e.g. Vercel) don't always
+    // have the system libraries Chromium needs, or the Chromium download
+    // can fail/be skipped during `npm install` - if that happens here, fail
+    // loudly in the log but let the deploy proceed with the plain SPA build
+    // instead of blocking it entirely.
+    console.error("[prerender] Failed - continuing without prerendered HTML:", err);
 });

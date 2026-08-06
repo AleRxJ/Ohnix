@@ -5,44 +5,48 @@ import SeoHead from "../components/common/SeoHead";
 import useI18n from "../hooks/useI18n";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
 
-const SoftwareInventarioPymes = () => {
+const FacturacionElectronica = () => {
     const navigate = useNavigate();
     const { currentLanguage } = useI18n();
 
     const description =
-        "Software de inventario para pymes que centraliza productos, compras, pedidos y reportes en una sola plataforma con trazabilidad en tiempo real.";
+        "Facturacion electronica DIAN para pymes en Colombia, integrada con tu inventario y pedidos. Emite, valida y da seguimiento a tus facturas desde un solo lugar con Ohnix.";
 
     const benefits = [
         {
-            title: "Control de stock en tiempo real",
-            detail: "Visualiza existencias, entradas y salidas sin depender de hojas de calculo.",
+            title: "Emision valida ante la DIAN",
+            detail: "Genera facturas electronicas a traves de Alanube, proveedor tecnologico autorizado, sin salir de tu operacion diaria.",
         },
         {
-            title: "Compras y pedidos conectados",
-            detail: "Sincroniza movimientos operativos para reducir quiebres de inventario.",
+            title: "Directo desde tus pedidos",
+            detail: "Factura electronicamente a partir de los pedidos que ya registras en Ohnix, sin doble digitacion entre inventario y facturacion.",
         },
         {
-            title: "Reportes para decidir mejor",
-            detail: "Evalua rotacion, comportamiento de ventas y necesidades de reposicion.",
+            title: "Seguimiento de cada documento",
+            detail: "Consulta el CUFE, el estado ante la DIAN (emitiendo, enviado, aceptado o rechazado) y reintenta la emision cuando sea necesario.",
         },
         {
-            title: "Escalable para equipos en crecimiento",
-            detail: "Opera con mayor claridad a medida que agregas usuarios, productos y volumen.",
+            title: "Centro de documentos centralizado",
+            detail: "Sincroniza el estado de tus facturas y visualiza tasa de aceptacion y total facturado desde un solo panel.",
         },
     ];
 
     const faq = [
         {
-            q: "Para que tipo de negocio aplica Ohnix?",
-            a: "Ohnix esta orientado a pymes que necesitan controlar inventario, compras y pedidos sin complejidad de ERP sobredimensionados.",
+            q: "Ohnix genera facturas electronicas validas ante la DIAN?",
+            a: "Si. Ohnix se integra con Alanube, proveedor tecnologico autorizado por la DIAN, para emitir y validar facturas electronicas conforme a la normativa colombiana.",
         },
         {
-            q: "Puedo empezar sin migraciones complejas?",
-            a: "Si. Puedes iniciar con tus productos clave y expandir gradualmente a clientes, proveedores y reportes.",
+            q: "En que plan esta incluida la facturacion electronica?",
+            a: "Esta disponible desde el plan Negocio ($49/mes) en adelante. No esta incluida en el plan Emprendedor ni durante el periodo de prueba gratuita.",
         },
         {
-            q: "Incluye seguimiento de compras y ventas?",
-            a: "Si. Ohnix conecta compras, pedidos y stock para que cada movimiento impacte tu operacion y reportes.",
+            q: "Que pasa si la DIAN rechaza una factura?",
+            a: "Puedes ver el motivo del rechazo y reintentar la emision directamente desde el centro de documentos, sin perder la informacion del pedido original.",
+        },
+        {
+            q: "La facturacion esta conectada con mi inventario?",
+            a: "Si. Como Ohnix centraliza pedidos e inventario, cada factura electronica parte de un pedido real y queda asociada a los movimientos de stock correspondientes.",
         },
     ];
 
@@ -60,8 +64,8 @@ const SoftwareInventarioPymes = () => {
                 {
                     "@type": "ListItem",
                     position: 2,
-                    name: "Software de inventario para pymes",
-                    item: "https://www.ohnix.co/software-inventario-pymes",
+                    name: "Facturacion electronica DIAN",
+                    item: "https://www.ohnix.co/facturacion-electronica-dian",
                 },
             ],
         },
@@ -82,20 +86,20 @@ const SoftwareInventarioPymes = () => {
     return (
         <div className="min-h-screen bg-[#050505]">
             <SeoHead
-                title="Software de inventario para pymes | Ohnix"
+                title="Facturacion electronica DIAN para pymes | Ohnix"
                 description={description}
-                canonicalPath="/software-inventario-pymes"
+                canonicalPath="/facturacion-electronica-dian"
                 lang={currentLanguage || "es"}
                 structuredData={structuredData}
             />
             <Navbar />
             <main className="bg-[#050505] pt-20">
-                <ContentSection id="software-inventario-pymes" shell={false}>
+                <ContentSection id="facturacion-electronica-dian" shell={false}>
                     <SectionHeading
                         as="h1"
                         align="left"
-                        eyebrow="SOLUCION PARA PYMES"
-                        title="Software de inventario para pymes"
+                        eyebrow="FACTURACION ELECTRONICA"
+                        title="Facturacion electronica DIAN, conectada a tu inventario"
                         description={description}
                     />
 
@@ -112,37 +116,37 @@ const SoftwareInventarioPymes = () => {
                     </div>
 
                     <div className="mt-12 rounded-[28px] border border-[#29D8D5]/25 bg-[#29D8D5]/8 p-7">
-                        <h2 className="text-2xl font-semibold text-white">Convierte el control operativo en ventaja competitiva</h2>
+                        <h2 className="text-2xl font-semibold text-white">Disponible desde el plan Negocio</h2>
                         <p className="mt-3 text-sm leading-7 text-[#CFE8E8]">
-                            Estandariza tu gestion de inventario, compras y pedidos en una sola plataforma y toma decisiones con datos en tiempo real.
+                            La facturacion electronica DIAN esta incluida a partir del plan Negocio ($49/mes), junto con reportes completos y alertas automaticas. El plan Emprendedor y el periodo de prueba gratuita no la incluyen.
                         </p>
                         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                             <button
                                 type="button"
-                                onClick={() => navigate("/signup?plan=starter&source=seo-software-inventario-pymes")}
+                                onClick={() => navigate("/signup?plan=growth&source=seo-facturacion-electronica")}
                                 className="inline-flex items-center justify-center rounded-full bg-[#29D8D5] px-6 py-3 text-sm font-semibold text-[#021314] hover:bg-[#44F3F0]"
                             >
-                                Crear cuenta gratis
+                                Empezar con plan Negocio
                             </button>
                             <button
                                 type="button"
                                 onClick={() => navigate("/precios")}
                                 className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.03] px-6 py-3 text-sm font-semibold text-white hover:border-[#29D8D5]/40"
                             >
-                                Ver planes y precios
+                                Ver todos los planes
                             </button>
-                                <Link
-                                    to="/blog"
-                                    className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.03] px-6 py-3 text-sm font-semibold text-white transition hover:border-[#29D8D5]/35"
-                                >
-                                    Leer recomendaciones practicas
-                                </Link>
+                            <Link
+                                to="/comparativa/ohnix-vs-alegra"
+                                className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.03] px-6 py-3 text-sm font-semibold text-white transition hover:border-[#29D8D5]/35"
+                            >
+                                Comparar con Alegra
+                            </Link>
                         </div>
                     </div>
 
                     <div className="mt-12">
                         <h2 className="text-2xl font-semibold text-white">Preguntas frecuentes</h2>
-                        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+                        <div className="mt-6 grid gap-4 lg:grid-cols-2">
                             {faq.map((item) => (
                                 <article
                                     key={item.q}
@@ -161,4 +165,4 @@ const SoftwareInventarioPymes = () => {
     );
 };
 
-export default SoftwareInventarioPymes;
+export default FacturacionElectronica;

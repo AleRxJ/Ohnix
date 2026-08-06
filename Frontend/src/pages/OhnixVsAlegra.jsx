@@ -26,6 +26,11 @@ const OhnixVsAlegra = () => {
             alegra: "Cobertura robusta con prioridad en procesos administrativos",
         },
         {
+            criteria: "Facturacion electronica DIAN",
+            ohnix: "Incluida desde el plan Negocio ($49/mes), via Alanube, conectada a tus pedidos e inventario",
+            alegra: "Nucleo del producto, con modulos contables y fiscales mas amplios",
+        },
+        {
             criteria: "Ruta recomendada para pymes",
             ohnix: "Equipos que necesitan control operativo diario con foco en inventario",
             alegra: "Equipos que priorizan ecosistema contable y fiscal completo",

@@ -439,7 +439,7 @@ const LandingPage = () => {
                         <p className="mt-3 text-sm leading-7 text-[#A9B3B8]">
                             Compara planes, revisa la solucion para pymes y evalua nuestra comparativa para tomar una mejor decision.
                         </p>
-                        <div className="mt-6 grid gap-3 md:grid-cols-3">
+                        <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                             <button
                                 type="button"
                                 onClick={() => navigate("/software-inventario-pymes")}
@@ -447,6 +447,14 @@ const LandingPage = () => {
                             >
                                 <span className="block text-sm font-semibold">Software para pymes</span>
                                 <span className="mt-1 block text-xs text-[#A9B3B8]">Inventario, compras y pedidos en un flujo.</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/facturacion-electronica-dian")}
+                                className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-left text-white hover:border-[#29D8D5]/35"
+                            >
+                                <span className="block text-sm font-semibold">Facturación electrónica DIAN</span>
+                                <span className="mt-1 block text-xs text-[#A9B3B8]">Facturas válidas ante la DIAN desde tus pedidos.</span>
                             </button>
                             <button
                                 type="button"

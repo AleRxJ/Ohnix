@@ -31,6 +31,7 @@ const Blog = lazy(() => import("./pages/Blog"));
 const BlogPost = lazy(() => import("./pages/BlogPost"));
 const Precios = lazy(() => import("./pages/Precios"));
 const SoftwareInventarioPymes = lazy(() => import("./pages/SoftwareInventarioPymes"));
+const FacturacionElectronica = lazy(() => import("./pages/FacturacionElectronica"));
 const OhnixVsAlegra = lazy(() => import("./pages/OhnixVsAlegra"));
 const ProfilePage = lazy(() => import("./components/ProfilePage"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -90,6 +91,7 @@ function App() {
                             <Route path="/blog" element={<Blog />} />
                             <Route path="/blog/:slug" element={<BlogPost />} />
                             <Route path="/software-inventario-pymes" element={<SoftwareInventarioPymes />} />
+                            <Route path="/facturacion-electronica-dian" element={<FacturacionElectronica />} />
                             <Route path="/comparativa/ohnix-vs-alegra" element={<OhnixVsAlegra />} />
                             <Route path="/demo" element={<Demo />} />
 
