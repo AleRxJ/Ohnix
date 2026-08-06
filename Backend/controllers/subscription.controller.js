@@ -1113,11 +1113,16 @@ export const updateUpgradeRequestAdmin = asyncHandler(async (req, res, next) => 
  * but never wired up) before activating anything, mirroring what
  * `verifyAndActivateBySession` already does correctly for Stripe.
  *
- * NOTE: ePayco's transaction-query response has historically used Spanish
- * field names (cod_respuesta/valor/moneda) distinct from the webhook's
- * x_-prefixed English ones - both are checked below, but this should be
- * confirmed against one real sandbox response before relying on it in
- * production.
+ * NOTE: queryEpaycoTransaction was pointed at a URL that isn't a real ePayco
+ * endpoint until 2026-08-06 (fixed in epayco.service.js - it returned HTML,
+ * not JSON, confirmed in production logs). The correct endpoint
+ * (/validation/v1/reference/{ref}) has no officially documented response
+ * shape (see github.com/epayco/resources/issues/13), so the field lookup
+ * below stays defensive - numeric state codes, Spanish field names, AND the
+ * x_response string values ("Aceptada"/"Rechazada"/etc, confirmed in
+ * ePayco's confirmation-webhook docs) are all checked - and logs the raw
+ * payload whenever it can't confidently determine approval, so the next
+ * failure is diagnosable from logs instead of guessing again.
  */
 export const verifyAndActivateByEpayco = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
@@ -1174,17 +1179,28 @@ export const verifyAndActivateByEpayco = asyncHandler(async (req, res, next) => 
         `${txData.x_cod_transaction_state ?? txData.cod_respuesta ?? txData.estado_codigo ?? 0}`,
         10
     );
+    // Fallback for the undocumented validation/v1/reference response shape:
+    // ePayco's own webhook docs confirm x_response is a Spanish status
+    // string ("Aceptada"/"Rechazada"/"Pendiente"/"Fallida") - if no usable
+    // numeric code came through, treat that string as authoritative too.
+    const responseText = `${txData.x_response ?? txData.response ?? txData.estado ?? ""}`.trim().toLowerCase();
+    const stateApproved =
+        isEpaycoTransactionApproved(stateCode) ||
+        (stateCode === 0 && ["aceptada", "accepted", "approved"].includes(responseText));
+
     const paidAmount = Number(txData.x_amount ?? txData.valor ?? txData.amount ?? 0);
     const currencyCode = `${txData.x_currency_code ?? txData.moneda ?? txData.currency ?? ""}`.toUpperCase();
 
     const expectedAmount = getEpaycoAmount(request.targetPlan);
     const amountMatches = expectedAmount !== null && Math.abs(Math.round(paidAmount) - expectedAmount) <= 1;
     const currencyMatches = currencyCode === "COP";
-    const stateApproved = isEpaycoTransactionApproved(stateCode);
 
     if (!stateApproved || !amountMatches || !currencyMatches) {
         console.warn("[epayco-verify] Payment not confirmed by ePayco — refusing to activate", {
-            requestId: id, stateCode, paidAmount, expectedAmount, currencyCode,
+            requestId: id, stateCode, responseText, paidAmount, expectedAmount, currencyCode,
+            // Full raw payload so a real failure is diagnosable from logs
+            // instead of guessing at ePayco's undocumented field names again.
+            rawTxData: txData,
         });
         return res.status(200).json(new ApiResponse(200, {
             paid: false,

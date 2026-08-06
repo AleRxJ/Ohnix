@@ -222,10 +222,24 @@ export const validateEpaycoSignature = ({
 
     // Constant-time comparison to avoid timing attacks
     try {
-        return crypto.timingSafeEqual(
+        const valid = crypto.timingSafeEqual(
             Buffer.from(computed, "hex"),
             Buffer.from(signature.toLowerCase(), "hex")
         );
+        if (!valid) {
+            // Diagnostic only - never logs privateKey. A mismatch here with
+            // otherwise-correct-looking fields usually means EPAYCO_PRIVATE_KEY
+            // isn't the same "P_KEY" ePayco used to sign this confirmation -
+            // some ePayco accounts have a P_KEY distinct from the API secret
+            // key used for Basic Auth on REST calls. Verify in the ePayco
+            // dashboard (Integraciones / Llaves) if this fires again.
+            console.warn("[epayco] Signature mismatch", {
+                custId, refPayco, transactionId, amount, currencyCode,
+                receivedSignature: signature,
+                computedSignature: computed,
+            });
+        }
+        return valid;
     } catch {
         return false;
     }
@@ -256,33 +270,55 @@ export const isEpaycoTransactionApproved = (stateCode) =>
 //
 // Used when you need to verify a payment without relying solely on the
 // confirmation webhook.
-// Reference: https://docs.epayco.co/api/query-transaction
+// Reference: https://docs.epayco.com/docs/paginas-de-respuestas - the
+// previous URL here (/api/1.0/payment/transaction/{ref}) was never a real
+// ePayco endpoint; it returned HTTP 200 with an HTML page, which crashed
+// response.json() with "Unexpected token '<'" (confirmed in production
+// logs). The correct endpoint per ePayco's own docs is /validation/v1/
+// reference/{ref_payco}, GET, no Authorization header documented - Basic
+// Auth with the API keys was never mentioned in ePayco's docs for this
+// specific endpoint and may itself have been causing the wrong response.
 // ---------------------------------------------------------------------------
 
 export const queryEpaycoTransaction = async (refPayco) => {
-    const cfg = getEpaycoConfig();
-    const credentials = Buffer.from(`${cfg.publicKey}:${cfg.privateKey}`).toString("base64");
-
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
     try {
         const response = await fetch(
-            `https://secure.epayco.co/api/1.0/payment/transaction/${encodeURIComponent(refPayco)}`,
+            `https://secure.epayco.co/validation/v1/reference/${encodeURIComponent(refPayco)}`,
             {
                 headers: {
-                    Authorization: `Basic ${credentials}`,
                     "Content-Type": "application/json",
                 },
                 signal: controller.signal,
             }
         );
 
-        if (!response.ok) {
-            throw new Error(`ePayco transaction query returned HTTP ${response.status}`);
+        const rawText = await response.text();
+        let parsed = null;
+        try {
+            parsed = JSON.parse(rawText);
+        } catch {
+            // Log the raw body (truncated) so a future failure is
+            // diagnosable from logs instead of guessing again - this
+            // endpoint has a documented history of returning unexpected
+            // non-JSON responses (see github.com/epayco/resources/issues/13).
+            console.error("[epayco] Transaction query returned non-JSON response", {
+                refPayco,
+                status: response.status,
+                bodyPreview: rawText.slice(0, 300),
+            });
+            throw new Error(`ePayco transaction query returned a non-JSON response (HTTP ${response.status})`);
         }
 
-        return response.json();
+        if (!response.ok) {
+            throw new Error(
+                parsed?.message || parsed?.description || `ePayco transaction query returned HTTP ${response.status}`
+            );
+        }
+
+        return parsed;
     } finally {
         clearTimeout(timeout);
     }
