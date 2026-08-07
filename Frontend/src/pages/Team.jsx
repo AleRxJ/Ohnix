@@ -162,7 +162,7 @@ const Team = () => {
             </div>
 
             <div className="mt-6">
-                <Tabs items={items} rootClassName="team-page-tabs" />
+                <Tabs items={items} className="custom-tabs" />
             </div>
         </div>
     );
