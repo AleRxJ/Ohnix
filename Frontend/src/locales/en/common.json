@@ -18,6 +18,9 @@
     "billing": "Billing",
     "admin_panel": "Admin Panel",
     "settings": "Settings",
+    "copy": "Copy",
+    "only_jpg_png": "Only JPG or PNG files are allowed",
+    "max_2mb": "File must be under 2 MB",
     "add": "Add",
     "edit": "Edit",
     "delete": "Delete",
@@ -91,6 +94,12 @@
     "showing_of_items": "{{start}}-{{end}} of {{total}} items"
   },
   "customers": {
+    "failed_fetch_customers": "Failed to load customers",
+    "operation_success": "Operation completed successfully",
+    "operation_failed": "Failed to complete the operation",
+    "customer_deleted": "Customer deleted successfully",
+    "failed_delete_customer": "Failed to delete customer",
+    "unknown_customer": "Unknown customer",
     "manage_customers": "Customers",
     "manage_customers_description": "Manage your customer records and relationships",
     "search_customers": "Search customers...",
@@ -956,6 +965,7 @@
     "unit_day": "Day"
   },
   "reports": {
+    "growth_trend": "Growth trend",
     "advanced": {
       "tab_label": "Advanced",
       "description": "Profit margin, top customers, sales by team, and period comparison",
@@ -1180,6 +1190,14 @@
       "process": "How it works",
       "faq": "FAQ",
       "contact": "Contact"
+    },
+    "demo": {
+      "eyebrow": "DEMO",
+      "title": "See Ohnix in action",
+      "description": "See how Ohnix organizes inventory, purchases, orders, and reports in a single operational experience for SMBs.",
+      "video_title": "Ohnix Demo",
+      "primary_cta": "Get started",
+      "secondary_cta": "Back to home"
     },
     "hero": {
       "eyebrow": "Ohnix | Inventory & operations",

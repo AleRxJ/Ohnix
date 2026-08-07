@@ -144,7 +144,7 @@ const OrdersTable = ({
 
                 <div className="flex items-center justify-between py-2.5 px-3 bg-white/[0.03] rounded-lg mt-3 border border-white/8">
                     <div className="flex flex-col">
-                        <span className="text-xs text-[#A9B3B8] mb-0.5">{t("common.items")}</span>
+                        <span className="text-xs text-[#A9B3B8] mb-0.5">{t("orders.items")}</span>
                         <span className="text-sm font-medium text-white">{order.total_products}</span>
                     </div>
                         <div className="h-8 w-px bg-white/10"></div>

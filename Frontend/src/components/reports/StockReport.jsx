@@ -358,7 +358,7 @@ const StockReport = () => {
                     <StatCard
                         title={
                             window.innerWidth < 768
-                                ? t("reports.products")
+                                ? t("common.products")
                                 : t("reports.total_products")
                         }
                         value={summary.totalProducts}

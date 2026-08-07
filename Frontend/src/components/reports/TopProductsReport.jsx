@@ -93,7 +93,7 @@ const TopProductsReport = () => {
         rows.push([t("reports.total_products"), summary.totalProducts]);
         rows.push([t("reports.total_quantity_sold"), summary.totalQuantitySold]);
         rows.push([
-            t("reports.total_revenue"),
+            t("orders.total_revenue"),
             formatCurrency(summary.totalRevenue),
         ]);
         rows.push([""]);
@@ -342,7 +342,7 @@ const TopProductsReport = () => {
                         <StatCard
                             title={
                                 window.innerWidth < 768
-                                        ? t("reports.products")
+                                        ? t("common.products")
                                         : t("reports.total_products")
                             }
                             value={summary.totalProducts}
@@ -373,7 +373,7 @@ const TopProductsReport = () => {
                             title={
                                 window.innerWidth < 768
                                         ? t("reports.revenue")
-                                        : t("reports.total_revenue")
+                                        : t("orders.total_revenue")
                             }
                             value={summary.totalRevenue}
                             icon={

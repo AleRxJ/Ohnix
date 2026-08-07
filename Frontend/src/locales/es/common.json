@@ -18,6 +18,9 @@
     "billing": "Facturación",
     "admin_panel": "Panel Admin",
     "settings": "Configuración",
+    "copy": "Copiar",
+    "only_jpg_png": "Solo se permiten archivos JPG o PNG",
+    "max_2mb": "El archivo debe pesar menos de 2 MB",
     "add": "Agregar",
     "edit": "Editar",
     "delete": "Eliminar",
@@ -91,6 +94,12 @@
     "showing_of_items": "{{start}}-{{end}} de {{total}} elementos"
   },
   "customers": {
+    "failed_fetch_customers": "No se pudieron cargar los clientes",
+    "operation_success": "Operación realizada con éxito",
+    "operation_failed": "No se pudo completar la operación",
+    "customer_deleted": "Cliente eliminado correctamente",
+    "failed_delete_customer": "No se pudo eliminar el cliente",
+    "unknown_customer": "Cliente desconocido",
     "manage_customers": "Clientes",
     "manage_customers_description": "Administra tus registros y relaciones con clientes",
     "search_customers": "Buscar clientes...",
@@ -957,6 +966,7 @@
     "unit_day": "Día"
   },
   "reports": {
+    "growth_trend": "Tendencia de crecimiento",
     "advanced": {
       "tab_label": "Avanzado",
       "description": "Margen de ganancia, mejores clientes, ventas por equipo y comparación de periodos",
@@ -1174,6 +1184,14 @@
       "process": "Cómo funciona",
       "faq": "FAQ",
       "contact": "Contacto"
+    },
+    "demo": {
+      "eyebrow": "DEMO",
+      "title": "Mira Ohnix en acción",
+      "description": "Conoce como Ohnix organiza inventario, compras, pedidos y reportes en una sola experiencia operativa para pymes.",
+      "video_title": "Demo de Ohnix",
+      "primary_cta": "Comenzar ahora",
+      "secondary_cta": "Volver al inicio"
     },
     "hero": {
       "eyebrow": "Ohnix | Inventario y operaciones",
