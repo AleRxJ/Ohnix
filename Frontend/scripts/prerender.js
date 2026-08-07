@@ -74,6 +74,7 @@ const ROUTES = [
     "/software-inventario-pymes",
     "/facturacion-electronica-dian",
     "/comparativa/ohnix-vs-alegra",
+    "/colaboracion-en-equipo",
     "/blog",
     ...BLOG_SLUGS.map((slug) => `/blog/${slug}`),
 ];

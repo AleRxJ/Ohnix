@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import errorHandler from "./middleware/error.middleware.js";
 import { handlePaymentWebhook, handleEpaycoConfirmation, handleEpaycoResponse } from "./controllers/subscription.controller.js";
+import { isOriginAllowed } from "./utils/allowedOrigins.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,56 +37,10 @@ app.get("/api/v1/test", (req, res) => {
    });
 });
 
-const normalizeOrigin = (value) => value?.trim().replace(/\/$/, "");
-
-const configuredOrigins = [
-   process.env.FRONTEND_URL,
-   ...(process.env.ALLOWED_ORIGINS?.split(",") || []),
-]
-   .map(normalizeOrigin)
-   .filter(Boolean);
-
-// No wildcard *.vercel.app here on purpose: with credentials:true, that
-// would let anyone who deploys a free Vercel project make authenticated
-// cross-site requests using a victim's session cookies. Add specific
-// preview-deployment URLs to ALLOWED_ORIGINS (comma-separated) if needed
-// instead of wildcarding the whole domain.
-const defaultOrigins = [
-   "http://localhost:3000",
-   "http://localhost:5173",
-   "https://ohnix.co",
-   "https://www.ohnix.co",
-   "https://ohnix.vercel.app",
-];
-
-const allowedOrigins = [...new Set([...configuredOrigins, ...defaultOrigins])];
-
-const wildcardToRegex = (pattern) => {
-   const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
-   return new RegExp(`^${escaped.replace(/\*/g, ".*")}$`);
-};
-
-const allowedOriginMatchers = allowedOrigins
-   .filter((origin) => origin.includes("*"))
-   .map(wildcardToRegex);
-
-const allowedOriginList = allowedOrigins.filter(
-   (origin) => !origin.includes("*")
-);
-
 app.use(
     cors({
         origin: (origin, callback) => {
-            // Allow non-browser requests (Postman, mobile apps)
-            if (!origin) return callback(null, true);
-
-         const normalizedOrigin = normalizeOrigin(origin);
-         const isAllowedByList = allowedOriginList.includes(normalizedOrigin);
-         const isAllowedByPattern = allowedOriginMatchers.some((matcher) =>
-            matcher.test(normalizedOrigin)
-         );
-
-         if (isAllowedByList || isAllowedByPattern) {
+            if (isOriginAllowed(origin)) {
                 callback(null, true);
             } else {
                 console.log("Blocked by CORS:", origin);
@@ -152,6 +107,7 @@ import companyRouter from "./routes/company.routes.js";
 import electronicInvoiceRouter from "./routes/electronicInvoice.routes.js";
 import apiKeyRouter from "./routes/apiKey.routes.js";
 import publicApiRouter from "./routes/publicApi.routes.js";
+import teamRouter from "./routes/team.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -169,6 +125,7 @@ app.use("/api/v1/companies", companyRouter);
 app.use("/api/v1/electronic-invoices", electronicInvoiceRouter);
 app.use("/api/v1/api-keys", apiKeyRouter);
 app.use("/api/v1/public", publicApiRouter);
+app.use("/api/v1", teamRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________

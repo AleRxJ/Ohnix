@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
+import { requireModulePermission } from "../middleware/team.permissions.js";
 import {
     cancelMySubscription,
     createMyUpgradeCheckoutSession,
@@ -26,22 +27,41 @@ const router = Router();
 
 router.use(verifyJWT);
 
+// "billing" is a grantable module like any other (see team.permissions.js) -
+// the owner always has it (isTeamMember: false bypasses the check entirely),
+// and can choose to grant a trusted member view and/or edit access. Default
+// role starts at billing:none, so a fresh member sees nothing here until
+// granted, same as every other module.
+//
+// EXCEPTION: /me and /me/usage stay ungated for any team member. DashboardLayout
+// polls /me for every logged-in user (owner and members alike) to decide
+// whether to show the hard "your subscription lapsed" block screen - that's
+// account-wide access control, not a billing detail, and every member needs
+// it to work even if they can't see/manage billing themselves. Gating it
+// behind billing:view would silently disable that block for anyone without
+// the permission. The frontend still hides the billing UI/nav for members
+// without billing:view (Dashboard.jsx, data.jsx) - this is just the status
+// check the whole app's access gate depends on.
 router.route("/me").get(getMySubscription);
 router.route("/me/usage").get(getMyUsage);
-router.route("/me/upgrade-requests").get(getMyUpgradeRequests).post(createUpgradeRequest);
-router.route("/me/checkout-payment-methods").get(getCheckoutPaymentMethods);
-router.route("/me/upgrade-requests/:id/checkout-session").post(createMyUpgradeCheckoutSession);
-router.route("/me/upgrade-requests/:id/checkout-status").get(getMyUpgradeCheckoutStatus);
-router.route("/me/upgrade-requests/:id/verify-activate").post(verifyAndActivateBySession);
+router.route("/me/checkout-payment-methods").get(requireModulePermission("billing", "view"), getCheckoutPaymentMethods);
+router.route("/me/upgrade-requests")
+    .get(requireModulePermission("billing", "view"), getMyUpgradeRequests)
+    .post(requireModulePermission("billing", "edit"), createUpgradeRequest);
+
+// Billing mutations: require edit-level billing access.
+router.route("/me/upgrade-requests/:id/checkout-session").post(requireModulePermission("billing", "edit"), createMyUpgradeCheckoutSession);
+router.route("/me/upgrade-requests/:id/checkout-status").get(requireModulePermission("billing", "view"), getMyUpgradeCheckoutStatus);
+router.route("/me/upgrade-requests/:id/verify-activate").post(requireModulePermission("billing", "edit"), verifyAndActivateBySession);
 // ePayco: fetch widget params for the checkout page (auth-protected)
-router.route("/me/upgrade-requests/:id/epayco-params").get(getEpaycoCheckoutParams);
+router.route("/me/upgrade-requests/:id/epayco-params").get(requireModulePermission("billing", "edit"), getEpaycoCheckoutParams);
 // ePayco: fallback verification when confirmation webhook is delayed
-router.route("/me/upgrade-requests/:id/epayco-verify").post(verifyAndActivateByEpayco);
+router.route("/me/upgrade-requests/:id/epayco-verify").post(requireModulePermission("billing", "edit"), verifyAndActivateByEpayco);
 // Renewal: creates checkout for the same current plan
-router.route("/me/renew").post(createRenewalCheckout);
-router.route("/me/pause").patch(pauseMySubscription);
-router.route("/me/cancel").patch(cancelMySubscription);
-router.route("/me/reactivate").patch(reactivateMySubscription);
+router.route("/me/renew").post(requireModulePermission("billing", "edit"), createRenewalCheckout);
+router.route("/me/pause").patch(requireModulePermission("billing", "edit"), pauseMySubscription);
+router.route("/me/cancel").patch(requireModulePermission("billing", "edit"), cancelMySubscription);
+router.route("/me/reactivate").patch(requireModulePermission("billing", "edit"), reactivateMySubscription);
 
 router.route("/admin/users/:userId/plan").patch(isAdmin, updateUserPlan);
 router.route("/admin/users/:userId/usage").get(isAdmin, getUserUsageAdmin);

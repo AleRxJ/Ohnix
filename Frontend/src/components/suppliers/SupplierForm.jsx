@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext, useEffect } from "react";
 import {
     Modal,
     Form,
@@ -19,6 +19,10 @@ import {
     UploadOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import AuthContext from "../../context/AuthContext";
+import { useTeam } from "../../context/TeamContext";
+import { useResourcePresence } from "../../hooks/useResourcePresence";
+import PresenceLockBar from "../team/PresenceLockBar";
 
 const { Option } = Select;
 
@@ -28,10 +32,25 @@ const SupplierForm = ({
     onSubmit,
     form,
     editMode,
+    editingSupplier,
     fileList,
     uploadProps,
 }) => {
     const { t } = useI18n();
+    const { user } = useContext(AuthContext);
+    const { team } = useTeam();
+    const { viewers, lock, acquireLock, releaseLock } = useResourcePresence({
+        resourceType: "supplier",
+        resourceId: editingSupplier?._id,
+        active: visible && Boolean(team) && Boolean(editingSupplier?._id),
+    });
+
+    useEffect(() => {
+        if (visible && editingSupplier?._id && team) acquireLock();
+        if (!visible) releaseLock();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible, editingSupplier?._id]);
+
     return (
         <Modal
             title={
@@ -64,6 +83,9 @@ const SupplierForm = ({
                 body: { padding: "20px 24px 24px" },
             }}
         >
+            {team && editingSupplier?._id && (
+                <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+            )}
             <Form
                 form={form}
                 layout="vertical"

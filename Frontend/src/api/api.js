@@ -14,6 +14,10 @@ const normalizedBackendUrl = backendBaseUrl.endsWith("/api/v1")
     ? backendBaseUrl
     : `${backendBaseUrl.replace(/\/$/, "")}/api/v1`;
 
+// Exposed for live/socketClient.js - Socket.IO connects to the server root
+// (with its own `path`), not the /api/v1 REST prefix.
+export const backendRootUrl = normalizedBackendUrl.replace(/\/api\/v1$/, "");
+
 export const api = axios.create({
     baseURL: normalizedBackendUrl,
     withCredentials: true,

@@ -58,6 +58,14 @@ export const PLAN_FEATURES = {
     },
 };
 
+// Mirror of Backend TEAM_SEAT_LIMITS (pricing.middleware.js) — null = unlimited.
+export const TEAM_SEAT_LIMITS = {
+    starter: 0,
+    growth: 3,
+    scale: 10,
+    enterprise: null,
+};
+
 // The minimum plan that unlocks each feature (used for "upgrade to X" messages)
 export const FEATURE_MINIMUM_PLAN = {
     reportSales:         "growth",

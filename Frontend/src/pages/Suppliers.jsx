@@ -36,6 +36,7 @@ const Suppliers = () => {
     const {
         modalVisible,
         editMode,
+        selectedSupplier: editingSupplier,
         form,
         fileList,
         uploadProps,
@@ -119,6 +120,7 @@ const Suppliers = () => {
                 onSubmit={onSubmit}
                 form={form}
                 editMode={editMode}
+                editingSupplier={editingSupplier}
                 fileList={fileList}
                 uploadProps={uploadProps}
             />

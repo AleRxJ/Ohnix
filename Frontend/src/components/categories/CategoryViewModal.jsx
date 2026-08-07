@@ -2,11 +2,9 @@ import React from "react";
 import { Modal, Button, Typography, Tag, Divider } from "antd";
 import { EditOutlined, CloseOutlined } from "@ant-design/icons";
 import { formatDateTime } from "../../utils/category_units/dateUtils";
-import {
-    canEdit,
-    getOwnershipText,
-} from "../../utils/category_units/permissionUtils";
+import { getOwnershipText } from "../../utils/category_units/permissionUtils";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const { Title, Text } = Typography;
 
@@ -19,9 +17,12 @@ const CategoryViewModal = ({
     onEdit,
 }) => {
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
     if (!category) return null;
 
-    const showEditButton = canEdit(category, user, isAdmin);
+    // Module-level grant (Team > Roles), not "did I create this row" - see
+    // the comment in CategoryTable.jsx.
+    const showEditButton = isAdmin || hasPermission("categories", "edit");
     const createdByName = getOwnershipText(category, user);
     const updatedByName = category.updated_by?.username || createdByName;
     const isOwner =

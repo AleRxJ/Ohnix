@@ -8,15 +8,11 @@ import {
 } from "@ant-design/icons";
 import { formatDate } from "../../utils/category_units/dateUtils";
 import {
-    canEdit,
-    getOwnershipTag,
-    getOwnershipText,
-} from "../../utils/category_units/permissionUtils";
-import {
     PAGINATION_CONFIG,
     TABLE_SCROLL_CONFIG,
 } from "../../utils/category_units/constants";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const CategoryTable = ({
     categories,
@@ -29,6 +25,10 @@ const CategoryTable = ({
 }) => {
     const [hoveredRow, setHoveredRow] = useState(null);
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
+    // Same reasoning as UnitTable.jsx: module-level grant, not per-record
+    // "did I create this" - see the comment there.
+    const canEditModule = isAdmin || hasPermission("categories", "edit");
 
     const columns = [
         {
@@ -59,7 +59,7 @@ const CategoryTable = ({
             width: "50%",
             align: "center",
             render: (_, record) => {
-                const canEditRecord = canEdit(record, user, isAdmin);
+                const canEditRecord = canEditModule;
 
                 return (
                     <div className="flex items-center justify-center space-x-2">

@@ -7,6 +7,8 @@ import { sendMailSafe } from "../utils/nodemailer.js";
 import bcrypt from "bcryptjs";
 import { prisma } from "../db/prisma.js";
 import { notifyAdminsUpgradeRequestCreated, notifyUserEmailVerified, notifyAdminsNewUserRegistered } from "../utils/upgradeRequestNotifications.js";
+import { clearActiveSession, isSessionValid } from "../utils/sessionStore.js";
+import { issueAuthTokens, userLookupByTokenId } from "../utils/authTokens.js";
 
 // ─── Bilingual OTP email builder ─────────────────────────────────────────────
 const buildOtpEmail = ({ username, otp, locale, context }) => {
@@ -44,28 +46,8 @@ const buildOtpEmail = ({ username, otp, locale, context }) => {
     `;
 };
 
-const DEFAULT_ACCESS_TOKEN_EXPIRY = "1d";
-const DEFAULT_REFRESH_TOKEN_EXPIRY = "10d";
-
 const shouldLogAuthDebug =
     process.env.NODE_ENV !== "production" || process.env.AUTH_DEBUG === "true";
-
-const normalizeJwtExpiry = (value, fallback) => {
-    const normalized = value?.trim().replace(/^['"]|['"]$/g, "");
-
-    if (!normalized) {
-        return fallback;
-    }
-
-    if (/^\d+$/.test(normalized) || /^\d+[smhdwy]$/.test(normalized)) {
-        return normalized;
-    }
-
-    console.warn(
-        `Invalid JWT expiry value "${value}". Falling back to "${fallback}".`
-    );
-    return fallback;
-};
 
 const userPublicSelect = {
     id: true,
@@ -97,19 +79,6 @@ const userPublicSelect = {
     updatedAt: true,
 };
 
-const userForTokenSelect = {
-    id: true,
-    legacyMongoId: true,
-    username: true,
-    email: true,
-    refreshToken: true,
-    tokenVersion: true,
-};
-
-const userLookupByTokenId = (tokenUserId) => ({
-    OR: [{ id: tokenUserId }, { legacyMongoId: tokenUserId }],
-});
-
 const toAuthUser = (user) => ({
     ...user,
     _id: user.legacyMongoId || user.id,
@@ -124,68 +93,6 @@ const normalizePreferredLanguage = (value) => {
 const normalizeRole = (role) => (role === "admin" ? "admin" : "user");
 const normalizePlan = (plan) =>
     ["starter", "growth", "scale", "enterprise"].includes(plan) ? plan : "starter";
-
-const generateAccessAndRefreshTokens = async (userId) => {
-    try {
-        if (!process.env.ACCESS_TOKEN_SECRET || !process.env.REFRESH_TOKEN_SECRET) {
-            throw new Error("JWT secrets are not configured");
-        }
-
-        const user = await prisma.user.findFirst({
-            where: userLookupByTokenId(userId),
-            select: userForTokenSelect,
-        });
-
-        if (!user) {
-            throw new Error("User not found while generating auth tokens");
-        }
-
-        const tokenUserId = user.legacyMongoId || user.id;
-
-        const accessToken = jwt.sign(
-            {
-                _id: tokenUserId,
-                email: user.email,
-                username: user.username,
-                tokenVersion: user.tokenVersion,
-            },
-            process.env.ACCESS_TOKEN_SECRET,
-            {
-                expiresIn: normalizeJwtExpiry(
-                    process.env.ACCESS_TOKEN_EXPIRY,
-                    DEFAULT_ACCESS_TOKEN_EXPIRY
-                ),
-            }
-        );
-
-        const refreshToken = jwt.sign(
-            {
-                _id: tokenUserId,
-            },
-            process.env.REFRESH_TOKEN_SECRET,
-            {
-                expiresIn: normalizeJwtExpiry(
-                    process.env.REFRESH_TOKEN_EXPIRY,
-                    DEFAULT_REFRESH_TOKEN_EXPIRY
-                ),
-            }
-        );
-
-        await prisma.user.update({
-            where: { id: user.id },
-            data: { refreshToken },
-        });
-
-        return { accessToken, refreshToken };
-    } catch (error) {
-        console.error("Token generation failed:", error);
-        throw new ApiError(
-            500,
-            error?.message ||
-                "Something went wrong while generating referesh and access token"
-        );
-    }
-};
 
 const registerUser = asyncHandler(async (req, res, next) => {
     const { email, username, password, desiredPlan, preferredLanguage } = req.body;
@@ -423,8 +330,12 @@ const loginUser = asyncHandler(async (req, res, next) => {
         return next(new ApiError(401, "Invalid user credentials"));
     }
 
-    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-        user.legacyMongoId || user.id
+    // No sid passed in -> a fresh one is minted, which invalidates any
+    // session already active for this user on another device/tab (single
+    // active session rule).
+    const { accessToken, refreshToken } = await issueAuthTokens(
+        user.legacyMongoId || user.id,
+        { deviceInfo: req.header("User-Agent") }
     );
 
     const loggedInUser = await prisma.user.findUnique({
@@ -469,6 +380,7 @@ const logoutUser = asyncHandler(async (req, res, next) => {
             where: { id: user.id },
             data: { refreshToken: null },
         });
+        await clearActiveSession(user.id);
     }
 
     // Must match the attributes the cookie was actually set with (login,
@@ -532,6 +444,18 @@ const refreshAccessToken = asyncHandler(async (req, res, next) => {
             return next(new ApiError(401, "Refresh token is expired or used"));
         }
 
+        // A newer login elsewhere (different device/tab) would have minted a
+        // different sid and overwritten Redis's record of the active
+        // session - refuse to extend a session that's been superseded.
+        if (!(await isSessionValid(user.id, decodedToken?.sid))) {
+            return next(
+                new ApiError(
+                    401,
+                    "Session ended - you logged in on another device"
+                )
+            );
+        }
+
         const options = {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -541,7 +465,10 @@ const refreshAccessToken = asyncHandler(async (req, res, next) => {
         };
 
         const { accessToken, refreshToken: newRefreshToken } =
-            await generateAccessAndRefreshTokens(user.legacyMongoId || user.id);
+            await issueAuthTokens(user.legacyMongoId || user.id, {
+                sid: decodedToken?.sid,
+                deviceInfo: req.header("User-Agent"),
+            });
 
         return res
             .status(200)

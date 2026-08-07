@@ -12,6 +12,7 @@ import {
     enforceEntityLimit,
     enforceMonthlyLimit,
 } from "../middleware/pricing.middleware.js";
+import { requireModulePermission } from "../middleware/team.permissions.js";
 
 const router = Router();
 
@@ -20,15 +21,17 @@ router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
 // Regular user routes
 router
     .route("/")
-    .post(enforceEntityLimit("purchases"), enforceMonthlyLimit("purchases"), createPurchase)
-    .get(getAllPurchases);
+    .post(requireModulePermission("purchases", "edit"), enforceEntityLimit("purchases"), enforceMonthlyLimit("purchases"), createPurchase)
+    .get(requireModulePermission("purchases", "view"), getAllPurchases);
 
 // Admin routes - if you want specific endpoints just for admins
 router.route("/all").get(isAdmin, getAllPurchases); // Guaranteed to get all purchases
 
-router.route("/:id").get(getPurchaseDetails).patch(updatePurchaseStatus);
+router.route("/:id")
+    .get(requireModulePermission("purchases", "view"), getPurchaseDetails)
+    .patch(requireModulePermission("purchases", "edit"), updatePurchaseStatus);
 
 // Return preview route - to check what can be returned before processing
-router.route("/:id/return-preview").get(getReturnPreview);
+router.route("/:id/return-preview").get(requireModulePermission("purchases", "view"), getReturnPreview);
 
 export default router;

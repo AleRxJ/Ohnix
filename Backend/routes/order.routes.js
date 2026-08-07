@@ -20,23 +20,24 @@ import {
     enforceEntityLimit,
     enforceMonthlyLimit,
 } from "../middleware/pricing.middleware.js";
+import { requireModulePermission } from "../middleware/team.permissions.js";
 
 const router = express.Router();
 
 router.use(verifyJWT); // Apply auth middleware to all routes
 
 // User routes - filtered by user ID
-router.post("/", enforceEntityLimit("orders"), enforceMonthlyLimit("orders"), createOrder);
-router.get("/", getAllOrders);
-router.get("/:id/details", getOrderDetails);
-router.patch("/:id/status", updateOrderStatus);
-router.route("/:id/invoice").get(generateInvoice);
-router.route("/:id/electronic-invoice").get(getOrderElectronicInvoice);
-router.route("/:id/electronic-invoice/issue").post(issueOrderElectronicInvoice);
-router.route("/:id/electronic-invoice/sync").post(syncOrderElectronicInvoice);
+router.post("/", requireModulePermission("orders", "edit"), enforceEntityLimit("orders"), enforceMonthlyLimit("orders"), createOrder);
+router.get("/", requireModulePermission("orders", "view"), getAllOrders);
+router.get("/:id/details", requireModulePermission("orders", "view"), getOrderDetails);
+router.patch("/:id/status", requireModulePermission("orders", "edit"), updateOrderStatus);
+router.route("/:id/invoice").get(requireModulePermission("orders", "view"), generateInvoice);
+router.route("/:id/electronic-invoice").get(requireModulePermission("orders", "view"), getOrderElectronicInvoice);
+router.route("/:id/electronic-invoice/issue").post(requireModulePermission("orders", "edit"), issueOrderElectronicInvoice);
+router.route("/:id/electronic-invoice/sync").post(requireModulePermission("orders", "edit"), syncOrderElectronicInvoice);
 router.route("/:id/electronic-invoice/credit-notes")
-    .get(getOrderCreditNotes)
-    .post(issueOrderCreditNote);
+    .get(requireModulePermission("orders", "view"), getOrderCreditNotes)
+    .post(requireModulePermission("orders", "edit"), issueOrderCreditNote);
 
 // Admin-only routes
 router.get("/all", isAdmin, getAllOrdersAdmin);

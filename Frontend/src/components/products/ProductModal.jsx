@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { Modal, Form, Input, Select, InputNumber, Row, Col } from "antd";
 import ProductImageUpload from "./ProductImageUpload";
 import useI18n from "../../hooks/useI18n";
@@ -6,6 +6,9 @@ import { useCurrency } from "../../context/CurrencyContext";
 import { getCurrencyInputProps } from "../../utils/currency";
 import AuthContext from "../../context/AuthContext";
 import useSubscription from "../../hooks/useSubscription";
+import { useTeam } from "../../context/TeamContext";
+import { useResourcePresence } from "../../hooks/useResourcePresence";
+import PresenceLockBar from "../team/PresenceLockBar";
 
 const { Option } = Select;
 
@@ -26,9 +29,29 @@ const ProductModal = ({
     const { currency } = useCurrency();
     const { user } = useContext(AuthContext);
     const { can } = useSubscription();
+    const { team } = useTeam();
     const currencyInputProps = getCurrencyInputProps(currency.code);
     const usesColombianEInvoicing =
         user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
+
+    // Live presence + soft-lock (team plans only, and only once there's a
+    // real record to collide on - a brand-new product being created hasn't
+    // got an id yet). See hooks/useResourcePresence.js.
+    const { viewers, lock, acquireLock, releaseLock } = useResourcePresence({
+        resourceType: "product",
+        resourceId: editingProduct?._id,
+        active: visible && Boolean(team) && Boolean(editingProduct?._id),
+    });
+
+    useEffect(() => {
+        if (visible && editingProduct?._id && team) {
+            acquireLock();
+        }
+        if (!visible) {
+            releaseLock();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible, editingProduct?._id]);
 
     return (
         <Modal
@@ -81,6 +104,9 @@ const ProductModal = ({
                 initialValues={{ stock: 0 }}
                 className="product-modal-form"
             >
+                {team && editingProduct?._id && (
+                    <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+                )}
                 <Row gutter={20} className="space-y-4 lg:space-y-0">
                     <Col xs={24} lg={14}>
                         <div className="space-y-4">

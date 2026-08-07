@@ -39,3 +39,13 @@ export const otpRequestRateLimiter = makeLimiter(60, 8);
 
 // OTP consumption (guessing the 6-digit code itself).
 export const otpVerifyRateLimiter = makeLimiter(15, 10);
+
+// Team invitations: the abuse vector is the same as OTP requests (spamming
+// someone else's inbox), plus the seat-limit check already bounds total
+// invites per team - this just stops one owner account from hammering the
+// endpoint. Resend shares the limiter since it also sends an email.
+export const teamInvitationRateLimiter = makeLimiter(60, 20);
+
+// Invitation acceptance is unauthenticated (the token is the credential) -
+// same brute-force surface as login, so it gets the same shape of limit.
+export const invitationAcceptRateLimiter = makeLimiter(15, 10);

@@ -56,130 +56,158 @@ enum ElectronicInvoiceStatus {
   cancelled
 }
 
+enum TeamMemberStatus {
+  active
+  removed
+}
+
+enum TeamInvitationStatus {
+  pending
+  accepted
+  expired
+  revoked
+}
+
+enum PermissionLevel {
+  none
+  view
+  edit
+  admin
+}
+
 model User {
-  id                 String    @id @default(cuid())
-  legacyMongoId      String?   @unique @map("legacy_mongo_id")
-  username           String    @unique
-  email              String    @unique
-  password           String
-  role               UserRole  @default(user)
-  preferredLanguage  String    @default("es") @map("preferred_language")
-  companyId          String?   @map("company_id")
-  verifyOtp          String    @default("") @map("verify_otp")
-  verifyOtpExpiry    BigInt    @default(0) @map("verify_otp_expiry")
-  isVerified         Boolean   @default(false) @map("is_verified")
-  resetOtp           String    @default("") @map("reset_otp")
-  resetOtpExpiry     BigInt    @default(0) @map("reset_otp_expiry")
-  avatar             String
-  refreshToken       String?   @map("refresh_token")
+  id                String        @id @default(cuid())
+  legacyMongoId     String?       @unique @map("legacy_mongo_id")
+  username          String        @unique
+  email             String        @unique
+  password          String
+  role              UserRole      @default(user)
+  preferredLanguage String        @default("es") @map("preferred_language")
+  companyId         String?       @map("company_id")
+  verifyOtp         String        @default("") @map("verify_otp")
+  verifyOtpExpiry   BigInt        @default(0) @map("verify_otp_expiry")
+  isVerified        Boolean       @default(false) @map("is_verified")
+  resetOtp          String        @default("") @map("reset_otp")
+  resetOtpExpiry    BigInt        @default(0) @map("reset_otp_expiry")
+  avatar            String
+  refreshToken      String?       @map("refresh_token")
   // Bumped on password change/reset to invalidate every access token issued
   // before that point (embedded in the JWT payload, compared in verifyJWT).
-  tokenVersion       Int       @default(0) @map("token_version")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
-  subscription       Subscription?
-  company            Company?  @relation(fields: [companyId], references: [id])
+  tokenVersion      Int           @default(0) @map("token_version")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  subscription      Subscription?
+  company           Company?      @relation(fields: [companyId], references: [id])
 
-  categoriesCreated  Category[] @relation("CategoryCreatedBy")
-  categoriesUpdated  Category[] @relation("CategoryUpdatedBy")
-  unitsCreated       Unit[]     @relation("UnitCreatedBy")
-  unitsUpdated       Unit[]     @relation("UnitUpdatedBy")
-  productsCreated    Product[]  @relation("ProductCreatedBy")
-  productsUpdated    Product[]  @relation("ProductUpdatedBy")
-  customers          Customer[]
-  suppliers          Supplier[]
-  purchasesCreated   Purchase[] @relation("PurchaseCreatedBy")
-  purchasesUpdated   Purchase[] @relation("PurchaseUpdatedBy")
-  ordersCreated      Order[]    @relation("OrderCreatedBy")
-  ordersUpdated      Order[]    @relation("OrderUpdatedBy")
+  categoriesCreated   Category[]           @relation("CategoryCreatedBy")
+  categoriesUpdated   Category[]           @relation("CategoryUpdatedBy")
+  unitsCreated        Unit[]               @relation("UnitCreatedBy")
+  unitsUpdated        Unit[]               @relation("UnitUpdatedBy")
+  productsCreated     Product[]            @relation("ProductCreatedBy")
+  productsUpdated     Product[]            @relation("ProductUpdatedBy")
+  customers           Customer[]
+  suppliers           Supplier[]
+  purchasesCreated    Purchase[]           @relation("PurchaseCreatedBy")
+  purchasesUpdated    Purchase[]           @relation("PurchaseUpdatedBy")
+  ordersCreated       Order[]              @relation("OrderCreatedBy")
+  ordersUpdated       Order[]              @relation("OrderUpdatedBy")
   planUpgradeRequests PlanUpgradeRequest[]
-  apiKeys            ApiKey[]
+  apiKeys             ApiKey[]
+
+  // Teams: a user is either a team owner (ownedTeam), a member of exactly one
+  // active team at a time (via TeamMember, enforced in team.service.js - not
+  // a DB constraint since removed rows must stay for history/rejoin), or
+  // neither (a solo/independent account). See team.service.js for the
+  // "who can create resources under whose account" resolution.
+  ownedTeam       Team?            @relation("TeamOwner")
+  teamMemberships TeamMember[]
+  invitationsSent TeamInvitation[] @relation("InvitationsSent")
 
   @@map("users")
 }
 
 model Company {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  legalName   String?  @map("legal_name")
-  countryCode String?  @map("country_code")
-  contactEmail String? @map("contact_email")
-  phone       String?
-  electronicInvoicingEnabled Boolean @default(false) @map("electronic_invoicing_enabled")
+  id                               String   @id @default(cuid())
+  name                             String   @unique
+  legalName                        String?  @map("legal_name")
+  countryCode                      String?  @map("country_code")
+  contactEmail                     String?  @map("contact_email")
+  phone                            String?
+  electronicInvoicingEnabled       Boolean  @default(false) @map("electronic_invoicing_enabled")
   // Which provider issues this company's electronic invoices. Factus stays
   // fully wired (see factus.service.js) even though Alanube is the default
   // for new companies - kept dormant per-company rather than removed so it
   // can be switched back without re-integrating from scratch.
-  electronicInvoicingProvider String @default("alanube") @map("electronic_invoicing_provider")
-  factusNumberingRangeId String? @map("factus_numbering_range_id")
+  electronicInvoicingProvider      String   @default("alanube") @map("electronic_invoicing_provider")
+  factusNumberingRangeId           String?  @map("factus_numbering_range_id")
   // Factus requires a distinct numbering range per document type (invoices
   // are document code 21, credit notes are 22) - they cannot share a range.
-  factusCreditNoteNumberingRangeId String? @map("factus_credit_note_numbering_range_id")
-  factusDocumentType String @default("01") @map("factus_document_type")
-  factusOperationType String @default("10") @map("factus_operation_type")
-  factusPaymentForm String @default("1") @map("factus_payment_form")
-  factusPaymentMethodCode String @default("42") @map("factus_payment_method_code")
+  factusCreditNoteNumberingRangeId String?  @map("factus_credit_note_numbering_range_id")
+  factusDocumentType               String   @default("01") @map("factus_document_type")
+  factusOperationType              String   @default("10") @map("factus_operation_type")
+  factusPaymentForm                String   @default("1") @map("factus_payment_form")
+  factusPaymentMethodCode          String   @default("42") @map("factus_payment_method_code")
   // Alanube (Alegra's e-provider API) requires each company to be registered
   // separately under its own NIT - there is no shared-account/branch model
   // like Factus's numbering ranges. taxIdentificationDv is the DIAN check
   // digit, auto-computed from taxIdentification (see nit.util.js) unless the
   // admin overrides it.
-  taxIdentification String? @map("tax_identification")
-  taxIdentificationDv String? @map("tax_identification_dv")
-  alanubeCompanyId String? @map("alanube_company_id")
+  taxIdentification                String?  @map("tax_identification")
+  taxIdentificationDv              String?  @map("tax_identification_dv")
+  alanubeCompanyId                 String?  @map("alanube_company_id")
   // DIAN test-set id used to enable the company for a document type.
   // Sandbox uses Alanube's published constant by default; production
   // requires the real id DIAN issues once habilitación is completed.
-  alanubeTestSetId String? @map("alanube_test_set_id")
+  alanubeTestSetId                 String?  @map("alanube_test_set_id")
   // Numbering authorization (DIAN "resolución de numeración"): resolutionNumber,
   // prefix, minNumber, maxNumber, startDate, endDate, technicalKey. Stored as
   // JSON rather than flat columns since it's fetched verbatim from Alanube's
   // getResolutions endpoint in production, or entered from DIAN's sandbox
   // example values for testing.
-  alanubeInvoiceResolution Json? @map("alanube_invoice_resolution")
-  alanubeCreditNoteResolution Json? @map("alanube_credit_note_resolution")
+  alanubeInvoiceResolution         Json?    @map("alanube_invoice_resolution")
+  alanubeCreditNoteResolution      Json?    @map("alanube_credit_note_resolution")
   // Unlike Factus, Alanube requires the caller to supply the next document
   // number itself (no server-side auto-numbering) - these track the next
   // number to use inside the resolution's [minNumber, maxNumber] range.
   // Null means "not started yet, seed from resolution.minNumber".
-  alanubeNextInvoiceNumber Int? @map("alanube_next_invoice_number")
-  alanubeNextCreditNoteNumber Int? @map("alanube_next_credit_note_number")
+  alanubeNextInvoiceNumber         Int?     @map("alanube_next_invoice_number")
+  alanubeNextCreditNoteNumber      Int?     @map("alanube_next_credit_note_number")
   // Order PDF branding (Negocio+): logo + legal data replace the generic
   // template. pdfFooterText is the Escala+ "personalizable" extra.
-  logoUrl     String?  @db.Text @map("logo_url")
-  pdfFooterText String? @db.Text @map("pdf_footer_text")
+  logoUrl                          String?  @map("logo_url") @db.Text
+  pdfFooterText                    String?  @map("pdf_footer_text") @db.Text
   // Escala+ brand color (hex, e.g. "#29D8D5") applied to the PDF's accent
   // line/TOTAL amount in place of the fixed default, completing the "fully
   // customizable" PDF promise alongside logo + footer.
-  pdfAccentColor String? @map("pdf_accent_color")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  pdfAccentColor                   String?  @map("pdf_accent_color")
+  isActive                         Boolean  @default(true) @map("is_active")
+  createdAt                        DateTime @default(now()) @map("created_at")
+  updatedAt                        DateTime @updatedAt @map("updated_at")
 
-  users       User[]
+  users              User[]
   electronicInvoices ElectronicInvoice[]
-  apiKeys     ApiKey[]
+  apiKeys            ApiKey[]
 
   @@map("companies")
 }
 
 model ApiKey {
-  id             String    @id @default(cuid())
-  userId         String    @map("user_id")
-  companyId      String?   @map("company_id")
-  name           String
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  companyId       String?   @map("company_id")
+  name            String
   // Only the prefix is stored in plaintext (shown to the user to tell keys
   // apart); the full key is only ever shown once, at creation time.
-  keyPrefix      String    @map("key_prefix")
-  keyHash        String    @map("key_hash")
-  requestsToday  Int       @default(0) @map("requests_today")
-  requestsResetAt DateTime @default(now()) @map("requests_reset_at")
-  lastUsedAt     DateTime? @map("last_used_at")
-  revokedAt      DateTime? @map("revoked_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
+  keyPrefix       String    @map("key_prefix")
+  keyHash         String    @map("key_hash")
+  requestsToday   Int       @default(0) @map("requests_today")
+  requestsResetAt DateTime  @default(now()) @map("requests_reset_at")
+  lastUsedAt      DateTime? @map("last_used_at")
+  revokedAt       DateTime? @map("revoked_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
 
-  user           User      @relation(fields: [userId], references: [id])
-  company        Company?  @relation(fields: [companyId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id])
 
   @@unique([keyHash])
   @@index([userId])
@@ -202,28 +230,28 @@ model PlanUpgradeRequest {
   createdAt        DateTime             @default(now()) @map("created_at")
   updatedAt        DateTime             @updatedAt @map("updated_at")
 
-  user             User                 @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId, status])
   @@map("plan_upgrade_requests")
 }
 
 model Subscription {
-  id                 String             @id @default(cuid())
-  userId             String             @unique @map("user_id")
-  plan               PlanType           @default(starter)
-  status             SubscriptionStatus @default(active)
-  startedAt          DateTime           @default(now()) @map("started_at")
-  endsAt             DateTime?          @map("ends_at")
-  trialEndsAt        DateTime?          @map("trial_ends_at")
+  id                String             @id @default(cuid())
+  userId            String             @unique @map("user_id")
+  plan              PlanType           @default(starter)
+  status            SubscriptionStatus @default(active)
+  startedAt         DateTime           @default(now()) @map("started_at")
+  endsAt            DateTime?          @map("ends_at")
+  trialEndsAt       DateTime?          @map("trial_ends_at")
   // When true, the user asked to cancel but keeps `status: active` and full
   // plan access until `endsAt` - subscriptionRenewalScheduler's existing
   // expiry job downgrades to starter then, same as a natural non-renewal.
-  cancelAtPeriodEnd  Boolean            @default(false) @map("cancel_at_period_end")
-  createdAt          DateTime           @default(now()) @map("created_at")
-  updatedAt          DateTime           @updatedAt @map("updated_at")
+  cancelAtPeriodEnd Boolean            @default(false) @map("cancel_at_period_end")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
 
-  user               User               @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@map("subscriptions")
 }
@@ -237,9 +265,9 @@ model Category {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  createdBy     User     @relation("CategoryCreatedBy", fields: [createdById], references: [id])
-  updatedBy     User?    @relation("CategoryUpdatedBy", fields: [updatedById], references: [id])
-  products      Product[]
+  createdBy User      @relation("CategoryCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?     @relation("CategoryUpdatedBy", fields: [updatedById], references: [id])
+  products  Product[]
 
   @@index([createdById])
   @@map("categories")
@@ -254,96 +282,96 @@ model Unit {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  createdBy     User     @relation("UnitCreatedBy", fields: [createdById], references: [id])
-  updatedBy     User?    @relation("UnitUpdatedBy", fields: [updatedById], references: [id])
-  products      Product[]
+  createdBy User      @relation("UnitCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?     @relation("UnitUpdatedBy", fields: [updatedById], references: [id])
+  products  Product[]
 
   @@index([createdById])
   @@map("units")
 }
 
 model Supplier {
-  id             String    @id @default(cuid())
-  legacyMongoId  String?   @unique @map("legacy_mongo_id")
-  name           String
-  email          String
-  phone          String
-  address        String
-  shopname       String?
-  type           String?
-  bankName       String?   @map("bank_name")
-  accountHolder  String?   @map("account_holder")
-  accountNumber  String?   @map("account_number")
-  photo          String
-  createdById    String    @map("created_by")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  legacyMongoId String?  @unique @map("legacy_mongo_id")
+  name          String
+  email         String
+  phone         String
+  address       String
+  shopname      String?
+  type          String?
+  bankName      String?  @map("bank_name")
+  accountHolder String?  @map("account_holder")
+  accountNumber String?  @map("account_number")
+  photo         String
+  createdById   String   @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  createdBy      User      @relation(fields: [createdById], references: [id])
-  purchases      Purchase[]
+  createdBy User       @relation(fields: [createdById], references: [id])
+  purchases Purchase[]
 
   @@index([createdById])
   @@map("suppliers")
 }
 
 model Customer {
-  id             String   @id @default(cuid())
-  legacyMongoId  String?  @unique @map("legacy_mongo_id")
-  name           String
-  email          String
-  phone          String
-  address        String?
-  type           String   @default("regular")
-  storeName      String?  @map("store_name")
-  accountHolder  String?  @map("account_holder")
-  accountNumber  String?  @map("account_number")
-  photo          String
-  identificationDocumentCode String? @map("identification_document_code")
-  identification String? @map("identification")
-  legalOrganizationCode String? @map("legal_organization_code")
-  tributeCode String? @map("tribute_code")
-  municipalityCode String? @map("municipality_code")
-  countryCode String? @map("country_code")
-  createdById    String   @map("created_by")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id                         String   @id @default(cuid())
+  legacyMongoId              String?  @unique @map("legacy_mongo_id")
+  name                       String
+  email                      String
+  phone                      String
+  address                    String?
+  type                       String   @default("regular")
+  storeName                  String?  @map("store_name")
+  accountHolder              String?  @map("account_holder")
+  accountNumber              String?  @map("account_number")
+  photo                      String
+  identificationDocumentCode String?  @map("identification_document_code")
+  identification             String?  @map("identification")
+  legalOrganizationCode      String?  @map("legal_organization_code")
+  tributeCode                String?  @map("tribute_code")
+  municipalityCode           String?  @map("municipality_code")
+  countryCode                String?  @map("country_code")
+  createdById                String   @map("created_by")
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
 
-  createdBy      User     @relation(fields: [createdById], references: [id])
-  orders         Order[]
+  createdBy User    @relation(fields: [createdById], references: [id])
+  orders    Order[]
 
   @@index([createdById])
   @@map("customers")
 }
 
 model Product {
-  id            String   @id @default(cuid())
-  legacyMongoId String?  @unique @map("legacy_mongo_id")
-  productName   String   @map("product_name")
-  productCode   String   @map("product_code")
-  categoryId    String   @map("category_id")
-  unitId        String   @map("unit_id")
-  buyingPrice   Decimal  @map("buying_price") @db.Decimal(12, 2)
-  sellingPrice  Decimal  @map("selling_price") @db.Decimal(12, 2)
-  stock         Int      @default(0)
-  productImage  String   @default("default-product.png") @map("product_image")
-  unitMeasureCode String @default("94") @map("unit_measure_code")
-  standardCode String @default("999") @map("standard_code")
-  taxCode String? @default("01") @map("tax_code")
-  taxRate Decimal? @default(0) @map("tax_rate") @db.Decimal(5, 2)
-  isTaxExcluded Boolean @default(false) @map("is_tax_excluded")
+  id                String   @id @default(cuid())
+  legacyMongoId     String?  @unique @map("legacy_mongo_id")
+  productName       String   @map("product_name")
+  productCode       String   @map("product_code")
+  categoryId        String   @map("category_id")
+  unitId            String   @map("unit_id")
+  buyingPrice       Decimal  @map("buying_price") @db.Decimal(12, 2)
+  sellingPrice      Decimal  @map("selling_price") @db.Decimal(12, 2)
+  stock             Int      @default(0)
+  productImage      String   @default("default-product.png") @map("product_image")
+  unitMeasureCode   String   @default("94") @map("unit_measure_code")
+  standardCode      String   @default("999") @map("standard_code")
+  taxCode           String?  @default("01") @map("tax_code")
+  taxRate           Decimal? @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  isTaxExcluded     Boolean  @default(false) @map("is_tax_excluded")
   // Per-product override for the low-stock alert threshold (Escala+ plan
   // feature). Null means "use the account-wide default threshold".
-  lowStockThreshold Int? @map("low_stock_threshold")
-  createdById   String   @map("created_by")
-  updatedById   String?  @map("updated_by")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  lowStockThreshold Int?     @map("low_stock_threshold")
+  createdById       String   @map("created_by")
+  updatedById       String?  @map("updated_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  category      Category @relation(fields: [categoryId], references: [id])
-  unit          Unit     @relation(fields: [unitId], references: [id])
-  createdBy     User     @relation("ProductCreatedBy", fields: [createdById], references: [id])
-  updatedBy     User?    @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
-  orderDetails  OrderDetail[]
+  category        Category         @relation(fields: [categoryId], references: [id])
+  unit            Unit             @relation(fields: [unitId], references: [id])
+  createdBy       User             @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy       User?            @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+  orderDetails    OrderDetail[]
   purchaseDetails PurchaseDetail[]
 
   @@unique([productCode, createdById])
@@ -365,9 +393,9 @@ model Purchase {
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  supplier       Supplier        @relation(fields: [supplierId], references: [id])
-  createdBy      User            @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
-  updatedBy      User?           @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
+  supplier        Supplier         @relation(fields: [supplierId], references: [id])
+  createdBy       User             @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
+  updatedBy       User?            @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
   purchaseDetails PurchaseDetail[]
 
   @@index([createdById])
@@ -376,22 +404,22 @@ model Purchase {
 }
 
 model PurchaseDetail {
-  id              String    @id @default(cuid())
-  legacyMongoId   String?   @unique @map("legacy_mongo_id")
-  purchaseId      String    @map("purchase_id")
-  productId       String    @map("product_id")
-  quantity        Int
-  unitcost        Decimal   @db.Decimal(12, 2)
-  total           Decimal   @db.Decimal(12, 2)
-  returnProcessed Boolean   @default(false) @map("return_processed")
-  returnDate      DateTime? @map("return_date")
-  returnedQuantity Int      @default(0) @map("returned_quantity")
-  refundAmount    Decimal   @default(0) @map("refund_amount") @db.Decimal(12, 2)
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id               String    @id @default(cuid())
+  legacyMongoId    String?   @unique @map("legacy_mongo_id")
+  purchaseId       String    @map("purchase_id")
+  productId        String    @map("product_id")
+  quantity         Int
+  unitcost         Decimal   @db.Decimal(12, 2)
+  total            Decimal   @db.Decimal(12, 2)
+  returnProcessed  Boolean   @default(false) @map("return_processed")
+  returnDate       DateTime? @map("return_date")
+  returnedQuantity Int       @default(0) @map("returned_quantity")
+  refundAmount     Decimal   @default(0) @map("refund_amount") @db.Decimal(12, 2)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  purchase        Purchase  @relation(fields: [purchaseId], references: [id])
-  product         Product   @relation(fields: [productId], references: [id])
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
 
   @@index([purchaseId])
   @@index([productId])
@@ -414,10 +442,10 @@ model Order {
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 
-  customer      Customer    @relation(fields: [customerId], references: [id])
-  createdBy     User        @relation("OrderCreatedBy", fields: [createdById], references: [id])
-  updatedBy     User?       @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
-  orderDetails  OrderDetail[]
+  customer          Customer           @relation(fields: [customerId], references: [id])
+  createdBy         User               @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  updatedBy         User?              @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
+  orderDetails      OrderDetail[]
   electronicInvoice ElectronicInvoice?
 
   @@index([createdById])
@@ -436,8 +464,8 @@ model OrderDetail {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  order         Order    @relation(fields: [orderId], references: [id])
-  product       Product  @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])
@@ -445,31 +473,31 @@ model OrderDetail {
 }
 
 model ElectronicInvoice {
-  id              String                @id @default(cuid())
-  orderId         String                @unique @map("order_id")
-  companyId       String                @map("company_id")
-  countryCode     String                @map("country_code")
-  provider        String
-  status          ElectronicInvoiceStatus @default(draft)
-  externalId      String?               @unique @map("external_id")
-  referenceCode   String                @unique @map("reference_code")
-  invoiceNumber   String?               @map("invoice_number")
-  cufe            String?
-  qrUrl           String?               @map("qr_url") @db.Text
-  pdfUrl          String?               @map("pdf_url") @db.Text
-  xmlUrl          String?               @map("xml_url") @db.Text
-  rawRequest      Json?                 @map("raw_request")
-  rawResponse     Json?                 @map("raw_response")
-  fiscalSnapshot  Json?                 @map("fiscal_snapshot")
-  errorMessage    String?               @map("error_message") @db.Text
-  issuedAt        DateTime?             @map("issued_at")
-  createdAt       DateTime              @default(now()) @map("created_at")
-  updatedAt       DateTime              @updatedAt @map("updated_at")
+  id             String                  @id @default(cuid())
+  orderId        String                  @unique @map("order_id")
+  companyId      String                  @map("company_id")
+  countryCode    String                  @map("country_code")
+  provider       String
+  status         ElectronicInvoiceStatus @default(draft)
+  externalId     String?                 @unique @map("external_id")
+  referenceCode  String                  @unique @map("reference_code")
+  invoiceNumber  String?                 @map("invoice_number")
+  cufe           String?
+  qrUrl          String?                 @map("qr_url") @db.Text
+  pdfUrl         String?                 @map("pdf_url") @db.Text
+  xmlUrl         String?                 @map("xml_url") @db.Text
+  rawRequest     Json?                   @map("raw_request")
+  rawResponse    Json?                   @map("raw_response")
+  fiscalSnapshot Json?                   @map("fiscal_snapshot")
+  errorMessage   String?                 @map("error_message") @db.Text
+  issuedAt       DateTime?               @map("issued_at")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
 
-  order           Order                 @relation(fields: [orderId], references: [id])
-  company         Company               @relation(fields: [companyId], references: [id])
-  events          ElectronicInvoiceEvent[]
-  creditNotes     ElectronicCreditNote[]
+  order       Order                    @relation(fields: [orderId], references: [id])
+  company     Company                  @relation(fields: [companyId], references: [id])
+  events      ElectronicInvoiceEvent[]
+  creditNotes ElectronicCreditNote[]
 
   @@index([companyId, createdAt])
   @@index([countryCode, provider])
@@ -477,14 +505,14 @@ model ElectronicInvoice {
 }
 
 model ElectronicInvoiceEvent {
-  id                  String             @id @default(cuid())
-  electronicInvoiceId String             @map("electronic_invoice_id")
-  eventType           String             @map("event_type")
+  id                  String                   @id @default(cuid())
+  electronicInvoiceId String                   @map("electronic_invoice_id")
+  eventType           String                   @map("event_type")
   status              ElectronicInvoiceStatus?
   payload             Json?
-  createdAt           DateTime           @default(now()) @map("created_at")
+  createdAt           DateTime                 @default(now()) @map("created_at")
 
-  electronicInvoice   ElectronicInvoice  @relation(fields: [electronicInvoiceId], references: [id], onDelete: Cascade)
+  electronicInvoice ElectronicInvoice @relation(fields: [electronicInvoiceId], references: [id], onDelete: Cascade)
 
   @@index([electronicInvoiceId, createdAt])
   @@map("electronic_invoice_events")
@@ -509,8 +537,129 @@ model ElectronicCreditNote {
   createdAt             DateTime                @default(now()) @map("created_at")
   updatedAt             DateTime                @updatedAt @map("updated_at")
 
-  invoice               ElectronicInvoice       @relation(fields: [invoiceId], references: [id])
+  invoice ElectronicInvoice @relation(fields: [invoiceId], references: [id])
 
   @@index([invoiceId, createdAt])
   @@map("electronic_credit_notes")
+}
+
+// ─── Teams (collaborative accounts, Business plan and up) ──────────────────
+//
+// Ownership model: every business resource (Product, Order, Customer, ...)
+// stays scoped by its existing `createdById` column, which for a team
+// member's actions is set to the TEAM OWNER's user id, not the acting
+// member's - see resolveRequestActor() in auth.middleware.js. This means
+// every plan-limit check, uniqueness constraint and query already written
+// against createdById keeps working unmodified: a team is just its owner's
+// account, shared. TeamActivityLog is the audit trail for team-management
+// actions specifically (invites, role changes, removals) - it does not
+// track authorship of individual business records in this phase.
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String   @unique @map("owner_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner       User              @relation("TeamOwner", fields: [ownerId], references: [id])
+  roles       TeamRole[]
+  members     TeamMember[]
+  invitations TeamInvitation[]
+  activityLog TeamActivityLog[]
+
+  @@map("teams")
+}
+
+// Roles are per-team (not global) so each owner defines their own module
+// access levels. isOwnerRole marks the single implicit "Owner" role created
+// with the team - it always has admin on every module and cannot be edited
+// or deleted (enforced in team.service.js, not at the DB level).
+model TeamRole {
+  id          String   @id @default(cuid())
+  teamId      String   @map("team_id")
+  name        String
+  isOwnerRole Boolean  @default(false) @map("is_owner_role")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  team        Team                 @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  permissions TeamRolePermission[]
+  members     TeamMember[]
+  invitations TeamInvitation[]
+
+  @@unique([teamId, name])
+  @@map("team_roles")
+}
+
+// One row per (role, module). Missing rows mean "none" - see MODULE_KEYS in
+// team.permissions.js for the fixed set of valid moduleKey values.
+model TeamRolePermission {
+  id        String          @id @default(cuid())
+  roleId    String          @map("role_id")
+  moduleKey String          @map("module_key")
+  level     PermissionLevel @default(none)
+
+  role TeamRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, moduleKey])
+  @@map("team_role_permissions")
+}
+
+// No DB-level unique on userId: a removed membership (status: removed) is
+// kept for history, and app logic (not a constraint) enforces that a user
+// has at most one ACTIVE membership at a time across all teams.
+model TeamMember {
+  id          String           @id @default(cuid())
+  teamId      String           @map("team_id")
+  userId      String           @map("user_id")
+  roleId      String           @map("role_id")
+  status      TeamMemberStatus @default(active)
+  invitedById String?          @map("invited_by")
+  joinedAt    DateTime         @default(now()) @map("joined_at")
+  removedAt   DateTime?        @map("removed_at")
+
+  team Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id])
+  role TeamRole @relation(fields: [roleId], references: [id])
+
+  @@index([teamId, status])
+  @@index([userId])
+  @@map("team_members")
+}
+
+model TeamInvitation {
+  id          String               @id @default(cuid())
+  teamId      String               @map("team_id")
+  email       String
+  token       String               @unique
+  roleId      String               @map("role_id")
+  status      TeamInvitationStatus @default(pending)
+  invitedById String               @map("invited_by")
+  expiresAt   DateTime             @map("expires_at")
+  acceptedAt  DateTime?            @map("accepted_at")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  role      TeamRole @relation(fields: [roleId], references: [id])
+  invitedBy User     @relation("InvitationsSent", fields: [invitedById], references: [id])
+
+  @@index([teamId, status])
+  @@index([email])
+  @@map("team_invitations")
+}
+
+model TeamActivityLog {
+  id           String   @id @default(cuid())
+  teamId       String   @map("team_id")
+  actorId      String?  @map("actor_id")
+  action       String
+  targetUserId String?  @map("target_user_id")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, createdAt])
+  @@map("team_activity_logs")
 }

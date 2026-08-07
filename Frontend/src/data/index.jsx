@@ -13,6 +13,7 @@ import {
     ClockCircleOutlined,
     UndoOutlined,
     FileTextOutlined,
+    UsergroupAddOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 
@@ -85,20 +86,29 @@ export const steps = [
     },
 ];
 
-export const getMenuItems = (t, role, showElectronicInvoicing = false) => {
+// canAccess(moduleKey) gates the module-scoped items below for invited team
+// members with restricted roles (see TeamContext's hasPermission) - the
+// owner and solo/independent users always pass every check, so this only
+// ever hides items for someone acting on someone else's account. Defaults
+// to "always visible" so callers that don't pass it (or aren't inside a
+// team) see the full menu, same as before this existed.
+export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true) => {
     const items = [
         {
             key: "dashboard",
+            moduleKey: "dashboard",
             icon: <DashboardOutlined />,
             label: <Link to="/dashboard">{t("common.dashboard")}</Link>,
         },
         {
             key: "products",
+            moduleKey: "products",
             icon: <AppstoreOutlined />,
             label: <Link to="/products">{t("common.products")}</Link>,
         },
         {
             key: "orders",
+            moduleKey: "orders",
             icon: <ShoppingCartOutlined />,
             label: <Link to="/orders">{t("common.orders")}</Link>,
         },
@@ -109,35 +119,46 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false) => {
         }] : []),
         {
             key: "purchases",
+            moduleKey: "purchases",
             icon: <ShoppingOutlined />,
             label: <Link to="/purchases">{t("common.purchases")}</Link>,
         },
         {
             key: "customers",
+            moduleKey: "customers",
             icon: <TeamOutlined />,
             label: <Link to="/customers">{t("common.customers")}</Link>,
         },
         {
             key: "suppliers",
+            moduleKey: "suppliers",
             icon: <UserSwitchOutlined />,
             label: <Link to="/suppliers">{t("common.suppliers")}</Link>,
         },
         {
             key: "categories",
+            moduleKey: "categories",
             icon: <AppstoreOutlined />,
             label: <Link to="/categories">{t("common.categories")}</Link>,
         },
         {
             key: "reports",
+            moduleKey: "reports",
             icon: <BarChartOutlined />,
             label: <Link to="/reports">{t("common.reports")}</Link>,
         },
+        ...(showTeam ? [{
+            key: "team",
+            icon: <UsergroupAddOutlined />,
+            label: <Link to="/team">{t("common.team_nav")}</Link>,
+        }] : []),
         {
             key: "billing",
+            moduleKey: "billing",
             icon: <CreditCardOutlined />,
             label: <Link to="/billing">{t("common.billing")}</Link>,
         },
-    ];
+    ].filter((item) => !item.moduleKey || canAccess(item.moduleKey));
 
     if (role === "admin") {
         items.push({

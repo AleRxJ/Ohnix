@@ -1,9 +1,10 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Button, Typography, Modal, Form, Select, Input, List, Tag, Checkbox } from "antd";
-import { ArrowLeftOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, LockOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
+import { useTeam } from "../context/TeamContext";
 import useI18n from "../hooks/useI18n";
 import { subscriptionService } from "../services/subscriptionService";
 import SubscriptionPlanCard from "../components/profile/SubscriptionPlanCard";
@@ -99,6 +100,8 @@ const Billing = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, refreshUser } = useContext(AuthContext);
+    const { isOwner, hasPermission } = useTeam();
+    const canViewBilling = isOwner || hasPermission("billing", "view");
     const { t } = useI18n();
 
     const resolveLocalizedErrorMessage = (error, fallbackKey = "common.error") => {
@@ -257,6 +260,11 @@ const Billing = () => {
     };
 
     useEffect(() => {
+        if (!canViewBilling) {
+            setLoadingSubscription(false);
+            return;
+        }
+
         const run = async () => {
             try {
                 setLoadingSubscription(true);
@@ -278,7 +286,7 @@ const Billing = () => {
         };
 
         run();
-    }, [t, isAdmin, adminFilterStatus]);
+    }, [t, isAdmin, adminFilterStatus, canViewBilling]);
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -560,6 +568,20 @@ const Billing = () => {
 
         return username.includes(search) || email.includes(search);
     });
+
+    if (!canViewBilling) {
+        return (
+            <div className="min-h-screen bg-[#050608] text-white flex items-center justify-center p-6">
+                <div className="max-w-md rounded-[28px] border border-white/10 bg-white/[0.03] p-8 text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+                        <LockOutlined className="text-2xl text-[#A9B3B8]" />
+                    </div>
+                    <h2 className="mb-2 text-xl font-bold text-white">{t("team.billing_locked_title")}</h2>
+                    <p className="mb-0 text-sm text-[#A9B3B8]">{t("team.billing_locked_description")}</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#050608] text-white relative overflow-hidden">

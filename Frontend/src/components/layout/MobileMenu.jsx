@@ -1,14 +1,21 @@
 // components/layout/MobileMenu.jsx
 import React, { useEffect, useRef } from "react";
-import { Menu } from "antd";
+import { Menu, Skeleton } from "antd";
 import { getMenuItems } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
+import { useTeam } from "../../context/TeamContext";
+import useSubscription from "../../hooks/useSubscription";
+
+const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 
 const MobileMenu = ({ collapsed, currentPage, onClose }) => {
     const { user } = React.useContext(AuthContext);
+    const { team, hasPermission, loading: teamLoading } = useTeam();
+    const { plan } = useSubscription();
     const { t } = useI18n();
     const panelRef = useRef(null);
+    const showTeam = Boolean(team) || TEAM_CAPABLE_PLANS.includes(plan);
 
     useEffect(() => {
         const handlePointerDown = (event) => {
@@ -52,18 +59,26 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
                 <div className="px-4 py-3 h-full flex flex-col gap-3">
                     <div className="flex-1 rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] shadow-inner">
                         <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-[#29D8D5]/70 scrollbar-track-white/10 hover:scrollbar-thumb-[#44F3F0]">
-                            <Menu
-                                theme="dark"
-                                selectedKeys={[currentPage]}
-                                mode="inline"
-                                items={getMenuItems(t, user?.role, user?.company?.countryCode === "CO")}
-                                onClick={onClose}
-                                className="border-r-0"
-                                style={{
-                                    background: "transparent",
-                                    padding: "0.5rem",
-                                }}
-                            />
+                            {teamLoading ? (
+                                <div className="space-y-3 p-3">
+                                    {Array.from({ length: 6 }).map((_, i) => (
+                                        <Skeleton.Input key={i} active size="small" block style={{ height: 20 }} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <Menu
+                                    theme="dark"
+                                    selectedKeys={[currentPage]}
+                                    mode="inline"
+                                    items={getMenuItems(t, user?.role, user?.company?.countryCode === "CO", showTeam, hasPermission)}
+                                    onClick={onClose}
+                                    className="border-r-0"
+                                    style={{
+                                        background: "transparent",
+                                        padding: "0.5rem",
+                                    }}
+                                />
+                            )}
                         </div>
                     </div>
                 </div>

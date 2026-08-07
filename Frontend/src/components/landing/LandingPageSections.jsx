@@ -1146,6 +1146,22 @@ export const FeatureHubSection = ({ heading }) => {
             ),
         },
         {
+            title: "Colaboración en Equipo",
+            label: "TEAMS",
+            description: "Invita a tu equipo con roles y permisos por módulo, mira en tiempo real quién está viendo o editando cada registro, y evita que dos personas se pisen sobre el mismo dato. Disponible desde el plan Negocio.",
+            highlights: ["Roles y permisos por módulo", "Presencia en vivo", "Bloqueo de edición simultánea"],
+            accent: "#22C55E",
+            icon: (
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                    <circle cx="11" cy="10" r="4" />
+                    <path d="M4 26c0-4.5 3.1-8 7-8s7 3.5 7 8" />
+                    <circle cx="23" cy="9" r="3" />
+                    <path d="M19 15.3c3.2 0.3 5.8 2.9 6.4 6.7" />
+                    <circle cx="25" cy="24" r="3" fill="currentColor" stroke="none" opacity="0.9" />
+                </svg>
+            ),
+        },
+        {
             title: "Control de Acceso",
             label: "RBAC",
             description: "Gestiona permisos granulares por rol. Define quién puede ver, crear, editar o eliminar según su posición en la empresa — sin comprometer la seguridad.",

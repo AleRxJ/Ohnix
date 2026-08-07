@@ -143,6 +143,27 @@ export const PLAN_FEATURES = {
 
 export const getPlanFeatures = (plan) => PLAN_FEATURES[plan] ?? PLAN_FEATURES.starter;
 
+// ── Team seats per plan ─────────────────────────────────────────────────
+// Teams (collaborative accounts, see team.service.js) start at Negocio/
+// Business - not Escala, despite the older "multi-usuario próximamente"
+// comment on `scale` above. null = unlimited (Enterprise, custom-negotiated).
+// A seat counts an active TeamMember OR a still-pending invitation - both
+// reserve a spot so an owner can't out-invite their seat limit before any
+// invitee has even accepted (see assertSeatAvailable in team.service.js).
+export const TEAM_SEAT_LIMITS = {
+    starter: 0,
+    growth: 3,
+    scale: 10,
+    enterprise: null,
+};
+
+export const getTeamSeatLimit = (plan) =>
+    Object.prototype.hasOwnProperty.call(TEAM_SEAT_LIMITS, plan)
+        ? TEAM_SEAT_LIMITS[plan]
+        : 0;
+
+export const planSupportsTeams = (plan) => getTeamSeatLimit(plan) !== 0;
+
 const RESOURCE_CONFIG = {
     products: { model: "product", limitKey: "maxProducts", label: "products" },
     customers: { model: "customer", limitKey: "maxCustomers", label: "customers" },

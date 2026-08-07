@@ -35,6 +35,8 @@ import SalesChart from "../components/dashboard/SalesChart";
 import useI18n from "../hooks/useI18n";
 import { useCurrency } from "../context/CurrencyContext";
 import { subscriptionService } from "../services/subscriptionService";
+import { useTeam } from "../context/TeamContext";
+import { getFirstAccessibleRoute } from "../utils/teamRouting";
 
 const { useToken } = theme;
 const { Title, Text } = Typography;
@@ -45,6 +47,20 @@ const Dashboard = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
     const location = useLocation();
+    const { hasPermission, loading: teamLoading } = useTeam();
+    const canSeeBilling = hasPermission("billing", "view");
+    const canSeeDashboard = hasPermission("dashboard", "view");
+
+    // /dashboard is every entry point's default target (post-login, post-
+    // invite-acceptance, GuestRoute, etc.) - a restricted team member who
+    // hasn't been granted dashboard access would otherwise land here and
+    // just see a 403, instead of wherever they're actually allowed to work.
+    // Wait for team permissions to resolve first so this doesn't fire on
+    // stale/default state.
+    useEffect(() => {
+        if (teamLoading || canSeeDashboard) return;
+        navigate(getFirstAccessibleRoute(hasPermission), { replace: true });
+    }, [teamLoading, canSeeDashboard, hasPermission, navigate]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [dashboardData, setDashboardData] = useState({
@@ -65,15 +81,17 @@ const Dashboard = () => {
     const [isPolling, setIsPolling] = useState(false);
 
     useEffect(() => {
+        if (teamLoading || !canSeeDashboard) return;
         fetchDashboardData();
-    }, [timeframe]);
+    }, [timeframe, teamLoading, canSeeDashboard]);
 
     useEffect(() => {
-        fetchSubscriptionSnapshot();
-    }, []);
+        if (canSeeBilling) fetchSubscriptionSnapshot();
+    }, [canSeeBilling]);
 
     // Refetch subscription when page becomes visible (user returns to tab)
     useEffect(() => {
+        if (!canSeeBilling) return;
         const handleVisibilityChange = () => {
             if (document.visibilityState === "visible") {
                 fetchSubscriptionSnapshot();
@@ -81,7 +99,7 @@ const Dashboard = () => {
         };
         document.addEventListener("visibilitychange", handleVisibilityChange);
         return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-    }, []);
+    }, [canSeeBilling]);
 
     // Auto-poll subscription if there's an active request
     useEffect(() => {
@@ -387,6 +405,7 @@ const Dashboard = () => {
 
                 <section className="mt-6 animate-fade-up-delay">
                     <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)] p-6 backdrop-blur-md">
+                        {canSeeBilling && (
                         <div className="mb-5 rounded-xl border border-[#29D8D5]/20 bg-[#29D8D5]/8 p-4">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
@@ -427,6 +446,7 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         </div>
+                        )}
 
                         <Row gutter={[16, 16]}>
                             <Col xs={24} sm={12} lg={8}>

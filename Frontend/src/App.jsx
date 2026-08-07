@@ -6,6 +6,7 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import AuthContext from "./context/AuthContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
+import { TeamProvider, useTeam } from "./context/TeamContext";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
 
 // Lazy: ErrorPage uses antd (Result/Button) - same reasoning as
@@ -33,6 +34,7 @@ const Precios = lazy(() => import("./pages/Precios"));
 const SoftwareInventarioPymes = lazy(() => import("./pages/SoftwareInventarioPymes"));
 const FacturacionElectronica = lazy(() => import("./pages/FacturacionElectronica"));
 const OhnixVsAlegra = lazy(() => import("./pages/OhnixVsAlegra"));
+const ColaboracionEquipo = lazy(() => import("./pages/ColaboracionEquipo"));
 const ProfilePage = lazy(() => import("./components/ProfilePage"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DashboardLayout = lazy(() => import("./components/layout/DashboardLayout"));
@@ -48,6 +50,8 @@ const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
 const ElectronicInvoices = lazy(() => import("./pages/ElectronicInvoices"));
+const Team = lazy(() => import("./pages/Team"));
+const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
 
 const RouteLoadingFallback = () => (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center text-sm text-[#A9B3B8]">
@@ -59,6 +63,19 @@ const ColombiaInvoiceRoute = ({ children }) => {
     const { user, loading } = useContext(AuthContext);
     if (loading) return <RouteLoadingFallback />;
     return user?.company?.countryCode === "CO"
+        ? children
+        : <Navigate to="/dashboard" replace />;
+};
+
+// Billing is owner-only by default (a member needs an explicit billing:view
+// grant) - the nav link is already hidden for everyone else (data.jsx), this
+// is the same rule enforced at the route level so a direct URL visit can't
+// land on a page whose API calls will just 403.
+const RequireBillingAccess = ({ children }) => {
+    const { loading: authLoading } = useContext(AuthContext);
+    const { isOwner, hasPermission, loading: teamLoading } = useTeam();
+    if (authLoading || teamLoading) return <RouteLoadingFallback />;
+    return isOwner || hasPermission("billing", "view")
         ? children
         : <Navigate to="/dashboard" replace />;
 };
@@ -81,6 +98,7 @@ function App() {
             <CurrencyProvider>
                 <AuthProvider>
                     <BrowserRouter>
+                        <TeamProvider>
                         <Toaster />
                         <Suspense fallback={<RouteLoadingFallback />}>
                         <div>
@@ -93,6 +111,7 @@ function App() {
                             <Route path="/software-inventario-pymes" element={<SoftwareInventarioPymes />} />
                             <Route path="/facturacion-electronica-dian" element={<FacturacionElectronica />} />
                             <Route path="/comparativa/ohnix-vs-alegra" element={<OhnixVsAlegra />} />
+                            <Route path="/colaboracion-en-equipo" element={<ColaboracionEquipo />} />
                             <Route path="/demo" element={<Demo />} />
 
                             {/* Everything below uses antd components (Form, Table, etc.) */}
@@ -104,6 +123,9 @@ function App() {
                                 path="/reset-password"
                                 element={<ResetPassword />}
                             />
+                            {/* Public onboarding for an invited teammate - the token
+                                itself is the credential, no ProtectedRoute wrapper. */}
+                            <Route path="/team/invite/:token" element={<AcceptInvitation />} />
 
                             {/* Email verification route (protected, but doesn't require verification) */}
                             <Route
@@ -142,9 +164,10 @@ function App() {
                                 <Route path="suppliers" element={<Suppliers />} />
                                 <Route path="categories" element={<Category />} />
                                 <Route path="reports/*" element={<Reports />} />
-                                <Route path="billing" element={<Billing />} />
-                                <Route path="billing/payment-success" element={<PaymentSuccess />} />
-                                <Route path="billing/epayco-checkout" element={<EpaycoCheckout />} />
+                                <Route path="team" element={<Team />} />
+                                <Route path="billing" element={<RequireBillingAccess><Billing /></RequireBillingAccess>} />
+                                <Route path="billing/payment-success" element={<RequireBillingAccess><PaymentSuccess /></RequireBillingAccess>} />
+                                <Route path="billing/epayco-checkout" element={<RequireBillingAccess><EpaycoCheckout /></RequireBillingAccess>} />
                                 <Route path="admin/management" element={<AdminManagement />} />
                             </Route>
 
@@ -154,6 +177,7 @@ function App() {
                             </Routes>
                         </div>
                         </Suspense>
+                        </TeamProvider>
                     </BrowserRouter>
                 </AuthProvider>
             </CurrencyProvider>

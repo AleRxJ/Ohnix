@@ -8,15 +8,11 @@ import {
 } from "@ant-design/icons";
 import { formatDate } from "../../utils/category_units/dateUtils";
 import {
-    canEdit,
-    getOwnershipTag,
-    getOwnershipText,
-} from "../../utils/category_units/permissionUtils";
-import {
     PAGINATION_CONFIG,
     TABLE_SCROLL_CONFIG,
 } from "../../utils/category_units/constants";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const UnitTable = ({
     units,
@@ -29,6 +25,14 @@ const UnitTable = ({
 }) => {
     const [hoveredRow, setHoveredRow] = useState(null);
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
+    // Editing/deleting a unit is a module-level grant (Team > Roles), not a
+    // "did I personally create this row" check - team resources are all
+    // scoped under the same account, so a "created_by === me" comparison
+    // (the old rule here) was false for every record a team member didn't
+    // personally create, even with units:edit granted on their role. Global
+    // platform admins (isAdmin) still bypass this entirely, same as before.
+    const canEditModule = isAdmin || hasPermission("units", "edit");
 
     const columns = [
         {
@@ -59,7 +63,7 @@ const UnitTable = ({
             width: "50%",
             align: "center",
             render: (_, record) => {
-                const canEditRecord = canEdit(record, user, isAdmin);
+                const canEditRecord = canEditModule;
 
                 return (
                     <div className="flex items-center justify-center space-x-2">

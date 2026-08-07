@@ -1,15 +1,32 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Modal, Form, Input, Button, Space, Select, Tabs, Divider } from "antd";
 import { AppstoreOutlined } from "@ant-design/icons";
 import { FORM_RULES, MODAL_WIDTH } from "../../utils/category_units/constants";
 import { COMMON_UNITS, UNIT_CATEGORIES, getUnitsByCategory } from "../../utils/commonUnits";
 import useI18n from "../../hooks/useI18n";
+import AuthContext from "../../context/AuthContext";
+import { useTeam } from "../../context/TeamContext";
+import { useResourcePresence } from "../../hooks/useResourcePresence";
+import PresenceLockBar from "../team/PresenceLockBar";
 
 const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
     const { t } = useI18n();
     const [mode, setMode] = useState("common"); // "common" or "custom"
     const [selectedCategory, setSelectedCategory] = useState("Weight");
     const [selectedUnit, setSelectedUnit] = useState(null);
+    const { user } = useContext(AuthContext);
+    const { team } = useTeam();
+    const { viewers, lock, acquireLock, releaseLock } = useResourcePresence({
+        resourceType: "unit",
+        resourceId: editingUnit?._id,
+        active: visible && Boolean(team) && Boolean(editingUnit?._id),
+    });
+
+    useEffect(() => {
+        if (visible && editingUnit?._id && team) acquireLock();
+        if (!visible) releaseLock();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible, editingUnit?._id]);
 
     useEffect(() => {
         if (visible) {
@@ -184,13 +201,16 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
             )}
 
             {editingUnit && (
-                <CustomUnitForm
-                    form={form}
-                    onSubmit={handleSubmit}
-                    onCancel={onClose}
-                    editingUnit={editingUnit}
-                    t={t}
-                />
+                <>
+                    {team && <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />}
+                    <CustomUnitForm
+                        form={form}
+                        onSubmit={handleSubmit}
+                        onCancel={onClose}
+                        editingUnit={editingUnit}
+                        t={t}
+                    />
+                </>
             )}
         </Modal>
     );

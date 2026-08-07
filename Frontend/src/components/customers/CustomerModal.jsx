@@ -1,7 +1,11 @@
-import React from "react";
+import React, { useContext, useEffect } from "react";
 import { Modal } from "antd";
 import CustomerForm from "./CustomerForm";
 import useI18n from "../../hooks/useI18n";
+import AuthContext from "../../context/AuthContext";
+import { useTeam } from "../../context/TeamContext";
+import { useResourcePresence } from "../../hooks/useResourcePresence";
+import PresenceLockBar from "../team/PresenceLockBar";
 
 const CustomerModal = ({
     visible,
@@ -14,6 +18,19 @@ const CustomerModal = ({
     editingCustomer,
 }) => {
     const { t } = useI18n();
+    const { user } = useContext(AuthContext);
+    const { team } = useTeam();
+    const { viewers, lock, acquireLock, releaseLock } = useResourcePresence({
+        resourceType: "customer",
+        resourceId: editingCustomer?._id,
+        active: visible && Boolean(team) && Boolean(editingCustomer?._id),
+    });
+
+    useEffect(() => {
+        if (visible && editingCustomer?._id && team) acquireLock();
+        if (!visible) releaseLock();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible, editingCustomer?._id]);
 
     return (
         <Modal
@@ -40,6 +57,9 @@ const CustomerModal = ({
                 body: { padding: "24px" },
             }}
         >
+            {team && editingCustomer?._id && (
+                <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+            )}
             <CustomerForm
                 form={form}
                 onSubmit={onSubmit}

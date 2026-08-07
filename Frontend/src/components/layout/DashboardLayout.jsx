@@ -7,6 +7,7 @@ import DashboardHeader from "./DashboardHeader";
 import DashboardSidebar from "./DashboardSidebar";
 import MobileMenu from "./MobileMenu";
 import AuthContext from "../../context/AuthContext";
+import { useTeam } from "../../context/TeamContext";
 import { subscriptionService } from "../../services/subscriptionService";
 import { toast } from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
@@ -180,8 +181,15 @@ const DashboardLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
+    const { isOwner, hasPermission } = useTeam();
     const { currentLanguage } = useI18n();
     const lang = currentLanguage === "es" ? "es" : "en";
+    // Promotional "upgrade/renew now" nudges only make sense for whoever can
+    // actually act on them - a member with no billing access can't do
+    // anything about them and the CTA is a dead end (see subscription.routes.js).
+    // The hard block screen below (isBlocked) is NOT gated by this - losing
+    // access because the account lapsed is real for everyone, not a nudge.
+    const canActOnBilling = isOwner || hasPermission("billing", "edit");
 
     useEffect(() => {
         const checkScreenSize = () => {
@@ -250,13 +258,14 @@ const DashboardLayout = () => {
         renewalDaysLeft !== null &&
         renewalDaysLeft <= 7 &&
         !renewalBannerDismissed &&
-        user?.role !== "admin";
+        user?.role !== "admin" &&
+        canActOnBilling;
 
     // Never show trial banners on the payment-success page (user just paid)
     const isOnPaymentSuccess = location.pathname.includes("payment-success");
 
     // Show expired banner on every page except billing (no dismiss — must act)
-    const showExpiredBanner = trialGraceActive && !isOnPaymentSuccess && user?.role !== "admin" && currentPage !== "billing";
+    const showExpiredBanner = trialGraceActive && !isOnPaymentSuccess && user?.role !== "admin" && currentPage !== "billing" && canActOnBilling;
 
     // Show urgency banner when ≤3 days left AND still on starter (dismissable for the session)
     const showUrgencyBanner =
@@ -265,7 +274,8 @@ const DashboardLayout = () => {
         !bannerDismissed &&
         !isOnPaymentSuccess &&
         isStarterPlan &&
-        user?.role !== "admin";
+        user?.role !== "admin" &&
+        canActOnBilling;
 
     const handleDismissBanner = () => {
         sessionStorage.setItem("trial_banner_dismissed", "1");

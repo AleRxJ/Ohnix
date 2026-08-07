@@ -23,14 +23,17 @@
   "description": "",
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.5.1",
+    "cookie": "^0.7.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-rate-limit": "^8.6.2",
     "fs": "^0.0.1-security",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.10.1",
     "multer": "^1.4.5-lts.1",
@@ -38,9 +41,11 @@
     "nodemon": "^3.1.9",
     "pdfkit": "^0.16.0",
     "prettier": "^3.5.1",
+    "socket.io": "^4.8.3",
     "stripe": "^16.12.0"
   },
   "devDependencies": {
-    "prisma": "^6.19.3"
+    "prisma": "^6.19.3",
+    "socket.io-client": "^4.8.3"
   }
 }

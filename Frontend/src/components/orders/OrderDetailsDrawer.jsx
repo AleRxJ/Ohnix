@@ -1,3 +1,4 @@
+import { useContext } from "react";
 import { Drawer, Tag, Empty, Spin, Button, Table, Divider } from "antd";
 import {
     FilePdfOutlined,
@@ -11,6 +12,10 @@ import { getStatusColor } from "../../utils/orderHelpers";
 import { getStatusIcon } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
+import AuthContext from "../../context/AuthContext";
+import { useTeam } from "../../context/TeamContext";
+import { useResourcePresence } from "../../hooks/useResourcePresence";
+import PresenceLockBar from "../team/PresenceLockBar";
 
 const OrderDetailsDrawer = ({
     visible,
@@ -22,6 +27,17 @@ const OrderDetailsDrawer = ({
 }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
+    const { user } = useContext(AuthContext);
+    const { team } = useTeam();
+    // View-only presence here (no lock) - order status changes happen inline
+    // in OrdersTable's row select, not in this read-only details drawer, so
+    // there's no single "edit form" moment to soft-lock against.
+    const { viewers } = useResourcePresence({
+        resourceType: "order",
+        resourceId: selectedOrder?._id,
+        active: visible && Boolean(team) && Boolean(selectedOrder?._id),
+    });
+
     if (!selectedOrder) return null;
 
     const isCancelled = selectedOrder.order_status === "cancelled";
@@ -108,6 +124,7 @@ const OrderDetailsDrawer = ({
             }}
         >
             <div className="space-y-6">
+                {team && <PresenceLockBar viewers={viewers} lock={null} currentUserId={user?.id} />}
                 <div className="flex items-center justify-between pb-4 border-b border-white/10">
                     <span className="text-sm font-medium text-[#A9B3B8] uppercase tracking-wide">
                         {t("common.status")}

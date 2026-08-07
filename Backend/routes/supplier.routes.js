@@ -10,6 +10,7 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit } from "../middleware/pricing.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
+import { requireModulePermission } from "../middleware/team.permissions.js";
 
 const router = Router();
 
@@ -20,12 +21,12 @@ router.route("/admin/all").get(isAdmin, getAllSuppliers);
 // Regular user routes
 router
     .route("/")
-    .post(enforceEntityLimit("suppliers"), upload.single("photo"), createSupplier)
-    .get(getUserSuppliers);
+    .post(requireModulePermission("suppliers", "edit"), enforceEntityLimit("suppliers"), upload.single("photo"), createSupplier)
+    .get(requireModulePermission("suppliers", "view"), getUserSuppliers);
 
 router
     .route("/:id")
-    .patch(upload.single("photo"), updateSupplier)
-    .delete(deleteSupplier);
+    .patch(requireModulePermission("suppliers", "edit"), upload.single("photo"), updateSupplier)
+    .delete(requireModulePermission("suppliers", "edit"), deleteSupplier);
 
 export default router;

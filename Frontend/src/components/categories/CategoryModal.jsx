@@ -1,8 +1,12 @@
-import React, { useEffect } from "react";
+import React, { useContext, useEffect } from "react";
 import { Modal, Form, Input, Button, Space } from "antd";
 import { TagsOutlined } from "@ant-design/icons";
 import { FORM_RULES, MODAL_WIDTH } from "../../utils/category_units/constants";
 import useI18n from "../../hooks/useI18n";
+import AuthContext from "../../context/AuthContext";
+import { useTeam } from "../../context/TeamContext";
+import { useResourcePresence } from "../../hooks/useResourcePresence";
+import PresenceLockBar from "../team/PresenceLockBar";
 
 const CategoryModal = ({
     visible,
@@ -12,6 +16,20 @@ const CategoryModal = ({
     form,
 }) => {
     const { t } = useI18n();
+    const { user } = useContext(AuthContext);
+    const { team } = useTeam();
+    const { viewers, lock, acquireLock, releaseLock } = useResourcePresence({
+        resourceType: "category",
+        resourceId: editingCategory?._id,
+        active: visible && Boolean(team) && Boolean(editingCategory?._id),
+    });
+
+    useEffect(() => {
+        if (visible && editingCategory?._id && team) acquireLock();
+        if (!visible) releaseLock();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible, editingCategory?._id]);
+
     useEffect(() => {
         if (visible) {
             if (editingCategory) {
@@ -58,6 +76,9 @@ const CategoryModal = ({
                 body: { padding: "20px 24px 24px" },
             }}
         >
+            {team && editingCategory?._id && (
+                <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+            )}
             <Form
                 form={form}
                 layout="vertical"

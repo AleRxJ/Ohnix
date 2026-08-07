@@ -7,6 +7,7 @@ import {
     getEffectivePlan,
     getMonthBounds,
     getPlanLimits,
+    getTeamSeatLimit,
 } from "../middleware/pricing.middleware.js";
 import {
     notifyAdminsUpgradeRequestCreated,
@@ -439,11 +440,32 @@ export const updateUserPlan = asyncHandler(async (req, res, next) => {
 
     const targetUser = await prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true },
+        select: { id: true, ownedTeam: { select: { id: true } } },
     });
 
     if (!targetUser) {
         return next(new ApiError(404, "Target user not found"));
+    }
+
+    // Downgrade block (decided over upgrade): a plan change that would leave
+    // an owner with more active team members than the new plan's seat limit
+    // allows is rejected outright - they must remove members first instead
+    // of the system silently deciding who loses access.
+    if (targetUser.ownedTeam) {
+        const newSeatLimit = getTeamSeatLimit(plan);
+        if (newSeatLimit !== null) {
+            const activeMemberCount = await prisma.teamMember.count({
+                where: { teamId: targetUser.ownedTeam.id, status: "active" },
+            });
+            if (activeMemberCount > newSeatLimit) {
+                return next(
+                    new ApiError(
+                        409,
+                        `No se puede cambiar al plan ${plan}: el equipo tiene ${activeMemberCount} miembro(s) activo(s), que supera el límite de ${newSeatLimit} de ese plan. Remueve miembros primero.`
+                    )
+                );
+            }
+        }
     }
 
     await ensureUserSubscription(targetUser.id);

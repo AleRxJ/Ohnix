@@ -98,6 +98,9 @@ const Footer = () => {
                         <Link to="/facturacion-electronica-dian" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
                             Facturación electrónica
                         </Link>
+                        <Link to="/colaboracion-en-equipo" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                            Equipos colaborativos
+                        </Link>
                         <Link to="/precios" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
                             Precios
                         </Link>

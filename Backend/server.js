@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
+import http from "http";
 import connectDB from "./db/index.js";
 import { app } from "./app.js";
+import { initSocketServer } from "./live/socketServer.js";
 import lowStockScheduler from "./utils/lowStockScheduler.js";
 import renewalScheduler from "./utils/subscriptionRenewalScheduler.js";
 import { reconcileLegacyApprovedRequests } from "./utils/subscriptionReconcile.js";
@@ -39,8 +41,12 @@ connectDB()
             );
         }
 
-        app.listen(port, () => {
+        const httpServer = http.createServer(app);
+        initSocketServer(httpServer);
+
+        httpServer.listen(port, () => {
             console.log(`✅ Server listening on http://localhost:${port}/`);
+            console.log(`🔌 Socket.IO live collaboration ready at /api/v1/socket.io`);
 
             if (process.env.START_SCHEDULER !== "false") {
                 console.log("🚀 Starting low stock alert scheduler...");

@@ -2,19 +2,20 @@ import React from "react";
 import { Modal, Button, Typography, Tag, Divider } from "antd";
 import { EditOutlined, CloseOutlined } from "@ant-design/icons";
 import { formatDateTime } from "../../utils/category_units/dateUtils";
-import {
-    canEdit,
-    getOwnershipText,
-} from "../../utils/category_units/permissionUtils";
+import { getOwnershipText } from "../../utils/category_units/permissionUtils";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const { Title, Text } = Typography;
 
 const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
     if (!unit) return null;
 
-    const showEditButton = canEdit(unit, user, isAdmin);
+    // Module-level grant (Team > Roles), not "did I create this row" - see
+    // the comment in UnitTable.jsx.
+    const showEditButton = isAdmin || hasPermission("units", "edit");
     const createdByName = getOwnershipText(unit, user);
     const updatedByName = unit.updated_by?.username || createdByName;
     const isOwner = (unit.created_by?._id || unit.created_by) === user?._id;

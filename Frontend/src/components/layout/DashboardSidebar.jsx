@@ -1,18 +1,25 @@
 // components/layout/DashboardSidebar.jsx
 import React, { useContext } from "react";
-import { Layout, Menu, Avatar } from "antd";
+import { Layout, Menu, Avatar, Skeleton } from "antd";
 import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import AuthContext from "../../context/AuthContext";
+import { useTeam } from "../../context/TeamContext";
+import useSubscription from "../../hooks/useSubscription";
 import { getMenuItems } from "../../data";
 import useI18n from "../../hooks/useI18n";
 
 const { Sider } = Layout;
 
+const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
+
 const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     const { user, logout } = useContext(AuthContext);
+    const { team, hasPermission, loading: teamLoading } = useTeam();
+    const { plan } = useSubscription();
     const { t } = useI18n();
     const navigate = useNavigate();
+    const showTeam = Boolean(team) || TEAM_CAPABLE_PLANS.includes(plan);
 
     const handleLogoClick = () => {
         navigate("/dashboard");
@@ -47,18 +54,31 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
             <div className="mx-4 mb-4 h-px bg-white/10"></div>
 
             <div className="px-3">
-                <Menu
-                    theme="dark"
-                    defaultSelectedKeys={[currentPage]}
-                    mode="inline"
-                    items={getMenuItems(t, user?.role, user?.company?.countryCode === "CO").map((item) => ({
-                        ...item,
-                    }))}
-                    className="border-r-0"
-                    style={{
-                        background: "transparent",
-                    }}
-                />
+                {teamLoading ? (
+                    // Never render the unfiltered menu while permissions are
+                    // still resolving - a restricted member briefly seeing
+                    // (and then losing) items they can't use was the "menu
+                    // flicker" bug. A few skeleton bars is a fixed, tiny cost
+                    // instead of a visible flash of the wrong menu.
+                    <div className="space-y-3 px-2 py-2">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <Skeleton.Input key={i} active size="small" block style={{ height: 20 }} />
+                        ))}
+                    </div>
+                ) : (
+                    <Menu
+                        theme="dark"
+                        defaultSelectedKeys={[currentPage]}
+                        mode="inline"
+                        items={getMenuItems(t, user?.role, user?.company?.countryCode === "CO", showTeam, hasPermission).map((item) => ({
+                            ...item,
+                        }))}
+                        className="border-r-0"
+                        style={{
+                            background: "transparent",
+                        }}
+                    />
+                )}
             </div>
 
             {!collapsed && <SidebarUserProfile user={user} logout={handleLogout} t={t} />}

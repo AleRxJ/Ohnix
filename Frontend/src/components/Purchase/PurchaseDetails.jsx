@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
     Modal,
     Table,
@@ -14,12 +14,24 @@ import { getStatusColor } from "../../utils/purchaseUtils";
 import { getStatusIconPurchase } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
+import AuthContext from "../../context/AuthContext";
+import { useTeam } from "../../context/TeamContext";
+import { useResourcePresence } from "../../hooks/useResourcePresence";
+import PresenceLockBar from "../team/PresenceLockBar";
 
 const { Text, Title } = Typography;
 
 const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
+    const { user } = useContext(AuthContext);
+    const { team } = useTeam();
+    // View-only presence, same reasoning as OrderDetailsDrawer.
+    const { viewers } = useResourcePresence({
+        resourceType: "purchase",
+        resourceId: purchase?._id,
+        active: visible && Boolean(team) && Boolean(purchase?._id),
+    });
     const detailColumns = [
         {
             title: t("products.product"),
@@ -126,6 +138,9 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
             style={{ maxWidth: 1200 }}
             className="purchase-details-modal"
         >
+            {purchase && team && (
+                <PresenceLockBar viewers={viewers} lock={null} currentUserId={user?.id} />
+            )}
             {purchase && (
                 <Card className="mb-6 border-0 shadow-sm">
                     <Descriptions

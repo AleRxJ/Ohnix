@@ -14,34 +14,39 @@ import {
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforcePlanFeature } from "../middleware/pricing.middleware.js";
+import { requireModulePermission } from "../middleware/team.permissions.js";
 
 const router = express.Router();
 
 router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
 
-// Dashboard metrics
-router.route("/dashboard").get(getDashboardMetrics);
+// Dashboard metrics live under their own "dashboard" module (not "reports")
+// so a freshly invited team member with the default Miembro role - which
+// grants dashboard:view and nothing else - lands on a working overview
+// instead of a blank/403'd screen. Everything else here stays behind
+// "reports", which the owner grants explicitly per role.
+router.route("/dashboard").get(requireModulePermission("dashboard", "view"), getDashboardMetrics);
 
 // Stock report
-router.route("/stock").get(getStockReport);
+router.route("/stock").get(requireModulePermission("reports", "view"), getStockReport);
 
 // Sales report — Negocio ($49) and above
-router.route("/sales").get(enforcePlanFeature("reportSales"), getSalesReport);
+router.route("/sales").get(requireModulePermission("reports", "view"), enforcePlanFeature("reportSales"), getSalesReport);
 
 // Purchase report — Negocio ($49) and above
-router.route("/purchases").get(enforcePlanFeature("reportPurchases"), getPurchaseReport);
+router.route("/purchases").get(requireModulePermission("reports", "view"), enforcePlanFeature("reportPurchases"), getPurchaseReport);
 
 // Top products report — Negocio ($49) and above
-router.route("/top-products").get(enforcePlanFeature("reportTopProducts"), getTopProducts);
+router.route("/top-products").get(requireModulePermission("reports", "view"), enforcePlanFeature("reportTopProducts"), getTopProducts);
 
 // Low stock alerts with optional email notification
-router.route("/low-stock-alerts").get(getLowStockAlerts);
+router.route("/low-stock-alerts").get(requireModulePermission("reports", "view"), getLowStockAlerts);
 
 // Advanced reports — Escala ($99) and above
-router.route("/profit-margin").get(enforcePlanFeature("advancedReports"), getProfitMarginReport);
-router.route("/top-customers").get(enforcePlanFeature("advancedReports"), getTopCustomersReport);
-router.route("/sales-by-team").get(enforcePlanFeature("advancedReports"), getSalesByTeamReport);
-router.route("/period-comparison").get(enforcePlanFeature("advancedReports"), getPeriodComparisonReport);
+router.route("/profit-margin").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getProfitMarginReport);
+router.route("/top-customers").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getTopCustomersReport);
+router.route("/sales-by-team").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getSalesByTeamReport);
+router.route("/period-comparison").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getPeriodComparisonReport);
 
 // Admin-only routes - could be added if needed
 // router.route("/admin/all-users-sales").get(isAdmin, getAllUsersSalesReport);

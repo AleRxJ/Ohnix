@@ -9,10 +9,12 @@ import StatsSection from "../components/common/StatsSection";
 import CategorySection from "../components/categories/CategorySection";
 import UnitSection from "../components/units/UnitSection";
 import useI18n from "../hooks/useI18n";
+import { useTeam } from "../context/TeamContext";
 
 const CategoryUnit = () => {
     const { t } = useI18n();
     const { user, isAdmin } = useAuth();
+    const { team } = useTeam();
     // ✅ Llamar a los hooks UNA SOLA VEZ aquí
     const categoryHook = useCategories();
     const unitHook = useUnits();
@@ -33,6 +35,7 @@ const CategoryUnit = () => {
                     <StatsSection
                         categoryStats={categoryHook.stats}
                         unitStats={unitHook.stats}
+                        showMineStats={!team}
                     />
                 </div>
 
