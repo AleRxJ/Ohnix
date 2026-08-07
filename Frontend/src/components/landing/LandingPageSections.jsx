@@ -1674,7 +1674,7 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 </div>
                                 <div>
                                     <p className="text-sm text-[#A9B3B8]">Email</p>
-                                    <a href="mailto:alejandrovallejo10@outlook.com" className="text-white font-medium hover:text-[#29D8D5]">alejandrovallejo10@outlook.com</a>
+                                    <a href="mailto:info@itcycle.com" className="text-white font-medium hover:text-[#29D8D5]">info@itcycle.com</a>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">
