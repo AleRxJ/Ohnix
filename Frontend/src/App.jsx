@@ -61,8 +61,9 @@ const RouteLoadingFallback = () => (
 
 const ColombiaInvoiceRoute = ({ children }) => {
     const { user, loading } = useContext(AuthContext);
-    if (loading) return <RouteLoadingFallback />;
-    return user?.company?.countryCode === "CO"
+    const { hasPermission, loading: teamLoading } = useTeam();
+    if (loading || teamLoading) return <RouteLoadingFallback />;
+    return user?.company?.countryCode === "CO" && hasPermission("orders", "view")
         ? children
         : <Navigate to="/dashboard" replace />;
 };
@@ -79,6 +80,27 @@ const RequireBillingAccess = ({ children }) => {
         ? children
         : <Navigate to="/dashboard" replace />;
 };
+
+// Same reasoning as RequireBillingAccess, generalized: every module nav
+// link is already hidden for a member whose role has no access to it
+// (data.jsx), but nothing stopped a direct URL visit from landing on the
+// page anyway - it would just fetch, get a 403 per request, and render an
+// empty table full of error toasts. This closes that gap for any module.
+const requireModuleAccess = (moduleKey) => ({ children }) => {
+    const { loading: authLoading } = useContext(AuthContext);
+    const { hasPermission, loading: teamLoading } = useTeam();
+    if (authLoading || teamLoading) return <RouteLoadingFallback />;
+    return hasPermission(moduleKey, "view")
+        ? children
+        : <Navigate to="/dashboard" replace />;
+};
+const RequireReportsAccess = requireModuleAccess("reports");
+const RequireProductsAccess = requireModuleAccess("products");
+const RequireOrdersAccess = requireModuleAccess("orders");
+const RequirePurchasesAccess = requireModuleAccess("purchases");
+const RequireCustomersAccess = requireModuleAccess("customers");
+const RequireSuppliersAccess = requireModuleAccess("suppliers");
+const RequireCategoriesAccess = requireModuleAccess("categories");
 
 // AntdConfigProvider pulls in the whole "vendor-antd" chunk (see
 // vite.config.js) - the marketing pages below (LandingPage, Precios, Demo,
@@ -156,14 +178,14 @@ function App() {
                                 }
                             >
                                 <Route path="dashboard" element={<Dashboard />} />
-                                <Route path="products" element={<Products />} />
-                                <Route path="orders" element={<Orders />} />
+                                <Route path="products" element={<RequireProductsAccess><Products /></RequireProductsAccess>} />
+                                <Route path="orders" element={<RequireOrdersAccess><Orders /></RequireOrdersAccess>} />
                                 <Route path="electronic-invoices" element={<ColombiaInvoiceRoute><ElectronicInvoices /></ColombiaInvoiceRoute>} />
-                                <Route path="purchases" element={<Purchase />} />
-                                <Route path="customers" element={<Customers />} />
-                                <Route path="suppliers" element={<Suppliers />} />
-                                <Route path="categories" element={<Category />} />
-                                <Route path="reports/*" element={<Reports />} />
+                                <Route path="purchases" element={<RequirePurchasesAccess><Purchase /></RequirePurchasesAccess>} />
+                                <Route path="customers" element={<RequireCustomersAccess><Customers /></RequireCustomersAccess>} />
+                                <Route path="suppliers" element={<RequireSuppliersAccess><Suppliers /></RequireSuppliersAccess>} />
+                                <Route path="categories" element={<RequireCategoriesAccess><Category /></RequireCategoriesAccess>} />
+                                <Route path="reports/*" element={<RequireReportsAccess><Reports /></RequireReportsAccess>} />
                                 <Route path="team" element={<Team />} />
                                 <Route path="billing" element={<RequireBillingAccess><Billing /></RequireBillingAccess>} />
                                 <Route path="billing/payment-success" element={<RequireBillingAccess><PaymentSuccess /></RequireBillingAccess>} />

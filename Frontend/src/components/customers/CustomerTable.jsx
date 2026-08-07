@@ -12,11 +12,14 @@ import {
 } from "@ant-design/icons";
 import { Typography } from "antd";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const { Text } = Typography;
 
 const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("customers", "edit");
     const tableShellClass = "rounded-xl shadow-sm border border-white/10 overflow-hidden bg-[#0B0B0B]/92";
     // Mobile card view for small screens
     const MobileCustomerCard = ({ customer }) => (
@@ -56,6 +59,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                                 size="small"
                                 onClick={() => onEdit(customer)}
                                 className="text-[#29D8D5]"
+                                disabled={!canEdit}
                             />
                             <Popconfirm
                                 title={t("customers.delete_customer")}
@@ -64,12 +68,14 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                                 okText={t("common.delete")}
                                 cancelText={t("common.cancel")}
                                 okButtonProps={{ danger: true }}
+                                disabled={!canEdit}
                             >
                                 <Button
                                     type="text"
                                     icon={<DeleteOutlined />}
                                     size="small"
                                     className="text-red-400"
+                                    disabled={!canEdit}
                                 />
                             </Popconfirm>
                         </Space>
@@ -204,13 +210,14 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                             className="text-[#44F3F0] hover:text-[#44F3F0] hover:bg-white/5"
                         />
                     </Tooltip>
-                    <Tooltip title={t("customers.edit_customer")}>
+                    <Tooltip title={canEdit ? t("customers.edit_customer") : t("common.no_permission_to_edit")}>
                         <Button
                             type="text"
                             icon={<EditOutlined />}
                             size="small"
                             onClick={() => onEdit(record)}
                             className="text-[#29D8D5] hover:text-[#29D8D5] hover:bg-white/5"
+                            disabled={!canEdit}
                         />
                     </Tooltip>
                     <Popconfirm
@@ -220,13 +227,15 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                         okText={t("common.delete")}
                         cancelText={t("common.cancel")}
                         okButtonProps={{ danger: true }}
+                        disabled={!canEdit}
                     >
-                        <Tooltip title={t("customers.delete_customer")}>
+                        <Tooltip title={canEdit ? t("customers.delete_customer") : t("common.no_permission_to_delete")}>
                             <Button
                                 type="text"
                                 icon={<DeleteOutlined />}
                                 size="small"
                                 className="text-red-400 hover:text-red-300 hover:bg-white/5"
+                                disabled={!canEdit}
                             />
                         </Tooltip>
                     </Popconfirm>

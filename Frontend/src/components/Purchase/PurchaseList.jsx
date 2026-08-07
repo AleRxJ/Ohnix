@@ -8,6 +8,7 @@ import {
     Typography,
     Space,
     Divider,
+    Tooltip,
 } from "antd";
 import {
     PlusOutlined,
@@ -22,6 +23,7 @@ import ReturnPreview from "./ReturnPreview";
 import { generatePurchaseNo } from "../../utils/purchaseUtils";
 import { Form } from "antd";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const { Title } = Typography;
 
@@ -46,6 +48,8 @@ const PurchaseList = ({
     const [selectedPurchase, setSelectedPurchase] = useState(null);
     const [form] = Form.useForm();
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("purchases", "edit");
 
     const handleViewDetails = async (purchase) => {
         setSelectedPurchase(purchase);
@@ -115,14 +119,19 @@ const PurchaseList = ({
                             />
                         </Col>
                         <Col className="w-full sm:w-auto">
-                            <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                size="large"
-                                onClick={handleAddPurchase}
-                                className="w-full sm:w-auto bg-[#44F3F0] text-[#021314] border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-                            > {t("purchases.add_new_purchase")}
-                            </Button>
+                            <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
+                                <span className="w-full sm:w-auto inline-block">
+                                    <Button
+                                        type="primary"
+                                        icon={<PlusOutlined />}
+                                        size="large"
+                                        onClick={handleAddPurchase}
+                                        className="w-full sm:w-auto bg-[#44F3F0] text-[#021314] border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+                                        disabled={!canEdit}
+                                    > {t("purchases.add_new_purchase")}
+                                    </Button>
+                                </span>
+                            </Tooltip>
                         </Col>
                     </Row>
                 </Card>

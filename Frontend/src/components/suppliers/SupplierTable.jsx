@@ -8,6 +8,7 @@ import {
     UserOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const SupplierTable = ({
     suppliers,
@@ -18,6 +19,11 @@ const SupplierTable = ({
     isAdmin = false,
 }) => {
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
+    // isAdmin here is the platform-admin "view everyone's suppliers" mode
+    // (unrelated to team roles) - canEditTeam is the separate team-role gate
+    // for a regular account's own suppliers.
+    const canEditTeam = hasPermission("suppliers", "edit");
     const columns = [
         {
             title: t("suppliers.photo"),
@@ -97,8 +103,9 @@ const SupplierTable = ({
                         icon: <EyeOutlined />,
                         onClick: () => onView(record),
                     },
-                    // Only show edit/delete for non-admin or if user owns the supplier
-                    ...(!isAdmin || record.canEdit
+                    // Only show edit/delete for non-admin or if user owns the supplier,
+                    // and only if the team role also grants suppliers:edit.
+                    ...((!isAdmin || record.canEdit) && canEditTeam
                         ? [
                               {
                                   key: "edit",

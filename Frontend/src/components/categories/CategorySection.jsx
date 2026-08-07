@@ -6,9 +6,12 @@ import CategoryModal from "./CategoryModal";
 import CategoryViewModal from "./CategoryViewModal";
 import SearchFilter from "../common/SearchFilter";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const CategorySection = ({ user, isAdmin, categoryHook }) => {
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
+    const canEdit = isAdmin || hasPermission("categories", "edit");
     const {
         categories,
         loading,
@@ -106,20 +109,25 @@ const CategorySection = ({ user, isAdmin, categoryHook }) => {
                                 {t("common.refresh")}
                             </Button>
                         </Tooltip>
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() => openModal()}
-                            className="bg-[#29D8D5] hover:bg-[#44F3F0] border-[#29D8D5] hover:border-[#44F3F0] text-[#021314]"
-                            style={{ 
-                                height: '36px',
-                                borderRadius: '8px',
-                                fontWeight: 500
-                            }}
-                        >
-                            <span className="hidden sm:inline">{t("categories.add_category")}</span>
-                            <span className="sm:hidden">{t("common.add")}</span>
-                        </Button>
+                        <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
+                            <span>
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => openModal()}
+                                    className="bg-[#29D8D5] hover:bg-[#44F3F0] border-[#29D8D5] hover:border-[#44F3F0] text-[#021314]"
+                                    style={{
+                                        height: '36px',
+                                        borderRadius: '8px',
+                                        fontWeight: 500
+                                    }}
+                                    disabled={!canEdit}
+                                >
+                                    <span className="hidden sm:inline">{t("categories.add_category")}</span>
+                                    <span className="sm:hidden">{t("common.add")}</span>
+                                </Button>
+                            </span>
+                        </Tooltip>
                     </div>
                 }
                 bodyStyle={{ padding: '20px 24px' }}

@@ -10,6 +10,7 @@ import {
 import { getStatusIcon } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
+import { useTeam } from "../../context/TeamContext";
 
 const { Option } = Select;
 
@@ -24,6 +25,10 @@ const OrdersTable = ({
 }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
+    const { hasPermission } = useTeam();
+    // Invoice download only needs orders:view (matches the backend route),
+    // but changing status is an orders:edit action.
+    const canEdit = hasPermission("orders", "edit");
 
     const columns = [
         {
@@ -94,13 +99,13 @@ const OrdersTable = ({
                             <Button type="text" icon={<EyeOutlined />} onClick={() => onViewDetails(record)} className="text-[#44F3F0] hover:text-[#44F3F0] hover:bg-white/5" />
                         </Tooltip>
 
-                        <Tooltip title={isTerminal ? t("orders.status_final") : ""}>
+                        <Tooltip title={isTerminal ? t("orders.status_final") : (canEdit ? "" : t("common.no_permission_to_edit"))}>
                             <Select
                                 value={record.order_status}
                                 size="small"
                                 style={{ width: 140 }}
                                 onChange={(value) => onUpdateStatus(record._id, value)}
-                                disabled={isTerminal}
+                                disabled={isTerminal || !canEdit}
                                 className="rounded"
                             >
                                 {ORDER_STATUSES.map((status) => (

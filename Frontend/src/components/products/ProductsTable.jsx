@@ -18,6 +18,7 @@ import {
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
+import { useTeam } from "../../context/TeamContext";
 
 const { Text } = Typography;
 
@@ -31,6 +32,12 @@ const ProductsTable = ({
 }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
+    const { hasPermission } = useTeam();
+    // Backend already rejects the mutation for a team member without
+    // products:edit, but leaving Edit/Delete visibly enabled here would let
+    // them fill out a whole edit form (or confirm a delete) just to hit a
+    // 403 - disable + explain instead, matching Categories/Units.
+    const canEdit = hasPermission("products", "edit");
 
     // Mobile Card View Component
     const MobileProductCard = ({ product }) => (
@@ -71,6 +78,7 @@ const ProductsTable = ({
                                 onClick={() => onEdit(product)}
                                 type="text"
                                 size="small"
+                                disabled={!canEdit}
                             />
                             <Popconfirm
                                 title={t("products.delete_product")}
@@ -78,6 +86,7 @@ const ProductsTable = ({
                                 onConfirm={() => onDelete(product._id)}
                                 okText={t("common.yes")}
                                 cancelText={t("common.no")}
+                                disabled={!canEdit}
                                 icon={
                                     <ExclamationCircleOutlined
                                         style={{ color: "red" }}
@@ -89,6 +98,7 @@ const ProductsTable = ({
                                     danger
                                     type="text"
                                     size="small"
+                                    disabled={!canEdit}
                                 />
                             </Popconfirm>
                         </div>
@@ -241,21 +251,23 @@ const ProductsTable = ({
                             size="small"
                         />
                     </Tooltip>
-                    <Tooltip title={t("common.edit")}>
+                    <Tooltip title={canEdit ? t("common.edit") : t("common.no_permission_to_edit")}>
                         <Button
                             icon={<EditOutlined />}
                             onClick={() => onEdit(record)}
                             type="text"
                             size="small"
+                            disabled={!canEdit}
                         />
                     </Tooltip>
-                    <Tooltip title={t("common.delete")}>
+                    <Tooltip title={canEdit ? t("common.delete") : t("common.no_permission_to_delete")}>
                         <Popconfirm
                             title={t("products.delete_product")}
                             description={t("common.warning")}
                             onConfirm={() => onDelete(record._id)}
                             okText={t("common.yes")}
                             cancelText={t("common.no")}
+                            disabled={!canEdit}
                             icon={
                                 <ExclamationCircleOutlined
                                     style={{ color: "red" }}
@@ -267,6 +279,7 @@ const ProductsTable = ({
                                 danger
                                 type="text"
                                 size="small"
+                                disabled={!canEdit}
                             />
                         </Popconfirm>
                     </Tooltip>

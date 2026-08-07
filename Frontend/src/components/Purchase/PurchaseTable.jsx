@@ -5,9 +5,14 @@ import dayjs from "dayjs";
 import { getStatusColor } from "../../utils/purchaseUtils";
 import { getStatusIconPurchase } from "../../data";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onViewDetails = () => {}, onUpdateStatus = () => {}, onReturnPreview = () => {} }) => {
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
+    // Return preview is a read (purchases:view, matches the backend route);
+    // marking completed/returned mutates status and needs purchases:edit.
+    const canEdit = hasPermission("purchases", "edit");
 
     const columns = [
         {
@@ -57,13 +62,14 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
                     </Tooltip>
 
                     {record.purchase_status === "pending" && (
-                        <Tooltip title={t("purchases.mark_completed")}>
+                        <Tooltip title={canEdit ? t("purchases.mark_completed") : t("common.no_permission_to_edit")}>
                             <Popconfirm
                                 title={t("purchases.confirm_mark_completed")}
                                 description={t("purchases.confirm_mark_completed_desc")}
                                 onConfirm={() => onUpdateStatus(record._id, "completed")}
+                                disabled={!canEdit}
                             >
-                                <Button icon={<CheckCircleOutlined />} size="small" type="primary" />
+                                <Button icon={<CheckCircleOutlined />} size="small" type="primary" disabled={!canEdit} />
                             </Popconfirm>
                         </Tooltip>
                     )}
@@ -73,13 +79,14 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
                             <Tooltip title={t("purchases.preview_return")}>
                                 <Button icon={<InfoCircleOutlined />} size="small" onClick={() => onReturnPreview(record._id)} />
                             </Tooltip>
-                            <Tooltip title={t("purchases.process_return")}>
+                            <Tooltip title={canEdit ? t("purchases.process_return") : t("common.no_permission_to_edit")}>
                                 <Popconfirm
                                     title={t("purchases.confirm_process_return")}
                                     description={t("purchases.confirm_process_return_desc")}
                                     onConfirm={() => onUpdateStatus(record._id, "returned")}
+                                    disabled={!canEdit}
                                 >
-                                    <Button icon={<UndoOutlined />} size="small" danger />
+                                    <Button icon={<UndoOutlined />} size="small" danger disabled={!canEdit} />
                                 </Popconfirm>
                             </Tooltip>
                         </>

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Form } from "antd";
+import { Form, Button, Tooltip } from "antd";
 import { PlusOutlined, ShoppingCartOutlined } from "@ant-design/icons";
 
 import PageHeader from "../components/common/PageHeader";
@@ -12,9 +12,12 @@ import OrderDetailsDrawer from "../components/orders/OrderDetailsDrawer";
 import { useOrders } from "../hooks/orders/useOrders";
 import { useOrderOperations } from "../hooks/orders/useOrderOperations";
 import useI18n from "../hooks/useI18n";
+import { useTeam } from "../context/TeamContext";
 
 const Orders = () => {
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("orders", "edit");
     const [createModalVisible, setCreateModalVisible] = useState(false);
     const [detailsDrawerVisible, setDetailsDrawerVisible] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -95,9 +98,22 @@ const Orders = () => {
                         title={t("orders.orders")}
                         subtitle={t("orders.manage_orders_description")}
                         icon={<ShoppingCartOutlined />}
-                        actionText={t("orders.create_order")}
-                        actionIcon={<PlusOutlined />}
-                        onActionClick={() => setCreateModalVisible(true)}
+                        actionButton={
+                            <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
+                                <span className="w-full sm:w-auto inline-block">
+                                    <Button
+                                        type="primary"
+                                        icon={<PlusOutlined />}
+                                        onClick={() => setCreateModalVisible(true)}
+                                        size="large"
+                                        className="w-full min-w-[120px] sm:w-auto"
+                                        disabled={!canEdit}
+                                    >
+                                        {t("orders.create_order")}
+                                    </Button>
+                                </span>
+                            </Tooltip>
+                        }
                     />
 
                     <OrderStats stats={stats} />

@@ -10,9 +10,12 @@ import UnitModal from "./UnitModal";
 import UnitViewModal from "./UnitViewModal";
 import SearchFilter from "../common/SearchFilter";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const UnitSection = ({ user, isAdmin, unitHook }) => {
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
+    const canEdit = isAdmin || hasPermission("units", "edit");
     const {
         units,
         loading,
@@ -110,20 +113,25 @@ const UnitSection = ({ user, isAdmin, unitHook }) => {
                                 {t("common.refresh")}
                             </Button>
                         </Tooltip>
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() => openModal()}
-                            className="bg-[#44F3F0] hover:bg-[#29D8D5] border-[#44F3F0] hover:border-[#29D8D5] text-[#021314]"
-                            style={{
-                                height: "36px",
-                                borderRadius: "8px",
-                                fontWeight: 500,
-                            }}
-                        >
-                            <span className="hidden sm:inline">{t("units.add_unit")}</span>
-                            <span className="sm:hidden">{t("common.add")}</span>
-                        </Button>
+                        <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
+                            <span>
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => openModal()}
+                                    className="bg-[#44F3F0] hover:bg-[#29D8D5] border-[#44F3F0] hover:border-[#29D8D5] text-[#021314]"
+                                    style={{
+                                        height: "36px",
+                                        borderRadius: "8px",
+                                        fontWeight: 500,
+                                    }}
+                                    disabled={!canEdit}
+                                >
+                                    <span className="hidden sm:inline">{t("units.add_unit")}</span>
+                                    <span className="sm:hidden">{t("common.add")}</span>
+                                </Button>
+                            </span>
+                        </Tooltip>
                     </div>
                 }
                 bodyStyle={{ padding: "20px 24px" }}

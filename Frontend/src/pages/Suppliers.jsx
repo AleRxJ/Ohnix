@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Button, Tooltip } from "antd";
 import { PlusOutlined, UserOutlined } from "@ant-design/icons";
 import PageHeader from "../components/common/PageHeader";
 import SupplierStats from "../components/suppliers/SupplierStats";
@@ -11,6 +12,7 @@ import { useSupplierForm } from "../hooks/suppliers/useSupplierForm";
 import { useAuth } from "../hooks/useAuth";
 import useI18n from "../hooks/useI18n";
 import { filterSuppliers } from "../utils/supplierUtils";
+import { useTeam } from "../context/TeamContext";
 
 const Suppliers = () => {
     const { t } = useI18n();
@@ -22,6 +24,8 @@ const Suppliers = () => {
 
     // Get admin status from auth context
     const { isAdmin } = useAuth();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("suppliers", "edit");
 
     // Custom hooks
     const {
@@ -87,9 +91,22 @@ const Suppliers = () => {
                 title={t("suppliers.suppliers")}
                 subtitle={t("suppliers.manage_suppliers_description")}
                 icon={<UserOutlined />}
-                actionText={t("suppliers.add_supplier")}
-                actionIcon={<PlusOutlined />}
-                onActionClick={openCreateModal}
+                actionButton={
+                    <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
+                        <span className="w-full sm:w-auto inline-block">
+                            <Button
+                                type="primary"
+                                icon={<PlusOutlined />}
+                                onClick={openCreateModal}
+                                size="large"
+                                className="w-full min-w-[120px] sm:w-auto"
+                                disabled={!canEdit}
+                            >
+                                {t("suppliers.add_supplier")}
+                            </Button>
+                        </span>
+                    </Tooltip>
+                }
             />
 
             {/* Statistics Cards */}

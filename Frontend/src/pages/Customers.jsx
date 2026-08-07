@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Button, Input, Card, Form } from "antd";
+import { Button, Input, Card, Form, Tooltip } from "antd";
 import { PlusOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import { api } from "../api/api";
 import useI18n from "../hooks/useI18n";
+import { useTeam } from "../context/TeamContext";
 import {
     CustomerStats,
     CustomerTable,
@@ -13,6 +14,8 @@ import {
 
 const Customers = () => {
     const { t } = useI18n();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("customers", "edit");
     // State management
     const [state, setState] = useState({
         customers: [],
@@ -227,15 +230,20 @@ const Customers = () => {
                     size="large"
                     allowClear
                 />
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={openAddModal}
-                    size="large"
-                    className="min-w-40"
-                >
-                    {t("customers.add_customer")}
-                </Button>
+                <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
+                    <span>
+                        <Button
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            onClick={openAddModal}
+                            size="large"
+                            className="min-w-40"
+                            disabled={!canEdit}
+                        >
+                            {t("customers.add_customer")}
+                        </Button>
+                    </span>
+                </Tooltip>
             </div>
 
             {/* Results Summary */}

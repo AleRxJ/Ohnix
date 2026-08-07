@@ -14,6 +14,7 @@ import { useCategories } from "../hooks/products/useCategories";
 import { useUnits } from "../hooks/products/useUnits";
 import useI18n from "../hooks/useI18n";
 import useSubscription from "../hooks/useSubscription";
+import { useTeam } from "../context/TeamContext";
 
 import {
     prepareProductFormData,
@@ -35,6 +36,8 @@ const Products = () => {
     const { units } = useUnits();
     const { t, currentLanguage } = useI18n();
     const { can } = useSubscription();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("products", "edit");
 
     const [form] = Form.useForm();
 
@@ -221,19 +224,24 @@ const Products = () => {
                                     </span>
                                 </Tooltip>
                             )}
-                            <Button
-                                type="primary"
-                                icon={<PlusOutlined />}
-                                onClick={handleAddProduct}
-                                size="large"
-                                className="w-full sm:w-auto"
-                                block={window.innerWidth < 640}
-                            >
-                                <span className="hidden xs:inline">
-                                    {t("products.add_product")}
+                            <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
+                                <span className="w-full sm:w-auto inline-block">
+                                    <Button
+                                        type="primary"
+                                        icon={<PlusOutlined />}
+                                        onClick={handleAddProduct}
+                                        size="large"
+                                        className="w-full sm:w-auto"
+                                        block={window.innerWidth < 640}
+                                        disabled={!canEdit}
+                                    >
+                                        <span className="hidden xs:inline">
+                                            {t("products.add_product")}
+                                        </span>
+                                        <span className="inline xs:hidden">{t("common.add")}</span>
+                                    </Button>
                                 </span>
-                                <span className="inline xs:hidden">{t("common.add")}</span>
-                            </Button>
+                            </Tooltip>
                         </div>
                     </div>
 
