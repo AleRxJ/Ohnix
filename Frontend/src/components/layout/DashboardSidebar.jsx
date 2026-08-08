@@ -38,7 +38,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
             trigger={null}
             theme="dark"
             width={260}
-            className="hidden md:block"
+            className="hidden md:block no-print"
             style={{
                 overflowY: "auto",
                 height: "100vh",

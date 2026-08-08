@@ -2,8 +2,42 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
+import { streamReportPdf } from "../utils/reportPdf.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
+
+// Renders whichever report tab the client currently has on screen as a
+// branded PDF - the client sends the exact title/sections it already built
+// for its CSV/Excel export (see ReportExportButtons.jsx callers), so the
+// PDF always matches what's visibly filtered/searched, not a fresh
+// unfiltered re-query. This endpoint has no report-specific business logic
+// of its own on purpose.
+const exportReportPdf = asyncHandler(async (req, res, next) => {
+    const { title, subtitle, sections } = req.body || {};
+
+    if (!title || !Array.isArray(sections) || sections.length === 0) {
+        return next(new ApiError(400, "title and a non-empty sections array are required"));
+    }
+    const validSections = sections.every(
+        (s) => s && typeof s === "object" && (!s.table || (Array.isArray(s.table.headers) && Array.isArray(s.table.rows)))
+    );
+    if (!validSections) {
+        return next(new ApiError(400, "each section's table must have headers and rows arrays"));
+    }
+
+    const account = await prisma.user.findUnique({
+        where: { id: req.user.prismaId },
+        select: { username: true, company: { select: { name: true } } },
+    });
+
+    streamReportPdf(res, {
+        companyName: account?.company?.name,
+        title,
+        subtitle,
+        generatedFor: account?.company?.name || account?.username,
+        sections,
+    });
+});
 
 const getDashboardMetrics = asyncHandler(async (req, res, next) => {
     try {
@@ -778,4 +812,5 @@ export {
     getTopCustomersReport,
     getSalesByTeamReport,
     getPeriodComparisonReport,
+    exportReportPdf,
 };

@@ -82,7 +82,7 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
 
     return (
         <Header
-            className="px-6 flex items-center justify-between z-10 sticky top-0 h-16"
+            className="px-6 flex items-center justify-between z-10 sticky top-0 h-16 no-print"
             style={{
                 background:
                     "linear-gradient(180deg, rgba(9,10,12,0.95) 0%, rgba(9,10,12,0.86) 100%)",

@@ -868,6 +868,72 @@ body {
   background: transparent;
 }
 
+/* Print stylesheet -----------------------------------------------------
+   Without this, window.print() just rasterizes the live dark-themed SPA
+   as-is: sidebar, header, buttons, tab bar and all - unusable as an actual
+   document. .no-print hides app chrome and .print-only reveals a plain
+   header (see Reports.jsx) that only exists for the printed page. Scoped
+   to .dashboard-app so it never affects the public marketing site (which
+   has its own print needs, if any). */
+.print-only {
+  display: none;
+}
+
+@media print {
+  .no-print,
+  .no-print * {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  body,
+  .dashboard-app,
+  .dashboard-app * {
+    background: #ffffff !important;
+    color: #111111 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    border-color: #d9d9d9 !important;
+  }
+
+  .dashboard-app,
+  .dashboard-app * {
+    overflow: visible !important;
+  }
+
+  .dashboard-app .ant-table,
+  .dashboard-app .ant-card,
+  .dashboard-app .ant-tabs-content-holder,
+  .dashboard-app .ant-tabs-tabpane {
+    background: #ffffff !important;
+  }
+
+  .dashboard-app .ant-tag {
+    background: #f2f2f2 !important;
+    border: 1px solid #b0b0b0 !important;
+    color: #111111 !important;
+  }
+
+  /* Badge status dots (Table's stock-status column) carry their color as
+     an inline background - the blanket override above would otherwise
+     erase it, leaving an invisible dot on white. */
+  .dashboard-app .ant-badge-status-dot {
+    background: currentColor !important;
+  }
+  .dashboard-app .ant-badge-status-success { color: #389e0d !important; }
+  .dashboard-app .ant-badge-status-warning { color: #d48806 !important; }
+  .dashboard-app .ant-badge-status-error { color: #cf1322 !important; }
+  .dashboard-app .ant-badge-status-processing { color: #096dd9 !important; }
+  .dashboard-app .ant-badge-status-default { color: #595959 !important; }
+
+  .custom-tabs .ant-tabs-nav {
+    display: none !important;
+  }
+}
+
 /* antd Steps ships light-theme title colors by default and the compact
    container it was given here left the circle icon overlapping the title
    text at this width. */

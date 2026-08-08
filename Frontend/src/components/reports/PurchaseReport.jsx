@@ -36,7 +36,7 @@ import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
 import useI18n from "../../hooks/useI18n";
 import ReportExportButtons from "./ReportExportButtons";
-import { downloadCsv, downloadExcel } from "../../utils/exportReport";
+import { downloadCsv, downloadExcel, downloadPdfReport } from "../../utils/exportReport";
 
 const { RangePicker } = DatePicker;
 
@@ -161,6 +161,59 @@ const PurchaseReport = () => {
         toast.success(t("reports.purchase_report_exported"));
     };
 
+    const exportToPdf = async () => {
+        if (!purchaseData) {
+            toast.error(t("reports.no_data_to_export"));
+            return;
+        }
+        const summary = calculateSummary();
+        try {
+            await downloadPdfReport(
+                {
+                    title: t("reports.purchase_report"),
+                    subtitle: t("reports.report_description_purchases"),
+                    sections: [
+                        {
+                            summary: [
+                                [t("reports.total_purchases"), formatCurrency(summary.totalPurchases)],
+                                [t("suppliers.total_suppliers"), String(summary.totalSuppliers)],
+                                [t("reports.total_transactions"), String(summary.totalTransactions)],
+                            ],
+                        },
+                        {
+                            heading: t("reports.purchases_by_date"),
+                            table: {
+                                headers: [t("common.date"), t("reports.number_of_purchases")],
+                                rows: purchaseData.purchasesByDate.map((item) => [item._id, String(item.count)]),
+                            },
+                        },
+                        {
+                            heading: t("reports.purchases_by_supplier"),
+                            table: {
+                                headers: [
+                                    t("suppliers.supplier_name"),
+                                    t("suppliers.shop_name"),
+                                    t("reports.total_purchases"),
+                                    t("reports.purchase_count"),
+                                ],
+                                rows: purchaseData.purchasesBySupplier.map((item) => [
+                                    item.supplier_name,
+                                    item.shopname || "N/A",
+                                    formatCurrency(item.total_purchases),
+                                    String(item.count),
+                                ]),
+                            },
+                        },
+                    ],
+                },
+                `purchase-report-${dayjs().format("YYYY-MM-DD")}.pdf`
+            );
+            toast.success(t("reports.purchase_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_pdf_failed"));
+        }
+    };
+
     const supplierColumns = [
         {
             title: t("suppliers.supplier_name"),
@@ -259,6 +312,7 @@ const PurchaseReport = () => {
                         hasData={!!purchaseData}
                         onExportCsv={exportToCSV}
                         onExportExcel={exportToExcel}
+                        onExportPdf={exportToPdf}
                     />
                 </div>
             </Card>

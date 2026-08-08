@@ -41,7 +41,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
 
     return (
         <div
-            className="md:hidden fixed inset-0 transition-all duration-300 ease-in-out"
+            className="md:hidden fixed inset-0 transition-all duration-300 ease-in-out no-print"
             style={{
                 opacity: !collapsed ? 1 : 0,
                 pointerEvents: !collapsed ? "auto" : "none",

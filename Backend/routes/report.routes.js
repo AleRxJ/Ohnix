@@ -10,6 +10,7 @@ import {
     getTopCustomersReport,
     getSalesByTeamReport,
     getPeriodComparisonReport,
+    exportReportPdf,
 } from "../controllers/report.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
@@ -47,6 +48,16 @@ router.route("/profit-margin").get(requireModulePermission("reports", "view"), e
 router.route("/top-customers").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getTopCustomersReport);
 router.route("/sales-by-team").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getSalesByTeamReport);
 router.route("/period-comparison").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getPeriodComparisonReport);
+
+// PDF export - the app's default JSON body limit (16kb, app.js) is too small
+// for a full report table (hundreds of rows), so this route gets its own
+// parser with a higher limit rather than raising it globally.
+router.route("/export/pdf").post(
+    express.json({ limit: "5mb" }),
+    requireModulePermission("reports", "view"),
+    enforcePlanFeature("exportPdf"),
+    exportReportPdf
+);
 
 // Admin-only routes - could be added if needed
 // router.route("/admin/all-users-sales").get(isAdmin, getAllUsersSalesReport);

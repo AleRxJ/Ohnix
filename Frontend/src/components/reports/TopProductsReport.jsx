@@ -37,7 +37,7 @@ import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
 import useI18n from "../../hooks/useI18n";
 import ReportExportButtons from "./ReportExportButtons";
-import { downloadCsv, downloadExcel } from "../../utils/exportReport";
+import { downloadCsv, downloadExcel, downloadPdfReport } from "../../utils/exportReport";
 
 const { Option } = Select;
 
@@ -145,6 +145,57 @@ const TopProductsReport = () => {
             t("reports.top_products_report_summary")
         );
         toast.success(t("reports.top_products_report_exported"));
+    };
+
+    const exportToPdf = async () => {
+        if (topProducts.length === 0) {
+            toast.error(t("reports.no_data_to_export"));
+            return;
+        }
+        const summary = calculateSummary();
+        try {
+            await downloadPdfReport(
+                {
+                    title: t("reports.top_products"),
+                    subtitle: t("reports.report_description_top_products"),
+                    sections: [
+                        {
+                            summary: [
+                                [t("reports.total_products"), String(summary.totalProducts)],
+                                [t("reports.total_quantity_sold"), String(summary.totalQuantitySold)],
+                                [t("orders.total_revenue"), formatCurrency(summary.totalRevenue)],
+                            ],
+                            table: {
+                                headers: [
+                                    t("reports.rank"),
+                                    t("products.product_code"),
+                                    t("products.product_name"),
+                                    t("reports.quantity_sold"),
+                                    t("reports.total_sales_rupees"),
+                                    t("reports.average_price_rupees"),
+                                ],
+                                rows: topProducts.map((item, index) => {
+                                    const avgPrice =
+                                        item.quantity_sold > 0 ? item.total_sales / item.quantity_sold : 0;
+                                    return [
+                                        String(index + 1),
+                                        item.product_code,
+                                        item.product_name,
+                                        String(item.quantity_sold),
+                                        formatCurrency(item.total_sales),
+                                        formatCurrency(avgPrice),
+                                    ];
+                                }),
+                            },
+                        },
+                    ],
+                },
+                `top-products-report-${dayjs().format("YYYY-MM-DD")}.pdf`
+            );
+            toast.success(t("reports.top_products_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_pdf_failed"));
+        }
     };
 
     const columns = [
@@ -331,6 +382,7 @@ const TopProductsReport = () => {
                         hasData={topProducts.length > 0}
                         onExportCsv={exportToCSV}
                         onExportExcel={exportToExcel}
+                        onExportPdf={exportToPdf}
                     />
                 </div>
             </Card>

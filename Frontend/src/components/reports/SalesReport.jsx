@@ -37,7 +37,7 @@ import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
 import useI18n from "../../hooks/useI18n";
 import ReportExportButtons from "./ReportExportButtons";
-import { downloadCsv, downloadExcel } from "../../utils/exportReport";
+import { downloadCsv, downloadExcel, downloadPdfReport } from "../../utils/exportReport";
 
 const { RangePicker } = DatePicker;
 
@@ -153,6 +153,55 @@ const SalesReport = () => {
         toast.success(t("reports.sales_report_exported"));
     };
 
+    const exportToPdf = async () => {
+        if (!salesData) {
+            toast.error(t("reports.no_data_to_export"));
+            return;
+        }
+        try {
+            await downloadPdfReport(
+                {
+                    title: t("reports.sales_report"),
+                    subtitle: t("reports.report_description_sales"),
+                    sections: [
+                        {
+                            summary: [
+                                [t("reports.total_sales"), formatCurrency(salesData.summary.totalSales)],
+                                [t("orders.total_orders"), String(salesData.summary.totalOrders)],
+                            ],
+                        },
+                        {
+                            heading: t("reports.sales_by_date"),
+                            table: {
+                                headers: [t("common.date"), t("reports.total_sales"), t("orders.number_of_orders")],
+                                rows: salesData.salesByDate.map((item) => [
+                                    item._id,
+                                    formatCurrency(item.total),
+                                    String(item.orders),
+                                ]),
+                            },
+                        },
+                        {
+                            heading: t("reports.top_selling_products"),
+                            table: {
+                                headers: [t("products.product_name"), t("reports.quantity_sold"), t("reports.total_sales")],
+                                rows: salesData.salesByProduct.map((item) => [
+                                    item.product_name,
+                                    String(item.quantity),
+                                    formatCurrency(item.total),
+                                ]),
+                            },
+                        },
+                    ],
+                },
+                `sales-report-${dayjs().format("YYYY-MM-DD")}.pdf`
+            );
+            toast.success(t("reports.sales_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_pdf_failed"));
+        }
+    };
+
     const productColumns = [
         {
             title: t("products.product_name"),
@@ -233,6 +282,7 @@ const SalesReport = () => {
                         hasData={!!salesData}
                         onExportCsv={exportToCSV}
                         onExportExcel={exportToExcel}
+                        onExportPdf={exportToPdf}
                     />
                 </div>
             </Card>

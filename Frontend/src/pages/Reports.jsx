@@ -167,22 +167,45 @@ const Reports = () => {
 
     return (
         <div className="p-3 sm:p-6 max-w-7xl mx-auto text-white">
-            <PageHeader
-                title={
-                    <span className="text-lg sm:text-xl md:text-2xl">
-                        {isMobile
-                            ? t("reports.reports_and_analytics")
-                            : t("reports.business_reports_and_analytics")}
+            <div className="no-print">
+                <PageHeader
+                    title={
+                        <span className="text-lg sm:text-xl md:text-2xl">
+                            {isMobile
+                                ? t("reports.reports_and_analytics")
+                                : t("reports.business_reports_and_analytics")}
+                        </span>
+                    }
+                    subtitle={
+                        <span className="text-sm sm:text-base">
+                            {isMobile
+                                ? t("reports.comprehensive_business_insights")
+                                : t("reports.comprehensive_business_insights_long")}
+                        </span>
+                    }
+                />
+            </div>
+
+            {/* Print-only document header - hidden on screen, revealed by the
+                print stylesheet (index.css) so a printed report reads as an
+                actual document instead of a screenshot of the dashboard. */}
+            <div className="print-only mb-6">
+                <div className="flex items-baseline justify-between border-b border-black pb-2">
+                    <span className="text-xl font-bold">
+                        {user?.company?.name || "Ohnix"}
                     </span>
-                }
-                subtitle={
-                    <span className="text-sm sm:text-base">
-                        {isMobile
-                            ? t("reports.comprehensive_business_insights")
-                            : t("reports.comprehensive_business_insights_long")}
-                    </span>
-                }
-            />
+                    <span className="text-xs">Ohnix</span>
+                </div>
+                <h2 className="mt-3 mb-1 text-lg font-bold">
+                    {t("reports.print_report_label")}: {tabLabelByKey[activeTab]}
+                </h2>
+                <p className="mb-1 text-sm">{reportDescriptions[activeTab]}</p>
+                <p className="text-xs">
+                    {t("reports.print_generated_for")}: {user?.company?.name || user?.username}
+                    {" · "}
+                    {t("reports.print_generated_on")}: {new Date().toLocaleString(currentLanguage)}
+                </p>
+            </div>
 
             {/* Admin Notice */}
             {user?.role === "admin" && (
@@ -195,7 +218,7 @@ const Reports = () => {
                     }
                     type="info"
                     showIcon
-                    className="mb-4 sm:mb-6 dark-alert dark-alert-purple"
+                    className="no-print mb-4 sm:mb-6 dark-alert dark-alert-purple"
                 />
             )}
 
@@ -256,12 +279,12 @@ const Reports = () => {
                 type="success"
                 showIcon
                 icon={<ClockCircleOutlined />}
-                className="mb-4 sm:mb-6 dark-alert dark-alert-teal"
+                className="no-print mb-4 sm:mb-6 dark-alert dark-alert-teal"
             />
 
             {/* Quick Actions */}
             <Card
-                className="mb-4 sm:mb-6 border border-white/10 bg-[#0B0B0B]/90"
+                className="no-print mb-4 sm:mb-6 border border-white/10 bg-[#0B0B0B]/90"
                 size={isMobile ? "small" : "default"}
             >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -303,15 +326,6 @@ const Reports = () => {
                                 </Button>
                             </Tooltip>
                         )}
-                        <Button
-                            icon={<BarChartOutlined />}
-                            onClick={() => window.print()}
-                            size={isMobile ? "middle" : "default"}
-                        >
-                            {isMobile
-                                ? t("reports.print")
-                                : t("reports.print_report")}
-                        </Button>
                     </div>
                 </div>
             </Card>
@@ -354,7 +368,7 @@ const Reports = () => {
 
             {/* Mobile Active Tab Indicator */}
             {isMobile && (
-                <Card className="mb-4 border border-white/10 bg-[#0B0B0B]/90" size="small">
+                <Card className="no-print mb-4 border border-white/10 bg-[#0B0B0B]/90" size="small">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                             <Badge
@@ -381,7 +395,7 @@ const Reports = () => {
 
             {/* Footer Info */}
             <div
-                className={`mt-6 sm:mt-8 text-center text-[#A9B3B8] ${
+                className={`no-print mt-6 sm:mt-8 text-center text-[#A9B3B8] ${
                     isMobile ? "text-xs" : "text-sm"
                 }`}
             >

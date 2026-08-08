@@ -27,7 +27,7 @@ import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
 import useI18n from "../../hooks/useI18n";
 import ReportExportButtons from "./ReportExportButtons";
-import { downloadCsv, downloadExcel } from "../../utils/exportReport";
+import { downloadCsv, downloadExcel, downloadPdfReport } from "../../utils/exportReport";
 
 const StockReport = () => {
     const [stockData, setStockData] = useState([]);
@@ -147,6 +147,62 @@ const StockReport = () => {
             t("reports.stock_report_summary")
         );
         toast.success(t("reports.stock_report_exported"));
+    };
+
+    const buildPdfPayload = () => {
+        const summary = calculateSummary();
+        return {
+            title: t("reports.stock_report"),
+            subtitle: t("reports.report_description_stock"),
+            sections: [
+                {
+                    summary: [
+                        [t("reports.total_products"), String(summary.totalProducts)],
+                        [t("reports.in_stock"), String(summary.inStock)],
+                        [t("reports.low_stock"), String(summary.lowStock)],
+                        [t("reports.out_of_stock"), String(summary.outOfStock)],
+                        [t("reports.total_inventory_value"), formatCurrency(summary.totalInventoryValue)],
+                    ],
+                    table: {
+                        headers: [
+                            t("products.product_code"),
+                            t("products.product_name"),
+                            t("common.category"),
+                            t("common.unit"),
+                            t("common.stock_quantity"),
+                            t("reports.buying_price"),
+                            t("reports.selling_price"),
+                            t("reports.inventory_value"),
+                            t("common.status"),
+                        ],
+                        rows: filteredData.map((item) => [
+                            item.product_code,
+                            item.product_name,
+                            item.category_name,
+                            item.unit_name,
+                            String(item.stock),
+                            formatCurrency(item.buying_price),
+                            formatCurrency(item.selling_price),
+                            formatCurrency(item.inventory_value),
+                            getStatusLabel(item.status),
+                        ]),
+                    },
+                },
+            ],
+        };
+    };
+
+    const exportToPdf = async () => {
+        if (filteredData.length === 0) {
+            toast.error(t("reports.no_data_to_export"));
+            return;
+        }
+        try {
+            await downloadPdfReport(buildPdfPayload(), `stock-report-${dayjs().format("YYYY-MM-DD")}.pdf`);
+            toast.success(t("reports.stock_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_pdf_failed"));
+        }
     };
 
     const getStatusColor = (status) => {
@@ -348,6 +404,7 @@ const StockReport = () => {
                         hasData={filteredData.length > 0}
                         onExportCsv={exportToCSV}
                         onExportExcel={exportToExcel}
+                        onExportPdf={exportToPdf}
                     />
                 </div>
             </Card>

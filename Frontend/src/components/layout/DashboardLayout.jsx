@@ -115,7 +115,7 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = f
 
     return (
         <div
-            className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[1100] w-[calc(100%-2rem)] max-w-2xl"
+            className="no-print fixed bottom-5 left-1/2 -translate-x-1/2 z-[1100] w-[calc(100%-2rem)] max-w-2xl"
             style={{ filter: `drop-shadow(0 8px 40px ${glowColor})` }}
         >
             <div className="rounded-2xl p-px" style={{ background: borderGradient }}>
