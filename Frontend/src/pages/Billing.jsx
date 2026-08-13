@@ -146,6 +146,15 @@ const Billing = () => {
     // rejects starting a second one while this is true, to avoid a real
     // double charge, so the button is hidden here too instead of failing.
     const isPaymentPendingForRequest = (request) => request?.paymentStatus === "pending";
+    // A previous attempt is done and safe to retry, but the person needs to
+    // actually be told what happened to it - without this, a request whose
+    // payment was rejected/failed/expired just silently looks like a fresh
+    // "ready to pay" request again (correct - it IS retryable now - but the
+    // one-time toast/email is easy to miss, e.g. if the payment redirect
+    // landed on an expired session and bounced through /login first).
+    const TERMINAL_FAILED_PAYMENT_STATUSES = ["rejected", "failed", "amount_mismatch", "expired"];
+    const failedPaymentStatusForRequest = (request) =>
+        TERMINAL_FAILED_PAYMENT_STATUSES.includes(request?.paymentStatus) ? request.paymentStatus : null;
 
     const isRequestInProgress = (request) => {
         if (!request) {
@@ -790,6 +799,14 @@ const Billing = () => {
                                                     ? t("profile.subscription.request_status_help_approved_activated")
                                                     : t(`profile.subscription.request_status_help_${item.status}`)}
                                             </div>
+
+                                            {item.status === "approved" &&
+                                            !isPlanAlreadyActiveForRequest(item) &&
+                                            failedPaymentStatusForRequest(item) ? (
+                                                <div className="mt-4 rounded-2xl border border-rose-400/25 bg-rose-500/8 p-4 text-sm text-rose-100">
+                                                    {t(`profile.subscription.payment_status_${failedPaymentStatusForRequest(item)}`)}
+                                                </div>
+                                            ) : null}
 
                                             {item.status === "approved" &&
                                             !isPlanAlreadyActiveForRequest(item) &&

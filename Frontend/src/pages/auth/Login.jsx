@@ -1,6 +1,6 @@
 import { useState, useContext, useEffect } from "react";
 import { Form, Divider } from "antd";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import AuthContext from "../../context/AuthContext";
 import AuthLayout from "../../components/auth/AuthLayout";
 import AuthCard from "../../components/auth/AuthCard";
@@ -15,8 +15,24 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
     const { login } = useContext(AuthContext);
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams] = useSearchParams();
     const { t, currentLanguage } = useI18n();
+
+    // ProtectedRoute stashes the page the user was actually trying to reach
+    // (pathname + query string, e.g. /billing?payment=cancelled&requestId=...
+    // after bouncing back from an expired-session payment redirect) in
+    // router state before sending them here. Always landing on /dashboard
+    // instead silently threw that away - the user had no way to tell what
+    // had happened to a payment they'd just made, short of digging through
+    // the payment provider's own receipt page. `from` only ever comes from
+    // our own ProtectedRoute (never attacker-controlled via the URL itself),
+    // and is just a same-origin pathname+search, so this can't be turned
+    // into an open redirect.
+    const from = location.state?.from;
+    const postLoginRedirect = from?.pathname
+        ? `${from.pathname}${from.search || ""}`
+        : "/dashboard";
 
     useEffect(() => {
         const emailFromQuery = searchParams.get("email");
@@ -29,7 +45,7 @@ const Login = () => {
         setLoading(true);
         const result = await login(values);
         if (result.success) {
-            navigate("/dashboard");
+            navigate(postLoginRedirect, { replace: true });
         } else if (
             typeof result.message === "string" &&
             result.message.toLowerCase().includes("does not exist")
