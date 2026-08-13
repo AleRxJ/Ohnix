@@ -12,14 +12,22 @@ html {
 
 body {
   margin: 0;
-  background: #050505;
-  color: #ffffff;
+  background: var(--ohnix-bg);
+  color: var(--ohnix-text-primary);
   font-family: "Space Grotesk", "Manrope", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
+/* ---------------------------------------------------------------------
+   Design tokens — Dark is the existing, approved theme: every value below
+   is copied verbatim from the previous hardcoded styles, so the computed
+   dark output never changes. [data-ohnix-theme="lite"] (set on <html> by
+   ThemeContext.jsx) is the only place new values are introduced.
+   The public marketing site never sets/reads this attribute and uses its
+   own literal colors, so it is completely unaffected either way. --------- */
 :root {
+  /* Legacy brand variables, kept for compatibility with any existing usage */
   --ohnix-bg: #050505;
   --ohnix-surface: #0b0b0b;
   --ohnix-surface-2: #111214;
@@ -32,6 +40,146 @@ body {
   --ohnix-status-purple: #7c6af7;
   --ohnix-status-rose: #fb7185;
   --ohnix-status-amber: #f59e0b;
+
+  /* Surfaces */
+  --ohnix-bg-alt: #050608;
+  --ohnix-surface-3: #121316;
+  --ohnix-surface-4: #0f1012;
+  --ohnix-surface-card: rgba(11, 11, 11, 0.92);
+  --ohnix-surface-card-soft: rgba(11, 11, 11, 0.9);
+  --ohnix-surface-header: linear-gradient(180deg, rgba(9, 10, 12, 0.95) 0%, rgba(9, 10, 12, 0.86) 100%);
+  --ohnix-surface-sidebar: linear-gradient(180deg, #0b0b0b 0%, #0a1114 100%);
+
+  /* Text */
+  --ohnix-text-primary: #ffffff;
+  --ohnix-text-heading: #e5eef1;
+  --ohnix-text-table-head: #9fb0b8;
+  --ohnix-text-table-cell: #e6ecef;
+
+  /* Brand / semantic status — identical in both themes on purpose (section 4) */
+  --ohnix-accent-contrast: #021314;
+  --ohnix-accent-contrast-2: #031416;
+
+  /* Opacity scale used for hairline borders / hover overlays. Dark keeps a
+     white-based scale (unchanged values); Lite swaps to a dark-tinted scale
+     of matching visual weight so "border-white/10" style utilities read
+     correctly in both themes without per-component branching. */
+  --ohnix-line-1: rgba(255, 255, 255, 0.03);
+  --ohnix-line-2: rgba(255, 255, 255, 0.06);
+  --ohnix-line-3: rgba(255, 255, 255, 0.08);
+  --ohnix-line-4: rgba(255, 255, 255, 0.1);
+  --ohnix-line-5: rgba(255, 255, 255, 0.12);
+  --ohnix-line-6: rgba(255, 255, 255, 0.16);
+  --ohnix-line-7: rgba(255, 255, 255, 0.25);
+  --ohnix-hover-overlay: rgba(255, 255, 255, 0.08);
+  --ohnix-hover-overlay-strong: rgba(255, 255, 255, 0.12);
+
+  /* Shadows */
+  --ohnix-shadow-card: 0 18px 40px rgba(0, 0, 0, 0.35);
+  --ohnix-shadow-elevated: 0 20px 45px rgba(0, 0, 0, 0.42);
+  --ohnix-shadow-elevated-hover: 0 24px 54px rgba(0, 0, 0, 0.5);
+  --ohnix-shadow-soft: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --ohnix-shadow-dropdown: 0 16px 34px rgba(0, 0, 0, 0.45);
+
+  --ohnix-scrollbar-thumb: rgba(41, 216, 213, 0.3);
+}
+
+[data-ohnix-theme="lite"] {
+  --ohnix-bg: #eef1f4;
+  --ohnix-surface: #ffffff;
+  --ohnix-surface-2: #f7f9fa;
+  --ohnix-border: rgba(15, 23, 42, 0.1);
+  --ohnix-text-muted: #5b6b76;
+  --ohnix-text-soft: #33424c;
+  --ohnix-text-dim: #74838c;
+  /* --ohnix-accent / --ohnix-accent-2 / status-purple / status-rose /
+     status-amber intentionally omitted: brand + semantic colors stay
+     identical to Dark in both themes (see task section 4). */
+
+  --ohnix-bg-alt: #eef1f4;
+  --ohnix-surface-3: #eef2f4;
+  --ohnix-surface-4: #ffffff;
+  --ohnix-surface-card: rgba(255, 255, 255, 0.97);
+  --ohnix-surface-card-soft: rgba(255, 255, 255, 0.92);
+  --ohnix-surface-header: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(250, 251, 252, 0.9) 100%);
+  --ohnix-surface-sidebar: linear-gradient(180deg, #ffffff 0%, #f3f6f7 100%);
+
+  --ohnix-text-primary: #0f1720;
+  --ohnix-text-heading: #10181f;
+  --ohnix-text-table-head: #46545d;
+  --ohnix-text-table-cell: #1c262d;
+
+  --ohnix-line-1: rgba(15, 23, 42, 0.04);
+  --ohnix-line-2: rgba(15, 23, 42, 0.06);
+  --ohnix-line-3: rgba(15, 23, 42, 0.08);
+  --ohnix-line-4: rgba(15, 23, 42, 0.1);
+  --ohnix-line-5: rgba(15, 23, 42, 0.13);
+  --ohnix-line-6: rgba(15, 23, 42, 0.18);
+  --ohnix-line-7: rgba(15, 23, 42, 0.3);
+  --ohnix-hover-overlay: rgba(15, 23, 42, 0.045);
+  --ohnix-hover-overlay-strong: rgba(15, 23, 42, 0.08);
+
+  --ohnix-shadow-card: 0 12px 28px rgba(15, 23, 42, 0.08);
+  --ohnix-shadow-elevated: 0 18px 38px rgba(15, 23, 42, 0.1);
+  --ohnix-shadow-elevated-hover: 0 22px 46px rgba(15, 23, 42, 0.13);
+  --ohnix-shadow-soft: 0 8px 22px rgba(15, 23, 42, 0.07);
+  --ohnix-shadow-dropdown: 0 14px 30px rgba(15, 23, 42, 0.14);
+
+  --ohnix-scrollbar-thumb: rgba(41, 216, 213, 0.4);
+}
+
+/* The pre-authentication flow (login, signup, reset password, etc.) has no
+   logged-in account yet to own a theme preference, so it must always render
+   in Dark regardless of what the browser's last-seen theme was - re-pins
+   every token back to its Dark value on this class, overriding the
+   [data-ohnix-theme="lite"] cascade from <html> for anything nested inside
+   it (CSS custom properties resolve from the nearest ancestor that defines
+   them, so this wins over the root-level lite override). */
+.auth-shell {
+  --ohnix-bg: #050505;
+  --ohnix-surface: #0b0b0b;
+  --ohnix-surface-2: #111214;
+  --ohnix-border: rgba(255, 255, 255, 0.1);
+  --ohnix-text-muted: #a9b3b8;
+  --ohnix-text-soft: #d4dbdf;
+  --ohnix-text-dim: #8b98a0;
+  --ohnix-bg-alt: #050608;
+  --ohnix-surface-3: #121316;
+  --ohnix-surface-4: #0f1012;
+  --ohnix-surface-card: rgba(11, 11, 11, 0.92);
+  --ohnix-surface-card-soft: rgba(11, 11, 11, 0.9);
+  --ohnix-surface-header: linear-gradient(180deg, rgba(9, 10, 12, 0.95) 0%, rgba(9, 10, 12, 0.86) 100%);
+  --ohnix-surface-sidebar: linear-gradient(180deg, #0b0b0b 0%, #0a1114 100%);
+  --ohnix-text-primary: #ffffff;
+  --ohnix-text-heading: #e5eef1;
+  --ohnix-text-table-head: #9fb0b8;
+  --ohnix-text-table-cell: #e6ecef;
+  --ohnix-line-1: rgba(255, 255, 255, 0.03);
+  --ohnix-line-2: rgba(255, 255, 255, 0.06);
+  --ohnix-line-3: rgba(255, 255, 255, 0.08);
+  --ohnix-line-4: rgba(255, 255, 255, 0.1);
+  --ohnix-line-5: rgba(255, 255, 255, 0.12);
+  --ohnix-line-6: rgba(255, 255, 255, 0.16);
+  --ohnix-line-7: rgba(255, 255, 255, 0.25);
+  --ohnix-hover-overlay: rgba(255, 255, 255, 0.08);
+  --ohnix-hover-overlay-strong: rgba(255, 255, 255, 0.12);
+  --ohnix-shadow-card: 0 18px 40px rgba(0, 0, 0, 0.35);
+  --ohnix-shadow-elevated: 0 20px 45px rgba(0, 0, 0, 0.42);
+  --ohnix-shadow-elevated-hover: 0 24px 54px rgba(0, 0, 0, 0.5);
+  --ohnix-shadow-soft: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --ohnix-shadow-dropdown: 0 16px 34px rgba(0, 0, 0, 0.45);
+  --ohnix-scrollbar-thumb: rgba(41, 216, 213, 0.3);
+}
+
+/* Smooth, subtle cross-theme transition (rule 13) - scoped to the color
+   properties that actually change between themes, not layout/transform, so
+   it never fights the app's existing hover/entrance animations. Respects
+   prefers-reduced-motion via the existing blanket override further down. */
+.dashboard-app,
+.dashboard-app *,
+.auth-shell,
+.auth-shell * {
+  transition: background-color 220ms ease, border-color 220ms ease, color 220ms ease, box-shadow 220ms ease;
 }
 
 * {
@@ -43,7 +191,7 @@ body {
 .dashboard-stat-card {
   transition: all 0.3s ease;
 }
-  
+
 .dashboard-stat-card:hover {
   transform: translateY(-3px);
 }
@@ -203,13 +351,13 @@ body {
 .glass-panel:hover,
 .dashboard-app .ant-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.42);
+  box-shadow: var(--ohnix-shadow-elevated-hover);
 }
 
 .glass-panel {
-  background: linear-gradient(180deg, rgba(11, 11, 11, 0.92), rgba(8, 8, 8, 0.96));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.36);
+  background: linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
+  border: 1px solid var(--ohnix-border);
+  box-shadow: var(--ohnix-shadow-card);
   backdrop-filter: blur(10px);
 }
 
@@ -258,20 +406,20 @@ body {
 .auth-ohnix-input.ant-input-affix-wrapper,
 .auth-ohnix-input .ant-input,
 .auth-ohnix-input input {
-  background: #111214 !important;
-  color: #ffffff !important;
+  background: var(--ohnix-surface-2) !important;
+  color: var(--ohnix-text-primary) !important;
 }
 
 .auth-ohnix-input::placeholder,
 .auth-ohnix-input input::placeholder,
 .auth-ohnix-input .ant-input::placeholder {
-  color: #8b98a0 !important;
+  color: var(--ohnix-text-dim) !important;
 }
 
 .auth-ohnix-input.ant-input-affix-wrapper,
 .auth-ohnix-input.ant-input,
 .auth-ohnix-input .ant-input {
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: var(--ohnix-line-5) !important;
 }
 
 .auth-ohnix-input.ant-input-affix-wrapper:hover,
@@ -292,14 +440,14 @@ body {
 .auth-ohnix-input .ant-input-password-icon,
 .auth-ohnix-input .ant-input-clear-icon,
 .auth-ohnix-input .anticon {
-  color: #7f8b92 !important;
+  color: var(--ohnix-text-dim) !important;
 }
 
 .auth-ohnix-input.ant-select .ant-select-selector,
 .purchase-form-input.ant-select .ant-select-selector {
-  background: #111214 !important;
-  color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: var(--ohnix-surface-2) !important;
+  color: var(--ohnix-text-primary) !important;
+  border-color: var(--ohnix-line-5) !important;
 }
 
 .auth-ohnix-input.ant-select:hover .ant-select-selector,
@@ -317,12 +465,12 @@ body {
 .purchase-form-input.ant-select .ant-select-selection-item,
 .auth-ohnix-input.ant-select .ant-select-selection-search-input,
 .purchase-form-input.ant-select .ant-select-selection-search-input {
-  color: #ffffff !important;
+  color: var(--ohnix-text-primary) !important;
 }
 
 .auth-ohnix-input.ant-select .ant-select-selection-placeholder,
 .purchase-form-input.ant-select .ant-select-selection-placeholder {
-  color: #8b98a0 !important;
+  color: var(--ohnix-text-dim) !important;
 }
 
 .auth-ohnix-input.ant-select .ant-select-arrow,
@@ -333,9 +481,9 @@ body {
 }
 
 .ant-select:not(.ant-select-customize-input) .ant-select-selector {
-  background: #111214 !important;
-  color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: var(--ohnix-surface-2) !important;
+  color: var(--ohnix-text-primary) !important;
+  border-color: var(--ohnix-line-5) !important;
 }
 
 .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
@@ -349,11 +497,11 @@ body {
 
 .ant-select .ant-select-selection-item,
 .ant-select .ant-select-selection-search-input {
-  color: #ffffff !important;
+  color: var(--ohnix-text-primary) !important;
 }
 
 .ant-select .ant-select-selection-placeholder {
-  color: #8b98a0 !important;
+  color: var(--ohnix-text-dim) !important;
 }
 
 .ant-select .ant-select-arrow,
@@ -362,13 +510,13 @@ body {
 }
 
 .ant-select-dropdown {
-  background: #0f1012 !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45) !important;
+  background: var(--ohnix-surface-4) !important;
+  border: 1px solid var(--ohnix-line-5) !important;
+  box-shadow: var(--ohnix-shadow-dropdown) !important;
 }
 
 .ant-select-dropdown .ant-select-item {
-  color: #d4dbdf !important;
+  color: var(--ohnix-text-soft) !important;
 }
 
 .ant-select-dropdown .ant-select-item-option-active {
@@ -377,28 +525,28 @@ body {
 
 .ant-select-dropdown .ant-select-item-option-selected {
   background: rgba(41, 216, 213, 0.2) !important;
-  color: #ffffff !important;
+  color: var(--ohnix-text-primary) !important;
 }
 
 .ant-select-dropdown .ant-empty-description {
-  color: #8b98a0 !important;
+  color: var(--ohnix-text-dim) !important;
 }
 
 .antd-custom-table .ant-table {
   background: transparent !important;
-  color: #d4dbdf !important;
+  color: var(--ohnix-text-soft) !important;
 }
 
 .antd-custom-table .ant-table-thead > tr > th {
-  background: rgba(255, 255, 255, 0.02) !important;
-  color: #9fb0b8 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: var(--ohnix-line-1) !important;
+  color: var(--ohnix-text-table-head) !important;
+  border-bottom: 1px solid var(--ohnix-line-3) !important;
 }
 
 .antd-custom-table .ant-table-tbody > tr > td {
   background: transparent !important;
-  color: #e6ecef !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: var(--ohnix-text-table-cell) !important;
+  border-bottom: 1px solid var(--ohnix-line-2) !important;
 }
 
 .antd-custom-table .ant-table-tbody > tr:hover > td {
@@ -416,7 +564,7 @@ body {
 .antd-custom-table .ant-pagination-total-text,
 .antd-custom-table .ant-pagination-prev .ant-pagination-item-link,
 .antd-custom-table .ant-pagination-next .ant-pagination-item-link {
-  color: #a9b3b8 !important;
+  color: var(--ohnix-text-muted) !important;
 }
 
 .antd-custom-table .ant-pagination-item-active {
@@ -429,7 +577,7 @@ body {
 
 .module-dark-table .ant-table {
   background: transparent !important;
-  color: #e6ecef !important;
+  color: var(--ohnix-text-table-cell) !important;
 }
 
 .module-dark-table .ant-table-container,
@@ -443,24 +591,24 @@ body {
 }
 
 .module-dark-table .ant-empty {
-  color: #a9b3b8 !important;
+  color: var(--ohnix-text-muted) !important;
 }
 
 .module-dark-table .ant-empty-description,
 .module-dark-table .ant-empty-image {
-  color: #a9b3b8 !important;
+  color: var(--ohnix-text-muted) !important;
 }
 
 .module-dark-table .ant-table-thead > tr > th {
-  background: rgba(255, 255, 255, 0.02) !important;
-  color: #9fb0b8 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: var(--ohnix-line-1) !important;
+  color: var(--ohnix-text-table-head) !important;
+  border-bottom: 1px solid var(--ohnix-line-3) !important;
 }
 
 .module-dark-table .ant-table-tbody > tr > td {
   background: transparent !important;
-  color: #e6ecef !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: var(--ohnix-text-table-cell) !important;
+  border-bottom: 1px solid var(--ohnix-line-2) !important;
 }
 
 .module-dark-table .ant-table-tbody > tr {
@@ -486,7 +634,7 @@ body {
 .module-dark-table .ant-pagination-total-text,
 .module-dark-table .ant-pagination-prev .ant-pagination-item-link,
 .module-dark-table .ant-pagination-next .ant-pagination-item-link {
-  color: #a9b3b8 !important;
+  color: var(--ohnix-text-muted) !important;
 }
 
 .module-dark-table .ant-pagination-item-active {
@@ -498,28 +646,28 @@ body {
 }
 
 .module-shell {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(11, 11, 11, 0.92);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--ohnix-border);
+  background: var(--ohnix-surface-card);
+  box-shadow: var(--ohnix-shadow-card);
   border-radius: 22px;
 }
 
 .dashboard-app {
-  background: radial-gradient(circle at top, rgba(41, 216, 213, 0.08), transparent 28%), linear-gradient(180deg, #070707 0%, #050505 100%);
-  color: #ffffff;
+  background: radial-gradient(circle at top, rgba(41, 216, 213, 0.08), transparent 28%), linear-gradient(180deg, var(--ohnix-bg-alt) 0%, var(--ohnix-bg) 100%);
+  color: var(--ohnix-text-primary);
 }
 
 .dashboard-app .ant-card {
-  background: rgba(11, 11, 11, 0.9) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35) !important;
+  background: var(--ohnix-surface-card-soft) !important;
+  border: 1px solid var(--ohnix-border) !important;
+  box-shadow: var(--ohnix-shadow-card) !important;
   backdrop-filter: blur(8px);
   animation: cardRise 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .dashboard-app .ant-card-head {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
+  border-bottom: 1px solid var(--ohnix-line-3) !important;
+  color: var(--ohnix-text-primary) !important;
 }
 
 .dashboard-app .ant-card-head-title,
@@ -527,7 +675,7 @@ body {
 .dashboard-app .ant-statistic-title,
 .dashboard-app .ant-typography,
 .dashboard-app .ant-form-item-label > label {
-  color: #d4dbdf !important;
+  color: var(--ohnix-text-soft) !important;
 }
 
 .dashboard-app .ant-input,
@@ -538,16 +686,16 @@ body {
 .dashboard-app .ant-picker,
 .dashboard-app .ant-select-selector,
 .dashboard-app .ant-input-password {
-  background: #121316 !important;
-  color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: var(--ohnix-surface-3) !important;
+  color: var(--ohnix-text-primary) !important;
+  border-color: var(--ohnix-line-5) !important;
 }
 
 .dashboard-app .ant-input::placeholder,
 .dashboard-app .ant-input-number-input::placeholder,
 .dashboard-app .ant-picker-input > input::placeholder,
 .dashboard-app .ant-select-selection-placeholder {
-  color: #8b98a0 !important;
+  color: var(--ohnix-text-dim) !important;
 }
 
 .dashboard-app .ant-input:hover,
@@ -568,9 +716,9 @@ body {
 }
 
 .dashboard-app .ant-btn-default {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border-color: rgba(255, 255, 255, 0.16) !important;
-  color: #e6ecef !important;
+  background: var(--ohnix-line-1) !important;
+  border-color: var(--ohnix-line-6) !important;
+  color: var(--ohnix-text-table-cell) !important;
 }
 
 .dashboard-app .ant-btn-default:hover {
@@ -594,9 +742,9 @@ body {
 .auth-ohnix-input input:-webkit-autofill:hover,
 .auth-ohnix-input input:-webkit-autofill:focus,
 .auth-ohnix-input input:-webkit-autofill:active {
-  -webkit-text-fill-color: #ffffff !important;
-  caret-color: #ffffff !important;
-  box-shadow: 0 0 0 1000px #111214 inset !important;
+  -webkit-text-fill-color: var(--ohnix-text-primary) !important;
+  caret-color: var(--ohnix-text-primary) !important;
+  box-shadow: 0 0 0 1000px var(--ohnix-surface-2) inset !important;
   transition: background-color 9999s ease-in-out 0s;
 }
 
@@ -674,9 +822,9 @@ body {
   gap: 6px;
   padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.02);
-  color: #d4dbdf;
+  border: 1px solid var(--ohnix-line-3);
+  background: var(--ohnix-line-1);
+  color: var(--ohnix-text-soft);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -685,14 +833,14 @@ body {
 
 .invoice-filter-chip:hover {
   border-color: rgba(41, 216, 213, 0.55);
-  color: #ffffff;
+  color: var(--ohnix-text-primary);
   background: rgba(41, 216, 213, 0.08);
 }
 
 .invoice-filter-chip--active {
   border-color: rgba(41, 216, 213, 0.65) !important;
   background: linear-gradient(135deg, rgba(41, 216, 213, 0.22), rgba(68, 243, 240, 0.10)) !important;
-  color: #ffffff !important;
+  color: var(--ohnix-text-primary) !important;
   box-shadow: 0 0 18px rgba(41, 216, 213, 0.25);
 }
 
@@ -704,8 +852,8 @@ body {
   height: 20px;
   padding: 0 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #a9b3b8;
+  background: var(--ohnix-line-3);
+  color: var(--ohnix-text-muted);
   font-size: 10px;
   font-weight: 700;
 }
@@ -736,15 +884,15 @@ body {
   width: 12px;
   height: 12px;
   border-radius: 999px;
-  background: #0b0b0b;
+  background: var(--ohnix-surface);
   border: 2px solid #29d8d5;
   box-shadow: 0 0 12px rgba(41, 216, 213, 0.5);
 }
 
 .dian-timeline__node--pending {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: var(--ohnix-line-6);
   box-shadow: none;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--ohnix-line-1);
 }
 
 .copy-feedback {
@@ -757,8 +905,8 @@ body {
   gap: 6px;
   padding: 2px 8px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--ohnix-line-1);
+  border: 1px solid var(--ohnix-line-2);
   transition: all 200ms ease;
   cursor: pointer;
 }
@@ -775,8 +923,8 @@ body {
 }
 
 .invoice-mobile-card {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(11, 11, 11, 0.7);
+  border: 1px solid var(--ohnix-line-3);
+  background: var(--ohnix-surface-card-soft);
   border-radius: 18px;
   padding: 18px;
   transition: all 240ms ease;
@@ -784,25 +932,25 @@ body {
 
 .invoice-mobile-card:hover {
   border-color: rgba(41, 216, 213, 0.45);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--ohnix-shadow-elevated);
 }
 
 /* Thin dark scrollbar for drawer bodies */
 .dian-drawer .ant-drawer-body::-webkit-scrollbar { width: 6px; }
 .dian-drawer .ant-drawer-body::-webkit-scrollbar-thumb {
-  background: rgba(41, 216, 213, 0.3);
+  background: var(--ohnix-scrollbar-thumb);
   border-radius: 999px;
 }
 .dian-drawer .ant-drawer-body::-webkit-scrollbar-track { background: transparent; }
 
 /* Unit Modal Tabs */
 .unit-modal-tabs .ant-tabs {
-  color: #ffffff;
+  color: var(--ohnix-text-primary);
 }
 
 .unit-modal-tabs .ant-tabs-tab {
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  color: #a9b3b8 !important;
+  border-color: var(--ohnix-line-3) !important;
+  color: var(--ohnix-text-muted) !important;
 }
 
 .unit-modal-tabs .ant-tabs-tab-active {
@@ -816,20 +964,20 @@ body {
 
 .unit-modal-tabs .ant-tabs-content {
   background: transparent;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--ohnix-line-3) !important;
 }
 
 /* Admin Management Tabs */
 .admin-tabs .ant-tabs {
-  color: #ffffff;
+  color: var(--ohnix-text-primary);
 }
 
 .admin-tabs .ant-tabs-nav::before {
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--ohnix-line-3) !important;
 }
 
 .admin-tabs .ant-tabs-tab {
-  color: #a9b3b8 !important;
+  color: var(--ohnix-text-muted) !important;
 }
 
 .admin-tabs .ant-tabs-tab:hover {
@@ -845,11 +993,11 @@ body {
 }
 
 .custom-tabs .ant-tabs-nav::before {
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--ohnix-line-3) !important;
 }
 
 .custom-tabs .ant-tabs-tab {
-  color: #a9b3b8 !important;
+  color: var(--ohnix-text-muted) !important;
 }
 
 .custom-tabs .ant-tabs-tab:hover {
@@ -874,7 +1022,8 @@ body {
    document. .no-print hides app chrome and .print-only reveals a plain
    header (see Reports.jsx) that only exists for the printed page. Scoped
    to .dashboard-app so it never affects the public marketing site (which
-   has its own print needs, if any). */
+   has its own print needs, if any). Intentionally untouched by the
+   Lite/Dark tokens above - print always forces its own light output. */
 .print-only {
   display: none;
 }
@@ -938,21 +1087,21 @@ body {
    container it was given here left the circle icon overlapping the title
    text at this width. */
 .reset-password-steps .ant-steps-item-title {
-  color: #d4dbdf !important;
+  color: var(--ohnix-text-soft) !important;
 }
 .reset-password-steps .ant-steps-item-finish .ant-steps-item-title,
 .reset-password-steps .ant-steps-item-process .ant-steps-item-title {
-  color: #ffffff !important;
+  color: var(--ohnix-text-primary) !important;
 }
 .reset-password-steps .ant-steps-item-wait .ant-steps-item-icon {
   background: transparent !important;
-  border-color: rgba(255, 255, 255, 0.25) !important;
+  border-color: var(--ohnix-line-6) !important;
 }
 .reset-password-steps .ant-steps-item-wait .ant-steps-item-icon .ant-steps-icon {
-  color: #a9b3b8 !important;
+  color: var(--ohnix-text-muted) !important;
 }
 .reset-password-steps .ant-steps-item-tail::after {
-  background-color: rgba(255, 255, 255, 0.15) !important;
+  background-color: var(--ohnix-line-4) !important;
 }
 
 /* Dark-theme override for antd Alert - default type="info"/"success" Alerts
@@ -966,10 +1115,10 @@ body {
   background: transparent !important;
 }
 .dark-alert .ant-alert-message {
-  color: #ffffff !important;
+  color: var(--ohnix-text-primary) !important;
 }
 .dark-alert .ant-alert-description {
-  color: #d4dbdf !important;
+  color: var(--ohnix-text-soft) !important;
 }
 .dark-alert-teal.ant-alert {
   border: 1px solid rgba(41, 216, 213, 0.25) !important;
@@ -999,20 +1148,20 @@ body {
   background: transparent !important;
 }
 .category-table .ant-empty {
-  color: #a9b3b8 !important;
+  color: var(--ohnix-text-muted) !important;
 }
 .category-table .ant-empty-description,
 .category-table .ant-empty-image {
-  color: #a9b3b8 !important;
+  color: var(--ohnix-text-muted) !important;
 }
 .category-table .ant-table {
   font-size: 14px;
 }
 .category-table .ant-table-thead > tr > th {
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--ohnix-line-3);
+  border-bottom: 1px solid var(--ohnix-line-3);
   font-weight: 600;
-  color: #e5eef1;
+  color: var(--ohnix-text-heading);
   font-size: 14px;
   padding: 20px 24px;
   border-top: none;
@@ -1025,22 +1174,22 @@ body {
 }
 .category-table .ant-table-tbody > tr > td {
   padding: 20px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--ohnix-line-2);
   vertical-align: middle;
 }
 .category-table .ant-table-tbody > tr:last-child > td {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--ohnix-line-3);
 }
 .category-table .ant-table-tbody > tr:hover > td {
   background-color: rgba(41, 216, 213, 0.04) !important;
 }
 .category-table .ant-pagination {
   margin: 0 !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--ohnix-line-3);
 }
 .category-table .ant-pagination .ant-pagination-item {
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--ohnix-line-3);
 }
 .category-table .ant-pagination .ant-pagination-item-active {
   background: #29d8d5;
@@ -1100,7 +1249,7 @@ body {
                         max-height: calc(100vh - 150px);
                     }
                 }
-            
+
 
 /* Moved out of src/components/customers/CustomerForm.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
@@ -1119,7 +1268,7 @@ body {
                 }
                 .ant-form-item-label > label {
                     height: auto;
-                    color: rgba(255, 255, 255, 0.72);
+                    color: var(--ohnix-text-soft);
                 }
                 .ant-input-affix-wrapper {
                     border-radius: 8px;
@@ -1130,7 +1279,7 @@ body {
                 .ant-input {
                     border-radius: 8px;
                 }
-            
+
 
 /* Moved out of src/components/units/UnitViewModal.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
@@ -1151,7 +1300,7 @@ body {
                         border-radius: 12px;
                     }
                 }
-            
+
 
 /* Moved out of src/components/units/UnitTable.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
@@ -1165,20 +1314,20 @@ body {
                     background: transparent !important;
                 }
                 .unit-table .ant-empty {
-                    color: #a9b3b8 !important;
+                    color: var(--ohnix-text-muted) !important;
                 }
                 .unit-table .ant-empty-description,
                 .unit-table .ant-empty-image {
-                    color: #a9b3b8 !important;
+                    color: var(--ohnix-text-muted) !important;
                 }
                 .unit-table .ant-table {
                     font-size: 14px;
                 }
                 .unit-table .ant-table-thead > tr > th {
-                    background: rgba(255,255,255,0.03);
-                    border-bottom: 1px solid rgba(255,255,255,0.08);
+                    background: var(--ohnix-line-3);
+                    border-bottom: 1px solid var(--ohnix-line-3);
                     font-weight: 600;
-                    color: #e5eef1;
+                    color: var(--ohnix-text-heading);
                     font-size: 14px;
                     padding: 20px 24px;
                     border-top: none;
@@ -1191,22 +1340,22 @@ body {
                 }
                 .unit-table .ant-table-tbody > tr > td {
                     padding: 20px 24px;
-                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                    border-bottom: 1px solid var(--ohnix-line-2);
                     vertical-align: middle;
                 }
                 .unit-table .ant-table-tbody > tr:last-child > td {
-                    border-bottom: 1px solid rgba(255,255,255,0.08);
+                    border-bottom: 1px solid var(--ohnix-line-3);
                 }
                 .unit-table .ant-table-tbody > tr:hover > td {
                     background-color: rgba(68, 243, 240, 0.04) !important;
                 }
                 .unit-table .ant-pagination {
                     margin: 0 !important;
-                    border-top: 1px solid rgba(255,255,255,0.08);
+                    border-top: 1px solid var(--ohnix-line-3);
                 }
                 .unit-table .ant-pagination .ant-pagination-item {
                     border-radius: 8px;
-                    border: 1px solid rgba(255,255,255,0.08);
+                    border: 1px solid var(--ohnix-line-3);
                 }
                 .unit-table .ant-pagination .ant-pagination-item-active {
                     background: #44F3F0;
@@ -1240,7 +1389,7 @@ body {
                         padding: 16px 8px;
                     }
                 }
-            
+
 
 /* Moved out of src/components/suppliers/SupplierForm.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
@@ -1250,7 +1399,7 @@ body {
                         height: 120px !important;
                         border-radius: 12px !important;
                     }
-                
+
 
 /* Moved out of src/components/customers/CustomerViewModal.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
@@ -1263,9 +1412,9 @@ body {
                     padding: 0 24px 24px 24px;
                 }
                 .customer-view-modal .ant-typography {
-                    color: rgba(255, 255, 255, 0.92);
+                    color: var(--ohnix-text-primary);
                 }
-            
+
 
 /* Moved out of src/components/categories/CategoryViewModal.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
@@ -1286,7 +1435,7 @@ body {
                         border-radius: 12px;
                     }
                 }
-            
+
 
 /* Moved out of src/components/Purchase/ReturnPreview.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
@@ -1294,86 +1443,86 @@ body {
                 .return-preview-modal .ant-modal-body {
                     padding: 24px;
                 }
-                
+
                 .return-preview-table .ant-table-thead > tr > th {
                     background-color: #f8fafc;
                     border-bottom: 2px solid #e5e7eb;
                     font-weight: 600;
                     color: #374151;
                 }
-                
+
                 .return-preview-table .ant-table-tbody > tr > td {
                     border-bottom: 1px solid #f3f4f6;
                 }
-                
+
                 .return-preview-table .ant-table-tbody > tr:hover > td {
                     background-color: #eff6ff !important;
                 }
-                
+
                 @media (max-width: 768px) {
                     .return-preview-modal .ant-modal-body {
                         padding: 16px;
                     }
-                    
+
                     .return-preview-table .ant-table-thead > tr > th,
                     .return-preview-table .ant-table-tbody > tr > td {
                         padding: 8px 12px;
                     }
                 }
-                
+
                 @media (max-width: 576px) {
                     .return-preview-table .ant-table-thead > tr > th,
                     .return-preview-table .ant-table-tbody > tr > td {
                         padding: 6px 8px;
                     }
                 }
-            
+
 
 /* Moved out of src/components/Purchase/PurchaseForm.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
 
                 .purchase-form-modal .ant-modal-close {
-                    color: #a9b3b8;
+                    color: var(--ohnix-text-muted);
                 }
                 .purchase-form-modal .ant-modal-title {
-                    color: #ffffff;
+                    color: var(--ohnix-text-primary);
                 }
                 .purchase-form-modal .ant-form-item-label > label {
-                    color: #d4dbdf;
+                    color: var(--ohnix-text-soft);
                 }
                 .purchase-form-modal .ant-input,
                 .purchase-form-modal .ant-input-affix-wrapper,
                 .purchase-form-modal .ant-input-number,
                 .purchase-form-modal .ant-select-selector {
-                    background: #111214 !important;
-                    color: #ffffff !important;
-                    border-color: rgba(255, 255, 255, 0.12) !important;
+                    background: var(--ohnix-surface-2) !important;
+                    color: var(--ohnix-text-primary) !important;
+                    border-color: var(--ohnix-line-5) !important;
                 }
                 .purchase-form-modal .ant-select-selection-placeholder,
                 .purchase-form-modal .ant-input::placeholder,
                 .purchase-form-modal .ant-input-number-input::placeholder {
-                    color: #8b98a0 !important;
+                    color: var(--ohnix-text-dim) !important;
                 }
                 .purchase-form-modal .ant-card {
-                    background: rgba(255, 255, 255, 0.03) !important;
-                    border-color: rgba(255, 255, 255, 0.1) !important;
-                    color: #ffffff !important;
+                    background: var(--ohnix-line-2) !important;
+                    border-color: var(--ohnix-line-4) !important;
+                    color: var(--ohnix-text-primary) !important;
                 }
                 .purchase-form-modal .ant-divider-inner-text {
-                    color: #ffffff !important;
+                    color: var(--ohnix-text-primary) !important;
                 }
                 .purchase-form-modal .ant-input-number-handler-wrap,
                 .purchase-form-modal .ant-select-arrow,
                 .purchase-form-modal .ant-select-clear,
                 .purchase-form-modal .ant-input-clear-icon {
-                    color: #8b98a0 !important;
+                    color: var(--ohnix-text-dim) !important;
                 }
                 .purchase-form-modal .ant-btn-default {
-                    background: rgba(255, 255, 255, 0.04);
-                    color: #ffffff;
-                    border-color: rgba(255, 255, 255, 0.1);
+                    background: var(--ohnix-line-1);
+                    color: var(--ohnix-text-primary);
+                    border-color: var(--ohnix-line-3);
                 }
-            
+
 
 /* Moved out of src/components/Purchase/PurchaseDetails.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
@@ -1384,19 +1533,19 @@ body {
 
                     .purchase-info .ant-descriptions-item-label {
                     font-weight: 600;
-                    color: #e5eef1;
-                    background-color: rgba(255,255,255,0.03);
+                    color: var(--ohnix-text-heading);
+                    background-color: var(--ohnix-line-3);
                 }
 
                 .purchase-items-table .ant-table-thead > tr > th {
-                    background-color: rgba(255,255,255,0.03);
-                    border-bottom: 1px solid rgba(255,255,255,0.08);
+                    background-color: var(--ohnix-line-3);
+                    border-bottom: 1px solid var(--ohnix-line-3);
                     font-weight: 600;
-                    color: #e5eef1;
+                    color: var(--ohnix-text-heading);
                 }
 
                 .purchase-items-table .ant-table-tbody > tr > td {
-                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                    border-bottom: 1px solid var(--ohnix-line-2);
                 }
 
                 @media (max-width: 768px) {
@@ -1404,4 +1553,4 @@ body {
                         padding: 16px;
                     }
                 }
-            
+

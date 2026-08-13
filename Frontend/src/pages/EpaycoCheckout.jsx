@@ -176,7 +176,7 @@ const EpaycoCheckout = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-[#050608] text-white flex flex-col items-center justify-center gap-5 px-4">
+            <div className="min-h-screen bg-[var(--ohnix-bg-alt)] text-[var(--ohnix-text-primary)] flex flex-col items-center justify-center gap-5 px-4">
                 <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 max-w-md w-full text-center">
                     <p className="text-red-300 text-sm font-medium mb-4">{error}</p>
                     <button
@@ -191,11 +191,11 @@ const EpaycoCheckout = () => {
     }
 
     return (
-        <div className="min-h-screen bg-[#050608] text-white flex flex-col items-center justify-center gap-6 px-4">
+        <div className="min-h-screen bg-[var(--ohnix-bg-alt)] text-[var(--ohnix-text-primary)] flex flex-col items-center justify-center gap-6 px-4">
             {loading && (
                 <div className="flex flex-col items-center gap-4">
                     <Spin size="large" />
-                    <p className="text-[#A9B3B8] text-sm text-center max-w-xs">
+                    <p className="text-[var(--ohnix-text-muted)] text-sm text-center max-w-xs">
                         Cargando la pasarela de pago ePayco...
                         <br />
                         <span className="text-xs text-[#6b7a80] mt-1 block">
@@ -205,7 +205,7 @@ const EpaycoCheckout = () => {
                     </p>
                     <button
                         onClick={() => navigate("/billing")}
-                        className="mt-2 text-xs text-[#A9B3B8] underline hover:text-white transition-colors"
+                        className="mt-2 text-xs text-[var(--ohnix-text-muted)] underline hover:text-[var(--ohnix-text-primary)] transition-colors"
                     >
                         Cancelar y volver
                     </button>
@@ -214,7 +214,7 @@ const EpaycoCheckout = () => {
 
             {!loading && (
                 <div className="flex flex-col items-center gap-4 text-center max-w-sm">
-                    <p className="text-[#A9B3B8] text-sm">
+                    <p className="text-[var(--ohnix-text-muted)] text-sm">
                         Completa el pago en la ventana de ePayco.
                     </p>
 
@@ -229,7 +229,7 @@ const EpaycoCheckout = () => {
 
                     <button
                         onClick={() => { stopPolling(); navigate("/billing"); }}
-                        className="text-xs text-[#6b7a80] underline hover:text-white transition-colors"
+                        className="text-xs text-[#6b7a80] underline hover:text-[var(--ohnix-text-primary)] transition-colors"
                     >
                         Cancelar y volver
                     </button>

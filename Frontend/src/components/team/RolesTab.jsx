@@ -61,7 +61,7 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
     return (
         <div>
             <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm text-[#A9B3B8]">{t("team.roles_description")}</p>
+                <p className="text-sm text-[var(--ohnix-text-muted)]">{t("team.roles_description")}</p>
                 {isOwner && (
                     <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                         {t("team.add_role")}
@@ -75,14 +75,14 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
                     return (
                         <div
                             key={role.id}
-                            className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
+                            className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.18)]"
                         >
                             <div className="mb-3 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                     {role.isOwnerRole && <CrownOutlined className="text-amber-300" />}
-                                    <span className="font-semibold text-white">{role.name}</span>
+                                    <span className="font-semibold text-[var(--ohnix-text-primary)]">{role.name}</span>
                                     {!role.isOwnerRole && (
-                                        <Tag className="border-white/10 bg-white/5 text-[#A9B3B8] text-[10px] m-0 flex items-center gap-1">
+                                        <Tag className="border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-muted)] text-[10px] m-0 flex items-center gap-1">
                                             <TeamOutlined /> {memberCount}
                                         </Tag>
                                     )}
@@ -92,7 +92,7 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
                                         <Button
                                             size="small"
                                             type="text"
-                                            icon={<EditOutlined className="text-[#A9B3B8]" />}
+                                            icon={<EditOutlined className="text-[var(--ohnix-text-muted)]" />}
                                             onClick={() => openEdit(role)}
                                         />
                                         <Popconfirm
@@ -108,7 +108,7 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
                                 )}
                             </div>
                             {role.isOwnerRole && (
-                                <p className="mb-2 text-xs text-[#A9B3B8]">{t("team.role_owner_locked")}</p>
+                                <p className="mb-2 text-xs text-[var(--ohnix-text-muted)]">{t("team.role_owner_locked")}</p>
                             )}
                             <div className="flex flex-wrap gap-1.5">
                                 {VISIBLE_MODULE_KEYS.map((moduleKey) => {
@@ -117,7 +117,7 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
                                     return (
                                         <Tag
                                             key={moduleKey}
-                                            className="border-white/10 bg-white/5 text-[#D4DBDF] text-[11px]"
+                                            className="border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-soft)] text-[11px]"
                                         >
                                             {t(`team.module_${moduleKey}`)}: {t(`team.permission_${level}`)}
                                         </Tag>

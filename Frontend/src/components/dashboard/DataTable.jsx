@@ -17,7 +17,7 @@ const DataTable = ({
             title={
                 <div className="flex items-center">
                     {icon && <span className="mr-2 text-primary">{icon}</span>}
-                    <span className="text-base sm:text-lg font-medium truncate text-white">
+                    <span className="text-base sm:text-lg font-medium truncate text-[var(--ohnix-text-primary)]">
                         {title}
                     </span>
                     {dataSource?.length > 0 && (
@@ -60,9 +60,9 @@ const DataTable = ({
                 backgroundColor: "transparent",
             }}
             headStyle={{
-                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                borderBottom: "1px solid var(--ohnix-line-3)",
                 padding: "12px 16px",
-                backgroundColor: "rgba(255,255,255,0.01)",
+                backgroundColor: "var(--ohnix-line-1)",
                 flexShrink: 0,
             }}
         >
@@ -88,7 +88,7 @@ const DataTable = ({
                     loading={loading}
                     locale={{
                         emptyText: (
-                            <div className="py-6 sm:py-8 text-[#A9B3B8]">
+                            <div className="py-6 sm:py-8 text-[var(--ohnix-text-muted)]">
                                 <div className="text-sm sm:text-base">
                                     No {title.toLowerCase()} available
                                 </div>

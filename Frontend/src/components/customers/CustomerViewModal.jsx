@@ -34,17 +34,17 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
         return (
             <div className="flex items-start space-x-3 py-3">
                 <div className="flex-shrink-0 mt-1">
-                    <div className="w-8 h-8 rounded-full bg-white/[0.05] flex items-center justify-center border border-white/10">
+                    <div className="w-8 h-8 rounded-full bg-[var(--ohnix-line-2)] flex items-center justify-center border border-[var(--ohnix-line-4)]">
                         {React.cloneElement(icon, {
                             className: "text-sm text-[#44F3F0]",
                         })}
                     </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-[#A9B3B8] mb-1">
+                    <div className="text-sm font-medium text-[var(--ohnix-text-muted)] mb-1">
                         {label}
                     </div>
-                    <div className="text-base text-white">
+                    <div className="text-base text-[var(--ohnix-text-primary)]">
                         <Text copyable={copyable ? { text: value } : false}>
                             {value}
                         </Text>
@@ -60,7 +60,7 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
             open={visible}
             onCancel={onCancel}
             footer={
-                <div className="flex justify-end space-x-3 pt-4 border-t border-white/10">
+                <div className="flex justify-end space-x-3 pt-4 border-t border-[var(--ohnix-line-4)]">
                     <Button size="large" onClick={onCancel}>
                         {t("common.close")}
                     </Button>
@@ -85,14 +85,14 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                 content: {
                     background:
                         "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: "1px solid var(--ohnix-line-4)",
                     boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
                     borderRadius: "24px",
                 },
                 body: { padding: 0 },
             }}
         >
-            <div className="px-6 py-6 text-white">
+            <div className="px-6 py-6 text-[var(--ohnix-text-primary)]">
                 {/* Header Section */}
                 <div className="text-center mb-8">
                     <Avatar
@@ -103,10 +103,10 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                                 : null
                         }
                         icon={<UserOutlined />}
-                        className="shadow-lg mb-4 border-4 border-white/10"
+                        className="shadow-lg mb-4 border-4 border-[var(--ohnix-line-4)]"
                         style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}
                     />
-                    <Title level={2} className="mb-2 !text-white">
+                    <Title level={2} className="mb-2 !text-[var(--ohnix-text-primary)]">
                         {customer.name}
                     </Title>
                     <Tag
@@ -123,7 +123,7 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                         <div className="mb-6">
                             <Title
                                 level={4}
-                                className="!text-white mb-4 flex items-center"
+                                className="!text-[var(--ohnix-text-primary)] mb-4 flex items-center"
                             >
                                 <MailOutlined className="mr-2 text-[#44F3F0]" />
                                 {t("customers.contact_details")}
@@ -158,7 +158,7 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                             <div className="mb-6">
                                 <Title
                                     level={4}
-                                    className="!text-white mb-4 flex items-center"
+                                    className="!text-[var(--ohnix-text-primary)] mb-4 flex items-center"
                                 >
                                         <ShopOutlined className="mr-2 text-[#29D8D5]" />
                                     {t("customers.business_details")}
@@ -188,10 +188,10 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                             !customer.account_holder &&
                             !customer.account_number && (
                                 <div className="text-center py-8">
-                                    <div className="text-[#8B98A0] mb-2">
+                                    <div className="text-[var(--ohnix-text-dim)] mb-2">
                                         <ShopOutlined className="text-3xl text-[#44F3F0]" />
                                     </div>
-                                    <Text className="text-[#A9B3B8]">
+                                    <Text className="text-[var(--ohnix-text-muted)]">
                                         {t("customers.no_business_information")}
                                     </Text>
                                 </div>

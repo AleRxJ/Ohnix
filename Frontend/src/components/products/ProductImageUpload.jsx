@@ -24,7 +24,7 @@ const ProductImageUpload = ({ imageUrl, onChange }) => {
                 className="block w-full"
             >
                 {imageUrl ? (
-                    <div className="w-full h-48 sm:h-56 md:h-64 border border-dashed border-white/12 rounded-lg overflow-hidden hover:border-[#29D8D5]/60 transition-colors duration-200 cursor-pointer bg-white/[0.03]">
+                    <div className="w-full h-48 sm:h-56 md:h-64 border border-dashed border-[var(--ohnix-line-5)] rounded-lg overflow-hidden hover:border-[#29D8D5]/60 transition-colors duration-200 cursor-pointer bg-[var(--ohnix-line-1)]">
                         <img
                             src={imageUrl}
                             alt="Product"
@@ -32,16 +32,16 @@ const ProductImageUpload = ({ imageUrl, onChange }) => {
                         />
                     </div>
                 ) : (
-                    <div className="w-full h-48 sm:h-56 md:h-64 border border-dashed border-white/12 rounded-lg bg-white/[0.03] hover:bg-white/[0.05] hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer flex items-center justify-center">
+                    <div className="w-full h-48 sm:h-56 md:h-64 border border-dashed border-[var(--ohnix-line-5)] rounded-lg bg-[var(--ohnix-line-1)] hover:bg-[var(--ohnix-hover-overlay)] hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer flex items-center justify-center">
                         <div className="flex flex-col items-center justify-center gap-3 px-4">
                             <div className="w-12 h-12 rounded-full bg-[#29D8D5]/10 flex items-center justify-center">
                                 <UploadOutlined className="text-2xl text-[#29D8D5]" />
                             </div>
                             <div className="text-center">
-                                <p className="text-sm font-medium text-white mb-1">
+                                <p className="text-sm font-medium text-[var(--ohnix-text-primary)] mb-1">
                                     Click to upload product image
                                 </p>
-                                <p className="text-xs text-[#A9B3B8]">
+                                <p className="text-xs text-[var(--ohnix-text-muted)]">
                                     PNG, JPG up to 5MB
                                 </p>
                             </div>

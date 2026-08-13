@@ -30,12 +30,12 @@ const PasswordChangeTab = ({
                                     <KeyOutlined className="text-[#021314] text-lg sm:text-xl" />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <h1 className="text-2xl sm:text-3xl font-bold text-white m-0 truncate">
+                                    <h1 className="text-2xl sm:text-3xl font-bold text-[var(--ohnix-text-primary)] m-0 truncate">
                                         {t("profile.password_panel_title")}
                                     </h1>
                                 </div>
                             </div>
-                            <Text className="text-sm sm:text-base text-[#A9B3B8] block mb-6 sm:mb-8">
+                            <Text className="text-sm sm:text-base text-[var(--ohnix-text-muted)] block mb-6 sm:mb-8">
                                 {t("profile.password_panel_description")}
                             </Text>
 
@@ -45,10 +45,10 @@ const PasswordChangeTab = ({
                                         <CheckCircleOutlined className="text-emerald-300 text-sm" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <Text className="text-sm font-medium text-white block mb-1">
+                                        <Text className="text-sm font-medium text-[var(--ohnix-text-primary)] block mb-1">
                                             {t("profile.strong_password")}
                                         </Text>
-                                        <Text className="text-xs sm:text-sm text-[#A9B3B8]">
+                                        <Text className="text-xs sm:text-sm text-[var(--ohnix-text-muted)]">
                                             {t("profile.strong_password_description")}
                                         </Text>
                                     </div>
@@ -59,24 +59,24 @@ const PasswordChangeTab = ({
                                         <SafetyCertificateOutlined className="text-[#44F3F0] text-sm" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <Text className="text-sm font-medium text-white block mb-1">
+                                        <Text className="text-sm font-medium text-[var(--ohnix-text-primary)] block mb-1">
                                             {t("profile.email_verification")}
                                         </Text>
-                                        <Text className="text-xs sm:text-sm text-[#A9B3B8]">
+                                        <Text className="text-xs sm:text-sm text-[var(--ohnix-text-muted)]">
                                             {t("profile.email_verification_description")}
                                         </Text>
                                     </div>
                                 </div>
 
                                 <div className="flex items-start gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                        <LockOutlined className="text-white/80 text-sm" />
+                                    <div className="w-8 h-8 rounded-full bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)] flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <LockOutlined className="text-[var(--ohnix-text-soft)] text-sm" />
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <Text className="text-sm font-medium text-white block mb-1">
+                                        <Text className="text-sm font-medium text-[var(--ohnix-text-primary)] block mb-1">
                                             {t("profile.secure_process")}
                                         </Text>
-                                        <Text className="text-xs sm:text-sm text-[#A9B3B8]">
+                                        <Text className="text-xs sm:text-sm text-[var(--ohnix-text-muted)]">
                                             {t("profile.secure_process_description")}
                                         </Text>
                                     </div>
@@ -86,12 +86,12 @@ const PasswordChangeTab = ({
                     </div>
 
                     <div className="lg:col-span-3 w-full">
-                        <div className="bg-white/[0.04] rounded-3xl shadow-[0_18px_50px_rgba(0,0,0,0.22)] border border-white/10 overflow-hidden w-full backdrop-blur-md">
-                            <div className="bg-[linear-gradient(135deg,rgba(41,216,213,0.12),rgba(255,255,255,0.03))] px-4 sm:px-6 py-4 sm:py-5 border-b border-white/10">
-                                <Text className="text-base sm:text-lg font-semibold text-white block">
+                        <div className="bg-[var(--ohnix-line-1)] rounded-3xl shadow-[0_18px_50px_rgba(0,0,0,0.22)] border border-[var(--ohnix-line-4)] overflow-hidden w-full backdrop-blur-md">
+                            <div className="bg-[linear-gradient(135deg,rgba(41,216,213,0.12),var(--ohnix-line-1))] px-4 sm:px-6 py-4 sm:py-5 border-b border-[var(--ohnix-line-4)]">
+                                <Text className="text-base sm:text-lg font-semibold text-[var(--ohnix-text-primary)] block">
                                     {t("profile.update_password")}
                                 </Text>
-                                <Text className="text-xs sm:text-sm text-[#A9B3B8] block mt-1">
+                                <Text className="text-xs sm:text-sm text-[var(--ohnix-text-muted)] block mt-1">
                                     {t("profile.security_description")}
                                 </Text>
                             </div>
@@ -103,19 +103,19 @@ const PasswordChangeTab = ({
                                     onFinish={handlePasswordRequest}
                                 >
                                     <div className="space-y-5 sm:space-y-6">
-                                        <div className="bg-[#050608]/70 rounded-2xl p-4 sm:p-5 border border-white/10 w-full">
+                                        <div className="bg-[#050608]/70 rounded-2xl p-4 sm:p-5 border border-[var(--ohnix-line-4)] w-full">
                                             <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0">
-                                                    <LockOutlined className="text-white/70 text-xs" />
+                                                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)] flex items-center justify-center flex-shrink-0">
+                                                    <LockOutlined className="text-[var(--ohnix-text-muted)] text-xs" />
                                                 </div>
-                                                <Text className="text-xs font-semibold text-[#A9B3B8] uppercase tracking-wider">
+                                                <Text className="text-xs font-semibold text-[var(--ohnix-text-muted)] uppercase tracking-wider">
                                                     {t("profile.current_authentication")}
                                                 </Text>
                                             </div>
                                             <PasswordFormItem
                                                 name="oldPassword"
                                                 label={
-                                                    <span className="text-sm font-medium text-white">
+                                                    <span className="text-sm font-medium text-[var(--ohnix-text-primary)]">
                                                         {t("profile.current_password")}
                                                     </span>
                                                 }
@@ -124,14 +124,14 @@ const PasswordChangeTab = ({
                                         </div>
 
                                         <div className="relative">
-                                            <div className="absolute left-1/2 -translate-x-1/2 -top-3 bg-[#050608] px-3 py-1 rounded-full border border-white/10 shadow-sm z-10">
-                                                <Text className="text-xs font-medium text-[#A9B3B8] whitespace-nowrap">
+                                            <div className="absolute left-1/2 -translate-x-1/2 -top-3 bg-[var(--ohnix-bg-alt)] px-3 py-1 rounded-full border border-[var(--ohnix-line-4)] shadow-sm z-10">
+                                                <Text className="text-xs font-medium text-[var(--ohnix-text-muted)] whitespace-nowrap">
                                                     {t("profile.new_credentials")}
                                                 </Text>
                                             </div>
                                         </div>
 
-                                        <div className="bg-[linear-gradient(135deg,rgba(41,216,213,0.12),rgba(11,11,11,0.9))] rounded-2xl p-4 sm:p-5 border border-[#29D8D5]/20 w-full">
+                                        <div className="bg-[linear-gradient(135deg,rgba(41,216,213,0.12),var(--ohnix-surface-card-soft))] rounded-2xl p-4 sm:p-5 border border-[#29D8D5]/20 w-full">
                                             <div className="flex items-center gap-2 mb-3 sm:mb-4">
                                                 <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#29D8D5]/15 border border-[#29D8D5]/20 flex items-center justify-center flex-shrink-0">
                                                     <KeyOutlined className="text-[#44F3F0] text-xs" />
@@ -145,7 +145,7 @@ const PasswordChangeTab = ({
                                                 <PasswordFormItem
                                                     name="password"
                                                     label={
-                                                        <span className="text-sm font-medium text-white">
+                                                        <span className="text-sm font-medium text-[var(--ohnix-text-primary)]">
                                                             {t("profile.new_password")}
                                                         </span>
                                                     }
@@ -154,7 +154,7 @@ const PasswordChangeTab = ({
 
                                                 <ConfirmPasswordFormItem
                                                     label={
-                                                        <span className="text-sm font-medium text-white">
+                                                        <span className="text-sm font-medium text-[var(--ohnix-text-primary)]">
                                                             {t("profile.confirm_new_password")}
                                                         </span>
                                                     }

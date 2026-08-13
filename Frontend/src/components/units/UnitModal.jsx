@@ -74,7 +74,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
     return (
         <Modal
             title={
-                <div className="text-lg font-semibold text-white">
+                <div className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
                     {editingUnit ? t("units.edit_unit") : t("units.add_new_unit")}
                 </div>
             }
@@ -89,13 +89,13 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                 content: {
                     background:
                         "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: "1px solid var(--ohnix-line-4)",
                     boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
                     borderRadius: "24px",
                 },
                 header: {
                     background: "transparent",
-                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    borderBottom: "1px solid var(--ohnix-line-3)",
                     padding: "20px 24px 16px",
                 },
                 body: { padding: "20px 24px 24px" },
@@ -108,12 +108,12 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                     items={[
                         {
                             key: "common",
-                            label: <span className="text-white">{t("units.select_common_unit")}</span>,
+                            label: <span className="text-[var(--ohnix-text-primary)]">{t("units.select_common_unit")}</span>,
                             children: (
                                 <div className="space-y-4 py-3">
                                     <Form.Item
                                         label={
-                                            <span className="text-sm font-medium text-[#A9B3B8]">
+                                            <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                                 {t("units.measurement_type")}
                                             </span>
                                         }
@@ -128,10 +128,10 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                                     </Form.Item>
 
                                     <div>
-                                        <label className="text-sm font-medium text-[#A9B3B8] block mb-3">
+                                        <label className="text-sm font-medium text-[var(--ohnix-text-muted)] block mb-3">
                                             {t("units.common_units")}
                                         </label>
-                                        <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto bg-white/[0.02] p-3 rounded-md border border-white/10">
+                                        <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto bg-[var(--ohnix-line-1)] p-3 rounded-md border border-[var(--ohnix-line-4)]">
                                             {commonUnitsInCategory.map((unit) => (
                                                 <button
                                                     key={unit.id}
@@ -139,7 +139,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                                                     className={`p-3 rounded-lg border text-sm text-left transition-all ${
                                                         selectedUnit?.id === unit.id
                                                             ? "border-[#29D8D5] bg-[#29D8D5]/10 text-[#44F3F0]"
-                                                            : "border-white/10 bg-white/[0.03] text-[#A9B3B8] hover:border-[#29D8D5]/50 hover:bg-white/[0.05]"
+                                                            : "border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-muted)] hover:border-[#29D8D5]/50 hover:bg-[var(--ohnix-hover-overlay)]"
                                                     }`}
                                                     type="button"
                                                 >
@@ -159,10 +159,10 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                                                 <Input type="hidden" />
                                             </Form.Item>
                                             <Form.Item className="mb-0">
-                                                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-white/10">
+                                                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-[var(--ohnix-line-4)]">
                                                     <Button
                                                         onClick={onClose}
-                                                        className="h-10 px-6 rounded-md bg-white/[0.04] border-white/10 text-white hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                                                        className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
                                                     >
                                                         {t("common.cancel")}
                                                     </Button>
@@ -182,7 +182,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                         },
                         {
                             key: "custom",
-                            label: <span className="text-white">{t("units.create_custom_unit")}</span>,
+                            label: <span className="text-[var(--ohnix-text-primary)]">{t("units.create_custom_unit")}</span>,
                             children: (
                                 <div className="py-3">
                                     <CustomUnitForm
@@ -228,7 +228,7 @@ const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t }) => {
             <Form.Item
                 name="unit_name"
                 label={
-                    <span className="text-sm font-medium text-[#A9B3B8]">
+                    <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                         {t("units.unit_name")}
                     </span>
                 }
@@ -239,16 +239,16 @@ const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t }) => {
                     placeholder={t("units.enter_unit_name")}
                     className="h-11 rounded-md auth-ohnix-input"
                     prefix={
-                        <AppstoreOutlined className="text-[#8B98A0] text-sm" />
+                        <AppstoreOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
                     }
                 />
             </Form.Item>
 
             <Form.Item className="mb-0">
-                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-white/10">
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-[var(--ohnix-line-4)]">
                     <Button
                         onClick={onCancel}
-                        className="h-10 px-6 rounded-md bg-white/[0.04] border-white/10 text-white hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                        className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
                     >
                         {t("common.cancel")}
                     </Button>

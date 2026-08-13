@@ -45,10 +45,10 @@ export const EmailFormItem = ({ disabled = true, value }) => {
                 prefix={<MailOutlined className="text-indigo-400" />}
                 value={value}
                 disabled={disabled}
-                className="rounded-lg h-12 !bg-white/5 !border-white/10 !text-white"
+                className="rounded-lg h-12 !bg-[var(--ohnix-line-2)] !border-[var(--ohnix-line-4)] !text-[var(--ohnix-text-primary)]"
                 style={{
-                    color: "#ffffff",
-                    WebkitTextFillColor: "#ffffff",
+                    color: "var(--ohnix-text-primary)",
+                    WebkitTextFillColor: "var(--ohnix-text-primary)",
                     opacity: 1,
                 }}
                 size="large"

@@ -8,8 +8,8 @@ import AuthContext from "../context/AuthContext";
 // always-loaded entry chunk, defeating the "vendor-antd" split in
 // vite.config.js that keeps it out of the marketing pages' initial load.
 const LoadingSpinner = () => (
-    <div className="flex items-center justify-center h-screen gap-3 text-[#A9B3B8]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[#29D8D5]" />
+    <div className="flex items-center justify-center h-screen gap-3 text-[var(--ohnix-text-muted)]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--ohnix-line-6)] border-t-[#29D8D5]" />
         <span className="text-sm">Loading...</span>
     </div>
 );

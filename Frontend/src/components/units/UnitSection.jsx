@@ -77,7 +77,7 @@ const UnitSection = ({ user, isAdmin, unitHook }) => {
                     borderRadius: "12px",
                     background:
                         "linear-gradient(180deg, rgba(11,11,11,0.96), rgba(8,8,8,0.98))",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    border: "1px solid var(--ohnix-line-3)",
                 }}
                 title={
                     <div className="flex items-center gap-3">
@@ -85,7 +85,7 @@ const UnitSection = ({ user, isAdmin, unitHook }) => {
                             <AppstoreOutlined className="text-[#44F3F0] text-sm" />
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-white font-semibold text-base sm:text-lg">
+                            <span className="text-[var(--ohnix-text-primary)] font-semibold text-base sm:text-lg">
                                 {t("units.units")}
                             </span>
                             <Badge
@@ -107,7 +107,7 @@ const UnitSection = ({ user, isAdmin, unitHook }) => {
                                 icon={<ReloadOutlined />}
                                 onClick={loadUnits}
                                 loading={loading}
-                                className="border-white/10 hover:border-[#44F3F0]/35 hover:text-white mt-2 lg:mt-0 text-white bg-white/[0.03]"
+                                className="border-[var(--ohnix-line-4)] hover:border-[#44F3F0]/35 hover:text-[var(--ohnix-text-primary)] mt-2 lg:mt-0 text-[var(--ohnix-text-primary)] bg-[var(--ohnix-line-1)]"
                                 style={{ height: "36px" }}
                             >
                                 {t("common.refresh")}

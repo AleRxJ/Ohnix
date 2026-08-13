@@ -166,7 +166,7 @@ const Reports = () => {
     };
 
     return (
-        <div className="p-3 sm:p-6 max-w-7xl mx-auto text-white">
+        <div className="p-3 sm:p-6 max-w-7xl mx-auto text-[var(--ohnix-text-primary)]">
             <div className="no-print">
                 <PageHeader
                     title={
@@ -284,7 +284,7 @@ const Reports = () => {
 
             {/* Quick Actions */}
             <Card
-                className="no-print mb-4 sm:mb-6 border border-white/10 bg-[#0B0B0B]/90"
+                className="no-print mb-4 sm:mb-6 border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)]"
                 size={isMobile ? "small" : "default"}
             >
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -297,7 +297,7 @@ const Reports = () => {
                             {t("reports.quick_actions")}
                         </h3>
                         <p
-                            className={`text-[#A9B3B8] ${
+                            className={`text-[var(--ohnix-text-muted)] ${
                                 isMobile ? "text-xs" : "text-sm"
                             }`}
                         >
@@ -331,7 +331,7 @@ const Reports = () => {
             </Card>
 
             {/* Reports Tabs */}
-            <Card className="shadow-sm border border-white/10 bg-[#0B0B0B]/90" size={isMobile ? "small" : "default"}>
+            <Card className="shadow-sm border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)]" size={isMobile ? "small" : "default"}>
                 <Tabs
                     activeKey={activeTab}
                     onChange={setActiveTab}
@@ -340,7 +340,7 @@ const Reports = () => {
                     className="custom-tabs"
                     tabBarStyle={{
                         marginBottom: isMobile ? "16px" : "24px",
-                        borderBottom: "1px solid rgba(255,255,255,0.1)",
+                        borderBottom: "1px solid var(--ohnix-line-4)",
                     }}
                     tabPosition={isMobile ? "top" : "top"}
                     tabBarExtraContent={
@@ -368,7 +368,7 @@ const Reports = () => {
 
             {/* Mobile Active Tab Indicator */}
             {isMobile && (
-                <Card className="no-print mb-4 border border-white/10 bg-[#0B0B0B]/90" size="small">
+                <Card className="no-print mb-4 border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)]" size="small">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                             <Badge
@@ -387,7 +387,7 @@ const Reports = () => {
                             )}
                         </div>
                     </div>
-                    <p className="text-xs text-[#A9B3B8] mt-2 mb-0">
+                    <p className="text-xs text-[var(--ohnix-text-muted)] mt-2 mb-0">
                         {reportDescriptions[activeTab]}
                     </p>
                 </Card>
@@ -395,7 +395,7 @@ const Reports = () => {
 
             {/* Footer Info */}
             <div
-                className={`no-print mt-6 sm:mt-8 text-center text-[#A9B3B8] ${
+                className={`no-print mt-6 sm:mt-8 text-center text-[var(--ohnix-text-muted)] ${
                     isMobile ? "text-xs" : "text-sm"
                 }`}
             >

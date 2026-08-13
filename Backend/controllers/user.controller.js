@@ -58,6 +58,7 @@ const userPublicSelect = {
     avatar: true,
     isVerified: true,
     preferredLanguage: true,
+    theme: true,
     subscription: {
         select: {
             plan: true,
@@ -89,6 +90,8 @@ const normalizePreferredLanguage = (value) => {
     const normalized = `${value || ""}`.toLowerCase().trim();
     return normalized.startsWith("en") ? "en" : "es";
 };
+
+const normalizeTheme = (value) => (value === "lite" ? "lite" : "dark");
 
 const normalizeRole = (role) => (role === "admin" ? "admin" : "user");
 const normalizePlan = (plan) =>
@@ -550,11 +553,11 @@ const changeCurrentPassword = asyncHandler(async (req, res, next) => {
 });
 
 const updateAccountDetails = asyncHandler(async (req, res, next) => {
-    const { username, preferredLanguage } = req.body;
+    const { username, preferredLanguage, theme } = req.body;
 
-    if (!username && !preferredLanguage) {
+    if (!username && !preferredLanguage && !theme) {
         return next(
-            new ApiError(400, "At least one field is required: username or preferredLanguage")
+            new ApiError(400, "At least one field is required: username, preferredLanguage, or theme")
         );
     }
 
@@ -562,6 +565,7 @@ const updateAccountDetails = asyncHandler(async (req, res, next) => {
     const normalizedPreferredLanguage = preferredLanguage
         ? normalizePreferredLanguage(preferredLanguage)
         : undefined;
+    const normalizedTheme = theme ? normalizeTheme(theme) : undefined;
 
     const currentUser = await prisma.user.findFirst({
         where: userLookupByTokenId(req.user?._id),
@@ -594,6 +598,7 @@ const updateAccountDetails = asyncHandler(async (req, res, next) => {
             ...(normalizedPreferredLanguage
                 ? { preferredLanguage: normalizedPreferredLanguage }
                 : {}),
+            ...(normalizedTheme ? { theme: normalizedTheme } : {}),
         },
         select: userPublicSelect,
     });

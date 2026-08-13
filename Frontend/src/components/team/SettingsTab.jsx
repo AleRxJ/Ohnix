@@ -69,8 +69,8 @@ const SettingsTab = () => {
 
     if (!isOwner) {
         return (
-            <Card className="rounded-2xl border border-white/10 bg-white/[0.04] text-white">
-                <Text className="text-[#A9B3B8]">{t("team.owner_only_action")}</Text>
+            <Card className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]">
+                <Text className="text-[var(--ohnix-text-muted)]">{t("team.owner_only_action")}</Text>
             </Card>
         );
     }
@@ -153,8 +153,8 @@ const SettingsTab = () => {
 
     return (
         <div className="flex flex-col gap-4">
-            <Card className="rounded-2xl border border-white/10 bg-white/[0.04] text-white">
-                <Title level={5} className="text-white m-0 mb-3">
+            <Card className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]">
+                <Title level={5} className="text-[var(--ohnix-text-primary)] m-0 mb-3">
                     {t("team.rename_label")}
                 </Title>
                 <div className="flex flex-col gap-3 sm:flex-row">
@@ -178,15 +178,15 @@ const SettingsTab = () => {
                 </div>
             </Card>
 
-            <Card className="rounded-2xl border border-white/10 bg-white/[0.04] text-white" loading={companyLoading}>
-                <Title level={5} className="text-white m-0 mb-1">
+            <Card className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]" loading={companyLoading}>
+                <Title level={5} className="text-[var(--ohnix-text-primary)] m-0 mb-1">
                     {t("team.company_branding_title")}
                 </Title>
-                <Text className="text-[#A9B3B8] text-xs">{t("team.company_branding_hint")}</Text>
+                <Text className="text-[var(--ohnix-text-muted)] text-xs">{t("team.company_branding_hint")}</Text>
 
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                        <Text className="text-[#A9B3B8] text-xs block mb-1">{t("team.company_name_label")}</Text>
+                        <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_name_label")}</Text>
                         <Input
                             size="large"
                             className="auth-ohnix-input"
@@ -196,7 +196,7 @@ const SettingsTab = () => {
                         />
                     </div>
                     <div>
-                        <Text className="text-[#A9B3B8] text-xs block mb-1">{t("team.company_legal_name_label")}</Text>
+                        <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_legal_name_label")}</Text>
                         <Input
                             size="large"
                             className="auth-ohnix-input"
@@ -206,7 +206,7 @@ const SettingsTab = () => {
                         />
                     </div>
                     <div>
-                        <Text className="text-[#A9B3B8] text-xs block mb-1">{t("team.company_contact_email_label")}</Text>
+                        <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_contact_email_label")}</Text>
                         <Input
                             size="large"
                             className="auth-ohnix-input"
@@ -216,7 +216,7 @@ const SettingsTab = () => {
                         />
                     </div>
                     <div>
-                        <Text className="text-[#A9B3B8] text-xs block mb-1">{t("team.company_phone_label")}</Text>
+                        <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_phone_label")}</Text>
                         <Input
                             size="large"
                             className="auth-ohnix-input"
@@ -228,13 +228,13 @@ const SettingsTab = () => {
                 </div>
 
                 <div className="mt-4">
-                    <Text className="text-[#A9B3B8] text-xs block mb-2">{t("team.company_logo_label")}</Text>
+                    <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-2">{t("team.company_logo_label")}</Text>
                     <div className="flex items-center gap-3">
                         {company?.logoUrl && (
                             <img
                                 src={company.logoUrl}
                                 alt="logo"
-                                className="h-12 w-12 rounded-lg border border-white/10 bg-white/5 object-contain"
+                                className="h-12 w-12 rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] object-contain"
                             />
                         )}
                         {companyMeta.canUploadLogo ? (
@@ -256,8 +256,8 @@ const SettingsTab = () => {
                 </div>
 
                 <div className="mt-4">
-                    <Text className="text-[#A9B3B8] text-xs block mb-1">{t("team.company_footer_text_label")}</Text>
-                    <Text className="text-[#6B7880] text-xs block mb-2">{t("team.company_footer_text_hint")}</Text>
+                    <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_footer_text_label")}</Text>
+                    <Text className="text-[var(--ohnix-text-dim)] text-xs block mb-2">{t("team.company_footer_text_hint")}</Text>
                     {companyMeta.canCustomizeBranding ? (
                         <Input.TextArea
                             rows={2}
@@ -277,8 +277,8 @@ const SettingsTab = () => {
                 </div>
 
                 <div className="mt-4">
-                    <Text className="text-[#A9B3B8] text-xs block mb-1">{t("team.company_accent_color_label")}</Text>
-                    <Text className="text-[#6B7880] text-xs block mb-2">{t("team.company_accent_color_hint")}</Text>
+                    <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_accent_color_label")}</Text>
+                    <Text className="text-[var(--ohnix-text-dim)] text-xs block mb-2">{t("team.company_accent_color_hint")}</Text>
                     {companyMeta.canCustomizeBranding ? (
                         <ColorPicker
                             format="hex"
@@ -311,11 +311,11 @@ const SettingsTab = () => {
                 </div>
             </Card>
 
-            <Card className="rounded-2xl border border-amber-500/20 bg-amber-500/5 text-white">
-                <Title level={5} className="text-white m-0 mb-1">
+            <Card className="rounded-2xl border border-amber-500/20 bg-amber-500/5 text-[var(--ohnix-text-primary)]">
+                <Title level={5} className="text-[var(--ohnix-text-primary)] m-0 mb-1">
                     {t("team.transfer_ownership_title")}
                 </Title>
-                <Text className="text-[#A9B3B8] text-sm">{t("team.transfer_ownership_description")}</Text>
+                <Text className="text-[var(--ohnix-text-muted)] text-sm">{t("team.transfer_ownership_description")}</Text>
                 <div className="mt-3 flex flex-col gap-3 sm:flex-row">
                     <Select
                         size="large"

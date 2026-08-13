@@ -22,7 +22,7 @@ const ProductSearchBar = ({
                 <div className="flex-1">
                     <Input
                         placeholder={t("products.search_products")}
-                        prefix={<SearchOutlined className="text-[#8B98A0]" />}
+                        prefix={<SearchOutlined className="text-[var(--ohnix-text-dim)]" />}
                         value={searchText}
                         onChange={(e) => onSearchChange(e.target.value)}
                         onPressEnter={onSearch}

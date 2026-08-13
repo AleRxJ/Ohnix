@@ -38,7 +38,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
             dataIndex: ["product_id", "product_name"],
             key: "product_name",
             render: (_, record) => (
-                <div className="font-medium text-white">
+                <div className="font-medium text-[var(--ohnix-text-primary)]">
                     {record.product_id?.product_name || t("common.na")}
                 </div>
             ),
@@ -85,7 +85,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
             dataIndex: "total",
             key: "total",
             render: (total) => (
-                <div className="font-semibold text-white">
+                <div className="font-semibold text-[var(--ohnix-text-primary)]">
                     {formatCurrency(total)}
                 </div>
             ),
@@ -104,7 +104,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                             className="w-full"
                         >
                             <Tag color="red" className="font-medium">{t("purchases.returned")}</Tag>
-                            <div className="text-xs text-[#A9B3B8] space-y-1">
+                            <div className="text-xs text-[var(--ohnix-text-muted)] space-y-1">
                                 <div>
                                     {t("purchases.qty")}:{" "}
                                     <span className="font-medium">{record.returned_quantity || 0}</span>
@@ -153,10 +153,10 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                                     <Text strong className="text-[#44F3F0]">{purchase.purchase_no}</Text>
                         </Descriptions.Item>
                         <Descriptions.Item label={t("purchases.supplier")}>
-                            <Text strong className="text-white">{purchase.supplier_id?.name}</Text>
+                            <Text strong className="text-[var(--ohnix-text-primary)]">{purchase.supplier_id?.name}</Text>
                         </Descriptions.Item>
                         <Descriptions.Item label={t("purchases.purchase_date")}>
-                            <Text className="text-[#D4DBDF]">{dayjs(purchase.purchase_date).format("DD/MM/YYYY")}</Text>
+                            <Text className="text-[var(--ohnix-text-soft)]">{dayjs(purchase.purchase_date).format("DD/MM/YYYY")}</Text>
                         </Descriptions.Item>
                         <Descriptions.Item label={t("common.status")}>
                             <Tag
@@ -170,16 +170,16 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                             </Tag>
                         </Descriptions.Item>
                         <Descriptions.Item label={t("common.created_by")}>
-                            <Text className="text-[#D4DBDF]">{purchase.created_by?.username}</Text>
+                            <Text className="text-[var(--ohnix-text-soft)]">{purchase.created_by?.username}</Text>
                         </Descriptions.Item>
                         <Descriptions.Item label={t("purchases.created_at")}>
-                            <Text className="text-[#D4DBDF]">{dayjs(purchase.createdAt).format("DD/MM/YYYY HH:mm")}</Text>
+                            <Text className="text-[var(--ohnix-text-soft)]">{dayjs(purchase.createdAt).format("DD/MM/YYYY HH:mm")}</Text>
                         </Descriptions.Item>
                     </Descriptions>
                 </Card>
             )}
 
-            <Divider orientation="left" className="text-lg font-semibold text-white">{t("purchases.purchase_items")}</Divider>
+            <Divider orientation="left" className="text-lg font-semibold text-[var(--ohnix-text-primary)]">{t("purchases.purchase_items")}</Divider>
 
             <Table
                 columns={detailColumns}
@@ -189,7 +189,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                 scroll={{ x: 800 }}
                 size="small"
                 className="purchase-items-table module-dark-table"
-                rowClassName="hover:bg-white/[0.05] transition-colors duration-200"
+                rowClassName="hover:bg-[var(--ohnix-hover-overlay)] transition-colors duration-200"
                 summary={(pageData) => {
                     const total = pageData.reduce(
                         (sum, record) => sum + (record.total || 0),
@@ -202,9 +202,9 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
 
                     return (
                         <Table.Summary fixed>
-                            <Table.Summary.Row className="bg-white/[0.03]">
+                            <Table.Summary.Row className="bg-[var(--ohnix-line-1)]">
                                 <Table.Summary.Cell index={0} colSpan={4}>
-                                    <Text strong className="text-white">{t("purchases.total_amount_label")}</Text>
+                                    <Text strong className="text-[var(--ohnix-text-primary)]">{t("purchases.total_amount_label")}</Text>
                                 </Table.Summary.Cell>
                                 <Table.Summary.Cell index={4}>
                                     <Text

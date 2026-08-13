@@ -209,7 +209,7 @@ const AdminManagement = () => {
     }
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6 text-white">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 text-[var(--ohnix-text-primary)]">
             <PageHeader title={t("admin.title")} subtitle={t("admin.description")} icon={<SettingOutlined />} />
 
             <AdminStats companies={companies} users={users} />

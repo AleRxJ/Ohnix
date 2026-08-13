@@ -24,7 +24,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
     };
 
     return (
-        <div className="relative module-shell border border-white/10 rounded-2xl p-5 mb-4">
+        <div className="relative module-shell border border-[var(--ohnix-line-4)] rounded-2xl p-5 mb-4">
             <Button
                 type="text"
                 danger
@@ -40,7 +40,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                             {...restField}
                             name={[name, "product_id"]}
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("products.product")}
                                 </span>
                             }
@@ -68,7 +68,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                                     >
                                         <div className="flex items-center justify-between">
                                             <span>{product.product_name}</span>
-                                            <span className="text-xs text-[#8B98A0] ml-2">
+                                            <span className="text-xs text-[var(--ohnix-text-dim)] ml-2">
                                                 {t("orders.stock")}: {product.stock}
                                             </span>
                                         </div>
@@ -83,7 +83,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                             {...restField}
                             name={[name, "quantity"]}
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("common.quantity")}
                                 </span>
                             }
@@ -109,7 +109,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                             {...restField}
                             name={[name, "unitcost"]}
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("orders.unit_price")}
                                 </span>
                             }

@@ -53,10 +53,10 @@ const UsageRow = ({ label, value }) => {
     const displayLimit = value.limit === null ? "∞" : value.limit;
 
     return (
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+        <div className="rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-3">
             <div className="mb-2 flex items-center justify-between gap-3">
-                <Text className="text-xs uppercase tracking-[0.18em] text-[#A9B3B8]">{label}</Text>
-                <Text className="text-sm text-white">
+                <Text className="text-xs uppercase tracking-[0.18em] text-[var(--ohnix-text-muted)]">{label}</Text>
+                <Text className="text-sm text-[var(--ohnix-text-primary)]">
                     {value.used} / {displayLimit}
                 </Text>
             </div>
@@ -64,7 +64,7 @@ const UsageRow = ({ label, value }) => {
                 percent={percent}
                 size="small"
                 strokeColor="#29D8D5"
-                trailColor="rgba(255,255,255,0.12)"
+                trailColor="var(--ohnix-line-5)"
                 showInfo={value.usagePercent !== null}
                 format={(current) => `${current}%`}
             />
@@ -163,7 +163,7 @@ const SubscriptionPlanCard = ({
     const canRequestUpgrade = plan !== "enterprise";
 
     return (
-        <Card className="mt-4 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-white/10 bg-white/[0.04] text-white">
+        <Card className="mt-4 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-primary)]">
             {/* Trial expired banner */}
             {trialExpired && (
                 <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3">
@@ -232,10 +232,10 @@ const SubscriptionPlanCard = ({
 
             {/* Cancellation scheduled banner — plan stays fully active until endsAt */}
             {cancelAtPeriodEnd && (
-                <div className="mb-4 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5">
+                <div className="mb-4 rounded-xl border border-[var(--ohnix-line-6)] bg-[var(--ohnix-line-1)] px-4 py-2.5">
                     <div className="flex items-center gap-2.5">
-                        <ClockCircleOutlined className="text-[#A9B3B8]" />
-                        <span className="flex-1 text-sm text-[#D4DBDF]">
+                        <ClockCircleOutlined className="text-[var(--ohnix-text-muted)]" />
+                        <span className="flex-1 text-sm text-[var(--ohnix-text-soft)]">
                             {t("profile.subscription.cancel_scheduled_banner", { date: cancelDateLabel })}
                         </span>
                         {onReactivate && (
@@ -287,14 +287,14 @@ const SubscriptionPlanCard = ({
             )}
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)]">
                         <CrownOutlined style={{ color: PLAN_COLORS[plan] || "#29D8D5" }} />
                     </div>
                     <div>
-                        <Title level={5} className="m-0 text-white">
+                        <Title level={5} className="m-0 text-[var(--ohnix-text-primary)]">
                             {t("profile.subscription.title")}
                         </Title>
-                        <Text className="text-[#A9B3B8] text-sm">
+                        <Text className="text-[var(--ohnix-text-muted)] text-sm">
                             {t("profile.subscription.description")}
                         </Text>
                     </div>
@@ -309,7 +309,7 @@ const SubscriptionPlanCard = ({
                         icon={<ReloadOutlined />}
                         onClick={onRefresh}
                         loading={refreshing}
-                        className="text-white"
+                        className="text-[var(--ohnix-text-primary)]"
                     />
                 </div>
             </div>
@@ -323,8 +323,8 @@ const SubscriptionPlanCard = ({
 
                 {/* Features panel — only shown in full (non-compact) view */}
                 {!compact && (
-                    <div className="mt-5 rounded-xl border border-white/8 bg-white/[0.02] p-4">
-                        <Text className="text-xs uppercase tracking-[0.18em] text-[#A9B3B8]">
+                    <div className="mt-5 rounded-xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-line-1)] p-4">
+                        <Text className="text-xs uppercase tracking-[0.18em] text-[var(--ohnix-text-muted)]">
                             {lang === "es" ? "Funcionalidades de tu plan" : "Your plan features"}
                         </Text>
                         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -332,7 +332,7 @@ const SubscriptionPlanCard = ({
                                 const enabled = planFeatures[key] ?? false;
                                 const minPlan  = FEATURE_MINIMUM_PLAN[key];
                                 return (
-                                    <div key={key} className={`flex items-center gap-2.5 text-xs ${enabled ? "text-[#D4DBDF]" : "text-[#4A5560]"}`}>
+                                    <div key={key} className={`flex items-center gap-2.5 text-xs ${enabled ? "text-[var(--ohnix-text-soft)]" : "text-[#4A5560]"}`}>
                                         {enabled ? (
                                             <CheckCircleOutlined className="text-[#29D8D5]" style={{ fontSize: 13 }} />
                                         ) : (
@@ -362,7 +362,7 @@ const SubscriptionPlanCard = ({
                         >
                             {t("profile.subscription.manage_plan")}
                         </Button>
-                        <div className="flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] px-3 text-xs text-[#A9B3B8]">
+                        <div className="flex items-center justify-center rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 text-xs text-[var(--ohnix-text-muted)]">
                             {t("profile.subscription.support_note")}
                         </div>
                     </div>
@@ -377,7 +377,7 @@ const SubscriptionPlanCard = ({
                         >
                             {lang === "es" ? "Contratar un plan ahora" : "Subscribe to a plan now"}
                         </Button>
-                        <div className="flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] px-3 text-xs text-[#A9B3B8] col-span-1 sm:col-span-2">
+                        <div className="flex items-center justify-center rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 text-xs text-[var(--ohnix-text-muted)] col-span-1 sm:col-span-2">
                             {t("profile.subscription.support_note")}
                         </div>
                     </div>
@@ -387,7 +387,7 @@ const SubscriptionPlanCard = ({
                             <Button
                                 icon={<PauseCircleOutlined />}
                                 onClick={onPause}
-                                className="h-10 rounded-xl border-white/15 bg-white/[0.03] text-white"
+                                className="h-10 rounded-xl border-[var(--ohnix-line-6)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-primary)]"
                             >
                                 {t("profile.subscription.pause")}
                             </Button>
@@ -432,14 +432,14 @@ const SubscriptionPlanCard = ({
                             icon={<RocketOutlined />}
                             onClick={onRequestUpgrade}
                             disabled={!canRequestUpgrade}
-                            className="h-10 rounded-xl border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0] disabled:border-white/15 disabled:bg-white/[0.03] disabled:text-[#A9B3B8]"
+                            className="h-10 rounded-xl border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0] disabled:border-[var(--ohnix-line-6)] disabled:bg-[var(--ohnix-line-1)] disabled:text-[var(--ohnix-text-muted)]"
                         >
                             {canRequestUpgrade
                                 ? t("profile.subscription.request_upgrade")
                                 : t("profile.subscription.top_plan_reached")}
                         </Button>
 
-                        <div className="flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.02] px-3 text-xs text-[#A9B3B8]">
+                        <div className="flex items-center justify-center rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 text-xs text-[var(--ohnix-text-muted)]">
                             {t("profile.subscription.support_note")}
                         </div>
                     </div>

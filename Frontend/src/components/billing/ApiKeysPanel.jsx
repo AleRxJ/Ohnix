@@ -77,14 +77,14 @@ const ApiKeysPanel = () => {
     if (subscriptionLoading) return null;
 
     return (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+        <div className="mt-6 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                    <div className="flex items-center gap-2 text-sm font-bold text-white">
+                    <div className="flex items-center gap-2 text-sm font-bold text-[var(--ohnix-text-primary)]">
                         <KeyOutlined className="text-[#44F3F0]" />
                         {t("billing.api_keys.title")}
                     </div>
-                    <p className="mt-1 text-xs text-[#A9B3B8]">{t("billing.api_keys.hint")}</p>
+                    <p className="mt-1 text-xs text-[var(--ohnix-text-muted)]">{t("billing.api_keys.hint")}</p>
                 </div>
                 {canUseApi ? (
                     <Tooltip
@@ -124,7 +124,7 @@ const ApiKeysPanel = () => {
                     locale={{ emptyText: t("billing.api_keys.empty") }}
                     renderItem={(item) => (
                         <List.Item
-                            className="!border-white/10"
+                            className="!border-[var(--ohnix-line-4)]"
                             actions={[
                                 item.revoked_at ? (
                                     <Tag key="revoked" color="default">
@@ -147,9 +147,9 @@ const ApiKeysPanel = () => {
                             ]}
                         >
                             <List.Item.Meta
-                                title={<span className="text-white">{item.name}</span>}
+                                title={<span className="text-[var(--ohnix-text-primary)]">{item.name}</span>}
                                 description={
-                                    <span className="text-xs text-[#A9B3B8]">
+                                    <span className="text-xs text-[var(--ohnix-text-muted)]">
                                         {item.key_prefix}••••••••
                                         {" · "}
                                         {t("billing.api_keys.requests_today", { count: item.requests_today })}
@@ -198,8 +198,8 @@ const ApiKeysPanel = () => {
                 ]}
                 destroyOnClose
             >
-                <Paragraph className="text-[#A9B3B8]">{t("billing.api_keys.reveal_warning")}</Paragraph>
-                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/30 p-3">
+                <Paragraph className="text-[var(--ohnix-text-muted)]">{t("billing.api_keys.reveal_warning")}</Paragraph>
+                <div className="flex items-center gap-2 rounded-xl border border-[var(--ohnix-line-4)] bg-black/30 p-3">
                     <Text code className="flex-1 break-all text-[#44F3F0]">
                         {newKey?.key}
                     </Text>

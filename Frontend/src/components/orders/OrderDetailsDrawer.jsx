@@ -98,7 +98,7 @@ const OrderDetailsDrawer = ({
         <Drawer
             title={
                 <div className="text-center w-full">
-                    <span className="text-xl font-bold tracking-wide uppercase text-white">
+                    <span className="text-xl font-bold tracking-wide uppercase text-[var(--ohnix-text-primary)]">
                         {t("orders.order_details", { invoiceNo: selectedOrder.invoice_no })}
                     </span>
                 </div>
@@ -107,26 +107,24 @@ const OrderDetailsDrawer = ({
             onClose={onClose}
             open={visible}
             width={520}
-            closeIcon={<CloseOutlined className="text-[#A9B3B8]" />}
+            closeIcon={<CloseOutlined className="text-[var(--ohnix-text-muted)]" />}
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.45)" },
                 body: {
                     padding: 24,
-                    background:
-                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    background: "var(--ohnix-surface-card-soft)",
                 },
                 header: {
-                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    borderBottom: "1px solid var(--ohnix-line-3)",
                     padding: "20px 24px",
-                    background:
-                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(8,8,8,0.98))",
+                    background: "var(--ohnix-surface-card-soft)",
                 },
             }}
         >
             <div className="space-y-6">
                 {team && <PresenceLockBar viewers={viewers} lock={null} currentUserId={user?.id} />}
-                <div className="flex items-center justify-between pb-4 border-b border-white/10">
-                    <span className="text-sm font-medium text-[#A9B3B8] uppercase tracking-wide">
+                <div className="flex items-center justify-between pb-4 border-b border-[var(--ohnix-line-4)]">
+                    <span className="text-sm font-medium text-[var(--ohnix-text-muted)] uppercase tracking-wide">
                         {t("common.status")}
                     </span>
                     <Tag
@@ -141,23 +139,23 @@ const OrderDetailsDrawer = ({
                 <div className="grid grid-cols-2 gap-6">
                     <div>
                         <div className="flex items-center space-x-2 mb-2">
-                            <UserOutlined className="text-[#8B98A0]" />
-                            <span className="text-xs font-medium text-[#A9B3B8] uppercase">
+                            <UserOutlined className="text-[var(--ohnix-text-dim)]" />
+                            <span className="text-xs font-medium text-[var(--ohnix-text-muted)] uppercase">
                                 {t("customers.customer")}
                             </span>
                         </div>
-                        <p className="text-base font-semibold text-white">
+                        <p className="text-base font-semibold text-[var(--ohnix-text-primary)]">
                             {selectedOrder.customer_id?.name || "N/A"}
                         </p>
                     </div>
                     <div>
                         <div className="flex items-center space-x-2 mb-2">
-                            <CalendarOutlined className="text-[#8B98A0]" />
-                            <span className="text-xs font-medium text-[#A9B3B8] uppercase">
+                            <CalendarOutlined className="text-[var(--ohnix-text-dim)]" />
+                            <span className="text-xs font-medium text-[var(--ohnix-text-muted)] uppercase">
                                 {t("orders.order_date")}
                             </span>
                         </div>
-                        <p className="text-base font-semibold text-white">
+                        <p className="text-base font-semibold text-[var(--ohnix-text-primary)]">
                             {dayjs(selectedOrder.order_date).format(
                                 "MMMM DD, YYYY"
                             )}
@@ -168,37 +166,37 @@ const OrderDetailsDrawer = ({
                 <Divider style={{ margin: "24px 0" }} />
 
                 <div>
-                    <h3 className="text-sm font-medium text-[#A9B3B8] mb-4 uppercase tracking-wide">
+                    <h3 className="text-sm font-medium text-[var(--ohnix-text-muted)] mb-4 uppercase tracking-wide">
                         {t("orders.order_summary")}
                     </h3>
-                    <div className="rounded-2xl p-4 border border-white/10 space-y-3 bg-white/[0.03] shadow-[0px_0px_20px_rgba(0,0,0,0.18)]">
+                    <div className="rounded-2xl p-4 border border-[var(--ohnix-line-4)] space-y-3 bg-[var(--ohnix-line-1)] shadow-[0px_0px_20px_rgba(0,0,0,0.18)]">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-[#A9B3B8]">
+                            <span className="text-sm text-[var(--ohnix-text-muted)]">
                                 {t("common.total_products")}
                             </span>
-                            <span className="text-sm font-medium text-white">
+                            <span className="text-sm font-medium text-[var(--ohnix-text-primary)]">
                                 {t("orders.items_count", { count: selectedOrder.total_products })}
                             </span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-[#A9B3B8]">
+                            <span className="text-sm text-[var(--ohnix-text-muted)]">
                                 {t("common.subtotal")}
                             </span>
-                            <span className="text-sm font-medium text-white">
+                            <span className="text-sm font-medium text-[var(--ohnix-text-primary)]">
                                 {formatCurrency(selectedOrder.sub_total)}
                             </span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-[#A9B3B8]">
+                            <span className="text-sm text-[var(--ohnix-text-muted)]">
                                 {t("orders.gst", { rate: 18 })}
                             </span>
-                            <span className="text-sm font-medium text-white">
+                            <span className="text-sm font-medium text-[var(--ohnix-text-primary)]">
                                 {formatCurrency(selectedOrder.total - selectedOrder.sub_total)}
                             </span>
                         </div>
-                        <Divider style={{ margin: "12px 0", borderColor: "rgba(255,255,255,0.08)" }} />
+                        <Divider style={{ margin: "12px 0", borderColor: "var(--ohnix-line-3)" }} />
                         <div className="flex items-center justify-between">
-                            <span className="text-base font-semibold text-white">
+                            <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
                                 {t("common.total_amount")}
                             </span>
                             <span className="text-xl font-bold text-[#44F3F0]">
@@ -211,13 +209,13 @@ const OrderDetailsDrawer = ({
                 <Divider style={{ margin: "24px 0" }} />
 
                 <div>
-                    <h3 className="text-sm font-medium text-[#A9B3B8] mb-4 uppercase tracking-wide">
+                    <h3 className="text-sm font-medium text-[var(--ohnix-text-muted)] mb-4 uppercase tracking-wide">
                         {t("orders.order_items")}
                     </h3>
                     {detailsLoading ? (
                         <div className="text-center py-12">
                             <Spin size="large" />
-                            <p className="mt-4 text-[#A9B3B8] text-sm">
+                            <p className="mt-4 text-[var(--ohnix-text-muted)] text-sm">
                                 {t("common.loading")}
                             </p>
                         </div>
@@ -234,7 +232,7 @@ const OrderDetailsDrawer = ({
                         <div className="py-12">
                             <Empty
                                 description={
-                                    <span className="text-[#A9B3B8]">
+                                    <span className="text-[var(--ohnix-text-muted)]">
                                         {t("orders.no_items_found")}
                                     </span>
                                 }

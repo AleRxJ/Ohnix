@@ -83,6 +83,7 @@ model User {
   password          String
   role              UserRole      @default(user)
   preferredLanguage String        @default("es") @map("preferred_language")
+  theme             String        @default("dark") @map("theme")
   companyId         String?       @map("company_id")
   verifyOtp         String        @default("") @map("verify_otp")
   verifyOtpExpiry   BigInt        @default(0) @map("verify_otp_expiry")

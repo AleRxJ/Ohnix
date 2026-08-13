@@ -41,13 +41,13 @@ const PlanGate = ({ featureKey, requiredPlan }) => {
             : `Upgrade to ${planLabel}`;
 
     return (
-        <div className="flex min-h-[320px] flex-col items-center justify-center gap-5 rounded-2xl border border-white/8 bg-white/[0.02] px-8 py-14 text-center">
+        <div className="flex min-h-[320px] flex-col items-center justify-center gap-5 rounded-2xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-line-1)] px-8 py-14 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#29D8D5]/20 bg-[#29D8D5]/8 text-[#44F3F0]">
                 <LockOutlined style={{ fontSize: 22 }} />
             </div>
             <div>
-                <p className="text-base font-semibold text-white">{title}</p>
-                <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-[#8A9BA8]">{body}</p>
+                <p className="text-base font-semibold text-[var(--ohnix-text-primary)]">{title}</p>
+                <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-[var(--ohnix-text-dim)]">{body}</p>
             </div>
             <button
                 type="button"

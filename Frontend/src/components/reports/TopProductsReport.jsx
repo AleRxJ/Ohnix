@@ -345,15 +345,15 @@ const TopProductsReport = () => {
             {/* Controls */}
             <Card
                 title={
-                    <span className="text-sm sm:text-base text-white">
+                    <span className="text-sm sm:text-base text-[var(--ohnix-text-primary)]">
                         {t("reports.top_products_configuration")}
                     </span>
                 }
-                className="module-shell border border-white/10"
+                className="module-shell border border-[var(--ohnix-line-4)]"
             >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <span className="text-sm text-[#A9B3B8]">{t("reports.show_top")}</span>
+                        <span className="text-sm text-[var(--ohnix-text-muted)]">{t("reports.show_top")}</span>
                         <Select
                             value={limit}
                             onChange={setLimit}
@@ -446,13 +446,13 @@ const TopProductsReport = () => {
                     <Col xs={24} lg={12}>
                         <Card
                             title={
-                                <span className="text-sm sm:text-base text-white">
+                                <span className="text-sm sm:text-base text-[var(--ohnix-text-primary)]">
                                     {window.innerWidth < 768
                                         ? t("reports.top_by_quantity")
                                         : t("reports.top_products_by_quantity_sold")}
                                 </span>
                             }
-                            className="h-full module-shell border border-white/10"
+                            className="h-full module-shell border border-[var(--ohnix-line-4)]"
                         >
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
@@ -522,13 +522,13 @@ const TopProductsReport = () => {
                     <Col xs={24} lg={12}>
                         <Card
                             title={
-                                <span className="text-sm sm:text-base text-white">
+                                <span className="text-sm sm:text-base text-[var(--ohnix-text-primary)]">
                                     {window.innerWidth < 768
                                         ? t("reports.top_by_revenue")
                                         : t("reports.top_products_by_revenue")}
                                 </span>
                             }
-                            className="h-full module-shell border border-white/10"
+                            className="h-full module-shell border border-[var(--ohnix-line-4)]"
                         >
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
@@ -603,13 +603,13 @@ const TopProductsReport = () => {
             {topProducts.length > 0 && (
                 <Card
                     title={
-                        <span className="text-sm sm:text-base text-white">
+                        <span className="text-sm sm:text-base text-[var(--ohnix-text-primary)]">
                             {window.innerWidth < 768
                                 ? t("reports.revenue")
                                 : t("reports.revenue_distribution_by_product")}
                         </span>
                     }
-                    className="w-full module-shell border border-white/10"
+                    className="w-full module-shell border border-[var(--ohnix-line-4)]"
                 >
                     <div className="w-full overflow-x-auto">
                         <ResponsiveContainer
@@ -715,13 +715,13 @@ const TopProductsReport = () => {
                         scroll={{ x: 400 }}
                         size={window.innerWidth < 768 ? "small" : "middle"}
                         className="top-products-table module-dark-table"
-                        rowClassName={() => "bg-transparent hover:bg-white/[0.05]"}
+                        rowClassName={() => "bg-transparent hover:bg-[var(--ohnix-hover-overlay)]"}
                     />
                 </div>
             </Card>
 
             {topProducts.length === 0 && !loading && (
-                <Card className="module-shell border border-white/10">
+                <Card className="module-shell border border-[var(--ohnix-line-4)]">
                     <div className="text-center py-8 sm:py-12">
                         <TrophyOutlined
                             style={{
@@ -730,10 +730,10 @@ const TopProductsReport = () => {
                                 color: "#29D8D5",
                             }}
                         />
-                        <p className="text-[#A9B3B8] mt-4 text-sm sm:text-base px-4">
+                        <p className="text-[var(--ohnix-text-muted)] mt-4 text-sm sm:text-base px-4">
                             {t("reports.top_products_no_data")}
                         </p>
-                        <p className="text-[#8B98A0] text-xs sm:text-sm px-4">
+                        <p className="text-[var(--ohnix-text-dim)] text-xs sm:text-sm px-4">
                             {t("reports.top_products_no_data_help")}
                         </p>
                     </div>

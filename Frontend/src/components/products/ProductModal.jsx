@@ -56,7 +56,7 @@ const ProductModal = ({
     return (
         <Modal
             title={
-                <div className="text-xl text-center font-bold text-white">
+                <div className="text-xl text-center font-bold text-[var(--ohnix-text-primary)]">
                     {title}
                 </div>
             }
@@ -74,13 +74,13 @@ const ProductModal = ({
                 content: {
                     background:
                         "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: "1px solid var(--ohnix-line-4)",
                     boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
                     borderRadius: "24px",
                 },
                 header: {
                     background: "transparent",
-                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    borderBottom: "1px solid var(--ohnix-line-3)",
                     padding: "20px 24px 16px",
                 },
                 body: {
@@ -111,9 +111,9 @@ const ProductModal = ({
                     <Col xs={24} lg={14}>
                         <div className="space-y-4">
                             <div className="module-shell p-4 reveal-card">
-                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/8">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[var(--ohnix-line-3)]">
                                     <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
-                                    <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">
+                                    <h3 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">
                                         {t("products.product_details")}
                                     </h3>
                                 </div>
@@ -122,7 +122,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="product_name"
                                             label={
-                                                <span className="text-xs font-medium text-[#A9B3B8]">
+                                                <span className="text-xs font-medium text-[var(--ohnix-text-muted)]">
                                                     {t("products.product_name")}
                                                 </span>
                                             }
@@ -150,7 +150,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="product_code"
                                             label={
-                                                <span className="text-xs font-medium text-[#A9B3B8]">
+                                                <span className="text-xs font-medium text-[var(--ohnix-text-muted)]">
                                                     {t("products.product_code")}
                                                 </span>
                                             }
@@ -179,7 +179,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="category_id"
                                             label={
-                                                <span className="text-xs font-medium text-[#A9B3B8]">
+                                                <span className="text-xs font-medium text-[var(--ohnix-text-muted)]">
                                                     {t("products.category")}
                                                 </span>
                                             }
@@ -212,7 +212,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="unit_id"
                                             label={
-                                                <span className="text-xs font-medium text-[#A9B3B8]">
+                                                <span className="text-xs font-medium text-[var(--ohnix-text-muted)]">
                                                     {t("products.unit")}
                                                 </span>
                                             }
@@ -244,9 +244,9 @@ const ProductModal = ({
                             </div>
 
                             <div className="module-shell p-4 reveal-card">
-                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/8">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[var(--ohnix-line-3)]">
                                     <div className="w-1 h-4 bg-[#44F3F0] rounded-full"></div>
-                                    <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">
+                                    <h3 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">
                                         {t("products.pricing")}
                                     </h3>
                                 </div>
@@ -255,7 +255,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="buying_price"
                                             label={
-                                                <span className="text-xs font-medium text-[#A9B3B8]">
+                                                <span className="text-xs font-medium text-[var(--ohnix-text-muted)]">
                                                     {t("products.buying_price")}
                                                 </span>
                                             }
@@ -289,7 +289,7 @@ const ProductModal = ({
                                         <Form.Item
                                             name="selling_price"
                                             label={
-                                                <span className="text-xs font-medium text-[#A9B3B8]">
+                                                <span className="text-xs font-medium text-[var(--ohnix-text-muted)]">
                                                     {t("products.selling_price")}
                                                 </span>
                                             }
@@ -321,22 +321,22 @@ const ProductModal = ({
                                 </Row>
                             </div>
 
-                            <div className="module-shell p-4 reveal-card border border-white/10">
-                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/8">
+                            <div className="module-shell p-4 reveal-card border border-[var(--ohnix-line-4)]">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[var(--ohnix-line-3)]">
                                     <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
-                                    <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">
+                                    <h3 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">
                                         {t("products.low_stock_alert")}
                                     </h3>
                                 </div>
                                 <Form.Item
                                     name="low_stock_threshold"
                                     label={
-                                        <span className="text-xs font-medium text-[#A9B3B8]">
+                                        <span className="text-xs font-medium text-[var(--ohnix-text-muted)]">
                                             {t("products.low_stock_threshold")}
                                         </span>
                                     }
                                     extra={
-                                        <span className="text-[#8B98A0]">
+                                        <span className="text-[var(--ohnix-text-dim)]">
                                             {can("configurableAlerts")
                                                 ? t("products.low_stock_threshold_hint")
                                                 : t("products.low_stock_threshold_upsell")}
@@ -357,33 +357,33 @@ const ProductModal = ({
 
                             {usesColombianEInvoicing && (
                                 <div className="module-shell p-4 reveal-card border border-[#29D8D5]/15">
-                                    <div className="flex items-center justify-between gap-3 mb-3 pb-2 border-b border-white/8">
+                                    <div className="flex items-center justify-between gap-3 mb-3 pb-2 border-b border-[var(--ohnix-line-3)]">
                                         <div className="flex items-center gap-2">
                                             <div className="w-1 h-4 bg-[#44F3F0] rounded-full"></div>
-                                            <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">{t("products.dian_classification")}</h3>
+                                            <h3 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">{t("products.dian_classification")}</h3>
                                         </div>
                                         <span className="text-[11px] text-[#44F3F0]">Factus V2</span>
                                     </div>
                                     <Row gutter={12}>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item name="unit_measure_code" label={<span className="text-xs text-[#A9B3B8]">{t("products.dian_unit")}</span>} initialValue="94" rules={[{ required: true, message: t("products.dian_unit_required") }]}>
+                                            <Form.Item name="unit_measure_code" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.dian_unit")}</span>} initialValue="94" rules={[{ required: true, message: t("products.dian_unit_required") }]}>
                                                 <Input size="large" className="auth-ohnix-input" placeholder="94" />
                                             </Form.Item>
                                         </Col>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item name="standard_code" label={<span className="text-xs text-[#A9B3B8]">{t("products.dian_standard_code")}</span>} initialValue="999" rules={[{ required: true, message: t("products.dian_standard_code_required") }]}>
+                                            <Form.Item name="standard_code" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.dian_standard_code")}</span>} initialValue="999" rules={[{ required: true, message: t("products.dian_standard_code_required") }]}>
                                                 <Input size="large" className="auth-ohnix-input" placeholder="999" />
                                             </Form.Item>
                                         </Col>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item name="tax_code" label={<span className="text-xs text-[#A9B3B8]">{t("products.dian_tax")}</span>} initialValue="01">
+                                            <Form.Item name="tax_code" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.dian_tax")}</span>} initialValue="01">
                                                 <Select size="large" className="auth-ohnix-input" options={[{ value: "01", label: t("customers.dian_tax_vat") }, { value: "04", label: "INC" }]} />
                                             </Form.Item>
                                         </Col>
                                         <Col xs={24} sm={12}>
                                             {/* Defaults to Colombia's general VAT rate since this block only
                                                 renders for CO companies with electronic invoicing enabled. */}
-                                            <Form.Item name="tax_rate" label={<span className="text-xs text-[#A9B3B8]">{t("products.dian_tax_rate")}</span>} initialValue={19}>
+                                            <Form.Item name="tax_rate" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.dian_tax_rate")}</span>} initialValue={19}>
                                                 <InputNumber min={0} max={100} precision={2} size="large" className="w-full auth-ohnix-input" />
                                             </Form.Item>
                                         </Col>
@@ -395,9 +395,9 @@ const ProductModal = ({
 
                     <Col xs={24} lg={10}>
                         <div className="module-shell p-4 h-full reveal-card">
-                            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/8">
+                            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[var(--ohnix-line-3)]">
                                 <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
-                                <h3 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">
+                                <h3 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">
                                     {t("products.product_image")}
                                 </h3>
                             </div>

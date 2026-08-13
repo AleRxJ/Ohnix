@@ -17,7 +17,7 @@ const CreateOrderModal = ({
     return (
         <Modal
             title={
-                <div className="text-xl text-center uppercase tracking-wider font-bold text-white">
+                <div className="text-xl text-center uppercase tracking-wider font-bold text-[var(--ohnix-text-primary)]">
                     {t("orders.create_new_order")}
                 </div>
             }
@@ -31,15 +31,14 @@ const CreateOrderModal = ({
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.55)" },
                 content: {
-                    background:
-                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                    background: "var(--ohnix-surface-card-soft)",
+                    border: "1px solid var(--ohnix-line-4)",
+                    boxShadow: "var(--ohnix-shadow-elevated)",
                     borderRadius: "24px",
                 },
                 header: {
                     background: "transparent",
-                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    borderBottom: "1px solid var(--ohnix-line-3)",
                     padding: "20px 24px 16px",
                 },
                 body: {
@@ -54,7 +53,7 @@ const CreateOrderModal = ({
                 className="mt-6"
             >
                 <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-[#D4DBDF] mb-4 uppercase tracking-wide">
+                    <h4 className="text-sm font-semibold text-[var(--ohnix-text-soft)] mb-4 uppercase tracking-wide">
                         {t("orders.order_information")}
                     </h4>
                     <Row gutter={16}>
@@ -62,7 +61,7 @@ const CreateOrderModal = ({
                             <Form.Item
                                 name="customer_id"
                                 label={
-                                    <span className="font-medium text-[#A9B3B8]">
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
                                         {t("customers.customer")}
                                     </span>
                                 }
@@ -95,7 +94,7 @@ const CreateOrderModal = ({
                             <Form.Item
                                 name="order_status"
                                 label={
-                                    <span className="font-medium text-[#A9B3B8]">
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
                                         {t("common.status")}
                                     </span>
                                 }
@@ -119,7 +118,7 @@ const CreateOrderModal = ({
                     {(fields, { add, remove }) => (
                         <div className="mb-6">
                             <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-sm font-semibold text-[#D4DBDF] uppercase tracking-wide">
+                                <h4 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">
                                     {t("orders.order_items")}
                                 </h4>
                                 <Button

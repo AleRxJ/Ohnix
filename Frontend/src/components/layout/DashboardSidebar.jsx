@@ -8,6 +8,7 @@ import { useTeam } from "../../context/TeamContext";
 import useSubscription from "../../hooks/useSubscription";
 import { getMenuItems } from "../../data";
 import useI18n from "../../hooks/useI18n";
+import { useTheme } from "../../context/ThemeContext";
 
 const { Sider } = Layout;
 
@@ -18,6 +19,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     const { team, hasPermission, loading: teamLoading } = useTeam();
     const { plan } = useSubscription();
     const { t } = useI18n();
+    const { isLite } = useTheme();
     const navigate = useNavigate();
     const showTeam = Boolean(team) || TEAM_CAPABLE_PLANS.includes(plan);
 
@@ -36,7 +38,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
             collapsed={collapsed}
             onCollapse={setCollapsed}
             trigger={null}
-            theme="dark"
+            theme={isLite ? "light" : "dark"}
             width={260}
             className="hidden md:block no-print"
             style={{
@@ -46,12 +48,12 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                 top: 0,
                 left: 0,
                 zIndex: 1000,
-                background: "linear-gradient(180deg, #0b0b0b 0%, #0a1114 100%)",
-                borderRight: "1px solid rgba(255,255,255,0.1)",
+                background: "var(--ohnix-surface-sidebar)",
+                borderRight: "1px solid var(--ohnix-line-4)",
             }}
         >
             <SidebarLogo collapsed={collapsed} onClick={handleLogoClick} />
-            <div className="mx-4 mb-4 h-px bg-white/10"></div>
+            <div className="mx-4 mb-4 h-px bg-[var(--ohnix-line-4)]"></div>
 
             <div className="px-3">
                 {teamLoading ? (
@@ -67,7 +69,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                     </div>
                 ) : (
                     <Menu
-                        theme="dark"
+                        theme={isLite ? "light" : "dark"}
                         defaultSelectedKeys={[currentPage]}
                         mode="inline"
                         items={getMenuItems(t, user?.role, user?.company?.countryCode === "CO", showTeam, hasPermission).map((item) => ({
@@ -99,7 +101,7 @@ const SidebarLogo = ({ collapsed, onClick }) => (
             />
         ) : (
             <img
-                src="/Ohnix_FullLogo.svg"
+                src="/Logo-lite.svg"
                 alt="Ohnix logo"
                 className="h-20 w-auto transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
             />
@@ -128,32 +130,32 @@ const SidebarUserProfile = ({ user, logout, t }) => {
     };
 
     return (
-    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/70 to-transparent">
-        <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/12 shadow-xl">
+    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[var(--ohnix-bg)]/70 to-transparent">
+        <div className="bg-[var(--ohnix-hover-overlay)] backdrop-blur-sm rounded-xl p-3 border border-[var(--ohnix-line-5)] shadow-xl">
             <div className="flex items-center gap-3 mb-3">
                 <Avatar
                     src={getAvatarSrc()}
                     style={{
                         background:
                             "linear-gradient(135deg, #29d8d5 0%, #44f3f0 100%)",
-                        border: "2px solid rgba(255, 255, 255, 0.3)",
+                        border: "2px solid var(--ohnix-line-7)",
                         boxShadow: "0 6px 14px rgba(41, 216, 213, 0.3)",
                     }}
                     icon={<UserOutlined />}
                     size={40}
                 />
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white truncate m-0">
+                    <p className="text-sm font-semibold text-[var(--ohnix-text-primary)] truncate m-0">
                         {user?.username || "User"}
                     </p>
-                    <p className="text-xs text-[#A9B3B8] truncate m-0">
+                    <p className="text-xs text-[var(--ohnix-text-muted)] truncate m-0">
                         {user?.role || "Administrator"}
                     </p>
                 </div>
             </div>
             <button
                 onClick={logout}
-                className="w-full bg-white/6 hover:bg-white/12 text-white font-medium py-2 px-3 rounded-lg text-sm transition-all duration-150 flex items-center justify-center gap-2 border border-white/12 hover:border-[#29D8D5]/40 backdrop-blur-sm"
+                className="w-full bg-[var(--ohnix-hover-overlay)] hover:bg-[var(--ohnix-hover-overlay-strong)] text-[var(--ohnix-text-primary)] font-medium py-2 px-3 rounded-lg text-sm transition-all duration-150 flex items-center justify-center gap-2 border border-[var(--ohnix-line-5)] hover:border-[#29D8D5]/40 backdrop-blur-sm"
             >
                 <LogoutOutlined className="text-base" />
                 <span>{t("common.logout")}</span>

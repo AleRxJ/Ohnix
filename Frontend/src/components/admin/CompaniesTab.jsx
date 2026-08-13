@@ -3,7 +3,7 @@ import { Table, Button, Input, Tag, Switch, Popconfirm, Card, Empty } from "antd
 import { PlusOutlined, SearchOutlined, BankOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
-const tableShellClass = "rounded-xl shadow-sm border border-white/10 overflow-hidden bg-[#0B0B0B]/92";
+const tableShellClass = "rounded-xl shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)]";
 
 const MobileCompanyCard = ({ company, onEdit, onToggleStatus, t }) => (
     <Card className="mb-4 module-shell overflow-hidden hover-lift" styles={{ body: { padding: 16 } }}>
@@ -14,8 +14,8 @@ const MobileCompanyCard = ({ company, onEdit, onToggleStatus, t }) => (
             <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                        <div className="truncate text-base font-semibold text-white">{company.name}</div>
-                        <div className="truncate text-xs text-[#A9B3B8]">
+                        <div className="truncate text-base font-semibold text-[var(--ohnix-text-primary)]">{company.name}</div>
+                        <div className="truncate text-xs text-[var(--ohnix-text-muted)]">
                             {company.legalName || "-"} · {company.contactEmail || "-"}
                         </div>
                     </div>
@@ -24,7 +24,7 @@ const MobileCompanyCard = ({ company, onEdit, onToggleStatus, t }) => (
                     </Tag>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#A9B3B8]">
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--ohnix-text-muted)]">
                     <Tag>{t("admin.country_label")} {company.countryCode || "-"}</Tag>
                     {company.countryCode === "CO" && (
                         <Tag color={company.electronicInvoicingEnabled ? "cyan" : "default"}>
@@ -77,8 +77,8 @@ const CompaniesTab = ({ companies, loading, onAdd, onEdit, onToggleStatus }) => 
                         <BankOutlined />
                     </span>
                     <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-white">{record.name}</div>
-                        <div className="truncate text-xs text-[#A9B3B8]">
+                        <div className="truncate text-sm font-semibold text-[var(--ohnix-text-primary)]">{record.name}</div>
+                        <div className="truncate text-xs text-[var(--ohnix-text-muted)]">
                             {record.legalName || "-"} · {record.contactEmail || "-"}
                         </div>
                     </div>
@@ -103,7 +103,7 @@ const CompaniesTab = ({ companies, loading, onAdd, onEdit, onToggleStatus }) => 
                         {record.electronicInvoicingEnabled ? t("admin.dian_enabled") : t("admin.dian_disabled")}
                     </Tag>
                 ) : (
-                    <span className="text-xs text-[#8B98A0]">—</span>
+                    <span className="text-xs text-[var(--ohnix-text-dim)]">—</span>
                 ),
         },
         {
@@ -111,7 +111,7 @@ const CompaniesTab = ({ companies, loading, onAdd, onEdit, onToggleStatus }) => 
             key: "users",
             width: 100,
             responsive: ["md"],
-            render: (_, record) => <span className="text-sm text-[#D4DBDF]">{record._count?.users || 0}</span>,
+            render: (_, record) => <span className="text-sm text-[var(--ohnix-text-soft)]">{record._count?.users || 0}</span>,
         },
         {
             title: t("common.status"),
@@ -152,7 +152,7 @@ const CompaniesTab = ({ companies, loading, onAdd, onEdit, onToggleStatus }) => 
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <Input
                     placeholder={t("admin.search_companies_placeholder")}
-                    prefix={<SearchOutlined className="text-[#8B98A0]" />}
+                    prefix={<SearchOutlined className="text-[var(--ohnix-text-dim)]" />}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="max-w-sm"

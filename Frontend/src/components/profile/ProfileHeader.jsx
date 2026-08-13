@@ -55,7 +55,7 @@ const ProfileHeader = ({
             bodyStyle={{ padding: 0 }}
         >
             <div className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(41,216,213,0.18),transparent_36%),linear-gradient(135deg,rgba(7,11,12,0.98),rgba(11,11,11,0.92))] px-5 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
-                <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.05),transparent_20%,transparent_80%,rgba(255,255,255,0.03))] opacity-40" />
+                <div className="absolute inset-0 bg-[linear-gradient(120deg,var(--ohnix-line-2),transparent_20%,transparent_80%,var(--ohnix-line-1))] opacity-40" />
                 <div className="relative grid grid-cols-1 xl:grid-cols-[1.3fr_0.8fr] gap-6 lg:gap-8 items-start">
                     <div className="flex flex-col gap-6 md:flex-row md:items-start">
                         <div className="flex justify-center md:justify-start">
@@ -70,7 +70,7 @@ const ProfileHeader = ({
                                             size={120}
                                         src={getAvatarSrc()}
                                         icon={!getAvatarSrc() && <UserOutlined />}
-                                            className="ring-4 ring-white/10 shadow-[0_16px_40px_rgba(0,0,0,0.35)] border border-white/10"
+                                            className="ring-4 ring-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)] border border-[var(--ohnix-line-4)]"
                                     />
                                 </Spin>
                             </Badge>
@@ -85,13 +85,13 @@ const ProfileHeader = ({
                                     shape="circle"
                                     icon={<CameraOutlined />}
                                     size="small"
-                                        className="absolute bottom-1 right-1 bg-[#29D8D5] hover:bg-[#44F3F0] border-2 border-[#050608] shadow-[0_10px_24px_rgba(41,216,213,0.3)] text-[#021314]"
+                                        className="absolute bottom-1 right-1 bg-[#29D8D5] hover:bg-[#44F3F0] border-2 border-[var(--ohnix-bg-alt)] shadow-[0_10px_24px_rgba(41,216,213,0.3)] text-[#021314]"
                                 />
                             </Upload>
                         </div>
                     </div>
                         <div className="flex-1 text-center md:text-left">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-[#A9B3B8] mb-4">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 py-1 text-[11px] uppercase tracking-[0.22em] text-[var(--ohnix-text-muted)] mb-4">
                                 {t("profile.hero_title")}
                             </div>
 
@@ -99,7 +99,7 @@ const ProfileHeader = ({
                                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                     <div>
                                         <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2">
-                                            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
+                                            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-[var(--ohnix-text-primary)]">
                                                 {user?.username}
                                             </h1>
                                             {isVerified && (
@@ -108,13 +108,13 @@ const ProfileHeader = ({
                                                 </Tooltip>
                                             )}
                                         </div>
-                                        <div className="flex items-center justify-center md:justify-start gap-2 text-[#A9B3B8] mb-2">
+                                        <div className="flex items-center justify-center md:justify-start gap-2 text-[var(--ohnix-text-muted)] mb-2">
                                             <MailOutlined className="text-sm" />
                                             <p className="text-sm truncate max-w-xs sm:max-w-md">
                                                 {user?.email}
                                             </p>
                                         </div>
-                                        <p className="text-sm text-[#A9B3B8] max-w-2xl mx-auto md:mx-0">
+                                        <p className="text-sm text-[var(--ohnix-text-muted)] max-w-2xl mx-auto md:mx-0">
                                             {user?.role === "admin"
                                                 ? t("profile.administrator_account")
                                                 : t("profile.standard_account")}
@@ -134,26 +134,26 @@ const ProfileHeader = ({
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-sm">
-                                        <Text className="text-[11px] uppercase tracking-[0.22em] text-[#A9B3B8] block mb-2">
+                                    <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-4 py-4 backdrop-blur-sm">
+                                        <Text className="text-[11px] uppercase tracking-[0.22em] text-[var(--ohnix-text-muted)] block mb-2">
                                             {t("profile.member_since")}
                                         </Text>
-                                        <p className="text-sm font-medium text-white truncate">
+                                        <p className="text-sm font-medium text-[var(--ohnix-text-primary)] truncate">
                                             {user?.createdAt
                                                 ? new Date(user.createdAt).toLocaleDateString()
                                                 : t("common.na")}
                                         </p>
                                     </div>
-                                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-sm">
-                                        <Text className="text-[11px] uppercase tracking-[0.22em] text-[#A9B3B8] block mb-2">
+                                    <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-4 py-4 backdrop-blur-sm">
+                                        <Text className="text-[11px] uppercase tracking-[0.22em] text-[var(--ohnix-text-muted)] block mb-2">
                                             {t("profile.account_type")}
                                         </Text>
-                                        <p className="text-sm font-medium text-white capitalize truncate">
+                                        <p className="text-sm font-medium text-[var(--ohnix-text-primary)] capitalize truncate">
                                             {user?.role || t("common.unknown")}
                                         </p>
                                     </div>
-                                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-sm">
-                                        <Text className="text-[11px] uppercase tracking-[0.22em] text-[#A9B3B8] block mb-2">
+                                    <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-4 py-4 backdrop-blur-sm">
+                                        <Text className="text-[11px] uppercase tracking-[0.22em] text-[var(--ohnix-text-muted)] block mb-2">
                                             {t("profile.verification_status")}
                                         </Text>
                                         <p className={`text-sm font-medium truncate ${isVerified ? "text-[#44F3F0]" : "text-amber-300"}`}>

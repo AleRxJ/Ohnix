@@ -30,7 +30,7 @@ const OrderFilters = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <Input
                         placeholder={t("orders.search_by_invoice")}
-                        prefix={<SearchOutlined className="text-[#8B98A0]" />}
+                        prefix={<SearchOutlined className="text-[var(--ohnix-text-dim)]" />}
                         value={filters.search || ""}
                         onChange={(e) =>
                             onFilterChange("search", e.target.value)
@@ -116,7 +116,7 @@ const OrderFilters = ({
                     />
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-white/10">
+                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-[var(--ohnix-line-4)]">
                     <Button
                         type="primary"
                         icon={<FilterOutlined />}

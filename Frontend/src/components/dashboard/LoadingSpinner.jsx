@@ -10,10 +10,10 @@ const LoadingSpinner = ({ tip = "Loading...", height = "75vh" }) => {
             style={{ height }}
         >
             <div className="absolute h-40 w-40 rounded-full border border-[#29D8D5]/15 animate-drift" />
-            <div className="absolute h-56 w-56 rounded-full border border-white/8 animate-glow-pulse" />
+            <div className="absolute h-56 w-56 rounded-full border border-[var(--ohnix-line-3)] animate-glow-pulse" />
             <div className="relative z-10 flex flex-col items-center">
                 <Spin size="large" />
-                <Text className="mt-4 text-[#A9B3B8]">{tip}</Text>
+                <Text className="mt-4 text-[var(--ohnix-text-muted)]">{tip}</Text>
             </div>
         </div>
     );

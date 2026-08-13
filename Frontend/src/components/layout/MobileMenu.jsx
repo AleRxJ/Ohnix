@@ -6,6 +6,8 @@ import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import useSubscription from "../../hooks/useSubscription";
+import { useTheme } from "../../context/ThemeContext";
+import ThemeToggle from "../common/ThemeToggle";
 
 const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 
@@ -14,6 +16,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
     const { team, hasPermission, loading: teamLoading } = useTeam();
     const { plan } = useSubscription();
     const { t } = useI18n();
+    const { isLite } = useTheme();
     const panelRef = useRef(null);
     const showTeam = Boolean(team) || TEAM_CAPABLE_PLANS.includes(plan);
 
@@ -54,10 +57,13 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
             />
             <div
                 ref={panelRef}
-                className="absolute top-16 left-0 right-0 max-h-[calc(100vh-4rem)] overflow-hidden border-b border-white/10 bg-[linear-gradient(180deg,rgba(9,10,12,0.98),rgba(5,5,5,0.98))] shadow-2xl"
+                className="absolute top-16 left-0 right-0 max-h-[calc(100vh-4rem)] overflow-hidden border-b border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-header)] shadow-2xl"
             >
                 <div className="px-4 py-3 h-full flex flex-col gap-3">
-                    <div className="flex-1 rounded-2xl overflow-hidden border border-white/10 bg-white/[0.03] shadow-inner">
+                    <div className="flex items-center justify-end">
+                        <ThemeToggle />
+                    </div>
+                    <div className="flex-1 rounded-2xl overflow-hidden border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] shadow-inner">
                         <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-[#29D8D5]/70 scrollbar-track-white/10 hover:scrollbar-thumb-[#44F3F0]">
                             {teamLoading ? (
                                 <div className="space-y-3 p-3">
@@ -67,7 +73,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
                                 </div>
                             ) : (
                                 <Menu
-                                    theme="dark"
+                                    theme={isLite ? "light" : "dark"}
                                     selectedKeys={[currentPage]}
                                     mode="inline"
                                     items={getMenuItems(t, user?.role, user?.company?.countryCode === "CO", showTeam, hasPermission)}

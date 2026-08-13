@@ -101,7 +101,7 @@ const AdvancedReports = () => {
     ];
 
     const filterBar = (
-        <Card className="module-shell border border-white/10 overflow-hidden hover-lift mb-4">
+        <Card className="module-shell border border-[var(--ohnix-line-4)] overflow-hidden hover-lift mb-4">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div className="flex flex-col sm:flex-row gap-3">
                     <RangePicker
@@ -137,7 +137,7 @@ const AdvancedReports = () => {
                         </Col>
                     </Row>
                     {marginData.byProduct.length > 0 && (
-                        <Card className="module-shell border border-white/10 mb-4" title={t("reports.advanced.margin_by_product")}>
+                        <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.margin_by_product")}>
                             <ResponsiveContainer width="100%" height={320}>
                                 <BarChart data={marginData.byProduct.slice(0, 8)}>
                                     <CartesianGrid strokeDasharray="3 3" />
@@ -149,7 +149,7 @@ const AdvancedReports = () => {
                             </ResponsiveContainer>
                         </Card>
                     )}
-                    <Card className="module-shell border border-white/10">
+                    <Card className="module-shell border border-[var(--ohnix-line-4)]">
                         <Table columns={marginColumns} dataSource={marginData.byProduct} rowKey="_id" loading={loading} pagination={{ pageSize: 10 }} className="module-dark-table" scroll={{ x: 500 }} />
                     </Card>
                 </>
@@ -161,7 +161,7 @@ const AdvancedReports = () => {
             children: customersData && (
                 <>
                     {customersData.customers.length > 0 && (
-                        <Card className="module-shell border border-white/10 mb-4" title={t("reports.advanced.top_customers_by_revenue")}>
+                        <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.top_customers_by_revenue")}>
                             <ResponsiveContainer width="100%" height={320}>
                                 <BarChart data={customersData.customers.slice(0, 8)}>
                                     <CartesianGrid strokeDasharray="3 3" />
@@ -173,7 +173,7 @@ const AdvancedReports = () => {
                             </ResponsiveContainer>
                         </Card>
                     )}
-                    <Card className="module-shell border border-white/10">
+                    <Card className="module-shell border border-[var(--ohnix-line-4)]">
                         <Table columns={customerColumns} dataSource={customersData.customers} rowKey="_id" loading={loading} pagination={{ pageSize: 10 }} className="module-dark-table" scroll={{ x: 500 }} />
                     </Card>
                 </>
@@ -185,7 +185,7 @@ const AdvancedReports = () => {
             children: teamData && (
                 <>
                     {teamData.members.length > 0 && (
-                        <Card className="module-shell border border-white/10 mb-4" title={t("reports.advanced.sales_by_team")}>
+                        <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.sales_by_team")}>
                             <ResponsiveContainer width="100%" height={320}>
                                 <BarChart data={teamData.members}>
                                     <CartesianGrid strokeDasharray="3 3" />
@@ -197,7 +197,7 @@ const AdvancedReports = () => {
                             </ResponsiveContainer>
                         </Card>
                     )}
-                    <Card className="module-shell border border-white/10">
+                    <Card className="module-shell border border-[var(--ohnix-line-4)]">
                         <Table columns={teamColumns} dataSource={teamData.members} rowKey="_id" loading={loading} pagination={{ pageSize: 10 }} className="module-dark-table" scroll={{ x: 400 }} />
                     </Card>
                 </>
@@ -209,16 +209,16 @@ const AdvancedReports = () => {
             children: comparisonData && (
                 <Row gutter={[16, 16]}>
                     <Col xs={24} sm={12}>
-                        <Card className="module-shell border border-white/10" title={t("reports.total_sales")}>
-                            <div className="text-2xl font-bold text-white mb-1">{formatCurrency(comparisonData.current.totalSales)}</div>
-                            <div className="text-xs text-[#A9B3B8] mb-2">{t("reports.advanced.vs_previous_period")}: {formatCurrency(comparisonData.previous.totalSales)}</div>
+                        <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("reports.total_sales")}>
+                            <div className="text-2xl font-bold text-[var(--ohnix-text-primary)] mb-1">{formatCurrency(comparisonData.current.totalSales)}</div>
+                            <div className="text-xs text-[var(--ohnix-text-muted)] mb-2">{t("reports.advanced.vs_previous_period")}: {formatCurrency(comparisonData.previous.totalSales)}</div>
                             <ChangeBadge value={comparisonData.change.sales} />
                         </Card>
                     </Col>
                     <Col xs={24} sm={12}>
-                        <Card className="module-shell border border-white/10" title={t("orders.total_orders")}>
-                            <div className="text-2xl font-bold text-white mb-1">{comparisonData.current.totalOrders}</div>
-                            <div className="text-xs text-[#A9B3B8] mb-2">{t("reports.advanced.vs_previous_period")}: {comparisonData.previous.totalOrders}</div>
+                        <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("orders.total_orders")}>
+                            <div className="text-2xl font-bold text-[var(--ohnix-text-primary)] mb-1">{comparisonData.current.totalOrders}</div>
+                            <div className="text-xs text-[var(--ohnix-text-muted)] mb-2">{t("reports.advanced.vs_previous_period")}: {comparisonData.previous.totalOrders}</div>
                             <ChangeBadge value={comparisonData.change.orders} />
                         </Card>
                     </Col>
@@ -230,7 +230,7 @@ const AdvancedReports = () => {
     return (
         <div className="space-y-4">
             {filterBar}
-            <Card className="module-shell border border-white/10 overflow-hidden">
+            <Card className="module-shell border border-[var(--ohnix-line-4)] overflow-hidden">
                 <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} className="custom-tabs" />
             </Card>
         </div>

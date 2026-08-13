@@ -7,7 +7,7 @@ import { VISIBLE_MODULE_KEYS } from "../../constants/teamModules";
 const darkModalStyles = {
     mask: { backgroundColor: "rgba(0,0,0,0.55)" },
     content: {
-        background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+        background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
         border: "1px solid rgba(41,216,213,0.18)",
         boxShadow: "0 24px 70px rgba(0,0,0,0.6), 0 0 40px rgba(41,216,213,0.06)",
         borderRadius: "28px",
@@ -48,18 +48,18 @@ const InviteMemberModal = ({ open, onCancel, onSubmit, submitting, form, roles }
                     <UserAddOutlined className="text-2xl text-[#44F3F0]" />
                 </div>
                 <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#A9B3B8]">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.25em] text-[var(--ohnix-text-muted)]">
                         <span className="h-1.5 w-1.5 rounded-full bg-[#44F3F0] shadow-[0_0_10px_rgba(68,243,240,0.9)]" />
                         {t("team.tab_members")}
                     </div>
-                    <h3 className="mt-2 text-xl font-bold text-white">{t("team.invite_modal_title")}</h3>
+                    <h3 className="mt-2 text-xl font-bold text-[var(--ohnix-text-primary)]">{t("team.invite_modal_title")}</h3>
                 </div>
             </div>
 
             <Form form={form} layout="vertical" onFinish={onSubmit}>
                 <Form.Item
                     name="email"
-                    label={<span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#A9B3B8]">{t("team.invite_email_label")}</span>}
+                    label={<span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ohnix-text-muted)]">{t("team.invite_email_label")}</span>}
                     rules={[
                         { required: true, message: t("validation.required_field") },
                         { type: "email", message: t("validation.invalid_email") },
@@ -74,7 +74,7 @@ const InviteMemberModal = ({ open, onCancel, onSubmit, submitting, form, roles }
                 </Form.Item>
                 <Form.Item
                     name="roleId"
-                    label={<span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#A9B3B8]">{t("team.invite_role_label")}</span>}
+                    label={<span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ohnix-text-muted)]">{t("team.invite_role_label")}</span>}
                     rules={[{ required: true, message: t("validation.required_field") }]}
                 >
                     <Select
@@ -85,12 +85,12 @@ const InviteMemberModal = ({ open, onCancel, onSubmit, submitting, form, roles }
                 </Form.Item>
 
                 {selectedRole && (
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6F7A81]">
+                    <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ohnix-text-dim)]">
                             {t("team.roles_description")}
                         </p>
                         {grantedModules.length === 0 ? (
-                            <span className="text-sm text-[#6B7880]">{t("team.permission_none")}</span>
+                            <span className="text-sm text-[var(--ohnix-text-dim)]">{t("team.permission_none")}</span>
                         ) : (
                             <div className="flex flex-wrap gap-1.5">
                                 {grantedModules.map((p) => (

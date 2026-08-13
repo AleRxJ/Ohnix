@@ -20,7 +20,7 @@ const CategoryUnit = () => {
     const unitHook = useUnits();
 
     return (
-        <div className="min-h-screen p-4 sm:p-6 bg-transparent text-white">
+        <div className="min-h-screen p-4 sm:p-6 bg-transparent text-[var(--ohnix-text-primary)]">
             <div className="max-w-7xl mx-auto">
                 {/* Enhanced Header */}
                 <div className="mb-8">
@@ -43,7 +43,7 @@ const CategoryUnit = () => {
                 <Row gutter={[24, 24]}>
                     <Col xs={24} xl={12}>
                         <div className="h-full">
-                            <div className="h-full rounded-xl border border-white/10 bg-[#0B0B0B]/90 shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
+                            <div className="h-full rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
                                 <CategorySection
                                     user={user}
                                     isAdmin={isAdmin}
@@ -54,7 +54,7 @@ const CategoryUnit = () => {
                     </Col>
                     <Col xs={24} xl={12}>
                         <div className="h-full">
-                            <div className="h-full rounded-xl border border-white/10 bg-[#0B0B0B]/90 shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
+                            <div className="h-full rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
                                 <UnitSection 
                                     user={user} 
                                     isAdmin={isAdmin}

@@ -24,7 +24,7 @@ const ReturnPreview = ({
             dataIndex: "product_name",
             key: "product_name",
             render: (name) => (
-                <div className="font-medium text-white">
+                <div className="font-medium text-[var(--ohnix-text-primary)]">
                     {name}
                 </div>
             ),
@@ -48,7 +48,7 @@ const ReturnPreview = ({
             dataIndex: "current_stock",
             key: "current_stock",
             render: (stock) => (
-                <div className="text-center font-medium text-[#D4DBDF]">
+                <div className="text-center font-medium text-[var(--ohnix-text-soft)]">
                     {stock}
                 </div>
             ),
@@ -80,7 +80,7 @@ const ReturnPreview = ({
             dataIndex: "unit_cost",
             key: "unit_cost",
             render: (cost) => (
-                <div className="text-right font-medium text-[#D4DBDF]">
+                <div className="text-right font-medium text-[var(--ohnix-text-soft)]">
                     {formatCurrency(cost)}
                 </div>
             ),
@@ -141,7 +141,7 @@ const ReturnPreview = ({
             title={
                 <div className="flex items-center space-x-3">
                     <ExclamationCircleOutlined className="text-[#FFCF70]" />
-                    <Title level={4} className="mb-0 !text-white">
+                    <Title level={4} className="mb-0 !text-[var(--ohnix-text-primary)]">
                         Return Preview
                     </Title>
                     <Tag color="blue" className="text-sm">
@@ -175,7 +175,7 @@ const ReturnPreview = ({
                     {/* Summary Cards */}
                     <Row gutter={[16, 16]}>
                         <Col xs={24} sm={12} md={8}>
-                            <Card className="text-center border border-white/10 bg-[#0B0B0B]/92">
+                            <Card className="text-center border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)]">
                                 <Statistic
                                     title="Total Potential Refund"
                                     value={returnPreviewData.total_potential_refund}
@@ -186,7 +186,7 @@ const ReturnPreview = ({
                             </Card>
                         </Col>
                         <Col xs={12} sm={6} md={4}>
-                            <Card className="text-center border border-white/10 bg-[#0B0B0B]/92">
+                            <Card className="text-center border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)]">
                                 <Statistic
                                     title="Total Items"
                                     value={totalItems}
@@ -195,7 +195,7 @@ const ReturnPreview = ({
                             </Card>
                         </Col>
                         <Col xs={12} sm={6} md={4}>
-                            <Card className="text-center border border-white/10 bg-[#0B0B0B]/92">
+                            <Card className="text-center border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)]">
                                 <Statistic
                                     title="Full Returns"
                                     value={fullReturns}
@@ -204,7 +204,7 @@ const ReturnPreview = ({
                             </Card>
                         </Col>
                         <Col xs={12} sm={6} md={4}>
-                            <Card className="text-center border border-white/10 bg-[#0B0B0B]/92">
+                            <Card className="text-center border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)]">
                                 <Statistic
                                     title="Partial Returns"
                                     value={partialReturns}

@@ -78,10 +78,10 @@ const PurchaseForm = ({
         <Modal
             title={
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/[0.06] border border-white/10">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
                         <ShoppingCartOutlined className="text-[#44F3F0]" />
                     </div>
-                    <span className="text-lg font-semibold text-white">{t("purchases.add_new_purchase")}</span>
+                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">{t("purchases.add_new_purchase")}</span>
                 </div>
             }
             open={visible}
@@ -94,13 +94,13 @@ const PurchaseForm = ({
                 content: {
                     background:
                         "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: "1px solid var(--ohnix-line-4)",
                     boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
                     borderRadius: "24px",
                 },
                 header: {
                     background: "transparent",
-                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    borderBottom: "1px solid var(--ohnix-line-3)",
                     padding: "20px 24px 16px",
                 },
                 body: { padding: "24px" },
@@ -113,7 +113,7 @@ const PurchaseForm = ({
                 initialValues={initialValues}
                 className="mt-2"
             >
-                <Card className="mb-1 border border-white/10 bg-white/[0.03] text-white shadow-sm">
+                <Card className="mb-1 border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-primary)] shadow-sm">
                     <Row gutter={[16, 16]}>
                         <Col xs={24} sm={12}>
                             <Form.Item label={t("purchases.purchase_number")} name="purchase_no" rules={[{ required: true, message: t("purchases.enter_purchase_number") }, { max: 10, message: t("purchases.purchase_number_max_length") }]}>
@@ -143,7 +143,7 @@ const PurchaseForm = ({
                 </Card>
 
                     <Divider orientation="left">
-                        <span className="text-lg font-medium text-white">{t("purchases.purchase_details")}</span>
+                        <span className="text-lg font-medium text-[var(--ohnix-text-primary)]">{t("purchases.purchase_details")}</span>
                     </Divider>
 
                 <Form.List name="details">
@@ -162,7 +162,7 @@ const PurchaseForm = ({
                                 return (
                                     <Card
                                         key={key}
-                                        className="mb-4 border border-white/10 shadow-sm bg-white/[0.03] text-white"
+                                        className="mb-4 border border-[var(--ohnix-line-4)] shadow-sm bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-primary)]"
                                     >
                                         <Row gutter={[16, 16]} align="middle">
                                             <Col xs={24} sm={8}>
@@ -267,7 +267,7 @@ const PurchaseForm = ({
                 <Form.Item className="mb-0 pt-4">
                     <Row justify="end">
                             <Space size="large">
-                                <Button onClick={onCancel} size="large" className="px-8 bg-white/[0.04] border-white/10 text-white hover:text-[#44F3F0] hover:border-[#44F3F0]">{t("common.cancel")}</Button>
+                                <Button onClick={onCancel} size="large" className="px-8 bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0]">{t("common.cancel")}</Button>
                                 <Button type="primary" htmlType="submit" size="large" className="px-8 bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 shadow-lg hover:shadow-xl transition-all duration-300 text-[#021314]">{t("purchases.create_purchase")}</Button>
                             </Space>
                     </Row>

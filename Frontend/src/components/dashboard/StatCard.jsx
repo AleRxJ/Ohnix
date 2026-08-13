@@ -30,19 +30,19 @@ const StatCard = ({
 
     return (
         <Card
-            className={`border border-white/10 bg-[#0F1012] hover:border-[#29D8D5]/35 hover:shadow-[0_18px_38px_rgba(0,0,0,0.32)] transition-all duration-300 animate-fade-up hover-lift ${className}`}
+            className={`border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-4)] hover:border-[#29D8D5]/35 hover:shadow-[var(--ohnix-shadow-card)] transition-all duration-300 animate-fade-up hover-lift ${className}`}
             bodyStyle={{ padding: 0 }}
             styles={{ body: { padding: 0 } }}
         >
             <div className="p-5">
                 <div className="flex items-start justify-between gap-3 mb-4">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-sm font-medium text-[#A9B3B8] truncate">
+                        <span className="text-sm font-medium text-[var(--ohnix-text-muted)] truncate">
                             {title}
                         </span>
                         {description && (
                             <Tooltip title={description}>
-                                <InfoCircleOutlined className="text-xs text-[#A9B3B8] flex-shrink-0" />
+                                <InfoCircleOutlined className="text-xs text-[var(--ohnix-text-muted)] flex-shrink-0" />
                             </Tooltip>
                         )}
                     </div>
@@ -65,7 +65,7 @@ const StatCard = ({
                         valueStyle={{
                             fontSize: "32px",
                             fontWeight: "700",
-                            color: "#ffffff",
+                            color: "var(--ohnix-text-primary)",
                             lineHeight: "1.2",
                             ...valueStyle,
                         }}
@@ -83,7 +83,7 @@ const StatCard = ({
                         >
                             {getTrendText()}
                         </span>
-                        <span className="text-xs text-[#A9B3B8] ml-0.5">
+                        <span className="text-xs text-[var(--ohnix-text-muted)] ml-0.5">
                             vs last period
                         </span>
                     </div>

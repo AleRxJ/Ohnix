@@ -7,6 +7,7 @@ import {
     FireOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import { useTheme } from "../../context/ThemeContext";
 
 const { Text, Title } = Typography;
 
@@ -25,6 +26,7 @@ const CHART_COLORS = [
 
 const ProductDistribution = ({ topProducts }) => {
     const { t } = useI18n();
+    const { isLite } = useTheme();
     const hasData = topProducts && topProducts.length > 0;
 
     const chartData = hasData
@@ -134,25 +136,25 @@ const ProductDistribution = ({ topProducts }) => {
     };
 
     return (
-        <section className="w-full rounded-2xl border border-white/10 bg-[#0B0B0B]/92 shadow-[0_18px_40px_rgba(0,0,0,0.35)] overflow-hidden reveal-card">
-            <header className="px-6 py-5 border-b border-white/8">
+        <section className="w-full rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] shadow-[var(--ohnix-shadow-card)] overflow-hidden reveal-card">
+            <header className="px-6 py-5 border-b border-[var(--ohnix-line-3)]">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-[linear-gradient(135deg,rgba(41,216,213,0.22),rgba(68,243,240,0.12))] border border-[#29D8D5]/25 flex items-center justify-center shadow-sm animate-glow-pulse">
-                            <TrophyOutlined className="text-white text-lg" />
+                            <TrophyOutlined className="text-[var(--ohnix-text-primary)] text-lg" />
                         </div>
                         <div>
-                            <h2 className="m-0 text-white font-bold text-lg leading-tight">
+                            <h2 className="m-0 text-[var(--ohnix-text-primary)] font-bold text-lg leading-tight">
                                 {t("reports.top_products")}
                             </h2>
-                            <p className="m-0 text-[#A9B3B8] text-xs mt-0.5">
+                            <p className="m-0 text-[var(--ohnix-text-muted)] text-xs mt-0.5">
                                 {t("reports.top_products_overview")}
                             </p>
                         </div>
                     </div>
                     <a
                         href="/reports/top-products"
-                        className="px-4 py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] text-[#44F3F0] hover:text-white transition-all duration-200 flex items-center justify-center gap-2 font-semibold text-xs border border-white/10 hover:border-[#29D8D5]/35 w-full sm:w-auto"
+                        className="px-4 py-2 rounded-lg bg-[var(--ohnix-line-1)] hover:bg-[var(--ohnix-line-2)] text-[#44F3F0] hover:text-[var(--ohnix-text-primary)] transition-all duration-200 flex items-center justify-center gap-2 font-semibold text-xs border border-[var(--ohnix-line-4)] hover:border-[#29D8D5]/35 w-full sm:w-auto"
                     >
                         <span>{t("reports.top_products_view_all")}</span>
                         <ArrowUpOutlined className="text-xs rotate-45" />
@@ -173,12 +175,12 @@ const ProductDistribution = ({ topProducts }) => {
                         </div>
                     </div>
 
-                    <div className="rounded-2xl p-5 border border-white/10 bg-white/[0.03]">
+                    <div className="rounded-2xl p-5 border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)]">
                         <div className="flex items-center gap-2.5 mb-4">
                             <div className="w-8 h-8 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center">
                                 <FireOutlined className="text-[#29D8D5] text-sm" />
                             </div>
-                            <span className="text-sm font-bold text-white uppercase tracking-wide">
+                            <span className="text-sm font-bold text-[var(--ohnix-text-primary)] uppercase tracking-wide">
                                 {t("dashboard.top_performer")}
                             </span>
                         </div>
@@ -186,7 +188,7 @@ const ProductDistribution = ({ topProducts }) => {
                             {topProducts.slice(0, 3).map((item, index) => (
                                 <div
                                     key={index}
-                                    className="group flex items-center justify-between p-4 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] transition-all duration-200 border border-white/8 hover:border-[#29D8D5]/25 hover:shadow-[0_10px_25px_rgba(0,0,0,0.18)]"
+                                    className="group flex items-center justify-between p-4 rounded-xl bg-[var(--ohnix-line-2)] hover:bg-[var(--ohnix-line-3)] transition-all duration-200 border border-[var(--ohnix-line-3)] hover:border-[#29D8D5]/25 hover:shadow-[var(--ohnix-shadow-soft)]"
                                 >
                                     <div className="flex items-center gap-3 min-w-0 flex-1">
                                         <div className="text-2xl flex-shrink-0 w-8 h-8 flex items-center justify-center">
@@ -197,14 +199,14 @@ const ProductDistribution = ({ topProducts }) => {
                                                 title={item.product_name}
                                                 placement="topLeft"
                                             >
-                                                <div className="text-sm font-semibold text-white truncate group-hover:text-[#44F3F0] transition-colors">
+                                                <div className="text-sm font-semibold text-[var(--ohnix-text-primary)] truncate group-hover:text-[#44F3F0] transition-colors">
                                                     {truncateProductName(
                                                         item.product_name,
                                                         24
                                                     )}
                                                 </div>
                                             </Tooltip>
-                                            <div className="text-xs text-[#A9B3B8] mt-1 font-medium">
+                                            <div className="text-xs text-[var(--ohnix-text-muted)] mt-1 font-medium">
                                                 Rank #{index + 1}
                                             </div>
                                         </div>
@@ -234,10 +236,10 @@ const ProductDistribution = ({ topProducts }) => {
                         imageStyle={{ height: 90 }}
                         description={
                             <div className="text-center mt-4">
-                                <div className="text-white font-semibold text-base mb-2">
+                                <div className="text-[var(--ohnix-text-primary)] font-semibold text-base mb-2">
                                     {t("reports.no_sales_data_available")}
                                 </div>
-                                <Text className="text-sm text-[#A9B3B8] block leading-relaxed max-w-xs mx-auto">
+                                <Text className="text-sm text-[var(--ohnix-text-muted)] block leading-relaxed max-w-xs mx-auto">
                                     {t(
                                         "reports.sales_data_will_be_displayed_here_once_orders_exist"
                                     )}

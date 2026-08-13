@@ -37,6 +37,14 @@ export const userService = {
         return response.data;
     },
 
+    async updatePreferredTheme(theme) {
+        const response = await api.patch("/users/update-account", {
+            theme,
+        });
+
+        return response.data;
+    },
+
     // Avatar upload
     async updateAvatar(file) {
         const formData = new FormData();

@@ -7,7 +7,7 @@ const AuthCard = ({ title, subtitle, children }) => {
     const { t } = useI18n();
     return (
         <Card
-            className="auth-card w-full max-w-md border border-white/10 bg-[#0B0B0B]/92 text-white shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur-md surface-shine animate-fade-up-delay glass-panel"
+            className="auth-card w-full max-w-md border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] text-[var(--ohnix-text-primary)] shadow-[0_24px_60px_rgba(0,0,0,0.45)] backdrop-blur-md surface-shine animate-fade-up-delay glass-panel"
             styles={{
                 body: { padding: "clamp(1rem, 3.4vw, 2.5rem)" },
             }}
@@ -21,11 +21,11 @@ const AuthCard = ({ title, subtitle, children }) => {
                     <span className="h-1.5 w-1.5 rounded-full bg-[#44F3F0] shadow-[0_0_16px_rgba(68,243,240,0.9)]" />
                     {t("auth.secure_access")}
                 </div>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-tight mb-2">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--ohnix-text-primary)] tracking-tight mb-2">
                     {title}
                 </h2>
                 {subtitle && (
-                    <p className="text-sm text-[#A9B3B8] mt-2">{subtitle}</p>
+                    <p className="text-sm text-[var(--ohnix-text-muted)] mt-2">{subtitle}</p>
                 )}
             </div>
             {children}

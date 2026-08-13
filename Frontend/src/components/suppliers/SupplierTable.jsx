@@ -143,7 +143,7 @@ const SupplierTable = ({
     ];
 
     return (
-        <Card className="module-shell border border-white/10 bg-[#0B0B0B]/92 shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
+        <Card className="module-shell border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
             <Table
                 columns={columns}
                 dataSource={suppliers}

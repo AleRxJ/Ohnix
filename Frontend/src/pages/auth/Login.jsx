@@ -68,7 +68,7 @@ const Login = () => {
                     <div className="flex justify-end mb-5">
                         <Link
                             to="/reset-password"
-                            className="text-sm text-[#A9B3B8] hover:text-[#44F3F0] transition-colors"
+                            className="text-sm text-[var(--ohnix-text-muted)] hover:text-[#44F3F0] transition-colors"
                         >
                             {t('auth.forgot_password')}
                         </Link>
@@ -78,12 +78,12 @@ const Login = () => {
                         <AuthButton loading={loading}>{t('auth.login')}</AuthButton>
                     </Form.Item>
 
-                    <Divider plain className="my-6 text-[#A9B3B8] text-sm before:border-white/10 after:border-white/10">
+                    <Divider plain className="my-6 text-[var(--ohnix-text-muted)] text-sm before:border-[var(--ohnix-line-4)] after:border-[var(--ohnix-line-4)]">
                         {t('common.or')}
                     </Divider>
 
                     <div className="text-center text-sm">
-                        <span className="text-[#A9B3B8]">
+                        <span className="text-[var(--ohnix-text-muted)]">
                             {t('auth.dont_have_account')}
                         </span>{" "}
                         <Link

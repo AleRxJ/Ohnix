@@ -44,7 +44,7 @@ const PermissionChanges = ({ changes, t }) => {
     return (
         <div className="mt-1.5 flex flex-wrap gap-1">
             {changes.map((c) => (
-                <Tag key={c.moduleKey} className="border-white/10 bg-white/5 text-[#A9B3B8] text-[10px] m-0">
+                <Tag key={c.moduleKey} className="border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-muted)] text-[10px] m-0">
                     {t(`team.module_${c.moduleKey}`)}: {t(`team.permission_${c.from}`)} → {t(`team.permission_${c.to}`)}
                 </Tag>
             ))}
@@ -90,18 +90,18 @@ const ActivityTab = () => {
             {logs.map((log) => (
                 <div
                     key={log.id}
-                    className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                    className="flex items-start gap-3 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-4 py-3"
                 >
                     <Avatar src={avatarSrc(log.actor)} icon={<UserOutlined />} size={28} />
                     <div className="flex-1 min-w-0">
-                        <p className="m-0 text-sm text-white">
+                        <p className="m-0 text-sm text-[var(--ohnix-text-primary)]">
                             <span className="font-semibold">{log.actor?.username || "Ohnix"}</span>{" "}
                             {describeAction(log, lang, t)}
                         </p>
                         {log.action === "role.updated" && (
                             <PermissionChanges changes={log.metadata?.permissionChanges} t={t} />
                         )}
-                        <p className="m-0 mt-1 text-xs text-[#A9B3B8]">{new Date(log.createdAt).toLocaleString()}</p>
+                        <p className="m-0 mt-1 text-xs text-[var(--ohnix-text-muted)]">{new Date(log.createdAt).toLocaleString()}</p>
                     </div>
                 </div>
             ))}

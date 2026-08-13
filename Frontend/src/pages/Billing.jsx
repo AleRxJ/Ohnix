@@ -571,24 +571,24 @@ const Billing = () => {
 
     if (!canViewBilling) {
         return (
-            <div className="min-h-screen bg-[#050608] text-white flex items-center justify-center p-6">
-                <div className="max-w-md rounded-[28px] border border-white/10 bg-white/[0.03] p-8 text-center">
-                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
-                        <LockOutlined className="text-2xl text-[#A9B3B8]" />
+            <div className="min-h-screen bg-[var(--ohnix-bg-alt)] text-[var(--ohnix-text-primary)] flex items-center justify-center p-6">
+                <div className="max-w-md rounded-[28px] border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-8 text-center">
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)]">
+                        <LockOutlined className="text-2xl text-[var(--ohnix-text-muted)]" />
                     </div>
-                    <h2 className="mb-2 text-xl font-bold text-white">{t("team.billing_locked_title")}</h2>
-                    <p className="mb-0 text-sm text-[#A9B3B8]">{t("team.billing_locked_description")}</p>
+                    <h2 className="mb-2 text-xl font-bold text-[var(--ohnix-text-primary)]">{t("team.billing_locked_title")}</h2>
+                    <p className="mb-0 text-sm text-[var(--ohnix-text-muted)]">{t("team.billing_locked_description")}</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#050608] text-white relative overflow-hidden">
+        <div className="min-h-screen bg-[var(--ohnix-bg-alt)] text-[var(--ohnix-text-primary)] relative overflow-hidden">
             <div className="pointer-events-none absolute inset-0 opacity-80">
                 <div className="absolute -top-28 -left-24 h-72 w-72 rounded-full bg-[#29D8D5]/12 blur-3xl" />
                 <div className="absolute top-1/3 -right-24 h-80 w-80 rounded-full bg-[#44F3F0]/10 blur-3xl" />
-                <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+                <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-[var(--ohnix-line-2)] blur-3xl" />
             </div>
 
             <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8 lg:py-10 space-y-6 sm:space-y-7">
@@ -596,18 +596,18 @@ const Billing = () => {
                     <Button
                         type="default"
                         onClick={() => navigate("/profile")}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white hover:bg-white/[0.08] hover:border-white/15"
+                        className="inline-flex items-center gap-2 rounded-full border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-4 py-2 text-sm font-medium text-[var(--ohnix-text-primary)] hover:bg-[var(--ohnix-hover-overlay)] hover:border-[var(--ohnix-line-6)]"
                         icon={<ArrowLeftOutlined className="text-[#44F3F0]" />}
                     >
                         {t("profile.back_to_dashboard")}
                     </Button>
                 </div>
 
-                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 lg:p-8 shadow-[0_24px_70px_rgba(0,0,0,0.35)] backdrop-blur-md">
-                    <Title level={2} className="!text-white !mb-1">
+                <div className="rounded-3xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-5 sm:p-6 lg:p-8 shadow-[0_24px_70px_rgba(0,0,0,0.35)] backdrop-blur-md">
+                    <Title level={2} className="!text-[var(--ohnix-text-primary)] !mb-1">
                         {t("profile.subscription.manage_plan")}
                     </Title>
-                    <Text className="text-[#A9B3B8]">
+                    <Text className="text-[var(--ohnix-text-muted)]">
                         {t("profile.subscription.description")}
                     </Text>
 
@@ -634,7 +634,7 @@ const Billing = () => {
 
                     {latestActiveRequest ? (
                         <div className="mt-6 rounded-2xl border border-[#29D8D5]/20 bg-[#29D8D5]/8 p-4 sm:p-5">
-                            <Title level={5} className="!text-white !mb-2">
+                            <Title level={5} className="!text-[var(--ohnix-text-primary)] !mb-2">
                                 {t("profile.subscription.tracker_title")}
                             </Title>
                             <Text className="text-[#CFE8E8]">
@@ -642,17 +642,17 @@ const Billing = () => {
                             </Text>
 
                             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                                    <div className="text-xs uppercase tracking-[0.14em] text-[#A9B3B8]">
+                                <div className="rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-3">
+                                    <div className="text-xs uppercase tracking-[0.14em] text-[var(--ohnix-text-muted)]">
                                         {t("profile.subscription.tracker_requested_plan")}
                                     </div>
-                                    <div className="mt-1 text-sm text-white">
+                                    <div className="mt-1 text-sm text-[var(--ohnix-text-primary)]">
                                         {t(`profile.subscription.plan_${latestActiveRequest.currentPlan}`)} → {" "}
                                         {t(`profile.subscription.plan_${latestActiveRequest.targetPlan}`)}
                                     </div>
                                 </div>
-                                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                                    <div className="text-xs uppercase tracking-[0.14em] text-[#A9B3B8]">
+                                <div className="rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-3">
+                                    <div className="text-xs uppercase tracking-[0.14em] text-[var(--ohnix-text-muted)]">
                                         {t("profile.subscription.tracker_current_status")}
                                     </div>
                                     <div className="mt-1">
@@ -691,11 +691,11 @@ const Billing = () => {
                                                     ? "border-[#44F3F0]/45 bg-[#44F3F0]/12"
                                                     : isDone
                                                       ? "border-emerald-300/30 bg-emerald-500/10"
-                                                      : "border-white/10 bg-white/[0.02]"
+                                                      : "border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)]"
                                             }`}
                                         >
                                             <div className="flex items-center justify-between gap-3">
-                                                <div className="text-sm font-medium text-white">
+                                                <div className="text-sm font-medium text-[var(--ohnix-text-primary)]">
                                                     {t(`profile.subscription.tracker_step_${stepKey}_title`)}
                                                 </div>
                                                 <Tag color={isDone ? "green" : "default"}>
@@ -716,11 +716,11 @@ const Billing = () => {
                         </div>
                     ) : null}
 
-                    <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
-                        <Title level={5} className="!text-white !mb-2">
+                    <div className="mt-6 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 sm:p-5">
+                        <Title level={5} className="!text-[var(--ohnix-text-primary)] !mb-2">
                             {t("profile.subscription.requests_title")}
                         </Title>
-                        <Text className="text-[#A9B3B8]">
+                        <Text className="text-[var(--ohnix-text-muted)]">
                             {t("profile.subscription.requests_description")}
                         </Text>
 
@@ -729,13 +729,13 @@ const Billing = () => {
                             dataSource={safeRequests}
                             locale={{
                                 emptyText: (
-                                    <span className="text-[#A9B3B8]">
+                                    <span className="text-[var(--ohnix-text-muted)]">
                                         {t("profile.subscription.no_requests")}
                                     </span>
                                 ),
                             }}
                             renderItem={(item) => (
-                                <List.Item className="!border-white/10">
+                                <List.Item className="!border-[var(--ohnix-line-4)]">
                                     {(() => {
                                         const paymentUrl = item.paymentLink || extractFirstUrl(item.adminResponse);
                                         const selection = ensureCheckoutSelection(item.id);
@@ -745,15 +745,15 @@ const Billing = () => {
                                         return (
                                     <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                         <div>
-                                            <Text className="text-white">
+                                            <Text className="text-[var(--ohnix-text-primary)]">
                                                 {t(`profile.subscription.plan_${item.currentPlan}`)} → {" "}
                                                 {t(`profile.subscription.plan_${item.targetPlan}`)}
                                             </Text>
-                                            <div className="text-xs text-[#A9B3B8]">
+                                            <div className="text-xs text-[var(--ohnix-text-muted)]">
                                                 {new Date(item.createdAt).toLocaleString()}
                                             </div>
                                             {item.notes ? (
-                                                <div className="mt-1 text-xs text-[#A9B3B8]">
+                                                <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
                                                     {item.notes}
                                                 </div>
                                             ) : null}
@@ -763,7 +763,7 @@ const Billing = () => {
                                                 </div>
                                             ) : null}
 
-                                            <div className="mt-2 text-xs text-[#A9B3B8]">
+                                            <div className="mt-2 text-xs text-[var(--ohnix-text-muted)]">
                                                 {item.status === "approved" && isPlanAlreadyActiveForRequest(item)
                                                     ? t("profile.subscription.request_status_help_approved_activated")
                                                     : t(`profile.subscription.request_status_help_${item.status}`)}
@@ -799,12 +799,12 @@ const Billing = () => {
                                                                     {/* Plan row */}
                                                                     <div className="mb-5 flex items-center justify-between gap-3">
                                                                         <div>
-                                                                            <div className="text-sm text-[#A9B3B8]">
+                                                                            <div className="text-sm text-[var(--ohnix-text-muted)]">
                                                                                 {t(`profile.subscription.plan_${item.currentPlan}`)}
                                                                                 {" "}
                                                                                 <span className="text-[#29D8D5]">→</span>
                                                                                 {" "}
-                                                                                <span className="font-semibold text-white">
+                                                                                <span className="font-semibold text-[var(--ohnix-text-primary)]">
                                                                                     {t(`profile.subscription.plan_${item.targetPlan}`)}
                                                                                 </span>
                                                                             </div>
@@ -832,16 +832,16 @@ const Billing = () => {
                                                                         ].join(" ")}
                                                                     >
                                                                         {/* Shimmer on hover */}
-                                                                        <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/5 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                                                                        <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-[var(--ohnix-line-2)] to-transparent transition-transform duration-700 group-hover:translate-x-full" />
 
                                                                         <div className="flex items-center justify-between">
                                                                             <div className="flex items-center gap-3">
                                                                                 {/* ePayco wordmark */}
                                                                                 <div className="flex items-baseline gap-0.5">
                                                                                     <span className="text-xl font-black leading-none text-[#00AFF0]">e</span>
-                                                                                    <span className="text-base font-bold leading-none text-white">Payco</span>
+                                                                                    <span className="text-base font-bold leading-none text-[var(--ohnix-text-primary)]">Payco</span>
                                                                                 </div>
-                                                                                <div className="h-4 w-px bg-white/10" />
+                                                                                <div className="h-4 w-px bg-[var(--ohnix-line-4)]" />
                                                                                 <span className="text-sm font-medium text-white/90">
                                                                                     {isLoading ? "Redirigiendo..." : "Pagar con ePayco"}
                                                                                 </span>
@@ -882,7 +882,7 @@ const Billing = () => {
 
                                                     return (
                                                         <div className="mt-4">
-                                                            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                                                            <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
                                                                 {/* Header pill */}
                                                                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#29D8D5]/20 bg-[#29D8D5]/8 px-3 py-1">
                                                                     <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_5px_#29D8D5]" />
@@ -892,10 +892,10 @@ const Billing = () => {
                                                                 </div>
 
                                                                 {/* Plan row */}
-                                                                <div className="mb-3 text-sm text-[#A9B3B8]">
+                                                                <div className="mb-3 text-sm text-[var(--ohnix-text-muted)]">
                                                                     {t(`profile.subscription.plan_${item.currentPlan}`)}
                                                                     {" "}<span className="text-[#29D8D5]">→</span>{" "}
-                                                                    <span className="font-semibold text-white">
+                                                                    <span className="font-semibold text-[var(--ohnix-text-primary)]">
                                                                         {t(`profile.subscription.plan_${item.targetPlan}`)}
                                                                     </span>
                                                                 </div>
@@ -964,13 +964,13 @@ const Billing = () => {
                     </div>
 
                     {isAdmin ? (
-                        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+                        <div className="mt-6 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 sm:p-5">
                             <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
-                                    <Title level={5} className="!text-white !mb-2">
+                                    <Title level={5} className="!text-[var(--ohnix-text-primary)] !mb-2">
                                         {t("profile.subscription.admin_requests_title")}
                                     </Title>
-                                    <Text className="text-[#A9B3B8]">
+                                    <Text className="text-[var(--ohnix-text-muted)]">
                                         {t("profile.subscription.admin_requests_description")}
                                     </Text>
                                 </div>
@@ -1010,31 +1010,31 @@ const Billing = () => {
                                 }}
                                 locale={{
                                     emptyText: (
-                                        <span className="text-[#A9B3B8]">
+                                        <span className="text-[var(--ohnix-text-muted)]">
                                             {t("profile.subscription.no_requests")}
                                         </span>
                                     ),
                                 }}
                                 renderItem={(item) => (
-                                    <List.Item className="!border-white/10">
+                                    <List.Item className="!border-[var(--ohnix-line-4)]">
                                         <div className="flex w-full flex-col gap-3">
                                             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                                 <div>
-                                                    <Text className="text-white">
+                                                    <Text className="text-[var(--ohnix-text-primary)]">
                                                         {item.user?.username || item.user?.email || "User"}
                                                     </Text>
-                                                    <div className="text-xs text-[#A9B3B8]">
+                                                    <div className="text-xs text-[var(--ohnix-text-muted)]">
                                                         {item.user?.email || "-"}
                                                     </div>
-                                                    <div className="mt-1 text-sm text-white">
+                                                    <div className="mt-1 text-sm text-[var(--ohnix-text-primary)]">
                                                         {t(`profile.subscription.plan_${item.currentPlan}`)} → {" "}
                                                         {t(`profile.subscription.plan_${item.targetPlan}`)}
                                                     </div>
-                                                    <div className="text-xs text-[#A9B3B8]">
+                                                    <div className="text-xs text-[var(--ohnix-text-muted)]">
                                                         {new Date(item.createdAt).toLocaleString()}
                                                     </div>
                                                     {item.notes ? (
-                                                        <div className="mt-1 text-xs text-[#A9B3B8]">
+                                                        <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
                                                             {item.notes}
                                                         </div>
                                                     ) : null}

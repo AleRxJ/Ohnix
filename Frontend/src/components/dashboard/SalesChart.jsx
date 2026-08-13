@@ -16,12 +16,20 @@ import {
 } from "recharts";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
+import { useTheme } from "../../context/ThemeContext";
 
 const { Text, Title } = Typography;
 
 const SalesChart = ({ salesData = {}, loading = false }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
+    const { isLite } = useTheme();
+    // recharts renders these as raw SVG presentation attributes, not
+    // className - CSS custom properties aren't reliable there, so the plot's
+    // own colors are picked in JS instead of via var(--ohnix-*) tokens.
+    const gridStroke = isLite ? "rgba(15,23,42,0.12)" : "rgba(255,255,255,0.08)";
+    const axisTickFill = isLite ? "#5b6b76" : "#A9B3B8";
+    const activeDotStroke = isLite ? "#ffffff" : "#0B0B0B";
 
     const salesByDate = useMemo(() => {
         if (Array.isArray(salesData)) {
@@ -94,8 +102,8 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
             return (
-                <div className="rounded-xl border border-white/10 bg-[#0B0B0B]/96 px-4 py-3 shadow-[0_18px_30px_rgba(0,0,0,0.4)]">
-                    <p className="text-[#A9B3B8] text-xs font-medium mb-1">
+                <div className="rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] px-4 py-3 shadow-[var(--ohnix-shadow-dropdown)]">
+                    <p className="text-[var(--ohnix-text-muted)] text-xs font-medium mb-1">
                         {label}
                     </p>
                     <p className="text-[#44F3F0] font-bold text-base mb-0">
@@ -120,17 +128,17 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
     }, [salesData, totalSales, totalOrders]);
 
     return (
-        <section className="w-full rounded-2xl border border-white/10 bg-[#0B0B0B]/92 shadow-[0_18px_40px_rgba(0,0,0,0.35)] overflow-hidden reveal-card">
-            <header className="px-6 py-5 border-b border-white/8">
+        <section className="w-full rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] shadow-[var(--ohnix-shadow-card)] overflow-hidden reveal-card">
+            <header className="px-6 py-5 border-b border-[var(--ohnix-line-3)]">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-[linear-gradient(135deg,rgba(41,216,213,0.22),rgba(68,243,240,0.12))] border border-[#29D8D5]/25 flex items-center justify-center shadow-sm">
                         <LineChartOutlined className="text-[#44F3F0] text-lg" />
                     </div>
                     <div>
-                        <h2 className="m-0 text-white font-bold text-lg leading-tight">
+                        <h2 className="m-0 text-[var(--ohnix-text-primary)] font-bold text-lg leading-tight">
                             {t("reports.sales_performance")}
                         </h2>
-                        <p className="m-0 text-[#A9B3B8] text-xs mt-0.5">
+                        <p className="m-0 text-[var(--ohnix-text-muted)] text-xs mt-0.5">
                             {t("reports.track_revenue_and_order_trends")}
                         </p>
                     </div>
@@ -144,20 +152,20 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
             ) : hasSalesData ? (
                 <div className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
-                            <Text className="text-[#A9B3B8] text-xs font-semibold uppercase tracking-wider block mb-2">
+                        <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] px-5 py-4 shadow-[var(--ohnix-shadow-soft)]">
+                            <Text className="text-[var(--ohnix-text-muted)] text-xs font-semibold uppercase tracking-wider block mb-2">
                                 {t("reports.total_sales")}
                             </Text>
-                            <div className="text-white text-3xl font-bold">
+                            <div className="text-[var(--ohnix-text-primary)] text-3xl font-bold">
                                 {formatCurrency(summaryData.totalSales)}
                             </div>
                         </div>
 
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 shadow-[0_10px_24px_rgba(0,0,0,0.2)]">
-                            <Text className="text-[#A9B3B8] text-xs font-semibold uppercase tracking-wider block mb-2">
+                        <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] px-5 py-4 shadow-[var(--ohnix-shadow-soft)]">
+                            <Text className="text-[var(--ohnix-text-muted)] text-xs font-semibold uppercase tracking-wider block mb-2">
                                 {t("orders.total_orders")}
                             </Text>
-                            <div className="text-white text-3xl font-bold">
+                            <div className="text-[var(--ohnix-text-primary)] text-3xl font-bold">
                                 {summaryData.totalOrders}
                             </div>
                         </div>
@@ -165,10 +173,10 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                         <div
                             className={`px-5 py-4 rounded-xl border-2 sm:col-span-2 lg:col-span-1 ${
                                 trend > 0
-                                    ? "bg-white/[0.03] border-[#29D8D5]/25"
+                                    ? "bg-[var(--ohnix-line-2)] border-[#29D8D5]/25"
                                     : trend < 0
-                                      ? "bg-white/[0.03] border-rose-400/30"
-                                      : "bg-white/[0.03] border-white/10"
+                                      ? "bg-[var(--ohnix-line-2)] border-rose-400/30"
+                                      : "bg-[var(--ohnix-line-2)] border-[var(--ohnix-line-4)]"
                             }`}
                         >
                             <Text
@@ -177,20 +185,12 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                                         ? "text-[#44F3F0]"
                                         : trend < 0
                                           ? "text-rose-700"
-                                          : "text-[#A9B3B8]"
+                                          : "text-[var(--ohnix-text-muted)]"
                                 }`}
                             >
                                 {t("reports.growth_trend")}
                             </Text>
-                            <div
-                                className={`flex items-center text-3xl font-bold ${
-                                    trend > 0
-                                        ? "text-white"
-                                        : trend < 0
-                                          ? "text-white"
-                                          : "text-white"
-                                }`}
-                            >
+                            <div className="flex items-center text-3xl font-bold text-[var(--ohnix-text-primary)]">
                                 {trend > 0 ? (
                                     <ArrowUpOutlined className="mr-2 text-[#44F3F0] text-xl" />
                                 ) : trend < 0 ? (
@@ -202,7 +202,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                    <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] p-5">
                         <div className="w-full h-80 sm:h-96 lg:h-[420px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart
@@ -237,7 +237,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                                     <CartesianGrid
                                         strokeDasharray="3 3"
                                         vertical={false}
-                                        stroke="rgba(255,255,255,0.08)"
+                                        stroke={gridStroke}
                                     />
                                     <XAxis
                                         dataKey="date"
@@ -245,7 +245,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                                         tickLine={false}
                                         tickMargin={12}
                                         tick={{
-                                            fill: "#A9B3B8",
+                                            fill: axisTickFill,
                                             fontSize: 11,
                                             fontWeight: 500,
                                         }}
@@ -256,7 +256,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                                         tickLine={false}
                                         tickMargin={12}
                                         tick={{
-                                            fill: "#A9B3B8",
+                                            fill: axisTickFill,
                                             fontSize: 11,
                                             fontWeight: 500,
                                         }}
@@ -273,7 +273,7 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                                         activeDot={{
                                             r: 6,
                                             strokeWidth: 3,
-                                            stroke: "#0B0B0B",
+                                            stroke: activeDotStroke,
                                             fill: "#44F3F0",
                                         }}
                                         dot={false}
@@ -283,11 +283,11 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                         </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mt-5 pt-5 border-t border-white/10">
-                        <span className="text-sm text-[#A9B3B8] font-medium">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mt-5 pt-5 border-t border-[var(--ohnix-line-4)]">
+                        <span className="text-sm text-[var(--ohnix-text-muted)] font-medium">
                             {t("reports.average_daily_sales")}
                         </span>
-                        <span className="text-lg font-bold text-white">
+                        <span className="text-lg font-bold text-[var(--ohnix-text-primary)]">
                             {formatCurrency(averageSales)}
                         </span>
                     </div>
@@ -298,10 +298,10 @@ const SalesChart = ({ salesData = {}, loading = false }) => {
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                         description={
                             <div className="text-center">
-                                <div className="text-white font-semibold text-base mb-2">
+                                <div className="text-[var(--ohnix-text-primary)] font-semibold text-base mb-2">
                                     {t("reports.no_sales_data_available")}
                                 </div>
-                                <p className="text-sm text-[#A9B3B8] mb-0 max-w-xs mx-auto">
+                                <p className="text-sm text-[var(--ohnix-text-muted)] mb-0 max-w-xs mx-auto">
                                     {t(
                                         "reports.sales_data_will_be_displayed_here_once_orders_exist"
                                     )}

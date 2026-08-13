@@ -74,7 +74,7 @@ const SignupRequestStatus = () => {
                             <div className="flex items-start gap-3">
                                 <ClockCircleOutlined className="mt-1 text-[#8CFBFA]" />
                                 <div className="space-y-2">
-                                    <Text className="block text-white font-medium">
+                                    <Text className="block text-[var(--ohnix-text-primary)] font-medium">
                                         {t("auth.request_status.next_steps_title")}
                                     </Text>
                                     <Text className="block text-[#CFE8E8]">
@@ -107,13 +107,13 @@ const SignupRequestStatus = () => {
                             block
                             size="large"
                             onClick={() => navigate("/")}
-                            className="!h-11 !rounded-xl !border-white/20 !bg-white/[0.03] !text-white hover:!border-[#44F3F0]/40 hover:!text-[#E9FEFE]"
+                            className="!h-11 !rounded-xl !border-[var(--ohnix-line-6)] !bg-[var(--ohnix-line-1)] !text-[var(--ohnix-text-primary)] hover:!border-[#44F3F0]/40 hover:!text-[#E9FEFE]"
                         >
                             {t("auth.request_status.back_to_home")}
                         </Button>
                     </Space>
 
-                    <Text className="block text-center text-xs text-[#A9B3B8]">
+                    <Text className="block text-center text-xs text-[var(--ohnix-text-muted)]">
                         {t("auth.request_status.support_hint")}
                     </Text>
                 </div>

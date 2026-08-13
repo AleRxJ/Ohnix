@@ -7,14 +7,14 @@ import useI18n from "../../hooks/useI18n";
 const darkModalStyles = {
     mask: { backgroundColor: "rgba(0,0,0,0.55)" },
     content: {
-        background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
-        border: "1px solid rgba(255,255,255,0.1)",
+        background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
+        border: "1px solid var(--ohnix-line-4)",
         boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
         borderRadius: "24px",
     },
     header: {
         background: "transparent",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        borderBottom: "1px solid var(--ohnix-line-3)",
         padding: "20px 24px 16px",
     },
     body: { padding: 24 },
@@ -64,7 +64,7 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
     return (
         <Modal
             title={
-                <span className="text-lg font-bold text-white">
+                <span className="text-lg font-bold text-[var(--ohnix-text-primary)]">
                     {editingCompany ? t("admin.configure_company") : t("admin.add_company")}
                 </span>
             }
@@ -120,9 +120,9 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                     <Input size="large" className="auth-ohnix-input" />
                 </Form.Item>
 
-                <div className="module-shell rounded-2xl border border-white/10 p-4 mb-4">
-                    <div className="mb-3 text-sm font-bold text-white">{t("admin.pdf_branding_title")}</div>
-                    <p className="mb-3 text-xs text-[#8B98A0]">{t("admin.pdf_branding_hint")}</p>
+                <div className="module-shell rounded-2xl border border-[var(--ohnix-line-4)] p-4 mb-4">
+                    <div className="mb-3 text-sm font-bold text-[var(--ohnix-text-primary)]">{t("admin.pdf_branding_title")}</div>
+                    <p className="mb-3 text-xs text-[var(--ohnix-text-dim)]">{t("admin.pdf_branding_hint")}</p>
 
                     {editingCompany ? (
                         <div className="mb-4 flex items-center gap-3">
@@ -130,7 +130,7 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                                 <img
                                     src={editingCompany.logoUrl}
                                     alt="logo"
-                                    className="h-12 w-12 rounded-lg border border-white/10 bg-white/5 object-contain"
+                                    className="h-12 w-12 rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] object-contain"
                                 />
                             )}
                             <Upload
@@ -143,13 +143,13 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                             </Upload>
                         </div>
                     ) : (
-                        <p className="mb-4 text-xs text-[#8B98A0]">{t("admin.upload_logo_after_create")}</p>
+                        <p className="mb-4 text-xs text-[var(--ohnix-text-dim)]">{t("admin.upload_logo_after_create")}</p>
                     )}
 
                     <Form.Item
                         name="pdfFooterText"
                         label={t("admin.pdf_footer_text")}
-                        extra={<span className="text-[#8B98A0]">{t("admin.pdf_footer_text_hint")}</span>}
+                        extra={<span className="text-[var(--ohnix-text-dim)]">{t("admin.pdf_footer_text_hint")}</span>}
                     >
                         <Input.TextArea rows={2} className="auth-ohnix-input" placeholder={t("admin.pdf_footer_text_placeholder")} />
                     </Form.Item>
@@ -157,7 +157,7 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                     <Form.Item
                         name="pdfAccentColor"
                         label={t("admin.pdf_accent_color")}
-                        extra={<span className="text-[#8B98A0]">{t("admin.pdf_accent_color_hint")}</span>}
+                        extra={<span className="text-[var(--ohnix-text-dim)]">{t("admin.pdf_accent_color_hint")}</span>}
                         getValueFromEvent={(_, hex) => hex}
                         className="mb-0"
                     >
@@ -168,11 +168,11 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                 {selectedCountry === "CO" && (
                     <div className="relative overflow-hidden rounded-2xl border border-[#29D8D5]/25 bg-[radial-gradient(circle_at_90%_10%,rgba(41,216,213,.20),transparent_35%),linear-gradient(135deg,rgba(16,39,43,.9),rgba(14,12,31,.88))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.07)]">
                         <div className="absolute right-[-22px] top-[-25px] h-24 w-24 rounded-full border border-[#44F3F0]/20" />
-                        <div className="relative mb-1 flex items-center gap-2 text-sm font-bold text-white">
+                        <div className="relative mb-1 flex items-center gap-2 text-sm font-bold text-[var(--ohnix-text-primary)]">
                             <span className="h-2 w-2 rounded-full bg-[#44F3F0] shadow-[0_0_14px_#44F3F0]" />
                             {t("admin.dian_section_title")}
                         </div>
-                        <p className="relative mb-4 text-xs text-[#A9B3B8]">{t("admin.dian_section_hint")}</p>
+                        <p className="relative mb-4 text-xs text-[var(--ohnix-text-muted)]">{t("admin.dian_section_hint")}</p>
                         <Form.Item name="electronicInvoicingEnabled" valuePropName="checked" initialValue={false}>
                             <Switch checkedChildren={t("admin.dian_toggle_active")} unCheckedChildren={t("admin.dian_toggle_inactive")} />
                         </Form.Item>
@@ -210,7 +210,7 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                                 <Form.Item
                                     name="factusCreditNoteNumberingRangeId"
                                     label={t("admin.dian_credit_note_numbering_range_id")}
-                                    extra={<span className="text-[#8B98A0]">{t("admin.dian_credit_note_numbering_range_hint")}</span>}
+                                    extra={<span className="text-[var(--ohnix-text-dim)]">{t("admin.dian_credit_note_numbering_range_hint")}</span>}
                                 >
                                     <Input size="large" className="auth-ohnix-input" placeholder={t("admin.dian_numbering_range_placeholder")} />
                                 </Form.Item>
@@ -253,17 +253,17 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                                     </div>
                                 )}
 
-                                <Form.Item name="alanubeTestSetId" label={t("admin.alanube_test_set_id")} extra={<span className="text-[#8B98A0]">{t("admin.alanube_test_set_id_hint")}</span>}>
+                                <Form.Item name="alanubeTestSetId" label={t("admin.alanube_test_set_id")} extra={<span className="text-[var(--ohnix-text-dim)]">{t("admin.alanube_test_set_id_hint")}</span>}>
                                     <Input size="large" className="auth-ohnix-input" />
                                 </Form.Item>
 
-                                <Divider className="!border-white/10 !my-4" orientation="left">
-                                    <span className="text-xs text-[#8B98A0]">{t("admin.alanube_invoice_resolution")}</span>
+                                <Divider className="!border-[var(--ohnix-line-4)] !my-4" orientation="left">
+                                    <span className="text-xs text-[var(--ohnix-text-dim)]">{t("admin.alanube_invoice_resolution")}</span>
                                 </Divider>
                                 <ResolutionFields basePath={["alanubeInvoiceResolution"]} t={t} />
 
-                                <Divider className="!border-white/10 !my-4" orientation="left">
-                                    <span className="text-xs text-[#8B98A0]">{t("admin.alanube_credit_note_resolution")}</span>
+                                <Divider className="!border-[var(--ohnix-line-4)] !my-4" orientation="left">
+                                    <span className="text-xs text-[var(--ohnix-text-dim)]">{t("admin.alanube_credit_note_resolution")}</span>
                                 </Divider>
                                 <ResolutionFields basePath={["alanubeCreditNoteResolution"]} t={t} />
                             </>

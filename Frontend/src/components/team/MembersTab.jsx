@@ -161,7 +161,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                 <div className="flex items-center gap-3">
                     <Avatar src={avatarSrc(record)} icon={<UserOutlined />} />
                     <div>
-                        <div className="text-white font-medium flex items-center gap-2">
+                        <div className="text-[var(--ohnix-text-primary)] font-medium flex items-center gap-2">
                             {record.username}
                             {record.userId === user?.id && (
                                 <Tag className="border-[#29D8D5]/40 bg-[#29D8D5]/10 text-[#44F3F0] text-[10px]">
@@ -169,7 +169,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                                 </Tag>
                             )}
                         </div>
-                        <div className="text-xs text-[#A9B3B8]">{record.email}</div>
+                        <div className="text-xs text-[var(--ohnix-text-muted)]">{record.email}</div>
                     </div>
                 </div>
             ),
@@ -194,13 +194,13 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                                     onChange={(value) => handleRoleChange(record.userId, value)}
                                 />
                             ) : (
-                                <span className="text-white">{record.role?.name}</span>
+                                <span className="text-[var(--ohnix-text-primary)]">{record.role?.name}</span>
                             )}
                             {isOwner && fullRole && (
                                 <Button
                                     size="small"
                                     type="text"
-                                    icon={<SettingOutlined className="text-[#A9B3B8]" />}
+                                    icon={<SettingOutlined className="text-[var(--ohnix-text-muted)]" />}
                                     title={t("team.edit_role")}
                                     onClick={() => handleOpenPermissions(record, fullRole)}
                                 />
@@ -215,7 +215,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
             title: t("team.col_joined"),
             key: "joinedAt",
             render: (_, record) => (
-                <span className="text-[#A9B3B8] text-sm">
+                <span className="text-[var(--ohnix-text-muted)] text-sm">
                     {record.joinedAt ? new Date(record.joinedAt).toLocaleDateString() : t("common.na")}
                 </span>
             ),
@@ -256,7 +256,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
             )}
 
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-[#A9B3B8] w-fit">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 py-1.5 text-sm text-[var(--ohnix-text-muted)] w-fit">
                     <UserOutlined className="text-[#44F3F0]" />
                     {seatLimit === null
                         ? t("team.seats_unlimited", { used: seatsUsed })
@@ -285,7 +285,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
 
             {isOwner && (
                 <div className="mt-6">
-                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-[#A9B3B8]">
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-[var(--ohnix-text-muted)]">
                         {t("team.status_pending")}
                     </h3>
                     {invitations.length === 0 ? (
@@ -295,12 +295,12 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                             {invitations.map((inv) => (
                                 <div
                                     key={inv.id}
-                                    className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                                    className="flex flex-col gap-2 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                                 >
-                                    <div className="flex items-center gap-2 text-sm text-white">
+                                    <div className="flex items-center gap-2 text-sm text-[var(--ohnix-text-primary)]">
                                         <MailOutlined className="text-[#44F3F0]" />
                                         {inv.email}
-                                        <Tag className="border-white/10 bg-white/5 text-[#A9B3B8]">{inv.role?.name}</Tag>
+                                        <Tag className="border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-muted)]">{inv.role?.name}</Tag>
                                     </div>
                                     <div className="flex gap-2">
                                         <Button size="small" icon={<ReloadOutlined />} onClick={() => handleResend(inv.id)}>

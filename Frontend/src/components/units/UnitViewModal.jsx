@@ -36,9 +36,9 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                 header: { display: "none" },
             }}
         >
-            <div className="bg-[#0B0B0B] text-white">
+            <div className="bg-[var(--ohnix-surface)] text-[var(--ohnix-text-primary)]">
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-white/10">
+                <div className="px-6 py-4 border-b border-[var(--ohnix-line-4)]">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] rounded-xl flex items-center justify-center">
@@ -47,7 +47,7 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                                 </span>
                             </div>
                             <div>
-                                <Title level={4} className="mb-1 !text-white">
+                                <Title level={4} className="mb-1 !text-[var(--ohnix-text-primary)]">
                                     {unit.unit_name}
                                 </Title>
                                 <Tag
@@ -57,7 +57,7 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                                         backgroundColor: isOwner
                                             ? "rgba(41,216,213,0.12)"
                                             : "rgba(68,243,240,0.12)",
-                                        color: isOwner ? "#44F3F0" : "#A9B3B8",
+                                        color: isOwner ? "#44F3F0" : "var(--ohnix-text-muted)",
                                     }}
                                 >
                                     {isOwner
@@ -75,26 +75,26 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                         {/* Created Information */}
                         <div className="space-y-4">
                             <div>
-                                <Text className="text-sm font-medium text-[#A9B3B8] uppercase tracking-wider">
+                                <Text className="text-sm font-medium text-[var(--ohnix-text-muted)] uppercase tracking-wider">
                                     {t("units.created_information")}
                                 </Text>
                                 <div className="mt-2 space-y-3">
                                     <div>
-                                        <Text className="text-sm text-[#A9B3B8]">
+                                        <Text className="text-sm text-[var(--ohnix-text-muted)]">
                                             {t("units.created_by")}
                                         </Text>
                                         <div className="mt-1">
-                                            <Text className="text-base font-medium text-white">
+                                            <Text className="text-base font-medium text-[var(--ohnix-text-primary)]">
                                                 {createdByName}
                                             </Text>
                                         </div>
                                     </div>
                                     <div>
-                                        <Text className="text-sm text-[#A9B3B8]">
+                                        <Text className="text-sm text-[var(--ohnix-text-muted)]">
                                             {t("units.created_at")}
                                         </Text>
                                         <div className="mt-1">
-                                            <Text className="text-base text-white">
+                                            <Text className="text-base text-[var(--ohnix-text-primary)]">
                                                 {formatDateTime(unit.createdAt)}
                                             </Text>
                                         </div>
@@ -106,26 +106,26 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                         {/* Updated Information */}
                         <div className="space-y-4">
                             <div>
-                                <Text className="text-sm font-medium text-[#A9B3B8] uppercase tracking-wider">
+                                <Text className="text-sm font-medium text-[var(--ohnix-text-muted)] uppercase tracking-wider">
                                     {t("units.last_updated")}
                                 </Text>
                                 <div className="mt-2 space-y-3">
                                     <div>
-                                        <Text className="text-sm text-[#A9B3B8]">
+                                        <Text className="text-sm text-[var(--ohnix-text-muted)]">
                                             {t("units.updated_by")}
                                         </Text>
                                         <div className="mt-1">
-                                            <Text className="text-base font-medium text-white">
+                                            <Text className="text-base font-medium text-[var(--ohnix-text-primary)]">
                                                 {updatedByName}
                                             </Text>
                                         </div>
                                     </div>
                                     <div>
-                                        <Text className="text-sm text-[#A9B3B8]">
+                                        <Text className="text-sm text-[var(--ohnix-text-muted)]">
                                             {t("units.updated_at")}
                                         </Text>
                                         <div className="mt-1">
-                                            <Text className="text-base text-white">
+                                            <Text className="text-base text-[var(--ohnix-text-primary)]">
                                                 {formatDateTime(unit.updatedAt)}
                                             </Text>
                                         </div>
@@ -139,11 +139,11 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                 <Divider className="my-0" />
 
                 {/* Footer Actions */}
-                <div className="px-6 py-4 bg-white/[0.03] rounded-b-lg border-t border-white/10">
+                <div className="px-6 py-4 bg-[var(--ohnix-line-1)] rounded-b-lg border-t border-[var(--ohnix-line-4)]">
                     <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
                         <Button
                             onClick={onClose}
-                            className="h-10 px-6 border-white/10 text-white hover:text-white hover:border-[#29D8D5]/35 bg-white/[0.03]"
+                            className="h-10 px-6 border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[var(--ohnix-text-primary)] hover:border-[#29D8D5]/35 bg-[var(--ohnix-line-1)]"
                             style={{ borderRadius: "8px" }}
                         >
                             {t("common.close")}

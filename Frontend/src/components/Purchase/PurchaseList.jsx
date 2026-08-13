@@ -81,18 +81,18 @@ const PurchaseList = ({
     };
 
     return (
-        <div className="min-h-screen bg-transparent text-white">
+        <div className="min-h-screen bg-transparent text-[var(--ohnix-text-primary)]">
             <div className="p-4 sm:p-6 lg:p-8">
                 {/* Header Section */}
                 <div className="mb-8">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                         <div className="mb-4 sm:mb-0">
                             <div className="flex-1 min-w-0">
-                                <h1 className="truncate mb-1 text-4xl font-bold flex items-center gap-2 text-white">
+                                <h1 className="truncate mb-1 text-4xl font-bold flex items-center gap-2 text-[var(--ohnix-text-primary)]">
                                     {t("purchases.purchases")}<ShoppingCartOutlined className="text-[#44F3F0] inline-block ml-2" />
                                 </h1>
                             </div>
-                            <p className="text-[#A9B3B8] text-sm sm:text-base">{t("purchases.manage_purchases_description")}</p>
+                            <p className="text-[var(--ohnix-text-muted)] text-sm sm:text-base">{t("purchases.manage_purchases_description")}</p>
                         </div>
                     </div>
 
@@ -101,7 +101,7 @@ const PurchaseList = ({
                 </div>
 
                 {/* Search and Add Section */}
-                <Card className="mb-6 shadow-sm border border-white/10 bg-[#0B0B0B]/92 text-white">
+                <Card className="mb-6 shadow-sm border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] text-[var(--ohnix-text-primary)]">
                     <Row
                         gutter={[16, 16]}
                         align="middle"
@@ -137,11 +137,11 @@ const PurchaseList = ({
                 </Card>
 
                 {/* Table Section */}
-                <Card className="shadow-sm border border-white/10 overflow-hidden bg-[#0B0B0B]/92 text-white">
+                <Card className="shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)] text-[var(--ohnix-text-primary)]">
                     <div className="p-4 sm:p-6">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-1 h-6 bg-gradient-to-b from-[#29D8D5] to-[#44F3F0] rounded-full"></div>
-                            <Title level={4} className="!mb-0 !text-white">{t("purchases.purchase_orders")}</Title>
+                            <Title level={4} className="!mb-0 !text-[var(--ohnix-text-primary)]">{t("purchases.purchase_orders")}</Title>
                         </div>
                         <PurchaseTable
                             purchases={purchases}

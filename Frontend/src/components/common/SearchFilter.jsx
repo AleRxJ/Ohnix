@@ -32,7 +32,7 @@ const SearchFilter = ({
                     allowClear
                     className="w-full"
                     size="large"
-                    prefix={<SearchOutlined className="text-gray-400" />}
+                    prefix={<SearchOutlined className="text-[var(--ohnix-text-dim)]" />}
                     style={{
                         borderRadius: "8px",
                     }}
@@ -43,7 +43,7 @@ const SearchFilter = ({
             <Row gutter={[12, 12]} align="middle" className="mt-3">
                 <Col xs={24} sm={12} md={8} lg={10}>
                     <div className="flex items-center space-x-2">
-                        <FilterOutlined className="text-gray-500 text-sm" />
+                        <FilterOutlined className="text-[var(--ohnix-text-muted)] text-sm" />
                         <Select
                             value={filter}
                             onChange={setFilter}
@@ -78,7 +78,7 @@ const SearchFilter = ({
                             size="middle"
                             icon={<ClearOutlined />}
                             onClick={onClear}
-                            className="border-gray-300 hover:border-red-400 hover:text-red-500 transition-colors duration-200"
+                            className="border-[var(--ohnix-line-5)] hover:border-red-400 hover:text-red-500 transition-colors duration-200"
                             type="default"
                         >
                             <span className="hidden sm:inline">

@@ -254,7 +254,7 @@ const SalesReport = () => {
     return (
         <div className="space-y-4 sm:space-y-6">
             {/* Date Range Filter and Export */}
-            <Card title={t("reports.filter_and_export_options")} className="module-shell border border-white/10 overflow-hidden hover-lift">
+            <Card title={t("reports.filter_and_export_options")} className="module-shell border border-[var(--ohnix-line-4)] overflow-hidden hover-lift">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row gap-3">
                         <RangePicker
@@ -321,7 +321,7 @@ const SalesReport = () => {
 
                     {/* Sales Trend Chart */}
                     {salesData.salesByDate?.length > 0 && (
-                        <Card title={t("reports.sales_trend_over_time")} className="w-full module-shell border border-white/10">
+                        <Card title={t("reports.sales_trend_over_time")} className="w-full module-shell border border-[var(--ohnix-line-4)]">
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
                                     width="100%"
@@ -411,7 +411,7 @@ const SalesReport = () => {
                             <Col xs={24} lg={12}>
                                 <Card
                                     title={t("reports.top_products_by_sales")}
-                                    className="h-full module-shell border border-white/10"
+                                    className="h-full module-shell border border-[var(--ohnix-line-4)]"
                                 >
                                     <div className="w-full overflow-x-auto">
                                         <ResponsiveContainer
@@ -498,7 +498,7 @@ const SalesReport = () => {
                             <Col xs={24} lg={12}>
                                 <Card
                                     title={t("reports.sales_distribution_by_product")}
-                                    className="h-full module-shell border border-white/10"
+                                    className="h-full module-shell border border-[var(--ohnix-line-4)]"
                                 >
                                     <div className="w-full overflow-x-auto">
                                         <ResponsiveContainer
@@ -581,7 +581,7 @@ const SalesReport = () => {
 
                     {/* Product Sales Table */}
                     {salesData.salesByProduct?.length > 0 && (
-                        <Card title="Product Sales Details" className="module-shell border border-white/10">
+                        <Card title="Product Sales Details" className="module-shell border border-[var(--ohnix-line-4)]">
                             <div className="overflow-x-auto">
                                 <Table
                                     columns={productColumns}
@@ -616,9 +616,9 @@ const SalesReport = () => {
             )}
 
             {!salesData && !loading && (
-                <Card className="module-shell border border-white/10 overflow-hidden hover-lift">
+                <Card className="module-shell border border-[var(--ohnix-line-4)] overflow-hidden hover-lift">
                     <div className="text-center py-8">
-                        <p className="text-[#A9B3B8] text-sm sm:text-base px-4">
+                        <p className="text-[var(--ohnix-text-muted)] text-sm sm:text-base px-4">
                             Select a date range to generate sales report
                         </p>
                     </div>

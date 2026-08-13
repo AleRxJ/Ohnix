@@ -59,10 +59,10 @@ const ProductsTable = ({
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-2">
                         <div className="flex-1 min-w-0">
-                            <Text strong className="text-sm block truncate text-white">
+                            <Text strong className="text-sm block truncate text-[var(--ohnix-text-primary)]">
                                 {product.product_name}
                             </Text>
-                            <Text className="text-xs text-[#A9B3B8]">
+                            <Text className="text-xs text-[var(--ohnix-text-muted)]">
                                 {t("products.product_code")}: {product.product_code}
                             </Text>
                         </div>
@@ -106,12 +106,12 @@ const ProductsTable = ({
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                            <Text className="text-[#A9B3B8]">{t("products.category")}</Text>
+                            <Text className="text-[var(--ohnix-text-muted)]">{t("products.category")}</Text>
                             <br />
-                            <Text className="text-white">{product.category_id?.category_name}</Text>
+                            <Text className="text-[var(--ohnix-text-primary)]">{product.category_id?.category_name}</Text>
                         </div>
                         <div>
-                            <Text className="text-[#A9B3B8]">{t("products.stock")}</Text>
+                            <Text className="text-[var(--ohnix-text-muted)]">{t("products.stock")}</Text>
                             <br />
                             <Badge
                                 status={
@@ -125,16 +125,16 @@ const ProductsTable = ({
                             />
                         </div>
                         <div>
-                            <Text className="text-[#A9B3B8]">{t("products.selling_price")}</Text>
+                            <Text className="text-[var(--ohnix-text-muted)]">{t("products.selling_price")}</Text>
                             <br />
-                            <Text strong className="text-white">
+                            <Text strong className="text-[var(--ohnix-text-primary)]">
                                 {formatCurrency(product.selling_price)}
                             </Text>
                         </div>
                         <div>
-                            <Text className="text-[#A9B3B8]">{t("products.unit")}</Text>
+                            <Text className="text-[var(--ohnix-text-muted)]">{t("products.unit")}</Text>
                             <br />
-                            <Text className="text-white">{product.unit_id?.unit_name}</Text>
+                            <Text className="text-[var(--ohnix-text-primary)]">{product.unit_id?.unit_name}</Text>
                         </div>
                     </div>
                 </div>
@@ -167,10 +167,10 @@ const ProductsTable = ({
             sorter: (a, b) => a.product_name.localeCompare(b.product_name),
             render: (text, record) => (
                 <div className="flex flex-col">
-                    <Text strong className="text-sm text-white">
+                    <Text strong className="text-sm text-[var(--ohnix-text-primary)]">
                         {text}
                     </Text>
-                    <Text className="text-xs text-[#A9B3B8]">
+                    <Text className="text-xs text-[var(--ohnix-text-muted)]">
                         {t("products.product_code")}: {record.product_code}
                     </Text>
                 </div>
@@ -208,8 +208,8 @@ const ProductsTable = ({
                 return (
                     <div className="flex flex-col items-center">
                         <Badge status={color} />
-                        <Text className="text-sm text-white">{stock}</Text>
-                        <Text className="text-xs text-[#A9B3B8] hidden sm:block">
+                        <Text className="text-sm text-[var(--ohnix-text-primary)]">{stock}</Text>
+                        <Text className="text-xs text-[var(--ohnix-text-muted)] hidden sm:block">
                             {status}
                         </Text>
                     </div>
@@ -221,10 +221,10 @@ const ProductsTable = ({
             key: "price",
             render: (_, record) => (
                 <div className="flex flex-col">
-                    <Text strong className="text-sm text-white">
+                    <Text strong className="text-sm text-[var(--ohnix-text-primary)]">
                         {formatCurrency(record.selling_price)}
                     </Text>
-                    <Text className="text-xs text-[#A9B3B8]">
+                    <Text className="text-xs text-[var(--ohnix-text-muted)]">
                         {t("products.buying_price")}: {formatCurrency(record.buying_price)}
                     </Text>
                 </div>
@@ -295,10 +295,10 @@ const ProductsTable = ({
         return (
             <div className="animate-fade-up">
                 {loading ? (
-                    <div className="text-center py-8 text-[#A9B3B8]">{t("common.loading")}</div>
+                    <div className="text-center py-8 text-[var(--ohnix-text-muted)]">{t("common.loading")}</div>
                 ) : products.length === 0 ? (
                     <div className="text-center py-8">
-                        <Text className="text-[#A9B3B8]">
+                        <Text className="text-[var(--ohnix-text-muted)]">
                             {t("products.no_products")}
                         </Text>
                     </div>

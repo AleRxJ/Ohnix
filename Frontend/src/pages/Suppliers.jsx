@@ -85,7 +85,7 @@ const Suppliers = () => {
     };
 
     return (
-        <div className="p-4 sm:p-6 space-y-6 text-white">
+        <div className="p-4 sm:p-6 space-y-6 text-[var(--ohnix-text-primary)]">
             {/* Page Header */}
             <PageHeader
                 title={t("suppliers.suppliers")}

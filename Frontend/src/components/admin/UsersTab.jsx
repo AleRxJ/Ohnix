@@ -3,7 +3,7 @@ import { Table, Button, Input, Select, Tag, Switch, Popconfirm, Card, Empty, Ava
 import { PlusOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
-const tableShellClass = "rounded-xl shadow-sm border border-white/10 overflow-hidden bg-[#0B0B0B]/92";
+const tableShellClass = "rounded-xl shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)]";
 
 const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, t }) => (
     <Card className="mb-4 module-shell overflow-hidden hover-lift" styles={{ body: { padding: 16 } }}>
@@ -12,15 +12,15 @@ const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, t }) => (
             <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                        <div className="truncate text-base font-semibold text-white">{user.username}</div>
-                        <div className="truncate text-xs text-[#A9B3B8]">{user.email}</div>
+                        <div className="truncate text-base font-semibold text-[var(--ohnix-text-primary)]">{user.username}</div>
+                        <div className="truncate text-xs text-[var(--ohnix-text-muted)]">{user.email}</div>
                     </div>
                     <Tag color={user.isVerified ? "green" : "red"}>
                         {user.isVerified ? t("admin.verified") : t("admin.unverified")}
                     </Tag>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[#A9B3B8]">
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--ohnix-text-muted)]">
                     <Tag color={user.role === "admin" ? "gold" : "blue"}>{user.role}</Tag>
                     <Tag>{t("admin.plan")} {user.subscription?.plan || "starter"}</Tag>
                     <Tag>{t("admin.company")} {user.company?.name || "-"}</Tag>
@@ -85,8 +85,8 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
                 <div className="flex items-center gap-3">
                     <Avatar size={40} icon={<UserOutlined />} />
                     <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-white">{record.username}</div>
-                        <div className="truncate text-xs text-[#A9B3B8]">{record.email}</div>
+                        <div className="truncate text-sm font-semibold text-[var(--ohnix-text-primary)]">{record.username}</div>
+                        <div className="truncate text-xs text-[var(--ohnix-text-muted)]">{record.email}</div>
                     </div>
                 </div>
             ),
@@ -155,7 +155,7 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
                 <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
                     <Input
                         placeholder={t("admin.search_users_placeholder")}
-                        prefix={<SearchOutlined className="text-[#8B98A0]" />}
+                        prefix={<SearchOutlined className="text-[var(--ohnix-text-dim)]" />}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         className="max-w-sm"

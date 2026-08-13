@@ -381,7 +381,7 @@ const StockReport = () => {
                     <div className="flex flex-col sm:flex-row gap-3">
                         <Input
                             placeholder={t("reports.search_products")}
-                            prefix={<SearchOutlined className="text-[#8B98A0]" />}
+                            prefix={<SearchOutlined className="text-[var(--ohnix-text-dim)]" />}
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
                             className="w-full sm:w-60 auth-ohnix-input"
@@ -540,10 +540,10 @@ const StockReport = () => {
                                 color: "#d9d9d9",
                             }}
                         />
-                        <p className="text-[#A9B3B8] mt-4 text-sm sm:text-base px-4">
+                        <p className="text-[var(--ohnix-text-muted)] mt-4 text-sm sm:text-base px-4">
                             {t("reports.no_products_matching_search")}
                         </p>
-                        <p className="text-[#8B98A0] text-xs sm:text-sm px-4">
+                        <p className="text-[var(--ohnix-text-dim)] text-xs sm:text-sm px-4">
                             {t("reports.try_adjusting_search")}
                         </p>
                     </div>
@@ -560,10 +560,10 @@ const StockReport = () => {
                                 color: "#d9d9d9",
                             }}
                         />
-                        <p className="text-[#A9B3B8] mt-4 text-sm sm:text-base px-4">
+                        <p className="text-[var(--ohnix-text-muted)] mt-4 text-sm sm:text-base px-4">
                             {t("reports.no_stock_data_available")}
                         </p>
-                        <p className="text-[#8B98A0] text-xs sm:text-sm px-4">
+                        <p className="text-[var(--ohnix-text-dim)] text-xs sm:text-sm px-4">
                             {t("reports.add_products_to_inventory")}
                         </p>
                     </div>

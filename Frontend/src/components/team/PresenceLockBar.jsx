@@ -20,7 +20,7 @@ const PresenceLockBar = ({ viewers = [], lock, currentUserId }) => {
     if (others.length === 0 && !lock) return null;
 
     return (
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 py-2">
             {others.length > 0 && (
                 <div className="flex items-center gap-2">
                     <Avatar.Group max={{ count: 4 }}>
@@ -30,7 +30,7 @@ const PresenceLockBar = ({ viewers = [], lock, currentUserId }) => {
                             </Tooltip>
                         ))}
                     </Avatar.Group>
-                    <span className="text-xs text-[#A9B3B8]">{t("team.presence_viewing")}</span>
+                    <span className="text-xs text-[var(--ohnix-text-muted)]">{t("team.presence_viewing")}</span>
                 </div>
             )}
 

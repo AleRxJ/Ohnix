@@ -143,11 +143,11 @@ const ProfilePage = () => {
     };
 
     return (
-        <Content className="min-h-screen bg-[#050608] text-white relative overflow-hidden">
+        <Content className="min-h-screen bg-[var(--ohnix-bg-alt)] text-[var(--ohnix-text-primary)] relative overflow-hidden">
             <div className="pointer-events-none absolute inset-0 opacity-80">
                 <div className="absolute -top-28 -left-24 h-72 w-72 rounded-full bg-[#29D8D5]/12 blur-3xl" />
                 <div className="absolute top-1/3 -right-24 h-80 w-80 rounded-full bg-[#44F3F0]/10 blur-3xl" />
-                <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+                <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-[var(--ohnix-line-2)] blur-3xl" />
             </div>
 
             <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8 lg:py-10 space-y-6 sm:space-y-7">
@@ -155,14 +155,14 @@ const ProfilePage = () => {
                     <button
                         type="button"
                         onClick={() => navigate("/dashboard")}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.08] hover:border-white/15"
+                        className="inline-flex items-center gap-2 rounded-full border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] px-4 py-2 text-sm font-medium text-[var(--ohnix-text-primary)] transition-colors hover:bg-[var(--ohnix-line-3)] hover:border-[var(--ohnix-line-6)]"
                     >
                         <ArrowLeftOutlined className="text-[#44F3F0]" />
                         {t("profile.back_to_dashboard")}
                     </button>
                 </div>
 
-                <div className="rounded-3xl border border-white/10 bg-white/[0.03] shadow-[0_24px_70px_rgba(0,0,0,0.35)] overflow-hidden backdrop-blur-md">
+                <div className="rounded-3xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] shadow-[var(--ohnix-shadow-elevated)] overflow-hidden backdrop-blur-md">
                     <ProfileHeader
                         user={user}
                         isVerified={isVerified}
@@ -172,7 +172,7 @@ const ProfilePage = () => {
                         setEditMode={setEditMode}
                     />
 
-                    <div className="border-t border-white/10 bg-[#0B0B0B]/78">
+                    <div className="border-t border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)]">
                         {editMode ? (
                             <div className="p-4 sm:p-6 lg:p-8">
                                 <EditProfileForm

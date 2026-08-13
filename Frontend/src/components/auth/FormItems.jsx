@@ -28,10 +28,10 @@ export const EmailInput = ({ name = "email", required = true, ...props }) => {
             {...props}
         >
             <Input
-                prefix={<MailOutlined className="text-slate-400" />}
+                prefix={<MailOutlined className="text-[var(--ohnix-text-muted)]" />}
                 placeholder={t("common.email")}
                 size="large"
-                className="auth-ohnix-input rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
+                className="auth-ohnix-input rounded-xl border-[var(--ohnix-line-5)] hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[var(--ohnix-surface-2)] text-[var(--ohnix-text-primary)] transition-colors"
             />
         </Form.Item>
     );
@@ -63,10 +63,10 @@ export const PasswordInput = ({
             {...props}
         >
             <Input.Password
-                prefix={<LockOutlined className="text-slate-400" />}
+                prefix={<LockOutlined className="text-[var(--ohnix-text-muted)]" />}
                 placeholder={placeholder === "Password" ? t("common.password") : placeholder}
                 size="large"
-                className="auth-ohnix-input rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
+                className="auth-ohnix-input rounded-xl border-[var(--ohnix-line-5)] hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[var(--ohnix-surface-2)] text-[var(--ohnix-text-primary)] transition-colors"
             />
         </Form.Item>
     );
@@ -95,10 +95,10 @@ export const UsernameInput = ({
             {...props}
         >
             <Input
-                prefix={<UserOutlined className="text-slate-400" />}
+                prefix={<UserOutlined className="text-[var(--ohnix-text-muted)]" />}
                 placeholder={t("common.username")}
                 size="large"
-                className="auth-ohnix-input rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
+                className="auth-ohnix-input rounded-xl border-[var(--ohnix-line-5)] hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[var(--ohnix-surface-2)] text-[var(--ohnix-text-primary)] transition-colors"
             />
         </Form.Item>
     );
@@ -127,10 +127,10 @@ export const OtpInput = ({ name = "otp", required = true, ...props }) => {
             {...props}
         >
             <Input
-                prefix={<KeyOutlined className="text-slate-400" />}
+                prefix={<KeyOutlined className="text-[var(--ohnix-text-muted)]" />}
                 placeholder={t("auth.enter_6_digit_code")}
                 size="large"
-                className="auth-ohnix-input rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
+                className="auth-ohnix-input rounded-xl border-[var(--ohnix-line-5)] hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[var(--ohnix-surface-2)] text-[var(--ohnix-text-primary)] transition-colors"
                 maxLength={6}
             />
         </Form.Item>

@@ -6,6 +6,7 @@ import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import AuthContext from "./context/AuthContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { TeamProvider, useTeam } from "./context/TeamContext";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
 
@@ -54,7 +55,7 @@ const Team = lazy(() => import("./pages/Team"));
 const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
 
 const RouteLoadingFallback = () => (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center text-sm text-[#A9B3B8]">
+    <div className="min-h-screen bg-[var(--ohnix-bg)] flex items-center justify-center text-sm text-[var(--ohnix-text-muted)]">
         Cargando pagina...
     </div>
 );
@@ -119,6 +120,7 @@ function App() {
         <I18nextProvider i18n={i18n}>
             <CurrencyProvider>
                 <AuthProvider>
+                    <ThemeProvider>
                     <BrowserRouter>
                         <TeamProvider>
                         <Toaster />
@@ -201,6 +203,7 @@ function App() {
                         </Suspense>
                         </TeamProvider>
                     </BrowserRouter>
+                    </ThemeProvider>
                 </AuthProvider>
             </CurrencyProvider>
         </I18nextProvider>

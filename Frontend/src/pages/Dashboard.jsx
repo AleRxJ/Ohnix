@@ -214,7 +214,7 @@ const Dashboard = () => {
             },
             render: (text) => (
                 <Tooltip placement="topLeft" title={text}>
-                    <span className="text-sm font-medium text-[#E6ECEF] block max-w-[150px] sm:max-w-[200px] truncate">
+                    <span className="text-sm font-medium text-[var(--ohnix-text-table-cell)] block max-w-[150px] sm:max-w-[200px] truncate">
                         {text}
                     </span>
                 </Tooltip>
@@ -263,7 +263,7 @@ const Dashboard = () => {
             },
             render: (text) => (
                 <Tooltip placement="topLeft" title={text}>
-                    <span className="text-sm font-medium text-[#E6ECEF] block max-w-[150px] sm:max-w-[200px] truncate">
+                    <span className="text-sm font-medium text-[var(--ohnix-text-table-cell)] block max-w-[150px] sm:max-w-[200px] truncate">
                         {text}
                     </span>
                 </Tooltip>
@@ -322,7 +322,7 @@ const Dashboard = () => {
                     record.customer_id?.name || t("customers.unknown_customer");
                 return (
                     <Tooltip placement="topLeft" title={customerName}>
-                        <span className="text-sm font-medium text-[#E6ECEF] block max-w-[150px] sm:max-w-[200px] truncate">
+                        <span className="text-sm font-medium text-[var(--ohnix-text-table-cell)] block max-w-[150px] sm:max-w-[200px] truncate">
                             {customerName}
                         </span>
                     </Tooltip>
@@ -335,7 +335,7 @@ const Dashboard = () => {
             width: 100,
             responsive: ["md"],
             render: (_, record) => (
-                <span className="text-sm text-[#A9B3B8]">
+                <span className="text-sm text-[var(--ohnix-text-muted)]">
                     {new Date(record.createdAt).toLocaleDateString()}
                 </span>
             ),
@@ -399,20 +399,20 @@ const Dashboard = () => {
     );
 
     return (
-        <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.08),transparent_26%),linear-gradient(180deg,#070707_0%,#050505_100%)] text-white">
+        <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.08),transparent_26%),linear-gradient(180deg,var(--ohnix-bg-alt)_0%,var(--ohnix-bg)_100%)] text-[var(--ohnix-text-primary)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <DashboardHeader onRefresh={fetchDashboardData} />
 
                 <section className="mt-6 animate-fade-up-delay">
-                    <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)] p-6 backdrop-blur-md">
+                    <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)] p-6 backdrop-blur-md">
                         {canSeeBilling && (
                         <div className="mb-5 rounded-xl border border-[#29D8D5]/20 bg-[#29D8D5]/8 p-4">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
-                                    <Text className="text-xs uppercase tracking-[0.16em] text-[#A9B3B8]">
+                                    <Text className="text-xs uppercase tracking-[0.16em] text-[var(--ohnix-text-muted)]">
                                         {t("dashboard.plan_overview")}
                                     </Text>
-                                    <div className="mt-1 text-sm text-white">
+                                    <div className="mt-1 text-sm text-[var(--ohnix-text-primary)]">
                                         {t("dashboard.current_plan")}: {" "}
                                         {t(`profile.subscription.plan_${subscriptionSnapshot?.plan || "starter"}`)}
                                     </div>
@@ -422,7 +422,7 @@ const Dashboard = () => {
                                             {t(`profile.subscription.request_status_${activePlanRequest.status}`)}
                                         </div>
                                     ) : (
-                                        <div className="mt-1 text-xs text-[#A9B3B8]">
+                                        <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
                                             {t("dashboard.no_active_plan_request")}
                                         </div>
                                     )}
@@ -434,12 +434,12 @@ const Dashboard = () => {
                                         icon={<ReloadOutlined spin={isPolling} />}
                                         onClick={fetchSubscriptionSnapshot}
                                         title={t("common.refresh")}
-                                        className="rounded-full border border-white/10 bg-white/[0.04] text-white hover:border-[#29D8D5]/40 hover:text-[#E9FEFE]"
+                                        className="rounded-full border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] text-[var(--ohnix-text-primary)] hover:border-[#29D8D5]/40 hover:text-[#E9FEFE]"
                                     />
                                     <Button
                                         type="default"
                                         onClick={() => navigate("/billing")}
-                                        className="rounded-full border border-white/10 bg-white/[0.04] text-white hover:border-[#29D8D5]/40 hover:text-[#E9FEFE]"
+                                        className="rounded-full border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] text-[var(--ohnix-text-primary)] hover:border-[#29D8D5]/40 hover:text-[#E9FEFE]"
                                     >
                                         {t("dashboard.manage_plan_cta")}
                                     </Button>
@@ -532,10 +532,10 @@ const Dashboard = () => {
                 <section className="mt-8 animate-fade-up">
                     <Divider className="flex items-center gap-3 mb-6">
                         <div>
-                            <h2 className="text-xl font-bold text-white m-0 leading-tight">
+                            <h2 className="text-xl font-bold text-[var(--ohnix-text-primary)] m-0 leading-tight">
                                 {t("dashboard.analytics_insights")}
                             </h2>
-                            <p className="text-sm text-[#A9B3B8] m-0">
+                            <p className="text-sm text-[var(--ohnix-text-muted)] m-0">
                                 {t("dashboard.performance_metrics")}
                             </p>
                         </div>
@@ -544,13 +544,13 @@ const Dashboard = () => {
                     <div className="space-y-6">
                         <SalesChart salesData={dashboardData.salesData} />
 
-                        <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)] p-6 backdrop-blur-md">
+                        <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)] p-6 backdrop-blur-md">
                             <div className="flex items-center justify-between gap-4 mb-5">
                                 <div>
-                                    <h3 className="text-lg font-bold text-white m-0 leading-tight">
+                                    <h3 className="text-lg font-bold text-[var(--ohnix-text-primary)] m-0 leading-tight">
                                         {t("dashboard.business_pulse")}
                                     </h3>
-                                    <p className="text-sm text-[#A9B3B8] m-0">
+                                    <p className="text-sm text-[var(--ohnix-text-muted)] m-0">
                                         {t("dashboard.business_pulse_description")}
                                     </p>
                                 </div>
@@ -572,30 +572,30 @@ const Dashboard = () => {
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">{t("dashboard.net_trade_delta")}</div>
+                                <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[var(--ohnix-text-muted)]">{t("dashboard.net_trade_delta")}</div>
                                     <div className={`mt-2 text-2xl font-semibold ${netTradeDelta >= 0 ? "text-[#44F3F0]" : "text-[#F28B82]"}`}>
                                         {formatCurrency(netTradeDelta)}
                                     </div>
-                                    <div className="mt-2 text-sm text-[#A9B3B8]">{t("dashboard.net_trade_delta_description")}</div>
+                                    <div className="mt-2 text-sm text-[var(--ohnix-text-muted)]">{t("dashboard.net_trade_delta_description")}</div>
                                 </div>
 
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">{t("dashboard.average_order_value")}</div>
-                                    <div className="mt-2 text-2xl font-semibold text-white">{formatCurrency(averageOrderValue)}</div>
-                                    <div className="mt-2 text-sm text-[#A9B3B8]">{t("dashboard.average_order_value_description")}</div>
+                                <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[var(--ohnix-text-muted)]">{t("dashboard.average_order_value")}</div>
+                                    <div className="mt-2 text-2xl font-semibold text-[var(--ohnix-text-primary)]">{formatCurrency(averageOrderValue)}</div>
+                                    <div className="mt-2 text-sm text-[var(--ohnix-text-muted)]">{t("dashboard.average_order_value_description")}</div>
                                 </div>
 
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">{t("dashboard.stock_risk")}</div>
-                                    <div className="mt-2 text-2xl font-semibold text-white">{stockRiskCount}</div>
-                                    <div className="mt-2 text-sm text-[#A9B3B8]">{t("dashboard.stock_risk_description")}</div>
+                                <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[var(--ohnix-text-muted)]">{t("dashboard.stock_risk")}</div>
+                                    <div className="mt-2 text-2xl font-semibold text-[var(--ohnix-text-primary)]">{stockRiskCount}</div>
+                                    <div className="mt-2 text-sm text-[var(--ohnix-text-muted)]">{t("dashboard.stock_risk_description")}</div>
                                 </div>
 
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                                    <div className="text-xs uppercase tracking-[0.28em] text-[#A9B3B8]">{t("dashboard.revenue_concentration")}</div>
-                                    <div className="mt-2 text-2xl font-semibold text-white">{topProductShare.toFixed(1)}%</div>
-                                    <div className="mt-2 text-sm text-[#A9B3B8]">{t("dashboard.revenue_concentration_description")}</div>
+                                <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                                    <div className="text-xs uppercase tracking-[0.28em] text-[var(--ohnix-text-muted)]">{t("dashboard.revenue_concentration")}</div>
+                                    <div className="mt-2 text-2xl font-semibold text-[var(--ohnix-text-primary)]">{topProductShare.toFixed(1)}%</div>
+                                    <div className="mt-2 text-sm text-[var(--ohnix-text-muted)]">{t("dashboard.revenue_concentration_description")}</div>
                                 </div>
                             </div>
                         </div>
@@ -606,16 +606,16 @@ const Dashboard = () => {
 
                         {dashboardData.topProducts &&
                             dashboardData.topProducts.length > 0 && (
-                                <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)] p-6 backdrop-blur-md">
+                                <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)] p-6 backdrop-blur-md">
                                     <div className="flex items-center gap-3 mb-5">
                                         <div className="w-10 h-10 rounded-lg bg-[linear-gradient(135deg,rgba(41,216,213,0.2),rgba(68,243,240,0.1))] border border-[#29D8D5]/25 flex items-center justify-center">
                                             <InfoCircleOutlined className="text-lg text-[#44F3F0]" />
                                         </div>
                                         <div>
-                                                <h3 className="text-lg font-bold text-white m-0 leading-tight">
+                                                <h3 className="text-lg font-bold text-[var(--ohnix-text-primary)] m-0 leading-tight">
                                                     {t("dashboard.quick_insights")}
                                             </h3>
-                                                <p className="text-sm text-[#A9B3B8] m-0">
+                                                <p className="text-sm text-[var(--ohnix-text-muted)] m-0">
                                                     {t("dashboard.key_product_highlights")}
                                             </p>
                                         </div>
@@ -631,7 +631,7 @@ const Dashboard = () => {
                                                     🏆
                                                 </div>
                                             </div>
-                                            <Text className="text-base font-bold text-white block mb-2">
+                                            <Text className="text-base font-bold text-[var(--ohnix-text-primary)] block mb-2">
                                                 {topPerformer?.product_name}
                                             </Text>
                                             <Badge
@@ -656,7 +656,7 @@ const Dashboard = () => {
                                                     💰
                                                 </div>
                                             </div>
-                                            <Text className="text-base font-bold text-white block mb-2">
+                                            <Text className="text-base font-bold text-[var(--ohnix-text-primary)] block mb-2">
                                                 {mostProfitableProduct?.product_name}
                                             </Text>
                                             <Badge
@@ -680,10 +680,10 @@ const Dashboard = () => {
                 <section className="mt-8 pb-8 animate-fade-up">
                     <Divider className="flex items-center gap-3 mb-6">
                         <div>
-                            <h2 className="text-xl font-bold text-white m-0 leading-tight">
+                            <h2 className="text-xl font-bold text-[var(--ohnix-text-primary)] m-0 leading-tight">
                                 {t("dashboard.reports_activity")}
                             </h2>
-                            <p className="text-sm text-[#A9B3B8] m-0">
+                            <p className="text-sm text-[var(--ohnix-text-muted)] m-0">
                                 {t("dashboard.recent_transactions_and_alerts")}
                             </p>
                         </div>
@@ -691,7 +691,7 @@ const Dashboard = () => {
 
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
+                            <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)]">
                                 <DataTable
                                     title={t("dashboard.top_selling_products")}
                                     columns={topProductsColumns}
@@ -704,7 +704,7 @@ const Dashboard = () => {
                                 />
                             </div>
 
-                            <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
+                            <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)]">
                                 <DataTable
                                     title={t("dashboard.low_stock_alerts")}
                                     columns={lowStockColumns}
@@ -718,7 +718,7 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        <div className="bg-[#0B0B0B]/92 rounded-2xl border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.35)]">
+                        <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)]">
                             <DataTable
                                 title={t("dashboard.recent_orders")}
                                 columns={recentOrdersColumns}

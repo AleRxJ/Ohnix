@@ -91,7 +91,7 @@ const Orders = () => {
     };
 
     return (
-        <div className="min-h-screen bg-transparent text-white">
+        <div className="min-h-screen bg-transparent text-[var(--ohnix-text-primary)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="space-y-6">
                     <PageHeader
@@ -126,7 +126,7 @@ const Orders = () => {
                         onResetFilters={handleResetFilters}
                     />
 
-                    <div className="rounded-xl border border-white/10 bg-[#0B0B0B]/90 shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
+                    <div className="rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] shadow-[var(--ohnix-shadow-card)]">
                         <OrdersTable
                             orders={orders}
                             loading={loading}

@@ -183,15 +183,15 @@ const Products = () => {
 
     return (
         <Layout className="bg-transparent">
-            <Content className="p-2 sm:p-4 lg:p-6 bg-transparent text-white">
+            <Content className="p-2 sm:p-4 lg:p-6 bg-transparent text-[var(--ohnix-text-primary)]">
                 <div className="max-w-full lg:max-w-7xl mx-auto">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
                         <div className="flex-1 min-w-0">
-                            <h1 className="truncate mb-1 text-3xl sm:text-4xl font-bold flex items-center gap-2 text-white">
+                            <h1 className="truncate mb-1 text-3xl sm:text-4xl font-bold flex items-center gap-2 text-[var(--ohnix-text-primary)]">
                                 {t("products.products")}
                                 <ProductOutlined className="text-[#44F3F0] inline-block ml-2" />
                             </h1>
-                            <p className="text-[#A9B3B8] text-base md:text-sm hidden sm:block">
+                            <p className="text-[var(--ohnix-text-muted)] text-base md:text-sm hidden sm:block">
                                 {t("products.manage_inventory")}
                             </p>
                         </div>
@@ -256,7 +256,7 @@ const Products = () => {
                     </div>
 
                     <Card
-                        className="overflow-hidden border border-white/10 bg-[#0B0B0B]/90 shadow-[0_16px_36px_rgba(0,0,0,0.3)]"
+                        className="overflow-hidden border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] shadow-[0_16px_36px_rgba(0,0,0,0.3)]"
                         bodyStyle={{
                             padding: window.innerWidth < 768 ? "12px" : "24px",
                             overflowX: "auto",

@@ -86,7 +86,7 @@ const AcceptInvitation = () => {
                         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10">
                             <WarningOutlined className="text-2xl text-red-400" />
                         </div>
-                        <p className="text-white font-medium mb-2">
+                        <p className="text-[var(--ohnix-text-primary)] font-medium mb-2">
                             {error === "expired" ? t("team.accept_expired") : t("team.accept_invalid")}
                         </p>
                         <Link to="/login" className="text-[#44F3F0] text-sm">
@@ -95,14 +95,14 @@ const AcceptInvitation = () => {
                     </div>
                 ) : (
                     <>
-                        <div className="mb-5 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                        <div className="mb-5 flex items-center gap-3 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-4 py-3">
                             <UsergroupAddOutlined className="text-[#44F3F0]" />
                             <div className="min-w-0">
-                                <p className="m-0 text-sm font-medium text-white truncate">{preview.teamName}</p>
-                                <p className="m-0 text-xs text-[#A9B3B8]">{preview.roleName}</p>
+                                <p className="m-0 text-sm font-medium text-[var(--ohnix-text-primary)] truncate">{preview.teamName}</p>
+                                <p className="m-0 text-xs text-[var(--ohnix-text-muted)]">{preview.roleName}</p>
                             </div>
                         </div>
-                        <div className="mb-5 flex items-center gap-2 text-sm text-[#A9B3B8]">
+                        <div className="mb-5 flex items-center gap-2 text-sm text-[var(--ohnix-text-muted)]">
                             <MailOutlined />
                             {preview.email}
                         </div>
@@ -126,10 +126,10 @@ const AcceptInvitation = () => {
                                 ]}
                             >
                                 <Input.Password
-                                    prefix={<LockOutlined className="text-slate-400" />}
+                                    prefix={<LockOutlined className="text-[var(--ohnix-text-muted)]" />}
                                     placeholder={t("auth.confirm_password")}
                                     size="large"
-                                    className="auth-ohnix-input rounded-xl border-white/12 hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[#111214] text-white transition-colors"
+                                    className="auth-ohnix-input rounded-xl border-[var(--ohnix-line-5)] hover:border-[#29D8D5]/35 focus:border-[#29D8D5] bg-[var(--ohnix-surface-2)] text-[var(--ohnix-text-primary)] transition-colors"
                                 />
                             </Form.Item>
                             <AuthButton loading={submitting}>{t("team.accept_cta")}</AuthButton>

@@ -150,7 +150,7 @@ const EmailVerify = () => {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-12">
                         <Spin size="large" />
-                        <Text className="mt-4 text-[#A9B3B8]">
+                        <Text className="mt-4 text-[var(--ohnix-text-muted)]">
                             {t("auth.sending_verification_code")}
                         </Text>
                     </div>
@@ -167,7 +167,7 @@ const EmailVerify = () => {
                                         <Text className="block text-xs uppercase tracking-wide text-amber-300">
                                             {t("auth.dev_otp_notice")}
                                         </Text>
-                                        <Text className="mt-1 block text-2xl font-bold tracking-[0.3em] text-white">
+                                        <Text className="mt-1 block text-2xl font-bold tracking-[0.3em] text-[var(--ohnix-text-primary)]">
                                             {devOtp}
                                         </Text>
                                     </div>
@@ -197,11 +197,11 @@ const EmailVerify = () => {
                                             ? t("auth.resend_code_cooldown", { seconds: resendCooldown })
                                             : t("auth.resend_code")}
                                     </button>
-                                    <span className="text-white/20">|</span>
+                                    <span className="text-[var(--ohnix-line-6)]">|</span>
                                     <button
                                         type="button"
                                         onClick={() => navigate("/login")}
-                                        className="text-[#A9B3B8] hover:text-white font-medium transition-colors inline-flex items-center gap-1"
+                                        className="text-[var(--ohnix-text-muted)] hover:text-[var(--ohnix-text-primary)] font-medium transition-colors inline-flex items-center gap-1"
                                     >
                                         <ArrowLeftOutlined className="text-xs" />
                                         {t("auth.back_to_login")}
@@ -221,8 +221,8 @@ const EmailVerify = () => {
                     </>
                 )}
 
-                <div className="mt-8 pt-6 border-t border-white/10 text-center">
-                    <Text className="text-sm text-[#A9B3B8]">
+                <div className="mt-8 pt-6 border-t border-[var(--ohnix-line-4)] text-center">
+                    <Text className="text-sm text-[var(--ohnix-text-muted)]">
                         {t("auth.need_help")} {" "}
                         <a
                             href="mailto:alejandrosoftware.engineering@gmail.com"

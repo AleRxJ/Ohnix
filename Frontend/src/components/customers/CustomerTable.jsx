@@ -20,7 +20,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
     const { t } = useI18n();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("customers", "edit");
-    const tableShellClass = "rounded-xl shadow-sm border border-white/10 overflow-hidden bg-[#0B0B0B]/92";
+    const tableShellClass = "rounded-xl shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)]";
     // Mobile card view for small screens
     const MobileCustomerCard = ({ customer }) => (
         <Card
@@ -37,7 +37,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                 <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                         <div className="min-w-0 flex-1">
-                            <Text strong className="text-base text-white block truncate">
+                            <Text strong className="text-base text-[var(--ohnix-text-primary)] block truncate">
                                 {customer.name}
                             </Text>
                             <Tag 
@@ -82,22 +82,22 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                     </div>
                     
                     <div className="space-y-1">
-                        <div className="flex items-center text-sm text-[#A9B3B8]">
+                        <div className="flex items-center text-sm text-[var(--ohnix-text-muted)]">
                             <MailOutlined className="mr-2 text-[#44F3F0] flex-shrink-0" />
                             <span className="truncate">{customer.email}</span>
                         </div>
-                        <div className="flex items-center text-sm text-[#A9B3B8]">
+                        <div className="flex items-center text-sm text-[var(--ohnix-text-muted)]">
                             <PhoneOutlined className="mr-2 text-[#29D8D5] flex-shrink-0" />
                             <span>{customer.phone}</span>
                         </div>
                         {customer.address && (
-                            <div className="flex items-start text-sm text-[#A9B3B8]">
+                            <div className="flex items-start text-sm text-[var(--ohnix-text-muted)]">
                                 <HomeOutlined className="mr-2 mt-0.5 text-[#8CECEC] flex-shrink-0" />
                                 <span className="truncate">{customer.address}</span>
                             </div>
                         )}
                         {customer.store_name && (
-                            <div className="flex items-center text-sm text-[#A9B3B8]">
+                            <div className="flex items-center text-sm text-[var(--ohnix-text-muted)]">
                                 <ShopOutlined className="mr-2 text-[#FFCF70] flex-shrink-0" />
                                 <span className="truncate">{customer.store_name}</span>
                             </div>
@@ -122,7 +122,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                         className="shadow-sm"
                     />
                     <div className="min-w-0 flex-1">
-                        <Text strong className="block text-white text-sm">
+                        <Text strong className="block text-[var(--ohnix-text-primary)] text-sm">
                             {record.name}
                         </Text>
                         <Tag 
@@ -146,7 +146,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
             responsive: ['md'],
             render: (_, record) => (
                 <div className="space-y-2">
-                    <div className="flex items-center text-sm text-[#D4DBDF]">
+                    <div className="flex items-center text-sm text-[var(--ohnix-text-soft)]">
                         <MailOutlined className="mr-2 text-[#44F3F0]" />
                         <Tooltip title={record.email}>
                             <span className="truncate max-w-[180px]">
@@ -154,7 +154,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                             </span>
                         </Tooltip>
                     </div>
-                    <div className="flex items-center text-sm text-[#D4DBDF]">
+                    <div className="flex items-center text-sm text-[var(--ohnix-text-soft)]">
                         <PhoneOutlined className="mr-2 text-[#29D8D5]" />
                         <span>{record.phone}</span>
                     </div>
@@ -189,7 +189,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                         </div>
                     )}
                     {!record.address && !record.store_name && (
-                        <span className="text-[#8B98A0] text-sm italic">{t("customers.no_location_data")}</span>
+                        <span className="text-[var(--ohnix-text-dim)] text-sm italic">{t("customers.no_location_data")}</span>
                     )}
                 </div>
             ),
@@ -207,7 +207,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                             icon={<EyeOutlined />}
                             size="small"
                             onClick={() => onView(record)}
-                            className="text-[#44F3F0] hover:text-[#44F3F0] hover:bg-white/5"
+                            className="text-[#44F3F0] hover:text-[#44F3F0] hover:bg-[var(--ohnix-hover-overlay)]"
                         />
                     </Tooltip>
                     <Tooltip title={canEdit ? t("customers.edit_customer") : t("common.no_permission_to_edit")}>
@@ -216,7 +216,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                             icon={<EditOutlined />}
                             size="small"
                             onClick={() => onEdit(record)}
-                            className="text-[#29D8D5] hover:text-[#29D8D5] hover:bg-white/5"
+                            className="text-[#29D8D5] hover:text-[#29D8D5] hover:bg-[var(--ohnix-hover-overlay)]"
                             disabled={!canEdit}
                         />
                     </Tooltip>
@@ -234,7 +234,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                                 type="text"
                                 icon={<DeleteOutlined />}
                                 size="small"
-                                className="text-red-400 hover:text-red-300 hover:bg-white/5"
+                                className="text-red-400 hover:text-red-300 hover:bg-[var(--ohnix-hover-overlay)]"
                                 disabled={!canEdit}
                             />
                         </Tooltip>
@@ -270,15 +270,15 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
 
     if (customers.length === 0) {
         return (
-            <div className="text-center py-12 module-shell border border-white/10 bg-[#0B0B0B]/92">
+            <div className="text-center py-12 module-shell border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)]">
                 <div className="mx-auto max-w-md px-6">
-                    <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center mx-auto mb-4">
+                    <div className="w-16 h-16 rounded-2xl bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] flex items-center justify-center mx-auto mb-4">
                         <UserOutlined className="text-2xl text-[#44F3F0]" />
                     </div>
-                    <div className="text-white text-lg font-semibold mb-2">
+                    <div className="text-[var(--ohnix-text-primary)] text-lg font-semibold mb-2">
                         {t("customers.no_customers_found")}
                     </div>
-                    <div className="text-[#A9B3B8] text-sm">
+                    <div className="text-[var(--ohnix-text-muted)] text-sm">
                         {t("customers.add_first_customer")}
                     </div>
                 </div>
@@ -296,7 +296,7 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                     ))}
                 </div>
                 {customers.length > 10 && (
-                    <div className="text-center mt-4 pt-4 border-t border-white/10 text-sm text-[#A9B3B8]">
+                    <div className="text-center mt-4 pt-4 border-t border-[var(--ohnix-line-4)] text-sm text-[var(--ohnix-text-muted)]">
                         {t("customers.showing_customers", {
                             shown: Math.min(10, customers.length),
                             total: customers.length,

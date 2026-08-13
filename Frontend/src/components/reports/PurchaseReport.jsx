@@ -284,7 +284,7 @@ const PurchaseReport = () => {
     return (
         <div className="space-y-4 sm:space-y-6">
             {/* Date Range Filter and Export */}
-            <Card title={t("reports.filter_and_export_options")} className="module-shell border border-white/10 overflow-hidden hover-lift">
+            <Card title={t("reports.filter_and_export_options")} className="module-shell border border-[var(--ohnix-line-4)] overflow-hidden hover-lift">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                     <div className="flex flex-col sm:flex-row gap-3">
                         <RangePicker
@@ -362,7 +362,7 @@ const PurchaseReport = () => {
 
                     {/* Purchases by Date Chart */}
                     {purchaseData.purchasesByDate?.length > 0 && (
-                        <Card title={t("reports.purchase_trend_by_date")} className="w-full module-shell border border-white/10">
+                        <Card title={t("reports.purchase_trend_by_date")} className="w-full module-shell border border-[var(--ohnix-line-4)]">
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
                                     width="100%"
@@ -430,7 +430,7 @@ const PurchaseReport = () => {
                     {purchaseData.purchasesBySupplier?.length > 0 && (
                         <Card
                             title={t("reports.top_suppliers_by_purchase_value")}
-                            className="h-full module-shell border border-white/10"
+                            className="h-full module-shell border border-[var(--ohnix-line-4)]"
                         >
                             <div className="w-full overflow-x-auto">
                                 <ResponsiveContainer
@@ -502,7 +502,7 @@ const PurchaseReport = () => {
 
                     {/* Supplier Details Table */}
                     {purchaseData.purchasesBySupplier?.length > 0 && (
-                            <Card title={t("reports.supplier_purchase_details")} className="module-shell border border-white/10">
+                            <Card title={t("reports.supplier_purchase_details")} className="module-shell border border-[var(--ohnix-line-4)]">
                             <div className="overflow-x-auto">
                                 <Table
                                     columns={supplierColumns}
@@ -539,9 +539,9 @@ const PurchaseReport = () => {
             )}
 
             {!purchaseData && !loading && (
-                <Card className="module-shell border border-white/10">
+                <Card className="module-shell border border-[var(--ohnix-line-4)]">
                     <div className="text-center py-8">
-                        <p className="text-[#A9B3B8] text-sm sm:text-base px-4">
+                        <p className="text-[var(--ohnix-text-muted)] text-sm sm:text-base px-4">
                             {t("reports.select_date_range_purchase")}
                         </p>
                     </div>

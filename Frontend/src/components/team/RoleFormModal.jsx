@@ -7,12 +7,12 @@ import { VISIBLE_MODULE_KEYS, PERMISSION_LEVELS } from "../../constants/teamModu
 const darkModalStyles = {
     mask: { backgroundColor: "rgba(0,0,0,0.55)" },
     content: {
-        background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
-        border: "1px solid rgba(255,255,255,0.1)",
+        background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
+        border: "1px solid var(--ohnix-line-4)",
         boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
         borderRadius: "24px",
     },
-    header: { background: "transparent", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "20px 24px 16px" },
+    header: { background: "transparent", borderBottom: "1px solid var(--ohnix-line-3)", padding: "20px 24px 16px" },
     body: { padding: 24 },
 };
 
@@ -44,7 +44,7 @@ const RoleFormModal = ({ open, onCancel, onSubmit, submitting, form, editingRole
     return (
         <Modal
             title={
-                <span className="text-lg font-bold text-white">
+                <span className="text-lg font-bold text-[var(--ohnix-text-primary)]">
                     {editingRole ? t("team.edit_role") : t("team.add_role")}
                 </span>
             }
@@ -85,15 +85,15 @@ const RoleFormModal = ({ open, onCancel, onSubmit, submitting, form, editingRole
                     )
                 )}
 
-                <div className="mb-3 flex items-center gap-2 text-[11px] text-[#6F7A81]">
+                <div className="mb-3 flex items-center gap-2 text-[11px] text-[var(--ohnix-text-dim)]">
                     <InfoCircleOutlined />
                     {t("team.dashboard_follows_reports_hint")}
                 </div>
 
-                <div className="rounded-xl border border-white/10 divide-y divide-white/10 overflow-hidden">
+                <div className="rounded-xl border border-[var(--ohnix-line-4)] divide-y divide-[var(--ohnix-line-4)] overflow-hidden">
                     {VISIBLE_MODULE_KEYS.map((moduleKey) => (
-                        <div key={moduleKey} className="flex items-center justify-between gap-3 px-4 py-3 bg-white/[0.02]">
-                            <span className="text-sm text-white">{t(`team.module_${moduleKey}`)}</span>
+                        <div key={moduleKey} className="flex items-center justify-between gap-3 px-4 py-3 bg-[var(--ohnix-line-1)]">
+                            <span className="text-sm text-[var(--ohnix-text-primary)]">{t(`team.module_${moduleKey}`)}</span>
                             <Form.Item name={["permissions", moduleKey]} className="m-0" initialValue="none">
                                 <Select
                                     size="small"

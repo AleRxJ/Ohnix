@@ -61,16 +61,16 @@ const CustomerForm = ({
                 {/* Personal Information Section */}
                 <Card
                     title={
-                        <div className="flex items-center text-white">
+                        <div className="flex items-center text-[var(--ohnix-text-primary)]">
                             <UserOutlined className="mr-3 text-[#29D8D5] text-lg" />
-                            <span className="text-lg font-semibold text-white">
+                            <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
                                 {t("customers.personal_information")}
                             </span>
                         </div>
                     }
                     className="shadow-sm border-0 module-shell"
                     headStyle={{
-                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                        borderBottom: "1px solid var(--ohnix-line-3)",
                         background: "transparent",
                     }}
                 >
@@ -78,7 +78,7 @@ const CustomerForm = ({
                         <Col xs={24} sm={12}>
                             <Form.Item
                                 label={
-                                    <span className="font-medium text-[#A9B3B8]">
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
                                         {t("customers.customer_name")}
                                     </span>
                                 }
@@ -98,7 +98,7 @@ const CustomerForm = ({
                                     placeholder={t("customers.enter_full_name")}
                                     size="large"
                                     prefix={
-                                        <UserOutlined className="text-[#8B98A0]" />
+                                        <UserOutlined className="text-[var(--ohnix-text-dim)]" />
                                     }
                                     className="rounded-lg auth-ohnix-input"
                                 />
@@ -107,7 +107,7 @@ const CustomerForm = ({
                         <Col xs={24} sm={12}>
                             <Form.Item
                                 label={
-                                    <span className="font-medium text-[#A9B3B8]">
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
                                         {t("customers.customer_type")}
                                     </span>
                                 }
@@ -137,16 +137,16 @@ const CustomerForm = ({
                 {/* Contact Information Section */}
                 <Card
                     title={
-                        <div className="flex items-center text-white">
+                        <div className="flex items-center text-[var(--ohnix-text-primary)]">
                             <MailOutlined className="mr-3 text-[#44F3F0] text-lg" />
-                            <span className="text-lg font-semibold text-white">
+                            <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
                                 {t("customers.contact_information")}
                             </span>
                         </div>
                     }
                     className="shadow-sm border-0 module-shell"
                     headStyle={{
-                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                        borderBottom: "1px solid var(--ohnix-line-3)",
                         background: "transparent",
                     }}
                 >
@@ -154,7 +154,7 @@ const CustomerForm = ({
                         <Col xs={24} sm={12}>
                             <Form.Item
                                 label={
-                                    <span className="font-medium text-[#A9B3B8]">
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
                                         {t("customers.email_address")}
                                     </span>
                                 }
@@ -178,7 +178,7 @@ const CustomerForm = ({
                                     placeholder={t("customers.email_placeholder")}
                                     size="large"
                                     prefix={
-                                        <MailOutlined className="text-[#8B98A0]" />
+                                        <MailOutlined className="text-[var(--ohnix-text-dim)]" />
                                     }
                                     className="rounded-lg auth-ohnix-input"
                                 />
@@ -187,7 +187,7 @@ const CustomerForm = ({
                         <Col xs={24} sm={12}>
                             <Form.Item
                                 label={
-                                    <span className="font-medium text-[#A9B3B8]">
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
                                         {t("customers.phone_number")}
                                     </span>
                                 }
@@ -207,7 +207,7 @@ const CustomerForm = ({
                                     placeholder={t("customers.phone_placeholder")}
                                     size="large"
                                     prefix={
-                                        <PhoneOutlined className="text-[#8B98A0]" />
+                                        <PhoneOutlined className="text-[var(--ohnix-text-dim)]" />
                                     }
                                     className="rounded-lg auth-ohnix-input"
                                 />
@@ -216,7 +216,7 @@ const CustomerForm = ({
                         <Col xs={24}>
                             <Form.Item
                                 label={
-                                    <span className="font-medium text-[#A9B3B8]">
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
                                         {t("common.address")}
                                     </span>
                                 }
@@ -243,20 +243,20 @@ const CustomerForm = ({
                 <Card
                     title={
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center text-white">
+                            <div className="flex items-center text-[var(--ohnix-text-primary)]">
                                 <ShopOutlined className="mr-3 text-[#29D8D5] text-lg" />
-                                <span className="text-lg font-semibold text-white">
+                                <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
                                     {t("customers.business_information")}
                                 </span>
                             </div>
-                            <span className="text-sm font-normal text-[#A9B3B8] bg-white/[0.04] px-3 py-1 rounded-full border border-white/8">
+                            <span className="text-sm font-normal text-[var(--ohnix-text-muted)] bg-[var(--ohnix-line-1)] px-3 py-1 rounded-full border border-[var(--ohnix-line-3)]">
                                 {t("customers.optional")}
                             </span>
                         </div>
                     }
                     className="shadow-sm border-0 module-shell"
                     headStyle={{
-                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                        borderBottom: "1px solid var(--ohnix-line-3)",
                         background: "transparent",
                     }}
                 >
@@ -264,7 +264,7 @@ const CustomerForm = ({
                         <Col xs={24} sm={12}>
                             <Form.Item
                                 label={
-                                    <span className="font-medium text-[#A9B3B8]">
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
                                         {t("customers.store_name")}
                                     </span>
                                 }
@@ -280,7 +280,7 @@ const CustomerForm = ({
                                     placeholder={t("customers.store_name_placeholder")}
                                     size="large"
                                     prefix={
-                                        <ShopOutlined className="text-[#8B98A0]" />
+                                        <ShopOutlined className="text-[var(--ohnix-text-dim)]" />
                                     }
                                     className="rounded-lg auth-ohnix-input"
                                 />
@@ -289,7 +289,7 @@ const CustomerForm = ({
                         <Col xs={24} sm={12}>
                             <Form.Item
                                 label={
-                                    <span className="font-medium text-[#A9B3B8]">
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
                                         {t("customers.account_holder")}
                                     </span>
                                 }
@@ -305,7 +305,7 @@ const CustomerForm = ({
                                     placeholder={t("customers.account_holder_placeholder")}
                                     size="large"
                                     prefix={
-                                        <IdcardOutlined className="text-[#8B98A0]" />
+                                        <IdcardOutlined className="text-[var(--ohnix-text-dim)]" />
                                     }
                                     className="rounded-lg auth-ohnix-input"
                                 />
@@ -314,7 +314,7 @@ const CustomerForm = ({
                         <Col xs={24}>
                             <Form.Item
                                 label={
-                                    <span className="font-medium text-[#A9B3B8]">
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
                                         {t("customers.account_number")}
                                     </span>
                                 }
@@ -330,7 +330,7 @@ const CustomerForm = ({
                                     placeholder={t("customers.account_number_placeholder")}
                                     size="large"
                                     prefix={
-                                        <BankOutlined className="text-[#8B98A0]" />
+                                        <BankOutlined className="text-[var(--ohnix-text-dim)]" />
                                     }
                                     className="rounded-lg auth-ohnix-input"
                                 />
@@ -343,9 +343,9 @@ const CustomerForm = ({
                     <Card
                         title={
                             <div className="flex items-center justify-between gap-3">
-                                <div className="flex items-center text-white">
+                                <div className="flex items-center text-[var(--ohnix-text-primary)]">
                                     <IdcardOutlined className="mr-3 text-[#44F3F0] text-lg" />
-                                    <span className="text-lg font-semibold text-white">{t("customers.dian_data")}</span>
+                                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">{t("customers.dian_data")}</span>
                                 </div>
                                 <span className="text-xs text-[#44F3F0] bg-[#29D8D5]/10 px-3 py-1 rounded-full border border-[#29D8D5]/20">
                                     {t("customers.dian_badge")}
@@ -353,9 +353,9 @@ const CustomerForm = ({
                             </div>
                         }
                         className="shadow-sm border-0 module-shell"
-                        headStyle={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "transparent" }}
+                        headStyle={{ borderBottom: "1px solid var(--ohnix-line-3)", background: "transparent" }}
                     >
-                        <p className="text-sm text-[#A9B3B8] mb-4">
+                        <p className="text-sm text-[var(--ohnix-text-muted)] mb-4">
                             {t("customers.dian_hint")}
                         </p>
                         <Row gutter={[24, 16]}>
@@ -391,28 +391,28 @@ const CustomerForm = ({
                 {/* Photo Upload Section */}
                 <Card
                     title={
-                        <div className="flex items-center text-white">
+                        <div className="flex items-center text-[var(--ohnix-text-primary)]">
                             <UploadOutlined className="mr-3 text-[#44F3F0] text-lg" />
-                            <span className="text-lg font-semibold text-white">
+                            <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
                                 {t("customers.customer_photo")}
                             </span>
                         </div>
                     }
                     className="shadow-sm border-0 module-shell"
                     headStyle={{
-                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                        borderBottom: "1px solid var(--ohnix-line-3)",
                         background: "transparent",
                     }}
                 >
                     <Form.Item>
                         <Upload {...uploadProps}>
                             {fileList.length === 0 && (
-                                <div className="text-center md:p-2 mt-2 border border-dashed border-white/12 rounded-xl hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer bg-white/[0.03] hover:bg-white/[0.05]">
+                                <div className="text-center md:p-2 mt-2 border border-dashed border-[var(--ohnix-line-5)] rounded-xl hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer bg-[var(--ohnix-line-1)] hover:bg-[var(--ohnix-hover-overlay)]">
                                     <UploadOutlined className="text-3xl text-[#29D8D5] mb-3 block" />
-                                    <div className="text-white font-medium mb-1">
+                                    <div className="text-[var(--ohnix-text-primary)] font-medium mb-1">
                                         {t("customers.click_to_upload_photo")}
                                     </div>
-                                    <div className="text-sm text-[#A9B3B8]">
+                                    <div className="text-sm text-[var(--ohnix-text-muted)]">
                                         {t("customers.photo_upload_help")}
                                     </div>
                                 </div>
@@ -422,7 +422,7 @@ const CustomerForm = ({
                 </Card>
 
                 {/* Form Actions */}
-                <div className="flex justify-end pt-6 border-t border-white/10 bg-white/[0.02] -mx-6 px-6 py-4 space-x-3">
+                <div className="flex justify-end pt-6 border-t border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] -mx-6 px-6 py-4 space-x-3">
                     <Button
                         size="large"
                         onClick={onCancel}

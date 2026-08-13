@@ -203,27 +203,27 @@ const Customers = () => {
     const filteredCustomers = getFilteredCustomers();
 
     return (
-        <div className="p-4 sm:p-6 space-y-6 text-white">
+        <div className="p-4 sm:p-6 space-y-6 text-[var(--ohnix-text-primary)]">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-4">
                 <div className="flex-1 min-w-0">
-                    <h1 className="truncate mb-1 text-3xl sm:text-4xl font-bold flex items-center gap-2 text-white">
+                    <h1 className="truncate mb-1 text-3xl sm:text-4xl font-bold flex items-center gap-2 text-[var(--ohnix-text-primary)]">
                         {t("customers.manage_customers")}
                         <UserOutlined className="text-[#44F3F0] inline-block ml-2" />
                     </h1>
-                    <p className="text-[#A9B3B8] text-base md:text-sm hidden sm:block">
+                    <p className="text-[var(--ohnix-text-muted)] text-base md:text-sm hidden sm:block">
                         {t("customers.manage_customers_description")}
                     </p>
                 </div>
             </div>
-            
+
             <CustomerStats stats={state.stats} />
 
             {/* Search and Add Section */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-white/10 bg-[#0B0B0B]/90 p-4 rounded-xl shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] p-4 rounded-xl shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
                 <Input
                     placeholder={t("customers.search_customers")}
-                    prefix={<SearchOutlined className="text-[#8B98A0]" />}
+                    prefix={<SearchOutlined className="text-[var(--ohnix-text-dim)]" />}
                     value={state.searchText}
                     onChange={handleSearch}
                     className="max-w-lg"
@@ -248,14 +248,14 @@ const Customers = () => {
 
             {/* Results Summary */}
             {state.searchText && (
-                <div className="text-sm text-[#D4DBDF] bg-[#101619] border border-[#29D8D5]/25 p-3 rounded-lg">
+                <div className="text-sm text-[var(--ohnix-text-soft)] bg-[#101619] border border-[#29D8D5]/25 p-3 rounded-lg">
                     {t("customers.customers_found", { count: filteredCustomers.length })}
                     {state.searchText && ` ${t("customers.matching_search", { search: state.searchText })}`}
                 </div>
             )}
 
             {/* Customer Table */}
-            <Card className="border border-white/10 bg-[#0B0B0B]/90 shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
+            <Card className="border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] shadow-[0_16px_36px_rgba(0,0,0,0.3)]">
                 <CustomerTable
                     customers={filteredCustomers}
                     loading={state.loading}

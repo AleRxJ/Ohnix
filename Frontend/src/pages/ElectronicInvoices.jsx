@@ -95,7 +95,7 @@ const MetricCard = ({ label, value, icon, color, hint }) => {
             icon={icon}
             valueStyle={{ color, fontSize: "32px", fontWeight: 700 }}
             description={hint}
-            className="!border-white/10"
+            className="!border-[var(--ohnix-line-4)]"
         />
     );
 };
@@ -138,13 +138,13 @@ const CufeCell = ({ cufe }) => {
     };
 
     if (!cufe) {
-        return <span className="text-xs italic text-[#8B98A0]">{t("electronic_invoices.cufe_not_available")}</span>;
+        return <span className="text-xs italic text-[var(--ohnix-text-dim)]">{t("electronic_invoices.cufe_not_available")}</span>;
     }
     const truncated = `${cufe.slice(0, 14)}…`;
     return (
         <Tooltip title={<span className="font-mono text-xs break-all">{cufe}</span>} placement="topLeft">
             <span
-                className="cufe-cell font-mono text-xs text-[#D4DBDF]"
+                className="cufe-cell font-mono text-xs text-[var(--ohnix-text-soft)]"
                 onClick={handleCopy}
                 role="button"
                 tabIndex={0}
@@ -163,18 +163,18 @@ const TimelineNode = ({ label, when, active, isLast }) => {
         <div className="relative pl-8 pb-5 last:pb-0">
             <span className={`dian-timeline__node ${active ? "" : "dian-timeline__node--pending"}`} style={{ top: 4 }} />
             {!isLast && (
-                <span className="absolute left-[15px] top-[18px] bottom-0 w-px bg-gradient-to-b from-[#29D8D5]/60 to-white/5" />
+                <span className="absolute left-[15px] top-[18px] bottom-0 w-px bg-gradient-to-b from-[#29D8D5]/60 to-[var(--ohnix-line-2)]" />
             )}
-            <div className={`text-sm font-semibold ${active ? "text-white" : "text-[#8B98A0]"}`}>{label}</div>
-            <div className="text-xs text-[#A9B3B8]">{when || t("electronic_invoices.drawer.pending")}</div>
+            <div className={`text-sm font-semibold ${active ? "text-[var(--ohnix-text-primary)]" : "text-[var(--ohnix-text-dim)]"}`}>{label}</div>
+            <div className="text-xs text-[var(--ohnix-text-muted)]">{when || t("electronic_invoices.drawer.pending")}</div>
         </div>
     );
 };
 
 const InfoCard = ({ label, value, mono = false }) => (
     <div className="module-shell rounded-2xl p-4">
-        <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#8B98A0]">{label}</div>
-        <div className={`mt-1 break-all text-sm text-white ${mono ? "font-mono" : "font-semibold"}`}>
+        <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[var(--ohnix-text-dim)]">{label}</div>
+        <div className={`mt-1 break-all text-sm text-[var(--ohnix-text-primary)] ${mono ? "font-mono" : "font-semibold"}`}>
             {value || "—"}
         </div>
     </div>
@@ -196,7 +196,7 @@ const SupportButton = ({ url, kind, size = "large" }) => {
     }
     const colorClass = isPdf
         ? "!border-[#29D8D5]/35 !bg-[#29D8D5]/10 !text-[#44F3F0] hover:!shadow-[0_0_24px_rgba(41,216,213,0.25)]"
-        : "!border-white/15 !bg-white/5 !text-white hover:!border-[#29D8D5]/45";
+        : "!border-[var(--ohnix-line-6)] !bg-[var(--ohnix-line-2)] !text-[var(--ohnix-text-primary)] hover:!border-[#29D8D5]/45";
     return (
         <Button
             icon={icon}
@@ -227,7 +227,7 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting }) => {
         <Modal
             open={open}
             onCancel={onCancel}
-            title={<span className="text-white">{t("electronic_invoices.credit_note.modal_title")}</span>}
+            title={<span className="text-[var(--ohnix-text-primary)]">{t("electronic_invoices.credit_note.modal_title")}</span>}
             footer={null}
             destroyOnClose
             centered
@@ -235,10 +235,10 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting }) => {
                 mask: { backgroundColor: "rgba(0,0,0,0.55)" },
                 content: {
                     background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: "1px solid var(--ohnix-line-4)",
                     borderRadius: "20px",
                 },
-                header: { background: "transparent", borderBottom: "1px solid rgba(255,255,255,0.08)" },
+                header: { background: "transparent", borderBottom: "1px solid var(--ohnix-line-3)" },
             }}
         >
             <Form
@@ -312,14 +312,14 @@ const InvoiceDetailDrawer = ({
             className="dian-drawer"
             title={
                 <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-white">{t("electronic_invoices.drawer.title")}</span>
+                    <span className="text-lg font-bold text-[var(--ohnix-text-primary)]">{t("electronic_invoices.drawer.title")}</span>
                     <StatusPill status={invoice.status} />
                 </div>
             }
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" },
                 header: {
-                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    borderBottom: "1px solid var(--ohnix-line-3)",
                     background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(8,8,8,0.98))",
                 },
                 body: {
@@ -329,15 +329,15 @@ const InvoiceDetailDrawer = ({
             }}
         >
             <div className="space-y-5">
-                <div className="relative overflow-hidden rounded-3xl border border-[#29D8D5]/25 bg-[radial-gradient(circle_at_90%_0%,rgba(41,216,213,.22),transparent_45%),rgba(255,255,255,0.03)] p-5">
+                <div className="relative overflow-hidden rounded-3xl border border-[#29D8D5]/25 bg-[radial-gradient(circle_at_90%_0%,rgba(41,216,213,.22),transparent_45%),var(--ohnix-line-1)] p-5">
                     <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full border border-[#44F3F0]/20 animate-glow-pulse" />
                     <div className="mb-2 inline-flex items-center gap-2 text-[10px] font-bold tracking-[.22em] text-[#44F3F0]">
                         <QrcodeOutlined /> FACTUS · DIAN
                     </div>
-                    <div className="text-2xl font-bold text-white">{invoice.invoiceNumber || invoice.referenceCode}</div>
-                    <div className="mt-1 text-xs text-[#A9B3B8]">{t("electronic_invoices.table.order_prefix")} {invoice.order?.invoiceNo || "—"}</div>
+                    <div className="text-2xl font-bold text-[var(--ohnix-text-primary)]">{invoice.invoiceNumber || invoice.referenceCode}</div>
+                    <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">{t("electronic_invoices.table.order_prefix")} {invoice.order?.invoiceNo || "—"}</div>
 
-                    <Divider style={{ borderColor: "rgba(255,255,255,0.08)", margin: "18px 0 14px" }} />
+                    <Divider style={{ borderColor: "var(--ohnix-line-3)", margin: "18px 0 14px" }} />
 
                     <div className="dian-timeline">
                         {events.length === 0 ? (
@@ -363,7 +363,7 @@ const InvoiceDetailDrawer = ({
 
                 <div className="module-shell rounded-2xl p-4">
                     <div className="flex items-center justify-between">
-                        <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#8B98A0]">CUFE</div>
+                        <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[var(--ohnix-text-dim)]">CUFE</div>
                         {invoice.cufe && (
                             <Tooltip title={t("common.copy")}>
                                 <Button
@@ -380,7 +380,7 @@ const InvoiceDetailDrawer = ({
                             </Tooltip>
                         )}
                     </div>
-                    <div className={`mt-1 break-all text-xs text-white ${invoice.cufe ? "font-mono" : "italic text-[#8B98A0]"}`}>
+                    <div className={`mt-1 break-all text-xs text-[var(--ohnix-text-primary)] ${invoice.cufe ? "font-mono" : "italic text-[var(--ohnix-text-dim)]"}`}>
                         {invoice.cufe || t("electronic_invoices.cufe_not_available")}
                     </div>
                 </div>
@@ -414,7 +414,7 @@ const InvoiceDetailDrawer = ({
                         icon={<SyncOutlined spin={syncing} />}
                         loading={syncing}
                         onClick={() => onSync(invoice.orderId, invoice.id)}
-                        className="!h-12 !rounded-2xl !border-white/15 !bg-white/5 !text-white"
+                        className="!h-12 !rounded-2xl !border-[var(--ohnix-line-6)] !bg-[var(--ohnix-line-2)] !text-[var(--ohnix-text-primary)]"
                     >
                         {t("electronic_invoices.sync_action")}
                     </Button>
@@ -425,7 +425,7 @@ const InvoiceDetailDrawer = ({
                         block
                         icon={<PlusOutlined />}
                         onClick={onOpenCreditNote}
-                        className="!h-12 !rounded-2xl !border-white/15 !bg-white/5 !text-white"
+                        className="!h-12 !rounded-2xl !border-[var(--ohnix-line-6)] !bg-[var(--ohnix-line-2)] !text-[var(--ohnix-text-primary)]"
                     >
                         {t("electronic_invoices.credit_note.action")}
                     </Button>
@@ -433,19 +433,19 @@ const InvoiceDetailDrawer = ({
 
                 {(creditNotesLoading || creditNotes.length > 0) && (
                     <div className="space-y-2">
-                        <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#8B98A0]">
+                        <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[var(--ohnix-text-dim)]">
                             {t("electronic_invoices.credit_note.list_title")}
                         </div>
                         {creditNotesLoading ? (
-                            <div className="text-xs text-[#8B98A0]">{t("common.loading")}</div>
+                            <div className="text-xs text-[var(--ohnix-text-dim)]">{t("common.loading")}</div>
                         ) : (
                             creditNotes.map((note) => (
                                 <div key={note.id} className="module-shell flex items-center justify-between gap-2 rounded-2xl p-3">
                                     <div className="min-w-0">
-                                        <div className="truncate text-sm font-semibold text-white">
+                                        <div className="truncate text-sm font-semibold text-[var(--ohnix-text-primary)]">
                                             {note.creditNoteNumber || note.referenceCode}
                                         </div>
-                                        <div className="text-xs text-[#8B98A0]">
+                                        <div className="text-xs text-[var(--ohnix-text-dim)]">
                                             {note.issuedAt
                                                 ? new Date(note.issuedAt).toLocaleString("es-CO")
                                                 : t("electronic_invoices.drawer.pending")}
@@ -599,8 +599,8 @@ const ElectronicInvoices = () => {
                             <FileTextOutlined />
                         </span>
                         <div className="min-w-0">
-                            <div className="truncate font-semibold text-white">{row.invoiceNumber || row.referenceCode}</div>
-                            <div className="text-xs text-[#8B98A0]">{t("electronic_invoices.table.order_prefix")} {row.order?.invoiceNo || "—"}</div>
+                            <div className="truncate font-semibold text-[var(--ohnix-text-primary)]">{row.invoiceNumber || row.referenceCode}</div>
+                            <div className="text-xs text-[var(--ohnix-text-dim)]">{t("electronic_invoices.table.order_prefix")} {row.order?.invoiceNo || "—"}</div>
                         </div>
                     </div>
                 ),
@@ -609,14 +609,14 @@ const ElectronicInvoices = () => {
                 title: t("electronic_invoices.table.buyer"),
                 render: (_, row) => (
                     <div className="min-w-0">
-                        <div className="truncate text-sm text-[#D4DBDF]">{row.order?.customerName || "—"}</div>
+                        <div className="truncate text-sm text-[var(--ohnix-text-soft)]">{row.order?.customerName || "—"}</div>
                     </div>
                 ),
             },
             {
                 title: t("electronic_invoices.table.amount"),
                 render: (_, row) => (
-                    <div className="text-sm font-semibold text-white">
+                    <div className="text-sm font-semibold text-[var(--ohnix-text-primary)]">
                         {formatCurrency(Number(row.order?.total ?? row.total ?? 0))}
                     </div>
                 ),
@@ -638,11 +638,11 @@ const ElectronicInvoices = () => {
                 title: t("electronic_invoices.table.issued"),
                 render: (_, row) =>
                     row.issuedAt ? (
-                        <div className="text-xs text-[#D4DBDF]">
+                        <div className="text-xs text-[var(--ohnix-text-soft)]">
                             {new Date(row.issuedAt).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}
                         </div>
                     ) : (
-                        <span className="text-xs italic text-[#8B98A0]">{t("electronic_invoices.table.pending")}</span>
+                        <span className="text-xs italic text-[var(--ohnix-text-dim)]">{t("electronic_invoices.table.pending")}</span>
                     ),
                 width: 160,
             },
@@ -670,7 +670,7 @@ const ElectronicInvoices = () => {
                                     href={row.xmlUrl}
                                     target="_blank"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="!border-white/15 !bg-white/5 !text-white"
+                                    className="!border-[var(--ohnix-line-6)] !bg-[var(--ohnix-line-2)] !text-[var(--ohnix-text-primary)]"
                                 />
                             </Tooltip>
                         ) : null}
@@ -735,7 +735,7 @@ const ElectronicInvoices = () => {
     const statusCounts = metrics.counts;
 
     return (
-        <div className="p-5 sm:p-7 lg:p-9 text-white">
+        <div className="p-5 sm:p-7 lg:p-9 text-[var(--ohnix-text-primary)]">
             <PageHeader
                 title={t("electronic_invoices.title")}
                 subtitle={headerSubtitle}
@@ -794,32 +794,32 @@ const ElectronicInvoices = () => {
                 </div>
 
                 <div className="mb-4 hidden gap-3 md:grid md:grid-cols-3">
-                    <div className="rounded-2xl border border-white/8 bg-white/[.03] p-3">
-                        <div className="text-xs text-[#A9B3B8]">{t("electronic_invoices.stats.total_invoiced")}</div>
-                        <div className="text-lg font-bold text-white">{formatCurrency(metrics.totalAmount)}</div>
+                    <div className="rounded-2xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-line-1)] p-3">
+                        <div className="text-xs text-[var(--ohnix-text-muted)]">{t("electronic_invoices.stats.total_invoiced")}</div>
+                        <div className="text-lg font-bold text-[var(--ohnix-text-primary)]">{formatCurrency(metrics.totalAmount)}</div>
                     </div>
-                    <div className="rounded-2xl border border-white/8 bg-white/[.03] p-3">
-                        <div className="text-xs text-[#A9B3B8]">{t("electronic_invoices.stats.acceptance_rate")}</div>
+                    <div className="rounded-2xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-line-1)] p-3">
+                        <div className="text-xs text-[var(--ohnix-text-muted)]">{t("electronic_invoices.stats.acceptance_rate")}</div>
                         <div className="text-lg font-bold text-[#44F3F0]">
                             {metrics.counts.all ? `${Math.round((metrics.counts.accepted / metrics.counts.all) * 100)}%` : "—"}
                         </div>
                     </div>
-                    <div className="rounded-2xl border border-white/8 bg-white/[.03] p-3">
-                        <div className="text-xs text-[#A9B3B8]">{t("electronic_invoices.stats.last_sync")}</div>
-                        <div className="text-sm font-semibold text-white">
+                    <div className="rounded-2xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-line-1)] p-3">
+                        <div className="text-xs text-[var(--ohnix-text-muted)]">{t("electronic_invoices.stats.last_sync")}</div>
+                        <div className="text-sm font-semibold text-[var(--ohnix-text-primary)]">
                             <ClockCircleOutlined className="mr-1 text-[#29D8D5]" />
                             {new Date().toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
                         </div>
                     </div>
                 </div>
 
-                <div className="hidden lg:block rounded-2xl border border-white/8 overflow-hidden">
+                <div className="hidden lg:block rounded-2xl border border-[var(--ohnix-line-3)] overflow-hidden">
                     <Table
                         locale={{
                             emptyText: (
                                 <Empty
                                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                    description={<span className="text-[#A9B3B8]">{t("electronic_invoices.empty_state")}</span>}
+                                    description={<span className="text-[var(--ohnix-text-muted)]">{t("electronic_invoices.empty_state")}</span>}
                                 />
                             ),
                         }}
@@ -838,9 +838,9 @@ const ElectronicInvoices = () => {
 
                 <div className="grid gap-3 lg:hidden">
                     {loading ? (
-                        <div className="text-center text-[#A9B3B8] py-10">{t("electronic_invoices.loading_documents")}</div>
+                        <div className="text-center text-[var(--ohnix-text-muted)] py-10">{t("electronic_invoices.loading_documents")}</div>
                     ) : items.length === 0 ? (
-                        <div className="text-center text-[#A9B3B8] py-10">{t("electronic_invoices.empty_state")}</div>
+                        <div className="text-center text-[var(--ohnix-text-muted)] py-10">{t("electronic_invoices.empty_state")}</div>
                     ) : (
                         items.map((row) => (
                             <button
@@ -855,18 +855,18 @@ const ElectronicInvoices = () => {
                                             <FileTextOutlined />
                                         </span>
                                         <div>
-                                            <div className="font-semibold text-white">{row.invoiceNumber || row.referenceCode}</div>
-                                            <div className="text-xs text-[#A9B3B8]">{row.order?.customerName || "—"}</div>
+                                            <div className="font-semibold text-[var(--ohnix-text-primary)]">{row.invoiceNumber || row.referenceCode}</div>
+                                            <div className="text-xs text-[var(--ohnix-text-muted)]">{row.order?.customerName || "—"}</div>
                                         </div>
                                     </div>
                                     <StatusPill status={row.status} />
                                 </div>
                                 <div className="mt-3 flex items-center justify-between text-xs">
-                                    <div className="text-[#A9B3B8]">{t("electronic_invoices.table.amount")}</div>
-                                    <div className="font-semibold text-white">{formatCurrency(Number(row.order?.total ?? row.total ?? 0))}</div>
+                                    <div className="text-[var(--ohnix-text-muted)]">{t("electronic_invoices.table.amount")}</div>
+                                    <div className="font-semibold text-[var(--ohnix-text-primary)]">{formatCurrency(Number(row.order?.total ?? row.total ?? 0))}</div>
                                 </div>
                                 <div className="mt-1 flex items-center justify-between text-xs">
-                                    <div className="text-[#A9B3B8]">{t("electronic_invoices.table.cufe")}</div>
+                                    <div className="text-[var(--ohnix-text-muted)]">{t("electronic_invoices.table.cufe")}</div>
                                     <CufeCell cufe={row.cufe} />
                                 </div>
                             </button>

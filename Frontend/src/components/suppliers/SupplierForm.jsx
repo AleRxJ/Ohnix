@@ -54,7 +54,7 @@ const SupplierForm = ({
     return (
         <Modal
             title={
-                <div className="text-lg font-semibold text-white">
+                <div className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
                     {editMode
                         ? t("suppliers.edit_supplier")
                         : t("suppliers.add_new_supplier")}
@@ -71,13 +71,13 @@ const SupplierForm = ({
                 content: {
                     background:
                         "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    border: "1px solid var(--ohnix-line-4)",
                     boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
                     borderRadius: "24px",
                 },
                 header: {
                     background: "transparent",
-                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                    borderBottom: "1px solid var(--ohnix-line-3)",
                     padding: "20px 24px 16px",
                 },
                 body: { padding: "20px 24px 24px" },
@@ -99,7 +99,7 @@ const SupplierForm = ({
                         <Form.Item
                             name="name"
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("suppliers.supplier_name")}
                                 </span>
                             }
@@ -116,7 +116,7 @@ const SupplierForm = ({
                         >
                             <Input
                                 prefix={
-                                    <UserOutlined className="text-[#8B98A0] text-sm" />
+                                    <UserOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
                                 }
                                 placeholder={t("suppliers.enter_supplier_name_placeholder")}
                                 className="h-11 rounded-md auth-ohnix-input"
@@ -127,7 +127,7 @@ const SupplierForm = ({
                         <Form.Item
                             name="email"
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("suppliers.email")}
                                 </span>
                             }
@@ -148,7 +148,7 @@ const SupplierForm = ({
                         >
                             <Input
                                 prefix={
-                                    <MailOutlined className="text-[#8B98A0] text-sm" />
+                                    <MailOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
                                 }
                                 placeholder={t("suppliers.enter_email_placeholder")}
                                 className="h-11 rounded-md auth-ohnix-input"
@@ -162,7 +162,7 @@ const SupplierForm = ({
                         <Form.Item
                             name="phone"
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("suppliers.phone")}
                                 </span>
                             }
@@ -179,7 +179,7 @@ const SupplierForm = ({
                         >
                             <Input
                                 prefix={
-                                    <PhoneOutlined className="text-[#8B98A0] text-sm" />
+                                    <PhoneOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
                                 }
                                 placeholder={t("suppliers.enter_phone_placeholder")}
                                 className="h-11 rounded-md auth-ohnix-input"
@@ -190,7 +190,7 @@ const SupplierForm = ({
                         <Form.Item
                             name="type"
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("suppliers.supplier_type")}
                                 </span>
                             }
@@ -213,7 +213,7 @@ const SupplierForm = ({
                         <Form.Item
                             name="shopname"
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("suppliers.shop_name")}
                                 </span>
                             }
@@ -226,7 +226,7 @@ const SupplierForm = ({
                         >
                             <Input
                                 prefix={
-                                    <ShopOutlined className="text-[#8B98A0] text-sm" />
+                                    <ShopOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
                                 }
                                 placeholder={t("suppliers.enter_shop_name_placeholder")}
                                 className="h-11 rounded-md auth-ohnix-input"
@@ -237,7 +237,7 @@ const SupplierForm = ({
                         <Form.Item
                             name="address"
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("common.address")}
                                 </span>
                             }
@@ -260,7 +260,7 @@ const SupplierForm = ({
                     </Col>
                 </Row>
 
-                <Divider className="border-white/10 text-white/80">
+                <Divider className="border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)]">
                     {t("suppliers.banking_information")}
                 </Divider>
 
@@ -269,7 +269,7 @@ const SupplierForm = ({
                         <Form.Item
                             name="bank_name"
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("suppliers.bank_name")}
                                 </span>
                             }
@@ -282,7 +282,7 @@ const SupplierForm = ({
                         >
                             <Input
                                 prefix={
-                                    <BankOutlined className="text-[#8B98A0] text-sm" />
+                                    <BankOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
                                 }
                                 placeholder={t("suppliers.enter_bank_name_placeholder")}
                                 className="h-11 rounded-md auth-ohnix-input"
@@ -293,7 +293,7 @@ const SupplierForm = ({
                         <Form.Item
                             name="account_holder"
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("suppliers.account_holder")}
                                 </span>
                             }
@@ -317,7 +317,7 @@ const SupplierForm = ({
                         <Form.Item
                             name="account_number"
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("suppliers.account_number")}
                                 </span>
                             }
@@ -337,19 +337,19 @@ const SupplierForm = ({
                     <Col xs={24} sm={12}>
                         <Form.Item
                             label={
-                                <span className="text-sm font-medium text-[#A9B3B8]">
+                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
                                     {t("suppliers.supplier_photo")}
                                 </span>
                             }
                         >
                             <Upload {...uploadProps}>
                                 {fileList.length === 0 && (
-                                    <div className="text-center mt-2 border border-dashed border-white/12 rounded-xl hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer bg-white/[0.03] hover:bg-white/[0.05] p-4 min-h-[120px] flex flex-col items-center justify-center">
+                                    <div className="text-center mt-2 border border-dashed border-[var(--ohnix-line-5)] rounded-xl hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer bg-[var(--ohnix-line-1)] hover:bg-[var(--ohnix-hover-overlay)] p-4 min-h-[120px] flex flex-col items-center justify-center">
                                         <UploadOutlined className="text-3xl text-[#29D8D5] mb-3 block" />
-                                        <div className="text-white font-medium mb-1">
+                                        <div className="text-[var(--ohnix-text-primary)] font-medium mb-1">
                                             {t("suppliers.upload_photo")}
                                         </div>
-                                        <div className="text-sm text-[#A9B3B8]">
+                                        <div className="text-sm text-[var(--ohnix-text-muted)]">
                                             JPG, PNG hasta 2MB
                                         </div>
                                     </div>
@@ -360,10 +360,10 @@ const SupplierForm = ({
                 </Row>
 
                 <Form.Item className="mb-0">
-                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-white/10">
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-[var(--ohnix-line-4)]">
                         <Button
                             onClick={onCancel}
-                            className="h-10 px-6 rounded-md bg-white/[0.04] border-white/10 text-white hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                            className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
                         >
                             {t("common.cancel")}
                         </Button>

@@ -47,10 +47,10 @@ const UnitTable = ({
                         <AppstoreOutlined className="text-white text-base" />
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-semibold text-white text-base leading-tight">
+                        <span className="font-semibold text-[var(--ohnix-text-primary)] text-base leading-tight">
                             {text}
                         </span>
-                        <span className="text-sm text-[#A9B3B8] mt-0.5">
+                        <span className="text-sm text-[var(--ohnix-text-muted)] mt-0.5">
                             {t("units.unit_of_measurement")}
                         </span>
                     </div>
@@ -73,7 +73,7 @@ const UnitTable = ({
                                 size="middle"
                                 icon={<EyeOutlined className="text-[#44F3F0]" />}
                                 onClick={() => onView(record)}
-                                className="h-9 w-9 flex items-center justify-center text-[#D4DBDF] hover:text-[#44F3F0] hover:bg-white/5 border-0 rounded-lg transition-all duration-200"
+                                className="h-9 w-9 flex items-center justify-center text-[var(--ohnix-text-soft)] hover:text-[#44F3F0] hover:bg-[var(--ohnix-hover-overlay)] border-0 rounded-lg transition-all duration-200"
                             />
                         </Tooltip>
                         <Tooltip
@@ -93,7 +93,7 @@ const UnitTable = ({
                                 onClick={() => onEdit(record)}
                                 className={
                                     canEditRecord
-                                        ? "h-9 w-9 flex items-center justify-center text-[#D4DBDF] hover:text-[#29D8D5] hover:bg-white/5 border-0 rounded-lg transition-all duration-200"
+                                        ? "h-9 w-9 flex items-center justify-center text-[var(--ohnix-text-soft)] hover:text-[#29D8D5] hover:bg-[var(--ohnix-hover-overlay)] border-0 rounded-lg transition-all duration-200"
                                         : "h-9 w-9 flex items-center justify-center text-gray-300 cursor-not-allowed border-0 rounded-lg"
                                 }
                             />
@@ -124,7 +124,7 @@ const UnitTable = ({
                                 }}
                                 className={
                                     canEditRecord
-                                        ? "h-9 w-9 flex items-center justify-center text-[#D4DBDF] hover:text-red-300 hover:bg-white/5 border-0 rounded-lg transition-all duration-200"
+                                        ? "h-9 w-9 flex items-center justify-center text-[var(--ohnix-text-soft)] hover:text-red-300 hover:bg-[var(--ohnix-hover-overlay)] border-0 rounded-lg transition-all duration-200"
                                         : "h-9 w-9 flex items-center justify-center text-gray-300 cursor-not-allowed border-0 rounded-lg"
                                 }
                             />
@@ -136,7 +136,7 @@ const UnitTable = ({
     ];
 
     return (
-        <div className="rounded-xl shadow-sm border border-white/10 overflow-hidden bg-[#0B0B0B]/92">
+        <div className="rounded-xl shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)]">
             <Table
                 columns={columns}
                 dataSource={units}
@@ -150,7 +150,7 @@ const UnitTable = ({
                             end: range[1],
                             total,
                         }),
-                    className: "px-6 py-4 bg-white/[0.03]",
+                    className: "px-6 py-4 bg-[var(--ohnix-line-1)]",
                     showSizeChanger: false,
                     size: "default",
                 }}
@@ -160,10 +160,10 @@ const UnitTable = ({
                             <Empty
                                 description={
                                     <div className="text-center">
-                                        <div className="text-[#A9B3B8] text-base font-medium mb-1">
+                                        <div className="text-[var(--ohnix-text-muted)] text-base font-medium mb-1">
                                             {t("units.no_units_found")}
                                         </div>
-                                        <div className="text-[#8B98A0] text-sm">
+                                        <div className="text-[var(--ohnix-text-dim)] text-sm">
                                             {t("units.create_first_unit")}
                                         </div>
                                     </div>
@@ -176,7 +176,7 @@ const UnitTable = ({
                 scroll={{ x: 768, ...TABLE_SCROLL_CONFIG }}
                 className="unit-table module-dark-table"
                 rowClassName={() =>
-                    "hover:bg-white/[0.05] transition-all duration-200 cursor-pointer bg-transparent"
+                    "hover:bg-[var(--ohnix-hover-overlay)] transition-all duration-200 cursor-pointer bg-transparent"
                 }
                 onRow={(record) => ({
                     onMouseEnter: () => setHoveredRow(record._id),

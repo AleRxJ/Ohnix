@@ -11,6 +11,7 @@ import { useTeam } from "../../context/TeamContext";
 import { subscriptionService } from "../../services/subscriptionService";
 import { toast } from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
+import { useTheme } from "../../context/ThemeContext";
 
 const { Content } = Layout;
 
@@ -20,12 +21,12 @@ const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false }) => (
             <WarningOutlined className="text-4xl text-red-400" />
         </div>
         <div className="max-w-md">
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-[var(--ohnix-text-primary)] mb-2">
                 {isRenewal
                     ? (lang === "es" ? "Tu plan ha vencido" : "Your plan has expired")
                     : (lang === "es" ? "Tu prueba gratuita ha terminado" : "Your free trial has ended")}
             </h2>
-            <p className="text-[#A9B3B8] text-sm leading-relaxed">
+            <p className="text-[var(--ohnix-text-muted)] text-sm leading-relaxed">
                 {isRenewal
                     ? (lang === "es"
                         ? "Tu período de gracia terminó. Renueva tu plan para recuperar el acceso completo a tu inventario, ventas y reportes."
@@ -53,6 +54,7 @@ const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false }) => (
  *   trial active, trial urgent, trial expired, renewal soon, renewal expired
  */
 const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = false, planLabel = "", loading = false, daysOverdue = 0 }) => {
+    const { isLite } = useTheme();
     const isExpired = mode === "expired";
     const isUrgent  = !isExpired && daysLeft <= 3;
 
@@ -63,9 +65,13 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = f
             ? "linear-gradient(135deg, #f59e0b 0%, #ef4444 60%, #7C6AF7 100%)"
             : "linear-gradient(135deg, #29D8D5 0%, #7C6AF7 60%, #f59e0b 100%)";
 
-    const bgGradient = isExpired
-        ? "linear-gradient(135deg, rgba(15,5,5,0.98) 0%, rgba(12,5,15,0.98) 100%)"
-        : "linear-gradient(135deg, rgba(9,10,12,0.97) 0%, rgba(12,10,20,0.97) 100%)";
+    const bgGradient = isLite
+        ? (isExpired
+            ? "linear-gradient(135deg, rgba(255,247,247,0.98) 0%, rgba(253,246,255,0.98) 100%)"
+            : "linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(250,248,255,0.97) 100%)")
+        : (isExpired
+            ? "linear-gradient(135deg, rgba(15,5,5,0.98) 0%, rgba(12,5,15,0.98) 100%)"
+            : "linear-gradient(135deg, rgba(9,10,12,0.97) 0%, rgba(12,10,20,0.97) 100%)");
 
     const iconBg = isExpired
         ? "linear-gradient(135deg, rgba(239,68,68,0.22), rgba(124,106,247,0.18))"
@@ -135,8 +141,8 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = f
 
                     {/* Text */}
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-white m-0 leading-snug">{headline}</p>
-                        <p className="text-xs m-0 mt-0.5 truncate" style={{ color: isExpired ? "#f87171aa" : "#8B95A1" }}>{subtext}</p>
+                        <p className="text-sm font-bold m-0 leading-snug" style={{ color: isLite ? "#1c1017" : "#ffffff" }}>{headline}</p>
+                        <p className="text-xs m-0 mt-0.5 truncate" style={{ color: isExpired ? "#f87171aa" : (isLite ? "#6b5f70" : "#8B95A1") }}>{subtext}</p>
                     </div>
 
                     {/* CTA */}
@@ -156,7 +162,7 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = f
                     {!isExpired && onDismiss && (
                         <button
                             onClick={onDismiss}
-                            className="shrink-0 text-[#4A5560] hover:text-white transition-colors p-1"
+                            className="shrink-0 text-[var(--ohnix-text-muted)] hover:text-[var(--ohnix-text-primary)] transition-colors p-1"
                             aria-label="dismiss"
                         >
                             <CloseOutlined style={{ fontSize: 12 }} />
@@ -330,7 +336,13 @@ const DashboardLayout = () => {
                 />
 
                 <Content className="mx-3 my-3 sm:mx-5 sm:my-5 lg:mx-7 lg:my-7">
-                    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(11,11,11,0.9),rgba(8,8,8,0.96))] min-h-[calc(100vh-8rem)] shadow-[0_20px_45px_rgba(0,0,0,0.42)] transition-shadow duration-300 hover:shadow-[0_24px_54px_rgba(0,0,0,0.5)] reveal-card">
+                    <div
+                        className="overflow-hidden rounded-2xl border border-[var(--ohnix-line-4)] min-h-[calc(100vh-8rem)] transition-shadow duration-300 reveal-card"
+                        style={{
+                            background: "linear-gradient(180deg, var(--ohnix-surface-card-soft), var(--ohnix-surface-4))",
+                            boxShadow: "var(--ohnix-shadow-elevated)",
+                        }}
+                    >
                         {isBlocked
                             ? <TrialExpiredScreen lang={lang} onGoToBilling={() => navigate("/billing")} isRenewal={isRenewalBlock} />
                             : <Outlet />

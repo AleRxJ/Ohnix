@@ -369,7 +369,7 @@ const PaymentSuccess = () => {
     const planHighlights = PLAN_HIGHLIGHTS[request?.targetPlan] || [];
 
     return (
-        <div className="relative min-h-screen overflow-hidden bg-[#050608] px-4 py-8 text-white sm:py-12">
+        <div className="relative min-h-screen overflow-hidden bg-[var(--ohnix-bg-alt)] px-4 py-8 text-[var(--ohnix-text-primary)] sm:py-12">
             <div className="pointer-events-none absolute inset-0 opacity-90">
                 <div className="payment-success-glow payment-success-glow-left" />
                 <div className="payment-success-glow payment-success-glow-right" />
@@ -405,7 +405,7 @@ const PaymentSuccess = () => {
                                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#29D8D5]" />
                                     <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#29D8D5]">Confirmando pago</span>
                                 </div>
-                                <h2 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl" style={{ textShadow: "0 0 40px rgba(41,216,213,0.3)" }}>
+                                <h2 className="text-4xl font-extrabold tracking-tight text-[var(--ohnix-text-primary)] sm:text-5xl" style={{ textShadow: "0 0 40px rgba(41,216,213,0.3)" }}>
                                     Pago recibido
                                 </h2>
                                 <p className="text-[#8AA4AB] text-sm">
@@ -430,7 +430,7 @@ const PaymentSuccess = () => {
                                 </div>
                             )}
                             <div className="relative z-10 w-full max-w-xs">
-                                <div className="overflow-hidden rounded-full bg-white/[0.05] h-1.5" style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,0.4)" }}>
+                                <div className="overflow-hidden rounded-full bg-[var(--ohnix-line-2)] h-1.5" style={{ boxShadow: "inset 0 1px 3px rgba(0,0,0,0.4)" }}>
                                     <div className="h-1.5 rounded-full bg-gradient-to-r from-[#29D8D5] via-[#44F3F0] to-[#29D8D5]"
                                         style={{ backgroundSize: "200% 100%", animation: "psProgressSlide 2s ease-in-out infinite" }} />
                                 </div>
@@ -442,7 +442,7 @@ const PaymentSuccess = () => {
                             )}
                         </div>
                     ) : errorMessage ? (
-                        <Alert type="error" message={errorMessage} showIcon className="!rounded-xl !border !border-red-300/25 !bg-red-500/10 !text-white" />
+                        <Alert type="error" message={errorMessage} showIcon className="!rounded-xl !border !border-red-300/25 !bg-red-500/10 !text-[var(--ohnix-text-primary)]" />
                     ) : pollTimedOut ? (
                         <div className="flex flex-col items-center gap-4 py-12 px-6 text-center">
                             <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-500/10">
@@ -450,10 +450,10 @@ const PaymentSuccess = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                            <h2 className="text-2xl font-bold text-white">
+                            <h2 className="text-2xl font-bold text-[var(--ohnix-text-primary)]">
                                 {t("profile.subscription.payment_still_pending_title")}
                             </h2>
-                            <p className="max-w-md text-sm text-[#A9B3B8]">
+                            <p className="max-w-md text-sm text-[var(--ohnix-text-muted)]">
                                 {t("profile.subscription.payment_still_pending_description")}
                             </p>
                             <Button
@@ -486,11 +486,11 @@ const PaymentSuccess = () => {
                                             <div className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-emerald-300">
                                                 ✦ Plan activado
                                             </div>
-                                            <h2 className="text-2xl font-bold text-white sm:text-3xl">
+                                            <h2 className="text-2xl font-bold text-[var(--ohnix-text-primary)] sm:text-3xl">
                                                 ¡Bienvenido a{" "}
                                                 <span className="bg-gradient-to-r from-[#29D8D5] to-emerald-300 bg-clip-text text-transparent">{toPlanLabel}</span>!
                                             </h2>
-                                            <p className="mt-1 text-sm text-[#A9B3B8]">{t("profile.subscription.payment_success_subtitle")}</p>
+                                            <p className="mt-1 text-sm text-[var(--ohnix-text-muted)]">{t("profile.subscription.payment_success_subtitle")}</p>
                                         </div>
                                     </div>
                                     <div className="shrink-0 rounded-2xl border border-[#29D8D5]/25 bg-gradient-to-br from-[#081a1f] to-[#060f13] p-4 text-center">
@@ -501,7 +501,7 @@ const PaymentSuccess = () => {
                                     </div>
                                 </div>
                                 {planHighlights.length > 0 && (
-                                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4">
+                                    <div className="rounded-2xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-line-1)] p-4">
                                         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.13em] text-[#7FA4AA]">Lo que tienes ahora</p>
                                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                             {planHighlights.map((feature) => (
@@ -518,7 +518,7 @@ const PaymentSuccess = () => {
                                         onClick={() => navigate("/dashboard", { state: { fromPayment: true } })}>
                                         Ir al dashboard →
                                     </Button>
-                                    <Button size="large" className="!rounded-xl !border-white/20 !bg-white/[0.03] !px-6 !text-white hover:!border-[#29D8D5]/45 hover:!text-[#9CFDFC] !h-11"
+                                    <Button size="large" className="!rounded-xl !border-[var(--ohnix-line-6)] !bg-[var(--ohnix-line-1)] !px-6 !text-[var(--ohnix-text-primary)] hover:!border-[#29D8D5]/45 hover:!text-[#9CFDFC] !h-11"
                                         onClick={() => navigate("/billing")}>
                                         {t("profile.subscription.back_to_billing")}
                                     </Button>
@@ -530,7 +530,7 @@ const PaymentSuccess = () => {
 
                 {/* Checklist only appears after plan is confirmed active */}
                 {activated && (
-                <Card className="!rounded-3xl !border !border-white/10 !bg-[linear-gradient(180deg,rgba(9,12,15,0.97)_0%,rgba(6,9,12,0.99)_100%)] !overflow-hidden">
+                <Card className="!rounded-3xl !border !border-[var(--ohnix-line-4)] !bg-[linear-gradient(180deg,rgba(9,12,15,0.97)_0%,rgba(6,9,12,0.99)_100%)] !overflow-hidden">
                     {/* Header */}
                     <div className="relative flex items-start justify-between gap-4 mb-6">
                         <div className="pointer-events-none absolute -top-10 -left-10 h-40 w-40 rounded-full bg-[#29D8D5]/6 blur-3xl" />
@@ -540,7 +540,7 @@ const PaymentSuccess = () => {
                                     Primeros pasos · {toPlanLabel}
                                 </span>
                             </div>
-                            <Title level={3} className="!mb-1 !text-white">
+                            <Title level={3} className="!mb-1 !text-[var(--ohnix-text-primary)]">
                                 Activa el poder de tu plan
                             </Title>
                             <Text className="text-[#7FA4AB] text-sm">
@@ -559,7 +559,7 @@ const PaymentSuccess = () => {
                             percent={completionPercent}
                             showInfo={false}
                             strokeColor={{ "0%": "#29D8D5", "100%": "#8CFFF8" }}
-                            trailColor="rgba(255,255,255,0.06)"
+                            trailColor="var(--ohnix-line-2)"
                             strokeLinecap="round"
                         />
                         <div className="mt-1.5 text-xs text-[#4a6a72]">
@@ -577,7 +577,7 @@ const PaymentSuccess = () => {
                                         ? "border-emerald-400/25 bg-gradient-to-r from-emerald-500/8 to-emerald-600/5"
                                         : step.isPlanKey
                                             ? "border-[#29D8D5]/25 bg-gradient-to-r from-[#29D8D5]/6 to-transparent hover:border-[#29D8D5]/40 hover:from-[#29D8D5]/10"
-                                            : "border-white/8 bg-white/[0.015] hover:border-white/15 hover:bg-white/[0.03]"
+                                            : "border-[var(--ohnix-line-3)] bg-[var(--ohnix-line-1)] hover:border-[var(--ohnix-line-6)] hover:bg-[var(--ohnix-line-1)]"
                                 }`}
                                 style={{ animation: `paymentSuccessSlideUp 400ms ease ${index * 60}ms both` }}
                             >
@@ -588,7 +588,7 @@ const PaymentSuccess = () => {
                                             ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-300"
                                             : step.isPlanKey
                                                 ? "border-[#29D8D5]/40 bg-[#29D8D5]/10 text-[#29D8D5]"
-                                                : "border-white/15 bg-white/5 text-[#6a8a94]"
+                                                : "border-[var(--ohnix-line-6)] bg-[var(--ohnix-line-2)] text-[#6a8a94]"
                                     }`}>
                                         {step.done ? "✓" : index + 1}
                                     </div>
@@ -596,7 +596,7 @@ const PaymentSuccess = () => {
                                     {/* Content */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 flex-wrap">
-                                            <span className={`text-sm font-semibold ${step.done ? "text-emerald-200" : "text-white"}`}>
+                                            <span className={`text-sm font-semibold ${step.done ? "text-emerald-200" : "text-[var(--ohnix-text-primary)]"}`}>
                                                 {step.title}
                                             </span>
                                             {step.isPlanKey && !step.done && (
@@ -621,7 +621,7 @@ const PaymentSuccess = () => {
                                                     className={`!rounded-lg !text-xs !font-medium ${
                                                         step.isPlanKey
                                                             ? "!border-[#29D8D5]/40 !bg-[#29D8D5]/10 !text-[#44F3F0] hover:!border-[#29D8D5]/60 hover:!bg-[#29D8D5]/20"
-                                                            : "!border-white/20 !bg-white/[0.04] !text-[#C8DDE2] hover:!border-white/30"
+                                                            : "!border-[var(--ohnix-line-6)] !bg-[var(--ohnix-line-1)] !text-[#C8DDE2] hover:!border-[var(--ohnix-line-7)]"
                                                     }`}
                                                     onClick={() => navigate(step.route)}
                                                 >
@@ -629,7 +629,7 @@ const PaymentSuccess = () => {
                                                 </Button>
                                                 {step.secondaryRoute && (
                                                     <Button size="small"
-                                                        className="!rounded-lg !text-xs !border-white/15 !bg-white/[0.02] !text-[#8AA4AB]"
+                                                        className="!rounded-lg !text-xs !border-[var(--ohnix-line-6)] !bg-[var(--ohnix-line-1)] !text-[#8AA4AB]"
                                                         onClick={() => navigate(step.secondaryRoute)}>
                                                         {step.secondaryActionLabel}
                                                     </Button>
@@ -650,7 +650,7 @@ const PaymentSuccess = () => {
                     </div>
 
                     {/* ROI footer — shows unlocked capabilities */}
-                    <div className="mt-6 rounded-2xl border border-white/8 bg-white/[0.02] p-4">
+                    <div className="mt-6 rounded-2xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-line-1)] p-4">
                         <p className="text-[10px] uppercase tracking-[0.14em] text-[#4a6a72] mb-3">Lo que desbloqueaste con {toPlanLabel}</p>
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                             {(request?.targetPlan === "growth" ? [
@@ -705,7 +705,7 @@ const PaymentSuccess = () => {
                                     svg: <svg className="h-4 w-4 shrink-0 text-[#29D8D5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" /></svg>,
                                 },
                             ]).map((cap) => (
-                                <div key={cap.label} className="flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/[0.02] px-3 py-2.5">
+                                <div key={cap.label} className="flex items-center gap-2.5 rounded-xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-line-1)] px-3 py-2.5">
                                     {cap.svg}
                                     <span className="text-xs text-[#8AA4AB] leading-tight">{cap.label}</span>
                                 </div>
@@ -738,8 +738,8 @@ const PaymentSuccess = () => {
                 }
                 .payment-success-grid {
                     position: absolute; inset: 0;
-                    background-image: linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+                    background-image: linear-gradient(var(--ohnix-line-1) 1px, transparent 1px),
+                        linear-gradient(90deg, var(--ohnix-line-1) 1px, transparent 1px);
                     background-size: 48px 48px;
                     mask-image: radial-gradient(circle at center, black 48%, transparent 100%);
                 }
