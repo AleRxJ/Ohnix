@@ -125,7 +125,7 @@ const PaymentSuccess = () => {
                     // (delayed bank methods can take hours; don't keep
                     // showing the "confirming, seconds away" animation).
                     const finalPaymentStatus = statusResponse?.data?.request?.paymentStatus;
-                    if (["rejected", "failed", "amount_mismatch"].includes(finalPaymentStatus)) {
+                    if (["rejected", "failed", "amount_mismatch", "expired"].includes(finalPaymentStatus)) {
                         setErrorMessage(
                             t(`profile.subscription.payment_status_${finalPaymentStatus}`)
                         );

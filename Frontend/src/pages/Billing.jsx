@@ -290,9 +290,31 @@ const Billing = () => {
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
-        if (params.get("payment") === "cancelled") {
-            toast.error(t("profile.subscription.payment_cancelled"));
+        if (params.get("payment") !== "cancelled") {
+            return;
         }
+
+        toast.error(t("profile.subscription.payment_cancelled"));
+
+        // The cancel/failure redirect (from Stripe's cancel_url or ePayco's
+        // failed-state response URL) never itself tells the backend
+        // anything - it's a browser-only bounce. Without actively checking
+        // now, the request stays at paymentStatus "pending" until a webhook
+        // (which may never arrive for a plain "user closed the tab")
+        // eventually clears it. Calling checkout-status here re-verifies
+        // against the provider and self-heals immediately instead of
+        // leaving the "payment in progress" lock up for the user.
+        const requestId = params.get("requestId");
+        if (requestId) {
+            subscriptionService
+                .getUpgradeCheckoutStatus(requestId)
+                .then(() => fetchSubscriptionData())
+                .catch(() => {
+                    // Best-effort - the periodic backend reconciliation and
+                    // the next normal page load will still pick it up.
+                });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location.search, t]);
 
     useEffect(() => {

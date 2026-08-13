@@ -18,10 +18,10 @@ import {
 import {
     createUpgradeCheckoutSession as createUpgradeCheckoutSessionProvider,
     getAmountForPlanAndCurrency,
+    getStripeCheckoutSessionState,
     getSupportedPaymentMethodsByCountry,
     isAutonomousCheckoutConfigured,
     parsePaymentWebhookEvent,
-    verifyStripeSession,
 } from "../services/payment.service.js";
 import {
     buildEpaycoWidgetParams,
@@ -74,7 +74,7 @@ const shouldRouteToManualReview = ({
     return SPECIAL_ENTERPRISE_REVIEW_REGEX.test(`${notes || ""}`);
 };
 
-const UPGRADE_REQUEST_SELECT = {
+export const UPGRADE_REQUEST_SELECT = {
     id: true,
     userId: true,
     currentPlan: true,
@@ -305,6 +305,213 @@ const closeApprovedRequestAndActivatePlan = async ({
     }
 
     return result;
+};
+
+// Writes a terminal (non-"paid") outcome for a pending payment and notifies
+// the user. Guarded by `paymentStatus: "pending"` in the WHERE clause so a
+// late/duplicate signal (e.g. a delayed webhook arriving after this same
+// conclusion was already reached by the reconciliation fallback below, or
+// vice versa) is a no-op instead of re-notifying or clobbering a status set
+// by a different, possibly more specific, caller in the meantime.
+const markUpgradeRequestPaymentFailed = async ({ upgradeRequestId, paymentStatus }) => {
+    if (!upgradeRequestId) return;
+
+    const updated = await prisma.planUpgradeRequest.updateMany({
+        where: { id: upgradeRequestId, status: "approved", paymentStatus: "pending" },
+        data: { paymentStatus },
+    });
+
+    if (updated.count > 0) {
+        const request = await prisma.planUpgradeRequest.findUnique({
+            where: { id: upgradeRequestId },
+            select: UPGRADE_REQUEST_SELECT,
+        });
+        const user = request
+            ? await prisma.user.findUnique({
+                  where: { id: request.userId },
+                  select: { email: true, username: true, preferredLanguage: true },
+              })
+            : null;
+        notifyUserPaymentFailed({ request, user, locale: user?.preferredLanguage }).catch(() => {});
+    }
+};
+
+// A checkout session that has sat at paymentStatus "pending" this long is no
+// longer trusted even if the provider never sent (or we never received) a
+// definitive signal - this is the hard ceiling that guarantees a customer
+// can never be stuck indefinitely. Generous enough to not cut off slow
+// bank-transfer methods (PSE etc. can legitimately take hours per their own
+// docs) while still bounding the worst case to under 2 days instead of
+// forever.
+const PENDING_PAYMENT_TIMEOUT_MS = 48 * 60 * 60 * 1000; // 48h
+
+// The single source of truth for "is this pending payment actually still
+// pending". Re-verifies directly against the provider (Stripe / ePayco) and
+// writes back whatever it finds, instead of trusting a `paymentStatus`
+// column that - before this function existed - was only ever moved off
+// "pending" by a webhook, and stayed stuck forever whenever one never
+// arrived (misconfigured/unreachable endpoint, user just closed the
+// checkout tab with no corresponding provider event, delivery lost, ...).
+//
+// Called from every place that reads or depends on paymentStatus === "pending":
+// the two frontend "verify now" fallbacks, the checkout-status endpoint (so
+// merely refreshing the Billing page self-heals), the guards that block a
+// new checkout attempt while one is "in flight", and the periodic
+// reconciliation job - so there is no single point of failure this
+// depends on.
+//
+// Idempotent and safe to call repeatedly / concurrently: every write goes
+// through markUpgradeRequestPaymentFailed or closeApprovedRequestAndActivatePlan,
+// both of which re-check status/paymentStatus in their own WHERE clause
+// before writing.
+export const resolvePendingPaymentStatus = async (request) => {
+    if (!request || request.status !== "approved" || request.paymentStatus !== "pending") {
+        return request;
+    }
+
+    const provider = `${request.paymentProvider || ""}`.toLowerCase();
+    const pendingSinceMs = new Date(request.updatedAt || request.createdAt).getTime();
+    const isStale =
+        Number.isFinite(pendingSinceMs) &&
+        Date.now() - pendingSinceMs > PENDING_PAYMENT_TIMEOUT_MS;
+
+    try {
+        if (provider.startsWith("stripe") && request.paymentSessionId) {
+            const { paid, status, session } = await getStripeCheckoutSessionState(
+                request.paymentSessionId
+            );
+
+            if (paid) {
+                // Same defense-in-depth amount/currency cross-check the
+                // webhook path already does (activateFromCheckoutSession) -
+                // a verified session still doesn't prove it was created for
+                // the price this plan actually costs.
+                const currency = `${session?.currency || ""}`.toLowerCase();
+                const expectedAmount = getAmountForPlanAndCurrency(request.targetPlan, currency);
+                const paidAmount = Math.round(Number(session?.amount_total));
+                const amountOk =
+                    expectedAmount !== null &&
+                    Number.isFinite(paidAmount) &&
+                    Math.abs(paidAmount - expectedAmount) <= 1;
+
+                if (!amountOk) {
+                    console.error(
+                        "[payment-reconcile] Stripe amount/currency mismatch — refusing to activate",
+                        { requestId: request.id, targetPlan: request.targetPlan, currency, paidAmount }
+                    );
+                    await markUpgradeRequestPaymentFailed({
+                        upgradeRequestId: request.id,
+                        paymentStatus: "amount_mismatch",
+                    });
+                    return { ...request, paymentStatus: "amount_mismatch" };
+                }
+
+                await closeApprovedRequestAndActivatePlan({
+                    requestId: request.id,
+                    actedBy: "payment-reconcile",
+                    paymentSessionId: request.paymentSessionId,
+                    paymentProvider: "stripe",
+                    paymentStatus: "paid",
+                });
+                return { ...request, status: "closed", paymentStatus: "paid" };
+            }
+
+            if (status === "expired") {
+                await markUpgradeRequestPaymentFailed({
+                    upgradeRequestId: request.id,
+                    paymentStatus: "expired",
+                });
+                return { ...request, paymentStatus: "expired" };
+            }
+
+            // status === "open": genuinely still awaiting the customer -
+            // fall through to the staleness check below instead of
+            // resolving anything here.
+        } else if (provider.startsWith("epayco") && request.paymentSessionId) {
+            const transaction = await queryEpaycoTransaction(request.paymentSessionId);
+            const txData = transaction?.data || transaction || {};
+            const stateCode = parseInt(
+                `${txData.x_cod_transaction_state ?? txData.cod_respuesta ?? txData.estado_codigo ?? 0}`,
+                10
+            );
+            const responseText = `${txData.x_response ?? txData.response ?? txData.estado ?? ""}`
+                .trim()
+                .toLowerCase();
+            const approved =
+                isEpaycoTransactionApproved(stateCode) ||
+                (stateCode === 0 && ["aceptada", "accepted", "approved"].includes(responseText));
+
+            if (approved) {
+                const paidAmount = Number(txData.x_amount ?? txData.valor ?? txData.amount ?? 0);
+                const currencyCode = `${
+                    txData.x_currency_code ?? txData.moneda ?? txData.currency ?? ""
+                }`.toUpperCase();
+                const expectedAmount = getEpaycoAmount(request.targetPlan);
+                const amountOk =
+                    expectedAmount !== null && Math.abs(Math.round(paidAmount) - expectedAmount) <= 1;
+                const currencyOk = currencyCode === "COP";
+
+                if (!amountOk || !currencyOk) {
+                    console.error(
+                        "[payment-reconcile] ePayco amount/currency mismatch — refusing to activate",
+                        { requestId: request.id, targetPlan: request.targetPlan, paidAmount, currencyCode }
+                    );
+                    await markUpgradeRequestPaymentFailed({
+                        upgradeRequestId: request.id,
+                        paymentStatus: "amount_mismatch",
+                    });
+                    return { ...request, paymentStatus: "amount_mismatch" };
+                }
+
+                await closeApprovedRequestAndActivatePlan({
+                    requestId: request.id,
+                    actedBy: "payment-reconcile",
+                    paymentSessionId: request.paymentSessionId,
+                    paymentProvider: "epayco",
+                    paymentStatus: "paid",
+                });
+                return { ...request, status: "closed", paymentStatus: "paid" };
+            }
+
+            // 2=Rejected, 4=Failed, 6=Reversed, 9=Expired, 10=Abandoned - all
+            // terminal, all safe to free up for a retry immediately instead
+            // of waiting on the confirmation webhook or the 48h ceiling.
+            const TERMINAL_FAILED_STATES = new Set([
+                EPAYCO_STATE.REJECTED,
+                EPAYCO_STATE.FAILED,
+                EPAYCO_STATE.REVERSED,
+                EPAYCO_STATE.EXPIRED,
+                EPAYCO_STATE.ABANDONED,
+            ]);
+
+            if (TERMINAL_FAILED_STATES.has(stateCode)) {
+                const paymentStatus =
+                    stateCode === EPAYCO_STATE.EXPIRED || stateCode === EPAYCO_STATE.ABANDONED
+                        ? "expired"
+                        : "failed";
+                await markUpgradeRequestPaymentFailed({ upgradeRequestId: request.id, paymentStatus });
+                return { ...request, paymentStatus };
+            }
+
+            // 3=Pending, 7=Retained, 8=Started: genuinely still processing -
+            // fall through to the staleness check below.
+        }
+    } catch (error) {
+        // A provider outage/timeout must not itself become a second reason
+        // the customer stays stuck - fall through to the time-based safety
+        // net below instead of throwing.
+        console.warn(
+            "[payment-reconcile] Provider verification failed, relying on timeout only",
+            { requestId: request.id, provider, message: error?.message }
+        );
+    }
+
+    if (isStale) {
+        await markUpgradeRequestPaymentFailed({ upgradeRequestId: request.id, paymentStatus: "expired" });
+        return { ...request, paymentStatus: "expired" };
+    }
+
+    return request;
 };
 
 export const getMySubscription = asyncHandler(async (req, res) => {
@@ -709,19 +916,33 @@ export const createMyUpgradeCheckoutSession = asyncHandler(async (req, res, next
         return next(new ApiError(409, "Your target plan is already active"));
     }
 
-    // A prior checkout for this request is still awaiting confirmation - a
-    // second one would create a second real charge (or, for delayed methods
-    // like PSE, a second pending bank transfer) for the same upgrade before
-    // the first has even resolved. Let the existing payment resolve (or
-    // expire/fail, which clears paymentStatus off "pending") before another
-    // session can be created.
+    // A prior checkout for this request may still be awaiting confirmation -
+    // a second one would create a second real charge (or, for delayed
+    // methods like PSE, a second pending bank transfer) for the same
+    // upgrade before the first has even resolved. Before trusting that
+    // stale "pending" flag, actively re-verify it against the provider (and
+    // fall back to the timeout ceiling) - this is the exact point where a
+    // customer used to get stuck forever, because nothing else ever cleared
+    // "pending" for the common cases (user just closed the checkout tab, a
+    // webhook was never delivered, ...). Only block if it's still
+    // genuinely pending after that check.
     if (request.paymentStatus === "pending") {
-        return next(
-            new ApiError(
-                409,
-                "A previous payment for this request is still being verified. Please wait for it to complete before trying again."
-            )
-        );
+        const resolvedRequest = await resolvePendingPaymentStatus(request);
+
+        if (resolvedRequest.status === "closed" && resolvedRequest.paymentStatus === "paid") {
+            return next(new ApiError(409, "Your target plan is already active"));
+        }
+
+        if (resolvedRequest.paymentStatus === "pending") {
+            return next(
+                new ApiError(
+                    409,
+                    "A previous payment for this request is still being verified. Please wait for it to complete before trying again."
+                )
+            );
+        }
+        // Otherwise the previous attempt is now confirmed failed/expired -
+        // fall through and let this request through to create a fresh one.
     }
 
     const requester = await prisma.user.findUnique({
@@ -794,20 +1015,28 @@ export const getMyUpgradeCheckoutStatus = asyncHandler(async (req, res, next) =>
         return next(new ApiError(404, "Upgrade request not found"));
     }
 
+    // Self-healing read: the frontend polls this endpoint every few seconds
+    // right after checkout (PaymentSuccess.jsx) and again whenever the
+    // Billing page loads, so re-verifying a "pending" payment here - instead
+    // of only ever reporting the stale DB value - is what actually resolves
+    // most stuck cases in practice, without the customer needing to do
+    // anything beyond what they already do (wait on that page / come back
+    // to Billing).
+    const resolvedRequest = await resolvePendingPaymentStatus(request);
     const subscription = await ensureUserSubscription(req.user.prismaId);
 
     return res.status(200).json(
         new ApiResponse(
             200,
             {
-                request,
+                request: resolvedRequest,
                 subscription: {
                     plan: subscription.plan,
                     status: subscription.status,
                     limits: getPlanLimits(subscription.plan),
                 },
                 targetPlanActive:
-                    request.targetPlan === subscription.plan &&
+                    resolvedRequest.targetPlan === subscription.plan &&
                     subscription.status === "active",
             },
             "Checkout status fetched successfully"
@@ -819,11 +1048,6 @@ export const getMyUpgradeCheckoutStatus = asyncHandler(async (req, res, next) =>
 // Called by the frontend when the webhook hasn't fired yet
 export const verifyAndActivateBySession = asyncHandler(async (req, res, next) => {
     const { id } = req.params; // upgradeRequestId
-    const { sessionId } = req.body;
-
-    if (!sessionId) {
-        return next(new ApiError(400, "sessionId is required"));
-    }
 
     const request = await prisma.planUpgradeRequest.findFirst({
         where: { id, userId: req.user.prismaId },
@@ -838,6 +1062,8 @@ export const verifyAndActivateBySession = asyncHandler(async (req, res, next) =>
         const subscription = await ensureUserSubscription(req.user.prismaId);
         return res.status(200).json(new ApiResponse(200, {
             alreadyActivated: true,
+            paid: request.paymentStatus === "paid",
+            paymentStatus: request.paymentStatus,
             targetPlanActive: request.targetPlan === subscription.plan,
         }, "Plan already activated"));
     }
@@ -846,31 +1072,36 @@ export const verifyAndActivateBySession = asyncHandler(async (req, res, next) =>
         return next(new ApiError(400, "Request is not in approved status"));
     }
 
-    let paid = false;
+    // Re-verifies against Stripe directly (not just re-reads the DB) and, if
+    // the payment is genuinely paid/failed/expired, writes that conclusion
+    // back - this is what used to be missing: a "not paid" answer here
+    // never touched paymentStatus, so the request stayed stuck at "pending"
+    // even when the user actively asked to be checked.
+    let resolved;
     try {
-        paid = await verifyStripeSession(sessionId);
+        resolved = await resolvePendingPaymentStatus(request);
     } catch (err) {
-        console.error("[verify-activate] Stripe session check failed:", err?.message);
+        console.error("[verify-activate] Stripe reconciliation failed:", err?.message);
         return next(new ApiError(502, "Could not verify payment with Stripe"));
     }
 
-    if (!paid) {
-        return res.status(200).json(new ApiResponse(200, { paid: false }, "Payment not yet confirmed"));
+    if (resolved.status === "closed" && resolved.paymentStatus === "paid") {
+        const subscription = await ensureUserSubscription(req.user.prismaId);
+        return res.status(200).json(new ApiResponse(200, {
+            activated: true,
+            paid: true,
+            paymentStatus: "paid",
+            targetPlanActive: request.targetPlan === subscription.plan,
+        }, "Plan activated successfully"));
     }
 
-    await closeApprovedRequestAndActivatePlan({
-        requestId: id,
-        actedBy: "session-verify-fallback",
-        paymentSessionId: sessionId,
-        paymentProvider: "stripe",
-        paymentStatus: "paid",
-    });
-
-    const subscription = await ensureUserSubscription(req.user.prismaId);
-    return res.status(200).json(new ApiResponse(200, {
-        activated: true,
-        targetPlanActive: request.targetPlan === subscription.plan,
-    }, "Plan activated successfully"));
+    return res.status(200).json(new ApiResponse(
+        200,
+        { paid: false, paymentStatus: resolved.paymentStatus },
+        resolved.paymentStatus === "pending"
+            ? "Payment not yet confirmed"
+            : "Payment could not be confirmed"
+    ));
 });
 
 const extractUpgradeRequestId = (session) =>
@@ -938,26 +1169,7 @@ const activateFromCheckoutSession = async ({ session, provider }) => {
 
 const markCheckoutFailed = async ({ session, paymentStatus }) => {
     const upgradeRequestId = extractUpgradeRequestId(session);
-    if (!upgradeRequestId) return;
-
-    const updated = await prisma.planUpgradeRequest.updateMany({
-        where: { id: upgradeRequestId, status: "approved" },
-        data: { paymentStatus },
-    });
-
-    if (updated.count > 0) {
-        const request = await prisma.planUpgradeRequest.findUnique({
-            where: { id: upgradeRequestId },
-            select: UPGRADE_REQUEST_SELECT,
-        });
-        const user = request
-            ? await prisma.user.findUnique({
-                  where: { id: request.userId },
-                  select: { email: true, username: true, preferredLanguage: true },
-              })
-            : null;
-        notifyUserPaymentFailed({ request, user, locale: user?.preferredLanguage }).catch(() => {});
-    }
+    await markUpgradeRequestPaymentFailed({ upgradeRequestId, paymentStatus });
 };
 
 export const handlePaymentWebhook = async (req, res) => {
@@ -1171,78 +1383,51 @@ export const verifyAndActivateByEpayco = asyncHandler(async (req, res, next) => 
         return next(new ApiError(400, "Request is not in approved status"));
     }
 
-    // Only attempt ePayco requests that went through checkout and are pending
+    // Only attempt ePayco requests that went through checkout
     const isEpaycoRequest =
         `${request.paymentProvider || ""}`.toLowerCase().includes("epayco");
-    const isFailedPayment =
-        ["rejected", "failed", "canceled"].includes(request.paymentStatus || "");
 
     if (!isEpaycoRequest || !request.paymentSessionId) {
         return next(new ApiError(400, "Not an ePayco checkout request"));
     }
 
-    if (isFailedPayment) {
+    if (request.paymentStatus !== "pending") {
+        // Already resolved (paid/failed/rejected/expired/amount_mismatch) by
+        // a previous webhook, poll, or this same fallback - report it as-is
+        // instead of re-querying ePayco for nothing.
         return res.status(200).json(new ApiResponse(200, {
-            paid: false,
+            paid: request.paymentStatus === "paid",
             paymentStatus: request.paymentStatus,
         }, "Payment was not successful"));
     }
 
-    let transaction;
+    // Re-verifies against ePayco directly and, if the payment is genuinely
+    // approved/rejected/failed/expired/abandoned, writes that conclusion
+    // back - this is what used to be missing: a "not approved" answer here
+    // never touched paymentStatus, so the request stayed stuck at "pending"
+    // even when the user actively asked to be checked.
+    let resolved;
     try {
-        transaction = await queryEpaycoTransaction(request.paymentSessionId);
+        resolved = await resolvePendingPaymentStatus(request);
     } catch (error) {
         console.error("[epayco-verify] Transaction query failed", { requestId: id, message: error.message });
         return next(new ApiError(502, "Could not verify the payment with ePayco. Please try again shortly."));
     }
 
-    const txData = transaction?.data || transaction || {};
-    const stateCode = parseInt(
-        `${txData.x_cod_transaction_state ?? txData.cod_respuesta ?? txData.estado_codigo ?? 0}`,
-        10
-    );
-    // Fallback for the undocumented validation/v1/reference response shape:
-    // ePayco's own webhook docs confirm x_response is a Spanish status
-    // string ("Aceptada"/"Rechazada"/"Pendiente"/"Fallida") - if no usable
-    // numeric code came through, treat that string as authoritative too.
-    const responseText = `${txData.x_response ?? txData.response ?? txData.estado ?? ""}`.trim().toLowerCase();
-    const stateApproved =
-        isEpaycoTransactionApproved(stateCode) ||
-        (stateCode === 0 && ["aceptada", "accepted", "approved"].includes(responseText));
-
-    const paidAmount = Number(txData.x_amount ?? txData.valor ?? txData.amount ?? 0);
-    const currencyCode = `${txData.x_currency_code ?? txData.moneda ?? txData.currency ?? ""}`.toUpperCase();
-
-    const expectedAmount = getEpaycoAmount(request.targetPlan);
-    const amountMatches = expectedAmount !== null && Math.abs(Math.round(paidAmount) - expectedAmount) <= 1;
-    const currencyMatches = currencyCode === "COP";
-
-    if (!stateApproved || !amountMatches || !currencyMatches) {
-        console.warn("[epayco-verify] Payment not confirmed by ePayco — refusing to activate", {
-            requestId: id, stateCode, responseText, paidAmount, expectedAmount, currencyCode,
-            // Full raw payload so a real failure is diagnosable from logs
-            // instead of guessing at ePayco's undocumented field names again.
-            rawTxData: txData,
-        });
+    if (resolved.status === "closed" && resolved.paymentStatus === "paid") {
+        const subscription = await ensureUserSubscription(req.user.prismaId);
         return res.status(200).json(new ApiResponse(200, {
-            paid: false,
-            reason: !stateApproved ? "not_approved" : "amount_mismatch",
-        }, "Payment could not be verified"));
+            activated: true,
+            paid: true,
+            targetPlanActive: request.targetPlan === subscription.plan,
+        }, "Plan activated via ePayco verification"));
     }
 
-    await closeApprovedRequestAndActivatePlan({
-        requestId: id,
-        actedBy: "epayco-verify-fallback",
-        paymentSessionId: request.paymentSessionId,
-        paymentProvider: "epayco",
-        paymentStatus: "paid",
-    });
-
-    const subscription = await ensureUserSubscription(req.user.prismaId);
     return res.status(200).json(new ApiResponse(200, {
-        activated: true,
-        targetPlanActive: request.targetPlan === subscription.plan,
-    }, "Plan activated via ePayco verification"));
+        paid: false,
+        paymentStatus: resolved.paymentStatus,
+        reason: resolved.paymentStatus === "amount_mismatch" ? "amount_mismatch" : "not_approved",
+    }, "Payment could not be verified"));
 });
 
 /**
@@ -1262,17 +1447,39 @@ export const createRenewalCheckout = asyncHandler(async (req, res, next) => {
         return next(new ApiError(503, "Autonomous checkout is not configured."));
     }
 
-    // Block if there's already an open/approved request
+    // Block if there's already an open/reviewing/approved request - except
+    // an "approved" one whose payment is stuck "pending" is worth actively
+    // re-checking first: without this, a renewal whose earlier payment
+    // attempt silently failed/expired (no webhook, tab closed, ...) would
+    // block every future renewal attempt forever, same root cause as the
+    // checkout-session guard above.
     const existingOpen = await prisma.planUpgradeRequest.findFirst({
         where: {
             userId: req.user.prismaId,
             status: { in: ["open", "reviewing", "approved"] },
         },
-        select: { id: true },
+        select: UPGRADE_REQUEST_SELECT,
     });
 
     if (existingOpen) {
-        return next(new ApiError(409, "Ya tienes una solicitud de upgrade en proceso."));
+        const isResolvableApproved =
+            existingOpen.status === "approved" && existingOpen.paymentStatus === "pending";
+
+        const resolvedExisting = isResolvableApproved
+            ? await resolvePendingPaymentStatus(existingOpen)
+            : existingOpen;
+
+        const stillBlocking =
+            !isResolvableApproved ||
+            resolvedExisting.paymentStatus === "pending" ||
+            (resolvedExisting.status === "closed" && resolvedExisting.paymentStatus === "paid");
+
+        if (stillBlocking) {
+            return next(new ApiError(409, "Ya tienes una solicitud de upgrade en proceso."));
+        }
+        // Otherwise the blocking request's payment just resolved to
+        // failed/expired/amount_mismatch - it no longer blocks a fresh
+        // renewal attempt.
     }
 
     const requester = await prisma.user.findUnique({

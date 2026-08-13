@@ -284,6 +284,27 @@ export const verifyStripeSession = async (sessionId) => {
     return session?.payment_status === "paid";
 };
 
+// Richer than verifyStripeSession: a checkout session that isn't paid can
+// still be genuinely different states - still open and awaiting the
+// customer, or definitively `expired` (Stripe auto-expires unpaid sessions,
+// 24h after creation by default). Callers need that distinction to decide
+// whether a stuck "pending" PlanUpgradeRequest can safely be unblocked for a
+// retry, vs. still has a real payment in flight.
+export const getStripeCheckoutSessionState = async (sessionId) => {
+    const stripe = getStripe();
+    if (!stripe) throw new Error("Stripe not configured");
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    return {
+        paid: session?.payment_status === "paid",
+        // Stripe Checkout Session.status: "open" | "complete" | "expired"
+        status: session?.status || null,
+        paymentStatus: session?.payment_status || null,
+        expiresAt: session?.expires_at ? new Date(session.expires_at * 1000) : null,
+        session,
+    };
+};
+
 export const getSupportedPaymentMethodsByCountry = () =>
     Object.entries(COUNTRY_CONFIG).reduce((acc, [country, config]) => {
         acc[country] = [...config.supportedMethods];

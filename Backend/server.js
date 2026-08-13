@@ -5,7 +5,7 @@ import { app } from "./app.js";
 import { initSocketServer } from "./live/socketServer.js";
 import lowStockScheduler from "./utils/lowStockScheduler.js";
 import renewalScheduler from "./utils/subscriptionRenewalScheduler.js";
-import { reconcileLegacyApprovedRequests } from "./utils/subscriptionReconcile.js";
+import { reconcileLegacyApprovedRequests, reconcileStuckPendingPayments } from "./utils/subscriptionReconcile.js";
 
 dotenv.config({
     path: "./.env",
@@ -25,6 +25,17 @@ connectDB()
                 }
             } catch (error) {
                 console.error("❎ Subscription reconciliation failed", error);
+            }
+
+            try {
+                const pendingResult = await reconcileStuckPendingPayments();
+                if (pendingResult.resolved > 0) {
+                    console.log(
+                        `💳 Reconciled stuck payments: ${pendingResult.resolved} resolved out of ${pendingResult.checked} pending checkouts`
+                    );
+                }
+            } catch (error) {
+                console.error("❎ Pending payment reconciliation failed", error);
             }
         };
 
