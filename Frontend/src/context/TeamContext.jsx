@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import AuthContext from "./AuthContext";
+import useI18n from "../hooks/useI18n";
 import { teamService } from "../services/teamService";
 import { connectSocket, disconnectSocket, getSocket } from "../live/socketClient";
 
@@ -12,6 +13,7 @@ const LEVEL_ORDER = { none: 0, view: 1, edit: 2, admin: 3 };
 export const TeamProvider = ({ children }) => {
     const { user, authenticated, logout } = useContext(AuthContext);
     const navigate = useNavigate();
+    const { t } = useI18n();
 
     const [team, setTeam] = useState(null);
     const [isOwner, setIsOwner] = useState(false);
@@ -71,7 +73,7 @@ export const TeamProvider = ({ children }) => {
             if (hasWarnedSessionReplaced.current) return;
             hasWarnedSessionReplaced.current = true;
             toast.error(
-                "Cerraste sesión en este dispositivo porque iniciaste sesión en otro lugar.",
+                t("team.session_replaced"),
                 { duration: 6000 }
             );
             await logout();
@@ -87,7 +89,7 @@ export const TeamProvider = ({ children }) => {
             socket.off("disconnect", handleDisconnect);
             socket.off("session:replaced", handleSessionReplaced);
         };
-    }, [authenticated, user?.id, logout, navigate]);
+    }, [authenticated, user?.id, logout, navigate, t]);
 
     // moduleKey/minLevel gate mirroring the backend's requireModulePermission
     // (team.permissions.js) - the owner (isOwner) and solo users (no team at

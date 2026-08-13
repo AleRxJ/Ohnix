@@ -2,8 +2,10 @@ import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { api } from "../../api/api";
 import { calculateOrderTotals } from "../../utils/orderHelpers";
+import useI18n from "../useI18n";
 
 export const useOrderOperations = (refreshOrders) => {
+    const { t } = useI18n();
     const [orderDetails, setOrderDetails] = useState([]);
     const [detailsLoading, setDetailsLoading] = useState(false);
 
@@ -12,11 +14,11 @@ export const useOrderOperations = (refreshOrders) => {
             await api.patch(`/orders/${orderId}/status`, {
                 order_status: newStatus,
             });
-            toast.success("Order status updated successfully");
+            toast.success(t("orders.order_updated"));
             refreshOrders();
         } catch (error) {
             toast.error(
-                error.response?.data?.message || "Failed to update order status"
+                error.response?.data?.message || t("orders.failed_update_status")
             );
             console.error("Error updating order status:", error);
         }
@@ -38,9 +40,9 @@ export const useOrderOperations = (refreshOrders) => {
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
 
-            toast.success("Invoice downloaded successfully");
+            toast.success(t("orders.invoice_downloaded"));
         } catch (error) {
-            toast.error("Failed to generate invoice");
+            toast.error(t("orders.failed_generate_invoice"));
             console.error("Error generating invoice:", error);
         }
     };
@@ -70,12 +72,12 @@ export const useOrderOperations = (refreshOrders) => {
             };
 
             await api.post("/orders", orderData);
-            toast.success("Order created successfully");
+            toast.success(t("orders.order_created"));
             refreshOrders();
             return true;
         } catch (error) {
             toast.error(
-                error.response?.data?.message || "Failed to create order"
+                error.response?.data?.message || t("orders.failed_create_order")
             );
             console.error("Error creating order:", error);
             return false;
@@ -88,7 +90,7 @@ export const useOrderOperations = (refreshOrders) => {
             const response = await api.get(`/orders/${orderId}/details`);
             setOrderDetails(response.data.data);
         } catch (error) {
-            toast.error("Failed to fetch order details");
+            toast.error(t("orders.failed_fetch_order_details"));
             console.error("Error fetching order details:", error);
         } finally {
             setDetailsLoading(false);

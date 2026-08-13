@@ -5,8 +5,10 @@ import { api } from "../../api/api.js";
 import { calculateStats } from "../../utils/purchaseUtils.js";
 import AuthContext from "../../context/AuthContext.jsx";
 import { formatCurrency } from "../../utils/currency.js";
+import useI18n from "../useI18n";
 
 export const usePurchase = () => {
+    const { t } = useI18n();
     const [purchases, setPurchases] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
@@ -38,11 +40,11 @@ export const usePurchase = () => {
                 setPurchases(response.data.data);
                 setStats(calculateStats(response.data.data));
             } else {
-                toast.error("Failed to fetch purchases");
+                toast.error(t("purchases.failed_fetch_purchases"));
             }
         } catch (error) {
             if (requestId !== latestRequestId.current) return;
-            toast.error("Error fetching purchases");
+            toast.error(t("purchases.error_fetching_purchases"));
             console.error("Error:", error);
         } finally {
             if (requestId === latestRequestId.current) setLoading(false);
@@ -62,7 +64,7 @@ export const usePurchase = () => {
                 setSuppliers(response.data.data);
             }
         } catch (error) {
-            toast.error("Error fetching suppliers");
+            toast.error(t("purchases.error_fetching_suppliers"));
             console.error("Error:", error);
         }
     };
@@ -75,7 +77,7 @@ export const usePurchase = () => {
                 setProducts(response.data.data);
             }
         } catch (error) {
-            toast.error("Error fetching products");
+            toast.error(t("purchases.error_fetching_products"));
             console.error("Error:", error);
         }
     };
@@ -89,7 +91,7 @@ export const usePurchase = () => {
                 return response.data.data;
             }
         } catch (error) {
-            toast.error("Error fetching purchase details");
+            toast.error(t("purchases.error_fetching_purchase_details"));
             console.error("Error:", error);
         }
     };
@@ -105,11 +107,11 @@ export const usePurchase = () => {
                 return response.data.data;
             } else {
                 toast.error(
-                    response.data.message || "Failed to fetch return preview"
+                    response.data.message || t("purchases.failed_fetch_return_preview")
                 );
             }
         } catch (error) {
-            toast.error("Error fetching return preview");
+            toast.error(t("purchases.error_fetching_return_preview"));
             console.error("Error:", error);
         }
     };
@@ -119,17 +121,17 @@ export const usePurchase = () => {
         try {
             const response = await api.post("/purchases", values);
             if (response.data.success) {
-                toast.success("Purchase created successfully");
+                toast.success(t("purchases.purchase_created"));
                 fetchPurchases();
                 return { success: true };
             } else {
                 toast.error(
-                    response.data.message || "Failed to create purchase"
+                    response.data.message || t("purchases.failed_create_purchase")
                 );
                 return { success: false };
             }
         } catch (error) {
-            toast.error("Error creating purchase");
+            toast.error(t("purchases.error_creating_purchase"));
             console.error("Error:", error);
             return { success: false };
         }
@@ -142,25 +144,27 @@ export const usePurchase = () => {
                 purchase_status: status,
             });
             if (response.data.success) {
-                toast.success("Purchase status updated successfully");
+                toast.success(t("purchases.purchase_updated"));
                 fetchPurchases();
 
                 // Show return information if status is returned
                 if (status === "returned" && response.data.data.returnInfo) {
                     const returnInfo = response.data.data.returnInfo;
                     message.success(
-                        `Purchase returned successfully! Total refund: ${formatCurrency(returnInfo.total_refund_amount)}`
+                        t("purchases.return_success_toast", {
+                            amount: formatCurrency(returnInfo.total_refund_amount),
+                        })
                     );
                 }
                 return { success: true };
             } else {
                 toast.error(
-                    response.data.message || "Failed to update purchase status"
+                    response.data.message || t("purchases.failed_update_status")
                 );
                 return { success: false };
             }
         } catch (error) {
-            toast.error("Error updating purchase status");
+            toast.error(t("purchases.error_updating_status"));
             console.error("Error:", error);
             return { success: false };
         }

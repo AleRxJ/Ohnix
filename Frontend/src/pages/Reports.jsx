@@ -52,13 +52,18 @@ const Reports = () => {
             if (response.data.success) {
                 const { sent, failed, noLowStock, total } = response.data.data;
                 toast.success(
-                    `Alert process completed! 📧 Sent: ${sent}, ✅ No low stock: ${noLowStock}, ❌ Failed: ${failed} (Total users: ${total})`
+                    t("reports.alert_process_completed", {
+                        sent,
+                        noLowStock,
+                        failed,
+                        total,
+                    })
                 );
             }
         } catch (error) {
             toast.error(
                 error.response?.data?.message ||
-                    "Failed to trigger low stock alerts"
+                    t("reports.trigger_low_stock_alerts_failed")
             );
         } finally {
             setTriggeringAlert(false);

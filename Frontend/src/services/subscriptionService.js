@@ -1,5 +1,9 @@
 import { toast } from "react-hot-toast";
 import { api } from "../api/api";
+// Plain service module, not a React component/hook - uses the i18next
+// instance directly instead of the useI18n() hook (see userService.js for
+// the same pattern/rationale).
+import i18n from "../i18n/config";
 
 export const subscriptionService = {
     async getMySubscription() {
@@ -15,7 +19,7 @@ export const subscriptionService = {
     async pauseMySubscription() {
         const response = await api.patch("/subscriptions/me/pause");
         if (response.data?.success) {
-            toast.success("Subscription paused");
+            toast.success(i18n.t("profile.subscription.paused_toast"));
         }
         return response.data;
     },
@@ -44,7 +48,7 @@ export const subscriptionService = {
     async createUpgradeRequest(payload) {
         const response = await api.post("/subscriptions/me/upgrade-requests", payload);
         if (response.data?.success) {
-            toast.success("Upgrade request submitted");
+            toast.success(i18n.t("profile.subscription.request_submitted_toast"));
         }
         return response.data;
     },
@@ -61,7 +65,7 @@ export const subscriptionService = {
             payload
         );
         if (response.data?.success) {
-            toast.success("Upgrade request updated");
+            toast.success(i18n.t("profile.subscription.request_updated_toast"));
         }
         return response.data;
     },

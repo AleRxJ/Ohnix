@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { api } from "../api/api.js";
+import useI18n from "../hooks/useI18n";
 
 const AuthContext = createContext();
 
@@ -8,6 +9,7 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [authenticated, setAuthenticated] = useState(false);
+    const { t } = useI18n();
 
     // Check authentication status on mount
     useEffect(() => {
@@ -59,15 +61,15 @@ export const AuthProvider = ({ children }) => {
                     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
                 }
                 setAuthenticated(true);
-                toast.success("Login successful");
+                toast.success(t("auth.login_success"));
                 return { success: true };
             } else {
-                toast.error(data.message || "Login failed");
+                toast.error(data.message || t("auth.login_failed"));
                 return { success: false, message: data.message };
             }
         } catch (error) {
             const errorMessage =
-                error.response?.data?.message || "Something went wrong";
+                error.response?.data?.message || t("common.error");
             toast.error(errorMessage);
             return { success: false, message: errorMessage };
         }
@@ -83,13 +85,13 @@ export const AuthProvider = ({ children }) => {
                 setAuthenticated(false);
                 localStorage.removeItem("accessToken");
                 delete api.defaults.headers.common["Authorization"];
-                toast.success("Logged out successfully");
+                toast.success(t("auth.logout_success"));
             } else {
-                toast.error(response.data.message || "Logout failed");
+                toast.error(response.data.message || t("auth.logout_failed"));
             }
         } catch (error) {
             console.error("Logout error:", error);
-            toast.error(error.response?.data?.message || "Logout failed");
+            toast.error(error.response?.data?.message || t("auth.logout_failed"));
         }
     };
 

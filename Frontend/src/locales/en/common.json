@@ -236,6 +236,16 @@
     "account_verification_required": "Account verification required",
     "verify_account_to_unlock": "Please verify your account to unlock all features and ensure account security.",
     "profile_summary": "Profile summary",
+    "email_verified_toast": "Your email has been verified successfully",
+    "update_success_toast": "Profile updated successfully",
+    "update_failed_toast": "Failed to update profile",
+    "avatar_update_success_toast": "Your avatar has been updated successfully",
+    "avatar_update_failed_toast": "Failed to update avatar",
+    "otp_sent_toast": "OTP has been sent to your email",
+    "otp_send_failed_toast": "Failed to send OTP",
+    "otp_invalid_toast": "Invalid OTP",
+    "password_change_success_toast": "Your password has been changed successfully",
+    "password_change_failed_toast": "Failed to change password",
     "subscription": {
       "title": "Plan and usage",
       "description": "Track your plan status and how much quota your team is consuming.",
@@ -359,6 +369,9 @@
       "error_already_on_target_plan": "This plan is already active for your account.",
       "update_request": "Update request",
       "search_user_placeholder": "Search by username or email",
+      "paused_toast": "Subscription paused",
+      "request_submitted_toast": "Upgrade request submitted",
+      "request_updated_toast": "Upgrade request updated",
       "metrics": {
         "products": "Products",
         "customers": "Customers",
@@ -522,7 +535,8 @@
     "accept_invalid": "This invitation isn't valid.",
     "accept_expired": "This invitation expired. Ask for a new one to be sent.",
     "seat_limit_reached": "Your plan's seat limit has been reached.",
-    "email_already_exists": "That email already has an Ohnix account."
+    "email_already_exists": "That email already has an Ohnix account.",
+    "session_replaced": "You were signed out of this device because you signed in somewhere else."
   },
   "admin": {
     "title": "Platform administration",
@@ -723,7 +737,9 @@
     "password_reset_success": "Password reset successfully",
     "failed_reset_password": "Failed to reset password",
     "need_help": "Need help?",
-    "contact_support": "Contact Support"
+    "contact_support": "Contact Support",
+    "login_failed": "Login failed",
+    "logout_failed": "Logout failed"
   },
   "products": {
     "product": "Product",
@@ -815,7 +831,13 @@
     "low_stock_threshold": "Alert threshold for this product",
     "low_stock_threshold_placeholder": "Uses your account's default threshold",
     "low_stock_threshold_hint": "Leave empty to use your account's default threshold.",
-    "low_stock_threshold_upsell": "Available on the Scale plan. Your account's default threshold is used for now."
+    "low_stock_threshold_upsell": "Available on the Scale plan. Your account's default threshold is used for now.",
+    "upload_generic_error": "Upload failed",
+    "failed_load_products": "Failed to load products",
+    "fetch_error": "Something went wrong while fetching products",
+    "failed_create_product": "Failed to create product",
+    "failed_update_product": "Failed to update product",
+    "failed_delete_product": "Failed to delete product"
   },
   "orders": {
     "order": "Order",
@@ -873,7 +895,13 @@
     "gst": "GST ({{rate}}%)",
     "no_items_found": "No items found for this order",
     "download_invoice_pdf": "Download Invoice PDF",
-    "number_of_orders": "Number of Orders"
+    "number_of_orders": "Number of Orders",
+    "failed_update_status": "Failed to update order status",
+    "invoice_downloaded": "Invoice downloaded successfully",
+    "failed_generate_invoice": "Failed to generate invoice",
+    "failed_create_order": "Failed to create order",
+    "failed_fetch_order_details": "Failed to fetch order details",
+    "failed_fetch_orders": "Failed to fetch orders"
   },
   "purchases": {
     "purchase": "Purchase",
@@ -932,7 +960,19 @@
     "total_refund_label": "Total Refund:",
     "search_by_purchase": "Search by purchase number or supplier name...",
     "manage_purchases_description": "Manage your purchase orders and supplier relationships",
-    "purchase_orders": "Purchase Orders"
+    "purchase_orders": "Purchase Orders",
+    "failed_fetch_purchases": "Failed to fetch purchases",
+    "error_fetching_purchases": "Error fetching purchases",
+    "error_fetching_suppliers": "Error fetching suppliers",
+    "error_fetching_products": "Error fetching products",
+    "error_fetching_purchase_details": "Error fetching purchase details",
+    "failed_fetch_return_preview": "Failed to fetch return preview",
+    "error_fetching_return_preview": "Error fetching return preview",
+    "failed_create_purchase": "Failed to create purchase",
+    "error_creating_purchase": "Error creating purchase",
+    "failed_update_status": "Failed to update purchase status",
+    "error_updating_status": "Error updating purchase status",
+    "return_success_toast": "Purchase returned successfully! Total refund: {{amount}}"
   },
   "suppliers": {
     "supplier": "Supplier",
@@ -996,7 +1036,12 @@
     "create_supplier": "Create Supplier",
     "supplier_details": "Supplier Details",
     "total_suppliers": "Total Suppliers",
-    "manage_suppliers_description": "Manage your supplier directory and purchase relationships"
+    "manage_suppliers_description": "Manage your supplier directory and purchase relationships",
+    "upload_image_only": "You can only upload image files!",
+    "failed_fetch_suppliers": "Failed to fetch suppliers",
+    "creation_failed": "Creation failed",
+    "update_failed": "Update failed",
+    "failed_delete_supplier": "Failed to delete supplier"
   },
   "categories": {
     "category": "Category",
@@ -1026,7 +1071,14 @@
     "created_at": "Created At",
     "last_updated": "Last Updated",
     "updated_by": "Updated By",
-    "updated_at": "Updated At"
+    "updated_at": "Updated At",
+    "failed_load_categories": "Failed to load categories",
+    "creating_category": "Creating category...",
+    "failed_create_category": "Failed to create category",
+    "updating_category": "Updating category...",
+    "failed_update_category": "Failed to update category",
+    "deleting_category": "Deleting category...",
+    "failed_delete_category": "Failed to delete category"
   },
   "units": {
     "unit": "Unit",
@@ -1099,7 +1151,17 @@
     "unit_hour": "Hour",
     "unit_minute": "Minute",
     "unit_second": "Second",
-    "unit_day": "Day"
+    "unit_day": "Day",
+    "failed_load_units": "Failed to load units",
+    "creating_unit": "Creating unit...",
+    "unit_created": "Unit created successfully",
+    "failed_create_unit": "Failed to create unit",
+    "updating_unit": "Updating unit...",
+    "unit_updated": "Unit updated successfully",
+    "failed_update_unit": "Failed to update unit",
+    "deleting_unit": "Deleting unit...",
+    "unit_deleted": "Unit deleted successfully",
+    "failed_delete_unit": "Failed to delete unit"
   },
   "reports": {
     "growth_trend": "Growth trend",
@@ -1271,7 +1333,9 @@
     "print_generated_for": "Generated for",
     "print_generated_on": "Generated on",
     "print_report_label": "Report",
-    "stock_monitoring_active": "Stock monitoring active"
+    "stock_monitoring_active": "Stock monitoring active",
+    "alert_process_completed": "Alert process completed! 📧 Sent: {{sent}}, ✅ No low stock: {{noLowStock}}, ❌ Failed: {{failed}} (Total users: {{total}})",
+    "trigger_low_stock_alerts_failed": "Failed to trigger low stock alerts"
   },
   "dashboard": {
     "loading_dashboard_data": "Loading dashboard data...",

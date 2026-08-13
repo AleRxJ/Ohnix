@@ -2,9 +2,11 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { api } from "../../api/api";
 import { useAuth } from "../useAuth";
 import toast from "react-hot-toast";
+import useI18n from "../useI18n";
 
 export const useCategories = () => {
     const { user, isAdmin } = useAuth();
+    const { t } = useI18n();
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState("");
@@ -32,7 +34,7 @@ export const useCategories = () => {
         } catch (error) {
             if (requestId !== latestRequestId.current) return [];
             console.error("[useCategories] Error:", error);
-            toast.error("Failed to load categories");
+            toast.error(t("categories.failed_load_categories"));
             return [];
         } finally {
             if (requestId === latestRequestId.current) setLoading(false);
@@ -51,24 +53,24 @@ export const useCategories = () => {
 
     const createCategory = useCallback(
         async (values) => {
-            const loadingToast = toast.loading("Creating category...");
+            const loadingToast = toast.loading(t("categories.creating_category"));
             try {
                 const response = await api.post("/categories", values);
 
                 if (response.data.success) {
-                    toast.success("Category created successfully", {
+                    toast.success(t("categories.category_added"), {
                         id: loadingToast,
                     });
                     await loadCategories();
                     return { success: true, data: response.data.data };
                 } else {
-                    toast.error(response.data.message || "Failed to create category", { id: loadingToast });
+                    toast.error(response.data.message || t("categories.failed_create_category"), { id: loadingToast });
                     return { success: false, error: response.data.message };
                 }
             } catch (error) {
                 const errorMsg =
                     error.response?.data?.message ||
-                    "Failed to create category";
+                    t("categories.failed_create_category");
                 console.error("[useCategories] Create error:", error);
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
@@ -79,7 +81,7 @@ export const useCategories = () => {
 
     const updateCategory = useCallback(
         async (id, values) => {
-            const loadingToast = toast.loading("Updating category...");
+            const loadingToast = toast.loading(t("categories.updating_category"));
             try {
                 const endpoint = isAdmin
                     ? `/categories/admin/${id}`
@@ -87,7 +89,7 @@ export const useCategories = () => {
 
                 const response = await api.patch(endpoint, values);
                 if (response.data.success) {
-                    toast.success("Category updated successfully", {
+                    toast.success(t("categories.category_updated"), {
                         id: loadingToast,
                     });
                     await loadCategories();
@@ -96,7 +98,7 @@ export const useCategories = () => {
             } catch (error) {
                 const errorMsg =
                     error.response?.data?.message ||
-                    "Failed to update category";
+                    t("categories.failed_update_category");
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
             }
@@ -106,7 +108,7 @@ export const useCategories = () => {
 
     const deleteCategory = useCallback(
         async (id) => {
-            const loadingToast = toast.loading("Deleting category...");
+            const loadingToast = toast.loading(t("categories.deleting_category"));
             try {
                 const endpoint = isAdmin
                     ? `/categories/admin/${id}`
@@ -114,7 +116,7 @@ export const useCategories = () => {
 
                 const response = await api.delete(endpoint);
                 if (response.data.success) {
-                    toast.success("Category deleted successfully", {
+                    toast.success(t("categories.category_deleted"), {
                         id: loadingToast,
                     });
                     await loadCategories();
@@ -123,7 +125,7 @@ export const useCategories = () => {
             } catch (error) {
                 const errorMsg =
                     error.response?.data?.message ||
-                    "Failed to delete category";
+                    t("categories.failed_delete_category");
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
             }

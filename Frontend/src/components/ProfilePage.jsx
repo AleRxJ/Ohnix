@@ -122,7 +122,7 @@ const ProfilePage = () => {
             } else {
                 const verifyResponse = await userService.verifyOtp(values.otp);
                 if (verifyResponse.success) {
-                    toast.success("Your email has been verified successfully", {
+                    toast.success(t("profile.email_verified_toast"), {
                         position: "top-right",
                         duration: 3000,
                     });

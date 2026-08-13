@@ -1,5 +1,10 @@
 import { toast } from "react-hot-toast";
 import { api } from "../api/api";
+// Plain service module, not a React component/hook - can't call useI18n()
+// (a hook) here, so this uses the i18next instance directly instead. i18n.t
+// works the same as the hook's `t` once i18next has initialized (App.jsx
+// imports ./i18n/config on startup, before any of these methods can run).
+import i18n from "../i18n/config";
 
 export const userService = {
     // Profile update
@@ -10,7 +15,7 @@ export const userService = {
             });
 
             if (response.data.success) {
-                toast.success("Profile updated successfully", {
+                toast.success(i18n.t("profile.update_success_toast"), {
                     position: "top-right",
                     duration: 3000,
                 });
@@ -19,7 +24,7 @@ export const userService = {
             return response.data;
         } catch (error) {
             toast.error(
-                error.response?.data?.message || "Failed to update profile",
+                error.response?.data?.message || i18n.t("profile.update_failed_toast"),
                 {
                     position: "top-right",
                     duration: 4000,
@@ -58,13 +63,13 @@ export const userService = {
             });
 
             if (response.data.success) {
-                toast.success("Your avatar has been updated successfully");
+                toast.success(i18n.t("profile.avatar_update_success_toast"));
             }
 
             return response.data;
         } catch (error) {
             toast.error(
-                error.response?.data?.message || "Failed to update avatar"
+                error.response?.data?.message || i18n.t("profile.avatar_update_failed_toast")
             );
             throw error;
         }
@@ -74,9 +79,9 @@ export const userService = {
     async sendChangePasswordOtp() {
         try {
             await api.post("/users/send-change-password-otp");
-            toast.success("OTP has been sent to your email");
+            toast.success(i18n.t("profile.otp_sent_toast"));
         } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to send OTP");
+            toast.error(error.response?.data?.message || i18n.t("profile.otp_send_failed_toast"));
             throw error;
         }
     },
@@ -89,7 +94,7 @@ export const userService = {
             );
             return response.data;
         } catch (error) {
-            toast.error(error.response?.data?.message || "Invalid OTP", {
+            toast.error(error.response?.data?.message || i18n.t("profile.otp_invalid_toast"), {
                 position: "top-right",
                 duration: 4000,
             });
@@ -106,13 +111,13 @@ export const userService = {
             });
 
             if (response.data.success) {
-                toast.success("Your password has been changed successfully");
+                toast.success(i18n.t("profile.password_change_success_toast"));
             }
 
             return response.data;
         } catch (error) {
             toast.error(
-                error.response?.data?.message || "Failed to change password",
+                error.response?.data?.message || i18n.t("profile.password_change_failed_toast"),
                 {
                     position: "top-right",
                     duration: 4000,

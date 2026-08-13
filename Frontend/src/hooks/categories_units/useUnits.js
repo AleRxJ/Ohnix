@@ -2,9 +2,11 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { api } from "../../api/api";
 import { useAuth } from "../useAuth";
 import toast from "react-hot-toast";
+import useI18n from "../useI18n";
 
 export const useUnits = () => {
     const { user, isAdmin } = useAuth();
+    const { t } = useI18n();
     const [units, setUnits] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState("");
@@ -31,7 +33,7 @@ export const useUnits = () => {
         } catch (error) {
             if (requestId !== latestRequestId.current) return [];
             console.error("[useUnits] Error:", error);
-            toast.error("Failed to load units");
+            toast.error(t("units.failed_load_units"));
             return [];
         } finally {
             if (requestId === latestRequestId.current) setLoading(false);
@@ -50,23 +52,23 @@ export const useUnits = () => {
 
     const createUnit = useCallback(
         async (values) => {
-            const loadingToast = toast.loading("Creating unit...");
+            const loadingToast = toast.loading(t("units.creating_unit"));
             try {
                 const response = await api.post("/units", values);
 
                 if (response.data.success) {
-                    toast.success("Unit created successfully", {
+                    toast.success(t("units.unit_created"), {
                         id: loadingToast,
                     });
                     await loadUnits();
                     return { success: true, data: response.data.data };
                 } else {
-                    toast.error(response.data.message || "Failed to create unit", { id: loadingToast });
+                    toast.error(response.data.message || t("units.failed_create_unit"), { id: loadingToast });
                     return { success: false, error: response.data.message };
                 }
             } catch (error) {
                 const errorMsg =
-                    error.response?.data?.message || "Failed to create unit";
+                    error.response?.data?.message || t("units.failed_create_unit");
                 console.error("[useUnits] Create error:", error);
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
@@ -77,11 +79,11 @@ export const useUnits = () => {
 
     const updateUnit = useCallback(
         async (id, values) => {
-            const loadingToast = toast.loading("Updating unit...");
+            const loadingToast = toast.loading(t("units.updating_unit"));
             try {
                 const response = await api.patch(`/units/${id}`, values);
                 if (response.data.success) {
-                    toast.success("Unit updated successfully", {
+                    toast.success(t("units.unit_updated"), {
                         id: loadingToast,
                     });
                     await loadUnits();
@@ -89,7 +91,7 @@ export const useUnits = () => {
                 }
             } catch (error) {
                 const errorMsg =
-                    error.response?.data?.message || "Failed to update unit";
+                    error.response?.data?.message || t("units.failed_update_unit");
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
             }
@@ -99,11 +101,11 @@ export const useUnits = () => {
 
     const deleteUnit = useCallback(
         async (id) => {
-            const loadingToast = toast.loading("Deleting unit...");
+            const loadingToast = toast.loading(t("units.deleting_unit"));
             try {
                 const response = await api.delete(`/units/${id}`);
                 if (response.data.success) {
-                    toast.success("Unit deleted successfully", {
+                    toast.success(t("units.unit_deleted"), {
                         id: loadingToast,
                     });
                     await loadUnits();
@@ -111,7 +113,7 @@ export const useUnits = () => {
                 }
             } catch (error) {
                 const errorMsg =
-                    error.response?.data?.message || "Failed to delete unit";
+                    error.response?.data?.message || t("units.failed_delete_unit");
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
             }

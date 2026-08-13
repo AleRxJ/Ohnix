@@ -91,7 +91,7 @@ const BulkUploadModal = ({
                         {
                             row: "-",
                             product_code: "-",
-                            errors: [data?.message || "Upload failed"],
+                            errors: [data?.message || t("products.upload_generic_error")],
                         },
                     ],
                 });

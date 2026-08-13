@@ -3,8 +3,10 @@ import { toast } from "react-hot-toast";
 import { api } from "../../api/api";
 import { calculateStats } from "../../utils/orderHelpers";
 import AuthContext from "../../context/AuthContext";
+import useI18n from "../useI18n";
 
 export const useOrders = () => {
+    const { t } = useI18n();
     const [orders, setOrders] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [products, setProducts] = useState([]);
@@ -94,7 +96,7 @@ export const useOrders = () => {
             );
         } catch (error) {
             if (requestId !== latestRequestId.current) return;
-            toast.error("Failed to fetch orders");
+            toast.error(t("orders.failed_fetch_orders"));
             console.error("Error fetching orders:", error);
         } finally {
             if (requestId === latestRequestId.current) setLoading(false);

@@ -123,7 +123,32 @@ function App() {
                     <ThemeProvider>
                     <BrowserRouter>
                         <TeamProvider>
-                        <Toaster />
+                        <Toaster
+                            position="top-right"
+                            toastOptions={{
+                                duration: 4000,
+                                style: {
+                                    background: "var(--ohnix-surface-card)",
+                                    color: "var(--ohnix-text-primary)",
+                                    border: "1px solid var(--ohnix-line-4)",
+                                    borderRadius: "12px",
+                                    boxShadow: "var(--ohnix-shadow-elevated)",
+                                    fontSize: "14px",
+                                    padding: "12px 16px",
+                                },
+                                success: {
+                                    iconTheme: { primary: "#29D8D5", secondary: "#021314" },
+                                    style: { border: "1px solid rgba(41,216,213,0.35)" },
+                                },
+                                error: {
+                                    iconTheme: { primary: "#fb7185", secondary: "#ffffff" },
+                                    style: { border: "1px solid rgba(251,113,133,0.35)" },
+                                },
+                                loading: {
+                                    iconTheme: { primary: "#7C6AF7", secondary: "var(--ohnix-surface)" },
+                                },
+                            }}
+                        />
                         <Suspense fallback={<RouteLoadingFallback />}>
                         <div>
                             <Routes>

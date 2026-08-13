@@ -1127,6 +1127,34 @@ body {
 .dark-alert-teal .ant-alert-icon {
   color: #29d8d5 !important;
 }
+/* antd's imperative message.success()/message.error()/etc API (used across
+   ~8 files for form-validation feedback) has no per-call className hook, so
+   it's themed globally here instead - same tokens as the react-hot-toast
+   <Toaster/> in App.jsx, so both notification systems read as one brand
+   instead of one dark/branded and one plain white antd default. */
+.ant-message .ant-message-notice-content {
+  background: var(--ohnix-surface-card) !important;
+  color: var(--ohnix-text-primary) !important;
+  border: 1px solid var(--ohnix-line-4) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--ohnix-shadow-elevated) !important;
+}
+.ant-message .ant-message-success .anticon {
+  color: #29d8d5 !important;
+}
+.ant-message .ant-message-error .anticon {
+  color: #fb7185 !important;
+}
+.ant-message .ant-message-warning .anticon {
+  color: #f59e0b !important;
+}
+.ant-message .ant-message-loading .anticon {
+  color: #7c6af7 !important;
+}
+.ant-message .ant-message-info .anticon {
+  color: #29d8d5 !important;
+}
+
 .dark-alert-purple.ant-alert {
   border: 1px solid rgba(124, 106, 247, 0.25) !important;
   background: rgba(124, 106, 247, 0.1) !important;

@@ -236,6 +236,16 @@
     "account_verification_required": "Verificación de cuenta requerida",
     "verify_account_to_unlock": "Verifica tu cuenta para desbloquear todas las funciones y asegurar tu cuenta.",
     "profile_summary": "Resumen del perfil",
+    "email_verified_toast": "Tu correo ha sido verificado exitosamente",
+    "update_success_toast": "Perfil actualizado correctamente",
+    "update_failed_toast": "No se pudo actualizar el perfil",
+    "avatar_update_success_toast": "Tu avatar se actualizó correctamente",
+    "avatar_update_failed_toast": "No se pudo actualizar el avatar",
+    "otp_sent_toast": "Se envió un código OTP a tu correo",
+    "otp_send_failed_toast": "No se pudo enviar el código OTP",
+    "otp_invalid_toast": "Código OTP inválido",
+    "password_change_success_toast": "Tu contraseña se cambió correctamente",
+    "password_change_failed_toast": "No se pudo cambiar la contraseña",
     "subscription": {
       "title": "Plan y uso",
       "description": "Consulta el estado de tu plan y cuánto cupo está consumiendo tu equipo.",
@@ -359,6 +369,9 @@
       "error_already_on_target_plan": "Ya tienes activo ese plan.",
       "update_request": "Actualizar solicitud",
       "search_user_placeholder": "Buscar por usuario o correo",
+      "paused_toast": "Suscripción pausada",
+      "request_submitted_toast": "Solicitud de upgrade enviada",
+      "request_updated_toast": "Solicitud de upgrade actualizada",
       "metrics": {
         "products": "Productos",
         "customers": "Clientes",
@@ -522,7 +535,8 @@
     "accept_invalid": "Esta invitación no es válida.",
     "accept_expired": "Esta invitación venció. Pide que te reenvíen una nueva.",
     "seat_limit_reached": "Se alcanzó el límite de asientos de tu plan.",
-    "email_already_exists": "Ese correo ya tiene una cuenta en Ohnix."
+    "email_already_exists": "Ese correo ya tiene una cuenta en Ohnix.",
+    "session_replaced": "Cerraste sesión en este dispositivo porque iniciaste sesión en otro lugar."
   },
   "admin": {
     "title": "Administracion de plataforma",
@@ -723,7 +737,9 @@
     "password_reset_success": "Contraseña restablecida con éxito",
     "failed_reset_password": "No se pudo restablecer la contraseña",
     "need_help": "¿Necesitas ayuda?",
-    "contact_support": "Contactar soporte"
+    "contact_support": "Contactar soporte",
+    "login_failed": "Inicio de sesión fallido",
+    "logout_failed": "No se pudo cerrar sesión"
   },
   "products": {
     "product": "Producto",
@@ -815,7 +831,13 @@
     "low_stock_threshold": "Umbral de alerta para este producto",
     "low_stock_threshold_placeholder": "Usa el umbral general de la cuenta",
     "low_stock_threshold_hint": "Si lo dejas vacío, se usa el umbral general de tu cuenta.",
-    "low_stock_threshold_upsell": "Disponible desde el plan Escala. Hoy se usa el umbral general de tu cuenta."
+    "low_stock_threshold_upsell": "Disponible desde el plan Escala. Hoy se usa el umbral general de tu cuenta.",
+    "upload_generic_error": "Error al cargar el archivo",
+    "failed_load_products": "No se pudieron cargar los productos",
+    "fetch_error": "Ocurrió un error al obtener los productos",
+    "failed_create_product": "No se pudo crear el producto",
+    "failed_update_product": "No se pudo actualizar el producto",
+    "failed_delete_product": "No se pudo eliminar el producto"
   },
   "orders": {
     "order": "Pedido",
@@ -873,7 +895,13 @@
     "gst": "GST ({{rate}}%)",
     "no_items_found": "No se encontraron artículos para este pedido",
     "download_invoice_pdf": "Descargar PDF de factura",
-    "number_of_orders": "Número de pedidos"
+    "number_of_orders": "Número de pedidos",
+    "failed_update_status": "No se pudo actualizar el estado del pedido",
+    "invoice_downloaded": "Factura descargada correctamente",
+    "failed_generate_invoice": "No se pudo generar la factura",
+    "failed_create_order": "No se pudo crear el pedido",
+    "failed_fetch_order_details": "No se pudieron obtener los detalles del pedido",
+    "failed_fetch_orders": "No se pudieron obtener los pedidos"
   },
   "purchases": {
     "purchase": "Compra",
@@ -933,7 +961,19 @@
     "total_refund_label": "Reembolso total:",
     "search_by_purchase": "Buscar por número de compra o nombre del proveedor...",
     "manage_purchases_description": "Administra tus órdenes de compra y relaciones con proveedores",
-    "purchase_orders": "Órdenes de compra"
+    "purchase_orders": "Órdenes de compra",
+    "failed_fetch_purchases": "No se pudieron obtener las compras",
+    "error_fetching_purchases": "Error al obtener las compras",
+    "error_fetching_suppliers": "Error al obtener los proveedores",
+    "error_fetching_products": "Error al obtener los productos",
+    "error_fetching_purchase_details": "Error al obtener los detalles de la compra",
+    "failed_fetch_return_preview": "No se pudo obtener la vista previa de devolución",
+    "error_fetching_return_preview": "Error al obtener la vista previa de devolución",
+    "failed_create_purchase": "No se pudo crear la compra",
+    "error_creating_purchase": "Error al crear la compra",
+    "failed_update_status": "No se pudo actualizar el estado de la compra",
+    "error_updating_status": "Error al actualizar el estado de la compra",
+    "return_success_toast": "¡Devolución procesada correctamente! Reembolso total: {{amount}}"
   },
   "suppliers": {
     "supplier": "Proveedor",
@@ -997,7 +1037,12 @@
     "create_supplier": "Crear proveedor",
     "supplier_details": "Detalles del proveedor",
     "total_suppliers": "Total de proveedores",
-    "manage_suppliers_description": "Administra tu directorio de proveedores y relaciones de compra"
+    "manage_suppliers_description": "Administra tu directorio de proveedores y relaciones de compra",
+    "upload_image_only": "¡Solo puedes subir archivos de imagen!",
+    "failed_fetch_suppliers": "No se pudieron obtener los proveedores",
+    "creation_failed": "Error al crear",
+    "update_failed": "Error al actualizar",
+    "failed_delete_supplier": "No se pudo eliminar el proveedor"
   },
   "categories": {
     "category": "Categoría",
@@ -1027,7 +1072,14 @@
     "created_at": "Creado el",
     "last_updated": "Última actualización",
     "updated_by": "Actualizado por",
-    "updated_at": "Actualizado el"
+    "updated_at": "Actualizado el",
+    "failed_load_categories": "No se pudieron cargar las categorías",
+    "creating_category": "Creando categoría...",
+    "failed_create_category": "No se pudo crear la categoría",
+    "updating_category": "Actualizando categoría...",
+    "failed_update_category": "No se pudo actualizar la categoría",
+    "deleting_category": "Eliminando categoría...",
+    "failed_delete_category": "No se pudo eliminar la categoría"
   },
   "units": {
     "unit": "Unidad",
@@ -1100,7 +1152,17 @@
     "unit_hour": "Hora",
     "unit_minute": "Minuto",
     "unit_second": "Segundo",
-    "unit_day": "Día"
+    "unit_day": "Día",
+    "failed_load_units": "No se pudieron cargar las unidades",
+    "creating_unit": "Creando unidad...",
+    "unit_created": "Unidad creada correctamente",
+    "failed_create_unit": "No se pudo crear la unidad",
+    "updating_unit": "Actualizando unidad...",
+    "unit_updated": "Unidad actualizada correctamente",
+    "failed_update_unit": "No se pudo actualizar la unidad",
+    "deleting_unit": "Eliminando unidad...",
+    "unit_deleted": "Unidad eliminada correctamente",
+    "failed_delete_unit": "No se pudo eliminar la unidad"
   },
   "reports": {
     "growth_trend": "Tendencia de crecimiento",
@@ -1265,7 +1327,9 @@
     "print_generated_for": "Generado para",
     "print_generated_on": "Generado el",
     "print_report_label": "Reporte",
-    "stock_monitoring_active": "Monitoreo de stock activo"
+    "stock_monitoring_active": "Monitoreo de stock activo",
+    "alert_process_completed": "¡Proceso de alertas completado! 📧 Enviados: {{sent}}, ✅ Sin stock bajo: {{noLowStock}}, ❌ Fallidos: {{failed}} (Total usuarios: {{total}})",
+    "trigger_low_stock_alerts_failed": "No se pudieron activar las alertas de stock bajo"
   },
   "dashboard": {
     "loading_dashboard_data": "Cargando datos del panel...",

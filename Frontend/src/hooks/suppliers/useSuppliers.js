@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { api } from "../../api/api";
+import useI18n from "../useI18n";
 
 export const useSuppliers = (isAdmin = false) => {
+    const { t } = useI18n();
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [stats, setStats] = useState({
@@ -44,7 +46,7 @@ export const useSuppliers = (isAdmin = false) => {
             calculateStats(response.data.data);
         } catch (error) {
             if (requestId !== latestRequestId.current) return;
-            toast.error("Failed to fetch suppliers");
+            toast.error(t("suppliers.failed_fetch_suppliers"));
             console.error("Error fetching suppliers:", error);
         } finally {
             if (requestId === latestRequestId.current) setLoading(false);
@@ -56,11 +58,11 @@ export const useSuppliers = (isAdmin = false) => {
             await api.post("/suppliers", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
-            toast.success("Supplier created successfully");
+            toast.success(t("suppliers.supplier_added"));
             fetchSuppliers();
             return true;
         } catch (error) {
-            toast.error(error.response?.data?.message || "Creation failed");
+            toast.error(error.response?.data?.message || t("suppliers.creation_failed"));
             return false;
         }
     };
@@ -70,11 +72,11 @@ export const useSuppliers = (isAdmin = false) => {
             await api.patch(`/suppliers/${id}`, formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
-            toast.success("Supplier updated successfully");
+            toast.success(t("suppliers.supplier_updated"));
             fetchSuppliers();
             return true;
         } catch (error) {
-            toast.error(error.response?.data?.message || "Update failed");
+            toast.error(error.response?.data?.message || t("suppliers.update_failed"));
             return false;
         }
     };
@@ -82,10 +84,10 @@ export const useSuppliers = (isAdmin = false) => {
     const deleteSupplier = async (id) => {
         try {
             await api.delete(`/suppliers/${id}`);
-            toast.success("Supplier deleted successfully");
+            toast.success(t("suppliers.supplier_deleted"));
             fetchSuppliers();
         } catch (error) {
-            toast.error("Failed to delete supplier");
+            toast.error(t("suppliers.failed_delete_supplier"));
         }
     };
 

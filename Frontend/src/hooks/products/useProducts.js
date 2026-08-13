@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { api } from "../../api/api";
+import useI18n from "../useI18n";
 
 export const useProducts = () => {
+    const { t } = useI18n();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -26,14 +28,14 @@ export const useProducts = () => {
             if (response.data.success) {
                 setProducts(response.data.data);
             } else {
-                setError("Failed to fetch products");
-                toast.error("Failed to load products");
+                setError(t("products.failed_load_products"));
+                toast.error(t("products.failed_load_products"));
             }
         } catch (err) {
             console.error("Products fetch error:", err);
             const errorMessage =
                 err.response?.data?.message ||
-                "Something went wrong while fetching products";
+                t("products.fetch_error");
             setError(errorMessage);
             toast.error(errorMessage);
         } finally {
@@ -48,14 +50,14 @@ export const useProducts = () => {
             });
 
             if (response.data.success) {
-                toast.success("Product created successfully");
+                toast.success(t("products.product_added"));
                 setProducts((prev) => [...prev, response.data.data]);
                 return { success: true, data: response.data.data };
             }
         } catch (err) {
             console.error("Create product error:", err);
             const errorMessage =
-                err.response?.data?.message || "Failed to create product";
+                err.response?.data?.message || t("products.failed_create_product");
             toast.error(errorMessage);
             return { success: false, error: errorMessage };
         }
@@ -72,7 +74,7 @@ export const useProducts = () => {
             );
 
             if (response.data.success) {
-                toast.success("Product updated successfully");
+                toast.success(t("products.product_updated"));
                 setProducts((prev) =>
                     prev.map((p) =>
                         p._id === productId ? response.data.data : p
@@ -83,7 +85,7 @@ export const useProducts = () => {
         } catch (err) {
             console.error("Update product error:", err);
             const errorMessage =
-                err.response?.data?.message || "Failed to update product";
+                err.response?.data?.message || t("products.failed_update_product");
             toast.error(errorMessage);
             return { success: false, error: errorMessage };
         }
@@ -94,17 +96,17 @@ export const useProducts = () => {
             const response = await api.delete(`/products/${productId}`);
 
             if (response.data.success) {
-                toast.success("Product deleted successfully");
+                toast.success(t("products.product_deleted"));
                 setProducts((prev) => prev.filter((p) => p._id !== productId));
                 return { success: true };
             } else {
-                toast.error("Failed to delete product");
+                toast.error(t("products.failed_delete_product"));
                 return { success: false };
             }
         } catch (err) {
             console.error("Delete product error:", err);
             const errorMessage =
-                err.response?.data?.message || "Failed to delete product";
+                err.response?.data?.message || t("products.failed_delete_product");
             toast.error(errorMessage);
             return { success: false, error: errorMessage };
         }

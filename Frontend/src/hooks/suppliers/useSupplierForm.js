@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Form } from "antd";
 import { toast } from "react-hot-toast";
+import useI18n from "../useI18n";
 
 export const useSupplierForm = (onSuccess) => {
+    const { t } = useI18n();
     const [modalVisible, setModalVisible] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [selectedSupplier, setSelectedSupplier] = useState(null);
@@ -84,12 +86,12 @@ export const useSupplierForm = (onSuccess) => {
         beforeUpload: (file) => {
             const isImage = file.type.startsWith("image/");
             if (!isImage) {
-                toast.error("You can only upload image files!");
+                toast.error(t("suppliers.upload_image_only"));
                 return false;
             }
             const isLt2M = file.size / 1024 / 1024 < 2;
             if (!isLt2M) {
-                toast.error("Image must be smaller than 2MB!");
+                toast.error(t("common.max_2mb"));
                 return false;
             }
             return false;
