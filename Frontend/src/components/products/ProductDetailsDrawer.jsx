@@ -17,6 +17,7 @@ import {
 import { useCurrency } from "../../context/CurrencyContext";
 import useI18n from "../../hooks/useI18n";
 import { DEFAULT_LOW_STOCK_THRESHOLD } from "../../utils/productUtils";
+import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 const SOURCE_LABEL_KEYS = {
     purchase: "products.movement_purchase",
@@ -329,7 +330,7 @@ const ProductDetailsDrawer = ({
                     </div>
                 )}
 
-                {(product.unit_measure_code || product.standard_code) && (
+                {ELECTRONIC_INVOICING_ENABLED && (product.unit_measure_code || product.standard_code) && (
                     <div className="module-shell rounded-3xl border border-[#29D8D5]/15">
                         <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)] flex items-center justify-between">
                             <div className="flex items-center gap-2">

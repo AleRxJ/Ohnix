@@ -9,6 +9,7 @@ import useSubscription from "../../hooks/useSubscription";
 import { getMenuItems } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import { useTheme } from "../../context/ThemeContext";
+import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 const { Sider } = Layout;
 
@@ -72,7 +73,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                         theme={isLite ? "light" : "dark"}
                         selectedKeys={[currentPage]}
                         mode="inline"
-                        items={getMenuItems(t, user?.role, user?.company?.countryCode === "CO", showTeam, hasPermission).map((item) => ({
+                        items={getMenuItems(t, user?.role, ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO", showTeam, hasPermission).map((item) => ({
                             ...item,
                         }))}
                         className="border-r-0"

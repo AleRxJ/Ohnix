@@ -8,6 +8,7 @@ import { useTeam } from "../../context/TeamContext";
 import useSubscription from "../../hooks/useSubscription";
 import { useTheme } from "../../context/ThemeContext";
 import ThemeToggle from "../common/ThemeToggle";
+import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 
@@ -76,7 +77,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
                                     theme={isLite ? "light" : "dark"}
                                     selectedKeys={[currentPage]}
                                     mode="inline"
-                                    items={getMenuItems(t, user?.role, user?.company?.countryCode === "CO", showTeam, hasPermission)}
+                                    items={getMenuItems(t, user?.role, ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO", showTeam, hasPermission)}
                                     onClick={onClose}
                                     className="border-r-0"
                                     style={{

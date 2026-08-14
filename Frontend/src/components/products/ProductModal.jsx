@@ -12,6 +12,7 @@ import useSubscription from "../../hooks/useSubscription";
 import { useTeam } from "../../context/TeamContext";
 import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
+import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 const { Option } = Select;
 
@@ -36,7 +37,7 @@ const ProductModal = ({
     const { team } = useTeam();
     const currencyInputProps = getCurrencyInputProps(currency.code);
     const usesColombianEInvoicing =
-        user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
+        ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
     const [scannerOpen, setScannerOpen] = useState(false);
     const codeFieldDisabled = !!editingProduct || isTourCreateStep;
 

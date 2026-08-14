@@ -118,7 +118,7 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = f
             if (isUrgent) return lang === "es" ? `🔥 ${plan} vence en ${daysLeft} días` : `🔥 ${plan} expires in ${daysLeft} days`;
             return lang === "es" ? `⏳ ${plan} vence en ${daysLeft} días` : `⏳ ${plan} expires in ${daysLeft} days`;
         }
-        if (isExpired) return lang === "es" ? "🔒 Tu acceso está bloqueado" : "🔒 Your access is blocked";
+        if (isExpired) return lang === "es" ? "🔒 Tu prueba venció · Acceso limitado" : "🔒 Your trial ended · Limited access";
         if (daysLeft === 1) return lang === "es" ? "🔥 Tu prueba termina mañana" : "🔥 Your trial ends tomorrow";
         if (isUrgent) return lang === "es" ? `🔥 Solo quedan ${daysLeft} días de prueba` : `🔥 Only ${daysLeft} trial days left`;
         return lang === "es" ? `⏳ Prueba activa · ${daysLeft} días restantes` : `⏳ Trial active · ${daysLeft} days left`;
@@ -133,7 +133,7 @@ const TrialBanner = ({ mode, daysLeft, onUpgrade, onDismiss, lang, isRenewal = f
             if (isUrgent) return lang === "es" ? "Renueva hoy para no perder tus datos ni el acceso." : "Renew today to keep your data and access.";
             return lang === "es" ? "Renueva antes de que venza para continuar sin interrupciones." : "Renew before it expires to continue without interruption.";
         }
-        if (isExpired) return lang === "es" ? "Los 14 días de prueba terminaron. Contrata un plan para recuperar el acceso." : "The 14-day trial ended. Subscribe to restore full access.";
+        if (isExpired) return lang === "es" ? "Los 14 días de prueba terminaron. Contrata un plan antes de que se bloquee tu acceso." : "The 14-day trial ended. Subscribe before your access gets blocked.";
         if (isUrgent) return lang === "es" ? "Contrata ahora y no pierdas tus datos ni acceso." : "Subscribe now and keep all your data and access.";
         return lang === "es" ? "Estás en el plan Emprendedor sin costo." : "You're on the Starter plan at no cost.";
     })();
@@ -302,9 +302,17 @@ const DashboardLayout = () => {
     const showExpiredBanner = trialGraceActive && !isOnPaymentSuccess && user?.role !== "admin" && currentPage !== "billing" && canActOnBilling;
 
     // Show urgency banner when ≤3 days left AND still on starter (dismissable for the session)
+    // trialDaysLeft is clamped to a minimum of 1 (see above) so it still reads
+    // "1 day left" for a trial ending within hours - but that clamp also
+    // kicks in once the account is fully blocked (isBlocked), where the
+    // trial ended days ago. Without excluding isBlocked here, a blocked user
+    // would see this "ends soon, subscribe now" nudge floating on top of the
+    // hard block screen, which contradicts it (implies time is left when
+    // access is already cut off).
     const showUrgencyBanner =
         trialUrgent &&
         !trialGraceActive &&
+        !isBlocked &&
         !bannerDismissed &&
         !isOnPaymentSuccess &&
         isStarterPlan &&

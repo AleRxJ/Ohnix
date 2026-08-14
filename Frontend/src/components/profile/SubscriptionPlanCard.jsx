@@ -33,7 +33,6 @@ const FEATURE_ROWS = [
     { key: "autoEmailAlerts",   es: "Alertas email automáticas",       en: "Automatic email alerts"       },
     { key: "configurableAlerts",es: "Alertas por umbral configurable", en: "Configurable stock thresholds" },
     { key: "apiAccess",         es: "Acceso a API REST",               en: "REST API access"              },
-    { key: "electronicInvoicing", es: "Facturación electrónica DIAN",  en: "DIAN electronic invoicing"    },
     { key: "advancedReports",   es: "Reportes avanzados (margen, clientes, equipo)", en: "Advanced reports (margin, customers, team)" },
 ];
 

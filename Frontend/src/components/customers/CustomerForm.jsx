@@ -22,6 +22,7 @@ import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import PhotoDropZone from "../common/PhotoDropZone";
+import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -49,7 +50,7 @@ const CustomerForm = ({
     const isTourCreateStep =
         isTutorialActive && !editingCustomer && effectiveSteps[stepIndex]?.id === "create-customer";
     const usesColombianEInvoicing =
-        user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
+        ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
     const uploadProps = {
         fileList,
         // showUploadList is false so our own PhotoDropZone renders the

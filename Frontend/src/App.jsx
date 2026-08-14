@@ -10,6 +10,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { TeamProvider, useTeam } from "./context/TeamContext";
 import { InventoryTourProvider } from "./context/InventoryTourContext";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
+import { ELECTRONIC_INVOICING_ENABLED } from "./config/features";
 
 // Lazy: ErrorPage uses antd (Result/Button) - same reasoning as
 // AntdConfigProvider below, a static import here would defeat the
@@ -64,6 +65,7 @@ const RouteLoadingFallback = () => (
 const ColombiaInvoiceRoute = ({ children }) => {
     const { user, loading } = useContext(AuthContext);
     const { hasPermission, loading: teamLoading } = useTeam();
+    if (!ELECTRONIC_INVOICING_ENABLED) return <Navigate to="/dashboard" replace />;
     if (loading || teamLoading) return <RouteLoadingFallback />;
     return user?.company?.countryCode === "CO" && hasPermission("orders", "view")
         ? children
@@ -160,7 +162,9 @@ function App() {
                             <Route path="/blog" element={<Blog />} />
                             <Route path="/blog/:slug" element={<BlogPost />} />
                             <Route path="/software-inventario-pymes" element={<SoftwareInventarioPymes />} />
-                            <Route path="/facturacion-electronica-dian" element={<FacturacionElectronica />} />
+                            {ELECTRONIC_INVOICING_ENABLED && (
+                                <Route path="/facturacion-electronica-dian" element={<FacturacionElectronica />} />
+                            )}
                             <Route path="/comparativa/ohnix-vs-alegra" element={<OhnixVsAlegra />} />
                             <Route path="/colaboracion-en-equipo" element={<ColaboracionEquipo />} />
                             <Route path="/demo" element={<Demo />} />

@@ -72,7 +72,6 @@ const ROUTES = [
     "/precios",
     "/demo",
     "/software-inventario-pymes",
-    "/facturacion-electronica-dian",
     "/comparativa/ohnix-vs-alegra",
     "/colaboracion-en-equipo",
     "/blog",

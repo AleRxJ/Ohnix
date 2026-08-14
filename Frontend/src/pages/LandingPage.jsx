@@ -222,7 +222,6 @@ const LandingPage = () => {
                 t("landing.pricing.plans.growth.features.export"),
                 t("landing.pricing.plans.growth.features.pdf"),
                 t("landing.pricing.plans.growth.features.alerts"),
-                t("landing.pricing.plans.growth.features.invoicing"),
                 t("landing.pricing.plans.growth.features.support"),
             ],
             cta: t("landing.pricing.plans.growth.cta"),
@@ -244,7 +243,6 @@ const LandingPage = () => {
                 t("landing.pricing.plans.scale.features.pdf"),
                 t("landing.pricing.plans.scale.features.api"),
                 t("landing.pricing.plans.scale.features.alerts"),
-                t("landing.pricing.plans.scale.features.invoicing"),
                 t("landing.pricing.plans.scale.features.support"),
             ],
             cta: t("landing.pricing.plans.scale.cta"),
@@ -450,14 +448,6 @@ const LandingPage = () => {
                             >
                                 <span className="block text-sm font-semibold">Software para pymes</span>
                                 <span className="mt-1 block text-xs text-[#A9B3B8]">Inventario, compras y pedidos en un flujo.</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => navigate("/facturacion-electronica-dian")}
-                                className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-left text-white hover:border-[#29D8D5]/35"
-                            >
-                                <span className="block text-sm font-semibold">Facturación electrónica DIAN</span>
-                                <span className="mt-1 block text-xs text-[#A9B3B8]">Facturas válidas ante la DIAN desde tus pedidos.</span>
                             </button>
                             <button
                                 type="button"

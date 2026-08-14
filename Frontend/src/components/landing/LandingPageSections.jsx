@@ -1130,22 +1130,6 @@ export const FeatureHubSection = ({ heading }) => {
 
     const features = [
         {
-            title: "Facturación Electrónica DIAN",
-            label: "DIAN",
-            description: "Emite facturas electrónicas válidas ante la DIAN directo desde tus pedidos, con seguimiento de CUFE y estado de aceptación en tiempo real. Disponible desde el plan Negocio.",
-            highlights: ["Integración con Alanube", "CUFE y estado DIAN", "Reintento de emisión"],
-            accent: "#44F3F0",
-            icon: (
-                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
-                    <path d="M9 3h11l5 5v21a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
-                    <path d="M20 3v5h5" />
-                    <line x1="11" y1="16" x2="21" y2="16" />
-                    <line x1="11" y1="20" x2="21" y2="20" />
-                    <line x1="11" y1="24" x2="17" y2="24" />
-                </svg>
-            ),
-        },
-        {
             title: "Colaboración en Equipo",
             label: "TEAMS",
             description: "Invita a tu equipo con roles y permisos por módulo, mira en tiempo real quién está viendo o editando cada registro, y evita que dos personas se pisen sobre el mismo dato. Disponible desde el plan Negocio.",
