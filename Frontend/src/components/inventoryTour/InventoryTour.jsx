@@ -78,12 +78,30 @@ const InventoryTour = () => {
     const totalSteps = effectiveSteps.length - 1; // exclude the "finish" screen from the count shown to the user
     const step = effectiveSteps[stepIndex];
 
+    // Covers the route swap with a brief animated "taking you there" beat
+    // instead of letting the destination page just pop in instantly the
+    // moment navigate() fires - a page-to-page jump used to look like a
+    // hard cut with nothing in between.
+    const [pageTransitioning, setPageTransitioning] = useState(false);
     useEffect(() => {
         if (!isOpen || !step || step.kind === "finish") return;
         if (step.path && location.pathname !== step.path) {
+            setPageTransitioning(true);
             navigate(step.path);
         }
     }, [isOpen, step, location.pathname, navigate]);
+
+    // Holds the transition overlay for a short fixed beat once we've
+    // actually landed on the destination route - deliberately not tied to
+    // data having finished loading (the target-polling below already covers
+    // that separately), just long enough to read as a guided handoff rather
+    // than an instant swap.
+    useEffect(() => {
+        if (!pageTransitioning) return;
+        if (step?.path && location.pathname !== step.path) return;
+        const timeout = setTimeout(() => setPageTransitioning(false), 500);
+        return () => clearTimeout(timeout);
+    }, [pageTransitioning, location.pathname, step]);
 
     // Which step's target `targetEl` currently points at - a ref (not
     // state) specifically so it updates synchronously the instant a step
@@ -151,12 +169,13 @@ const InventoryTour = () => {
     const autoOpenedForStepRef = useRef(-1);
     useEffect(() => {
         if (!isOpen || step?.kind !== "action") return;
+        if (step.completesOn && createdRefs?.[step.completesOn]) return; // already done - see alreadyDoneRef below
         if (!targetEl || typeof targetEl.click !== "function") return;
         if (targetElStepIdRef.current !== step.id) return;
         if (autoOpenedForStepRef.current === stepIndex) return;
         autoOpenedForStepRef.current = stepIndex;
         targetEl.click();
-    }, [isOpen, step, stepIndex, targetEl]);
+    }, [isOpen, step, stepIndex, targetEl, createdRefs]);
 
     // Watch for any antd overlay opening/closing so the mask can step out of
     // the way - checked on every action step (not just opensDialog: true
@@ -200,6 +219,40 @@ const InventoryTour = () => {
                 <div className="rounded-2xl px-6 py-5 bg-[var(--ohnix-surface-card)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-muted)] text-sm">
                     {t("inventory_tour.loading")}
                 </div>
+            </div>,
+            document.body
+        );
+    }
+
+    // Traveling beat between pages - the destination step's own title/desc
+    // preview here doubles as a little "here's what's next" reveal instead
+    // of the new page just appearing with the card already fully formed.
+    if (pageTransitioning) {
+        return createPortal(
+            <div className="fixed inset-0 z-[2099] flex items-center justify-center bg-black/75">
+                <div key={step.id} className="animate-fade-up flex flex-col items-center text-center px-6">
+                    <div className="ohnix-tour-compass mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#29D8D5]/15">
+                        <CompassOutlined className="text-2xl text-[#29D8D5]" />
+                    </div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#29D8D5] mb-2">
+                        {t("inventory_tour.navigating_hint")}
+                    </p>
+                    <h3 className="text-base font-bold text-[var(--ohnix-text-primary)]">
+                        {t(step.titleKey)}
+                    </h3>
+                </div>
+                <style>{`
+                    .ohnix-tour-compass {
+                        animation: ohnix-tour-compass-spin 1.1s cubic-bezier(0.65,0,0.35,1) infinite;
+                    }
+                    @keyframes ohnix-tour-compass-spin {
+                        0%, 100% { transform: rotate(-12deg); }
+                        50% { transform: rotate(12deg); }
+                    }
+                    @media (prefers-reduced-motion: reduce) {
+                        .ohnix-tour-compass { animation: none; }
+                    }
+                `}</style>
             </div>,
             document.body
         );
@@ -279,6 +332,13 @@ const InventoryTour = () => {
 
     const isFirst = stepIndex === 0;
     const isAction = step.kind === "action";
+    // Going Back can land on a "create X" step whose X was already created
+    // (createdRefs is only ever populated by a REAL notifyAction ref, so
+    // this reflects something that genuinely happened, not a guess) -
+    // presenting it again as "go create this" invited creating a duplicate.
+    // Detected generically: every creation step's `completesOn` is exactly
+    // the createdRefs key its own notifyAction call fills in.
+    const alreadyDoneRef = isAction ? createdRefs?.[step.completesOn] : null;
     // Only "info" steps get a manual Next - "action" steps only ever move
     // forward via notifyAction(), fired by the exact same create/complete
     // hook that persists the real record. There is deliberately no "I did
@@ -306,7 +366,8 @@ const InventoryTour = () => {
                 }}
             >
                 <div
-                    className="rounded-2xl p-4"
+                    key={step.id}
+                    className="rounded-2xl p-4 animate-fade-up"
                     style={{ background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))" }}
                 >
                     <div className="flex items-center gap-2 mb-2">
@@ -387,7 +448,8 @@ const InventoryTour = () => {
             }}
         >
             <div
-                className="rounded-2xl p-5"
+                key={step.id}
+                className="rounded-2xl p-5 animate-fade-up"
                 style={{ background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))" }}
             >
                 <div className="flex items-center justify-between mb-3">
@@ -418,46 +480,88 @@ const InventoryTour = () => {
                     {t(step.titleKey)}
                 </h3>
                 <p className="text-sm text-[var(--ohnix-text-muted)] leading-relaxed mb-4">
-                    {t(step.descKey)}
+                    {alreadyDoneRef
+                        ? t("inventory_tour.already_done_desc", { name: alreadyDoneRef.name })
+                        : t(step.descKey)}
                 </p>
 
                 {isAction ? (
-                    <div className="flex flex-col gap-2">
-                        {targetEl && step.id !== "complete-order" && (
+                    alreadyDoneRef ? (
+                        // Reached via Back after the real creation already
+                        // happened (createdRefs only holds a ref once
+                        // notifyAction fired for real) - the only case where a
+                        // manual "continue" button is safe, since nothing is
+                        // being faked here.
+                        <div className="flex flex-col gap-2">
                             <button
                                 type="button"
-                                onClick={handleOpenTarget}
-                                className="h-9 rounded-lg text-xs font-semibold border cursor-pointer"
-                                style={{ borderColor: "var(--ohnix-line-4)", color: "var(--ohnix-text-primary)", background: "transparent" }}
+                                onClick={handleNext}
+                                className="h-9 rounded-lg text-xs font-bold border-0 cursor-pointer flex items-center justify-center gap-1.5"
+                                style={{ background: "linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%)", color: "#021314" }}
                             >
-                                {t("inventory_tour.open_for_me")}
+                                {t("common.next")}
+                                <ArrowRightOutlined style={{ fontSize: 11 }} />
                             </button>
-                        )}
-                        <p className="text-[11px] text-[var(--ohnix-text-dim)] text-center m-0">
-                            {t("inventory_tour.auto_advance_hint")}
-                        </p>
-                        <div className="flex items-center justify-between">
-                            {!isFirst ? (
+                            <div className="flex items-center justify-between">
+                                {!isFirst ? (
+                                    <button
+                                        type="button"
+                                        onClick={handlePrev}
+                                        className="text-xs text-[var(--ohnix-text-dim)] hover:text-[var(--ohnix-text-muted)] border-0 bg-transparent cursor-pointer px-1 flex items-center gap-1"
+                                    >
+                                        <ArrowLeftOutlined style={{ fontSize: 10 }} />
+                                        {t("common.back")}
+                                    </button>
+                                ) : (
+                                    <span />
+                                )}
                                 <button
                                     type="button"
-                                    onClick={handlePrev}
-                                    className="text-xs text-[var(--ohnix-text-dim)] hover:text-[var(--ohnix-text-muted)] border-0 bg-transparent cursor-pointer px-1 flex items-center gap-1"
+                                    onClick={close}
+                                    className="text-xs text-[var(--ohnix-text-dim)] hover:text-[var(--ohnix-text-muted)] border-0 bg-transparent cursor-pointer px-1"
                                 >
-                                    <ArrowLeftOutlined style={{ fontSize: 10 }} />
-                                    {t("common.back")}
+                                    {t("inventory_tour.pause_tour")}
                                 </button>
-                            ) : (
-                                <span />
-                            )}
-                            <button
-                                type="button"
-                                onClick={close}
-                                className="text-xs text-[var(--ohnix-text-dim)] hover:text-[var(--ohnix-text-muted)] border-0 bg-transparent cursor-pointer px-1"
-                            >
-                                {t("inventory_tour.pause_tour")}
-                            </button>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="flex flex-col gap-2">
+                            {targetEl && step.id !== "complete-order" && (
+                                <button
+                                    type="button"
+                                    onClick={handleOpenTarget}
+                                    className="h-9 rounded-lg text-xs font-semibold border cursor-pointer"
+                                    style={{ borderColor: "var(--ohnix-line-4)", color: "var(--ohnix-text-primary)", background: "transparent" }}
+                                >
+                                    {t("inventory_tour.open_for_me")}
+                                </button>
+                            )}
+                            <p className="text-[11px] text-[var(--ohnix-text-dim)] text-center m-0">
+                                {t("inventory_tour.auto_advance_hint")}
+                            </p>
+                            <div className="flex items-center justify-between">
+                                {!isFirst ? (
+                                    <button
+                                        type="button"
+                                        onClick={handlePrev}
+                                        className="text-xs text-[var(--ohnix-text-dim)] hover:text-[var(--ohnix-text-muted)] border-0 bg-transparent cursor-pointer px-1 flex items-center gap-1"
+                                    >
+                                        <ArrowLeftOutlined style={{ fontSize: 10 }} />
+                                        {t("common.back")}
+                                    </button>
+                                ) : (
+                                    <span />
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={close}
+                                    className="text-xs text-[var(--ohnix-text-dim)] hover:text-[var(--ohnix-text-muted)] border-0 bg-transparent cursor-pointer px-1"
+                                >
+                                    {t("inventory_tour.pause_tour")}
+                                </button>
+                            </div>
+                        </div>
+                    )
                 ) : (
                     <div className="flex items-center justify-between gap-2">
                         <button

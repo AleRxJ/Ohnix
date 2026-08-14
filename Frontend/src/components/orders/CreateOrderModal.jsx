@@ -1,9 +1,17 @@
-import { Modal, Form, Row, Col, Select, Button, Divider } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Modal, Form, Row, Col, Select, Button, Divider, Card } from "antd";
+import { PlusOutlined, ShoppingCartOutlined, FileTextOutlined } from "@ant-design/icons";
 import OrderFormItems from "./OrderFormItems";
 import useI18n from "../../hooks/useI18n";
 
 const { Option } = Select;
+
+const sectionCardProps = {
+    className: "shadow-sm border-0 module-shell",
+    headStyle: {
+        borderBottom: "1px solid var(--ohnix-line-3)",
+        background: "transparent",
+    },
+};
 
 const CreateOrderModal = ({
     visible,
@@ -20,14 +28,19 @@ const CreateOrderModal = ({
     return (
         <Modal
             title={
-                <div className="text-xl text-center uppercase tracking-wider font-bold text-[var(--ohnix-text-primary)]">
-                    {t("orders.create_new_order")}
+                <div className="flex items-center justify-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                        <ShoppingCartOutlined className="text-[#44F3F0]" />
+                    </div>
+                    <span className="text-xl uppercase tracking-wider font-bold text-[var(--ohnix-text-primary)]">
+                        {t("orders.create_new_order")}
+                    </span>
                 </div>
             }
             open={visible}
             onCancel={onCancel}
             footer={null}
-            width={800}
+            width={Math.min(880, window.innerWidth * 0.94)}
             centered
             destroyOnClose
             className="create-order-modal"
@@ -46,6 +59,8 @@ const CreateOrderModal = ({
                 },
                 body: {
                     padding: "24px",
+                    maxHeight: "75vh",
+                    overflowY: "auto",
                 },
             }}
         >
@@ -53,13 +68,20 @@ const CreateOrderModal = ({
                 form={form}
                 layout="vertical"
                 onFinish={onSubmit}
-                className="mt-6"
+                className="mt-6 space-y-6"
                 initialValues={initialValues}
             >
-                <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-[var(--ohnix-text-soft)] mb-4 uppercase tracking-wide">
-                        {t("orders.order_information")}
-                    </h4>
+                <Card
+                    {...sectionCardProps}
+                    title={
+                        <div className="flex items-center text-[var(--ohnix-text-primary)]">
+                            <FileTextOutlined className="mr-3 text-[#29D8D5] text-lg" />
+                            <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
+                                {t("orders.order_information")}
+                            </span>
+                        </div>
+                    }
+                >
                     <Row gutter={16}>
                         <Col xs={24} sm={12}>
                             <Form.Item
@@ -105,8 +127,9 @@ const CreateOrderModal = ({
                                     </span>
                                 }
                                 initialValue="pending"
+                                extra={isTourCreateStep ? t("inventory_tour.order_status_locked_hint") : undefined}
                             >
-                                <Select size="large">
+                                <Select size="large" disabled={isTourCreateStep}>
                                     <Option value="pending">{t("orders.pending")}</Option>
                                     <Option value="processing">
                                         {t("orders.processing")}
@@ -116,13 +139,11 @@ const CreateOrderModal = ({
                             </Form.Item>
                         </Col>
                     </Row>
-                </div>
-
-                <Divider className="my-6" />
+                </Card>
 
                 <Form.List name="orderItems" initialValue={initialValues?.orderItems ?? [{}]}>
                     {(fields, { add, remove }) => (
-                        <div className="mb-6">
+                        <div>
                             <div className="flex items-center justify-between mb-4">
                                 <h4 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">
                                     {t("orders.order_items")}

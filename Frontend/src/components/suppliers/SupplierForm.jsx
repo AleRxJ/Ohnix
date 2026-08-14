@@ -8,7 +8,7 @@ import {
     Row,
     Col,
     Select,
-    Divider,
+    Card,
 } from "antd";
 import {
     UserOutlined,
@@ -17,6 +17,7 @@ import {
     MailOutlined,
     BankOutlined,
     UploadOutlined,
+    EnvironmentOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
@@ -25,6 +26,14 @@ import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
 
 const { Option } = Select;
+
+const sectionCardProps = {
+    className: "shadow-sm border-0 module-shell h-full",
+    headStyle: {
+        borderBottom: "1px solid var(--ohnix-line-3)",
+        background: "transparent",
+    },
+};
 
 const SupplierForm = ({
     visible,
@@ -56,10 +65,15 @@ const SupplierForm = ({
     return (
         <Modal
             title={
-                <div className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
-                    {editMode
-                        ? t("suppliers.edit_supplier")
-                        : t("suppliers.add_new_supplier")}
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                        <ShopOutlined className="text-[#44F3F0]" />
+                    </div>
+                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                        {editMode
+                            ? t("suppliers.edit_supplier")
+                            : t("suppliers.add_new_supplier")}
+                    </span>
                 </div>
             }
             open={visible}
@@ -82,7 +96,7 @@ const SupplierForm = ({
                     borderBottom: "1px solid var(--ohnix-line-3)",
                     padding: "20px 24px 16px",
                 },
-                body: { padding: "20px 24px 24px" },
+                body: { padding: "20px 24px 24px", maxHeight: "75vh", overflowY: "auto" },
             }}
         >
             {team && editingSupplier?._id && (
@@ -93,266 +107,299 @@ const SupplierForm = ({
                 layout="vertical"
                 onFinish={onSubmit}
                 autoComplete="off"
-                className="space-y-6"
-                size="large"
+                className="space-y-5"
             >
-                <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12}>
-                        <Form.Item
-                            name="name"
-                            label={
-                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
-                                    {t("suppliers.supplier_name")}
-                                </span>
+                {/* Contact Information + Banking Information */}
+                <Row gutter={[20, 20]} align="stretch">
+                    <Col xs={24} md={12}>
+                        <Card
+                            {...sectionCardProps}
+                            title={
+                                <div className="flex items-center text-[var(--ohnix-text-primary)]">
+                                    <UserOutlined className="mr-3 text-[#29D8D5] text-lg" />
+                                    <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
+                                        {t("suppliers.contact_information")}
+                                    </span>
+                                </div>
                             }
-                            rules={[
-                                {
-                                    required: true,
-                                    message: t("suppliers.enter_supplier_name"),
-                                },
-                                {
-                                    max: 50,
-                                    message: t("suppliers.name_max_length"),
-                                },
-                            ]}
-                            extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
                         >
-                            <Input
-                                prefix={
-                                    <UserOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
+                            <Form.Item
+                                name="name"
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("suppliers.supplier_name")}
+                                    </span>
                                 }
-                                placeholder={t("suppliers.enter_supplier_name_placeholder")}
-                                className="h-11 rounded-md auth-ohnix-input"
-                                disabled={isTourCreateStep}
-                            />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} sm={12}>
-                        <Form.Item
-                            name="email"
-                            label={
-                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
-                                    {t("suppliers.email")}
-                                </span>
-                            }
-                            rules={[
-                                {
-                                    required: true,
-                                    message: t("suppliers.enter_email"),
-                                },
-                                {
-                                    type: "email",
-                                    message: t("validation.invalid_email"),
-                                },
-                                {
-                                    max: 50,
-                                    message: t("suppliers.email_max_length"),
-                                },
-                            ]}
-                        >
-                            <Input
-                                prefix={
-                                    <MailOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
-                                }
-                                placeholder={t("suppliers.enter_email_placeholder")}
-                                className="h-11 rounded-md auth-ohnix-input"
-                                disabled={isTourCreateStep}
-                            />
-                        </Form.Item>
-                    </Col>
-                </Row>
-
-                <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12}>
-                        <Form.Item
-                            name="phone"
-                            label={
-                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
-                                    {t("suppliers.phone")}
-                                </span>
-                            }
-                            rules={[
-                                {
-                                    required: true,
-                                    message: t("suppliers.enter_phone"),
-                                },
-                                {
-                                    max: 15,
-                                    message: t("suppliers.phone_max_length"),
-                                },
-                            ]}
-                        >
-                            <Input
-                                prefix={
-                                    <PhoneOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
-                                }
-                                placeholder={t("suppliers.enter_phone_placeholder")}
-                                className="h-11 rounded-md auth-ohnix-input"
-                                disabled={isTourCreateStep}
-                            />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} sm={12}>
-                        <Form.Item
-                            name="type"
-                            label={
-                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
-                                    {t("suppliers.supplier_type")}
-                                </span>
-                            }
-                        >
-                            <Select
-                                placeholder={t("suppliers.select_supplier_type")}
-                                className="auth-ohnix-input"
+                                rules={[
+                                    {
+                                        required: true,
+                                        message: t("suppliers.enter_supplier_name"),
+                                    },
+                                    {
+                                        max: 50,
+                                        message: t("suppliers.name_max_length"),
+                                    },
+                                ]}
+                                extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
                             >
-                                <Option value="individual">{t("suppliers.individual")}</Option>
-                                <Option value="wholesale">{t("suppliers.wholesale")}</Option>
-                                <Option value="retail">{t("suppliers.retail")}</Option>
-                                <Option value="company">{t("suppliers.company")}</Option>
-                            </Select>
-                        </Form.Item>
-                    </Col>
-                </Row>
-
-                <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12}>
-                        <Form.Item
-                            name="shopname"
-                            label={
-                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
-                                    {t("suppliers.shop_name")}
-                                </span>
-                            }
-                            rules={[
-                                {
-                                    max: 50,
-                                    message: t("suppliers.shop_name_max_length"),
-                                },
-                            ]}
-                        >
-                            <Input
-                                prefix={
-                                    <ShopOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
+                                <Input
+                                    size="large"
+                                    prefix={
+                                        <UserOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
+                                    }
+                                    placeholder={t("suppliers.enter_supplier_name_placeholder")}
+                                    className="rounded-lg auth-ohnix-input"
+                                    disabled={isTourCreateStep}
+                                />
+                            </Form.Item>
+                            <Form.Item
+                                name="email"
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("suppliers.email")}
+                                    </span>
                                 }
-                                placeholder={t("suppliers.enter_shop_name_placeholder")}
-                                className="h-11 rounded-md auth-ohnix-input"
-                            />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} sm={12}>
-                        <Form.Item
-                            name="address"
-                            label={
-                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
-                                    {t("common.address")}
-                                </span>
-                            }
-                            rules={[
-                                {
-                                    required: true,
-                                    message: t("suppliers.enter_address"),
-                                },
-                                {
-                                    max: 100,
-                                    message: t("suppliers.address_max_length"),
-                                },
-                            ]}
-                            extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
-                        >
-                            <Input
-                                placeholder={t("suppliers.enter_address_placeholder")}
-                                className="h-11 rounded-md auth-ohnix-input"
-                                disabled={isTourCreateStep}
-                            />
-                        </Form.Item>
-                    </Col>
-                </Row>
-
-                <Divider className="border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)]">
-                    {t("suppliers.banking_information")}
-                </Divider>
-
-                <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12}>
-                        <Form.Item
-                            name="bank_name"
-                            label={
-                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
-                                    {t("suppliers.bank_name")}
-                                </span>
-                            }
-                            rules={[
-                                {
-                                    max: 50,
-                                    message: t("suppliers.bank_name_max_length"),
-                                },
-                            ]}
-                        >
-                            <Input
-                                prefix={
-                                    <BankOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
+                                rules={[
+                                    {
+                                        required: true,
+                                        message: t("suppliers.enter_email"),
+                                    },
+                                    {
+                                        type: "email",
+                                        message: t("validation.invalid_email"),
+                                    },
+                                    {
+                                        max: 50,
+                                        message: t("suppliers.email_max_length"),
+                                    },
+                                ]}
+                            >
+                                <Input
+                                    size="large"
+                                    prefix={
+                                        <MailOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
+                                    }
+                                    placeholder={t("suppliers.enter_email_placeholder")}
+                                    className="rounded-lg auth-ohnix-input"
+                                    disabled={isTourCreateStep}
+                                />
+                            </Form.Item>
+                            <Form.Item
+                                name="phone"
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("suppliers.phone")}
+                                    </span>
                                 }
-                                placeholder={t("suppliers.enter_bank_name_placeholder")}
-                                className="h-11 rounded-md auth-ohnix-input"
-                            />
-                        </Form.Item>
+                                rules={[
+                                    {
+                                        required: true,
+                                        message: t("suppliers.enter_phone"),
+                                    },
+                                    {
+                                        max: 15,
+                                        message: t("suppliers.phone_max_length"),
+                                    },
+                                ]}
+                            >
+                                <Input
+                                    size="large"
+                                    prefix={
+                                        <PhoneOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
+                                    }
+                                    placeholder={t("suppliers.enter_phone_placeholder")}
+                                    className="rounded-lg auth-ohnix-input"
+                                    disabled={isTourCreateStep}
+                                />
+                            </Form.Item>
+                            <Form.Item
+                                name="address"
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("common.address")}
+                                    </span>
+                                }
+                                rules={[
+                                    {
+                                        required: true,
+                                        message: t("suppliers.enter_address"),
+                                    },
+                                    {
+                                        max: 100,
+                                        message: t("suppliers.address_max_length"),
+                                    },
+                                ]}
+                                extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
+                            >
+                                <Input
+                                    size="large"
+                                    prefix={
+                                        <EnvironmentOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
+                                    }
+                                    placeholder={t("suppliers.enter_address_placeholder")}
+                                    className="rounded-lg auth-ohnix-input"
+                                    disabled={isTourCreateStep}
+                                />
+                            </Form.Item>
+                        </Card>
                     </Col>
-                    <Col xs={24} sm={12}>
-                        <Form.Item
-                            name="account_holder"
-                            label={
-                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
-                                    {t("suppliers.account_holder")}
-                                </span>
+                    <Col xs={24} md={12}>
+                        <Card
+                            {...sectionCardProps}
+                            title={
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center text-[var(--ohnix-text-primary)]">
+                                        <BankOutlined className="mr-3 text-[#29D8D5] text-lg" />
+                                        <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
+                                            {t("suppliers.banking_information")}
+                                        </span>
+                                    </div>
+                                    <span className="text-xs font-normal text-[var(--ohnix-text-muted)] bg-[var(--ohnix-line-1)] px-3 py-1 rounded-full border border-[var(--ohnix-line-3)]">
+                                        {t("customers.optional")}
+                                    </span>
+                                </div>
                             }
-                            rules={[
-                                {
-                                    max: 50,
-                                    message: t("suppliers.account_holder_max_length"),
-                                },
-                            ]}
                         >
-                            <Input
-                                placeholder={t("suppliers.enter_account_holder_placeholder")}
-                                className="h-11 rounded-md auth-ohnix-input"
-                            />
-                        </Form.Item>
+                            <Form.Item
+                                name="bank_name"
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("suppliers.bank_name")}
+                                    </span>
+                                }
+                                rules={[
+                                    {
+                                        max: 50,
+                                        message: t("suppliers.bank_name_max_length"),
+                                    },
+                                ]}
+                            >
+                                <Input
+                                    size="large"
+                                    prefix={
+                                        <BankOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
+                                    }
+                                    placeholder={t("suppliers.enter_bank_name_placeholder")}
+                                    className="rounded-lg auth-ohnix-input"
+                                />
+                            </Form.Item>
+                            <Form.Item
+                                name="account_holder"
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("suppliers.account_holder")}
+                                    </span>
+                                }
+                                rules={[
+                                    {
+                                        max: 50,
+                                        message: t("suppliers.account_holder_max_length"),
+                                    },
+                                ]}
+                            >
+                                <Input
+                                    size="large"
+                                    placeholder={t("suppliers.enter_account_holder_placeholder")}
+                                    className="rounded-lg auth-ohnix-input"
+                                />
+                            </Form.Item>
+                            <Form.Item
+                                name="account_number"
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("suppliers.account_number")}
+                                    </span>
+                                }
+                                rules={[
+                                    {
+                                        max: 50,
+                                        message: t("suppliers.account_number_max_length"),
+                                    },
+                                ]}
+                            >
+                                <Input
+                                    size="large"
+                                    placeholder={t("suppliers.enter_account_number_placeholder")}
+                                    className="rounded-lg auth-ohnix-input"
+                                />
+                            </Form.Item>
+                        </Card>
                     </Col>
                 </Row>
 
-                <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12}>
-                        <Form.Item
-                            name="account_number"
-                            label={
-                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
-                                    {t("suppliers.account_number")}
-                                </span>
+                {/* Business Details + Photo */}
+                <Row gutter={[20, 20]} align="stretch">
+                    <Col xs={24} md={12}>
+                        <Card
+                            {...sectionCardProps}
+                            title={
+                                <div className="flex items-center text-[var(--ohnix-text-primary)]">
+                                    <ShopOutlined className="mr-3 text-[#44F3F0] text-lg" />
+                                    <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
+                                        {t("suppliers.business_details")}
+                                    </span>
+                                </div>
                             }
-                            rules={[
-                                {
-                                    max: 50,
-                                    message: t("suppliers.account_number_max_length"),
-                                },
-                            ]}
                         >
-                            <Input
-                                placeholder={t("suppliers.enter_account_number_placeholder")}
-                                className="h-11 rounded-md auth-ohnix-input"
-                            />
-                        </Form.Item>
+                            <Form.Item
+                                name="shopname"
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("suppliers.shop_name")}
+                                    </span>
+                                }
+                                rules={[
+                                    {
+                                        max: 50,
+                                        message: t("suppliers.shop_name_max_length"),
+                                    },
+                                ]}
+                            >
+                                <Input
+                                    size="large"
+                                    prefix={
+                                        <ShopOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
+                                    }
+                                    placeholder={t("suppliers.enter_shop_name_placeholder")}
+                                    className="rounded-lg auth-ohnix-input"
+                                />
+                            </Form.Item>
+                            <Form.Item
+                                name="type"
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("suppliers.supplier_type")}
+                                    </span>
+                                }
+                            >
+                                <Select
+                                    size="large"
+                                    placeholder={t("suppliers.select_supplier_type")}
+                                    className="auth-ohnix-input"
+                                >
+                                    <Option value="individual">{t("suppliers.individual")}</Option>
+                                    <Option value="wholesale">{t("suppliers.wholesale")}</Option>
+                                    <Option value="retail">{t("suppliers.retail")}</Option>
+                                    <Option value="company">{t("suppliers.company")}</Option>
+                                </Select>
+                            </Form.Item>
+                        </Card>
                     </Col>
-                    <Col xs={24} sm={12}>
-                        <Form.Item
-                            label={
-                                <span className="text-sm font-medium text-[var(--ohnix-text-muted)]">
-                                    {t("suppliers.supplier_photo")}
-                                </span>
+                    <Col xs={24} md={12}>
+                        <Card
+                            {...sectionCardProps}
+                            title={
+                                <div className="flex items-center text-[var(--ohnix-text-primary)]">
+                                    <UploadOutlined className="mr-3 text-[#44F3F0] text-lg" />
+                                    <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
+                                        {t("suppliers.supplier_photo")}
+                                    </span>
+                                </div>
                             }
                         >
                             <Upload {...uploadProps}>
                                 {fileList.length === 0 && (
-                                    <div className="text-center mt-2 border border-dashed border-[var(--ohnix-line-5)] rounded-xl hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer bg-[var(--ohnix-line-1)] hover:bg-[var(--ohnix-hover-overlay)] p-4 min-h-[120px] flex flex-col items-center justify-center">
+                                    <div className="text-center border border-dashed border-[var(--ohnix-line-5)] rounded-xl hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer bg-[var(--ohnix-line-1)] hover:bg-[var(--ohnix-hover-overlay)] p-4 min-h-[110px] flex flex-col items-center justify-center">
                                         <UploadOutlined className="text-3xl text-[#29D8D5] mb-3 block" />
                                         <div className="text-[var(--ohnix-text-primary)] font-medium mb-1">
                                             {t("suppliers.upload_photo")}
@@ -363,7 +410,7 @@ const SupplierForm = ({
                                     </div>
                                 )}
                             </Upload>
-                        </Form.Item>
+                        </Card>
                     </Col>
                 </Row>
 
@@ -386,7 +433,6 @@ const SupplierForm = ({
                         </Button>
                     </div>
                 </Form.Item>
-
             </Form>
         </Modal>
     );

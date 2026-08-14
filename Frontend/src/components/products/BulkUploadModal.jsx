@@ -167,8 +167,10 @@ const BulkUploadModal = ({
     return (
         <Modal
             title={
-                <div className="flex items-center gap-2">
-                    <FileTextOutlined className="text-[#44F3F0]" />
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                        <FileTextOutlined className="text-[#44F3F0]" />
+                    </div>
                     <span className="text-lg font-bold text-[var(--ohnix-text-primary)]">
                         {t("products.bulk_product_upload")}
                     </span>

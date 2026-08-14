@@ -7,6 +7,11 @@ import AuthContext from "../../context/AuthContext.jsx";
 import { formatCurrency } from "../../utils/currency.js";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
+import { resolveApiErrorMessage } from "../../utils/apiError";
+
+const UPDATE_STATUS_ERROR_CODES = {
+    invalid_purchase_status_transition: "purchases.invalid_status_transition",
+};
 
 export const usePurchase = () => {
     const { t } = useI18n();
@@ -17,6 +22,10 @@ export const usePurchase = () => {
     const [loading, setLoading] = useState(false);
     const [purchaseDetails, setPurchaseDetails] = useState([]);
     const [returnPreviewData, setReturnPreviewData] = useState(null);
+    // Which purchase's status action is mid-request - same gap as orders had
+    // (see useOrderOperations.js): no feedback at all while the PATCH is in
+    // flight made a slow request look like the click did nothing.
+    const [updatingPurchaseId, setUpdatingPurchaseId] = useState(null);
     const [stats, setStats] = useState({
         pending: 0,
         completed: 0,
@@ -163,13 +172,14 @@ export const usePurchase = () => {
 
     // Update purchase status
     const updatePurchaseStatus = async (purchaseId, status) => {
+        setUpdatingPurchaseId(purchaseId);
         try {
             const response = await api.patch(`/purchases/${purchaseId}`, {
                 purchase_status: status,
             });
             if (response.data.success) {
                 toast.success(t("purchases.purchase_updated"));
-                fetchPurchases();
+                await fetchPurchases();
                 if (status === "completed" && isTutorialActive) notifyAction("purchase-completed");
 
                 // Show return information if status is returned
@@ -189,9 +199,13 @@ export const usePurchase = () => {
                 return { success: false };
             }
         } catch (error) {
-            toast.error(t("purchases.error_updating_status"));
+            toast.error(
+                resolveApiErrorMessage(error, t, UPDATE_STATUS_ERROR_CODES, "purchases.error_updating_status")
+            );
             console.error("Error:", error);
             return { success: false };
+        } finally {
+            setUpdatingPurchaseId(null);
         }
     };
 
@@ -211,6 +225,7 @@ export const usePurchase = () => {
         purchaseDetails,
         returnPreviewData,
         stats,
+        updatingPurchaseId,
 
         // Actions
         fetchPurchases,

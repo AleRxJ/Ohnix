@@ -1,5 +1,6 @@
 import React, { useContext, useEffect } from "react";
 import { Modal } from "antd";
+import { TeamOutlined } from "@ant-design/icons";
 import CustomerForm from "./CustomerForm";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
@@ -34,11 +35,21 @@ const CustomerModal = ({
 
     return (
         <Modal
-            title={editingCustomer ? t("customers.edit_customer") : t("customers.add_new_customer")}
+            title={
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                        <TeamOutlined className="text-[#44F3F0]" />
+                    </div>
+                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                        {editingCustomer ? t("customers.edit_customer") : t("customers.add_new_customer")}
+                    </span>
+                </div>
+            }
             open={visible}
             onCancel={onCancel}
             footer={null}
-            width={800}
+            width={Math.min(900, window.innerWidth * 0.94)}
+            centered
             destroyOnClose
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.55)" },
@@ -54,7 +65,7 @@ const CustomerModal = ({
                     borderBottom: "1px solid var(--ohnix-line-3)",
                     padding: "20px 24px 16px",
                 },
-                body: { padding: "24px" },
+                body: { padding: "24px", maxHeight: "78vh", overflowY: "auto" },
             }}
         >
             {team && editingCustomer?._id && (

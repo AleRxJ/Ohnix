@@ -8,22 +8,26 @@ import {
     Col,
     Divider,
     Button,
-    Space,
-    InputNumber,
     Card,
-    Tag,
 } from "antd";
 import {
     PlusOutlined,
-    MinusCircleOutlined,
     ShoppingCartOutlined,
+    FileTextOutlined,
 } from "@ant-design/icons";
+import PurchaseFormItem from "./PurchaseFormItem";
 import useI18n from "../../hooks/useI18n";
-import { useCurrency } from "../../context/CurrencyContext";
-import { getCurrencyInputProps } from "../../utils/currency";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 
 const { Option } = Select;
+
+const sectionCardProps = {
+    className: "shadow-sm border-0 module-shell",
+    headStyle: {
+        borderBottom: "1px solid var(--ohnix-line-3)",
+        background: "transparent",
+    },
+};
 
 const PurchaseForm = ({
     visible,
@@ -36,21 +40,11 @@ const PurchaseForm = ({
     submitting,
 }) => {
     const { t } = useI18n();
-    const { currency } = useCurrency();
-    const currencyInputProps = getCurrencyInputProps(currency.code);
     const { isOpen: isTutorialActive, effectiveSteps, stepIndex } = useInventoryTour();
     const isTourCreateStep = isTutorialActive && effectiveSteps[stepIndex]?.id === "create-purchase";
-    // Build a lookup map for quick access to product details
-    const productMap = React.useMemo(() => {
-        const map = {};
-        products.forEach((p) => {
-            map[p._id] = p;
-        });
-        return map;
-    }, [products]);
 
     const handleProductChange = (productId, fieldName) => {
-        const product = productMap[productId];
+        const product = products.find((p) => p._id === productId);
         if (!product) return;
 
         // Auto-fill the unit cost with the product's buying price
@@ -91,7 +85,8 @@ const PurchaseForm = ({
             open={visible}
             onCancel={onCancel}
             footer={null}
-            width={950}
+            width={880}
+            centered
             className="purchase-form-modal"
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.55)" },
@@ -107,7 +102,7 @@ const PurchaseForm = ({
                     borderBottom: "1px solid var(--ohnix-line-3)",
                     padding: "20px 24px 16px",
                 },
-                body: { padding: "24px" },
+                body: { padding: "24px", maxHeight: "75vh", overflowY: "auto" },
             }}
         >
             <Form
@@ -115,18 +110,47 @@ const PurchaseForm = ({
                 layout="vertical"
                 onFinish={handleSubmit}
                 initialValues={initialValues}
-                className="mt-2"
+                className="mt-2 space-y-6"
             >
-                <Card className="mb-1 border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-primary)] shadow-sm">
-                    <Row gutter={[16, 16]}>
+                <Card
+                    {...sectionCardProps}
+                    title={
+                        <div className="flex items-center text-[var(--ohnix-text-primary)]">
+                            <FileTextOutlined className="mr-3 text-[#29D8D5] text-lg" />
+                            <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
+                                {t("purchases.purchase_information")}
+                            </span>
+                        </div>
+                    }
+                >
+                    <Row gutter={16}>
                         <Col xs={24} sm={12}>
-                            <Form.Item label={t("purchases.purchase_number")} name="purchase_no" rules={[{ required: true, message: t("purchases.enter_purchase_number") }, { max: 10, message: t("purchases.purchase_number_max_length") }]}>
-                                <Input placeholder={t("purchases.purchase_number_placeholder")} size="large" className="rounded-lg purchase-form-input" />
+                            <Form.Item
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("purchases.purchase_number")}
+                                    </span>
+                                }
+                                name="purchase_no"
+                                rules={[
+                                    { required: true, message: t("purchases.enter_purchase_number") },
+                                    { max: 10, message: t("purchases.purchase_number_max_length") },
+                                ]}
+                            >
+                                <Input
+                                    placeholder={t("purchases.purchase_number_placeholder")}
+                                    size="large"
+                                    className="w-full auth-ohnix-input"
+                                />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
                             <Form.Item
-                                label={t("purchases.supplier")}
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("purchases.supplier")}
+                                    </span>
+                                }
                                 name="supplier_id"
                                 rules={[{ required: true, message: t("purchases.select_supplier_message") }]}
                                 extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
@@ -134,7 +158,7 @@ const PurchaseForm = ({
                                 <Select
                                     placeholder={t("purchases.select_supplier")}
                                     size="large"
-                                    className="rounded-lg purchase-form-input"
+                                    className="w-full auth-ohnix-input"
                                     showSearch
                                     optionFilterProp="children"
                                     disabled={isTourCreateStep}
@@ -147,9 +171,22 @@ const PurchaseForm = ({
                                 </Select>
                             </Form.Item>
                         </Col>
-                        <Col xs={24}>
-                            <Form.Item label={t("common.status")} name="purchase_status">
-                                <Select placeholder={t("purchases.select_status")} size="large" className="rounded-lg purchase-form-input">
+                        <Col xs={24} sm={12}>
+                            <Form.Item
+                                label={
+                                    <span className="font-medium text-[var(--ohnix-text-muted)]">
+                                        {t("common.status")}
+                                    </span>
+                                }
+                                name="purchase_status"
+                                extra={isTourCreateStep ? t("inventory_tour.purchase_status_locked_hint") : undefined}
+                            >
+                                <Select
+                                    placeholder={t("purchases.select_status")}
+                                    size="large"
+                                    className="w-full auth-ohnix-input"
+                                    disabled={isTourCreateStep}
+                                >
                                     <Option value="pending">{t("purchases.pending")}</Option>
                                     <Option value="completed">{t("purchases.completed")}</Option>
                                 </Select>
@@ -158,160 +195,62 @@ const PurchaseForm = ({
                     </Row>
                 </Card>
 
-                    <Divider orientation="left">
-                        <span className="text-lg font-medium text-[var(--ohnix-text-primary)]">{t("purchases.purchase_details")}</span>
-                    </Divider>
-
                 <Form.List name="details">
                     {(fields, { add, remove }) => (
-                        <>
-                            {fields.map(({ key, name, ...restField }) => {
-                                // Watch the selected product for this row to show stock info
-                                const selectedProductId = form.getFieldValue([
-                                    "details",
-                                    name,
-                                    "product_id",
-                                ]);
-                                const selectedProduct =
-                                    productMap[selectedProductId];
-                                const isLockedRow = isTourCreateStep && name === 0;
-
-                                return (
-                                    <Card
-                                        key={key}
-                                        className="mb-4 border border-[var(--ohnix-line-4)] shadow-sm bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-primary)]"
-                                    >
-                                        <Row gutter={[16, 16]} align="middle">
-                                            <Col xs={24} sm={8}>
-                                                <Form.Item
-                                                    {...restField}
-                                                    name={[name, "product_id"]}
-                                                    label={t("products.product")}
-                                                    rules={[{ required: true, message: t("purchases.select_product_message") }]}
-                                                    extra={isLockedRow ? t("inventory_tour.practice_locked_hint") : undefined}
-                                                >
-                                                    <Select
-                                                        placeholder={t("purchases.select_product")}
-                                                        showSearch
-                                                        optionFilterProp="label"
-                                                        className="rounded-lg purchase-form-input"
-                                                        onChange={(val) =>
-                                                            handleProductChange(
-                                                                val,
-                                                                name
-                                                            )
-                                                        }
-                                                        options={products.map(
-                                                            (product) => ({
-                                                                value: product._id,
-                                                                label: `${product.product_name} (${product.product_code})`,
-                                                            })
-                                                        )}
-                                                        disabled={isLockedRow}
-                                                    />
-                                                </Form.Item>
-                                                {/* Show current stock below the select */}
-                                                {selectedProduct && (
-                                                    <div className="mt-1 mb-2">
-                                                        <Tag
-                                                            color={
-                                                                selectedProduct.stock ===
-                                                                0
-                                                                    ? "red"
-                                                                    : selectedProduct.stock <
-                                                                        10
-                                                                      ? "orange"
-                                                                      : "green"
-                                                            }
-                                                        >
-                                                            {t("purchases.current_stock_label")}:{" "}
-                                                            {
-                                                                selectedProduct.stock
-                                                            }
-                                                        </Tag>
-                                                    </div>
-                                                )}
-                                            </Col>
-                                            <Col xs={24} sm={6}>
-                                                <Form.Item
-                                                    {...restField}
-                                                    name={[name, "quantity"]}
-                                                    label={t("common.quantity")}
-                                                    rules={[{ required: true, message: t("purchases.enter_quantity_message") }]}
-                                                    extra={isLockedRow ? t("inventory_tour.practice_locked_hint") : undefined}
-                                                >
-                                                    <InputNumber
-                                                        placeholder={t("purchases.quantity_placeholder")}
-                                                        min={1}
-                                                        style={{
-                                                            width: "100%",
-                                                        }}
-                                                        className="rounded-lg purchase-form-input"
-                                                        disabled={isLockedRow}
-                                                    />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col xs={24} sm={7}>
-                                                <Form.Item
-                                                    {...restField}
-                                                    name={[name, "unitcost"]}
-                                                    label={t("purchases.unit_price")}
-                                                    rules={[{ required: true, message: t("purchases.enter_unit_price_message") }]}
-                                                    extra={isLockedRow ? t("inventory_tour.practice_locked_hint") : undefined}
-                                                >
-                                                    <InputNumber
-                                                        placeholder={t("purchases.unit_price_placeholder")}
-                                                        min={0}
-                                                        precision={2}
-                                                        style={{
-                                                            width: "100%",
-                                                        }}
-                                                        prefix={currency.symbol}
-                                                        className="rounded-lg purchase-form-input"
-                                                        formatter={currencyInputProps.formatter}
-                                                        parser={currencyInputProps.parser}
-                                                        disabled={isLockedRow}
-                                                    />
-                                                </Form.Item>
-                                            </Col>
-                                            <Col xs={24} sm={3}>
-                                                <Form.Item label=" ">
-                                                    <Button
-                                                        type="default"
-                                                        onClick={() =>
-                                                            remove(name)
-                                                        }
-                                                        icon={
-                                                            <MinusCircleOutlined />
-                                                        }
-                                                        danger
-                                                        className="w-full"
-                                                    />
-                                                </Form.Item>
-                                            </Col>
-                                        </Row>
-                                    </Card>
-                                );
-                            })}
-                            <Form.Item>
-                                <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="large" className="h-12 border-2 border-dashed border-[#29D8D5]/40 text-[#44F3F0] hover:border-[#44F3F0] hover:text-[#44F3F0] rounded-lg">
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h4 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">
+                                    {t("purchases.purchase_details")}
+                                </h4>
+                                <Button
+                                    type="primary"
+                                    onClick={() => add()}
+                                    icon={<PlusOutlined />}
+                                    size="middle"
+                                    className="font-medium"
+                                >
                                     {t("common.add_item")}
                                 </Button>
-                            </Form.Item>
-                        </>
+                            </div>
+                            <div className="space-y-4">
+                                {fields.map(({ key, name, ...restField }) => (
+                                    <PurchaseFormItem
+                                        key={key}
+                                        products={products}
+                                        onRemove={() => remove(name)}
+                                        name={name}
+                                        restField={restField}
+                                        locked={isTourCreateStep && name === 0}
+                                        onProductChange={handleProductChange}
+                                    />
+                                ))}
+                            </div>
+                        </div>
                     )}
                 </Form.List>
 
-                <Form.Item className="mb-0 pt-4">
-                    <Row justify="end">
-                            <Space size="large">
-                                <Button onClick={onCancel} disabled={submitting} size="large" className="px-8 bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0]">{t("common.cancel")}</Button>
-                                <Button type="primary" htmlType="submit" loading={submitting} size="large" className="px-8 bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 shadow-lg hover:shadow-xl transition-all duration-300 text-[#021314]">{t("purchases.create_purchase")}</Button>
-                            </Space>
-                    </Row>
-                </Form.Item>
-            </Form>
+                <Divider className="my-6" />
 
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
+                    <Button
+                        onClick={onCancel}
+                        disabled={submitting}
+                        size="large"
+                        className="w-full sm:w-auto min-w-[120px]"
+                    >
+                        {t("common.cancel")}
+                    </Button>
+                    <Button
+                        type="primary"
+                        htmlType="submit"
+                        loading={submitting}
+                        size="large"
+                        className="w-full sm:w-auto min-w-[120px] font-medium"
+                    >
+                        {t("purchases.create_purchase")}
+                    </Button>
+                </div>
+            </Form>
         </Modal>
     );
 };

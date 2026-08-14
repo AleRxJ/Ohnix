@@ -90,8 +90,13 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }
     return (
         <Modal
             title={
-                <div className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
-                    {editingUnit ? t("units.edit_unit") : t("units.add_new_unit")}
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                        <AppstoreOutlined className="text-[#44F3F0]" />
+                    </div>
+                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                        {editingUnit ? t("units.edit_unit") : t("units.add_new_unit")}
+                    </span>
                 </div>
             }
             open={visible}

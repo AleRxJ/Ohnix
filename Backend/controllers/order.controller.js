@@ -438,216 +438,290 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
 
         doc.pipe(res);
 
-        const primaryColor = "#34495e";
-        const accentColor = brandAccentColor || "#3498db";
-        const subtleColor = "#95a5a6";
-        const highlightColor = brandAccentColor || "#2980b9";
+        // Ohnix brand palette, adapted for a printed document. The hero
+        // band below is where the actual app teal (#29D8D5/#44F3F0) gets to
+        // be itself - bright, on a dark ground, exactly like the gradient
+        // buttons/CTAs in the app. On the white body further down, the same
+        // hue would wash out as body text, so inkTeal (a deeper shade)
+        // carries text/numbers there instead.
+        const inkColor = "#0B0F19";
+        const heroColor = "#0B0F19";
+        const heroColorDeep = "#0E2624";
+        const mutedColor = "#6B7280";
+        const mutedOnDark = "#9AA5B1";
+        const lineColor = "#EAECF0";
+        const tealBright = "#29D8D5";
+        const tealLight = "#44F3F0";
+        const inkTeal = brandAccentColor || "#0B7A78";
+        const PAGE_LEFT = 50;
+        const PAGE_RIGHT = 545;
+        const PAGE_WIDTH = PAGE_RIGHT - PAGE_LEFT;
+
+        const hairline = (y, color = lineColor, weight = 1) => {
+            doc.moveTo(PAGE_LEFT, y).lineTo(PAGE_RIGHT, y).strokeColor(color).lineWidth(weight).stroke();
+        };
+
+        // Small translated status pill - reuses the same semantic colors as
+        // the in-app status tags (orderHelpers.js's getStatusColor) instead
+        // of a plain text label, so the document reads at a glance.
+        const STATUS_META = {
+            pending: { label: "PENDIENTE", bg: "#FEF3E2", fg: "#B45309" },
+            processing: { label: "EN PROGRESO", bg: "#EFF6FF", fg: "#1D4ED8" },
+            completed: { label: "COMPLETADO", bg: "#ECFDF5", fg: "#047857" },
+            cancelled: { label: "CANCELADO", bg: "#FEF2F2", fg: "#B91C1C" },
+        };
+        const status = STATUS_META[orderDetails.order_status] || STATUS_META.pending;
+
+        // --- Hero band ---------------------------------------------------
+        // A full-bleed dark panel instead of a plain white masthead is the
+        // one move that reads as "designed" from across the room - it's the
+        // same trick most modern billing products (Stripe, Ramp, Mercury)
+        // lean on for their invoice header, and it's the natural home for
+        // the app's actual bright teal, which needs a dark ground to pop.
+        const HERO_HEIGHT = 158;
+        const heroGrad = doc.linearGradient(0, 0, 595, HERO_HEIGHT);
+        heroGrad.stop(0, heroColor).stop(1, heroColorDeep);
+        doc.rect(0, 0, 595, HERO_HEIGHT).fill(heroGrad);
+
+        // Faint rotated square behind the invoice number - a quiet echo of
+        // the rounded-square logomark, purely textural, low opacity so it
+        // never competes with the text sitting on top of it.
+        doc.save();
+        doc.rotate(18, { origin: [480, 70] });
+        doc.roundedRect(415, 5, 130, 130, 26)
+            .strokeColor(tealLight)
+            .strokeOpacity(0.12)
+            .lineWidth(2)
+            .stroke();
+        doc.restore();
+        doc.strokeOpacity(1);
 
         if (company) {
-            const textX = logoBuffer ? 130 : 50;
-            if (logoBuffer) {
+            const hasLogo = Boolean(logoBuffer);
+            const textX = hasLogo ? 148 : PAGE_LEFT;
+            if (hasLogo) {
+                // White backing chip so an arbitrary uploaded logo (most of
+                // which assume a light background) still reads correctly
+                // sitting on the dark band.
+                doc.roundedRect(PAGE_LEFT, 34, 84, 56, 8).fill("#FFFFFF");
                 try {
-                    doc.image(logoBuffer, 50, 45, { fit: [70, 45] });
+                    doc.image(logoBuffer, PAGE_LEFT + 7, 41, { fit: [70, 42] });
                 } catch {
                     // Corrupt/unsupported image format - continue without it.
                 }
             }
-            doc.fontSize(20)
-                .fillColor(primaryColor)
+            doc.fontSize(18)
+                .fillColor("#FFFFFF")
                 .font("Helvetica-Bold")
-                .text(company.name, textX, 50, { width: 550 - textX });
+                .text(company.name, textX, 46, { width: 265 - (textX - PAGE_LEFT) });
 
             const legalLine = [company.legalName, company.contactEmail, company.phone]
                 .filter(Boolean)
                 .join("  ·  ");
             if (legalLine) {
                 doc.fontSize(8)
-                    .fillColor(subtleColor)
+                    .fillColor(mutedOnDark)
                     .font("Helvetica")
-                    .text(legalLine, textX, 76, { width: 550 - textX });
+                    .text(legalLine, textX, 68, { width: 265 - (textX - PAGE_LEFT) });
             }
         } else {
-            doc.fontSize(32)
-                .fillColor(primaryColor)
+            // Default (no per-company branding on this plan) - a small
+            // rounded logomark plus a tight wordmark, like a real logo
+            // lockup, instead of a generic app name in spaced-out caps.
+            doc.roundedRect(PAGE_LEFT, 46, 26, 26, 7).fill(tealBright);
+            doc.fontSize(19)
+                .fillColor("#FFFFFF")
                 .font("Helvetica-Bold")
-                .text("Inventory", 50, 50, { continued: true })
-                .fillColor(accentColor)
-                .text("Pro", { align: "left" });
+                .text("OHNIX", PAGE_LEFT + 34, 51, { characterSpacing: 0.5 });
+            doc.fontSize(8)
+                .fillColor(mutedOnDark)
+                .font("Helvetica")
+                .text("Software de inventario y ventas", PAGE_LEFT + 34, 70);
         }
 
-        doc.moveTo(50, 90)
-            .lineTo(550, 90)
-            .strokeColor(subtleColor)
-            .lineWidth(0.5)
-            .stroke();
-
-        doc.fontSize(11)
-            .fillColor(subtleColor)
-            .font("Helvetica")
-            .text("INVOICE", 50, 105);
-
-        doc.fontSize(20)
-            .fillColor(primaryColor)
+        // Right-aligned document identity block, on the dark band.
+        doc.fontSize(9)
+            .fillColor(tealBright)
             .font("Helvetica-Bold")
-            .text(`#${orderDetails.invoice_no}`, 50, 125);
+            .text("FACTURA", 330, 46, { width: 215, align: "right", characterSpacing: 1.5 });
+        doc.fontSize(26)
+            .fillColor("#FFFFFF")
+            .font("Helvetica-Bold")
+            .text(`#${orderDetails.invoice_no}`, 330, 61, { width: 215, align: "right" });
 
-        doc.fontSize(10)
-            .fillColor(subtleColor)
+        doc.font("Helvetica-Bold").fontSize(8);
+        const pillTextWidth = doc.widthOfString(status.label);
+        const pillWidth = pillTextWidth + 18;
+        const pillX = PAGE_RIGHT - pillWidth;
+        doc.roundedRect(pillX, 94, pillWidth, 16, 8).fill(status.bg);
+        doc.fillColor(status.fg).text(status.label, pillX, 98, { width: pillWidth, align: "center" });
+
+        doc.fontSize(9)
+            .fillColor(mutedOnDark)
             .font("Helvetica")
             .text(
-                `Issued: ${new Date(orderDetails.order_date).toLocaleDateString()}`,
-                50,
-                150
+                `Emitida el ${new Date(orderDetails.order_date).toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}`,
+                330,
+                118,
+                { width: 215, align: "right" }
             );
 
-        doc.moveTo(50, 170).lineTo(550, 170).stroke(accentColor);
+        // Bright gradient seam closing the band - the one line that's
+        // pure brand color at full strength, same pair used on every
+        // primary button in the app.
+        const seamGrad = doc.linearGradient(0, HERO_HEIGHT - 3, 595, HERO_HEIGHT);
+        seamGrad.stop(0, tealBright).stop(1, tealLight);
+        doc.rect(0, HERO_HEIGHT - 3, 595, 3).fill(seamGrad);
 
-        const billingY = 190;
-        doc.fontSize(11)
-            .fillColor(subtleColor)
-            .font("Helvetica")
-            .text("BILL TO", 50, billingY);
-        doc.fontSize(14)
-            .fillColor(primaryColor)
-            .font("Helvetica-Bold")
-            .text(orderDetails.customer_name, 50, billingY + 20);
-        doc.fontSize(10)
-            .fillColor(primaryColor)
-            .font("Helvetica")
-            .text(orderDetails.customer_address, 50, billingY + 40, {
-                width: 200,
-            })
-            .text(`Phone: ${orderDetails.customer_phone}`, 50, doc.y + 10);
-
-        const tableTop = 290;
-        doc.rect(50, tableTop, 500, 30).fill("#f8f9fa");
-
-        doc.fillColor(primaryColor)
-            .fontSize(10)
-            .font("Helvetica-Bold")
-            .text("ITEM", 70, tableTop + 10)
-            .text("QUANTITY", 280, tableTop + 10)
-            .text("PRICE", 375, tableTop + 10)
-            .text("AMOUNT", 470, tableTop + 10);
-
-        doc.moveTo(50, tableTop + 30)
-            .lineTo(550, tableTop + 30)
-            .stroke(subtleColor);
-
-        let tableRowY = tableTop + 40;
-        const lineHeight = 25;
-
-        orderDetails.orderItems.forEach((item, index) => {
-            doc.fillColor(primaryColor)
-                .font("Helvetica")
-                .fontSize(10)
-                .text(item.product_name, 70, tableRowY, { width: 200 })
-                .text(item.quantity.toString(), 300, tableRowY)
-                .text(`$${item.unitcost.toFixed(2)}`, 370, tableRowY)
+        // --- Bill-to / order-detail grid --------------------------------
+        const infoY = HERO_HEIGHT + 27;
+        const eyebrow = (text, x, y, width) =>
+            doc.fontSize(8.5)
+                .fillColor(mutedColor)
                 .font("Helvetica-Bold")
-                .text(`$${item.total.toFixed(2)}`, 470, tableRowY);
+                .text(text, x, y, { width, characterSpacing: 0.6 });
 
-            tableRowY += lineHeight;
+        eyebrow("FACTURAR A", PAGE_LEFT, infoY, 240);
+        doc.fontSize(13)
+            .fillColor(inkColor)
+            .font("Helvetica-Bold")
+            .text(orderDetails.customer_name, PAGE_LEFT, infoY + 16, { width: 240 });
+        doc.fontSize(9.5)
+            .fillColor(mutedColor)
+            .font("Helvetica")
+            .text(orderDetails.customer_address, PAGE_LEFT, infoY + 34, { width: 240 })
+            .text(`Tel. ${orderDetails.customer_phone}`, PAGE_LEFT, doc.y + 4, { width: 240 });
 
-            if (index < orderDetails.orderItems.length - 1) {
-                doc.moveTo(70, tableRowY - 5)
-                    .lineTo(530, tableRowY - 5)
-                    .strokeColor(subtleColor)
-                    .opacity(0.3)
-                    .lineWidth(0.5)
-                    .stroke()
-                    .opacity(1);
-            }
+        const detailX = 330;
+        const detailValueWidth = 215;
+        eyebrow("DETALLES DEL PEDIDO", detailX, infoY, detailValueWidth);
+        const detailRow = (label, value, y) => {
+            doc.fontSize(9)
+                .fillColor(mutedColor)
+                .font("Helvetica")
+                .text(label, detailX, y, { width: 110 });
+            doc.fontSize(9)
+                .fillColor(inkColor)
+                .font("Helvetica-Bold")
+                .text(value, detailX, y, { width: detailValueWidth, align: "right" });
+        };
+        detailRow("Artículos", String(orderDetails.total_products ?? orderDetails.orderItems.length), infoY + 18);
+        detailRow("Atendido por", orderDetails.created_by, infoY + 34);
+
+        // --- Line items --------------------------------------------------
+        const tableTop = 275;
+        doc.fontSize(8.5)
+            .fillColor(inkTeal)
+            .font("Helvetica-Bold")
+            .text("PRODUCTO", PAGE_LEFT, tableTop, { characterSpacing: 0.5 })
+            .text("CANT.", 330, tableTop, { width: 40, align: "center", characterSpacing: 0.5 })
+            .text("PRECIO", 390, tableTop, { width: 75, align: "right", characterSpacing: 0.5 })
+            .text("IMPORTE", 470, tableTop, { width: 75, align: "right", characterSpacing: 0.5 });
+
+        hairline(tableTop + 16, inkTeal, 1.5);
+
+        let rowY = tableTop + 28;
+        const rowHeight = 27;
+
+        orderDetails.orderItems.forEach((item) => {
+            doc.fontSize(10)
+                .fillColor(inkColor)
+                .font("Helvetica-Bold")
+                .text(item.product_name, PAGE_LEFT, rowY, { width: 260 });
+            doc.fontSize(10)
+                .fillColor(mutedColor)
+                .font("Helvetica")
+                .text(item.quantity.toString(), 330, rowY, { width: 40, align: "center" })
+                .text(`$${item.unitcost.toFixed(2)}`, 390, rowY, { width: 75, align: "right" });
+            doc.fillColor(inkColor)
+                .font("Helvetica-Bold")
+                .text(`$${item.total.toFixed(2)}`, 470, rowY, { width: 75, align: "right" });
+
+            rowY += rowHeight;
+            hairline(rowY - 9, lineColor, 0.75);
         });
 
-        const summaryY = tableRowY + 20;
-        doc.moveTo(350, summaryY)
-            .lineTo(550, summaryY)
-            .strokeColor(subtleColor)
-            .lineWidth(0.5)
-            .stroke();
+        // --- Totals --------------------------------------------------------
+        const totalsX = 330;
+        const totalsWidth = PAGE_RIGHT - totalsX;
+        let summaryY = rowY + 8;
 
-        doc.fillColor(primaryColor)
+        doc.fontSize(9.5)
+            .fillColor(mutedColor)
             .font("Helvetica")
-            .fontSize(10)
-            .text("Subtotal", 370, summaryY + 10)
-            .text(`$${orderDetails.sub_total.toFixed(2)}`, 470, summaryY + 10, {
-                align: "right",
-            })
-            .text("Tax", 370, summaryY + 30)
+            .text("Subtotal", totalsX, summaryY, { width: 100 })
+            .text(`$${orderDetails.sub_total.toFixed(2)}`, totalsX, summaryY, { width: totalsWidth, align: "right" });
+        summaryY += 18;
+        doc.text("Impuesto", totalsX, summaryY, { width: 100 })
             .text(
                 `$${(orderDetails.total - orderDetails.sub_total).toFixed(2)}`,
-                470,
-                summaryY + 30,
-                { align: "right" }
+                totalsX,
+                summaryY,
+                { width: totalsWidth, align: "right" }
             );
 
-        doc.moveTo(350, summaryY + 50)
-            .lineTo(550, summaryY + 50)
-            .strokeColor(subtleColor)
-            .lineWidth(0.5)
-            .stroke();
-        doc.moveTo(350, summaryY + 52)
-            .lineTo(550, summaryY + 52)
-            .strokeColor(subtleColor)
-            .lineWidth(0.5)
-            .stroke();
-
-        doc.font("Helvetica-Bold")
-            .fontSize(14)
-            .text("TOTAL", 370, summaryY + 60)
-            .fillColor(highlightColor)
-            .text(`$${orderDetails.total.toFixed(2)}`, 470, summaryY + 60, {
+        // TOTAL gets its own dark panel instead of just a bigger number -
+        // the same ink used for the hero band, so it reads as the page's
+        // second (and final) beat rather than one more line in the list.
+        summaryY += 24;
+        const totalPanelHeight = 62;
+        doc.roundedRect(totalsX, summaryY, totalsWidth, totalPanelHeight, 10).fill(inkColor);
+        doc.fontSize(8.5)
+            .fillColor(mutedOnDark)
+            .font("Helvetica-Bold")
+            .text("TOTAL A PAGAR", totalsX + 16, summaryY + 14, { characterSpacing: 0.8 });
+        doc.fontSize(23)
+            .fillColor(tealBright)
+            .font("Helvetica-Bold")
+            .text(`$${orderDetails.total.toFixed(2)}`, totalsX, summaryY + 27, {
+                width: totalsWidth - 16,
                 align: "right",
             });
+        summaryY += totalPanelHeight;
 
-        const noteY = summaryY + 100;
-        doc.moveTo(50, noteY).lineTo(550, noteY).stroke(subtleColor);
+        // --- Footer --------------------------------------------------------
+        const noteY = summaryY + 40;
+        hairline(noteY);
 
-        doc.fillColor(primaryColor)
-            .fontSize(10)
+        doc.fontSize(9)
+            .fillColor(mutedColor)
             .font("Helvetica")
-            .text("Payment Information", 50, noteY + 20, { continued: true })
+            .text("Incluye el número de factura como referencia de tu pago.", PAGE_LEFT, noteY + 16, {
+                width: PAGE_WIDTH,
+                align: "center",
+            });
+        doc.fontSize(13)
             .font("Helvetica-Bold")
-            .text(": Please include the invoice number with your payment.");
-
-        doc.fontSize(12)
-            .font("Helvetica-Bold")
-            .fillColor(accentColor)
-            .text("Thank you for your business!", 50, noteY + 50);
+            .fillColor(inkTeal)
+            .text("¡Gracias por tu compra!", PAGE_LEFT, noteY + 32, { width: PAGE_WIDTH, align: "center" });
 
         // Escala+ custom footer text, set by the company in Admin.
         if (showCustomFooter && company?.pdfFooterText) {
             doc.fontSize(9)
-                .fillColor(primaryColor)
+                .fillColor(inkColor)
                 .font("Helvetica")
-                .text(company.pdfFooterText, 50, 685, {
+                .text(company.pdfFooterText, PAGE_LEFT, 685, {
                     align: "center",
-                    width: 500,
+                    width: PAGE_WIDTH,
                 });
         }
 
         doc.fontSize(8)
-            .fillColor(subtleColor)
+            .fillColor(mutedColor)
             .font("Helvetica")
-            .text(
-                `Ohnix by iTCycle - Invoice #${orderDetails.invoice_no}`,
-                50,
-                700,
-                {
-                    align: "center",
-                    width: 500,
-                }
-            );
+            .text(`Ohnix by iTCycle · Factura #${orderDetails.invoice_no}`, PAGE_LEFT, 705, {
+                align: "center",
+                width: PAGE_WIDTH,
+            });
 
         const pageCount = doc.bufferedPageCount;
         for (let i = 0; i < pageCount; i++) {
             doc.switchToPage(i);
             doc.fontSize(8)
-                .fillColor(subtleColor)
-                .text(`Page ${i + 1} of ${pageCount}`, 50, 720, {
+                .fillColor(mutedColor)
+                .text(`Página ${i + 1} de ${pageCount}`, PAGE_LEFT, 720, {
                     align: "center",
-                    width: 500,
+                    width: PAGE_WIDTH,
                 });
         }
 

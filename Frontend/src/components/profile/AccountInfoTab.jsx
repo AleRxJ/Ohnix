@@ -20,6 +20,7 @@ import SubscriptionPlanCard from "./SubscriptionPlanCard";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { useInventoryTour } from "../../context/InventoryTourContext";
+import { useTeam } from "../../context/TeamContext";
 
 const { Text, Title } = Typography;
 
@@ -28,6 +29,11 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
     const { currency } = useCurrency();
     const { t } = useI18n();
     const { fabDismissed, completed: tourCompleted, reEnableFab } = useInventoryTour();
+    // The guided tour is account-admin-only (see InventoryTourFab.jsx) - an
+    // invited team member can never trigger it, so offering a "bring it
+    // back" toggle here would just be a dead control for them. Gated on
+    // teamLoading too so the card doesn't flash in before disappearing.
+    const { isTeamMember, loading: teamLoading } = useTeam();
     // The floating trigger is hidden for either reason (InventoryTourFab.jsx
     // checks `completed || fabDismissed`) - gating this button on
     // `fabDismissed` alone meant someone who finished the tour normally
@@ -308,35 +314,37 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
                 </div>
             </Card>
 
-            <Card className="mt-4 rounded-2xl shadow-[var(--ohnix-shadow-card)] border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] text-[var(--ohnix-text-primary)]">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                        <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-[#29D8D5]/15 flex items-center justify-center">
-                            <CompassOutlined className="text-[#29D8D5] text-xl" />
+            {!isTeamMember && !teamLoading && (
+                <Card className="mt-4 rounded-2xl shadow-[var(--ohnix-shadow-card)] border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] text-[var(--ohnix-text-primary)]">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                            <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-[#29D8D5]/15 flex items-center justify-center">
+                                <CompassOutlined className="text-[#29D8D5] text-xl" />
+                            </div>
+                            <div>
+                                <Title
+                                    level={5}
+                                    className="text-[var(--ohnix-text-primary)] m-0 mb-1 font-semibold"
+                                >
+                                    {t("inventory_tour.settings_title")}
+                                </Title>
+                                <Text className="text-[var(--ohnix-text-muted)] text-sm">
+                                    {tourHidden
+                                        ? t("inventory_tour.settings_desc_hidden")
+                                        : t("inventory_tour.settings_desc_visible")}
+                                </Text>
+                            </div>
                         </div>
-                        <div>
-                            <Title
-                                level={5}
-                                className="text-[var(--ohnix-text-primary)] m-0 mb-1 font-semibold"
-                            >
-                                {t("inventory_tour.settings_title")}
-                            </Title>
-                            <Text className="text-[var(--ohnix-text-muted)] text-sm">
-                                {tourHidden
-                                    ? t("inventory_tour.settings_desc_hidden")
-                                    : t("inventory_tour.settings_desc_visible")}
-                            </Text>
-                        </div>
+                        <Button
+                            onClick={handleReEnableTour}
+                            disabled={!tourHidden}
+                            className="rounded-xl h-10 px-6 font-medium border-[var(--ohnix-line-4)] disabled:opacity-50"
+                        >
+                            {t("inventory_tour.settings_button")}
+                        </Button>
                     </div>
-                    <Button
-                        onClick={handleReEnableTour}
-                        disabled={!tourHidden}
-                        className="rounded-xl h-10 px-6 font-medium border-[var(--ohnix-line-4)] disabled:opacity-50"
-                    >
-                        {t("inventory_tour.settings_button")}
-                    </Button>
-                </div>
-            </Card>
+                </Card>
+            )}
         </div>
     );
 };

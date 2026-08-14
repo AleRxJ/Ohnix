@@ -443,40 +443,32 @@ body {
   color: var(--ohnix-text-dim) !important;
 }
 
-.auth-ohnix-input.ant-select .ant-select-selector,
-.purchase-form-input.ant-select .ant-select-selector {
+.auth-ohnix-input.ant-select .ant-select-selector {
   background: var(--ohnix-surface-2) !important;
   color: var(--ohnix-text-primary) !important;
   border-color: var(--ohnix-line-5) !important;
 }
 
-.auth-ohnix-input.ant-select:hover .ant-select-selector,
-.purchase-form-input.ant-select:hover .ant-select-selector {
+.auth-ohnix-input.ant-select:hover .ant-select-selector {
   border-color: rgba(41, 216, 213, 0.45) !important;
 }
 
-.auth-ohnix-input.ant-select.ant-select-focused .ant-select-selector,
-.purchase-form-input.ant-select.ant-select-focused .ant-select-selector {
+.auth-ohnix-input.ant-select.ant-select-focused .ant-select-selector {
   border-color: #29d8d5 !important;
   box-shadow: 0 0 0 2px rgba(41, 216, 213, 0.18) !important;
 }
 
 .auth-ohnix-input.ant-select .ant-select-selection-item,
-.purchase-form-input.ant-select .ant-select-selection-item,
-.auth-ohnix-input.ant-select .ant-select-selection-search-input,
-.purchase-form-input.ant-select .ant-select-selection-search-input {
+.auth-ohnix-input.ant-select .ant-select-selection-search-input {
   color: var(--ohnix-text-primary) !important;
 }
 
-.auth-ohnix-input.ant-select .ant-select-selection-placeholder,
-.purchase-form-input.ant-select .ant-select-selection-placeholder {
+.auth-ohnix-input.ant-select .ant-select-selection-placeholder {
   color: var(--ohnix-text-dim) !important;
 }
 
 .auth-ohnix-input.ant-select .ant-select-arrow,
-.purchase-form-input.ant-select .ant-select-arrow,
-.auth-ohnix-input.ant-select .ant-select-clear,
-.purchase-form-input.ant-select .ant-select-clear {
+.auth-ohnix-input.ant-select .ant-select-clear {
   color: #7f8b92 !important;
 }
 

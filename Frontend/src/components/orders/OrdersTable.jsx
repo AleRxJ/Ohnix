@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import {
     getStatusColor,
     ORDER_STATUSES,
+    ORDER_STATUS_TRANSITIONS,
     TERMINAL_STATUSES,
 } from "../../utils/orderHelpers";
 import { getStatusIcon } from "../../data";
@@ -21,6 +22,7 @@ const OrdersTable = ({
     onTableChange = () => {},
     onViewDetails = () => {},
     onUpdateStatus = () => {},
+    updatingOrderId = null,
     onGenerateInvoice = () => {},
 }) => {
     const { t } = useI18n();
@@ -75,7 +77,7 @@ const OrdersTable = ({
             title: t("orders.items"),
             dataIndex: "total_products",
             key: "total_products",
-            width: 80,
+            width: 110,
             align: "center",
             render: (count) => <span className="font-medium text-[var(--ohnix-text-primary)]">{count}</span>,
         },
@@ -83,16 +85,28 @@ const OrdersTable = ({
             title: t("common.total"),
             dataIndex: "total",
             key: "total",
+            width: 140,
             align: "right",
             render: (amount) => <span className="font-semibold text-[#44F3F0] text-base">{formatCurrency(amount)}</span>,
         },
         {
             title: t("common.actions"),
             key: "actions",
-            width: 200,
+            width: 270,
             align: "center",
             render: (_, record) => {
                 const isTerminal = TERMINAL_STATUSES.includes(record.order_status);
+                const isUpdating = updatingOrderId === record._id;
+                // Only offer the current status (so the Select has something
+                // to display) plus whatever the backend will actually accept
+                // next - showing every status regardless of where the order
+                // currently sits invited picking an invalid jump (e.g.
+                // pending straight to completed, skipping processing) that
+                // was guaranteed to fail with a confusing error.
+                const validNext = ORDER_STATUS_TRANSITIONS[record.order_status] || [];
+                const selectableStatuses = ORDER_STATUSES.filter(
+                    (status) => status.value === record.order_status || validNext.includes(status.value)
+                );
                 return (
                     <Space size="small" className="flex justify-center">
                         <Tooltip title={t("orders.view_details")}>
@@ -105,12 +119,13 @@ const OrdersTable = ({
                                 size="small"
                                 style={{ width: 140 }}
                                 onChange={(value) => onUpdateStatus(record._id, value)}
-                                disabled={isTerminal || !canEdit}
+                                disabled={isTerminal || !canEdit || isUpdating}
+                                loading={isUpdating}
                                 className="rounded"
                                 data-tour="tour-order-status-select"
                                 data-order-id={record._id}
                             >
-                                {ORDER_STATUSES.map((status) => (
+                                {selectableStatuses.map((status) => (
                                     <Option key={status.value} value={status.value}>
                                         {t(`orders.${status.value}`) || status.label || status.value}
                                     </Option>
@@ -131,6 +146,7 @@ const OrdersTable = ({
                                     <Button
                                         type="text"
                                         danger
+                                        loading={isUpdating}
                                         icon={<StopOutlined />}
                                         disabled={!canEdit}
                                         className="hover:bg-[var(--ohnix-hover-overlay)]"
@@ -202,7 +218,13 @@ const OrdersTable = ({
                             okText={t("common.yes")}
                             cancelText={t("common.no")}
                         >
-                            <Button icon={<StopOutlined />} danger size="middle" disabled={!canEdit} />
+                            <Button
+                                icon={<StopOutlined />}
+                                danger
+                                size="middle"
+                                disabled={!canEdit}
+                                loading={updatingOrderId === order._id}
+                            />
                         </Popconfirm>
                     )}
                 </div>
@@ -262,7 +284,7 @@ const OrdersTable = ({
                             pageSizeOptions: ["10", "20", "50", "100"],
                         }}
                         onChange={onTableChange}
-                        scroll={{ x: 900 }}
+                        scroll={{ x: 1150 }}
                         className="orders-table module-dark-table"
                     />
                 </Card>

@@ -13,6 +13,7 @@ const Purchase = () => {
         purchaseDetails,
         returnPreviewData,
         stats,
+        updatingPurchaseId,
 
         // Actions
         createPurchase,
@@ -30,6 +31,7 @@ const Purchase = () => {
             stats={stats}
             onCreatePurchase={createPurchase}
             onUpdateStatus={updatePurchaseStatus}
+            updatingPurchaseId={updatingPurchaseId}
             onFetchPurchaseDetails={fetchPurchaseDetails}
             onFetchReturnPreview={fetchReturnPreview}
             purchaseDetails={purchaseDetails}

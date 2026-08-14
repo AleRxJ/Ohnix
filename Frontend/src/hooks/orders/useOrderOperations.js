@@ -4,12 +4,21 @@ import { api } from "../../api/api";
 import { calculateOrderTotals } from "../../utils/orderHelpers";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
+import { resolveApiErrorMessage } from "../../utils/apiError";
+
+const UPDATE_STATUS_ERROR_CODES = {
+    invalid_order_status_transition: "orders.invalid_status_transition",
+};
 
 export const useOrderOperations = (refreshOrders) => {
     const { t } = useI18n();
     const { isOpen: isTutorialActive, notifyAction } = useInventoryTour();
     const [orderDetails, setOrderDetails] = useState([]);
     const [detailsLoading, setDetailsLoading] = useState(false);
+    // Which order's status Select is mid-request - the status PATCH gave no
+    // visual feedback at all while in flight (no spinner, nothing disabled),
+    // so a slow request looked like the click didn't register.
+    const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
     // The backend returns a per-product breakdown (name, requested vs
     // available) for 422 stock errors instead of just a flat message - show
@@ -31,20 +40,22 @@ export const useOrderOperations = (refreshOrders) => {
     };
 
     const updateOrderStatus = async (orderId, newStatus) => {
+        setUpdatingOrderId(orderId);
         try {
             await api.patch(`/orders/${orderId}/status`, {
                 order_status: newStatus,
             });
             toast.success(t("orders.order_updated"));
-            refreshOrders();
+            await refreshOrders();
             if (newStatus === "completed" && isTutorialActive) notifyAction("order-completed");
         } catch (error) {
             toast.error(
                 describeStockErrors(error) ||
-                    error.response?.data?.message ||
-                    t("orders.failed_update_status")
+                    resolveApiErrorMessage(error, t, UPDATE_STATUS_ERROR_CODES, "orders.failed_update_status")
             );
             console.error("Error updating order status:", error);
+        } finally {
+            setUpdatingOrderId(null);
         }
     };
 
@@ -145,6 +156,7 @@ export const useOrderOperations = (refreshOrders) => {
         orderDetails,
         detailsLoading,
         updateOrderStatus,
+        updatingOrderId,
         generateInvoice,
         createOrder,
         fetchOrderDetails,

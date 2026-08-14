@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { Modal, Form, InputNumber, Radio, Input, Typography } from "antd";
-import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
+import { ArrowUpOutlined, ArrowDownOutlined, SwapOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
 const { Text } = Typography;
@@ -32,8 +32,13 @@ const AdjustStockModal = ({ visible, product, loading, onSubmit, onCancel }) => 
     return (
         <Modal
             title={
-                <div className="text-lg font-bold text-[var(--ohnix-text-primary)]">
-                    {t("products.adjust_stock")}
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                        <SwapOutlined className="text-[#44F3F0]" />
+                    </div>
+                    <span className="text-lg font-bold text-[var(--ohnix-text-primary)]">
+                        {t("products.adjust_stock")}
+                    </span>
                 </div>
             }
             open={visible}

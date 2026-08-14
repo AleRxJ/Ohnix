@@ -196,7 +196,10 @@ class PurchaseService {
         if (!validTransitions[purchase.purchaseStatus]?.includes(newStatus)) {
             throw new ApiError(
                 400,
-                `Cannot transition purchase from "${purchase.purchaseStatus}" to "${newStatus}"`
+                `Cannot transition purchase from "${purchase.purchaseStatus}" to "${newStatus}"`,
+                [],
+                "",
+                "invalid_purchase_status_transition"
             );
         }
 

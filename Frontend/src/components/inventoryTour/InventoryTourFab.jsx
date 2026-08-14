@@ -4,12 +4,13 @@ import { CompassOutlined, CloseOutlined, ExclamationCircleOutlined } from "@ant-
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
+import { useTeam } from "../../context/TeamContext";
 import { tutorialDataService } from "../../services/tutorialDataService";
 
-// App-wide, not scoped to any one module - the tour now walks through the
-// whole first-time flow (categories, products, purchases, sales,
-// customers, plus a look at Team/Billing/Reports), so the entry point has
-// to be reachable from anywhere in the dashboard, not just Products.
+// App-wide, not scoped to any one module - the tour walks through the whole
+// first-time flow (categories, products, purchases, sales, customers, plus
+// a look at Billing and Reports), so the entry point has to be reachable
+// from anywhere in the dashboard, not just Products.
 const InventoryTourFab = () => {
     const { t } = useI18n();
     const {
@@ -21,10 +22,21 @@ const InventoryTourFab = () => {
         hasSavedProgress,
         discardProgress,
     } = useInventoryTour();
+    // Account-admin-only: an invited team member's practice run would tag
+    // is_tutorial_data records under the ACCOUNT (createdById resolves to
+    // the owner, not the member - see resolveAccountScope()), which the
+    // owner never asked for and could get swept up in their own later
+    // purge/keep decision. isTeamMember is false for both the real owner
+    // and solo accounts (no team at all), so it's the exact "is this
+    // account's admin" check, not the unrelated platform-admin role.
+    const { isTeamMember, loading: teamLoading } = useTeam();
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [purging, setPurging] = useState(false);
 
-    if (isOpen || completed || fabDismissed) return null;
+    // Also gated on teamLoading - rendering the FAB before the team fetch
+    // resolves and then yanking it away once isTeamMember comes back true
+    // would flash it at exactly the members it shouldn't appear for.
+    if (isOpen || completed || fabDismissed || isTeamMember || teamLoading) return null;
 
     // Dismissing while practice data already exists needs a decision first
     // - silently hiding the button would leave that data stranded, and if

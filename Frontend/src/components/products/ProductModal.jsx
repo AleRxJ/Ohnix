@@ -1,5 +1,6 @@
 import React, { useContext, useEffect } from "react";
 import { Modal, Form, Input, Select, InputNumber, Row, Col } from "antd";
+import { AppstoreOutlined } from "@ant-design/icons";
 import ProductImageUpload from "./ProductImageUpload";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -57,8 +58,13 @@ const ProductModal = ({
     return (
         <Modal
             title={
-                <div className="text-xl text-center font-bold text-[var(--ohnix-text-primary)]">
-                    {title}
+                <div className="flex items-center justify-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                        <AppstoreOutlined className="text-[#44F3F0]" />
+                    </div>
+                    <span className="text-xl font-bold text-[var(--ohnix-text-primary)]">
+                        {title}
+                    </span>
                 </div>
             }
             open={visible}

@@ -66,8 +66,13 @@ const CategoryModal = ({
     return (
         <Modal
             title={
-                <div className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
-                    {editingCategory ? t("categories.edit_category") : t("categories.add_new_category")}
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                        <TagsOutlined className="text-[#44F3F0]" />
+                    </div>
+                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                        {editingCategory ? t("categories.edit_category") : t("categories.add_new_category")}
+                    </span>
                 </div>
             }
             open={visible}

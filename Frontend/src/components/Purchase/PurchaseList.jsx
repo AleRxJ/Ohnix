@@ -36,6 +36,7 @@ const PurchaseList = ({
     stats,
     onCreatePurchase,
     onUpdateStatus,
+    updatingPurchaseId,
     onFetchPurchaseDetails,
     onFetchReturnPreview,
     purchaseDetails,
@@ -172,6 +173,7 @@ const PurchaseList = ({
                             searchText={searchText}
                             onViewDetails={handleViewDetails}
                             onUpdateStatus={onUpdateStatus}
+                            updatingPurchaseId={updatingPurchaseId}
                             onReturnPreview={handleReturnPreview}
                         />
                     </div>

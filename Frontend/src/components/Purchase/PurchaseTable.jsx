@@ -7,7 +7,7 @@ import { getStatusIconPurchase } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
 
-const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onViewDetails = () => {}, onUpdateStatus = () => {}, onReturnPreview = () => {} }) => {
+const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onViewDetails = () => {}, onUpdateStatus = () => {}, updatingPurchaseId = null, onReturnPreview = () => {} }) => {
     const { t } = useI18n();
     const { hasPermission } = useTeam();
     // Return preview is a read (purchases:view, matches the backend route);
@@ -69,7 +69,15 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
                                 onConfirm={() => onUpdateStatus(record._id, "completed")}
                                 disabled={!canEdit}
                             >
-                                <Button icon={<CheckCircleOutlined />} size="small" type="primary" disabled={!canEdit} data-tour="tour-mark-completed" data-purchase-id={record._id} />
+                                <Button
+                                    icon={<CheckCircleOutlined />}
+                                    size="small"
+                                    type="primary"
+                                    disabled={!canEdit}
+                                    loading={updatingPurchaseId === record._id}
+                                    data-tour="tour-mark-completed"
+                                    data-purchase-id={record._id}
+                                />
                             </Popconfirm>
                         </Tooltip>
                     )}

@@ -70,7 +70,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                 ) : (
                     <Menu
                         theme={isLite ? "light" : "dark"}
-                        defaultSelectedKeys={[currentPage]}
+                        selectedKeys={[currentPage]}
                         mode="inline"
                         items={getMenuItems(t, user?.role, user?.company?.countryCode === "CO", showTeam, hasPermission).map((item) => ({
                             ...item,

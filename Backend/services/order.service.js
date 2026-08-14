@@ -361,7 +361,10 @@ class OrderService {
         if (!validTransitions[order.orderStatus]?.includes(newStatus)) {
             throw new ApiError(
                 400,
-                `Cannot transition order from "${order.orderStatus}" to "${newStatus}"`
+                `Cannot transition order from "${order.orderStatus}" to "${newStatus}"`,
+                [],
+                "",
+                "invalid_order_status_transition"
             );
         }
 

@@ -7,7 +7,6 @@ import {
     Row,
     Col,
     Button,
-    Space,
     Card,
 } from "antd";
 import {
@@ -16,7 +15,6 @@ import {
     MailOutlined,
     PhoneOutlined,
     ShopOutlined,
-    HomeOutlined,
     BankOutlined,
     IdcardOutlined,
 } from "@ant-design/icons";
@@ -26,6 +24,14 @@ import { useInventoryTour } from "../../context/InventoryTourContext";
 
 const { Option } = Select;
 const { TextArea } = Input;
+
+const sectionCardProps = {
+    className: "shadow-sm border-0 module-shell h-full",
+    headStyle: {
+        borderBottom: "1px solid var(--ohnix-line-3)",
+        background: "transparent",
+    },
+};
 
 const CustomerForm = ({
     form,
@@ -60,26 +66,25 @@ const CustomerForm = ({
                 layout="vertical"
                 onFinish={onSubmit}
                 scrollToFirstError
-                className="space-y-6"
+                className="space-y-5"
             >
-                {/* Personal Information Section */}
-                <Card
-                    title={
-                        <div className="flex items-center text-[var(--ohnix-text-primary)]">
-                            <UserOutlined className="mr-3 text-[#29D8D5] text-lg" />
-                            <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
-                                {t("customers.personal_information")}
-                            </span>
-                        </div>
-                    }
-                    className="shadow-sm border-0 module-shell"
-                    headStyle={{
-                        borderBottom: "1px solid var(--ohnix-line-3)",
-                        background: "transparent",
-                    }}
-                >
-                    <Row gutter={[24, 16]}>
-                        <Col xs={24} sm={12}>
+                {/* Two cards side by side instead of four stacked full-width
+                    blocks - a wide modal was mostly wasted whitespace on the
+                    right half before, forcing a lot of scrolling for what's
+                    really a short form. */}
+                <Row gutter={[20, 20]}>
+                    <Col xs={24} md={12}>
+                        <Card
+                            {...sectionCardProps}
+                            title={
+                                <div className="flex items-center text-[var(--ohnix-text-primary)]">
+                                    <UserOutlined className="mr-3 text-[#29D8D5] text-lg" />
+                                    <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
+                                        {t("customers.personal_information")}
+                                    </span>
+                                </div>
+                            }
+                        >
                             <Form.Item
                                 label={
                                     <span className="font-medium text-[var(--ohnix-text-muted)]">
@@ -109,8 +114,6 @@ const CustomerForm = ({
                                     disabled={isTourCreateStep}
                                 />
                             </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
                             <Form.Item
                                 label={
                                     <span className="font-medium text-[var(--ohnix-text-muted)]">
@@ -119,6 +122,7 @@ const CustomerForm = ({
                                 }
                                 name="type"
                                 initialValue="regular"
+                                className="mb-0"
                             >
                                 <Select
                                     placeholder={t("customers.select_customer_type")}
@@ -136,28 +140,21 @@ const CustomerForm = ({
                                     </Option>
                                 </Select>
                             </Form.Item>
-                        </Col>
-                    </Row>
-                </Card>
+                        </Card>
+                    </Col>
 
-                {/* Contact Information Section */}
-                <Card
-                    title={
-                        <div className="flex items-center text-[var(--ohnix-text-primary)]">
-                            <MailOutlined className="mr-3 text-[#44F3F0] text-lg" />
-                            <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
-                                {t("customers.contact_information")}
-                            </span>
-                        </div>
-                    }
-                    className="shadow-sm border-0 module-shell"
-                    headStyle={{
-                        borderBottom: "1px solid var(--ohnix-line-3)",
-                        background: "transparent",
-                    }}
-                >
-                    <Row gutter={[24, 16]}>
-                        <Col xs={24} sm={12}>
+                    <Col xs={24} md={12}>
+                        <Card
+                            {...sectionCardProps}
+                            title={
+                                <div className="flex items-center text-[var(--ohnix-text-primary)]">
+                                    <MailOutlined className="mr-3 text-[#44F3F0] text-lg" />
+                                    <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
+                                        {t("customers.contact_information")}
+                                    </span>
+                                </div>
+                            }
+                        >
                             <Form.Item
                                 label={
                                     <span className="font-medium text-[var(--ohnix-text-muted)]">
@@ -190,8 +187,6 @@ const CustomerForm = ({
                                     disabled={isTourCreateStep}
                                 />
                             </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
                             <Form.Item
                                 label={
                                     <span className="font-medium text-[var(--ohnix-text-muted)]">
@@ -220,8 +215,6 @@ const CustomerForm = ({
                                     disabled={isTourCreateStep}
                                 />
                             </Form.Item>
-                        </Col>
-                        <Col xs={24}>
                             <Form.Item
                                 label={
                                     <span className="font-medium text-[var(--ohnix-text-muted)]">
@@ -235,41 +228,37 @@ const CustomerForm = ({
                                         message: t("customers.address_max_length"),
                                     },
                                 ]}
+                                className="mb-0"
                             >
                                 <TextArea
                                     placeholder={t("customers.address_placeholder")}
-                                    rows={3}
+                                    rows={2}
                                     size="large"
                                     className="rounded-lg auth-ohnix-input"
                                 />
                             </Form.Item>
-                        </Col>
-                    </Row>
-                </Card>
+                        </Card>
+                    </Col>
+                </Row>
 
-                {/* Business Information Section */}
-                <Card
-                    title={
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center text-[var(--ohnix-text-primary)]">
-                                <ShopOutlined className="mr-3 text-[#29D8D5] text-lg" />
-                                <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
-                                    {t("customers.business_information")}
-                                </span>
-                            </div>
-                            <span className="text-sm font-normal text-[var(--ohnix-text-muted)] bg-[var(--ohnix-line-1)] px-3 py-1 rounded-full border border-[var(--ohnix-line-3)]">
-                                {t("customers.optional")}
-                            </span>
-                        </div>
-                    }
-                    className="shadow-sm border-0 module-shell"
-                    headStyle={{
-                        borderBottom: "1px solid var(--ohnix-line-3)",
-                        background: "transparent",
-                    }}
-                >
-                    <Row gutter={[24, 16]}>
-                        <Col xs={24} sm={12}>
+                <Row gutter={[20, 20]}>
+                    <Col xs={24} md={12}>
+                        <Card
+                            {...sectionCardProps}
+                            title={
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center text-[var(--ohnix-text-primary)]">
+                                        <ShopOutlined className="mr-3 text-[#29D8D5] text-lg" />
+                                        <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
+                                            {t("customers.business_information")}
+                                        </span>
+                                    </div>
+                                    <span className="text-xs font-normal text-[var(--ohnix-text-muted)] bg-[var(--ohnix-line-1)] px-3 py-1 rounded-full border border-[var(--ohnix-line-3)]">
+                                        {t("customers.optional")}
+                                    </span>
+                                </div>
+                            }
+                        >
                             <Form.Item
                                 label={
                                     <span className="font-medium text-[var(--ohnix-text-muted)]">
@@ -293,8 +282,6 @@ const CustomerForm = ({
                                     className="rounded-lg auth-ohnix-input"
                                 />
                             </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
                             <Form.Item
                                 label={
                                     <span className="font-medium text-[var(--ohnix-text-muted)]">
@@ -318,8 +305,6 @@ const CustomerForm = ({
                                     className="rounded-lg auth-ohnix-input"
                                 />
                             </Form.Item>
-                        </Col>
-                        <Col xs={24}>
                             <Form.Item
                                 label={
                                     <span className="font-medium text-[var(--ohnix-text-muted)]">
@@ -333,6 +318,7 @@ const CustomerForm = ({
                                         message: t("customers.account_number_max_length"),
                                     },
                                 ]}
+                                className="mb-0"
                             >
                                 <Input
                                     placeholder={t("customers.account_number_placeholder")}
@@ -343,9 +329,39 @@ const CustomerForm = ({
                                     className="rounded-lg auth-ohnix-input"
                                 />
                             </Form.Item>
-                        </Col>
-                    </Row>
-                </Card>
+                        </Card>
+                    </Col>
+
+                    <Col xs={24} md={12}>
+                        <Card
+                            {...sectionCardProps}
+                            title={
+                                <div className="flex items-center text-[var(--ohnix-text-primary)]">
+                                    <UploadOutlined className="mr-3 text-[#44F3F0] text-lg" />
+                                    <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
+                                        {t("customers.customer_photo")}
+                                    </span>
+                                </div>
+                            }
+                        >
+                            <Form.Item className="mb-0">
+                                <Upload {...uploadProps}>
+                                    {fileList.length === 0 && (
+                                        <div className="text-center p-2 mt-2 border border-dashed border-[var(--ohnix-line-5)] rounded-xl hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer bg-[var(--ohnix-line-1)] hover:bg-[var(--ohnix-hover-overlay)]">
+                                            <UploadOutlined className="text-3xl text-[#29D8D5] mb-3 block" />
+                                            <div className="text-[var(--ohnix-text-primary)] font-medium mb-1">
+                                                {t("customers.click_to_upload_photo")}
+                                            </div>
+                                            <div className="text-sm text-[var(--ohnix-text-muted)]">
+                                                {t("customers.photo_upload_help")}
+                                            </div>
+                                        </div>
+                                    )}
+                                </Upload>
+                            </Form.Item>
+                        </Card>
+                    </Col>
+                </Row>
 
                 {usesColombianEInvoicing && (
                     <Card
@@ -395,39 +411,6 @@ const CustomerForm = ({
                         </Row>
                     </Card>
                 )}
-
-                {/* Photo Upload Section */}
-                <Card
-                    title={
-                        <div className="flex items-center text-[var(--ohnix-text-primary)]">
-                            <UploadOutlined className="mr-3 text-[#44F3F0] text-lg" />
-                            <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
-                                {t("customers.customer_photo")}
-                            </span>
-                        </div>
-                    }
-                    className="shadow-sm border-0 module-shell"
-                    headStyle={{
-                        borderBottom: "1px solid var(--ohnix-line-3)",
-                        background: "transparent",
-                    }}
-                >
-                    <Form.Item>
-                        <Upload {...uploadProps}>
-                            {fileList.length === 0 && (
-                                <div className="text-center md:p-2 mt-2 border border-dashed border-[var(--ohnix-line-5)] rounded-xl hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer bg-[var(--ohnix-line-1)] hover:bg-[var(--ohnix-hover-overlay)]">
-                                    <UploadOutlined className="text-3xl text-[#29D8D5] mb-3 block" />
-                                    <div className="text-[var(--ohnix-text-primary)] font-medium mb-1">
-                                        {t("customers.click_to_upload_photo")}
-                                    </div>
-                                    <div className="text-sm text-[var(--ohnix-text-muted)]">
-                                        {t("customers.photo_upload_help")}
-                                    </div>
-                                </div>
-                            )}
-                        </Upload>
-                    </Form.Item>
-                </Card>
 
                 {/* Form Actions */}
                 <div className="flex justify-end pt-6 border-t border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] -mx-6 px-6 py-4 space-x-3">

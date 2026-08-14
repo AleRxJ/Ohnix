@@ -42,6 +42,7 @@ const Orders = () => {
         orderDetails,
         detailsLoading,
         updateOrderStatus,
+        updatingOrderId,
         generateInvoice,
         createOrder,
         fetchOrderDetails,
@@ -162,6 +163,7 @@ const Orders = () => {
                             onTableChange={handleTableChange}
                             onViewDetails={handleViewDetails}
                             onUpdateStatus={updateOrderStatus}
+                            updatingOrderId={updatingOrderId}
                             onGenerateInvoice={generateInvoice}
                         />
                     </div>

@@ -174,13 +174,6 @@ export const INVENTORY_TOUR_STEPS = [
         descKey: "inventory_tour.step_low_stock_alerts_desc",
     },
     {
-        id: "team-intro",
-        kind: "info",
-        path: "/team",
-        titleKey: "inventory_tour.step_team_intro_title",
-        descKey: "inventory_tour.step_team_intro_desc",
-    },
-    {
         id: "billing-intro",
         kind: "info",
         path: "/billing",

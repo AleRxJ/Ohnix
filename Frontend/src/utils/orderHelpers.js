@@ -48,6 +48,20 @@ export const calculateStats = (orders, pagination) => {
 
 export const TERMINAL_STATUSES = ["completed", "cancelled"];
 
+// Mirrors Backend/services/order.service.js's validTransitions - kept here
+// purely so the status Select only ever offers moves the backend will
+// actually accept (e.g. pending can't jump straight to completed, it has to
+// pass through processing first). The backend remains the real authority;
+// this is just so the UI doesn't invite a click that's guaranteed to fail.
+export const ORDER_STATUS_TRANSITIONS = {
+    pending: ["processing", "cancelled"],
+    processing: ["completed", "cancelled"],
+    // completed -> cancelled is real but handled by OrdersTable's separate
+    // "cancel completed order" Popconfirm button, not this select.
+    completed: [],
+    cancelled: [],
+};
+
 export const ORDER_STATUSES = [
     { value: "pending", labelKey: "orders.pending" },
     { value: "processing", labelKey: "orders.processing" },
