@@ -379,7 +379,7 @@ const CustomerForm = ({
                             </Col>
                             <Col xs={24} sm={8}>
                                 <Form.Item name="municipality_code" label={t("customers.dian_municipality_code")} rules={[{ required: true, message: t("customers.dian_municipality_code_required") }]}>
-                                    <Input size="large" placeholder="Ej. 11001" className="auth-ohnix-input" />
+                                    <Input size="large" placeholder={t("customers.dian_municipality_code_placeholder")} className="auth-ohnix-input" />
                                 </Form.Item>
                             </Col>
                             <Col xs={24} sm={12}>

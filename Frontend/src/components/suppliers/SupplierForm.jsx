@@ -358,7 +358,7 @@ const SupplierForm = ({
                                             {t("suppliers.upload_photo")}
                                         </div>
                                         <div className="text-sm text-[var(--ohnix-text-muted)]">
-                                            JPG, PNG hasta 2MB
+                                            {t("suppliers.photo_upload_help")}
                                         </div>
                                     </div>
                                 )}

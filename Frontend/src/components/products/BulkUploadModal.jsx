@@ -130,24 +130,26 @@ const BulkUploadModal = ({
 
     const errorColumns = [
         {
-            title: "Row",
+            title: t("products.bulk_col_row"),
             dataIndex: "row",
             width: 70,
-            render: (val) => <Text type="secondary">#{val}</Text>,
+            render: (val) => (
+                <Text className="!text-[var(--ohnix-text-muted)]">#{val}</Text>
+            ),
         },
         {
-            title: "Product Code",
+            title: t("products.bulk_col_product_code"),
             dataIndex: "product_code",
             width: 120,
             render: (val) => <Text code>{val}</Text>,
         },
         {
-            title: "Errors",
+            title: t("products.bulk_col_errors"),
             dataIndex: "errors",
             render: (errs) => (
                 <div className="flex flex-col gap-1">
                     {errs.map((e, i) => (
-                        <Text key={i} type="danger" className="text-xs">
+                        <Text key={i} className="text-xs !text-red-400">
                             • {e}
                         </Text>
                     ))}
@@ -166,8 +168,8 @@ const BulkUploadModal = ({
         <Modal
             title={
                 <div className="flex items-center gap-2">
-                    <FileTextOutlined className="text-blue-600" />
-                    <span className="text-lg font-bold">
+                    <FileTextOutlined className="text-[#44F3F0]" />
+                    <span className="text-lg font-bold text-[var(--ohnix-text-primary)]">
                         {t("products.bulk_product_upload")}
                     </span>
                 </div>
@@ -177,15 +179,28 @@ const BulkUploadModal = ({
             width={720}
             footer={null}
             destroyOnClose
+            className="bulk-upload-modal"
+            styles={{
+                mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                content: {
+                    background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    border: "1px solid var(--ohnix-line-4)",
+                    borderRadius: "20px",
+                },
+                header: {
+                    background: "transparent",
+                    borderBottom: "1px solid var(--ohnix-line-3)",
+                },
+            }}
         >
             <div className="space-y-4 py-2">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-[#29D8D5]/10 border border-[#29D8D5]/25 rounded-lg p-4">
                     <div className="flex items-start justify-between gap-4">
                         <div>
-                            <Text className="font-semibold text-blue-900 block mb-1">
+                            <Text className="font-semibold !text-[var(--ohnix-text-primary)] block mb-1">
                                 {t("products.step_1_download_template")}
                             </Text>
-                            <Text className="text-sm text-blue-700">
+                            <Text className="text-sm !text-[var(--ohnix-text-muted)]">
                                 {t("products.template_csv_instruction")}{" "}
                                 <Text code className="text-xs">
                                     product_name
@@ -303,7 +318,7 @@ const BulkUploadModal = ({
                         )}
 
                         <div className="flex gap-2 flex-wrap">
-                            <Tag color="default">
+                            <Tag color="cyan">
                                 {t("products.total_rows")} {result.total}
                             </Tag>
                             {result.inserted > 0 && (
@@ -320,7 +335,7 @@ const BulkUploadModal = ({
 
                         {result.errors?.length > 0 && (
                             <div>
-                                <Text className="font-semibold text-red-600 block mb-2">
+                                <Text className="font-semibold !text-red-400 block mb-2">
                                     {t("products.row_errors", { count: result.errors.length })}
                                 </Text>
                                 <Table
@@ -336,7 +351,7 @@ const BulkUploadModal = ({
                                             : false
                                     }
                                     scroll={{ x: 400 }}
-                                    className="border rounded-lg overflow-hidden"
+                                    className="module-dark-table border border-[var(--ohnix-line-4)] rounded-lg overflow-hidden"
                                 />
                             </div>
                         )}

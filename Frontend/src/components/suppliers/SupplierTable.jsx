@@ -58,15 +58,15 @@ const SupplierTable = ({
             title: t("suppliers.shop_name"),
             dataIndex: "shopname",
             key: "shopname",
-            render: (shopname) => shopname || "-",
+            render: (shopname) => shopname || t("common.dash"),
         },
         {
             title: t("suppliers.type"),
             dataIndex: "type",
             key: "type",
             render: (type) => (
-                <Tag color={type === "company" ? "blue" : "green"}>
-                    {type?.toUpperCase() || t("common.na")}
+                <Tag color={type === "company" ? "cyan" : "green"}>
+                    {(type ? t(`suppliers.${type}`) : null) || t("common.na")}
                 </Tag>
             ),
         },

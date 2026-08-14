@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { Drawer, Tag, Empty, Spin, Button, Table, Divider } from "antd";
+import { Drawer, Tag, Spin, Button, Table, Divider } from "antd";
 import {
     FilePdfOutlined,
     CloseOutlined,
@@ -49,8 +49,8 @@ const OrderDetailsDrawer = ({
             key: "product_name",
             render: (text) => (
                 <div className="flex items-center space-x-2">
-                    <ShoppingCartOutlined className="text-blue-500" />
-                    <span className="font-medium text-gray-800">
+                    <ShoppingCartOutlined className="text-[#44F3F0]" />
+                    <span className="font-medium text-[var(--ohnix-text-primary)]">
                         {text || t("common.na")}
                     </span>
                 </div>
@@ -63,7 +63,7 @@ const OrderDetailsDrawer = ({
             align: "center",
             width: 100,
             render: (quantity) => (
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#29D8D5]/15 text-[#44F3F0]">
                     {quantity}
                 </span>
             ),
@@ -75,7 +75,7 @@ const OrderDetailsDrawer = ({
             align: "right",
             width: 120,
             render: (price) => (
-                <span className="text-gray-700 font-medium">
+                <span className="text-[var(--ohnix-text-soft)] font-medium">
                     {formatCurrency(price)}
                 </span>
             ),
@@ -87,7 +87,7 @@ const OrderDetailsDrawer = ({
             align: "right",
             width: 120,
             render: (total) => (
-                <span className="text-green-600 font-semibold text-lg">
+                <span className="text-[#44F3F0] font-semibold text-lg">
                     {formatCurrency(total)}
                 </span>
             ),
@@ -132,7 +132,7 @@ const OrderDetailsDrawer = ({
                         color={getStatusColor(selectedOrder.order_status)}
                         className="text-sm font-medium px-3 py-1"
                     >
-                        {selectedOrder.order_status.toUpperCase()}
+                        {(t(`orders.${selectedOrder.order_status}`) || selectedOrder.order_status).toUpperCase()}
                     </Tag>
                 </div>
 
@@ -145,7 +145,7 @@ const OrderDetailsDrawer = ({
                             </span>
                         </div>
                         <p className="text-base font-semibold text-[var(--ohnix-text-primary)]">
-                            {selectedOrder.customer_id?.name || "N/A"}
+                            {selectedOrder.customer_id?.name || t("common.na")}
                         </p>
                     </div>
                     <div>
@@ -229,14 +229,15 @@ const OrderDetailsDrawer = ({
                             bordered
                         />
                     ) : (
-                        <div className="py-12">
-                            <Empty
-                                description={
-                                    <span className="text-[var(--ohnix-text-muted)]">
-                                        {t("orders.no_items_found")}
-                                    </span>
-                                }
-                            />
+                        // Not antd's <Empty/> - its default illustration + text use
+                        // antd's light-theme colors, which render as a near-invisible
+                        // light-gray image and dark-gray text against this app's
+                        // near-black background (same fix as ProductDetailsDrawer.jsx).
+                        <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
+                            <ShoppingCartOutlined className="text-2xl text-[var(--ohnix-text-dim)]" />
+                            <span className="text-sm text-[var(--ohnix-text-muted)]">
+                                {t("orders.no_items_found")}
+                            </span>
                         </div>
                     )}
                 </div>

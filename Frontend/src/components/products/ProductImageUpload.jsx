@@ -1,8 +1,10 @@
 import React from "react";
 import { Form, Upload } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const ProductImageUpload = ({ imageUrl, onChange }) => {
+    const { t } = useI18n();
     return (
         <Form.Item
             name="product_image"
@@ -39,10 +41,10 @@ const ProductImageUpload = ({ imageUrl, onChange }) => {
                             </div>
                             <div className="text-center">
                                 <p className="text-sm font-medium text-[var(--ohnix-text-primary)] mb-1">
-                                    Click to upload product image
+                                    {t("products.upload_image_hint")}
                                 </p>
                                 <p className="text-xs text-[var(--ohnix-text-muted)]">
-                                    PNG, JPG up to 5MB
+                                    {t("products.upload_image_size_hint")}
                                 </p>
                             </div>
                         </div>

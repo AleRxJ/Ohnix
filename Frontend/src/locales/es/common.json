@@ -181,6 +181,7 @@
     "dian_identification_required": "Ingresa la identificación",
     "dian_municipality_code": "Código municipio DIAN",
     "dian_municipality_code_required": "Ingresa el municipio DIAN",
+    "dian_municipality_code_placeholder": "Ej. 11001",
     "dian_organization": "Organización",
     "dian_organization_required": "Selecciona la organización",
     "dian_org_legal": "Persona jurídica",
@@ -820,6 +821,8 @@
     "filter_tip": "Selecciona los filtros y haz clic en Aplicar para actualizar tu lista de productos.",
     "preview": "Vista previa",
     "product_image": "Imagen del producto",
+    "upload_image_hint": "Haz clic para subir la imagen del producto",
+    "upload_image_size_hint": "PNG, JPG de hasta 5 MB",
     "dian_classification": "Clasificación DIAN",
     "dian_unit": "Unidad DIAN",
     "dian_unit_required": "Ingresa la unidad DIAN",
@@ -1092,7 +1095,8 @@
     "return_preview_proceed": "Continuar con la devolución",
     "return_preview_footer_total": "Reembolso potencial total:",
     "return_preview_full_short": "Total: {{count}}",
-    "return_preview_partial_short": "Parcial: {{count}}"
+    "return_preview_partial_short": "Parcial: {{count}}",
+    "current_stock_label": "Stock actual"
   },
   "suppliers": {
     "supplier": "Proveedor",
@@ -1152,6 +1156,7 @@
     "enter_account_number_placeholder": "Ingresa el número de cuenta",
     "supplier_photo": "Foto del proveedor",
     "upload_photo": "Subir foto",
+    "photo_upload_help": "Archivos JPG, PNG de hasta 2 MB",
     "update_supplier": "Actualizar proveedor",
     "create_supplier": "Crear proveedor",
     "supplier_details": "Detalles del proveedor",

@@ -802,6 +802,39 @@ textarea.ant-input[disabled] {
   color: var(--ohnix-text-dim) !important;
 }
 
+/* Form.Item labels default to near-black text (a light-theme assumption) -
+   a weaker, non-!important version of this rule already existed but wasn't
+   reliably winning against antd's own styles inside portaled Modal/Drawer
+   content, which is exactly where most of these live. */
+.ant-form-item-label > label {
+  color: var(--ohnix-text-soft) !important;
+}
+
+/* Unselected Radio.Button segments default to a light/white pill with dark
+   text, which looks broken sitting on Ohnix's dark modal backgrounds (e.g.
+   the stock-adjustment "Entrada/Salida" direction toggle). Selected state
+   keeps antd's own primary-color styling, already teal via the ant-btn-
+   primary-style theme token, so it's untouched here. */
+.ant-radio-button-wrapper:not(.ant-radio-button-wrapper-checked) {
+  background: var(--ohnix-line-1) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.ant-radio-button-wrapper:not(.ant-radio-button-wrapper-checked):hover {
+  color: #44f3f0 !important;
+}
+
+.ant-radio-button-wrapper:not(:first-child)::before {
+  background-color: var(--ohnix-line-5) !important;
+}
+
+/* TextArea's showCount character counter ("0 / 280") defaults to the same
+   light-theme grey as the other text above. */
+.ant-input-data-count {
+  color: var(--ohnix-text-dim) !important;
+}
+
 .auth-ohnix-input input:-webkit-autofill,
 .auth-ohnix-input input:-webkit-autofill:hover,
 .auth-ohnix-input input:-webkit-autofill:focus,

@@ -224,7 +224,7 @@ const PurchaseForm = ({
                                                                       : "green"
                                                             }
                                                         >
-                                                            Current Stock:{" "}
+                                                            {t("purchases.current_stock_label")}:{" "}
                                                             {
                                                                 selectedProduct.stock
                                                             }
