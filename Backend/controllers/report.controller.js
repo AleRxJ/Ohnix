@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import { streamReportPdf } from "../utils/reportPdf.js";
+import { getLowStockDefaultThreshold } from "../utils/systemSettings.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -52,12 +53,14 @@ const getDashboardMetrics = asyncHandler(async (req, res, next) => {
         const purchaseWhere = isAdmin ? {} : { purchase: { createdById: userId } };
         const productWhere = isAdmin ? {} : { createdById: userId };
 
+        const defaultThreshold = await getLowStockDefaultThreshold();
+
         const [
             totalSalesAgg,
             totalPurchaseAgg,
             inventoryAgg,
             recentOrders,
-            lowStockProducts,
+            lowStockCandidates,
             outOfStockCount,
         ] = await Promise.all([
             prisma.order.aggregate({
@@ -91,19 +94,21 @@ const getDashboardMetrics = asyncHandler(async (req, res, next) => {
                     },
                 },
             }),
+            // Per-product thresholds (Escala+) can't be compared against
+            // Product.stock in a single `where` clause, so pull a bounded
+            // candidate set (worst case = every product below the highest
+            // possible threshold) and finish the real per-row comparison in
+            // JS below - same approach as lowStockScheduler.js.
             prisma.product.findMany({
-                where: {
-                    ...productWhere,
-                    stock: { lt: 10 },
-                },
+                where: productWhere,
                 select: {
                     id: true,
                     legacyMongoId: true,
                     productName: true,
                     stock: true,
+                    lowStockThreshold: true,
                 },
                 orderBy: { stock: "asc" },
-                take: 10,
             }),
             prisma.product.count({
                 where: {
@@ -112,6 +117,10 @@ const getDashboardMetrics = asyncHandler(async (req, res, next) => {
                 },
             }),
         ]);
+
+        const lowStockProducts = lowStockCandidates
+            .filter((p) => p.stock < (p.lowStockThreshold ?? defaultThreshold))
+            .slice(0, 10);
 
         const productsForValue = await prisma.product.findMany({
             where: productWhere,
@@ -173,6 +182,7 @@ const getStockReport = asyncHandler(async (req, res, next) => {
     try {
         const userId = req.user.prismaId;
         const isAdmin = req.user.role === "admin";
+        const defaultThreshold = await getLowStockDefaultThreshold();
 
         const products = await prisma.product.findMany({
             where: isAdmin ? {} : { createdById: userId },
@@ -195,7 +205,7 @@ const getStockReport = asyncHandler(async (req, res, next) => {
             const status =
                 p.stock === 0
                     ? "Out of Stock"
-                    : p.stock < 10
+                    : p.stock < (p.lowStockThreshold ?? defaultThreshold)
                       ? "Low Stock"
                       : "In Stock";
 

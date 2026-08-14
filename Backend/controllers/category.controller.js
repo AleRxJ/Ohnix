@@ -322,6 +322,14 @@ const deleteCategory = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, {}, "Category deleted successfully"));
     } catch (error) {
+        if (error.code === "P2003") {
+            return next(
+                new ApiError(
+                    409,
+                    "This category can't be deleted because it still has products assigned to it. Reassign or delete those products first."
+                )
+            );
+        }
         return next(new ApiError(500, error.message));
     }
 });

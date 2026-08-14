@@ -75,6 +75,14 @@ enum PermissionLevel {
   admin
 }
 
+enum StockMovementSourceType {
+  purchase
+  purchase_return
+  order
+  order_cancellation
+  adjustment
+}
+
 model User {
   id                String        @id @default(cuid())
   legacyMongoId     String?       @unique @map("legacy_mongo_id")
@@ -114,6 +122,7 @@ model User {
   ordersUpdated       Order[]              @relation("OrderUpdatedBy")
   planUpgradeRequests PlanUpgradeRequest[]
   apiKeys             ApiKey[]
+  stockMovementsCreated StockMovement[]    @relation("StockMovementCreatedBy")
 
   // Teams: a user is either a team owner (ownedTeam), a member of exactly one
   // active team at a time (via TeamMember, enforced in team.service.js - not
@@ -374,12 +383,55 @@ model Product {
   updatedBy       User?            @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
   orderDetails    OrderDetail[]
   purchaseDetails PurchaseDetail[]
+  stockMovements  StockMovement[]
 
   @@unique([productCode, createdById])
   @@index([createdById])
   @@index([categoryId])
   @@index([unitId])
   @@map("products")
+}
+
+// The append-only ledger behind every Product.stock change. `stock` itself
+// stays the fast-read current balance (unchanged), but every write path that
+// touches it (purchase completion, sale completion, purchase return, sale
+// cancellation, manual adjustment) must also insert one row here in the same
+// transaction - see stockMovement.service.js's recordStockMovement, the
+// single place that does so. `accountId` duplicates the owning product's
+// createdById (the team/account scope, see teamContext.js) so history
+// queries don't need to join through Product for tenant filtering.
+model StockMovement {
+  id           String                   @id @default(cuid())
+  productId    String                   @map("product_id")
+  accountId    String                   @map("account_id")
+  delta        Int
+  balanceAfter Int                      @map("balance_after")
+  sourceType   StockMovementSourceType  @map("source_type")
+  sourceId     String?                  @map("source_id")
+  reason       String?                  @db.Text
+  createdById  String                   @map("created_by")
+  createdAt    DateTime                 @default(now()) @map("created_at")
+
+  product   Product @relation(fields: [productId], references: [id])
+  createdBy User    @relation("StockMovementCreatedBy", fields: [createdById], references: [id])
+
+  @@index([productId, createdAt])
+  @@index([accountId, createdAt])
+  @@index([sourceType, sourceId])
+  @@map("stock_movements")
+}
+
+// Platform-wide knobs that used to live only in a process-memory singleton
+// (LowStockScheduler.threshold) and drifted out of sync with the copies
+// hardcoded in order.service.js and report.controller.js. Single row, fixed
+// id - see systemSettings.util.js for the get/set helpers that keep it in
+// sync across the weekly digest, the real-time post-sale alert, and reports.
+model SystemSetting {
+  id                        String   @id @default("singleton")
+  lowStockDefaultThreshold  Int      @default(10) @map("low_stock_default_threshold")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
 }
 
 model Purchase {

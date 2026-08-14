@@ -128,6 +128,7 @@ const PurchaseList = ({
                                         onClick={handleAddPurchase}
                                         className="w-full sm:w-auto bg-[#44F3F0] text-[#021314] border-0 shadow-lg hover:shadow-xl transition-all duration-300"
                                         disabled={!canEdit}
+                                        data-tour="tour-add-purchase"
                                     > {t("purchases.add_new_purchase")}
                                     </Button>
                                 </span>

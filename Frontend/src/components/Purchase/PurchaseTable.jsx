@@ -1,6 +1,6 @@
 import React from "react";
 import { Table, Button, Space, Tag, Tooltip, Popconfirm } from "antd";
-import { EyeOutlined, CheckCircleOutlined, InfoCircleOutlined, UndoOutlined } from "@ant-design/icons";
+import { EyeOutlined, CheckCircleOutlined, UndoOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { getStatusColor } from "../../utils/purchaseUtils";
 import { getStatusIconPurchase } from "../../data";
@@ -69,27 +69,22 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
                                 onConfirm={() => onUpdateStatus(record._id, "completed")}
                                 disabled={!canEdit}
                             >
-                                <Button icon={<CheckCircleOutlined />} size="small" type="primary" disabled={!canEdit} />
+                                <Button icon={<CheckCircleOutlined />} size="small" type="primary" disabled={!canEdit} data-tour="tour-mark-completed" />
                             </Popconfirm>
                         </Tooltip>
                     )}
 
                     {record.purchase_status === "completed" && (
-                        <>
-                            <Tooltip title={t("purchases.preview_return")}>
-                                <Button icon={<InfoCircleOutlined />} size="small" onClick={() => onReturnPreview(record._id)} />
-                            </Tooltip>
-                            <Tooltip title={canEdit ? t("purchases.process_return") : t("common.no_permission_to_edit")}>
-                                <Popconfirm
-                                    title={t("purchases.confirm_process_return")}
-                                    description={t("purchases.confirm_process_return_desc")}
-                                    onConfirm={() => onUpdateStatus(record._id, "returned")}
-                                    disabled={!canEdit}
-                                >
-                                    <Button icon={<UndoOutlined />} size="small" danger disabled={!canEdit} />
-                                </Popconfirm>
-                            </Tooltip>
-                        </>
+                        <Tooltip title={canEdit ? t("purchases.process_return") : t("common.no_permission_to_edit")}>
+                            <Button
+                                icon={<UndoOutlined />}
+                                size="small"
+                                danger
+                                disabled={!canEdit}
+                                onClick={() => onReturnPreview(record._id)}
+                                data-tour="tour-return-purchase"
+                            />
+                        </Tooltip>
                     )}
                 </Space>
             ),

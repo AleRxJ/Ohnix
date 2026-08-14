@@ -5,6 +5,7 @@ import { uploadToCloudinary } from "../utils/cloudinary.js";
 import { prisma } from "../db/prisma.js";
 import { normalizeCountryCode } from "../services/companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
+import { recordStockMovement } from "../services/stockMovement.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -145,6 +146,11 @@ const resolveUnitForUser = async (unitId, user) => {
         where: {
             OR: [{ id: unitId }, { legacyMongoId: unitId }],
         },
+        include: {
+            createdBy: {
+                select: { id: true, role: true },
+            },
+        },
     });
 
     if (!unit) return null;
@@ -153,7 +159,12 @@ const resolveUnitForUser = async (unitId, user) => {
         return unit;
     }
 
-    if (unit.createdById === user.prismaId) {
+    // Matches resolveCategoryForUser: units created by a platform admin are
+    // treated as global/shared, same as admin-created categories.
+    if (
+        unit.createdById === user.prismaId ||
+        unit.createdBy?.role === "admin"
+    ) {
         return unit;
     }
 
@@ -194,8 +205,8 @@ const createProduct = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "Buying and selling prices must be valid numbers"));
     }
 
-    if (buyingPrice < 0 || sellingPrice < 0) {
-        return next(new ApiError(400, "Prices cannot be negative"));
+    if (buyingPrice <= 0 || sellingPrice <= 0) {
+        return next(new ApiError(400, "Prices must be greater than 0"));
     }
 
     if (sellingPrice < buyingPrice) {
@@ -204,6 +215,10 @@ const createProduct = asyncHandler(async (req, res, next) => {
 
     if (String(product_code).trim().length > 5) {
         return next(new ApiError(400, "Product code must be 5 characters or less"));
+    }
+
+    if (String(product_name).trim().length > 50) {
+        return next(new ApiError(400, "Product name must be 50 characters or less"));
     }
 
     try {
@@ -418,9 +433,11 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             ...(updateData.selling_price !== undefined && {
                 sellingPrice: Number(updateData.selling_price),
             }),
-            ...(updateData.stock !== undefined && {
-                stock: Number(updateData.stock),
-            }),
+            // stock is intentionally NOT accepted here - it used to be a free
+            // field on this same general-purpose edit endpoint, which let it
+            // be overwritten with no reason, no audit trail, and no
+            // stock_movements row. Use POST /products/:id/adjust-stock
+            // instead, which requires a reason and records the movement.
             ...(updateData.unit_measure_code !== undefined && {
                 unitMeasureCode: String(updateData.unit_measure_code).trim(),
             }),
@@ -443,22 +460,22 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             return next(new ApiError(400, "Product code must be 5 characters or less"));
         }
 
+        if (payload.productName && payload.productName.length > 50) {
+            return next(new ApiError(400, "Product name must be 50 characters or less"));
+        }
+
         if (
             payload.buyingPrice !== undefined &&
-            (Number.isNaN(payload.buyingPrice) || payload.buyingPrice < 0)
+            (Number.isNaN(payload.buyingPrice) || payload.buyingPrice <= 0)
         ) {
-            return next(new ApiError(400, "Buying price must be a non-negative number"));
+            return next(new ApiError(400, "Buying price must be greater than 0"));
         }
 
         if (
             payload.sellingPrice !== undefined &&
-            (Number.isNaN(payload.sellingPrice) || payload.sellingPrice < 0)
+            (Number.isNaN(payload.sellingPrice) || payload.sellingPrice <= 0)
         ) {
-            return next(new ApiError(400, "Selling price must be a non-negative number"));
-        }
-
-        if (payload.stock !== undefined && (Number.isNaN(payload.stock) || payload.stock < 0)) {
-            return next(new ApiError(400, "Stock must be a non-negative number"));
+            return next(new ApiError(400, "Selling price must be greater than 0"));
         }
 
         if (payload.taxRate !== undefined && (Number.isNaN(payload.taxRate) || payload.taxRate < 0)) {
@@ -533,6 +550,149 @@ const deleteProduct = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, {}, "Product deleted successfully"));
     } catch (error) {
+        if (error.code === "P2003") {
+            return next(
+                new ApiError(
+                    409,
+                    "This product can't be deleted because it has purchases, sales, or stock movements on record. Remove or reassign that history first."
+                )
+            );
+        }
+        return next(new ApiError(500, error.message));
+    }
+});
+
+// Explicit, audited stock correction - the only way to change Product.stock
+// outside of a purchase/sale/return, requiring a reason and always writing a
+// stock_movements row (sourceType: "adjustment"). Replaces the old free
+// `stock` field on the general product edit endpoint above.
+const adjustProductStock = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+    const { delta, reason } = req.body;
+
+    const parsedDelta = Number(delta);
+
+    if (!Number.isInteger(parsedDelta) || parsedDelta === 0) {
+        return next(new ApiError(400, "Delta must be a non-zero integer"));
+    }
+
+    if (!reason || !String(reason).trim()) {
+        return next(new ApiError(400, "A reason is required to adjust stock"));
+    }
+
+    try {
+        const existingProduct = await findProductByAnyId(id);
+
+        if (!existingProduct) {
+            return next(new ApiError(404, "Product not found"));
+        }
+
+        if (
+            req.user.role !== "admin" &&
+            existingProduct.createdById !== req.user.prismaId
+        ) {
+            return next(
+                new ApiError(403, "You don't have permission to adjust this product's stock")
+            );
+        }
+
+        const requiredStock = parsedDelta < 0 ? -parsedDelta : 0;
+
+        const result = await prisma.$transaction(async (tx) => {
+            const claim = await tx.product.updateMany({
+                where: { id: existingProduct.id, stock: { gte: requiredStock } },
+                data: { stock: { increment: parsedDelta }, updatedById: req.user.prismaId },
+            });
+
+            if (claim.count === 0) {
+                throw new ApiError(
+                    409,
+                    "Not enough stock to apply this adjustment"
+                );
+            }
+
+            const updated = await tx.product.findUniqueOrThrow({
+                where: { id: existingProduct.id },
+                include: {
+                    category: { select: { id: true, legacyMongoId: true, categoryName: true } },
+                    unit: { select: { id: true, legacyMongoId: true, unitName: true } },
+                    createdBy: { select: { id: true, legacyMongoId: true, username: true } },
+                    updatedBy: { select: { id: true, legacyMongoId: true, username: true } },
+                },
+            });
+
+            await recordStockMovement(tx, {
+                productId: existingProduct.id,
+                accountId: existingProduct.createdById,
+                delta: parsedDelta,
+                balanceAfter: updated.stock,
+                sourceType: "adjustment",
+                sourceId: null,
+                reason: String(reason).trim(),
+                createdById: req.user.prismaId,
+            });
+
+            return updated;
+        });
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, mapProduct(result), "Stock adjusted successfully"));
+    } catch (error) {
+        if (error instanceof ApiError) return next(error);
+        return next(new ApiError(500, error.message));
+    }
+});
+
+// Read-only ledger for a single product - the movement history the audit
+// found nowhere for the user to actually see (StockMovement is the only
+// table that records it). Tenant-scoped the same way every other product
+// read is: non-admins only ever see their own account's product.
+const getProductStockMovements = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+
+    try {
+        const existingProduct = await findProductByAnyId(id);
+
+        if (!existingProduct) {
+            return next(new ApiError(404, "Product not found"));
+        }
+
+        if (
+            req.user.role !== "admin" &&
+            existingProduct.createdById !== req.user.prismaId
+        ) {
+            return next(
+                new ApiError(403, "You don't have permission to view this product's history")
+            );
+        }
+
+        const movements = await prisma.stockMovement.findMany({
+            where: { productId: existingProduct.id },
+            orderBy: { createdAt: "desc" },
+            take: 200,
+            include: {
+                createdBy: { select: { id: true, legacyMongoId: true, username: true } },
+            },
+        });
+
+        const mapped = movements.map((m) => ({
+            _id: m.id,
+            delta: m.delta,
+            balance_after: m.balanceAfter,
+            source_type: m.sourceType,
+            source_id: m.sourceId,
+            reason: m.reason,
+            created_by: m.createdBy
+                ? { _id: m.createdBy.legacyMongoId || m.createdBy.id, username: m.createdBy.username }
+                : null,
+            createdAt: m.createdAt,
+        }));
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, mapped, "Stock movements fetched successfully"));
+    } catch (error) {
         return next(new ApiError(500, error.message));
     }
 });
@@ -571,4 +731,6 @@ export {
     updateProduct,
     deleteProduct,
     getAllProductsAdmin,
+    adjustProductStock,
+    getProductStockMovements,
 };

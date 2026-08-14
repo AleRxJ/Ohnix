@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Form, Row, Col, Select, InputNumber, Button } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
@@ -13,6 +13,12 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
     const { currency } = useCurrency();
     const currencyInputProps = getCurrencyInputProps(currency.code);
 
+    const initialProductId = form.getFieldValue(["orderItems", name, "product_id"]);
+    const [availableStock, setAvailableStock] = useState(() => {
+        const initial = products.find((p) => p._id === initialProductId);
+        return initial ? initial.stock : null;
+    });
+
     const handleProductChange = (productId) => {
         const selected = products.find((p) => p._id === productId);
         if (selected) {
@@ -20,6 +26,14 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                 ["orderItems", name, "unitcost"],
                 selected.selling_price
             );
+            setAvailableStock(selected.stock);
+
+            const currentQty = form.getFieldValue(["orderItems", name, "quantity"]);
+            if (currentQty > selected.stock) {
+                form.setFieldValue(["orderItems", name, "quantity"], selected.stock || 1);
+            }
+        } else {
+            setAvailableStock(null);
         }
     };
 
@@ -87,10 +101,32 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                                     {t("common.quantity")}
                                 </span>
                             }
+                            extra={
+                                availableStock !== null ? (
+                                    <span className="text-xs text-[var(--ohnix-text-dim)]">
+                                        {t("orders.stock")}: {availableStock}
+                                    </span>
+                                ) : null
+                            }
                             rules={[
                                 {
                                     required: true,
                                     message: t("orders.enter_quantity_message"),
+                                },
+                                {
+                                    validator: (_, value) => {
+                                        if (
+                                            availableStock !== null &&
+                                            value !== undefined &&
+                                            value !== null &&
+                                            value > availableStock
+                                        ) {
+                                            return Promise.reject(
+                                                t("orders.quantity_exceeds_stock", { stock: availableStock })
+                                            );
+                                        }
+                                        return Promise.resolve();
+                                    },
                                 },
                             ]}
                             className="mb-0"
@@ -98,6 +134,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                             <InputNumber
                                 placeholder="0"
                                 min={1}
+                                max={availableStock ?? undefined}
                                 className="w-full auth-ohnix-input"
                                 size="large"
                             />

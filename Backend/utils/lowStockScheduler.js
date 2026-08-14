@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { prisma } from "../db/prisma.js";
 import transporter, { isMailConfigured } from "./nodemailer.js";
+import { getLowStockDefaultThreshold, setLowStockDefaultThreshold } from "./systemSettings.js";
 
 const resolveTimezone = () => {
     const configuredTimezone = process.env.TIMEZONE || "Asia/Kolkata";
@@ -17,7 +18,6 @@ const resolveTimezone = () => {
 
 class LowStockScheduler {
     constructor() {
-        this.threshold = 10;
         this.isRunning = false;
     }
 
@@ -27,6 +27,8 @@ class LowStockScheduler {
             return { sent: false, reason: "mail_not_configured" };
         }
         try {
+            const defaultThreshold = await getLowStockDefaultThreshold();
+
             // Per-product thresholds (Escala+ feature) can't be expressed as a
             // single Prisma `where` comparison against a column, so fetch the
             // user's catalog and filter in JS - fine even at the largest plan's
@@ -48,7 +50,7 @@ class LowStockScheduler {
             });
 
             const lowStockProducts = allProducts.filter(
-                (product) => product.stock < (product.lowStockThreshold ?? this.threshold)
+                (product) => product.stock < (product.lowStockThreshold ?? defaultThreshold)
             );
 
             if (lowStockProducts.length === 0) {
@@ -171,51 +173,94 @@ class LowStockScheduler {
         }
     }
 
+    // Only send email alerts to accounts on Negocio ($49) plan and above.
+    // Starter ($19) plan does not include automatic email alerts. An
+    // account's Subscription always lives under the OWNER's user id (see
+    // teamContext.js/ensureUserSubscription), so this starts from owners -
+    // but a team member with products view/edit access cares about the same
+    // shared inventory just as much, and used to get skipped entirely
+    // because they have no Subscription row of their own to match on. Each
+    // recipient keeps `productOwnerId` (whose catalog to check) separate
+    // from their own `id`/`email` (who actually receives the email).
+    async getEligibleUsers() {
+        const owners = await prisma.user.findMany({
+            where: {
+                email: { not: "" },
+                subscription: {
+                    status: "active",
+                    plan: { not: "starter" },
+                },
+            },
+            select: { id: true, username: true, email: true },
+        });
+
+        const recipients = owners.map((o) => ({
+            productOwnerId: o.id,
+            username: o.username,
+            email: o.email,
+        }));
+
+        const ownerIds = owners.map((o) => o.id);
+        if (ownerIds.length > 0) {
+            const teamMembers = await prisma.teamMember.findMany({
+                where: {
+                    status: "active",
+                    team: { ownerId: { in: ownerIds } },
+                    role: {
+                        permissions: {
+                            some: { moduleKey: "products", level: { not: "none" } },
+                        },
+                    },
+                },
+                select: {
+                    user: { select: { id: true, username: true, email: true } },
+                    team: { select: { ownerId: true } },
+                },
+            });
+
+            for (const tm of teamMembers) {
+                if (tm.user.email) {
+                    recipients.push({
+                        productOwnerId: tm.team.ownerId,
+                        username: tm.user.username,
+                        email: tm.user.email,
+                    });
+                }
+            }
+        }
+
+        return recipients;
+    }
+
     async sendAllUsersLowStockAlerts() {
         try {
             console.log("Starting weekly low stock alert process...");
 
-            // Only send email alerts to users on Negocio ($49) plan and above.
-            // Starter ($19) plan does not include automatic email alerts.
-            const users = await prisma.user.findMany({
-                where: {
-                    email: { not: "" },
-                    subscription: {
-                        status: "active",
-                        plan: { not: "starter" },
-                    },
-                },
-                select: {
-                    id: true,
-                    username: true,
-                    email: true,
-                },
-            });
+            const recipients = await this.getEligibleUsers();
 
-            if (users.length === 0) {
+            if (recipients.length === 0) {
                 console.log("No users with email addresses found");
                 return { success: false, message: "No users with email found" };
             }
 
             const results = {
-                total: users.length,
+                total: recipients.length,
                 sent: 0,
                 failed: 0,
                 noLowStock: 0,
                 details: [],
             };
 
-            for (const user of users) {
+            for (const recipient of recipients) {
                 const result = await this.sendUserLowStockAlert(
-                    user.id,
-                    user.email,
-                    user.username
+                    recipient.productOwnerId,
+                    recipient.email,
+                    recipient.username
                 );
 
                 results.details.push({
-                    userId: user.id,
-                    username: user.username,
-                    email: user.email,
+                    username: recipient.username,
+                    email: recipient.email,
                     ...result,
                 });
 
@@ -273,17 +318,61 @@ class LowStockScheduler {
         }
     }
 
-    async triggerManually() {
-        console.log("Manually triggering low stock alerts for testing...");
+    // Used to be "the test button" and the production cron job calling the
+    // exact same function with no way to scope or preview it - an admin
+    // clicking "trigger" always emailed every real eligible customer. Now:
+    // - targetUserId: sends to that ONE account only, regardless of plan -
+    //   a true test that never reaches another customer's inbox.
+    // - no targetUserId, no confirm: dry run, just returns who WOULD get
+    //   emailed so the admin can see the blast radius before committing.
+    // - no targetUserId, confirm: true: the real mass send (unchanged
+    //   behavior, now opt-in instead of one click away).
+    async triggerManually({ targetUserId, confirm } = {}) {
+        if (targetUserId) {
+            const user = await prisma.user.findUnique({
+                where: { id: targetUserId },
+                select: { id: true, username: true, email: true },
+            });
+
+            if (!user || !user.email) {
+                return { success: false, error: "User not found or has no email" };
+            }
+
+            console.log(`Manually triggering low stock alert test for a single account: ${user.username}`);
+            const result = await this.sendUserLowStockAlert(user.id, user.email, user.username);
+
+            return {
+                success: true,
+                results: {
+                    total: 1,
+                    sent: result.sent ? 1 : 0,
+                    failed: result.sent || result.reason === "no_low_stock" ? 0 : 1,
+                    noLowStock: result.reason === "no_low_stock" ? 1 : 0,
+                    details: [{ userId: user.id, username: user.username, email: user.email, ...result }],
+                },
+            };
+        }
+
+        if (!confirm) {
+            const users = await this.getEligibleUsers();
+            return {
+                success: true,
+                dryRun: true,
+                eligibleCount: users.length,
+                message: "Dry run - pass confirm: true to actually send, or targetUserId to test a single account.",
+            };
+        }
+
+        console.log("Manually triggering low stock alerts for ALL eligible accounts (confirmed)...");
         return this.sendAllUsersLowStockAlerts();
     }
 
-    setThreshold(newThreshold) {
-        this.threshold = newThreshold;
-        console.log(`Low stock threshold updated to: ${this.threshold}`);
+    async setThreshold(newThreshold) {
+        await setLowStockDefaultThreshold(newThreshold);
+        console.log(`Low stock threshold updated to: ${newThreshold}`);
     }
 
-    getStatus() {
+    async getStatus() {
         const nextRun =
             this.cronJob && typeof this.cronJob.getNextRun === "function"
                 ? this.cronJob.getNextRun()
@@ -293,7 +382,7 @@ class LowStockScheduler {
 
         return {
             isRunning: this.isRunning,
-            threshold: this.threshold,
+            threshold: await getLowStockDefaultThreshold(),
             nextRun,
         };
     }

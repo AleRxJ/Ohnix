@@ -108,6 +108,7 @@ const Orders = () => {
                                         size="large"
                                         className="w-full min-w-[120px] sm:w-auto"
                                         disabled={!canEdit}
+                                        data-tour="tour-add-order"
                                     >
                                         {t("orders.create_order")}
                                     </Button>

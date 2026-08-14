@@ -1,5 +1,10 @@
 import { formatCurrency } from "./currency";
 
+// Fallback used only when a product has no per-product low_stock_threshold
+// override (Escala+ feature) - kept in sync with the backend's own default
+// (SystemSetting.lowStockDefaultThreshold, see systemSettings.js).
+export const DEFAULT_LOW_STOCK_THRESHOLD = 10;
+
 export const formatPrice = (price, currencyCode) => {
     return formatCurrency(price, currencyCode);
 };
@@ -22,7 +27,7 @@ export const calculateProfitPercentage = (sellingPrice, buyingPrice) => {
     return ((sellingPrice - buyingPrice) / sellingPrice) * 100;
 };
 
-export const getStockStatus = (stock, lowStockThreshold = 10) => {
+export const getStockStatus = (stock, lowStockThreshold = DEFAULT_LOW_STOCK_THRESHOLD) => {
     if (stock === 0) {
         return { status: "error", text: "Out of Stock", color: "red" };
     } else if (stock <= lowStockThreshold) {
@@ -118,10 +123,11 @@ export const filterProducts = (products, filters) => {
 
     if (filters.stockFilter) {
         filteredProducts = filteredProducts.filter((product) => {
+            const threshold = product.low_stock_threshold ?? DEFAULT_LOW_STOCK_THRESHOLD;
             if (filters.stockFilter === "out") return product.stock === 0;
             if (filters.stockFilter === "low")
-                return product.stock > 0 && product.stock <= 10;
-            if (filters.stockFilter === "in") return product.stock > 10;
+                return product.stock > 0 && product.stock <= threshold;
+            if (filters.stockFilter === "in") return product.stock > threshold;
             return true;
         });
     }
@@ -187,8 +193,9 @@ export const calculateInventoryStats = (products) => {
         stats.totalStockValue += product.buying_price * product.stock;
         stats.totalSellingValue += product.selling_price * product.stock;
 
+        const threshold = product.low_stock_threshold ?? DEFAULT_LOW_STOCK_THRESHOLD;
         if (product.stock === 0) stats.outOfStockCount++;
-        else if (product.stock <= 10) stats.lowStockCount++;
+        else if (product.stock <= threshold) stats.lowStockCount++;
         else stats.inStockCount++;
     });
 

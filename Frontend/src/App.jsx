@@ -8,6 +8,7 @@ import AuthContext from "./context/AuthContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { TeamProvider, useTeam } from "./context/TeamContext";
+import { InventoryTourProvider } from "./context/InventoryTourContext";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
 
 // Lazy: ErrorPage uses antd (Result/Button) - same reasoning as
@@ -121,6 +122,7 @@ function App() {
             <CurrencyProvider>
                 <AuthProvider>
                     <ThemeProvider>
+                    <InventoryTourProvider>
                     <BrowserRouter>
                         <TeamProvider>
                         <Toaster
@@ -228,6 +230,7 @@ function App() {
                         </Suspense>
                         </TeamProvider>
                     </BrowserRouter>
+                    </InventoryTourProvider>
                     </ThemeProvider>
                 </AuthProvider>
             </CurrencyProvider>

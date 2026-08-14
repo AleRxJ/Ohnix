@@ -15,10 +15,12 @@ import {
     DeleteOutlined,
     EyeOutlined,
     ExclamationCircleOutlined,
+    SwapOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { useTeam } from "../../context/TeamContext";
+import { DEFAULT_LOW_STOCK_THRESHOLD } from "../../utils/productUtils";
 
 const { Text } = Typography;
 
@@ -29,6 +31,7 @@ const ProductsTable = ({
     onEdit,
     onDelete,
     onViewDetails,
+    onAdjustStock,
 }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -73,6 +76,15 @@ const ProductsTable = ({
                                 type="text"
                                 size="small"
                             />
+                            <Tooltip title={canEdit ? t("products.adjust_stock") : t("common.no_permission_to_edit")}>
+                                <Button
+                                    icon={<SwapOutlined />}
+                                    onClick={() => onAdjustStock(product)}
+                                    type="text"
+                                    size="small"
+                                    disabled={!canEdit}
+                                />
+                            </Tooltip>
                             <Button
                                 icon={<EditOutlined />}
                                 onClick={() => onEdit(product)}
@@ -117,7 +129,7 @@ const ProductsTable = ({
                                 status={
                                     product.stock === 0
                                         ? "error"
-                                        : product.stock <= 10
+                                        : product.stock <= (product.low_stock_threshold ?? DEFAULT_LOW_STOCK_THRESHOLD)
                                           ? "warning"
                                           : "success"
                                 }
@@ -193,14 +205,15 @@ const ProductsTable = ({
             key: "stock",
             width: 100,
             sorter: (a, b) => a.stock - b.stock,
-            render: (stock) => {
+            render: (stock, record) => {
                 let color = "success";
                 let status = t("common.active");
+                const threshold = record.low_stock_threshold ?? DEFAULT_LOW_STOCK_THRESHOLD;
 
                 if (stock === 0) {
                     color = "error";
                     status = t("products.out_of_stock");
-                } else if (stock <= 10) {
+                } else if (stock <= threshold) {
                     color = "warning";
                     status = t("products.low_stock");
                 }
@@ -249,6 +262,17 @@ const ProductsTable = ({
                             onClick={() => onViewDetails(record)}
                             type="text"
                             size="small"
+                            data-tour="tour-view-product"
+                        />
+                    </Tooltip>
+                    <Tooltip title={canEdit ? t("products.adjust_stock") : t("common.no_permission_to_edit")}>
+                        <Button
+                            icon={<SwapOutlined />}
+                            onClick={() => onAdjustStock(record)}
+                            type="text"
+                            size="small"
+                            disabled={!canEdit}
+                            data-tour="tour-adjust-stock"
                         />
                     </Tooltip>
                     <Tooltip title={canEdit ? t("common.edit") : t("common.no_permission_to_edit")}>

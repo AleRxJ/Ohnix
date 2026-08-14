@@ -16,7 +16,7 @@ router.get(
     "/status",
     isAdmin,
     asyncHandler(async (req, res) => {
-        const status = lowStockScheduler.getStatus();
+        const status = await lowStockScheduler.getStatus();
         return res
             .status(200)
             .json(
@@ -29,12 +29,16 @@ router.get(
     })
 );
 
-// Manually trigger low stock alerts (admin only)
+// Manually trigger low stock alerts (admin only). Defaults to a dry run -
+// pass { confirm: true } to actually email every eligible account, or
+// { targetUserId } to send a real test to just one account. See
+// lowStockScheduler.js#triggerManually for why this isn't a single-click send anymore.
 router.post(
     "/trigger-alerts",
     isAdmin,
     asyncHandler(async (req, res) => {
-        const result = await lowStockScheduler.triggerManually();
+        const { targetUserId, confirm } = req.body || {};
+        const result = await lowStockScheduler.triggerManually({ targetUserId, confirm });
 
         if (result.success) {
             return res
@@ -42,8 +46,12 @@ router.post(
                 .json(
                     new ApiResponse(
                         200,
-                        result.results,
-                        "Low stock alerts triggered successfully"
+                        result.dryRun
+                            ? { dryRun: true, eligibleCount: result.eligibleCount }
+                            : result.results,
+                        result.dryRun
+                            ? "Dry run - no emails sent"
+                            : "Low stock alerts triggered successfully"
                     )
                 );
         } else {
@@ -63,7 +71,7 @@ router.put(
             throw new ApiError(400, "Threshold must be a positive number");
         }
 
-        lowStockScheduler.setThreshold(parseInt(threshold));
+        await lowStockScheduler.setThreshold(parseInt(threshold));
 
         return res
             .status(200)

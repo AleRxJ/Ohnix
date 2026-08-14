@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
     createUnit,
     getAllUnits,
+    getAvailableUnits,
     updateUnit,
     deleteUnit,
 } from "../controllers/unit.controller.js";
@@ -13,6 +14,8 @@ import { requireModulePermission } from "../middleware/team.permissions.js";
 const router = Router();
 
 router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
+
+router.route("/available").get(requireModulePermission("units", "view"), getAvailableUnits);
 
 // Regular user routes
 router.route("/")

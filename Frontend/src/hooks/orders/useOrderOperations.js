@@ -9,6 +9,25 @@ export const useOrderOperations = (refreshOrders) => {
     const [orderDetails, setOrderDetails] = useState([]);
     const [detailsLoading, setDetailsLoading] = useState(false);
 
+    // The backend returns a per-product breakdown (name, requested vs
+    // available) for 422 stock errors instead of just a flat message - show
+    // the actual products/quantities involved instead of a generic
+    // "insufficient stock" toast that leaves the user guessing which item.
+    const describeStockErrors = (error) => {
+        const items = error.response?.data?.errors;
+        if (!Array.isArray(items) || items.length === 0) return null;
+
+        return items
+            .map((item) =>
+                t("orders.insufficient_stock_detail", {
+                    product: item.product_name || item.product_code || "?",
+                    requested: item.requested,
+                    available: item.available ?? 0,
+                })
+            )
+            .join("\n");
+    };
+
     const updateOrderStatus = async (orderId, newStatus) => {
         try {
             await api.patch(`/orders/${orderId}/status`, {
@@ -18,7 +37,9 @@ export const useOrderOperations = (refreshOrders) => {
             refreshOrders();
         } catch (error) {
             toast.error(
-                error.response?.data?.message || t("orders.failed_update_status")
+                describeStockErrors(error) ||
+                    error.response?.data?.message ||
+                    t("orders.failed_update_status")
             );
             console.error("Error updating order status:", error);
         }
@@ -77,7 +98,9 @@ export const useOrderOperations = (refreshOrders) => {
             return true;
         } catch (error) {
             toast.error(
-                error.response?.data?.message || t("orders.failed_create_order")
+                describeStockErrors(error) ||
+                    error.response?.data?.message ||
+                    t("orders.failed_create_order")
             );
             console.error("Error creating order:", error);
             return false;

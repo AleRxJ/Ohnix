@@ -5,6 +5,8 @@ import {
     updateProduct,
     deleteProduct,
     getAllProductsAdmin,
+    adjustProductStock,
+    getProductStockMovements,
 } from "../controllers/product.controller.js";
 import { bulkUploadProducts } from "../controllers/product.bulk.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
@@ -32,5 +34,8 @@ router
     .route("/:id")
     .patch(requireModulePermission("products", "edit"), upload.single("product_image"), updateProduct)
     .delete(requireModulePermission("products", "edit"), deleteProduct);
+
+router.route("/:id/adjust-stock").post(requireModulePermission("products", "edit"), adjustProductStock);
+router.route("/:id/stock-movements").get(requireModulePermission("products", "view"), getProductStockMovements);
 
 export default router;

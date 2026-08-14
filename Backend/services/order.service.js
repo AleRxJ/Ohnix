@@ -3,12 +3,10 @@ import { ApiError } from "../utils/ApiError.js";
 import { sendRealtimeLowStockAlert } from "../utils/lowStockScheduler.js";
 import { issueElectronicInvoiceForOrder } from "./electronicInvoicing.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
+import { getLowStockDefaultThreshold } from "../utils/systemSettings.js";
+import { recordStockMovement } from "./stockMovement.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
-
-// Account-wide fallback when a product has no per-product override. Kept in
-// sync with lowStockScheduler.js's own default.
-const DEFAULT_LOW_STOCK_THRESHOLD = 10;
 
 const generateInvoiceNo = () => {
     const ts = Date.now().toString(36).toUpperCase();
@@ -78,6 +76,7 @@ const findOrderByAnyId = async (id) =>
             id: true,
             createdById: true,
             orderStatus: true,
+            electronicInvoice: { select: { status: true } },
         },
     });
 
@@ -252,6 +251,21 @@ class OrderService {
                             ]
                         );
                     }
+
+                    const updatedProduct = await tx.product.findUniqueOrThrow({
+                        where: { id: item.product.id },
+                        select: { stock: true },
+                    });
+
+                    await recordStockMovement(tx, {
+                        productId: item.product.id,
+                        accountId: item.product.createdById,
+                        delta: -item.quantity,
+                        balanceAfter: updatedProduct.stock,
+                        sourceType: "order",
+                        sourceId: createdOrder.id,
+                        createdById: userId,
+                    });
                 }
             }
 
@@ -265,13 +279,14 @@ class OrderService {
                 select: { email: true, username: true, preferredLanguage: true },
             });
             if (user) {
+                const defaultThreshold = await getLowStockDefaultThreshold();
                 const lowItems = resolvedItems
                     .map((item) => ({
                         productName: item.product.productName,
                         productCode: item.product.productCode,
                         stock: item.product.stock - item.quantity,
                         // Escala+ can override the account-wide default per product.
-                        threshold: item.product.lowStockThreshold ?? DEFAULT_LOW_STOCK_THRESHOLD,
+                        threshold: item.product.lowStockThreshold ?? defaultThreshold,
                         userEmail: user.email,
                         username: user.username,
                         locale: user.preferredLanguage,
@@ -330,7 +345,10 @@ class OrderService {
         const validTransitions = {
             pending: ["processing", "cancelled"],
             processing: ["completed", "cancelled"],
-            completed: [],
+            // A completed sale can only be undone by cancelling it, which
+            // reverses the stock deduction (see the cancelled branch below).
+            // There is no "un-cancel" - a fresh order should be created instead.
+            completed: ["cancelled"],
             cancelled: [],
         };
 
@@ -339,6 +357,74 @@ class OrderService {
                 400,
                 `Cannot transition order from "${order.orderStatus}" to "${newStatus}"`
             );
+        }
+
+        if (order.orderStatus === "completed" && newStatus === "cancelled") {
+            // An issued/accepted electronic invoice is a DIAN-facing legal
+            // document - cancelling the order locally without voiding it
+            // properly would desync Ohnix from what was actually reported.
+            // Credit notes (already supported per order) are the correct
+            // undo path once an invoice has gone out; block here instead of
+            // silently leaving a stale accepted invoice behind.
+            if (["submitted", "accepted"].includes(order.electronicInvoice?.status)) {
+                throw new ApiError(
+                    409,
+                    "This order has an issued electronic invoice. Issue a credit note instead of cancelling it directly."
+                );
+            }
+
+            const details = await prisma.orderDetail.findMany({
+                where: { orderId: order.id },
+                select: {
+                    quantity: true,
+                    productId: true,
+                    product: { select: { createdById: true } },
+                },
+            });
+
+            const updated = await prisma.$transaction(async (tx) => {
+                // Guard the same way purchase.service.js does: claim the
+                // "completed -> cancelled" transition atomically so two
+                // concurrent cancel requests for the same order can't both
+                // pass the check above and both restock it.
+                const claim = await tx.order.updateMany({
+                    where: { id: order.id, orderStatus: "completed" },
+                    data: { orderStatus: "cancelled", updatedById: userId },
+                });
+
+                if (claim.count === 0) {
+                    throw new ApiError(
+                        409,
+                        "This order was already updated by another request. Please refresh and try again."
+                    );
+                }
+
+                for (const detail of details) {
+                    const updatedProduct = await tx.product.update({
+                        where: { id: detail.productId },
+                        data: { stock: { increment: detail.quantity } },
+                        select: { stock: true },
+                    });
+
+                    await recordStockMovement(tx, {
+                        productId: detail.productId,
+                        accountId: detail.product.createdById,
+                        delta: detail.quantity,
+                        balanceAfter: updatedProduct.stock,
+                        sourceType: "order_cancellation",
+                        sourceId: order.id,
+                        createdById: userId,
+                    });
+                }
+
+                return tx.order.findUniqueOrThrow({ where: { id: order.id } });
+            });
+
+            return {
+                _id: toExternalId(updated),
+                order_status: updated.orderStatus,
+                updatedAt: updated.updatedAt,
+            };
         }
 
         if (newStatus === "completed") {
@@ -352,6 +438,7 @@ class OrderService {
                             productName: true,
                             productCode: true,
                             stock: true,
+                            createdById: true,
                         },
                     },
                 },
@@ -406,6 +493,21 @@ class OrderService {
                             ]
                         );
                     }
+
+                    const updatedProduct = await tx.product.findUniqueOrThrow({
+                        where: { id: detail.product.id },
+                        select: { stock: true },
+                    });
+
+                    await recordStockMovement(tx, {
+                        productId: detail.product.id,
+                        accountId: detail.product.createdById,
+                        delta: -detail.quantity,
+                        balanceAfter: updatedProduct.stock,
+                        sourceType: "order",
+                        sourceId: order.id,
+                        createdById: userId,
+                    });
                 }
 
                 return tx.order.update({

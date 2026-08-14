@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from "react";
 import { Layout, Card, Button, Form, message, Tooltip } from "antd";
-import { PlusOutlined, ProductOutlined, LockOutlined } from "@ant-design/icons";
+import { PlusOutlined, ProductOutlined, LockOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 
 import ProductSearchBar from "../components/products/ProductSearchBar";
 import ProductsTable from "../components/products/ProductsTable";
@@ -8,6 +8,7 @@ import ProductModal from "../components/products/ProductModal";
 import ProductFilters from "../components/products/ProductFilters";
 import ProductDetailsDrawer from "../components/products/ProductDetailsDrawer";
 import BulkUploadModal from "../components/products/BulkUploadModal";
+import AdjustStockModal from "../components/products/AdjustStockModal";
 
 import { useProducts } from "../hooks/products/useProducts";
 import { useCategories } from "../hooks/products/useCategories";
@@ -15,6 +16,7 @@ import { useUnits } from "../hooks/products/useUnits";
 import useI18n from "../hooks/useI18n";
 import useSubscription from "../hooks/useSubscription";
 import { useTeam } from "../context/TeamContext";
+import { useInventoryTour } from "../context/InventoryTourContext";
 
 import {
     prepareProductFormData,
@@ -31,6 +33,8 @@ const Products = () => {
         createProduct,
         updateProduct,
         deleteProduct,
+        adjustStock,
+        fetchStockMovements,
     } = useProducts();
     const { categories } = useCategories();
     const { units } = useUnits();
@@ -38,6 +42,7 @@ const Products = () => {
     const { can } = useSubscription();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("products", "edit");
+    const { start: startTour } = useInventoryTour();
 
     const [form] = Form.useForm();
 
@@ -53,6 +58,9 @@ const Products = () => {
     const [modalLoading, setModalLoading] = useState(false);
     const [imageFile, setImageFile] = useState(null);
     const [imageUrl, setImageUrl] = useState("");
+    const [isAdjustStockVisible, setIsAdjustStockVisible] = useState(false);
+    const [adjustingProduct, setAdjustingProduct] = useState(null);
+    const [adjustStockLoading, setAdjustStockLoading] = useState(false);
 
     const isSubmittingRef = useRef(false);
 
@@ -102,6 +110,21 @@ const Products = () => {
     const handleViewDetails = (product) => {
         setSelectedProduct(product);
         setIsDetailsVisible(true);
+    };
+
+    const handleAdjustStock = (product) => {
+        setAdjustingProduct(product);
+        setIsAdjustStockVisible(true);
+    };
+
+    const handleSubmitAdjustStock = async (productId, payload) => {
+        setAdjustStockLoading(true);
+        const result = await adjustStock(productId, payload);
+        setAdjustStockLoading(false);
+        if (result.success) {
+            setIsAdjustStockVisible(false);
+            setAdjustingProduct(null);
+        }
     };
 
     const handleImageChange = (info) => {
@@ -224,6 +247,16 @@ const Products = () => {
                                     </span>
                                 </Tooltip>
                             )}
+                            <Button
+                                icon={<QuestionCircleOutlined />}
+                                onClick={startTour}
+                                size="large"
+                                className="w-full sm:w-auto"
+                            >
+                                <span className="hidden xs:inline">
+                                    {t("inventory_tour.trigger_button")}
+                                </span>
+                            </Button>
                             <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
                                 <span className="w-full sm:w-auto inline-block">
                                     <Button
@@ -234,6 +267,7 @@ const Products = () => {
                                         className="w-full sm:w-auto"
                                         block={window.innerWidth < 640}
                                         disabled={!canEdit}
+                                        data-tour="tour-add-product"
                                     >
                                         <span className="hidden xs:inline">
                                             {t("products.add_product")}
@@ -270,6 +304,7 @@ const Products = () => {
                                 onEdit={handleEditProduct}
                                 onDelete={handleDeleteProduct}
                                 onViewDetails={handleViewDetails}
+                                onAdjustStock={handleAdjustStock}
                             />
                         </div>
                     </Card>
@@ -321,9 +356,21 @@ const Products = () => {
                             setIsDetailsVisible(false);
                             setSelectedProduct(null);
                         }}
+                        onFetchStockMovements={fetchStockMovements}
                         placement={window.innerWidth < 768 ? "bottom" : "right"}
                         height={window.innerWidth < 768 ? "80vh" : undefined}
                         width={window.innerWidth < 768 ? "100%" : "500px"}
+                    />
+
+                    <AdjustStockModal
+                        visible={isAdjustStockVisible}
+                        product={adjustingProduct}
+                        loading={adjustStockLoading}
+                        onSubmit={handleSubmitAdjustStock}
+                        onCancel={() => {
+                            setIsAdjustStockVisible(false);
+                            setAdjustingProduct(null);
+                        }}
                     />
 
                     <BulkUploadModal

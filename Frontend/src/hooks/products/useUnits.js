@@ -8,7 +8,7 @@ export const useUnits = () => {
     const fetchUnits = async () => {
         try {
             setLoading(true);
-            const response = await api.get("/units");
+            const response = await api.get("/units/available");
             if (response.data.success) {
                 setUnits(response.data.data);
             }

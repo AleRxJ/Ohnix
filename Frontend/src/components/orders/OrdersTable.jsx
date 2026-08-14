@@ -1,6 +1,6 @@
 import React from "react";
-import { Table, Button, Select, Tag, Space, Tooltip, Card } from "antd";
-import { EyeOutlined, FilePdfOutlined, UserOutlined } from "@ant-design/icons";
+import { Table, Button, Select, Tag, Space, Tooltip, Card, Popconfirm } from "antd";
+import { EyeOutlined, FilePdfOutlined, UserOutlined, StopOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import {
     getStatusColor,
@@ -116,6 +116,27 @@ const OrdersTable = ({
                             </Select>
                         </Tooltip>
 
+                        {record.order_status === "completed" && (
+                            <Tooltip title={canEdit ? t("orders.cancel_completed_order") : t("common.no_permission_to_edit")}>
+                                <Popconfirm
+                                    title={t("orders.confirm_cancel_completed_title")}
+                                    description={t("orders.confirm_cancel_completed_desc")}
+                                    onConfirm={() => onUpdateStatus(record._id, "cancelled")}
+                                    disabled={!canEdit}
+                                    okText={t("common.yes")}
+                                    cancelText={t("common.no")}
+                                >
+                                    <Button
+                                        type="text"
+                                        danger
+                                        icon={<StopOutlined />}
+                                        disabled={!canEdit}
+                                        className="hover:bg-[var(--ohnix-hover-overlay)]"
+                                    />
+                                </Popconfirm>
+                            </Tooltip>
+                        )}
+
                         <Tooltip title={t("orders.download_invoice")}>
                             <Button
                                 type="text"
@@ -170,6 +191,18 @@ const OrdersTable = ({
                     >
                         {t("orders.invoice")}
                     </Button>
+                    {order.order_status === "completed" && (
+                        <Popconfirm
+                            title={t("orders.confirm_cancel_completed_title")}
+                            description={t("orders.confirm_cancel_completed_desc")}
+                            onConfirm={() => onUpdateStatus(order._id, "cancelled")}
+                            disabled={!canEdit}
+                            okText={t("common.yes")}
+                            cancelText={t("common.no")}
+                        >
+                            <Button icon={<StopOutlined />} danger size="middle" disabled={!canEdit} />
+                        </Popconfirm>
+                    )}
                 </div>
             </Card>
         );

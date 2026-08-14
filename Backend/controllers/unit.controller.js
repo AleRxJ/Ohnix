@@ -96,6 +96,52 @@ const createUnit = asyncHandler(async (req, res, next) => {
     }
 });
 
+const getAvailableUnits = asyncHandler(async (req, res, next) => {
+    try {
+        const userId = req.user.prismaId;
+
+        const units = await prisma.unit.findMany({
+            where: {
+                OR: [{ createdById: userId }, { createdBy: { role: "admin" } }],
+            },
+            orderBy: { createdAt: "desc" },
+            include: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+                updatedBy: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        username: true,
+                    },
+                },
+            },
+        });
+
+        const deduped = [];
+        const seen = new Set();
+
+        for (const unit of units) {
+            const externalId = toExternalId(unit);
+            if (!seen.has(externalId)) {
+                seen.add(externalId);
+                deduped.push(mapUnit(unit));
+            }
+        }
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, deduped, "Available units fetched successfully"));
+    } catch (error) {
+        return next(new ApiError(500, error.message));
+    }
+});
+
 const getAllUnits = asyncHandler(async (req, res, next) => {
     try {
         const where =
@@ -142,20 +188,12 @@ const updateUnit = asyncHandler(async (req, res, next) => {
         const unit = await findUnitByAnyId(id);
 
         if (!unit) {
-            return next(
-                new ApiError(
-                    404,
-                    "Unit not found or you don't have permission to update it"
-                )
-            );
+            return next(new ApiError(404, "Unit not found"));
         }
 
         if (req.user.role !== "admin" && unit.createdById !== req.user.prismaId) {
             return next(
-                new ApiError(
-                    404,
-                    "Unit not found or you don't have permission to update it"
-                )
+                new ApiError(403, "You don't have permission to update this unit")
             );
         }
 
@@ -198,20 +236,12 @@ const deleteUnit = asyncHandler(async (req, res, next) => {
         const unit = await findUnitByAnyId(id);
 
         if (!unit) {
-            return next(
-                new ApiError(
-                    404,
-                    "Unit not found or you don't have permission to delete it"
-                )
-            );
+            return next(new ApiError(404, "Unit not found"));
         }
 
         if (req.user.role !== "admin" && unit.createdById !== req.user.prismaId) {
             return next(
-                new ApiError(
-                    404,
-                    "Unit not found or you don't have permission to delete it"
-                )
+                new ApiError(403, "You don't have permission to delete this unit")
             );
         }
 
@@ -221,8 +251,16 @@ const deleteUnit = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, {}, "Unit deleted successfully"));
     } catch (error) {
+        if (error.code === "P2003") {
+            return next(
+                new ApiError(
+                    409,
+                    "This unit can't be deleted because it still has products assigned to it. Reassign or delete those products first."
+                )
+            );
+        }
         return next(new ApiError(500, error.message));
     }
 });
 
-export { createUnit, getAllUnits, updateUnit, deleteUnit };
+export { createUnit, getAllUnits, getAvailableUnits, updateUnit, deleteUnit };

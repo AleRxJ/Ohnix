@@ -112,6 +112,43 @@ export const useProducts = () => {
         }
     };
 
+    const adjustStock = async (productId, { delta, reason }) => {
+        try {
+            const response = await api.post(`/products/${productId}/adjust-stock`, {
+                delta,
+                reason,
+            });
+
+            if (response.data.success) {
+                toast.success(t("products.stock_adjusted"));
+                setProducts((prev) =>
+                    prev.map((p) => (p._id === productId ? response.data.data : p))
+                );
+                return { success: true, data: response.data.data };
+            }
+        } catch (err) {
+            console.error("Adjust stock error:", err);
+            const errorMessage =
+                err.response?.data?.message || t("products.failed_adjust_stock");
+            toast.error(errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    };
+
+    const fetchStockMovements = async (productId) => {
+        try {
+            const response = await api.get(`/products/${productId}/stock-movements`);
+            if (response.data.success) {
+                return response.data.data;
+            }
+            return [];
+        } catch (err) {
+            console.error("Fetch stock movements error:", err);
+            toast.error(t("products.failed_load_stock_movements"));
+            return [];
+        }
+    };
+
     const bulkCreateProducts = async (file) => {
         const formData = new FormData();
         formData.append("file", file);
@@ -144,6 +181,8 @@ export const useProducts = () => {
         createProduct,
         updateProduct,
         deleteProduct,
+        adjustStock,
+        fetchStockMovements,
         bulkCreateProducts,
     };
 };

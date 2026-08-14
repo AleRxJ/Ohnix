@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
-import { Card, Tabs, Badge, Button, Space, Alert, Tooltip } from "antd";
+import { Card, Tabs, Badge, Button, Space, Alert, Tooltip, Modal } from "antd";
 import {
     FileTextOutlined,
     ShoppingCartOutlined,
@@ -43,11 +43,10 @@ const Reports = () => {
         advanced: t("reports.advanced.tab_label"),
     };
 
-    // New function for admin to manually trigger alerts (for testing)
-    const triggerLowStockAlert = async () => {
+    const sendConfirmedAlerts = async () => {
         try {
             setTriggeringAlert(true);
-            const response = await api.post("/scheduler/trigger-alerts");
+            const response = await api.post("/scheduler/trigger-alerts", { confirm: true });
 
             if (response.data.success) {
                 const { sent, failed, noLowStock, total } = response.data.data;
@@ -66,6 +65,39 @@ const Reports = () => {
                     t("reports.trigger_low_stock_alerts_failed")
             );
         } finally {
+            setTriggeringAlert(false);
+        }
+    };
+
+    // Admin-only. This used to send real emails to every eligible customer
+    // on a single click labeled "test" - now it's a dry run first: fetch how
+    // many REAL accounts would be emailed and make the admin explicitly
+    // confirm that blast radius before anything actually sends.
+    const triggerLowStockAlert = async () => {
+        try {
+            setTriggeringAlert(true);
+            const response = await api.post("/scheduler/trigger-alerts");
+
+            if (response.data.success && response.data.data?.dryRun) {
+                const { eligibleCount } = response.data.data;
+                setTriggeringAlert(false);
+                Modal.confirm({
+                    title: t("reports.confirm_send_real_alerts_title"),
+                    content: t("reports.confirm_send_real_alerts_desc", { count: eligibleCount }),
+                    okText: t("reports.confirm_send_real_alerts_ok"),
+                    cancelText: t("common.cancel"),
+                    okButtonProps: { danger: true },
+                    onOk: sendConfirmedAlerts,
+                });
+                return;
+            }
+
+            setTriggeringAlert(false);
+        } catch (error) {
+            toast.error(
+                error.response?.data?.message ||
+                    t("reports.trigger_low_stock_alerts_failed")
+            );
             setTriggeringAlert(false);
         }
     };

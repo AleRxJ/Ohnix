@@ -1,5 +1,5 @@
-import React from "react";
-import { Drawer, Image, Typography, Divider } from "antd";
+import React, { useEffect, useState } from "react";
+import { Drawer, Image, Typography, Divider, Tag, Empty, Spin } from "antd";
 import {
     TagOutlined,
     InboxOutlined,
@@ -10,9 +10,21 @@ import {
     WarningOutlined,
     CloseCircleOutlined,
     PercentageOutlined,
+    HistoryOutlined,
+    ArrowUpOutlined,
+    ArrowDownOutlined,
 } from "@ant-design/icons";
 import { useCurrency } from "../../context/CurrencyContext";
 import useI18n from "../../hooks/useI18n";
+import { DEFAULT_LOW_STOCK_THRESHOLD } from "../../utils/productUtils";
+
+const SOURCE_LABEL_KEYS = {
+    purchase: "products.movement_purchase",
+    purchase_return: "products.movement_purchase_return",
+    order: "products.movement_order",
+    order_cancellation: "products.movement_order_cancellation",
+    adjustment: "products.movement_adjustment",
+};
 
 const { Text, Title } = Typography;
 
@@ -20,13 +32,36 @@ const ProductDetailsDrawer = ({
     visible,
     product,
     onClose,
+    onFetchStockMovements,
     placement = "right",
     width,
     height,
 }) => {
-    if (!product) return null;
     const { formatCurrency } = useCurrency();
     const { t, currentLanguage } = useI18n();
+    const [movements, setMovements] = useState([]);
+    const [movementsLoading, setMovementsLoading] = useState(false);
+
+    useEffect(() => {
+        if (!visible || !product?._id || !onFetchStockMovements) {
+            setMovements([]);
+            return;
+        }
+        let cancelled = false;
+        setMovementsLoading(true);
+        onFetchStockMovements(product._id).then((data) => {
+            if (!cancelled) {
+                setMovements(data || []);
+                setMovementsLoading(false);
+            }
+        });
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible, product?._id]);
+
+    if (!product) return null;
 
     const getStockStatus = (stock) => {
         if (stock === 0) {
@@ -39,7 +74,7 @@ const ProductDetailsDrawer = ({
             };
         }
 
-        if (stock <= 10) {
+        if (stock <= (product.low_stock_threshold ?? DEFAULT_LOW_STOCK_THRESHOLD)) {
             return {
                 text: t("products.low_stock"),
                 color: "#f59e0b",
@@ -284,6 +319,83 @@ const ProductDetailsDrawer = ({
                                 </Text>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
+                    <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)]">
+                        <div className="flex items-center gap-2">
+                            <HistoryOutlined className="text-[#29D8D5]" />
+                            <Text className="text-sm font-bold text-[var(--ohnix-text-primary)]">{t("products.movement_history")}</Text>
+                        </div>
+                    </div>
+                    <div className="p-5">
+                        {movementsLoading ? (
+                            <div className="flex justify-center py-6">
+                                <Spin size="small" />
+                            </div>
+                        ) : movements.length === 0 ? (
+                            <Empty
+                                description={t("products.no_movements")}
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                            />
+                        ) : (
+                            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                                {movements.map((m) => (
+                                    <div
+                                        key={m._id}
+                                        className="flex items-start justify-between gap-3 pb-3 border-b border-[var(--ohnix-line-3)] last:border-0 last:pb-0"
+                                    >
+                                        <div className="flex items-start gap-2 min-w-0">
+                                            {m.delta > 0 ? (
+                                                <ArrowUpOutlined className="text-[#44F3F0] mt-0.5" />
+                                            ) : (
+                                                <ArrowDownOutlined className="text-red-400 mt-0.5" />
+                                            )}
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <Tag color={m.delta > 0 ? "cyan" : "red"} className="!m-0">
+                                                        {t(SOURCE_LABEL_KEYS[m.source_type] || m.source_type)}
+                                                    </Tag>
+                                                    <Text className="text-xs text-[var(--ohnix-text-dim)]">
+                                                        {new Date(m.createdAt).toLocaleString(currentLanguage, {
+                                                            year: "numeric",
+                                                            month: "short",
+                                                            day: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                        })}
+                                                    </Text>
+                                                </div>
+                                                {m.reason && (
+                                                    <Text className="text-xs text-[var(--ohnix-text-muted)] block mt-1">
+                                                        {m.reason}
+                                                    </Text>
+                                                )}
+                                                {m.created_by?.username && (
+                                                    <Text className="text-xs text-[var(--ohnix-text-dim)] block mt-0.5">
+                                                        {m.created_by.username}
+                                                    </Text>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="text-right flex-shrink-0">
+                                            <Text
+                                                className={`text-sm font-bold block ${
+                                                    m.delta > 0 ? "text-[#44F3F0]" : "text-red-400"
+                                                }`}
+                                            >
+                                                {m.delta > 0 ? "+" : ""}
+                                                {m.delta}
+                                            </Text>
+                                            <Text className="text-xs text-[var(--ohnix-text-dim)]">
+                                                {t("products.balance")}: {m.balance_after}
+                                            </Text>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

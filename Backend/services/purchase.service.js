@@ -1,5 +1,6 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
+import { recordStockMovement } from "./stockMovement.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -131,13 +132,24 @@ class PurchaseService {
                     });
 
                     if (shouldAddStock) {
-                        await tx.product.update({
+                        const updatedProduct = await tx.product.update({
                             where: { id: mappedProduct.id },
                             data: {
                                 stock: {
                                     increment: Number(detail.quantity),
                                 },
                             },
+                            select: { stock: true },
+                        });
+
+                        await recordStockMovement(tx, {
+                            productId: mappedProduct.id,
+                            accountId: mappedProduct.createdById,
+                            delta: Number(detail.quantity),
+                            balanceAfter: updatedProduct.stock,
+                            sourceType: "purchase",
+                            sourceId: createdPurchase.id,
+                            createdById: userId,
                         });
                     }
                 }
@@ -222,6 +234,7 @@ class PurchaseService {
                                 id: true,
                                 legacyMongoId: true,
                                 stock: true,
+                                createdById: true,
                             },
                         },
                     },
@@ -251,13 +264,24 @@ class PurchaseService {
                     );
 
                     if (returnableQuantity > 0) {
-                        await tx.product.update({
+                        const updatedProduct = await tx.product.update({
                             where: { id: detail.product.id },
                             data: {
                                 stock: {
                                     decrement: returnableQuantity,
                                 },
                             },
+                            select: { stock: true },
+                        });
+
+                        await recordStockMovement(tx, {
+                            productId: detail.product.id,
+                            accountId: detail.product.createdById,
+                            delta: -returnableQuantity,
+                            balanceAfter: updatedProduct.stock,
+                            sourceType: "purchase_return",
+                            sourceId: purchase.id,
+                            createdById: userId,
                         });
                     }
 
@@ -298,17 +322,32 @@ class PurchaseService {
             } else if (newStatus === "completed") {
                 const purchaseDetails = await tx.purchaseDetail.findMany({
                     where: { purchaseId: purchase.id },
-                    select: { productId: true, quantity: true },
+                    select: {
+                        productId: true,
+                        quantity: true,
+                        product: { select: { createdById: true } },
+                    },
                 });
 
                 for (const detail of purchaseDetails) {
-                    await tx.product.update({
+                    const updatedProduct = await tx.product.update({
                         where: { id: detail.productId },
                         data: {
                             stock: {
                                 increment: detail.quantity,
                             },
                         },
+                        select: { stock: true },
+                    });
+
+                    await recordStockMovement(tx, {
+                        productId: detail.productId,
+                        accountId: detail.product.createdById,
+                        delta: detail.quantity,
+                        balanceAfter: updatedProduct.stock,
+                        sourceType: "purchase",
+                        sourceId: purchase.id,
+                        createdById: userId,
                     });
                 }
             }
