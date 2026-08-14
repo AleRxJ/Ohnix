@@ -183,13 +183,24 @@ const ApiKeysPanel = () => {
             )}
 
             <Modal
-                title={t("billing.api_keys.create_modal_title")}
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                            <KeyOutlined className="text-[#44F3F0]" />
+                        </div>
+                        <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                            {t("billing.api_keys.create_modal_title")}
+                        </span>
+                    </div>
+                }
                 open={createOpen}
                 onCancel={() => setCreateOpen(false)}
                 onOk={() => form.submit()}
                 confirmLoading={creating}
                 okText={t("common.add")}
                 cancelText={t("common.cancel")}
+                okButtonProps={{ className: "h-10 px-6 rounded-md font-medium" }}
+                cancelButtonProps={{ className: "h-10 px-6 rounded-md" }}
                 destroyOnClose
                 styles={darkModalStyles}
             >
@@ -205,14 +216,19 @@ const ApiKeysPanel = () => {
             </Modal>
 
             <Modal
-                title={t("billing.api_keys.reveal_modal_title")}
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                            <KeyOutlined className="text-[#44F3F0]" />
+                        </div>
+                        <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                            {t("billing.api_keys.reveal_modal_title")}
+                        </span>
+                    </div>
+                }
                 open={!!newKey}
                 onCancel={() => setNewKey(null)}
-                footer={[
-                    <Button key="close" type="primary" onClick={() => setNewKey(null)}>
-                        {t("billing.api_keys.reveal_done")}
-                    </Button>,
-                ]}
+                footer={null}
                 destroyOnClose
                 styles={darkModalStyles}
             >
@@ -222,6 +238,15 @@ const ApiKeysPanel = () => {
                         {newKey?.key}
                     </Text>
                     <Button icon={<CopyOutlined />} onClick={() => copyKey(newKey?.key)} />
+                </div>
+                <div className="flex justify-end pt-4 mt-4 border-t border-[var(--ohnix-line-4)]">
+                    <Button
+                        type="primary"
+                        onClick={() => setNewKey(null)}
+                        className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
+                    >
+                        {t("billing.api_keys.reveal_done")}
+                    </Button>
                 </div>
             </Modal>
         </div>

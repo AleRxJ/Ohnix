@@ -752,6 +752,68 @@ body {
   box-shadow: 0 0 24px rgba(41, 216, 213, 0.28) !important;
 }
 
+/* Same portal problem as the primary-button rule above, but for the
+   default (Cancel/secondary) button: any Modal/Drawer relying on antd's
+   built-in footer (onOk/cancelText, or a Button with no ohnix classes)
+   was falling back to antd's stock near-white default button, which reads
+   as a plain unstyled control against Ohnix's dark modal surfaces. */
+.ant-modal-root .ant-btn-default,
+.ant-drawer .ant-btn-default {
+  background: var(--ohnix-line-1) !important;
+  border-color: var(--ohnix-line-6) !important;
+  color: var(--ohnix-text-table-cell) !important;
+}
+
+.ant-modal-root .ant-btn-default:hover,
+.ant-drawer .ant-btn-default:hover {
+  border-color: rgba(41, 216, 213, 0.5) !important;
+  color: #44f3f0 !important;
+}
+
+.ant-modal-root .ant-btn-dangerous,
+.ant-drawer .ant-btn-dangerous {
+  background: transparent !important;
+  border-color: var(--ohnix-status-rose) !important;
+  color: var(--ohnix-status-rose) !important;
+}
+
+.ant-modal-root .ant-btn-dangerous:hover,
+.ant-drawer .ant-btn-dangerous:hover {
+  background: rgba(251, 113, 133, 0.1) !important;
+  filter: none !important;
+  box-shadow: none !important;
+}
+
+.ant-modal-root .ant-btn-primary.ant-btn-dangerous,
+.ant-drawer .ant-btn-primary.ant-btn-dangerous {
+  background: var(--ohnix-status-rose) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+.ant-modal-root .ant-btn-primary.ant-btn-dangerous:hover,
+.ant-drawer .ant-btn-primary.ant-btn-dangerous:hover {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 0 24px rgba(251, 113, 133, 0.28) !important;
+}
+
+/* Modal.confirm renders its own icon/title/content markup instead of the
+   normal Modal header, so the button-portal fixes above don't touch its
+   text - it defaults to antd's light-theme near-black text on Ohnix's dark
+   confirm surface. Scoped to .ohnix-confirm-modal so plain (unstyled)
+   Modal.confirm calls elsewhere aren't silently reskinned. */
+.ohnix-confirm-modal .ant-modal-confirm-title {
+  color: var(--ohnix-text-primary) !important;
+}
+
+.ohnix-confirm-modal .ant-modal-confirm-content {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.ohnix-confirm-modal .ant-modal-confirm-body > .anticon {
+  color: var(--ohnix-status-amber) !important;
+}
+
 /* antd's default disabled-field style is a near-white background with
    near-transparent black text - meant for a light theme, so on Ohnix's dark
    modals it renders as a pale box with barely-visible text (this is what
@@ -1378,7 +1440,7 @@ textarea.ant-input[disabled] {
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
 
                 .create-order-modal .ant-modal-header {
-                    border-bottom: 1px solid #f0f0f0;
+                    border-bottom: 1px solid var(--ohnix-line-3);
                     padding: 20px 24px;
                 }
                 .create-order-modal .ant-modal-body {
@@ -1599,6 +1661,8 @@ textarea.ant-input[disabled] {
                 .return-preview-modal .ant-modal-content {
                     background: linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
                     border: 1px solid var(--ohnix-line-4);
+                    border-radius: 24px;
+                    box-shadow: 0 24px 70px rgba(0,0,0,0.6);
                 }
                 .return-preview-modal .ant-modal-header {
                     background: transparent;
@@ -1699,6 +1763,8 @@ textarea.ant-input[disabled] {
                 .purchase-details-modal .ant-modal-content {
                     background: linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
                     border: 1px solid var(--ohnix-line-4);
+                    border-radius: 24px;
+                    box-shadow: 0 24px 70px rgba(0,0,0,0.6);
                 }
                 .purchase-details-modal .ant-modal-header {
                     background: transparent;

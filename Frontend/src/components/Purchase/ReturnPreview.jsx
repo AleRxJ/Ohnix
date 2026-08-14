@@ -156,7 +156,11 @@ const ReturnPreview = ({
             open={visible}
             onCancel={onCancel}
             footer={[
-                <Button key="cancel" onClick={onCancel} size="large">
+                <Button
+                    key="cancel"
+                    onClick={onCancel}
+                    className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                >
                     {t("common.cancel")}
                 </Button>,
                 <Button
@@ -164,8 +168,7 @@ const ReturnPreview = ({
                     type="primary"
                     danger
                     onClick={handleProceed}
-                    size="large"
-                    className="bg-red-500 hover:bg-red-600"
+                    className="h-10 px-6 rounded-md font-medium transition-all duration-200"
                 >
                     {t("purchases.return_preview_proceed")}
                 </Button>,

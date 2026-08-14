@@ -223,8 +223,11 @@ const Customers = () => {
         updateState({ modalVisible: true });
     };
 
-    const handleFileListChange = (newFileList) => {
-        setEditing((prev) => ({ ...prev, fileList: newFileList }));
+    const handleFileListChange = (update) => {
+        setEditing((prev) => ({
+            ...prev,
+            fileList: typeof update === "function" ? update(prev.fileList) : update,
+        }));
     };
 
     // Component render

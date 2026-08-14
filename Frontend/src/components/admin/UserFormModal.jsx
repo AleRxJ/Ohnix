@@ -1,5 +1,6 @@
 import React from "react";
 import { Modal, Form, Input, Select } from "antd";
+import { UserAddOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
 const darkModalStyles = {
@@ -23,13 +24,22 @@ const UserFormModal = ({ open, onCancel, onSubmit, submitting, form, companyOpti
 
     return (
         <Modal
-            title={<span className="text-lg font-bold text-[var(--ohnix-text-primary)]">{t("admin.add_user")}</span>}
+            title={
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                        <UserAddOutlined className="text-[#44F3F0]" />
+                    </div>
+                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">{t("admin.add_user")}</span>
+                </div>
+            }
             open={open}
             onCancel={onCancel}
             onOk={() => form.submit()}
             confirmLoading={submitting}
             okText={t("common.save")}
             cancelText={t("common.cancel")}
+            okButtonProps={{ className: "h-10 px-6 rounded-md font-medium" }}
+            cancelButtonProps={{ className: "h-10 px-6 rounded-md" }}
             destroyOnClose
             styles={darkModalStyles}
         >

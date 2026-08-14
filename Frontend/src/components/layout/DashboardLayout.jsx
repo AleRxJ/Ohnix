@@ -17,6 +17,27 @@ import InventoryTourFab from "../inventoryTour/InventoryTourFab";
 
 const { Content } = Layout;
 
+// Internal app pages are gated behind ProtectedRoute and never crawled by
+// search engines, so this is a UX/accessibility concern (tab title, browser
+// history, screen readers), not real SEO - no need for the full SeoHead
+// treatment (canonical/og/twitter/robots) that the public marketing pages
+// use. Reuses the same sidebar labels (data/index.jsx) so page names stay
+// in sync in one place.
+const PAGE_TITLE_KEYS = {
+    dashboard: "common.dashboard",
+    products: "common.products",
+    orders: "common.orders",
+    customers: "common.customers",
+    purchases: "common.purchases",
+    suppliers: "common.suppliers",
+    categories: "common.categories",
+    "electronic-invoices": "common.electronic_invoices_nav",
+    reports: "common.reports",
+    team: "common.team_nav",
+    billing: "common.billing",
+    admin: "common.admin_panel",
+};
+
 const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false }) => (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] gap-6 px-6 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10">
@@ -190,7 +211,7 @@ const DashboardLayout = () => {
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
     const { isOwner, hasPermission } = useTeam();
-    const { currentLanguage } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const lang = currentLanguage === "es" ? "es" : "en";
     // Promotional "upgrade/renew now" nudges only make sense for whoever can
     // actually act on them - a member with no billing access can't do
@@ -231,6 +252,11 @@ const DashboardLayout = () => {
     const currentPath = location.pathname;
     const pathSegments = currentPath.split("/").filter(Boolean);
     const currentPage = pathSegments.length > 0 ? pathSegments[0] : "dashboard";
+
+    useEffect(() => {
+        const titleKey = PAGE_TITLE_KEYS[currentPage];
+        document.title = titleKey ? `${t(titleKey)} | Ohnix` : "Ohnix";
+    }, [currentPage, currentLanguage, t]);
 
     const trialEndsAt = subscription?.trialEndsAt ?? null;
     const planEndsAt = typeof subscription?.endsAt === "string" ? subscription.endsAt : null;

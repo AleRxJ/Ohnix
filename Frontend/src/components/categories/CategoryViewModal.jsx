@@ -40,6 +40,15 @@ const CategoryViewModal = ({
                 maxWidth: "calc(100vw - 32px)",
             }}
             styles={{
+                mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                content: {
+                    background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
+                    border: "1px solid var(--ohnix-line-4)",
+                    boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                    borderRadius: "24px",
+                    padding: 0,
+                    overflow: "hidden",
+                },
                 body: { padding: 0 },
                 header: { display: "none" },
             }}
@@ -157,8 +166,7 @@ const CategoryViewModal = ({
                     <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
                         <Button
                             onClick={onClose}
-                            className="h-10 px-6 border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[var(--ohnix-text-primary)] hover:border-[#29D8D5]/35 bg-[var(--ohnix-line-1)]"
-                            style={{ borderRadius: "8px" }}
+                            className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
                         >
                             {t("common.close")}
                         </Button>
@@ -170,11 +178,7 @@ const CategoryViewModal = ({
                                     onClose();
                                     onEdit(category);
                                 }}
-                                className="h-10 px-6 bg-[#29D8D5] hover:bg-[#44F3F0] border-[#29D8D5] hover:border-[#44F3F0] text-[#021314]"
-                                style={{
-                                    borderRadius: "8px",
-                                    fontWeight: 500,
-                                }}
+                                className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                             >
                                 {t("categories.edit_category")}
                             </Button>

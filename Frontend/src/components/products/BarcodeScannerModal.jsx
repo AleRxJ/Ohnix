@@ -26,16 +26,23 @@ const BarcodeScannerModal = ({ open, onCancel, onDetected }) => {
         const activeScanner = scannerRef.current;
         scannerRef.current = null;
         if (!activeScanner) return;
-        activeScanner
-            .stop()
-            .catch(() => {})
-            .finally(() => {
-                try {
-                    activeScanner.clear();
-                } catch {
-                    // scan region already torn down
-                }
-            });
+        const clear = () => {
+            try {
+                activeScanner.clear();
+            } catch {
+                // scan region already torn down
+            }
+        };
+        try {
+            // stop() throws synchronously (not a rejected promise) when the
+            // scanner isn't actively scanning yet - e.g. the modal was
+            // closed while the camera was still starting, or start() had
+            // already failed. Without this try/catch that throw escapes
+            // uncaught from antd's modal-close transition and crashes the app.
+            activeScanner.stop().catch(() => {}).finally(clear);
+        } catch {
+            clear();
+        }
     };
 
     // Started from Modal's afterOpenChange (fires once the open transition

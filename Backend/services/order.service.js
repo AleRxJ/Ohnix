@@ -474,6 +474,26 @@ class OrderService {
             }
 
             const updated = await prisma.$transaction(async (tx) => {
+                // Claim the "processing -> completed" transition atomically,
+                // same as the "completed -> cancelled" branch above: two
+                // concurrent completion requests for the same order could
+                // otherwise both pass the transition check at the top of
+                // this function (which reads the order before this
+                // transaction starts) and both decrement stock for the same
+                // order. Claiming first means the loser gets a clean 409
+                // and its transaction rolls back before touching stock.
+                const claim = await tx.order.updateMany({
+                    where: { id: order.id, orderStatus: "processing" },
+                    data: { orderStatus: newStatus, updatedById: userId },
+                });
+
+                if (claim.count === 0) {
+                    throw new ApiError(
+                        409,
+                        "This order was already updated by another request. Please refresh and try again."
+                    );
+                }
+
                 for (const detail of details) {
                     // Same guarded claim as createOrder: the stock read above
                     // predates this transaction, so a concurrent completion
@@ -519,13 +539,7 @@ class OrderService {
                     });
                 }
 
-                return tx.order.update({
-                    where: { id: order.id },
-                    data: {
-                        orderStatus: newStatus,
-                        updatedById: userId,
-                    },
-                });
+                return tx.order.findUniqueOrThrow({ where: { id: order.id } });
             });
 
             if (!updated.isTutorialData) {

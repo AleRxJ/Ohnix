@@ -39,6 +39,8 @@ const InviteMemberModal = ({ open, onCancel, onSubmit, submitting, form, roles }
             confirmLoading={submitting}
             okText={t("team.invite_cta")}
             cancelText={t("common.cancel")}
+            okButtonProps={{ className: "h-10 px-6 rounded-md font-medium" }}
+            cancelButtonProps={{ className: "h-10 px-6 rounded-md" }}
             destroyOnClose
             afterClose={() => setSelectedRoleId(null)}
             styles={darkModalStyles}

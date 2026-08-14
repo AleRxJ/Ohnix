@@ -231,12 +231,11 @@ const PurchaseForm = ({
 
                 <Divider className="my-6" />
 
-                <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-[var(--ohnix-line-4)]">
                     <Button
                         onClick={onCancel}
                         disabled={submitting}
-                        size="large"
-                        className="w-full sm:w-auto min-w-[120px]"
+                        className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
                     >
                         {t("common.cancel")}
                     </Button>
@@ -244,8 +243,7 @@ const PurchaseForm = ({
                         type="primary"
                         htmlType="submit"
                         loading={submitting}
-                        size="large"
-                        className="w-full sm:w-auto min-w-[120px] font-medium"
+                        className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                     >
                         {t("purchases.create_purchase")}
                     </Button>

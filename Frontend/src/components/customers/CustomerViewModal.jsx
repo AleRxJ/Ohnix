@@ -60,19 +60,21 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
             open={visible}
             onCancel={onCancel}
             footer={
-                <div className="flex justify-end space-x-3 pt-4 border-t border-[var(--ohnix-line-4)]">
-                    <Button size="large" onClick={onCancel}>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-[var(--ohnix-line-4)]">
+                    <Button
+                        onClick={onCancel}
+                        className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                    >
                         {t("common.close")}
                     </Button>
                     <Button
                         type="primary"
-                        size="large"
                         icon={<EditOutlined />}
                         onClick={() => {
                             onCancel();
                             onEdit(customer);
                         }}
-                        className="min-w-32"
+                        className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                     >
                         {t("customers.edit_customer")}
                     </Button>

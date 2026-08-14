@@ -227,7 +227,16 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting }) => {
         <Modal
             open={open}
             onCancel={onCancel}
-            title={<span className="text-[var(--ohnix-text-primary)]">{t("electronic_invoices.credit_note.modal_title")}</span>}
+            title={
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                        <UndoOutlined className="text-[#44F3F0]" />
+                    </div>
+                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                        {t("electronic_invoices.credit_note.modal_title")}
+                    </span>
+                </div>
+            }
             footer={null}
             destroyOnClose
             centered
@@ -236,9 +245,15 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting }) => {
                 content: {
                     background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                     border: "1px solid var(--ohnix-line-4)",
-                    borderRadius: "20px",
+                    boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                    borderRadius: "24px",
                 },
-                header: { background: "transparent", borderBottom: "1px solid var(--ohnix-line-3)" },
+                header: {
+                    background: "transparent",
+                    borderBottom: "1px solid var(--ohnix-line-3)",
+                    padding: "20px 24px 16px",
+                },
+                body: { padding: "20px 24px 24px" },
             }}
         >
             <Form
@@ -266,9 +281,19 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting }) => {
                 <Form.Item name="observation" label={t("electronic_invoices.credit_note.observation_label")}>
                     <Input.TextArea rows={3} placeholder={t("electronic_invoices.credit_note.observation_placeholder")} />
                 </Form.Item>
-                <div className="mt-2 flex justify-end gap-2">
-                    <Button onClick={onCancel}>{t("common.cancel")}</Button>
-                    <Button type="primary" htmlType="submit" loading={submitting}>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 mt-2 border-t border-[var(--ohnix-line-4)]">
+                    <Button
+                        onClick={onCancel}
+                        className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                    >
+                        {t("common.cancel")}
+                    </Button>
+                    <Button
+                        type="primary"
+                        htmlType="submit"
+                        loading={submitting}
+                        className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
+                    >
                         {t("electronic_invoices.credit_note.submit")}
                     </Button>
                 </div>

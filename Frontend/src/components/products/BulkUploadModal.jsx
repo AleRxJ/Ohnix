@@ -187,12 +187,15 @@ const BulkUploadModal = ({
                 content: {
                     background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                     border: "1px solid var(--ohnix-line-4)",
-                    borderRadius: "20px",
+                    boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                    borderRadius: "24px",
                 },
                 header: {
                     background: "transparent",
                     borderBottom: "1px solid var(--ohnix-line-3)",
+                    padding: "20px 24px 16px",
                 },
+                body: { padding: "20px 24px 24px" },
             }}
         >
             <div className="space-y-4 py-2">
@@ -272,18 +275,17 @@ const BulkUploadModal = ({
                     <Progress
                         percent={progress}
                         status="active"
-                        strokeColor={{ from: "#108ee9", to: "#87d068" }}
+                        strokeColor={{ from: "#29D8D5", to: "#44F3F0" }}
                     />
                 )}
 
                 {!hasResult && (
                     <Button
                         type="primary"
-                        size="large"
                         onClick={handleUpload}
                         loading={uploading}
                         disabled={!file || uploading}
-                        className="w-full"
+                        className="w-full h-10 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                     >
                         {uploading ? t("products.uploading") : t("products.upload_products")}
                     </Button>
@@ -358,21 +360,21 @@ const BulkUploadModal = ({
                             </div>
                         )}
 
-                        <div className="flex gap-2 pt-2">
+                        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4 border-t border-[var(--ohnix-line-4)]">
                             <Button
                                 onClick={() => {
                                     setFile(null);
                                     setResult(null);
                                     setProgress(0);
                                 }}
-                                className="flex-1"
+                                className="flex-1 h-10 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
                             >
                                 {t("products.upload_another_file")}
                             </Button>
                             <Button
                                 type="primary"
                                 onClick={handleClose}
-                                className="flex-1"
+                                className="flex-1 h-10 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                             >
                                 {t("products.done")}
                             </Button>

@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Button, Typography, Modal, Form, Select, Input, List, Tag, Checkbox } from "antd";
-import { ArrowLeftOutlined, LockOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, LockOutlined, RocketOutlined, AuditOutlined } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
@@ -1126,12 +1126,23 @@ const Billing = () => {
             </div>
 
             <Modal
-                title={t("profile.subscription.request_modal_title")}
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                            <RocketOutlined className="text-[#44F3F0]" />
+                        </div>
+                        <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                            {t("profile.subscription.request_modal_title")}
+                        </span>
+                    </div>
+                }
                 open={requestModalOpen}
                 onCancel={() => setRequestModalOpen(false)}
                 onOk={() => upgradeForm.submit()}
                 okText={t("profile.subscription.submit_request")}
                 cancelText={t("common.cancel")}
+                okButtonProps={{ className: "h-10 px-6 rounded-md font-medium" }}
+                cancelButtonProps={{ className: "h-10 px-6 rounded-md" }}
                 confirmLoading={requestSubmitting}
                 destroyOnClose
                 styles={darkModalStyles}
@@ -1181,7 +1192,16 @@ const Billing = () => {
             </Modal>
 
             <Modal
-                title={t("profile.subscription.admin_review_title")}
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                            <AuditOutlined className="text-[#44F3F0]" />
+                        </div>
+                        <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                            {t("profile.subscription.admin_review_title")}
+                        </span>
+                    </div>
+                }
                 open={adminModalOpen}
                 onCancel={() => {
                     setAdminModalOpen(false);
@@ -1190,6 +1210,8 @@ const Billing = () => {
                 onOk={() => adminReviewForm.submit()}
                 okText={t("profile.subscription.update_request")}
                 cancelText={t("common.cancel")}
+                okButtonProps={{ className: "h-10 px-6 rounded-md font-medium" }}
+                cancelButtonProps={{ className: "h-10 px-6 rounded-md" }}
                 confirmLoading={adminSubmitting}
                 destroyOnClose
                 styles={darkModalStyles}

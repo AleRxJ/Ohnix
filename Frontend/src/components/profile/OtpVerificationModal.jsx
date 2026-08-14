@@ -27,7 +27,7 @@ const OtpVerificationModal = ({
                     background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                     border: "1px solid var(--ohnix-line-4)",
                     boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
-                    borderRadius: "20px",
+                    borderRadius: "24px",
                 },
                 body: { padding: "32px" },
             }}

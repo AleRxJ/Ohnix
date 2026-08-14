@@ -332,7 +332,12 @@ const markUpgradeRequestPaymentFailed = async ({ upgradeRequestId, paymentStatus
                   select: { email: true, username: true, preferredLanguage: true },
               })
             : null;
-        notifyUserPaymentFailed({ request, user, locale: user?.preferredLanguage }).catch(() => {});
+        notifyUserPaymentFailed({
+            request,
+            user,
+            locale: user?.preferredLanguage,
+            reason: paymentStatus,
+        }).catch(() => {});
     }
 };
 
@@ -476,6 +481,13 @@ export const resolvePendingPaymentStatus = async (request) => {
             // 2=Rejected, 4=Failed, 6=Reversed, 9=Expired, 10=Abandoned - all
             // terminal, all safe to free up for a retry immediately instead
             // of waiting on the confirmation webhook or the 48h ceiling.
+            // Rejected is kept as its own paymentStatus (not lumped into
+            // "failed") because the frontend copy and the payment-failed
+            // email genuinely differ for the two - "your bank declined this"
+            // needs different guidance than "our systems had a technical
+            // error", and this path used to collapse both into "failed",
+            // losing that distinction whenever the webhook was late/lost and
+            // this reconcile path resolved the payment instead.
             const TERMINAL_FAILED_STATES = new Set([
                 EPAYCO_STATE.REJECTED,
                 EPAYCO_STATE.FAILED,
@@ -485,10 +497,14 @@ export const resolvePendingPaymentStatus = async (request) => {
             ]);
 
             if (TERMINAL_FAILED_STATES.has(stateCode)) {
-                const paymentStatus =
-                    stateCode === EPAYCO_STATE.EXPIRED || stateCode === EPAYCO_STATE.ABANDONED
-                        ? "expired"
-                        : "failed";
+                let paymentStatus;
+                if (stateCode === EPAYCO_STATE.EXPIRED || stateCode === EPAYCO_STATE.ABANDONED) {
+                    paymentStatus = "expired";
+                } else if (stateCode === EPAYCO_STATE.REJECTED) {
+                    paymentStatus = "rejected";
+                } else {
+                    paymentStatus = "failed";
+                }
                 await markUpgradeRequestPaymentFailed({ upgradeRequestId: request.id, paymentStatus });
                 return { ...request, paymentStatus };
             }
@@ -1704,32 +1720,38 @@ export const handleEpaycoConfirmation = async (req, res) => {
             });
 
             console.log("[epayco-confirmation] Plan activated for requestId:", requestId);
-        } else if (stateCode === EPAYCO_STATE.REJECTED || stateCode === EPAYCO_STATE.FAILED) {
+        } else if (
+            stateCode === EPAYCO_STATE.REJECTED ||
+            stateCode === EPAYCO_STATE.FAILED ||
+            stateCode === EPAYCO_STATE.REVERSED
+        ) {
+            // Rejected keeps its own paymentStatus (not lumped in with
+            // Failed/Reversed) - "your bank declined this" and "our systems
+            // had a technical error" need different guidance, both in the
+            // frontend copy and the payment-failed email (see
+            // upgradeRequestNotifications.js's PAYMENT_FAILED_COPY).
             const paymentStatus = stateCode === EPAYCO_STATE.REJECTED ? "rejected" : "failed";
-            const updated = await prisma.planUpgradeRequest.updateMany({
-                where: { id: requestId, status: "approved" },
-                data: { paymentStatus },
-            });
-
-            if (updated.count > 0) {
-                const failedRequest = await prisma.planUpgradeRequest.findUnique({
-                    where: { id: requestId },
-                    select: UPGRADE_REQUEST_SELECT,
-                });
-                const failedUser = failedRequest
-                    ? await prisma.user.findUnique({
-                          where: { id: failedRequest.userId },
-                          select: { email: true, username: true, preferredLanguage: true },
-                      })
-                    : null;
-                notifyUserPaymentFailed({
-                    request: failedRequest,
-                    user: failedUser,
-                    locale: failedUser?.preferredLanguage,
-                }).catch(() => {});
-            }
+            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus });
+        } else if (stateCode === EPAYCO_STATE.EXPIRED || stateCode === EPAYCO_STATE.ABANDONED) {
+            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus: "expired" });
+        } else if (
+            stateCode === EPAYCO_STATE.PENDING ||
+            stateCode === EPAYCO_STATE.RETAINED ||
+            stateCode === EPAYCO_STATE.STARTED
+        ) {
+            // Genuinely still in flight (RETAINED can still resolve either
+            // way pending ePayco's own review) - wait for the next
+            // confirmation instead of writing anything. The 48h staleness
+            // ceiling in resolvePendingPaymentStatus is the backstop if no
+            // further confirmation ever arrives.
+            console.log(
+                `[epayco-confirmation] Non-terminal state ${stateCode} for requestId ${requestId} — waiting for final confirmation`
+            );
+        } else {
+            console.warn(
+                `[epayco-confirmation] Unrecognized transaction state ${stateCode} for requestId ${requestId}`
+            );
         }
-        // stateCode === PENDING (3): no action — wait for the final confirmation
 
         return res.status(200).json({ success: true });
     } catch (error) {

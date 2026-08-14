@@ -112,23 +112,17 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <ShoppingCartOutlined />,
             label: <Link to="/orders">{t("common.orders")}</Link>,
         },
-        ...(showElectronicInvoicing ? [{
-            key: "electronic-invoices",
-            moduleKey: "orders",
-            icon: <FileTextOutlined />,
-            label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
-        }] : []),
-        {
-            key: "purchases",
-            moduleKey: "purchases",
-            icon: <ShoppingOutlined />,
-            label: <Link to="/purchases">{t("common.purchases")}</Link>,
-        },
         {
             key: "customers",
             moduleKey: "customers",
             icon: <TeamOutlined />,
             label: <Link to="/customers">{t("common.customers")}</Link>,
+        },
+        {
+            key: "purchases",
+            moduleKey: "purchases",
+            icon: <ShoppingOutlined />,
+            label: <Link to="/purchases">{t("common.purchases")}</Link>,
         },
         {
             key: "suppliers",
@@ -142,6 +136,12 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <AppstoreOutlined />,
             label: <Link to="/categories">{t("common.categories")}</Link>,
         },
+        ...(showElectronicInvoicing ? [{
+            key: "electronic-invoices",
+            moduleKey: "orders",
+            icon: <FileTextOutlined />,
+            label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
+        }] : []),
         {
             key: "reports",
             moduleKey: "reports",

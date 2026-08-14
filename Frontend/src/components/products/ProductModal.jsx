@@ -80,8 +80,7 @@ const ProductModal = ({
             }
             open={visible}
             onCancel={onCancel}
-            confirmLoading={loading}
-            onOk={onSave}
+            footer={null}
             width="90%"
             style={{
                 maxWidth: "920px",
@@ -104,16 +103,6 @@ const ProductModal = ({
                 body: {
                     padding: "20px 24px 24px",
                 },
-            }}
-            okText={t("products.save_product")}
-            cancelText={t("common.cancel")}
-            okButtonProps={{
-                size: "large",
-                className: "min-w-[140px] h-10",
-            }}
-            cancelButtonProps={{
-                size: "large",
-                className: "h-10",
             }}
         >
             <Form
@@ -453,6 +442,23 @@ const ProductModal = ({
                     </Col>
                 </Row>
             </Form>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 mt-4 border-t border-[var(--ohnix-line-4)]">
+                <Button
+                    onClick={onCancel}
+                    disabled={loading}
+                    className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                >
+                    {t("common.cancel")}
+                </Button>
+                <Button
+                    type="primary"
+                    onClick={onSave}
+                    loading={loading}
+                    className="h-10 px-6 min-w-[140px] rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
+                >
+                    {t("products.save_product")}
+                </Button>
+            </div>
             <BarcodeScannerModal
                 open={scannerOpen}
                 onCancel={() => setScannerOpen(false)}

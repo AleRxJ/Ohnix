@@ -87,7 +87,7 @@ const toPublicUrlFromLocalPath = (localFilePath) => {
 };
 
 // Function to upload buffer directly to R2 (for production/memory storage)
-const uploadBufferToR2 = async (buffer, filename, ownerId, entity) => {
+const uploadBufferToR2 = async (buffer, filename, ownerId, entity, contentType) => {
     try {
         if (!buffer) return null;
 
@@ -99,7 +99,7 @@ const uploadBufferToR2 = async (buffer, filename, ownerId, entity) => {
         }
 
         const key = buildKey(ownerId, entity, filename);
-        const url = await putObject(buffer, key);
+        const url = await putObject(buffer, key, contentType);
         return { url, provider: "r2" };
     } catch (error) {
         console.error("R2 Upload Error:", error);
@@ -108,7 +108,7 @@ const uploadBufferToR2 = async (buffer, filename, ownerId, entity) => {
 };
 
 // Original function for local development (when files are saved to disk)
-const uploadOnR2 = async (localFilePath, ownerId, entity) => {
+const uploadOnR2 = async (localFilePath, ownerId, entity, contentType) => {
     try {
         if (!localFilePath) return null;
 
@@ -138,7 +138,7 @@ const uploadOnR2 = async (localFilePath, ownerId, entity) => {
 
         const key = buildKey(ownerId, entity, path.basename(localFilePath));
         const buffer = fs.readFileSync(localFilePath);
-        const url = await putObject(buffer, key);
+        const url = await putObject(buffer, key, contentType);
 
         fs.unlinkSync(localFilePath);
         return { url, provider: "r2" };
@@ -162,12 +162,12 @@ const uploadFile = async (file, { ownerId, entity } = {}) => {
 
         // If file has buffer property (multer memory storage), use buffer upload
         if (file.buffer) {
-            return await uploadBufferToR2(file.buffer, file.originalname, ownerId, entity);
+            return await uploadBufferToR2(file.buffer, file.originalname, ownerId, entity, file.mimetype);
         }
 
         // If file has path property (multer disk storage), use file upload
         if (file.path) {
-            return await uploadOnR2(file.path, ownerId, entity);
+            return await uploadOnR2(file.path, ownerId, entity, file.mimetype);
         }
 
         // If it's just a file path string

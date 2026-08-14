@@ -125,7 +125,41 @@ export const notifyUserPlanActivated = async ({ user, targetPlan, locale }) => {
 // determines a payment did NOT go through - without this, a user whose
 // delayed-method payment (PSE, bank transfer) fails hours after checkout has
 // no way of finding out short of noticing PaymentSuccess.jsx never resolved.
-export const notifyUserPaymentFailed = async ({ request, user, locale }) => {
+//
+// `reason` mirrors the paymentStatus written to the request ("rejected" |
+// "failed" | "expired") so the copy doesn't blame the user's card for a
+// gateway-side technical error, or vice versa - a card genuinely declined
+// for insufficient funds needs different guidance ("check your card/funds")
+// than ePayco's own systems failing to communicate with the authorization
+// center ("this wasn't your card's fault, just try again").
+const PAYMENT_FAILED_COPY = {
+    rejected: {
+        es: (planLabel, username) =>
+            `Hola <strong>${username || ""}</strong>, tu banco o la pasarela de pago rechazó el cobro para actualizar a <strong>${planLabel}</strong>. No se activó ningún cargo en tu cuenta. Verifica los datos de tu tarjeta o los fondos disponibles, y vuelve a intentarlo.`,
+        en: (planLabel, username) =>
+            `Hello <strong>${username || "there"}</strong>, your bank or payment gateway declined the charge to upgrade to <strong>${planLabel}</strong>. No charge was made to your account. Check your card details or available funds and try again.`,
+    },
+    failed: {
+        es: (planLabel, username) =>
+            `Hola <strong>${username || ""}</strong>, tuvimos un error técnico al procesar tu pago para actualizar a <strong>${planLabel}</strong> - no fue un problema con tu tarjeta. No se activó ningún cargo en tu cuenta. Puedes intentarlo de nuevo, es probable que funcione en el siguiente intento.`,
+        en: (planLabel, username) =>
+            `Hello <strong>${username || "there"}</strong>, we hit a technical error processing your payment to upgrade to <strong>${planLabel}</strong> - this wasn't an issue with your card. No charge was made to your account. You can try again, it will likely go through on the next attempt.`,
+    },
+    expired: {
+        es: (planLabel, username) =>
+            `Hola <strong>${username || ""}</strong>, el tiempo para completar tu pago para actualizar a <strong>${planLabel}</strong> se agotó. No se activó ningún cargo en tu cuenta. Puedes intentarlo de nuevo cuando quieras.`,
+        en: (planLabel, username) =>
+            `Hello <strong>${username || "there"}</strong>, the time window to complete your payment to upgrade to <strong>${planLabel}</strong> ran out. No charge was made to your account. You can try again anytime.`,
+    },
+    default: {
+        es: (planLabel, username) =>
+            `Hola <strong>${username || ""}</strong>, no pudimos confirmar tu pago para actualizar a <strong>${planLabel}</strong> con nuestro proveedor de pagos. No se activó ningún cargo en tu cuenta. Puedes intentarlo de nuevo con el mismo método u otro distinto.`,
+        en: (planLabel, username) =>
+            `Hello <strong>${username || "there"}</strong>, your payment to upgrade to <strong>${planLabel}</strong> could not be confirmed by our payment provider. No charge was activated on your account. You can try again with the same or a different payment method.`,
+    },
+};
+
+export const notifyUserPaymentFailed = async ({ request, user, locale, reason }) => {
     if (!isMailConfigured() || !user?.email || !request?.targetPlan) return;
     const isEN = `${locale || ""}`.toLowerCase().startsWith("en");
     const planLabel = request.targetPlan.charAt(0).toUpperCase() + request.targetPlan.slice(1);
@@ -133,9 +167,8 @@ export const notifyUserPaymentFailed = async ({ request, user, locale }) => {
         ? `[Ohnix] Your payment for the ${planLabel} plan could not be confirmed`
         : `[Ohnix] No pudimos confirmar tu pago del plan ${planLabel}`;
     const title = isEN ? "Payment not confirmed" : "Pago no confirmado";
-    const body = isEN
-        ? `Hello <strong>${user.username || "there"}</strong>, your payment to upgrade to <strong>${planLabel}</strong> could not be confirmed by our payment provider. No charge was activated on your account. You can try again with the same or a different payment method.`
-        : `Hola <strong>${user.username || ""}</strong>, no pudimos confirmar tu pago para actualizar a <strong>${planLabel}</strong> con nuestro proveedor de pagos. No se activó ningún cargo en tu cuenta. Puedes intentarlo de nuevo con el mismo método u otro distinto.`;
+    const copy = PAYMENT_FAILED_COPY[reason] || PAYMENT_FAILED_COPY.default;
+    const body = copy[isEN ? "en" : "es"](planLabel, user.username);
     const cta = isEN ? "Try again" : "Intentar de nuevo";
     const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
     try {

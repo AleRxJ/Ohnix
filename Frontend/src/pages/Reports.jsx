@@ -86,7 +86,19 @@ const Reports = () => {
                     content: t("reports.confirm_send_real_alerts_desc", { count: eligibleCount }),
                     okText: t("reports.confirm_send_real_alerts_ok"),
                     cancelText: t("common.cancel"),
-                    okButtonProps: { danger: true },
+                    okButtonProps: { danger: true, className: "h-10 px-6 rounded-md font-medium" },
+                    cancelButtonProps: { className: "h-10 px-6 rounded-md" },
+                    className: "ohnix-confirm-modal",
+                    styles: {
+                        mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                        content: {
+                            background:
+                                "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
+                            border: "1px solid var(--ohnix-line-4)",
+                            boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                            borderRadius: "24px",
+                        },
+                    },
                     onOk: sendConfirmedAlerts,
                 });
                 return;
