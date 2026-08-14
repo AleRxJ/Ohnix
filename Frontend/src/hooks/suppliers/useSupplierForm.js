@@ -109,11 +109,29 @@ export const useSupplierForm = (onSuccess) => {
             return false;
         },
         fileList,
-        onChange: ({ fileList }) => setFileList(fileList),
+        // showUploadList is false so SupplierForm's own PhotoDropZone renders
+        // the preview - antd only auto-generates thumbUrl inside its own list
+        // renderer, which never mounts in that mode, so a freshly picked
+        // file needs its data-URL preview built here instead.
+        onChange: ({ fileList: newFileList }) => {
+            setFileList(newFileList);
+            const latest = newFileList[newFileList.length - 1];
+            if (latest?.originFileObj && !latest.thumbUrl && !latest.url) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    setFileList((prev) =>
+                        prev.map((f) =>
+                            f.uid === latest.uid ? { ...f, thumbUrl: e.target.result } : f
+                        )
+                    );
+                };
+                reader.readAsDataURL(latest.originFileObj);
+            }
+        },
         maxCount: 1,
         accept: "image/*",
-        listType: "picture-card",
-        className: "avatar-uploader",
+        listType: "picture",
+        showUploadList: false,
     };
 
     return {

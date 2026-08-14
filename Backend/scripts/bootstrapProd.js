@@ -21,11 +21,13 @@ const printConfigWarnings = () => {
     }
 
     if (
-        isPlaceholder(process.env.CLOUDINARY_CLOUD_NAME) ||
-        isPlaceholder(process.env.CLOUDINARY_API_KEY) ||
-        isPlaceholder(process.env.CLOUDINARY_API_SECRET)
+        isPlaceholder(process.env.R2_ACCOUNT_ID) ||
+        isPlaceholder(process.env.R2_ACCESS_KEY_ID) ||
+        isPlaceholder(process.env.R2_SECRET_ACCESS_KEY) ||
+        isPlaceholder(process.env.R2_BUCKET_NAME) ||
+        isPlaceholder(process.env.R2_PUBLIC_URL)
     ) {
-        warnings.push("Cloudinary is not fully configured (CLOUDINARY_*)");
+        warnings.push("Cloudflare R2 storage is not fully configured (R2_*)");
     }
 
     if (isPlaceholder(process.env.ACCESS_TOKEN_SECRET) || isPlaceholder(process.env.REFRESH_TOKEN_SECRET)) {

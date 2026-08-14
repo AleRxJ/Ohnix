@@ -1,3 +1,7 @@
+# Local-dev temp uploads (multer's diskStorage destination when R2 isn't
+# configured - see utils/storage.js's local fallback)
+public/temp
+
 # Logs
 logs
 *.log

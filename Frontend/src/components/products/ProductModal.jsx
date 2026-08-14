@@ -1,7 +1,9 @@
-import React, { useContext, useEffect } from "react";
-import { Modal, Form, Input, Select, InputNumber, Row, Col } from "antd";
-import { AppstoreOutlined } from "@ant-design/icons";
+import React, { useContext, useEffect, useState } from "react";
+import { Modal, Form, Input, Select, InputNumber, Row, Col, Button } from "antd";
+import { AppstoreOutlined, ScanOutlined } from "@ant-design/icons";
+import { toast } from "react-hot-toast";
 import ProductImageUpload from "./ProductImageUpload";
+import BarcodeScannerModal from "./BarcodeScannerModal";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { getCurrencyInputProps } from "../../utils/currency";
@@ -35,6 +37,15 @@ const ProductModal = ({
     const currencyInputProps = getCurrencyInputProps(currency.code);
     const usesColombianEInvoicing =
         user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
+    const [scannerOpen, setScannerOpen] = useState(false);
+    const codeFieldDisabled = !!editingProduct || isTourCreateStep;
+
+    const handleBarcodeDetected = (decodedText) => {
+        const code = String(decodedText).trim().toUpperCase().slice(0, 40);
+        form.setFieldsValue({ product_code: code });
+        setScannerOpen(false);
+        toast.success(t("products.barcode_scanner_detected", { code }));
+    };
 
     // Live presence + soft-lock (team plans only, and only once there's a
     // real record to collide on - a brand-new product being created hasn't
@@ -80,7 +91,7 @@ const ProductModal = ({
                 mask: { backgroundColor: "rgba(0,0,0,0.55)" },
                 content: {
                     background:
-                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                        "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                     border: "1px solid var(--ohnix-line-4)",
                     boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
                     borderRadius: "24px",
@@ -169,17 +180,35 @@ const ProductModal = ({
                                                     message: t("products.enter_product_code_required"),
                                                 },
                                                 {
-                                                    max: 5,
-                                                    message: t("products.max_5_chars"),
+                                                    max: 40,
+                                                    message: t("products.max_40_chars"),
                                                 },
                                             ]}
                                             className="mb-3"
+                                            extra={
+                                                codeFieldDisabled ? undefined : (
+                                                    <span className="text-[var(--ohnix-text-dim)]">
+                                                        {t("products.product_code_scanner_hint")}
+                                                    </span>
+                                                )
+                                            }
                                         >
                                             <Input
                                                 placeholder={t("products.enter_product_code")}
-                                                disabled={!!editingProduct || isTourCreateStep}
+                                                disabled={codeFieldDisabled}
                                                 size="large"
                                                 className="rounded-md auth-ohnix-input"
+                                                suffix={
+                                                    codeFieldDisabled ? null : (
+                                                        <Button
+                                                            type="text"
+                                                            size="small"
+                                                            icon={<ScanOutlined className="text-[#29D8D5]" />}
+                                                            onClick={() => setScannerOpen(true)}
+                                                            className="flex items-center justify-center -mr-2"
+                                                        />
+                                                    )
+                                                }
                                             />
                                         </Form.Item>
                                     </Col>
@@ -424,6 +453,11 @@ const ProductModal = ({
                     </Col>
                 </Row>
             </Form>
+            <BarcodeScannerModal
+                open={scannerOpen}
+                onCancel={() => setScannerOpen(false)}
+                onDetected={handleBarcodeDetected}
+            />
         </Modal>
     );
 };

@@ -289,7 +289,7 @@ const InventoryTour = () => {
                 >
                     <div
                         className="rounded-2xl p-7 text-center"
-                        style={{ background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))" }}
+                        style={{ background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))" }}
                     >
                         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#29D8D5]/15">
                             <CheckCircleFilled className="text-3xl text-[#29D8D5]" />
@@ -368,7 +368,7 @@ const InventoryTour = () => {
                 <div
                     key={step.id}
                     className="rounded-2xl p-4 animate-fade-up"
-                    style={{ background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))" }}
+                    style={{ background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))" }}
                 >
                     <div className="flex items-center gap-2 mb-2">
                         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#29D8D5]/15 flex-shrink-0">
@@ -450,7 +450,7 @@ const InventoryTour = () => {
             <div
                 key={step.id}
                 className="rounded-2xl p-5 animate-fade-up"
-                style={{ background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))" }}
+                style={{ background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))" }}
             >
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">

@@ -2,7 +2,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadToCloudinary } from "../utils/cloudinary.js";
+import { uploadFile, deleteFile } from "../utils/storage.js";
 import { ensureUserSubscription, getEffectivePlan } from "../middleware/pricing.middleware.js";
 
 // Self-service counterpart to company.controller.js's *Admin functions -
@@ -140,7 +140,10 @@ export const updateMyCompanyLogo = asyncHandler(async (req, res, next) => {
         select: { companyId: true, username: true },
     });
 
-    const image = await uploadToCloudinary(req.file);
+    const image = await uploadFile(req.file, {
+        ownerId: user?.companyId || req.user.prismaId,
+        entity: "branding",
+    });
     if (!image) {
         return next(new ApiError(500, "No se pudo subir el logo."));
     }
@@ -154,7 +157,14 @@ export const updateMyCompanyLogo = asyncHandler(async (req, res, next) => {
         companyId = company.id;
         await prisma.user.update({ where: { id: req.user.prismaId }, data: { companyId } });
     } else {
+        const previous = await prisma.company.findUnique({
+            where: { id: companyId },
+            select: { logoUrl: true },
+        });
         await prisma.company.update({ where: { id: companyId }, data: { logoUrl: image.url } });
+        if (previous?.logoUrl) {
+            deleteFile(previous.logoUrl);
+        }
     }
 
     const company = await prisma.company.findUnique({ where: { id: companyId }, select: SELF_SELECT });

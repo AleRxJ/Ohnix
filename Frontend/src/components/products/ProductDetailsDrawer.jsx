@@ -124,11 +124,11 @@ const ProductDetailsDrawer = ({
                 header: {
                     borderBottom: "1px solid var(--ohnix-line-3)",
                     padding: "20px 24px",
-                    background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(8,8,8,0.98))",
+                    background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                 },
                 body: {
                     padding: "24px",
-                    background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                 },
             }}
         >

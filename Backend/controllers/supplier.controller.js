@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { uploadToCloudinary } from "../utils/cloudinary.js";
+import { uploadFile, deleteFile } from "../utils/storage.js";
 import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 
@@ -87,7 +87,10 @@ const createSupplier = asyncHandler(async (req, res, next) => {
 
         let photoUrl = "default-supplier.png";
         if (req.file) {
-            const photo = await uploadToCloudinary(req.file);
+            const photo = await uploadFile(req.file, {
+                ownerId: req.user.prismaId,
+                entity: "suppliers",
+            });
             if (photo) {
                 photoUrl = photo.url;
             }
@@ -216,7 +219,10 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
 
         let photoUrl = existingSupplier.photo;
         if (req.file) {
-            const photo = await uploadToCloudinary(req.file);
+            const photo = await uploadFile(req.file, {
+                ownerId: req.user.prismaId,
+                entity: "suppliers",
+            });
             if (photo) {
                 photoUrl = photo.url;
             }
@@ -262,6 +268,14 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
             },
         });
 
+        // Fire-and-forget: the old photo is only orphaned once the DB row
+        // safely points at the new one, and deleteFile() already swallows
+        // its own errors, so this can't turn a successful update into a
+        // failed response.
+        if (req.file && photoUrl !== existingSupplier.photo) {
+            deleteFile(existingSupplier.photo);
+        }
+
         return res
             .status(200)
             .json(
@@ -296,6 +310,7 @@ const deleteSupplier = asyncHandler(async (req, res, next) => {
         }
 
         await prisma.supplier.delete({ where: { id: existingSupplier.id } });
+        deleteFile(existingSupplier.photo);
 
         return res
             .status(200)

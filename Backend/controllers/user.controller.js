@@ -1,6 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
-import { uploadToCloudinary } from "../utils/cloudinary.js";
+import { uploadFile, deleteFile } from "../utils/storage.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import { sendMailSafe } from "../utils/nodemailer.js";
@@ -133,11 +133,16 @@ const registerUser = asyncHandler(async (req, res, next) => {
         avatarFile = req.file;
     }
 
-    // Avatar is optional — use Cloudinary upload if file provided, otherwise
-    // fall back to a generated ui-avatars.com URL based on the username.
+    // Avatar is optional — upload if a file was provided, otherwise fall
+    // back to a generated ui-avatars.com URL based on the username.
     let avatarUrl;
     if (avatarFile) {
-        const uploaded = await uploadToCloudinary(avatarFile);
+        // No req.user yet at signup - the account doesn't exist until the
+        // create below, so scope by username instead of an account id.
+        const uploaded = await uploadFile(avatarFile, {
+            ownerId: normalizedUsername,
+            entity: "avatars",
+        });
         if (!uploaded) {
             return next(new ApiError(400, "Avatar file upload failed"));
         }
@@ -615,7 +620,10 @@ const updateUserAvatar = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "Avatar file is missing"));
     }
 
-    const avatar = await uploadToCloudinary(req.file);
+    const avatar = await uploadFile(req.file, {
+        ownerId: req.user.prismaId,
+        entity: "avatars",
+    });
 
     if (!avatar?.url) {
         return next(new ApiError(400, "Error while uploading avatar"));
@@ -623,7 +631,7 @@ const updateUserAvatar = asyncHandler(async (req, res, next) => {
 
     const currentUser = await prisma.user.findFirst({
         where: userLookupByTokenId(req.user?._id),
-        select: { id: true },
+        select: { id: true, avatar: true },
     });
 
     if (!currentUser) {
@@ -637,6 +645,10 @@ const updateUserAvatar = asyncHandler(async (req, res, next) => {
         },
         select: userPublicSelect,
     });
+
+    if (currentUser.avatar) {
+        deleteFile(currentUser.avatar);
+    }
 
     return res
         .status(200)

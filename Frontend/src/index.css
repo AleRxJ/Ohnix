@@ -804,9 +804,12 @@ textarea.ant-input[disabled] {
 
 /* Unselected Radio.Button segments default to a light/white pill with dark
    text, which looks broken sitting on Ohnix's dark modal backgrounds (e.g.
-   the stock-adjustment "Entrada/Salida" direction toggle). Selected state
-   keeps antd's own primary-color styling, already teal via the ant-btn-
-   primary-style theme token, so it's untouched here. */
+   the stock-adjustment "Entrada/Salida" direction toggle). There's no
+   global antd theme token override anywhere in the app (AntdConfigProvider
+   never sets `theme.token.colorPrimary`), so the checked state was falling
+   back to antd's default blue instead of the brand teal - fixed below,
+   scoped to .stock-direction-toggle since AdjustStockModal is the only
+   Radio.Button usage in the app. */
 .ant-radio-button-wrapper:not(.ant-radio-button-wrapper-checked) {
   background: var(--ohnix-line-1) !important;
   border-color: var(--ohnix-line-5) !important;
@@ -819,6 +822,21 @@ textarea.ant-input[disabled] {
 
 .ant-radio-button-wrapper:not(:first-child)::before {
   background-color: var(--ohnix-line-5) !important;
+}
+
+.stock-direction-toggle .ant-radio-button-wrapper-checked {
+  background: linear-gradient(135deg, #29d8d5 0%, #44f3f0 100%) !important;
+  border-color: #29d8d5 !important;
+  color: #021314 !important;
+  font-weight: 600;
+}
+
+.stock-direction-toggle .ant-radio-button-wrapper-checked:hover {
+  color: #021314 !important;
+}
+
+.stock-direction-toggle .ant-radio-button-wrapper-checked::before {
+  background-color: #29d8d5 !important;
 }
 
 /* TextArea's showCount character counter ("0 / 280") defaults to the same
@@ -1024,13 +1042,28 @@ textarea.ant-input[disabled] {
   box-shadow: var(--ohnix-shadow-elevated);
 }
 
-/* Thin dark scrollbar for drawer bodies */
+/* Thin themed scrollbar for drawer bodies */
 .dian-drawer .ant-drawer-body::-webkit-scrollbar { width: 6px; }
 .dian-drawer .ant-drawer-body::-webkit-scrollbar-thumb {
   background: var(--ohnix-scrollbar-thumb);
   border-radius: 999px;
 }
 .dian-drawer .ant-drawer-body::-webkit-scrollbar-track { background: transparent; }
+
+/* Thin themed scrollbar for every modal's scrollable body - antd applies
+   .ant-modal-body to all of them regardless of the per-modal `styles.body`
+   override, so this one rule replaces the browser's default fat grey
+   scrollbar everywhere a modal sets maxHeight/overflowY on its body. */
+.ant-modal-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ohnix-scrollbar-thumb) transparent;
+}
+.ant-modal-body::-webkit-scrollbar { width: 6px; }
+.ant-modal-body::-webkit-scrollbar-thumb {
+  background: var(--ohnix-scrollbar-thumb);
+  border-radius: 999px;
+}
+.ant-modal-body::-webkit-scrollbar-track { background: transparent; }
 
 /* Unit Modal Tabs */
 .unit-modal-tabs .ant-tabs {
@@ -1371,11 +1404,6 @@ textarea.ant-input[disabled] {
 /* Moved out of src/components/customers/CustomerForm.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
 
-                .avatar-uploader .ant-upload-select {
-                    width: 120px !important;
-                    height: 120px !important;
-                    border-radius: 12px !important;
-                }
                 .ant-card-head {
                     min-height: auto;
                     padding: 16px 24px;
@@ -1508,16 +1536,6 @@ textarea.ant-input[disabled] {
                 }
 
 
-/* Moved out of src/components/suppliers/SupplierForm.jsx's inline <style jsx> (invalid Next.js-only syntax
-   in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
-
-                    .avatar-uploader .ant-upload-select {
-                        width: 120px !important;
-                        height: 120px !important;
-                        border-radius: 12px !important;
-                    }
-
-
 /* Moved out of src/components/customers/CustomerViewModal.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
 
@@ -1579,7 +1597,7 @@ textarea.ant-input[disabled] {
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
 
                 .return-preview-modal .ant-modal-content {
-                    background: linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98));
+                    background: linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
                     border: 1px solid var(--ohnix-line-4);
                 }
                 .return-preview-modal .ant-modal-header {
@@ -1679,7 +1697,7 @@ textarea.ant-input[disabled] {
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
 
                 .purchase-details-modal .ant-modal-content {
-                    background: linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98));
+                    background: linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
                     border: 1px solid var(--ohnix-line-4);
                 }
                 .purchase-details-modal .ant-modal-header {

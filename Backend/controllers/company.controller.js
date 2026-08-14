@@ -2,7 +2,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadToCloudinary } from "../utils/cloudinary.js";
+import { uploadFile, deleteFile } from "../utils/storage.js";
 import { registerCompanyWithAlanube } from "../services/electronicInvoicing.service.js";
 
 // Deliberately distinct from companyCountry.service.js#normalizeCountryCode:
@@ -281,14 +281,17 @@ export const updateCompanyLogoAdmin = asyncHandler(async (req, res, next) => {
 
     const existing = await prisma.company.findUnique({
         where: { id: companyId },
-        select: { id: true },
+        select: { id: true, logoUrl: true },
     });
 
     if (!existing) {
         return next(new ApiError(404, "Company not found"));
     }
 
-    const image = await uploadToCloudinary(req.file);
+    const image = await uploadFile(req.file, {
+        ownerId: companyId,
+        entity: "branding",
+    });
     if (!image) {
         return next(new ApiError(500, "Failed to upload logo"));
     }
@@ -298,6 +301,10 @@ export const updateCompanyLogoAdmin = asyncHandler(async (req, res, next) => {
         data: { logoUrl: image.url },
         select: { id: true, logoUrl: true },
     });
+
+    if (existing.logoUrl) {
+        deleteFile(existing.logoUrl);
+    }
 
     return res
         .status(200)

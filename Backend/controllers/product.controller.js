@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { uploadToCloudinary } from "../utils/cloudinary.js";
+import { uploadFile, deleteFile } from "../utils/storage.js";
 import { prisma } from "../db/prisma.js";
 import { normalizeCountryCode } from "../services/companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
@@ -216,8 +216,8 @@ const createProduct = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "Selling price must be >= buying price"));
     }
 
-    if (String(product_code).trim().length > 5) {
-        return next(new ApiError(400, "Product code must be 5 characters or less"));
+    if (String(product_code).trim().length > 40) {
+        return next(new ApiError(400, "Product code must be 40 characters or less"));
     }
 
     if (String(product_name).trim().length > 50) {
@@ -240,7 +240,10 @@ const createProduct = asyncHandler(async (req, res, next) => {
 
         let productImageUrl = "default-product.png";
         if (req.file) {
-            const image = await uploadToCloudinary(req.file);
+            const image = await uploadFile(req.file, {
+                ownerId: req.user.prismaId,
+                entity: "products",
+            });
             if (image) {
                 productImageUrl = image.url;
             }
@@ -410,7 +413,10 @@ const updateProduct = asyncHandler(async (req, res, next) => {
 
         let productImage = existingProduct.productImage;
         if (req.file) {
-            const image = await uploadToCloudinary(req.file);
+            const image = await uploadFile(req.file, {
+                ownerId: req.user.prismaId,
+                entity: "products",
+            });
             if (image) {
                 productImage = image.url;
             }
@@ -460,8 +466,8 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             updatedById: req.user.prismaId,
         };
 
-        if (payload.productCode && payload.productCode.length > 5) {
-            return next(new ApiError(400, "Product code must be 5 characters or less"));
+        if (payload.productCode && payload.productCode.length > 40) {
+            return next(new ApiError(400, "Product code must be 40 characters or less"));
         }
 
         if (payload.productName && payload.productName.length > 50) {
@@ -518,6 +524,14 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             },
         });
 
+        // Fire-and-forget: the old image is only orphaned once the DB row
+        // safely points at the new one, and deleteFile() already swallows
+        // its own errors, so this can't turn a successful update into a
+        // failed response.
+        if (req.file && productImage !== existingProduct.productImage) {
+            deleteFile(existingProduct.productImage);
+        }
+
         return res
             .status(200)
             .json(new ApiResponse(200, mapProduct(product), "Product updated successfully"));
@@ -549,6 +563,7 @@ const deleteProduct = asyncHandler(async (req, res, next) => {
         }
 
         await prisma.product.delete({ where: { id: existingProduct.id } });
+        deleteFile(existingProduct.productImage);
 
         return res
             .status(200)

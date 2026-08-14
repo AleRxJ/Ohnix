@@ -234,7 +234,7 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting }) => {
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.55)" },
                 content: {
-                    background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                     border: "1px solid var(--ohnix-line-4)",
                     borderRadius: "20px",
                 },
@@ -320,10 +320,10 @@ const InvoiceDetailDrawer = ({
                 mask: { backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" },
                 header: {
                     borderBottom: "1px solid var(--ohnix-line-3)",
-                    background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(8,8,8,0.98))",
+                    background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                 },
                 body: {
-                    background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                     padding: "22px",
                 },
             }}

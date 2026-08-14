@@ -54,7 +54,7 @@ const ProfileHeader = ({
             className="mb-0 border-0 rounded-none shadow-none bg-transparent"
             bodyStyle={{ padding: 0 }}
         >
-            <div className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(41,216,213,0.18),transparent_36%),linear-gradient(135deg,rgba(7,11,12,0.98),rgba(11,11,11,0.92))] px-5 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+            <div className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(41,216,213,0.18),transparent_36%),linear-gradient(135deg,var(--ohnix-surface-card),var(--ohnix-surface-card-soft))] px-5 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
                 <div className="absolute inset-0 bg-[linear-gradient(120deg,var(--ohnix-line-2),transparent_20%,transparent_80%,var(--ohnix-line-1))] opacity-40" />
                 <div className="relative grid grid-cols-1 xl:grid-cols-[1.3fr_0.8fr] gap-6 lg:gap-8 items-start">
                     <div className="flex flex-col gap-6 md:flex-row md:items-start">

@@ -21,6 +21,7 @@ import {
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
 import { useInventoryTour } from "../../context/InventoryTourContext";
+import PhotoDropZone from "../common/PhotoDropZone";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -51,12 +52,30 @@ const CustomerForm = ({
         user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
     const uploadProps = {
         fileList,
-        onChange: ({ fileList: newFileList }) => setFileList(newFileList),
+        // showUploadList is false so our own PhotoDropZone renders the
+        // preview - antd only auto-generates thumbUrl inside its own list
+        // renderer, which never mounts in that mode, so a freshly picked
+        // file needs its data-URL preview built here instead.
+        onChange: ({ fileList: newFileList }) => {
+            setFileList(newFileList);
+            const latest = newFileList[newFileList.length - 1];
+            if (latest?.originFileObj && !latest.thumbUrl && !latest.url) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    setFileList((prev) =>
+                        prev.map((f) =>
+                            f.uid === latest.uid ? { ...f, thumbUrl: e.target.result } : f
+                        )
+                    );
+                };
+                reader.readAsDataURL(latest.originFileObj);
+            }
+        },
         beforeUpload: () => false,
         maxCount: 1,
         accept: "image/*",
-        listType: "picture-card",
-        className: "avatar-uploader",
+        listType: "picture",
+        showUploadList: false,
     };
 
     return (
@@ -346,17 +365,12 @@ const CustomerForm = ({
                         >
                             <Form.Item className="mb-0">
                                 <Upload {...uploadProps}>
-                                    {fileList.length === 0 && (
-                                        <div className="text-center p-2 mt-2 border border-dashed border-[var(--ohnix-line-5)] rounded-xl hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer bg-[var(--ohnix-line-1)] hover:bg-[var(--ohnix-hover-overlay)]">
-                                            <UploadOutlined className="text-3xl text-[#29D8D5] mb-3 block" />
-                                            <div className="text-[var(--ohnix-text-primary)] font-medium mb-1">
-                                                {t("customers.click_to_upload_photo")}
-                                            </div>
-                                            <div className="text-sm text-[var(--ohnix-text-muted)]">
-                                                {t("customers.photo_upload_help")}
-                                            </div>
-                                        </div>
-                                    )}
+                                    <PhotoDropZone
+                                        imageUrl={fileList[0]?.thumbUrl || fileList[0]?.url}
+                                        title={t("customers.click_to_upload_photo")}
+                                        subtitle={t("customers.photo_upload_help")}
+                                        height="h-40 sm:h-44"
+                                    />
                                 </Upload>
                             </Form.Item>
                         </Card>

@@ -82,7 +82,7 @@ const UnitSection = ({ user, isAdmin, unitHook }) => {
                 style={{
                     borderRadius: "12px",
                     background:
-                        "linear-gradient(180deg, rgba(11,11,11,0.96), rgba(8,8,8,0.98))",
+                        "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                     border: "1px solid var(--ohnix-line-3)",
                 }}
                 title={

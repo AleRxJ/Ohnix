@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { uploadToCloudinary } from "../utils/cloudinary.js";
+import { uploadFile, deleteFile } from "../utils/storage.js";
 import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 
@@ -97,7 +97,10 @@ const createCustomer = asyncHandler(async (req, res, next) => {
 
         let photoUrl = "default-customer.png";
         if (req.file) {
-            const photo = await uploadToCloudinary(req.file);
+            const photo = await uploadFile(req.file, {
+                ownerId: req.user.prismaId,
+                entity: "customers",
+            });
             if (photo) {
                 photoUrl = photo.url;
             }
@@ -205,7 +208,10 @@ const updateCustomer = asyncHandler(async (req, res, next) => {
         }
 
         if (req.file) {
-            const photo = await uploadToCloudinary(req.file);
+            const photo = await uploadFile(req.file, {
+                ownerId: req.user.prismaId,
+                entity: "customers",
+            });
             if (photo) {
                 updateData.photo = photo.url;
             }
@@ -244,6 +250,14 @@ const updateCustomer = asyncHandler(async (req, res, next) => {
             },
         });
 
+        // Fire-and-forget: the old photo is only orphaned once the DB row
+        // safely points at the new one, and deleteFile() already swallows
+        // its own errors, so this can't turn a successful update into a
+        // failed response.
+        if (req.file && updateData.photo !== existingCustomer.photo) {
+            deleteFile(existingCustomer.photo);
+        }
+
         return res
             .status(200)
             .json(new ApiResponse(200, mapCustomer(customer), "Customer updated successfully"));
@@ -272,6 +286,7 @@ const deleteCustomer = asyncHandler(async (req, res, next) => {
         }
 
         await prisma.customer.delete({ where: { id: existingCustomer.id } });
+        deleteFile(existingCustomer.photo);
 
         return res
             .status(200)

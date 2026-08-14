@@ -85,7 +85,7 @@ const CategoryModal = ({
                 mask: { backgroundColor: "rgba(0,0,0,0.55)" },
                 content: {
                     background:
-                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                        "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                     border: "1px solid var(--ohnix-line-4)",
                     boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
                     borderRadius: "24px",

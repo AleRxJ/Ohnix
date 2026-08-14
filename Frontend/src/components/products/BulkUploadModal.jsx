@@ -185,7 +185,7 @@ const BulkUploadModal = ({
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.55)" },
                 content: {
-                    background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                     border: "1px solid var(--ohnix-line-4)",
                     borderRadius: "20px",
                 },

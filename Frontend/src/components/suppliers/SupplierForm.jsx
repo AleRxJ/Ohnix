@@ -24,6 +24,7 @@ import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
+import PhotoDropZone from "../common/PhotoDropZone";
 
 const { Option } = Select;
 
@@ -86,7 +87,7 @@ const SupplierForm = ({
                 mask: { backgroundColor: "rgba(0,0,0,0.55)" },
                 content: {
                     background:
-                        "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                        "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                     border: "1px solid var(--ohnix-line-4)",
                     boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
                     borderRadius: "24px",
@@ -398,17 +399,12 @@ const SupplierForm = ({
                             }
                         >
                             <Upload {...uploadProps}>
-                                {fileList.length === 0 && (
-                                    <div className="text-center border border-dashed border-[var(--ohnix-line-5)] rounded-xl hover:border-[#29D8D5]/60 transition-all duration-200 cursor-pointer bg-[var(--ohnix-line-1)] hover:bg-[var(--ohnix-hover-overlay)] p-4 min-h-[110px] flex flex-col items-center justify-center">
-                                        <UploadOutlined className="text-3xl text-[#29D8D5] mb-3 block" />
-                                        <div className="text-[var(--ohnix-text-primary)] font-medium mb-1">
-                                            {t("suppliers.upload_photo")}
-                                        </div>
-                                        <div className="text-sm text-[var(--ohnix-text-muted)]">
-                                            {t("suppliers.photo_upload_help")}
-                                        </div>
-                                    </div>
-                                )}
+                                <PhotoDropZone
+                                    imageUrl={fileList[0]?.thumbUrl || fileList[0]?.url}
+                                    title={t("suppliers.upload_photo")}
+                                    subtitle={t("suppliers.photo_upload_help")}
+                                    height="h-40 sm:h-44"
+                                />
                             </Upload>
                         </Card>
                     </Col>

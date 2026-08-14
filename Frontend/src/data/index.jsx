@@ -159,7 +159,18 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <CreditCardOutlined />,
             label: <Link to="/billing">{t("common.billing")}</Link>,
         },
-    ].filter((item) => !item.moduleKey || canAccess(item.moduleKey));
+    ]
+        .filter((item) => !item.moduleKey || canAccess(item.moduleKey))
+        // moduleKey is only for the permission filter above - antd's Menu
+        // items don't recognize it, and any unrecognized property on an
+        // items-array entry gets spread straight onto the rendered <li> as
+        // a DOM attribute, which is what triggered React's "does not
+        // recognize the `moduleKey` prop on a DOM element" warning.
+        .map((item) => {
+            const menuItem = { ...item };
+            delete menuItem.moduleKey;
+            return menuItem;
+        });
 
     if (role === "admin") {
         items.push({
