@@ -887,6 +887,8 @@
     "keep_practice_button": "Prefiero conservarlo",
     "cleanup_success": "Listo, tu práctica quedó eliminada. Tu inventario real sigue intacto.",
     "cleanup_failed": "No pudimos eliminar la práctica automáticamente, pero tranquilo: puedes borrar esos registros a mano cuando quieras.",
+    "dismiss_confirm_title": "¿Qué hacemos con tu práctica?",
+    "dismiss_confirm_desc": "Ya creaste algunas cosas de práctica. Si las dejas así y más adelante retomas el recorrido, podrías terminar con datos duplicados. ¿Las eliminamos ahora o las dejamos como están?",
     "finish_title": "¡Lo lograste! 🎉",
     "finish_desc": "Acabas de recorrer tu primer flujo completo: creaste un producto, le compraste a un proveedor, le vendiste a un cliente, y viste cómo se movió el stock en cada paso. Todo lo que creaste aquí fue práctica — nunca tocó tu inventario real. ¿Qué hacemos con ella?",
     "step_welcome_title": "¡Bienvenido a Ohnix! 👋",

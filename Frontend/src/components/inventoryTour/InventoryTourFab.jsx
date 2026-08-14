@@ -1,7 +1,10 @@
-import React from "react";
-import { CompassOutlined, CloseOutlined } from "@ant-design/icons";
+import React, { useState } from "react";
+import { Modal } from "antd";
+import { CompassOutlined, CloseOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
+import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
+import { tutorialDataService } from "../../services/tutorialDataService";
 
 // App-wide, not scoped to any one module - the tour now walks through the
 // whole first-time flow (categories, products, purchases, sales,
@@ -9,9 +12,56 @@ import { useInventoryTour } from "../../context/InventoryTourContext";
 // to be reachable from anywhere in the dashboard, not just Products.
 const InventoryTourFab = () => {
     const { t } = useI18n();
-    const { isOpen, completed, fabDismissed, start, dismissFab } = useInventoryTour();
+    const {
+        isOpen,
+        completed,
+        fabDismissed,
+        start,
+        dismissFab,
+        hasSavedProgress,
+        discardProgress,
+    } = useInventoryTour();
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [purging, setPurging] = useState(false);
 
     if (isOpen || completed || fabDismissed) return null;
+
+    // Dismissing while practice data already exists needs a decision first
+    // - silently hiding the button would leave that data stranded, and if
+    // the user ever picks the tour back up (via Profile > Account settings)
+    // it would create a second, duplicate set of practice records right
+    // alongside the abandoned ones.
+    const handleDismissClick = (e) => {
+        e.stopPropagation();
+        if (hasSavedProgress()) {
+            setConfirmOpen(true);
+        } else {
+            dismissFab();
+        }
+    };
+
+    const handleDeleteAndDismiss = async () => {
+        setPurging(true);
+        try {
+            await tutorialDataService.purge();
+            toast.success(t("inventory_tour.cleanup_success"));
+        } catch {
+            toast.error(t("inventory_tour.cleanup_failed"));
+        } finally {
+            setPurging(false);
+            discardProgress();
+            dismissFab();
+            setConfirmOpen(false);
+        }
+    };
+
+    const handleKeepAndDismiss = () => {
+        // Deliberately doesn't touch the saved step/refs - reEnableFab()
+        // leaves them alone too, so picking the tour back up later resumes
+        // exactly where this left off instead of restarting from scratch.
+        dismissFab();
+        setConfirmOpen(false);
+    };
 
     return (
         <div className="no-print fixed bottom-6 right-6 z-[1050] group">
@@ -34,10 +84,7 @@ const InventoryTourFab = () => {
 
             <button
                 type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    dismissFab();
-                }}
+                onClick={handleDismissClick}
                 aria-label={t("inventory_tour.dismiss_fab")}
                 title={t("inventory_tour.dismiss_fab")}
                 className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 border-0 cursor-pointer"
@@ -49,6 +96,61 @@ const InventoryTourFab = () => {
             >
                 <CloseOutlined style={{ fontSize: 10 }} />
             </button>
+
+            <Modal
+                open={confirmOpen}
+                onCancel={() => setConfirmOpen(false)}
+                footer={null}
+                centered
+                width={420}
+                closable={!purging}
+                maskClosable={!purging}
+                styles={{
+                    mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                    content: {
+                        background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                        border: "1px solid var(--ohnix-line-4)",
+                        boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                        borderRadius: "24px",
+                    },
+                    body: { padding: "8px 4px" },
+                }}
+            >
+                <div className="text-center">
+                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#FFCF70]/15">
+                        <ExclamationCircleOutlined className="text-2xl text-[#FFCF70]" />
+                    </div>
+                    <h3 className="text-base font-bold text-[var(--ohnix-text-primary)] mb-2">
+                        {t("inventory_tour.dismiss_confirm_title")}
+                    </h3>
+                    <p className="text-sm text-[var(--ohnix-text-muted)] leading-relaxed mb-6">
+                        {t("inventory_tour.dismiss_confirm_desc")}
+                    </p>
+                    <div className="flex flex-col gap-2.5">
+                        <button
+                            type="button"
+                            onClick={handleDeleteAndDismiss}
+                            disabled={purging}
+                            className="h-11 rounded-xl text-sm font-bold border-0 cursor-pointer disabled:opacity-60"
+                            style={{
+                                background: "linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%)",
+                                color: "#021314",
+                            }}
+                        >
+                            {purging ? t("inventory_tour.cleaning_up") : t("inventory_tour.cleanup_button")}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleKeepAndDismiss}
+                            disabled={purging}
+                            className="h-11 rounded-xl text-sm font-semibold border cursor-pointer disabled:opacity-60"
+                            style={{ borderColor: "var(--ohnix-line-4)", color: "var(--ohnix-text-primary)", background: "transparent" }}
+                        >
+                            {t("inventory_tour.keep_practice_button")}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             <style>{`
                 .inventory-tour-fab {

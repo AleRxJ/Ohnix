@@ -887,6 +887,8 @@
     "keep_practice_button": "I'll keep it",
     "cleanup_success": "Done - your practice data is gone. Your real inventory was never touched.",
     "cleanup_failed": "We couldn't auto-delete the practice data, but no worries - you can remove those records by hand whenever you like.",
+    "dismiss_confirm_title": "What should we do with your practice data?",
+    "dismiss_confirm_desc": "You already created some practice records. If you leave them and pick the tour back up later, you could end up with duplicates. Delete them now, or leave them as they are?",
     "finish_title": "You did it! 🎉",
     "finish_desc": "You just walked through your first complete flow: created a product, bought it from a supplier, sold it to a customer, and watched stock move at every step. Everything here was practice - it never touched your real inventory. What do you want to do with it?",
     "step_welcome_title": "Welcome to Ohnix! 👋",

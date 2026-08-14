@@ -85,19 +85,32 @@ const InventoryTour = () => {
         }
     }, [isOpen, step, location.pathname, navigate]);
 
+    // Which step's target `targetEl` currently points at - a ref (not
+    // state) specifically so it updates synchronously the instant a step
+    // changes, in the same commit. Without this, the auto-open effect below
+    // (which also runs in that commit, since effects fire in declaration
+    // order) would still see the PREVIOUS step's targetEl - state updates
+    // scheduled inside an effect don't apply until the next render - and
+    // auto-click that stale, already-used target again (e.g. re-clicking
+    // "Add category" right after category was created and the tour moved on
+    // to create-unit), which is what was reopening an empty modal.
+    const targetElStepIdRef = useRef(null);
     useEffect(() => {
         if (!isOpen || !step || !step.selector) {
             setTargetEl(step?.selector ? undefined : null);
+            targetElStepIdRef.current = null;
             return;
         }
         if (step.path && location.pathname !== step.path) {
             setTargetEl(undefined);
+            targetElStepIdRef.current = null;
             return;
         }
 
         let attempts = 0;
         let cancelled = false;
         setTargetEl(undefined);
+        targetElStepIdRef.current = null;
 
         const rowMatch = ROW_ID_ATTR_BY_STEP_ID[step.id];
         const trackedId = rowMatch ? createdRefs?.[rowMatch.refKind]?.id : null;
@@ -116,6 +129,7 @@ const InventoryTour = () => {
             attempts += 1;
             if (el) {
                 setTargetEl(el);
+                targetElStepIdRef.current = step.id;
                 clearInterval(interval);
             } else if (attempts >= POLL_MAX_ATTEMPTS) {
                 setTargetEl(null);
@@ -138,6 +152,7 @@ const InventoryTour = () => {
     useEffect(() => {
         if (!isOpen || step?.kind !== "action") return;
         if (!targetEl || typeof targetEl.click !== "function") return;
+        if (targetElStepIdRef.current !== step.id) return;
         if (autoOpenedForStepRef.current === stepIndex) return;
         autoOpenedForStepRef.current = stepIndex;
         targetEl.click();

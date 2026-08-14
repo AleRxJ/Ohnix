@@ -128,22 +128,49 @@ export const InventoryTourProvider = ({ children }) => {
 
     // "I don't need this anymore" - hides the floating trigger for good
     // (until localStorage is cleared), without touching completion state:
-    // dismissing isn't the same as having gone through it.
+    // dismissing isn't the same as having gone through it. Deliberately
+    // doesn't touch last_step/created_refs - InventoryTourFab.jsx decides
+    // separately (asking the user) whether to keep or discard those before
+    // calling this, so someone who says "keep it" resumes where they left
+    // off if they ever come back via reEnableFab().
     const dismissFab = useCallback(() => {
         setFabDismissed(true);
         localStorage.setItem(fabDismissedKeyFor(userIdRef.current), "1");
     }, []);
 
+    // Whether there's an in-progress (or abandoned) practice session worth
+    // asking the user about before they dismiss the FAB for good - reads
+    // localStorage directly rather than the createdRefs/isOpen state, which
+    // only reflect the CURRENT session and go blank after a page reload
+    // even though the saved progress (and any practice data already
+    // created) is still very much there.
+    const hasSavedProgress = useCallback(
+        () => Boolean(localStorage.getItem(lastStepKeyFor(userIdRef.current))),
+        []
+    );
+
+    // Wipes any saved resume point and practice-record references - used
+    // when the user explicitly chooses to delete their practice data on
+    // dismiss, so a future start() begins clean instead of "resuming" into
+    // step references that no longer exist.
+    const discardProgress = useCallback(() => {
+        setCreatedRefs({});
+        localStorage.removeItem(lastStepKeyFor(userIdRef.current));
+        localStorage.removeItem(createdRefsKeyFor(userIdRef.current));
+    }, []);
+
     // The one manual escape hatch: brings the floating trigger back after a
     // dismiss, and clears "completed" too so it counts as a fresh restart
     // rather than being immediately hidden again by the completed check in
-    // InventoryTourFab.jsx. Surfaced in Profile > Account settings.
+    // InventoryTourFab.jsx. Surfaced in Profile > Account settings. Leaves
+    // last_step/created_refs alone - if the user chose to keep their
+    // practice data when dismissing, re-enabling should resume where they
+    // were, not silently discard that progress.
     const reEnableFab = useCallback(() => {
         setFabDismissed(false);
         setCompleted(false);
         localStorage.removeItem(fabDismissedKeyFor(userIdRef.current));
         localStorage.removeItem(completedKeyFor(userIdRef.current));
-        localStorage.removeItem(lastStepKeyFor(userIdRef.current));
     }, []);
 
     // Refs mirroring the latest isOpen/stepIndex/effectiveSteps: notifyAction
@@ -205,10 +232,12 @@ export const InventoryTourProvider = ({ children }) => {
             close,
             finish,
             dismissFab,
+            hasSavedProgress,
+            discardProgress,
             reEnableFab,
             notifyAction,
         }),
-        [isOpen, stepIndex, completed, fabDismissed, ready, effectiveSteps, createdRefs, start, close, finish, dismissFab, reEnableFab, notifyAction]
+        [isOpen, stepIndex, completed, fabDismissed, ready, effectiveSteps, createdRefs, start, close, finish, dismissFab, hasSavedProgress, discardProgress, reEnableFab, notifyAction]
     );
 
     return <InventoryTourContext.Provider value={value}>{children}</InventoryTourContext.Provider>;
