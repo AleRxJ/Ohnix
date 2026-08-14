@@ -40,15 +40,15 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                             <Text strong className="text-base text-[var(--ohnix-text-primary)] block truncate">
                                 {customer.name}
                             </Text>
-                            <Tag 
+                            <Tag
                                 color={
-                                    customer.type === 'regular' ? 'blue' :
+                                    customer.type === 'regular' ? 'cyan' :
                                     customer.type === 'wholesale' ? 'green' : 'orange'
-                                } 
+                                }
                                 size="small"
                                 className="mt-1"
                             >
-                                {customer.type?.toUpperCase()}
+                                {customer.type ? t(`customers.${customer.type}_customer`) : t("common.na")}
                             </Tag>
                         </div>
                         <Space size="small">
@@ -125,15 +125,15 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                         <Text strong className="block text-[var(--ohnix-text-primary)] text-sm">
                             {record.name}
                         </Text>
-                        <Tag 
+                        <Tag
                             color={
-                                record.type === 'regular' ? 'blue' :
+                                record.type === 'regular' ? 'cyan' :
                                 record.type === 'wholesale' ? 'green' : 'orange'
-                            } 
+                            }
                             size="small"
                             className="mt-1"
                         >
-                            {record.type?.toUpperCase()}
+                            {record.type ? t(`customers.${record.type}_customer`) : t("common.na")}
                         </Tag>
                     </div>
                 </div>
@@ -169,8 +169,8 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
             render: (_, record) => (
                 <div className="space-y-2">
                     {record.address && (
-                        <div className="flex items-start text-sm text-gray-700">
-                            <HomeOutlined className="mr-2 mt-0.5 text-purple-500 flex-shrink-0" />
+                        <div className="flex items-start text-sm text-[var(--ohnix-text-soft)]">
+                            <HomeOutlined className="mr-2 mt-0.5 text-purple-400 flex-shrink-0" />
                             <Tooltip title={record.address}>
                                 <span className="truncate max-w-[160px] leading-5">
                                     {record.address}
@@ -179,8 +179,8 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                         </div>
                     )}
                     {record.store_name && (
-                        <div className="flex items-center text-sm text-gray-700">
-                            <ShopOutlined className="mr-2 text-orange-500 flex-shrink-0" />
+                        <div className="flex items-center text-sm text-[var(--ohnix-text-soft)]">
+                            <ShopOutlined className="mr-2 text-orange-400 flex-shrink-0" />
                             <Tooltip title={record.store_name}>
                                 <span className="truncate max-w-[160px]">
                                     {record.store_name}

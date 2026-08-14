@@ -160,6 +160,7 @@ const OrderFormItems = ({ products, onRemove, name, restField, locked }) => {
                                 },
                             ]}
                             className="mb-0"
+                            extra={locked ? t("inventory_tour.practice_locked_hint") : undefined}
                         >
                             <InputNumber
                                 placeholder={t("orders.selling_price")}

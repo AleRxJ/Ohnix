@@ -27,7 +27,12 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
     const navigate = useNavigate();
     const { currency } = useCurrency();
     const { t } = useI18n();
-    const { fabDismissed, reEnableFab } = useInventoryTour();
+    const { fabDismissed, completed: tourCompleted, reEnableFab } = useInventoryTour();
+    // The floating trigger is hidden for either reason (InventoryTourFab.jsx
+    // checks `completed || fabDismissed`) - gating this button on
+    // `fabDismissed` alone meant someone who finished the tour normally
+    // (completed=true, fabDismissed never set) had no way to bring it back.
+    const tourHidden = fabDismissed || tourCompleted;
     const [loadingSubscription, setLoadingSubscription] = useState(true);
     const [refreshingSubscription, setRefreshingSubscription] = useState(false);
     const [subscription, setSubscription] = useState(null);
@@ -317,7 +322,7 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
                                 {t("inventory_tour.settings_title")}
                             </Title>
                             <Text className="text-[var(--ohnix-text-muted)] text-sm">
-                                {fabDismissed
+                                {tourHidden
                                     ? t("inventory_tour.settings_desc_hidden")
                                     : t("inventory_tour.settings_desc_visible")}
                             </Text>
@@ -325,7 +330,7 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
                     </div>
                     <Button
                         onClick={handleReEnableTour}
-                        disabled={!fabDismissed}
+                        disabled={!tourHidden}
                         className="rounded-xl h-10 px-6 font-medium border-[var(--ohnix-line-4)] disabled:opacity-50"
                     >
                         {t("inventory_tour.settings_button")}

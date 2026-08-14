@@ -1736,3 +1736,20 @@ textarea.ant-input[disabled] {
                     }
                 }
 
+/* BulkUploadModal.jsx never had any dark-theme treatment at all - its plain
+   antd <Typography.Text> elements default to near-black (light-theme
+   assumption), invisible against this modal's dark background. */
+.bulk-upload-modal .ant-typography {
+  color: var(--ohnix-text-primary);
+}
+
+.bulk-upload-modal .ant-typography-secondary {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.bulk-upload-modal .ant-typography code {
+  background: var(--ohnix-line-1);
+  border-color: var(--ohnix-line-4);
+  color: #44f3f0;
+}
+

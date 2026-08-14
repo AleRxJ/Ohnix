@@ -38,7 +38,7 @@ const Products = () => {
     } = useProducts();
     const { categories } = useCategories();
     const { units } = useUnits();
-    const { t, currentLanguage } = useI18n();
+    const { t } = useI18n();
     const { can } = useSubscription();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("products", "edit");
@@ -202,11 +202,13 @@ const Products = () => {
         }
     };
 
+    // deleteProduct() (useProducts.js) already shows its own success/failure
+    // toast with the right message either way - no need to duplicate that
+    // here (a prior version of this wrapper did, using the wrong success-
+    // shaped key as the error text, so a failed delete looked like it had
+    // succeeded).
     const handleDeleteProduct = async (productId) => {
-        const result = await deleteProduct(productId);
-        if (!result.success) {
-            message.error(t("products.product_deleted") || "Error");
-        }
+        await deleteProduct(productId);
     };
 
     const handleApplyFilters = () => {
@@ -251,11 +253,7 @@ const Products = () => {
                                 </Button>
                             ) : (
                                 <Tooltip
-                                    title={
-                                        currentLanguage === "es"
-                                            ? "Carga masiva disponible desde el plan Negocio"
-                                            : "Bulk upload available from the Business plan"
-                                    }
+                                    title={t("products.bulk_upload_upsell_tooltip")}
                                 >
                                     <span>
                                         <Button

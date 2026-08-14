@@ -117,7 +117,26 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }
                 body: { padding: "20px 24px 24px" },
             }}
         >
-            {!editingUnit && (
+            {/* During the tour's create-unit step, the "pick a common unit"
+                tab is skipped entirely rather than just left unlocked - it
+                has its own separate submit path that would let the user
+                create a unit other than the practice one the tour is
+                waiting for, sidestepping the locked custom-form value. */}
+            {!editingUnit && isTourCreateStep && (
+                <div className="py-3">
+                    <CustomUnitForm
+                        form={form}
+                        onSubmit={handleSubmit}
+                        onCancel={onClose}
+                        editingUnit={editingUnit}
+                        t={t}
+                        locked={isTourCreateStep}
+                        submitting={submitting}
+                    />
+                </div>
+            )}
+
+            {!editingUnit && !isTourCreateStep && (
                 <Tabs
                     value={mode}
                     onChange={setMode}

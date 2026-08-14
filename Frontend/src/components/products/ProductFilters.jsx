@@ -28,8 +28,8 @@ const ProductFilters = ({
         <Drawer
             title={
                 <div className="flex items-center gap-2.5">
-                    <FilterOutlined className="text-blue-600 text-base" />
-                    <span className="text-base font-semibold text-gray-900">
+                    <FilterOutlined className="text-[#44F3F0] text-base" />
+                    <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">
                         {t("products.filter_products")}
                     </span>
                 </div>
@@ -39,17 +39,20 @@ const ProductFilters = ({
             open={visible}
             width={window.innerWidth < 768 ? "100vw" : "340px"}
             styles={{
+                mask: { backgroundColor: "rgba(0,0,0,0.45)" },
                 header: {
-                    borderBottom: "1px solid #e5e7eb",
+                    borderBottom: "1px solid var(--ohnix-line-3)",
                     padding: "16px 24px",
+                    background: "var(--ohnix-surface-card-soft)",
                 },
                 body: {
                     padding: 0,
-                    backgroundColor: "#f9fafb",
+                    background: "var(--ohnix-surface-card-soft)",
                 },
                 footer: {
-                    borderTop: "1px solid #e5e7eb",
+                    borderTop: "1px solid var(--ohnix-line-3)",
                     padding: "12px 24px",
+                    background: "var(--ohnix-surface-card-soft)",
                 },
             }}
             footer={
@@ -75,12 +78,12 @@ const ProductFilters = ({
             }
         >
             <div className="p-4 space-y-4">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+                <div className="bg-[var(--ohnix-line-1)] rounded-lg border border-[var(--ohnix-line-4)] p-4">
                     <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                            <AppstoreOutlined className="text-blue-600 text-sm" />
+                        <div className="w-8 h-8 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center">
+                            <AppstoreOutlined className="text-[#44F3F0] text-sm" />
                         </div>
-                        <Text className="text-sm font-semibold text-gray-900">
+                        <Text className="text-sm font-semibold !text-[var(--ohnix-text-primary)]">
                             {t("products.category")}
                         </Text>
                     </div>
@@ -91,7 +94,7 @@ const ProductFilters = ({
                         value={categoryFilter}
                         onChange={onCategoryChange}
                         size="large"
-                        className="w-full"
+                        className="w-full auth-ohnix-input"
                     >
                         {categories.map((cat) => (
                             <Option key={cat._id} value={cat._id}>
@@ -101,12 +104,12 @@ const ProductFilters = ({
                     </Select>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+                <div className="bg-[var(--ohnix-line-1)] rounded-lg border border-[var(--ohnix-line-4)] p-4">
                     <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
-                            <InboxOutlined className="text-green-600 text-sm" />
+                        <div className="w-8 h-8 rounded-lg bg-[#44F3F0]/10 flex items-center justify-center">
+                            <InboxOutlined className="text-[#44F3F0] text-sm" />
                         </div>
-                        <Text className="text-sm font-semibold text-gray-900">
+                        <Text className="text-sm font-semibold !text-[var(--ohnix-text-primary)]">
                             {t("products.stock_status")}
                         </Text>
                     </div>
@@ -117,7 +120,7 @@ const ProductFilters = ({
                         value={stockFilter}
                         onChange={onStockChange}
                         size="large"
-                        className="w-full"
+                        className="w-full auth-ohnix-input"
                     >
                         <Option value="out">
                             <Space>
@@ -140,8 +143,8 @@ const ProductFilters = ({
                     </Select>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                    <Text className="text-xs text-blue-700 leading-relaxed">
+                <div className="bg-[#29D8D5]/10 border border-[#29D8D5]/25 rounded-lg p-3">
+                    <Text className="text-xs !text-[var(--ohnix-text-muted)] leading-relaxed">
                         {t("products.filter_tip")}
                     </Text>
                 </div>
@@ -151,4 +154,3 @@ const ProductFilters = ({
 };
 
 export default ProductFilters;
-

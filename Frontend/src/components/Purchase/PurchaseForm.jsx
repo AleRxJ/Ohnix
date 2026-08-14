@@ -252,7 +252,13 @@ const PurchaseForm = ({
                                                 </Form.Item>
                                             </Col>
                                             <Col xs={24} sm={7}>
-                                                <Form.Item {...restField} name={[name, "unitcost"]} label={t("purchases.unit_price")} rules={[{ required: true, message: t("purchases.enter_unit_price_message") }]}>
+                                                <Form.Item
+                                                    {...restField}
+                                                    name={[name, "unitcost"]}
+                                                    label={t("purchases.unit_price")}
+                                                    rules={[{ required: true, message: t("purchases.enter_unit_price_message") }]}
+                                                    extra={isLockedRow ? t("inventory_tour.practice_locked_hint") : undefined}
+                                                >
                                                     <InputNumber
                                                         placeholder={t("purchases.unit_price_placeholder")}
                                                         min={0}

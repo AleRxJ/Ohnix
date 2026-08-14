@@ -21,11 +21,11 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
 
     const getTypeColor = (type) => {
         const colors = {
-            regular: "blue",
+            regular: "cyan",
             wholesale: "green",
             retail: "orange",
         };
-        return colors[type] || "blue";
+        return colors[type] || "cyan";
     };
 
     const InfoItem = ({ icon, label, value, copyable = false }) => {
@@ -113,7 +113,9 @@ const CustomerViewModal = ({ visible, onCancel, customer, onEdit }) => {
                         color={getTypeColor(customer.type)}
                         className="text-sm px-4 py-1 rounded-full font-medium"
                     >
-                        {t("customers.customer_tag", { type: customer.type?.toUpperCase() })}
+                        {t("customers.customer_tag", {
+                            type: (customer.type ? t(`customers.type_${customer.type}`) : "").toUpperCase(),
+                        })}
                     </Tag>
                 </div>
 

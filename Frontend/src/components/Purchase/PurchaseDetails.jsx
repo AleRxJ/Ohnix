@@ -111,13 +111,13 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                                 </div>
                                 <div>
                                     {t("purchases.refund")}:{" "}
-                                    <span className="font-medium text-red-600">{formatCurrency(record.refund_amount)}</span>
+                                    <span className="font-medium text-red-400">{formatCurrency(record.refund_amount)}</span>
                                 </div>
                             </div>
                         </Space>
                     );
                 }
-                return <Tag color="default">{t("purchases.not_returned")}</Tag>;
+                return <Tag color="default" className="!bg-[var(--ohnix-line-1)] !border-[var(--ohnix-line-4)] !text-[var(--ohnix-text-muted)]">{t("purchases.not_returned")}</Tag>;
             },
             width: 140,
         },
