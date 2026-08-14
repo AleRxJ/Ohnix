@@ -7,7 +7,7 @@ import { getCurrencyInputProps } from "../../utils/currency";
 
 const { Option } = Select;
 
-const OrderFormItems = ({ products, onRemove, name, restField }) => {
+const OrderFormItems = ({ products, onRemove, name, restField, locked }) => {
     const form = Form.useFormInstance();
     const { t } = useI18n();
     const { currency } = useCurrency();
@@ -65,6 +65,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                                 },
                             ]}
                             className="mb-0"
+                            extra={locked ? t("inventory_tour.practice_locked_hint") : undefined}
                         >
                             <Select
                                 placeholder={t("orders.select_product")}
@@ -73,6 +74,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                                 size="large"
                                 className="w-full auth-ohnix-input"
                                 onChange={handleProductChange}
+                                disabled={locked}
                             >
                                 {products.map((product) => (
                                     <Option
@@ -137,6 +139,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                                 max={availableStock ?? undefined}
                                 className="w-full auth-ohnix-input"
                                 size="large"
+                                disabled={locked}
                             />
                         </Form.Item>
                     </Col>
@@ -167,6 +170,7 @@ const OrderFormItems = ({ products, onRemove, name, restField }) => {
                                 prefix={currency.symbol}
                                 formatter={currencyInputProps.formatter}
                                 parser={currencyInputProps.parser}
+                                disabled={locked}
                             />
                         </Form.Item>
                     </Col>

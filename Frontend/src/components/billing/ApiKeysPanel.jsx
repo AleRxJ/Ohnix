@@ -10,6 +10,22 @@ const { Text, Paragraph } = Typography;
 
 const MAX_ACTIVE_KEYS = 5;
 
+const darkModalStyles = {
+    mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+    content: {
+        background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
+        border: "1px solid var(--ohnix-line-4)",
+        boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+        borderRadius: "24px",
+    },
+    header: {
+        background: "transparent",
+        borderBottom: "1px solid var(--ohnix-line-3)",
+        padding: "20px 24px 16px",
+    },
+    body: { padding: 24 },
+};
+
 const ApiKeysPanel = () => {
     const { can, loading: subscriptionLoading } = useSubscription();
     const { t } = useI18n();
@@ -175,6 +191,7 @@ const ApiKeysPanel = () => {
                 okText={t("common.add")}
                 cancelText={t("common.cancel")}
                 destroyOnClose
+                styles={darkModalStyles}
             >
                 <Form form={form} layout="vertical" onFinish={handleCreate}>
                     <Form.Item
@@ -182,7 +199,7 @@ const ApiKeysPanel = () => {
                         label={t("billing.api_keys.name_label")}
                         rules={[{ required: true, message: t("validation.required_field") }]}
                     >
-                        <Input placeholder={t("billing.api_keys.name_placeholder")} maxLength={60} />
+                        <Input className="auth-ohnix-input" placeholder={t("billing.api_keys.name_placeholder")} maxLength={60} />
                     </Form.Item>
                 </Form>
             </Modal>
@@ -197,6 +214,7 @@ const ApiKeysPanel = () => {
                     </Button>,
                 ]}
                 destroyOnClose
+                styles={darkModalStyles}
             >
                 <Paragraph className="text-[var(--ohnix-text-muted)]">{t("billing.api_keys.reveal_warning")}</Paragraph>
                 <div className="flex items-center gap-2 rounded-xl border border-[var(--ohnix-line-4)] bg-black/30 p-3">

@@ -1,6 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import AuthContext from "./AuthContext";
-import { api } from "../api/api";
 import { INVENTORY_TOUR_STEPS } from "../components/inventoryTour/inventoryTourSteps";
 
 const InventoryTourContext = createContext(null);
@@ -8,21 +7,7 @@ const InventoryTourContext = createContext(null);
 const completedKeyFor = (userId) => `ohnix.app_tour.completed.${userId || "anon"}`;
 const fabDismissedKeyFor = (userId) => `ohnix.app_tour.fab_dismissed.${userId || "anon"}`;
 const lastStepKeyFor = (userId) => `ohnix.app_tour.last_step.${userId || "anon"}`;
-
-const fetchExistingCounts = async () => {
-    const [categories, units, suppliers, customers] = await Promise.all([
-        api.get("/categories/available").catch(() => ({ data: { data: [] } })),
-        api.get("/units/available").catch(() => ({ data: { data: [] } })),
-        api.get("/suppliers").catch(() => ({ data: { data: [] } })),
-        api.get("/customers").catch(() => ({ data: { data: [] } })),
-    ]);
-    return {
-        categories: categories.data?.data?.length || 0,
-        units: units.data?.data?.length || 0,
-        suppliers: suppliers.data?.data?.length || 0,
-        customers: customers.data?.data?.length || 0,
-    };
-};
+const createdRefsKeyFor = (userId) => `ohnix.app_tour.created_refs.${userId || "anon"}`;
 
 // Drives the "How does Ohnix work?" guided tour app-wide.
 //
@@ -46,8 +31,15 @@ export const InventoryTourProvider = ({ children }) => {
     const [stepIndex, setStepIndexState] = useState(0);
     const [completed, setCompleted] = useState(false);
     const [fabDismissed, setFabDismissed] = useState(false);
-    const [existingCounts, setExistingCounts] = useState(null);
+    const [ready, setReady] = useState(false);
     const [effectiveSteps, setEffectiveSteps] = useState([]);
+    // What the tour has created so far in THIS session (id + display name),
+    // keyed by kind ("category"/"unit"/"product"/"supplier"/"customer").
+    // Later steps read this to pre-select the exact practice record instead
+    // of leaving the user to guess which dropdown option is "the one they
+    // just made" - e.g. the product-creation step pre-fills category_id/
+    // unit_id from here, the purchase step pre-fills product_id/supplier_id.
+    const [createdRefs, setCreatedRefs] = useState({});
 
     const userIdRef = useRef(userId);
     useEffect(() => {
@@ -78,23 +70,47 @@ export const InventoryTourProvider = ({ children }) => {
         }
     }, [isOpen, stepIndex, effectiveSteps]);
 
-    const start = useCallback(async () => {
+    // createdRefs only lives in memory otherwise - persist it alongside the
+    // step position so a full page reload (not just closing/reopening the
+    // tour within the same session) can still resume with the right
+    // category/unit/product/etc. references instead of losing them.
+    useEffect(() => {
+        if (!isOpen) return;
+        localStorage.setItem(createdRefsKeyFor(userIdRef.current), JSON.stringify(createdRefs));
+    }, [isOpen, createdRefs]);
+
+    // Every step is now always walked through (no more "skip create-category
+    // because the account already has one") - the tour is explicitly a
+    // practice flow, so it always creates its own practice category/unit/
+    // supplier/customer rather than silently pointing later steps at
+    // whichever unrelated existing record happened to be first, which was
+    // confusing ("no me dejó crear una categoría" / an unrecognized category
+    // showing up pre-filled on the product step). That also means there's no
+    // per-account state left to fetch before the steps list is known, so
+    // start() is fully synchronous now.
+    const start = useCallback(() => {
         setIsOpen(true);
-        setExistingCounts(null);
-        setEffectiveSteps([]);
-        let counts;
-        try {
-            counts = await fetchExistingCounts();
-        } catch {
-            counts = { categories: 0, units: 0, suppliers: 0, customers: 0 };
-        }
-        const effective = INVENTORY_TOUR_STEPS.filter((s) => !s.skipIf || !s.skipIf(counts));
-        setExistingCounts(counts);
+        const effective = INVENTORY_TOUR_STEPS;
         setEffectiveSteps(effective);
+        setReady(true);
 
         const savedId = localStorage.getItem(lastStepKeyFor(userIdRef.current));
         const resumeIndex = savedId ? effective.findIndex((s) => s.id === savedId) : -1;
         setStepIndexState(resumeIndex >= 0 ? resumeIndex : 0);
+
+        if (resumeIndex >= 0) {
+            try {
+                const savedRefs = JSON.parse(localStorage.getItem(createdRefsKeyFor(userIdRef.current)) || "{}");
+                setCreatedRefs(savedRefs);
+            } catch {
+                setCreatedRefs({});
+            }
+        } else {
+            // Fresh start (not a resume) - clear out anything left over from
+            // a previous, already-finished/abandoned practice session.
+            setCreatedRefs({});
+            localStorage.removeItem(createdRefsKeyFor(userIdRef.current));
+        }
     }, []);
 
     const close = useCallback(() => {
@@ -104,8 +120,10 @@ export const InventoryTourProvider = ({ children }) => {
     const finish = useCallback(() => {
         setIsOpen(false);
         setCompleted(true);
+        setCreatedRefs({});
         localStorage.setItem(completedKeyFor(userIdRef.current), "1");
         localStorage.removeItem(lastStepKeyFor(userIdRef.current));
+        localStorage.removeItem(createdRefsKeyFor(userIdRef.current));
     }, []);
 
     // "I don't need this anymore" - hides the floating trigger for good
@@ -116,21 +134,62 @@ export const InventoryTourProvider = ({ children }) => {
         localStorage.setItem(fabDismissedKeyFor(userIdRef.current), "1");
     }, []);
 
-    const notifyAction = useCallback(
-        (actionKind) => {
-            setEffectiveSteps((currentEffective) => {
-                setStepIndexState((prevIndex) => {
-                    const currentStep = currentEffective[prevIndex];
-                    if (isOpen && currentStep?.completesOn === actionKind) {
-                        return Math.min(prevIndex + 1, currentEffective.length - 1);
-                    }
-                    return prevIndex;
-                });
-                return currentEffective;
-            });
-        },
-        [isOpen]
-    );
+    // The one manual escape hatch: brings the floating trigger back after a
+    // dismiss, and clears "completed" too so it counts as a fresh restart
+    // rather than being immediately hidden again by the completed check in
+    // InventoryTourFab.jsx. Surfaced in Profile > Account settings.
+    const reEnableFab = useCallback(() => {
+        setFabDismissed(false);
+        setCompleted(false);
+        localStorage.removeItem(fabDismissedKeyFor(userIdRef.current));
+        localStorage.removeItem(completedKeyFor(userIdRef.current));
+        localStorage.removeItem(lastStepKeyFor(userIdRef.current));
+    }, []);
+
+    // Refs mirroring the latest isOpen/stepIndex/effectiveSteps: notifyAction
+    // needs to read "what step are we on RIGHT NOW" synchronously (not the
+    // value from whatever render closed over it) and sometimes gets called
+    // twice back-to-back in the same synchronous block - e.g. a purchase or
+    // order created with its status already set to "completed" satisfies
+    // both the "create X" and "complete X" steps in one request, and the
+    // second call needs to see the index the first call just advanced to,
+    // not a stale one. Plain useState updater functions can't chain like
+    // that without their own re-render in between.
+    const isOpenRef = useRef(isOpen);
+    useEffect(() => {
+        isOpenRef.current = isOpen;
+    }, [isOpen]);
+
+    const effectiveStepsRef = useRef(effectiveSteps);
+    useEffect(() => {
+        effectiveStepsRef.current = effectiveSteps;
+    }, [effectiveSteps]);
+
+    const stepIndexRef = useRef(stepIndex);
+    useEffect(() => {
+        stepIndexRef.current = stepIndex;
+    }, [stepIndex]);
+
+    // `ref` (optional) is the just-created record's { id, name } - stored
+    // under `actionKind` so a later step's "open the form for me" handler
+    // can pre-fill/pre-select it (see e.g. Products.jsx's handleAddProduct,
+    // which reads createdRefs.category/unit to preselect them, or
+    // PurchaseList.jsx's handleAddPurchase reading createdRefs.product).
+    const notifyAction = useCallback((actionKind, ref) => {
+        if (!isOpenRef.current) return false;
+        const currentEffective = effectiveStepsRef.current;
+        const prevIndex = stepIndexRef.current;
+        const currentStep = currentEffective[prevIndex];
+        if (currentStep?.completesOn !== actionKind) return false;
+
+        const nextIndex = Math.min(prevIndex + 1, currentEffective.length - 1);
+        stepIndexRef.current = nextIndex;
+        setStepIndexState(nextIndex);
+        if (ref) {
+            setCreatedRefs((prev) => ({ ...prev, [actionKind]: ref }));
+        }
+        return true;
+    }, []);
 
     const value = useMemo(
         () => ({
@@ -139,15 +198,17 @@ export const InventoryTourProvider = ({ children }) => {
             setStepIndex,
             completed,
             fabDismissed,
-            existingCounts,
+            ready,
             effectiveSteps,
+            createdRefs,
             start,
             close,
             finish,
             dismissFab,
+            reEnableFab,
             notifyAction,
         }),
-        [isOpen, stepIndex, completed, fabDismissed, existingCounts, effectiveSteps, start, close, finish, dismissFab, notifyAction]
+        [isOpen, stepIndex, completed, fabDismissed, ready, effectiveSteps, createdRefs, start, close, finish, dismissFab, reEnableFab, notifyAction]
     );
 
     return <InventoryTourContext.Provider value={value}>{children}</InventoryTourContext.Provider>;

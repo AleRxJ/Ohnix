@@ -6,6 +6,7 @@ import { api } from "../api/api";
 import useI18n from "../hooks/useI18n";
 import { useTeam } from "../context/TeamContext";
 import { useInventoryTour } from "../context/InventoryTourContext";
+import { resolveApiErrorMessage } from "../utils/apiError";
 import {
     CustomerStats,
     CustomerTable,
@@ -13,11 +14,15 @@ import {
     CustomerViewModal,
 } from "../components/customers";
 
+const DELETE_CUSTOMER_ERROR_CODES = {
+    customer_has_orders: "customers.delete_conflict_orders",
+};
+
 const Customers = () => {
     const { t } = useI18n();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("customers", "edit");
-    const { isOpen: isTutorialActive } = useInventoryTour();
+    const { isOpen: isTutorialActive, notifyAction, effectiveSteps, stepIndex } = useInventoryTour();
     // State management
     const [state, setState] = useState({
         customers: [],
@@ -94,6 +99,7 @@ const Customers = () => {
 
     const handleSubmit = async (values) => {
         updateState({ loading: true });
+        const wasCreate = !editing.customer;
         try {
             const formData = createFormData(values);
             const response = await submitCustomerData(formData);
@@ -101,6 +107,10 @@ const Customers = () => {
             if (response.data.success) {
                 toast.success(response.data.message || t("customers.operation_success"));
                 await fetchCustomers();
+                if (wasCreate && isTutorialActive) {
+                    const created = response.data.data;
+                    notifyAction("customer", created ? { id: created._id, name: created.name } : undefined);
+                }
                 handleCancel();
             }
         } catch (error) {
@@ -151,7 +161,12 @@ const Customers = () => {
             }
         } catch (error) {
             toast.error(
-                error.response?.data?.message || t("customers.failed_delete_customer")
+                resolveApiErrorMessage(
+                    error,
+                    t,
+                    DELETE_CUSTOMER_ERROR_CODES,
+                    "customers.failed_delete_customer"
+                )
             );
         }
     };
@@ -198,6 +213,13 @@ const Customers = () => {
     };
 
     const openAddModal = () => {
+        if (isTutorialActive && effectiveSteps[stepIndex]?.id === "create-customer") {
+            form.setFieldsValue({
+                name: t("inventory_tour.practice_customer_name"),
+                email: "practica@ohnix.app",
+                phone: "3000000000",
+            });
+        }
         updateState({ modalVisible: true });
     };
 

@@ -738,6 +738,70 @@ body {
   box-shadow: 0 0 24px rgba(41, 216, 213, 0.28) !important;
 }
 
+/* antd Modal/Drawer/Popconfirm render via a portal straight onto <body>, so
+   they sit OUTSIDE .dashboard-app in the real DOM even though they're
+   nested inside it in the React tree - the rule above never reaches their
+   built-in OK/primary buttons (e.g. any Modal using onOk+okText instead of
+   a fully custom footer), which is why several of them were quietly
+   falling back to antd's stock blue. This repeats the same teal styling
+   scoped to the portal root instead, so every default OK button matches
+   without having to hand-restyle each Modal's okButtonProps individually. */
+.ant-modal-root .ant-btn-primary,
+.ant-drawer .ant-btn-primary {
+  background: linear-gradient(135deg, #29d8d5, #44f3f0) !important;
+  border-color: transparent !important;
+  color: #031416 !important;
+  font-weight: 700;
+}
+
+.ant-modal-root .ant-btn-primary:hover,
+.ant-drawer .ant-btn-primary:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 0 24px rgba(41, 216, 213, 0.28) !important;
+}
+
+/* antd's default disabled-field style is a near-white background with
+   near-transparent black text - meant for a light theme, so on Ohnix's dark
+   modals it renders as a pale box with barely-visible text (this is what
+   the guided tour's locked "practice value" fields hit first, but any
+   disabled Input/Select/InputNumber anywhere has the same problem). Unscoped
+   like the button rule above so it reaches portaled Modal/Drawer content too. */
+.ant-input[disabled],
+.ant-input-affix-wrapper-disabled,
+.ant-input-affix-wrapper-disabled .ant-input,
+.ant-input-number-disabled,
+.ant-input-number-disabled .ant-input-number-input,
+textarea.ant-input[disabled] {
+  background: var(--ohnix-line-1) !important;
+  color: var(--ohnix-text-muted) !important;
+  border-color: var(--ohnix-line-4) !important;
+  -webkit-text-fill-color: var(--ohnix-text-muted) !important;
+}
+
+.ant-select-disabled .ant-select-selector {
+  background: var(--ohnix-line-1) !important;
+  color: var(--ohnix-text-muted) !important;
+  border-color: var(--ohnix-line-4) !important;
+}
+
+.ant-select-disabled .ant-select-selection-item,
+.ant-select-disabled .ant-select-selection-placeholder {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.ant-select-disabled .ant-select-arrow {
+  color: var(--ohnix-text-dim) !important;
+}
+
+/* Same story as the disabled-field rule above: antd's default
+   Form.Item extra/help text color is a light-theme grey that's nearly
+   unreadable on Ohnix's dark modal backgrounds. Excludes the error variant
+   so validation messages keep antd's red, not this dim grey. */
+.ant-form-item-extra,
+.ant-form-item-explain:not(.ant-form-item-explain-error) {
+  color: var(--ohnix-text-dim) !important;
+}
+
 .auth-ohnix-input input:-webkit-autofill,
 .auth-ohnix-input input:-webkit-autofill:hover,
 .auth-ohnix-input input:-webkit-autofill:focus,
@@ -1443,6 +1507,27 @@ body {
                     color: var(--ohnix-text-primary);
                 }
 
+                .supplier-view-modal .ant-modal-title {
+                    color: var(--ohnix-text-primary);
+                }
+                .supplier-view-modal .ant-modal-close {
+                    color: var(--ohnix-text-muted);
+                }
+                .supplier-view-modal .ant-descriptions-item-label {
+                    font-weight: 600;
+                    color: var(--ohnix-text-heading);
+                    background-color: var(--ohnix-line-3) !important;
+                    border-color: var(--ohnix-line-4) !important;
+                }
+                .supplier-view-modal .ant-descriptions-item-content {
+                    color: var(--ohnix-text-primary);
+                    background-color: transparent !important;
+                    border-color: var(--ohnix-line-4) !important;
+                }
+                .supplier-view-modal .ant-descriptions-view {
+                    border-color: var(--ohnix-line-4) !important;
+                }
+
 
 /* Moved out of src/components/categories/CategoryViewModal.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
@@ -1468,23 +1553,36 @@ body {
 /* Moved out of src/components/Purchase/ReturnPreview.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
 
+                .return-preview-modal .ant-modal-content {
+                    background: linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98));
+                    border: 1px solid var(--ohnix-line-4);
+                }
+                .return-preview-modal .ant-modal-header {
+                    background: transparent;
+                    border-bottom: 1px solid var(--ohnix-line-3);
+                }
+                .return-preview-modal .ant-modal-title,
+                .return-preview-modal .ant-modal-close {
+                    color: var(--ohnix-text-primary);
+                }
                 .return-preview-modal .ant-modal-body {
                     padding: 24px;
                 }
 
                 .return-preview-table .ant-table-thead > tr > th {
-                    background-color: #f8fafc;
-                    border-bottom: 2px solid #e5e7eb;
+                    background-color: var(--ohnix-line-3);
+                    border-bottom: 1px solid var(--ohnix-line-4);
                     font-weight: 600;
-                    color: #374151;
+                    color: var(--ohnix-text-heading);
                 }
 
                 .return-preview-table .ant-table-tbody > tr > td {
-                    border-bottom: 1px solid #f3f4f6;
+                    border-bottom: 1px solid var(--ohnix-line-2);
+                    color: var(--ohnix-text-primary);
                 }
 
                 .return-preview-table .ant-table-tbody > tr:hover > td {
-                    background-color: #eff6ff !important;
+                    background-color: rgba(41, 216, 213, 0.08) !important;
                 }
 
                 @media (max-width: 768px) {
@@ -1555,6 +1653,21 @@ body {
 /* Moved out of src/components/Purchase/PurchaseDetails.jsx's inline <style jsx> (invalid Next.js-only syntax
    in this plain Vite/React app - see index.css history for CategoryTable.jsx). */
 
+                .purchase-details-modal .ant-modal-content {
+                    background: linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98));
+                    border: 1px solid var(--ohnix-line-4);
+                }
+                .purchase-details-modal .ant-modal-header {
+                    background: transparent;
+                    border-bottom: 1px solid var(--ohnix-line-3);
+                }
+                .purchase-details-modal .ant-modal-close {
+                    color: var(--ohnix-text-muted);
+                }
+                .purchase-details-modal .ant-card {
+                    background: var(--ohnix-line-2) !important;
+                    border-color: var(--ohnix-line-4) !important;
+                }
                 .purchase-details-modal .ant-modal-body {
                     padding: 24px;
                 }
@@ -1563,6 +1676,13 @@ body {
                     font-weight: 600;
                     color: var(--ohnix-text-heading);
                     background-color: var(--ohnix-line-3);
+                }
+                .purchase-info .ant-descriptions-item-content {
+                    color: var(--ohnix-text-primary);
+                    background-color: transparent;
+                }
+                .purchase-info .ant-descriptions-view {
+                    border-color: var(--ohnix-line-4) !important;
                 }
 
                 .purchase-items-table .ant-table-thead > tr > th {
@@ -1574,6 +1694,7 @@ body {
 
                 .purchase-items-table .ant-table-tbody > tr > td {
                     border-bottom: 1px solid var(--ohnix-line-2);
+                    color: var(--ohnix-text-primary);
                 }
 
                 @media (max-width: 768px) {

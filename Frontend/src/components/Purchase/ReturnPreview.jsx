@@ -7,6 +7,7 @@ import {
     DollarOutlined 
 } from "@ant-design/icons";
 import { useCurrency } from "../../context/CurrencyContext";
+import useI18n from "../../hooks/useI18n";
 
 const { Text, Title } = Typography;
 
@@ -18,9 +19,10 @@ const ReturnPreview = ({
     purchases,
 }) => {
     const { formatCurrency, currency } = useCurrency();
+    const { t } = useI18n();
     const returnPreviewColumns = [
         {
-            title: "Product",
+            title: t("products.product"),
             dataIndex: "product_name",
             key: "product_name",
             render: (name) => (
@@ -32,7 +34,7 @@ const ReturnPreview = ({
             ellipsis: true,
         },
         {
-            title: "Purchased Qty",
+            title: t("purchases.return_preview_col_purchased_qty"),
             dataIndex: "purchased_quantity",
             key: "purchased_quantity",
             render: (qty) => (
@@ -44,7 +46,7 @@ const ReturnPreview = ({
             align: 'center',
         },
         {
-            title: "Current Stock",
+            title: t("purchases.return_preview_col_current_stock"),
             dataIndex: "current_stock",
             key: "current_stock",
             render: (stock) => (
@@ -56,7 +58,7 @@ const ReturnPreview = ({
             align: 'center',
         },
         {
-            title: "Returnable Qty",
+            title: t("purchases.return_preview_col_returnable_qty"),
             dataIndex: "returnable_quantity",
             key: "returnable_quantity",
             render: (qty, record) => (
@@ -76,7 +78,7 @@ const ReturnPreview = ({
             align: 'center',
         },
         {
-            title: "Unit Cost",
+            title: t("purchases.return_preview_col_unit_cost"),
             dataIndex: "unit_cost",
             key: "unit_cost",
             render: (cost) => (
@@ -88,7 +90,7 @@ const ReturnPreview = ({
             align: 'right',
         },
         {
-            title: "Potential Refund",
+            title: t("purchases.return_preview_col_potential_refund"),
             dataIndex: "potential_refund",
             key: "potential_refund",
             render: (refund) => (
@@ -100,15 +102,17 @@ const ReturnPreview = ({
             align: 'right',
         },
         {
-            title: "Status",
+            title: t("common.status"),
             key: "status",
             render: (_, record) => (
-                <Tag 
+                <Tag
                     color={record.can_fully_return ? "cyan" : "gold"}
                     icon={record.can_fully_return ? <CheckCircleOutlined /> : <WarningOutlined />}
                     className="font-medium px-3 py-1"
                 >
-                    {record.can_fully_return ? "Full Return" : "Partial Return"}
+                    {record.can_fully_return
+                        ? t("purchases.return_preview_full_return")
+                        : t("purchases.return_preview_partial_return")}
                 </Tag>
             ),
             width: 140,
@@ -142,9 +146,9 @@ const ReturnPreview = ({
                 <div className="flex items-center space-x-3">
                     <ExclamationCircleOutlined className="text-[#FFCF70]" />
                     <Title level={4} className="mb-0 !text-[var(--ohnix-text-primary)]">
-                        Return Preview
+                        {t("purchases.return_preview")}
                     </Title>
-                    <Tag color="blue" className="text-sm">
+                    <Tag color="cyan" className="text-sm">
                         {returnPreviewData?.purchase_no}
                     </Tag>
                 </div>
@@ -153,7 +157,7 @@ const ReturnPreview = ({
             onCancel={onCancel}
             footer={[
                 <Button key="cancel" onClick={onCancel} size="large">
-                    Cancel
+                    {t("common.cancel")}
                 </Button>,
                 <Button
                     key="proceed"
@@ -163,7 +167,7 @@ const ReturnPreview = ({
                     size="large"
                     className="bg-red-500 hover:bg-red-600"
                 >
-                    Proceed with Return
+                    {t("purchases.return_preview_proceed")}
                 </Button>,
             ]}
             width="95%"
@@ -177,7 +181,7 @@ const ReturnPreview = ({
                         <Col xs={24} sm={12} md={8}>
                             <Card className="text-center border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)]">
                                 <Statistic
-                                    title="Total Potential Refund"
+                                    title={t("purchases.return_preview_total_potential_refund")}
                                     value={returnPreviewData.total_potential_refund}
                                     precision={2}
                                     prefix={currency.symbol}
@@ -188,7 +192,7 @@ const ReturnPreview = ({
                         <Col xs={12} sm={6} md={4}>
                             <Card className="text-center border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)]">
                                 <Statistic
-                                    title="Total Items"
+                                    title={t("purchases.return_preview_total_items")}
                                     value={totalItems}
                                     valueStyle={{ color: '#44F3F0', fontWeight: 'bold' }}
                                 />
@@ -197,7 +201,7 @@ const ReturnPreview = ({
                         <Col xs={12} sm={6} md={4}>
                             <Card className="text-center border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)]">
                                 <Statistic
-                                    title="Full Returns"
+                                    title={t("purchases.return_preview_full_returns")}
                                     value={fullReturns}
                                     valueStyle={{ color: '#44F3F0', fontWeight: 'bold' }}
                                 />
@@ -206,7 +210,7 @@ const ReturnPreview = ({
                         <Col xs={12} sm={6} md={4}>
                             <Card className="text-center border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)]">
                                 <Statistic
-                                    title="Partial Returns"
+                                    title={t("purchases.return_preview_partial_returns")}
                                     value={partialReturns}
                                     valueStyle={{ color: '#FFCF70', fontWeight: 'bold' }}
                                 />
@@ -217,15 +221,15 @@ const ReturnPreview = ({
                     {/* Alert Messages */}
                     <Space direction="vertical" className="w-full" size="middle">
                         <Alert
-                            message="Return Summary"
+                            message={t("purchases.return_preview_summary_title")}
                             description={
                                 <div className="space-y-2">
-                                    <p>Review the return details below before proceeding.</p>
+                                    <p>{t("purchases.return_preview_summary_desc")}</p>
                                     <div className="flex flex-wrap gap-4 text-sm">
-                                        <span>💰 Total Refund: <strong>{formatCurrency(returnPreviewData.total_potential_refund)}</strong></span>
-                                        <span>✅ Full Returns: <strong>{fullReturns}</strong></span>
+                                        <span>💰 {t("purchases.total_refund_label")} <strong>{formatCurrency(returnPreviewData.total_potential_refund)}</strong></span>
+                                        <span>{t("purchases.return_preview_full_label")} <strong>{fullReturns}</strong></span>
                                         {partialReturns > 0 && (
-                                            <span>⚠️ Partial Returns: <strong>{partialReturns}</strong></span>
+                                            <span>{t("purchases.return_preview_partial_label")} <strong>{partialReturns}</strong></span>
                                         )}
                                     </div>
                                 </div>
@@ -236,8 +240,8 @@ const ReturnPreview = ({
 
                         {partialReturns > 0 && (
                             <Alert
-                                message="Partial Return Notice"
-                                description="Some items have insufficient stock and will be partially returned. Only the available stock quantity will be processed for return."
+                                message={t("purchases.return_preview_notice_title")}
+                                description={t("purchases.return_preview_notice_desc")}
                                 type="warning"
                                 showIcon
                             />
@@ -269,14 +273,14 @@ const ReturnPreview = ({
                                     <Table.Summary.Row className="bg-white/[0.03]">
                                         <Table.Summary.Cell index={0} colSpan={5}>
                                             <div className="text-right">
-                                                <Text strong className="text-gray-900">
-                                                    Total Potential Refund: 
+                                                <Text strong className="!text-[var(--ohnix-text-primary)]">
+                                                    {t("purchases.return_preview_footer_total")}
                                                 </Text>
                                             </div>
                                         </Table.Summary.Cell>
                                         <Table.Summary.Cell index={5}>
                                             <div className="text-right">
-                                                <Text strong className="text-lg text-green-600">
+                                                <Text strong className="text-lg !text-[#44F3F0]">
                                                     {formatCurrency(totalRefund)}
                                                 </Text>
                                             </div>
@@ -285,11 +289,11 @@ const ReturnPreview = ({
                                             <div className="text-center">
                                                 <Space>
                                                     <Tag color="success" className="text-xs">
-                                                        Full: {fullReturns}
+                                                        {t("purchases.return_preview_full_short", { count: fullReturns })}
                                                     </Tag>
                                                     {partialReturns > 0 && (
                                                         <Tag color="warning" className="text-xs">
-                                                            Partial: {partialReturns}
+                                                            {t("purchases.return_preview_partial_short", { count: partialReturns })}
                                                         </Tag>
                                                     )}
                                                 </Space>

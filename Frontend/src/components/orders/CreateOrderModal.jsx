@@ -12,6 +12,9 @@ const CreateOrderModal = ({
     customers,
     products,
     form,
+    initialValues,
+    isTourCreateStep,
+    submitting,
 }) => {
     const { t } = useI18n();
     return (
@@ -51,6 +54,7 @@ const CreateOrderModal = ({
                 layout="vertical"
                 onFinish={onSubmit}
                 className="mt-6"
+                initialValues={initialValues}
             >
                 <div className="mb-6">
                     <h4 className="text-sm font-semibold text-[var(--ohnix-text-soft)] mb-4 uppercase tracking-wide">
@@ -71,6 +75,7 @@ const CreateOrderModal = ({
                                         message: t("orders.select_customer_message"),
                                     },
                                 ]}
+                                extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
                             >
                                 <Select
                                     placeholder={t("orders.select_customer")}
@@ -78,6 +83,7 @@ const CreateOrderModal = ({
                                     optionFilterProp="children"
                                     className="w-full auth-ohnix-input"
                                     size="large"
+                                    disabled={isTourCreateStep}
                                 >
                                     {customers.map((customer) => (
                                         <Option
@@ -114,7 +120,7 @@ const CreateOrderModal = ({
 
                 <Divider className="my-6" />
 
-                <Form.List name="orderItems" initialValue={[{}]}>
+                <Form.List name="orderItems" initialValue={initialValues?.orderItems ?? [{}]}>
                     {(fields, { add, remove }) => (
                         <div className="mb-6">
                             <div className="flex items-center justify-between mb-4">
@@ -139,6 +145,7 @@ const CreateOrderModal = ({
                                         onRemove={() => remove(name)}
                                         name={name}
                                         restField={restField}
+                                        locked={isTourCreateStep && name === 0}
                                     />
                                 ))}
                             </div>
@@ -151,6 +158,7 @@ const CreateOrderModal = ({
                 <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
                     <Button
                         onClick={onCancel}
+                        disabled={submitting}
                         size="large"
                         className="w-full sm:w-auto min-w-[120px]"
                     >
@@ -159,6 +167,7 @@ const CreateOrderModal = ({
                     <Button
                         type="primary"
                         htmlType="submit"
+                        loading={submitting}
                         size="large"
                         className="w-full sm:w-auto min-w-[120px] font-medium"
                     >

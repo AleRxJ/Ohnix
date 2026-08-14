@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
+import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -252,11 +253,14 @@ const deleteUnit = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, {}, "Unit deleted successfully"));
     } catch (error) {
-        if (error.code === "P2003") {
+        if (isForeignKeyRestrictError(error)) {
             return next(
                 new ApiError(
                     409,
-                    "This unit can't be deleted because it still has products assigned to it. Reassign or delete those products first."
+                    "This unit can't be deleted because it still has products assigned to it. Reassign or delete those products first.",
+                    [],
+                    "",
+                    "unit_has_products"
                 )
             );
         }

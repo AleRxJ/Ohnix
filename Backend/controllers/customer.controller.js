@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
 import { prisma } from "../db/prisma.js";
+import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -276,6 +277,17 @@ const deleteCustomer = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, {}, "Customer deleted successfully"));
     } catch (error) {
+        if (isForeignKeyRestrictError(error)) {
+            return next(
+                new ApiError(
+                    409,
+                    "This customer can't be deleted because it still has orders assigned to it. Reassign or delete those orders first.",
+                    [],
+                    "",
+                    "customer_has_orders"
+                )
+            );
+        }
         return next(new ApiError(500, error.message));
     }
 });

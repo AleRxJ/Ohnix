@@ -22,19 +22,26 @@ const OtpVerificationModal = ({
             centered
             width={440}
             styles={{
+                mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                content: {
+                    background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    border: "1px solid var(--ohnix-line-4)",
+                    boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                    borderRadius: "20px",
+                },
                 body: { padding: "32px" },
             }}
         >
             <div className="flex flex-col items-center text-center mb-6">
-                <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center mb-4">
-                    <SafetyOutlined className="text-indigo-600 text-2xl" />
+                <div className="w-14 h-14 rounded-full bg-[#29D8D5]/10 flex items-center justify-center mb-4">
+                    <SafetyOutlined className="text-[#44F3F0] text-2xl" />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                <h2 className="text-xl font-semibold text-[var(--ohnix-text-primary)] mb-2">
                     {newPasswordData
                         ? "Verify Password Change"
                         : "Verify Your Email"}
                 </h2>
-                <Text className="text-gray-500 text-sm">
+                <Text className="text-[var(--ohnix-text-muted)] text-sm">
                     {newPasswordData
                         ? "Enter the verification code sent to your email to confirm your password change."
                         : "We've sent a 6-digit verification code to your email address."}
@@ -54,7 +61,7 @@ const OtpVerificationModal = ({
                 >
                     <Input
                         placeholder="000000"
-                        className="text-center text-2xl tracking-widest font-mono rounded-lg h-14 border-gray-300 focus:border-indigo-500"
+                        className="text-center text-2xl tracking-widest font-mono rounded-lg h-14 auth-ohnix-input"
                         maxLength={6}
                         size="large"
                     />
@@ -66,19 +73,19 @@ const OtpVerificationModal = ({
                         htmlType="submit"
                         loading={loading}
                         block
-                        className="bg-indigo-600 hover:bg-indigo-700 border-0 rounded-lg h-11 font-medium shadow-sm"
+                        className="bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 rounded-lg h-11 font-medium shadow-sm text-[#021314]"
                     >
                         Verify Code
                     </Button>
 
                     <div className="flex items-center justify-center gap-2 text-sm">
-                        <Text className="text-gray-500">
+                        <Text className="text-[var(--ohnix-text-muted)]">
                             Didn't receive the code?
                         </Text>
                         <Button
                             type="link"
                             onClick={() => handleSendOtp()}
-                            className="text-indigo-600 hover:text-indigo-700 p-0 h-auto font-medium"
+                            className="text-[#44F3F0] hover:!text-[#29D8D5] p-0 h-auto font-medium"
                         >
                             Resend
                         </Button>

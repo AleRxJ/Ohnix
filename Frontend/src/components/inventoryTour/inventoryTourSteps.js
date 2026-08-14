@@ -40,7 +40,6 @@ export const INVENTORY_TOUR_STEPS = [
         completesOn: "category",
         titleKey: "inventory_tour.step_create_category_title",
         descKey: "inventory_tour.step_create_category_desc",
-        skipIf: (counts) => counts?.categories > 0,
     },
     {
         id: "create-unit",
@@ -51,7 +50,6 @@ export const INVENTORY_TOUR_STEPS = [
         completesOn: "unit",
         titleKey: "inventory_tour.step_create_unit_title",
         descKey: "inventory_tour.step_create_unit_desc",
-        skipIf: (counts) => counts?.units > 0,
     },
     {
         id: "create-product",
@@ -80,7 +78,6 @@ export const INVENTORY_TOUR_STEPS = [
         completesOn: "supplier",
         titleKey: "inventory_tour.step_create_supplier_title",
         descKey: "inventory_tour.step_create_supplier_desc",
-        skipIf: (counts) => counts?.suppliers > 0,
     },
     {
         id: "create-purchase",
@@ -118,7 +115,6 @@ export const INVENTORY_TOUR_STEPS = [
         completesOn: "customer",
         titleKey: "inventory_tour.step_create_customer_title",
         descKey: "inventory_tour.step_create_customer_desc",
-        skipIf: (counts) => counts?.customers > 0,
     },
     {
         id: "create-order",

@@ -7,7 +7,7 @@ import { useInventoryTour } from "../../context/InventoryTourContext";
 
 export const useOrderOperations = (refreshOrders) => {
     const { t } = useI18n();
-    const { isOpen: isTutorialActive } = useInventoryTour();
+    const { isOpen: isTutorialActive, notifyAction } = useInventoryTour();
     const [orderDetails, setOrderDetails] = useState([]);
     const [detailsLoading, setDetailsLoading] = useState(false);
 
@@ -37,6 +37,7 @@ export const useOrderOperations = (refreshOrders) => {
             });
             toast.success(t("orders.order_updated"));
             refreshOrders();
+            if (newStatus === "completed" && isTutorialActive) notifyAction("order-completed");
         } catch (error) {
             toast.error(
                 describeStockErrors(error) ||
@@ -95,9 +96,26 @@ export const useOrderOperations = (refreshOrders) => {
                 ...(isTutorialActive && { is_tutorial_data: true }),
             };
 
-            await api.post("/orders", orderData);
+            const response = await api.post("/orders", orderData);
             toast.success(t("orders.order_created"));
             refreshOrders();
+            if (isTutorialActive) {
+                const created = response.data?.data;
+                // Tracking the exact row id lets complete-order target THIS
+                // order specifically instead of whichever row happens to
+                // render first for the shared data-tour attribute (real,
+                // pre-existing orders share it too).
+                notifyAction(
+                    "order",
+                    created ? { id: created._id, name: created.invoice_no } : undefined
+                );
+                // Created already "completed" - stock already dropped, so
+                // the separate "complete it" step has nothing left to wait
+                // for. Same reasoning as the purchase side.
+                if (orderData.order_status === "completed") {
+                    notifyAction("order-completed");
+                }
+            }
             return true;
         } catch (error) {
             toast.error(

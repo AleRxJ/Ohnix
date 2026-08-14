@@ -3,10 +3,15 @@ import { toast } from "react-hot-toast";
 import { api } from "../../api/api";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
+import { resolveApiErrorMessage } from "../../utils/apiError";
+
+const DELETE_SUPPLIER_ERROR_CODES = {
+    supplier_has_purchases: "suppliers.delete_conflict_purchases",
+};
 
 export const useSuppliers = (isAdmin = false) => {
     const { t } = useI18n();
-    const { isOpen: isTutorialActive } = useInventoryTour();
+    const { isOpen: isTutorialActive, notifyAction } = useInventoryTour();
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [stats, setStats] = useState({
@@ -60,11 +65,15 @@ export const useSuppliers = (isAdmin = false) => {
             if (isTutorialActive) {
                 formData.append("is_tutorial_data", "true");
             }
-            await api.post("/suppliers", formData, {
+            const response = await api.post("/suppliers", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             toast.success(t("suppliers.supplier_added"));
             fetchSuppliers();
+            if (isTutorialActive) {
+                const created = response.data?.data;
+                notifyAction("supplier", created ? { id: created._id, name: created.name } : undefined);
+            }
             return true;
         } catch (error) {
             toast.error(error.response?.data?.message || t("suppliers.creation_failed"));
@@ -92,7 +101,14 @@ export const useSuppliers = (isAdmin = false) => {
             toast.success(t("suppliers.supplier_deleted"));
             fetchSuppliers();
         } catch (error) {
-            toast.error(t("suppliers.failed_delete_supplier"));
+            toast.error(
+                resolveApiErrorMessage(
+                    error,
+                    t,
+                    DELETE_SUPPLIER_ERROR_CODES,
+                    "suppliers.failed_delete_supplier"
+                )
+            );
         }
     };
 

@@ -13,14 +13,17 @@ import { useOrders } from "../hooks/orders/useOrders";
 import { useOrderOperations } from "../hooks/orders/useOrderOperations";
 import useI18n from "../hooks/useI18n";
 import { useTeam } from "../context/TeamContext";
+import { useInventoryTour } from "../context/InventoryTourContext";
 
 const Orders = () => {
     const { t } = useI18n();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("orders", "edit");
+    const { isOpen: isTutorialActive, effectiveSteps, stepIndex, createdRefs } = useInventoryTour();
     const [createModalVisible, setCreateModalVisible] = useState(false);
     const [detailsDrawerVisible, setDetailsDrawerVisible] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
     const [createForm] = Form.useForm();
 
     const {
@@ -78,10 +81,15 @@ const Orders = () => {
     };
 
     const handleCreateOrder = async (values) => {
-        const success = await createOrder(values, products);
-        if (success) {
-            setCreateModalVisible(false);
-            createForm.resetFields();
+        setSubmitting(true);
+        try {
+            const success = await createOrder(values, products);
+            if (success) {
+                setCreateModalVisible(false);
+                createForm.resetFields();
+            }
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -89,6 +97,25 @@ const Orders = () => {
         setCreateModalVisible(false);
         createForm.resetFields();
     };
+
+    const isTourCreateOrderStep =
+        isTutorialActive && effectiveSteps[stepIndex]?.id === "create-order";
+    const practiceProduct = isTourCreateOrderStep
+        ? products.find((p) => p._id === createdRefs.product?.id)
+        : null;
+    const orderInitialValues = isTourCreateOrderStep
+        ? {
+              customer_id: createdRefs.customer?.id,
+              order_status: "pending",
+              orderItems: [
+                  {
+                      product_id: createdRefs.product?.id,
+                      quantity: 1,
+                      unitcost: practiceProduct?.selling_price ?? 15000,
+                  },
+              ],
+          }
+        : undefined;
 
     return (
         <div className="min-h-screen bg-transparent text-[var(--ohnix-text-primary)]">
@@ -148,6 +175,9 @@ const Orders = () => {
                 customers={customers}
                 products={products}
                 form={createForm}
+                initialValues={orderInitialValues}
+                isTourCreateStep={isTourCreateOrderStep}
+                submitting={submitting}
             />
 
             <OrderDetailsDrawer

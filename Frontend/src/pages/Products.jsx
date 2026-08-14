@@ -42,7 +42,8 @@ const Products = () => {
     const { can } = useSubscription();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("products", "edit");
-    const { isOpen: isTutorialActive } = useInventoryTour();
+    const { isOpen: isTutorialActive, notifyAction, effectiveSteps, stepIndex, createdRefs } = useInventoryTour();
+    const currentTourStepId = effectiveSteps[stepIndex]?.id;
 
     const [form] = Form.useForm();
 
@@ -84,6 +85,16 @@ const Products = () => {
         setImageFile(null);
         setImageUrl("");
         form.resetFields();
+        if (isTutorialActive && currentTourStepId === "create-product") {
+            form.setFieldsValue({
+                product_name: t("inventory_tour.practice_product_name"),
+                product_code: `PR${Date.now().toString(36).toUpperCase().slice(-3)}`,
+                category_id: createdRefs.category?.id,
+                unit_id: createdRefs.unit?.id,
+                buying_price: 10000,
+                selling_price: 15000,
+            });
+        }
         setIsModalVisible(true);
     };
 
@@ -110,6 +121,7 @@ const Products = () => {
     const handleViewDetails = (product) => {
         setSelectedProduct(product);
         setIsDetailsVisible(true);
+        if (isTutorialActive) notifyAction("history-viewed");
     };
 
     const handleAdjustStock = (product) => {
@@ -124,6 +136,7 @@ const Products = () => {
         if (result.success) {
             setIsAdjustStockVisible(false);
             setAdjustingProduct(null);
+            if (isTutorialActive) notifyAction("adjustment");
         }
     };
 
@@ -171,6 +184,12 @@ const Products = () => {
                 form.resetFields();
                 setImageFile(null);
                 setImageUrl("");
+                if (!editingProduct && isTutorialActive) {
+                    notifyAction(
+                        "product",
+                        result.data ? { id: result.data._id, name: result.data.product_name } : undefined
+                    );
+                }
                 setEditingProduct(null);
             }
         } catch (error) {
@@ -325,6 +344,9 @@ const Products = () => {
                         onImageChange={handleImageChange}
                         width={window.innerWidth < 768 ? "95%" : "800px"}
                         centered={window.innerWidth < 768}
+                        isTourCreateStep={
+                            isTutorialActive && !editingProduct && currentTourStepId === "create-product"
+                        }
                     />
 
                     <ProductFilters

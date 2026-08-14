@@ -35,6 +35,8 @@ const SupplierForm = ({
     editingSupplier,
     fileList,
     uploadProps,
+    isTourCreateStep,
+    submitting,
 }) => {
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
@@ -113,6 +115,7 @@ const SupplierForm = ({
                                     message: t("suppliers.name_max_length"),
                                 },
                             ]}
+                            extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
                         >
                             <Input
                                 prefix={
@@ -120,6 +123,7 @@ const SupplierForm = ({
                                 }
                                 placeholder={t("suppliers.enter_supplier_name_placeholder")}
                                 className="h-11 rounded-md auth-ohnix-input"
+                                disabled={isTourCreateStep}
                             />
                         </Form.Item>
                     </Col>
@@ -152,6 +156,7 @@ const SupplierForm = ({
                                 }
                                 placeholder={t("suppliers.enter_email_placeholder")}
                                 className="h-11 rounded-md auth-ohnix-input"
+                                disabled={isTourCreateStep}
                             />
                         </Form.Item>
                     </Col>
@@ -183,6 +188,7 @@ const SupplierForm = ({
                                 }
                                 placeholder={t("suppliers.enter_phone_placeholder")}
                                 className="h-11 rounded-md auth-ohnix-input"
+                                disabled={isTourCreateStep}
                             />
                         </Form.Item>
                     </Col>
@@ -251,10 +257,12 @@ const SupplierForm = ({
                                     message: t("suppliers.address_max_length"),
                                 },
                             ]}
+                            extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
                         >
                             <Input
                                 placeholder={t("suppliers.enter_address_placeholder")}
                                 className="h-11 rounded-md auth-ohnix-input"
+                                disabled={isTourCreateStep}
                             />
                         </Form.Item>
                     </Col>
@@ -363,6 +371,7 @@ const SupplierForm = ({
                     <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-[var(--ohnix-line-4)]">
                         <Button
                             onClick={onCancel}
+                            disabled={submitting}
                             className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
                         >
                             {t("common.cancel")}
@@ -370,6 +379,7 @@ const SupplierForm = ({
                         <Button
                             type="primary"
                             htmlType="submit"
+                            loading={submitting}
                             className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                         >
                             {editMode ? t("suppliers.update_supplier") : t("suppliers.create_supplier")}

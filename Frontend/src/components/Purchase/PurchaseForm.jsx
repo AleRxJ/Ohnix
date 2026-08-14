@@ -21,6 +21,7 @@ import {
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { getCurrencyInputProps } from "../../utils/currency";
+import { useInventoryTour } from "../../context/InventoryTourContext";
 
 const { Option } = Select;
 
@@ -32,10 +33,13 @@ const PurchaseForm = ({
     products,
     form,
     initialValues,
+    submitting,
 }) => {
     const { t } = useI18n();
     const { currency } = useCurrency();
     const currencyInputProps = getCurrencyInputProps(currency.code);
+    const { isOpen: isTutorialActive, effectiveSteps, stepIndex } = useInventoryTour();
+    const isTourCreateStep = isTutorialActive && effectiveSteps[stepIndex]?.id === "create-purchase";
     // Build a lookup map for quick access to product details
     const productMap = React.useMemo(() => {
         const map = {};
@@ -121,8 +125,20 @@ const PurchaseForm = ({
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
-                            <Form.Item label={t("purchases.supplier")} name="supplier_id" rules={[{ required: true, message: t("purchases.select_supplier_message") }]}>
-                                <Select placeholder={t("purchases.select_supplier")} size="large" className="rounded-lg purchase-form-input" showSearch optionFilterProp="children">
+                            <Form.Item
+                                label={t("purchases.supplier")}
+                                name="supplier_id"
+                                rules={[{ required: true, message: t("purchases.select_supplier_message") }]}
+                                extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
+                            >
+                                <Select
+                                    placeholder={t("purchases.select_supplier")}
+                                    size="large"
+                                    className="rounded-lg purchase-form-input"
+                                    showSearch
+                                    optionFilterProp="children"
+                                    disabled={isTourCreateStep}
+                                >
                                     {suppliers.map((supplier) => (
                                         <Option key={supplier._id} value={supplier._id}>
                                             {supplier.shopname ? `${supplier.name} (${supplier.shopname})` : supplier.name}
@@ -158,6 +174,7 @@ const PurchaseForm = ({
                                 ]);
                                 const selectedProduct =
                                     productMap[selectedProductId];
+                                const isLockedRow = isTourCreateStep && name === 0;
 
                                 return (
                                     <Card
@@ -166,7 +183,13 @@ const PurchaseForm = ({
                                     >
                                         <Row gutter={[16, 16]} align="middle">
                                             <Col xs={24} sm={8}>
-                                                <Form.Item {...restField} name={[name, "product_id"]} label={t("products.product")} rules={[{ required: true, message: t("purchases.select_product_message") }]}>
+                                                <Form.Item
+                                                    {...restField}
+                                                    name={[name, "product_id"]}
+                                                    label={t("products.product")}
+                                                    rules={[{ required: true, message: t("purchases.select_product_message") }]}
+                                                    extra={isLockedRow ? t("inventory_tour.practice_locked_hint") : undefined}
+                                                >
                                                     <Select
                                                         placeholder={t("purchases.select_product")}
                                                         showSearch
@@ -184,6 +207,7 @@ const PurchaseForm = ({
                                                                 label: `${product.product_name} (${product.product_code})`,
                                                             })
                                                         )}
+                                                        disabled={isLockedRow}
                                                     />
                                                 </Form.Item>
                                                 {/* Show current stock below the select */}
@@ -209,7 +233,13 @@ const PurchaseForm = ({
                                                 )}
                                             </Col>
                                             <Col xs={24} sm={6}>
-                                                <Form.Item {...restField} name={[name, "quantity"]} label={t("common.quantity")} rules={[{ required: true, message: t("purchases.enter_quantity_message") }]}>
+                                                <Form.Item
+                                                    {...restField}
+                                                    name={[name, "quantity"]}
+                                                    label={t("common.quantity")}
+                                                    rules={[{ required: true, message: t("purchases.enter_quantity_message") }]}
+                                                    extra={isLockedRow ? t("inventory_tour.practice_locked_hint") : undefined}
+                                                >
                                                     <InputNumber
                                                         placeholder={t("purchases.quantity_placeholder")}
                                                         min={1}
@@ -217,6 +247,7 @@ const PurchaseForm = ({
                                                             width: "100%",
                                                         }}
                                                         className="rounded-lg purchase-form-input"
+                                                        disabled={isLockedRow}
                                                     />
                                                 </Form.Item>
                                             </Col>
@@ -233,6 +264,7 @@ const PurchaseForm = ({
                                                         className="rounded-lg purchase-form-input"
                                                         formatter={currencyInputProps.formatter}
                                                         parser={currencyInputProps.parser}
+                                                        disabled={isLockedRow}
                                                     />
                                                 </Form.Item>
                                             </Col>
@@ -256,7 +288,7 @@ const PurchaseForm = ({
                                 );
                             })}
                             <Form.Item>
-                                <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="large" className="h-12 border-2 border-dashed border-blue-300 text-blue-600 hover:border-blue-400 hover:text-blue-700 rounded-lg">
+                                <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="large" className="h-12 border-2 border-dashed border-[#29D8D5]/40 text-[#44F3F0] hover:border-[#44F3F0] hover:text-[#44F3F0] rounded-lg">
                                     {t("common.add_item")}
                                 </Button>
                             </Form.Item>
@@ -267,8 +299,8 @@ const PurchaseForm = ({
                 <Form.Item className="mb-0 pt-4">
                     <Row justify="end">
                             <Space size="large">
-                                <Button onClick={onCancel} size="large" className="px-8 bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0]">{t("common.cancel")}</Button>
-                                <Button type="primary" htmlType="submit" size="large" className="px-8 bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 shadow-lg hover:shadow-xl transition-all duration-300 text-[#021314]">{t("purchases.create_purchase")}</Button>
+                                <Button onClick={onCancel} disabled={submitting} size="large" className="px-8 bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0]">{t("common.cancel")}</Button>
+                                <Button type="primary" htmlType="submit" loading={submitting} size="large" className="px-8 bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 shadow-lg hover:shadow-xl transition-all duration-300 text-[#021314]">{t("purchases.create_purchase")}</Button>
                             </Space>
                     </Row>
                 </Form.Item>

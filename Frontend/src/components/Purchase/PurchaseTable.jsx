@@ -69,7 +69,7 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
                                 onConfirm={() => onUpdateStatus(record._id, "completed")}
                                 disabled={!canEdit}
                             >
-                                <Button icon={<CheckCircleOutlined />} size="small" type="primary" disabled={!canEdit} data-tour="tour-mark-completed" />
+                                <Button icon={<CheckCircleOutlined />} size="small" type="primary" disabled={!canEdit} data-tour="tour-mark-completed" data-purchase-id={record._id} />
                             </Popconfirm>
                         </Tooltip>
                     )}

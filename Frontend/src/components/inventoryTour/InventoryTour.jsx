@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -11,14 +11,36 @@ import {
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
-import { INVENTORY_TOUR_STEPS } from "./inventoryTourSteps";
 import { tutorialDataService } from "../../services/tutorialDataService";
 
 const POLL_INTERVAL_MS = 150;
 const POLL_MAX_ATTEMPTS = 20; // ~3s, enough for a route change + data fetch
+const DIALOG_POLL_MS = 200;
 const SPOTLIGHT_PADDING = 8;
 const CARD_WIDTH = 360;
 const CARD_MARGIN = 16;
+
+// Any antd overlay that's actually open and visible (not just
+// mounted-but-hidden, which antd does for closed dialogs unless
+// destroyOnClose is set) - Modal/Drawer, but also Popconfirm/Popover and
+// Select/Dropdown menus. All of these render via a portal straight onto
+// <body>, so they sit outside whatever the mask's spotlight hole was cut
+// for; when their popup content extends past that hole (e.g. a Popconfirm's
+// "Yes" button appearing above the row action button it's anchored to,
+// which is exactly what "mark purchase completed" does), the mask's own
+// click-to-close bands were sitting on top of it and eating the click meant
+// for the real button - the fix is the same as for Modals: detect ANY of
+// these and get the mask out of the way entirely, not just Modal/Drawer.
+const findOpenDialog = () => {
+    const candidates = document.querySelectorAll(
+        ".ant-modal-content, .ant-drawer-content-wrapper, .ant-popover:not(.ant-popover-hidden), .ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-dropdown:not(.ant-dropdown-hidden)"
+    );
+    for (const el of candidates) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) return el;
+    }
+    return null;
+};
 
 // Custom-built instead of antd's <Tour>: this tour spans many routes and
 // most targets don't exist until an earlier step creates them, so only one
@@ -27,18 +49,31 @@ const CARD_MARGIN = 16;
 // expects to be fully navigable up front) avoids the "single-step array
 // looks like its own last step and self-closes" bug the first version hit,
 // and lets the styling match Ohnix instead of antd's defaults.
+//
+// The other thing this owns: once an "action" step's real Modal/Drawer is
+// actually open, the full-screen spotlight mask gets out of the way
+// entirely (it used to sit at a higher z-index than antd's own dialogs and
+// visually block/intercept clicks into the very form the step was asking
+// the user to fill in) and shrinks to a small corner note instead, so nothing
+// stands between the user and the real form.
+// Steps whose selector matches every row of a table (every purchase/order
+// shares the same data-tour attribute, including pre-existing real ones) -
+// once the create step has tracked the exact record's id via notifyAction's
+// ref, narrow the query to that specific row instead of grabbing whichever
+// one happens to render first.
+const ROW_ID_ATTR_BY_STEP_ID = {
+    "complete-purchase": { refKind: "purchase", attr: "data-purchase-id" },
+    "complete-order": { refKind: "order", attr: "data-order-id" },
+};
+
 const InventoryTour = () => {
-    const { isOpen, stepIndex, setStepIndex, close, finish, existingCounts } = useInventoryTour();
+    const { isOpen, stepIndex, setStepIndex, close, finish, ready, effectiveSteps, createdRefs } = useInventoryTour();
     const { t } = useI18n();
     const navigate = useNavigate();
     const location = useLocation();
     const [targetEl, setTargetEl] = useState(undefined);
     const [purging, setPurging] = useState(false);
-
-    const effectiveSteps = useMemo(() => {
-        if (!existingCounts) return [];
-        return INVENTORY_TOUR_STEPS.filter((s) => !s.skipIf || !s.skipIf(existingCounts));
-    }, [existingCounts]);
+    const [dialogOpen, setDialogOpen] = useState(false);
 
     const totalSteps = effectiveSteps.length - 1; // exclude the "finish" screen from the count shown to the user
     const step = effectiveSteps[stepIndex];
@@ -64,9 +99,20 @@ const InventoryTour = () => {
         let cancelled = false;
         setTargetEl(undefined);
 
+        const rowMatch = ROW_ID_ATTR_BY_STEP_ID[step.id];
+        const trackedId = rowMatch ? createdRefs?.[rowMatch.refKind]?.id : null;
+        const effectiveSelector = trackedId
+            ? `${step.selector}[${rowMatch.attr}="${trackedId}"]`
+            : step.selector;
+
         const interval = setInterval(() => {
             if (cancelled) return;
-            const el = document.querySelector(step.selector);
+            // If the exact tracked row isn't found yet (still loading, or
+            // the id-tagged fix hasn't rolled out to an old resumed session)
+            // fall back to the plain selector rather than waiting forever.
+            const el =
+                document.querySelector(effectiveSelector) ||
+                (trackedId ? document.querySelector(step.selector) : null);
             attempts += 1;
             if (el) {
                 setTargetEl(el);
@@ -81,11 +127,40 @@ const InventoryTour = () => {
             cancelled = true;
             clearInterval(interval);
         };
-    }, [isOpen, step, location.pathname]);
+    }, [isOpen, step, location.pathname, createdRefs]);
+
+    // Auto-open the step's target the moment it's found, instead of making
+    // the user hunt for and click "Open it for me" themselves - guarded by
+    // stepIndex so it only fires once per step (a user closing the modal
+    // without finishing shouldn't have it snap back open on every poll
+    // tick; they can still reopen it manually).
+    const autoOpenedForStepRef = useRef(-1);
+    useEffect(() => {
+        if (!isOpen || step?.kind !== "action") return;
+        if (!targetEl || typeof targetEl.click !== "function") return;
+        if (autoOpenedForStepRef.current === stepIndex) return;
+        autoOpenedForStepRef.current = stepIndex;
+        targetEl.click();
+    }, [isOpen, step, stepIndex, targetEl]);
+
+    // Watch for any antd overlay opening/closing so the mask can step out of
+    // the way - checked on every action step (not just opensDialog: true
+    // ones) since a Popconfirm or a Select's dropdown menu can appear
+    // without a full Modal ever mounting.
+    useEffect(() => {
+        if (!isOpen || step?.kind !== "action") {
+            setDialogOpen(false);
+            return;
+        }
+        const interval = setInterval(() => {
+            setDialogOpen(Boolean(findOpenDialog()));
+        }, DIALOG_POLL_MS);
+        return () => clearInterval(interval);
+    }, [isOpen, step]);
 
     const [rect, setRect] = useState(null);
     useEffect(() => {
-        if (!targetEl) {
+        if (!targetEl || dialogOpen) {
             setRect(null);
             return;
         }
@@ -99,12 +174,12 @@ const InventoryTour = () => {
             window.removeEventListener("resize", measure);
             window.removeEventListener("scroll", measure, true);
         };
-    }, [targetEl]);
+    }, [targetEl, dialogOpen]);
 
     if (!isOpen) return null;
 
-    // existingCounts still loading (right after the FAB is clicked)
-    if (!existingCounts || !step) {
+    // Not ready yet (right after the FAB is clicked, before start() commits)
+    if (!ready || effectiveSteps.length === 0 || !step) {
         return createPortal(
             <div className="fixed inset-0 z-[2099] bg-black/60 flex items-center justify-center">
                 <div className="rounded-2xl px-6 py-5 bg-[var(--ohnix-surface-card)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-muted)] text-sm">
@@ -187,13 +262,72 @@ const InventoryTour = () => {
         );
     }
 
-    if (targetEl === undefined) return null;
-
     const isFirst = stepIndex === 0;
     const isAction = step.kind === "action";
-
+    // Only "info" steps get a manual Next - "action" steps only ever move
+    // forward via notifyAction(), fired by the exact same create/complete
+    // hook that persists the real record. There is deliberately no "I did
+    // it" button here: this tour drives the user through creating real
+    // practice data in order (category -> unit -> product -> ...), and
+    // every later step assumes the earlier ones actually happened. A manual
+    // fake-advance would let the chain desync - e.g. reaching "create
+    // product" with no category/unit to pick from - which is exactly the
+    // bug this replaces.
     const handleNext = () => setStepIndex(stepIndex + 1);
     const handlePrev = () => setStepIndex(stepIndex - 1);
+
+    // A real Modal/Drawer is open on top of us - shrink to a small,
+    // non-blocking corner note instead of covering the screen. No mask, no
+    // spotlight, nothing between the user and the form they're filling in.
+    if (dialogOpen) {
+        return createPortal(
+            <div
+                className="fixed z-[2101] bottom-6 left-6 rounded-2xl p-px"
+                style={{
+                    width: 320,
+                    maxWidth: "calc(100vw - 32px)",
+                    background: "linear-gradient(135deg, rgba(41,216,213,0.55), rgba(124,106,247,0.35))",
+                    boxShadow: "0 12px 34px rgba(0,0,0,0.4)",
+                }}
+            >
+                <div
+                    className="rounded-2xl p-4"
+                    style={{ background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))" }}
+                >
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#29D8D5]/15 flex-shrink-0">
+                            <CompassOutlined className="text-[#29D8D5]" style={{ fontSize: 11 }} />
+                        </div>
+                        <span className="text-xs font-semibold tracking-wide text-[#29D8D5]">
+                            {stepIndex + 1} / {totalSteps}
+                        </span>
+                    </div>
+                    <h3 className="text-xs font-bold text-[var(--ohnix-text-primary)] mb-1 leading-snug">
+                        {t(step.titleKey)}
+                    </h3>
+                    <p className="text-xs text-[var(--ohnix-text-muted)] leading-relaxed mb-3">
+                        {t(step.descKey)}
+                    </p>
+                    <p className="text-[10px] text-[var(--ohnix-text-dim)] m-0 mb-2">
+                        {t("inventory_tour.auto_advance_hint")}
+                    </p>
+                    <div className="flex items-center justify-end">
+                        <button
+                            type="button"
+                            onClick={close}
+                            className="text-[11px] text-[var(--ohnix-text-dim)] hover:text-[var(--ohnix-text-muted)] border-0 bg-transparent cursor-pointer"
+                        >
+                            {t("inventory_tour.pause_tour")}
+                        </button>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        );
+    }
+
+    if (targetEl === undefined) return null;
+
     const handleOpenTarget = () => {
         if (targetEl && typeof targetEl.click === "function") {
             targetEl.click();
@@ -274,29 +408,21 @@ const InventoryTour = () => {
 
                 {isAction ? (
                     <div className="flex flex-col gap-2">
-                        <div className="flex gap-2">
-                            {targetEl && step.id !== "complete-order" && (
-                                <button
-                                    type="button"
-                                    onClick={handleOpenTarget}
-                                    className="flex-1 h-9 rounded-lg text-xs font-semibold border cursor-pointer"
-                                    style={{ borderColor: "var(--ohnix-line-4)", color: "var(--ohnix-text-primary)", background: "transparent" }}
-                                >
-                                    {t("inventory_tour.open_for_me")}
-                                </button>
-                            )}
+                        {targetEl && step.id !== "complete-order" && (
                             <button
                                 type="button"
-                                onClick={handleNext}
-                                className="flex-1 h-9 rounded-lg text-xs font-bold border-0 cursor-pointer flex items-center justify-center gap-1.5"
-                                style={{ background: "linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%)", color: "#021314" }}
+                                onClick={handleOpenTarget}
+                                className="h-9 rounded-lg text-xs font-semibold border cursor-pointer"
+                                style={{ borderColor: "var(--ohnix-line-4)", color: "var(--ohnix-text-primary)", background: "transparent" }}
                             >
-                                <CheckCircleFilled style={{ fontSize: 12 }} />
-                                {t("inventory_tour.done_continue")}
+                                {t("inventory_tour.open_for_me")}
                             </button>
-                        </div>
+                        )}
+                        <p className="text-[11px] text-[var(--ohnix-text-dim)] text-center m-0">
+                            {t("inventory_tour.auto_advance_hint")}
+                        </p>
                         <div className="flex items-center justify-between">
-                            {!isFirst && (
+                            {!isFirst ? (
                                 <button
                                     type="button"
                                     onClick={handlePrev}
@@ -305,13 +431,15 @@ const InventoryTour = () => {
                                     <ArrowLeftOutlined style={{ fontSize: 10 }} />
                                     {t("common.back")}
                                 </button>
+                            ) : (
+                                <span />
                             )}
                             <button
                                 type="button"
-                                onClick={handleNext}
-                                className="text-xs text-[var(--ohnix-text-dim)] hover:text-[var(--ohnix-text-muted)] border-0 bg-transparent cursor-pointer px-1 ml-auto"
+                                onClick={close}
+                                className="text-xs text-[var(--ohnix-text-dim)] hover:text-[var(--ohnix-text-muted)] border-0 bg-transparent cursor-pointer px-1"
                             >
-                                {t("inventory_tour.skip_step")}
+                                {t("inventory_tour.pause_tour")}
                             </button>
                         </div>
                     </div>

@@ -8,6 +8,7 @@ import {
     MailOutlined,
     CheckCircleOutlined,
     CloseCircleOutlined,
+    CompassOutlined,
 } from "@ant-design/icons";
 import { useCurrency } from "../../context/CurrencyContext";
 import { formatCurrency } from "../../utils/currency";
@@ -18,6 +19,7 @@ import { subscriptionService } from "../../services/subscriptionService";
 import SubscriptionPlanCard from "./SubscriptionPlanCard";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { useInventoryTour } from "../../context/InventoryTourContext";
 
 const { Text, Title } = Typography;
 
@@ -25,6 +27,7 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
     const navigate = useNavigate();
     const { currency } = useCurrency();
     const { t } = useI18n();
+    const { fabDismissed, reEnableFab } = useInventoryTour();
     const [loadingSubscription, setLoadingSubscription] = useState(true);
     const [refreshingSubscription, setRefreshingSubscription] = useState(false);
     const [subscription, setSubscription] = useState(null);
@@ -92,6 +95,11 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
 
     const handleOpenBilling = () => {
         navigate("/billing");
+    };
+
+    const handleReEnableTour = () => {
+        reEnableFab();
+        toast.success(t("inventory_tour.re_enabled_toast"));
     };
 
     return (
@@ -292,6 +300,36 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
                         </Text>
                     </div>
                     <ThemeToggle />
+                </div>
+            </Card>
+
+            <Card className="mt-4 rounded-2xl shadow-[var(--ohnix-shadow-card)] border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] text-[var(--ohnix-text-primary)]">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-[#29D8D5]/15 flex items-center justify-center">
+                            <CompassOutlined className="text-[#29D8D5] text-xl" />
+                        </div>
+                        <div>
+                            <Title
+                                level={5}
+                                className="text-[var(--ohnix-text-primary)] m-0 mb-1 font-semibold"
+                            >
+                                {t("inventory_tour.settings_title")}
+                            </Title>
+                            <Text className="text-[var(--ohnix-text-muted)] text-sm">
+                                {fabDismissed
+                                    ? t("inventory_tour.settings_desc_hidden")
+                                    : t("inventory_tour.settings_desc_visible")}
+                            </Text>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={handleReEnableTour}
+                        disabled={!fabDismissed}
+                        className="rounded-xl h-10 px-6 font-medium border-[var(--ohnix-line-4)] disabled:opacity-50"
+                    >
+                        {t("inventory_tour.settings_button")}
+                    </Button>
                 </div>
             </Card>
         </div>

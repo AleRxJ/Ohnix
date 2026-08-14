@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
 import { prisma } from "../db/prisma.js";
+import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -300,6 +301,17 @@ const deleteSupplier = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, {}, "Supplier deleted successfully"));
     } catch (error) {
+        if (isForeignKeyRestrictError(error)) {
+            return next(
+                new ApiError(
+                    409,
+                    "This supplier can't be deleted because it still has purchases assigned to it. Reassign or delete those purchases first.",
+                    [],
+                    "",
+                    "supplier_has_purchases"
+                )
+            );
+        }
         return next(new ApiError(500, error.message));
     }
 });

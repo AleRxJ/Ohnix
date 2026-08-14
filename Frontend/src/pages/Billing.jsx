@@ -36,6 +36,22 @@ const UPGRADE_OPTIONS_BY_PLAN = {
     enterprise: [],
 };
 
+const darkModalStyles = {
+    mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+    content: {
+        background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
+        border: "1px solid var(--ohnix-line-4)",
+        boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+        borderRadius: "24px",
+    },
+    header: {
+        background: "transparent",
+        borderBottom: "1px solid var(--ohnix-line-3)",
+        padding: "20px 24px 16px",
+    },
+    body: { padding: 24 },
+};
+
 const SLA_HOURS_BY_TARGET_PLAN = {
     growth:     48,
     scale:      24,
@@ -1118,6 +1134,7 @@ const Billing = () => {
                 cancelText={t("common.cancel")}
                 confirmLoading={requestSubmitting}
                 destroyOnClose
+                styles={darkModalStyles}
             >
                 <Form
                     form={upgradeForm}
@@ -1144,6 +1161,7 @@ const Billing = () => {
                     >
                         <TextArea
                             rows={4}
+                            className="auth-ohnix-input"
                             placeholder={t("profile.subscription.request_notes_placeholder")}
                         />
                     </Form.Item>
@@ -1155,7 +1173,7 @@ const Billing = () => {
                         <Checkbox>
                             {t("profile.subscription.special_review_checkbox")}
                         </Checkbox>
-                        <div className="mt-1 text-xs text-[#6b7280]">
+                        <div className="mt-1 text-xs text-[var(--ohnix-text-dim)]">
                             {t("profile.subscription.special_review_help")}
                         </div>
                     </Form.Item>
@@ -1174,6 +1192,7 @@ const Billing = () => {
                 cancelText={t("common.cancel")}
                 confirmLoading={adminSubmitting}
                 destroyOnClose
+                styles={darkModalStyles}
             >
                 <Form
                     form={adminReviewForm}
@@ -1200,6 +1219,7 @@ const Billing = () => {
                     >
                         <TextArea
                             rows={4}
+                            className="auth-ohnix-input"
                             placeholder={t("profile.subscription.admin_response_placeholder")}
                         />
                     </Form.Item>
@@ -1228,6 +1248,7 @@ const Billing = () => {
                         ]}
                     >
                         <Input
+                            className="auth-ohnix-input"
                             placeholder={t("profile.subscription.payment_link_placeholder")}
                         />
                     </Form.Item>

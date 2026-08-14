@@ -8,14 +8,17 @@ import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
+import { useInventoryTour } from "../../context/InventoryTourContext";
 
-const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
+const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }) => {
     const { t } = useI18n();
     const [mode, setMode] = useState("common"); // "common" or "custom"
     const [selectedCategory, setSelectedCategory] = useState("Weight");
     const [selectedUnit, setSelectedUnit] = useState(null);
     const { user } = useContext(AuthContext);
     const { team } = useTeam();
+    const { isOpen: isTutorialActive, effectiveSteps, stepIndex } = useInventoryTour();
+    const [isTourCreateStep, setIsTourCreateStep] = useState(false);
     const { viewers, lock, acquireLock, releaseLock } = useResourcePresence({
         resourceType: "unit",
         resourceId: editingUnit?._id,
@@ -28,21 +31,34 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible, editingUnit?._id]);
 
+    // Snapshotted only on the open transition - see the matching comment in
+    // CategoryModal.jsx. Re-deriving isTourCreateStep live while this modal
+    // stays open would let the tour's own advance (triggered by this same
+    // create, a tick before our onCancel/onSubmit handler closes us) wipe
+    // the field back to blank right before close.
     useEffect(() => {
-        if (visible) {
-            if (editingUnit) {
-                form.setFieldsValue({
-                    unit_name: editingUnit.unit_name,
-                });
+        if (!visible) return;
+        const isTourCreateStepNow =
+            isTutorialActive && effectiveSteps[stepIndex]?.id === "create-unit";
+        setIsTourCreateStep(isTourCreateStepNow);
+        if (editingUnit) {
+            form.setFieldsValue({
+                unit_name: editingUnit.unit_name,
+            });
+            setMode("custom");
+        } else {
+            form.resetFields();
+            setSelectedCategory("Weight");
+            setSelectedUnit(null);
+            if (isTourCreateStepNow) {
                 setMode("custom");
+                form.setFieldsValue({ unit_name: t("inventory_tour.practice_unit_name") });
             } else {
-                form.resetFields();
                 setMode("common");
-                setSelectedCategory("Weight");
-                setSelectedUnit(null);
             }
         }
-    }, [visible, editingUnit, form]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible]);
 
     const handleSelectCommonUnit = (unit) => {
         setSelectedUnit(unit);
@@ -162,6 +178,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                                                 <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-[var(--ohnix-line-4)]">
                                                     <Button
                                                         onClick={onClose}
+                                                        disabled={submitting}
                                                         className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
                                                     >
                                                         {t("common.cancel")}
@@ -169,6 +186,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                                                     <Button
                                                         type="primary"
                                                         htmlType="submit"
+                                                        loading={submitting}
                                                         className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                                                     >
                                                         {t("units.create_unit")}
@@ -191,6 +209,8 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                                         onCancel={onClose}
                                         editingUnit={editingUnit}
                                         t={t}
+                                        locked={isTourCreateStep}
+                                        submitting={submitting}
                                     />
                                 </div>
                             ),
@@ -209,6 +229,8 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
                         onCancel={onClose}
                         editingUnit={editingUnit}
                         t={t}
+                        locked={isTourCreateStep}
+                        submitting={submitting}
                     />
                 </>
             )}
@@ -216,7 +238,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form }) => {
     );
 };
 
-const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t }) => {
+const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t, locked, submitting }) => {
     return (
         <Form
             form={form}
@@ -234,6 +256,7 @@ const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t }) => {
                 }
                 rules={FORM_RULES.UNIT_NAME}
                 className="mb-6"
+                extra={locked ? t("inventory_tour.practice_locked_hint") : undefined}
             >
                 <Input
                     placeholder={t("units.enter_unit_name")}
@@ -241,6 +264,7 @@ const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t }) => {
                     prefix={
                         <AppstoreOutlined className="text-[var(--ohnix-text-dim)] text-sm" />
                     }
+                    disabled={locked}
                 />
             </Form.Item>
 
@@ -248,6 +272,7 @@ const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t }) => {
                 <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-[var(--ohnix-line-4)]">
                     <Button
                         onClick={onCancel}
+                        disabled={submitting}
                         className="h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
                     >
                         {t("common.cancel")}
@@ -255,6 +280,7 @@ const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t }) => {
                     <Button
                         type="primary"
                         htmlType="submit"
+                        loading={submitting}
                         className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                     >
                         {editingUnit ? t("units.update_unit") : t("units.create_unit")}

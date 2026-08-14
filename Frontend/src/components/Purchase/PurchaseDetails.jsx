@@ -127,8 +127,8 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
         <Modal
             title={
                 <div className="flex items-center space-x-2">
-                    <Title level={4} className="mb-0">{t("purchases.purchase_details")}</Title>
-                    <Tag color="blue" className="text-sm">{purchase?.purchase_no}</Tag>
+                    <Title level={4} className="mb-0 !text-[var(--ohnix-text-primary)]">{t("purchases.purchase_details")}</Title>
+                    <Tag color="cyan" className="text-sm">{purchase?.purchase_no}</Tag>
                 </div>
             }
             open={visible}

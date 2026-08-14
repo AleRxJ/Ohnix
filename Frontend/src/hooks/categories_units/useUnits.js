@@ -4,11 +4,16 @@ import { useAuth } from "../useAuth";
 import toast from "react-hot-toast";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
+import { resolveApiErrorMessage } from "../../utils/apiError";
+
+const DELETE_UNIT_ERROR_CODES = {
+    unit_has_products: "units.delete_conflict_products",
+};
 
 export const useUnits = () => {
     const { user, isAdmin } = useAuth();
     const { t } = useI18n();
-    const { isOpen: isTutorialActive } = useInventoryTour();
+    const { isOpen: isTutorialActive, notifyAction } = useInventoryTour();
     const [units, setUnits] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState("");
@@ -66,6 +71,10 @@ export const useUnits = () => {
                         id: loadingToast,
                     });
                     await loadUnits();
+                    if (isTutorialActive) {
+                        const created = response.data.data;
+                        notifyAction("unit", created ? { id: created._id, name: created.unit_name } : undefined);
+                    }
                     return { success: true, data: response.data.data };
                 } else {
                     toast.error(response.data.message || t("units.failed_create_unit"), { id: loadingToast });
@@ -79,7 +88,7 @@ export const useUnits = () => {
                 return { success: false, error: errorMsg };
             }
         },
-        [loadUnits, isTutorialActive]
+        [loadUnits, isTutorialActive, notifyAction]
     );
 
     const updateUnit = useCallback(
@@ -117,8 +126,12 @@ export const useUnits = () => {
                     return { success: true };
                 }
             } catch (error) {
-                const errorMsg =
-                    error.response?.data?.message || t("units.failed_delete_unit");
+                const errorMsg = resolveApiErrorMessage(
+                    error,
+                    t,
+                    DELETE_UNIT_ERROR_CODES,
+                    "units.failed_delete_unit"
+                );
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
             }

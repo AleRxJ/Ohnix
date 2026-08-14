@@ -4,11 +4,16 @@ import { useAuth } from "../useAuth";
 import toast from "react-hot-toast";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
+import { resolveApiErrorMessage } from "../../utils/apiError";
+
+const DELETE_CATEGORY_ERROR_CODES = {
+    category_has_products: "categories.delete_conflict_products",
+};
 
 export const useCategories = () => {
     const { user, isAdmin } = useAuth();
     const { t } = useI18n();
-    const { isOpen: isTutorialActive } = useInventoryTour();
+    const { isOpen: isTutorialActive, notifyAction } = useInventoryTour();
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState("");
@@ -67,6 +72,10 @@ export const useCategories = () => {
                         id: loadingToast,
                     });
                     await loadCategories();
+                    if (isTutorialActive) {
+                        const created = response.data.data;
+                        notifyAction("category", created ? { id: created._id, name: created.category_name } : undefined);
+                    }
                     return { success: true, data: response.data.data };
                 } else {
                     toast.error(response.data.message || t("categories.failed_create_category"), { id: loadingToast });
@@ -81,7 +90,7 @@ export const useCategories = () => {
                 return { success: false, error: errorMsg };
             }
         },
-        [loadCategories, isTutorialActive]
+        [loadCategories, isTutorialActive, notifyAction]
     );
 
     const updateCategory = useCallback(
@@ -128,9 +137,12 @@ export const useCategories = () => {
                     return { success: true };
                 }
             } catch (error) {
-                const errorMsg =
-                    error.response?.data?.message ||
-                    t("categories.failed_delete_category");
+                const errorMsg = resolveApiErrorMessage(
+                    error,
+                    t,
+                    DELETE_CATEGORY_ERROR_CODES,
+                    "categories.failed_delete_category"
+                );
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
             }

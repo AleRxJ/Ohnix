@@ -21,6 +21,7 @@ const Suppliers = () => {
     const [filterType, setFilterType] = useState("all");
     const [viewModalVisible, setViewModalVisible] = useState(false);
     const [selectedSupplier, setSelectedSupplier] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
 
     // Get admin status from auth context
     const { isAdmin } = useAuth();
@@ -48,6 +49,7 @@ const Suppliers = () => {
         openEditModal,
         closeModal,
         handleSubmit,
+        isTourCreateStep,
     } = useSupplierForm();
 
     // Filter suppliers based on search and filter criteria
@@ -59,7 +61,12 @@ const Suppliers = () => {
 
     // Handle form submission
     const onSubmit = async (values) => {
-        await handleSubmit(values, createSupplier, updateSupplier);
+        setSubmitting(true);
+        try {
+            await handleSubmit(values, createSupplier, updateSupplier);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     // Handle view supplier
@@ -141,6 +148,8 @@ const Suppliers = () => {
                 editingSupplier={editingSupplier}
                 fileList={fileList}
                 uploadProps={uploadProps}
+                isTourCreateStep={isTourCreateStep}
+                submitting={submitting}
             />
 
             {/* View Modal */}

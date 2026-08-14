@@ -28,6 +28,17 @@ const SupplierViewModal = ({ visible, onCancel, supplier, onEdit }) => {
                 </Button>,
             ]}
             width={600}
+            className="supplier-view-modal"
+            styles={{
+                mask: { backgroundColor: "rgba(0,0,0,0.55)" },
+                content: {
+                    background: "linear-gradient(180deg, rgba(10,10,10,0.98), rgba(7,7,7,0.98))",
+                    border: "1px solid var(--ohnix-line-4)",
+                    boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
+                    borderRadius: "20px",
+                },
+                header: { background: "transparent", borderBottom: "1px solid var(--ohnix-line-3)" },
+            }}
         >
             <div>
                 <div className="text-center mb-4">
@@ -40,8 +51,8 @@ const SupplierViewModal = ({ visible, onCancel, supplier, onEdit }) => {
                         }
                         icon={<UserOutlined />}
                     />
-                    <h3 className="mt-2 mb-0">{supplier.name}</h3>
-                    <Tag color={supplier.type === "company" ? "blue" : "green"}>
+                    <h3 className="mt-2 mb-0 text-[var(--ohnix-text-primary)]">{supplier.name}</h3>
+                    <Tag color={supplier.type === "company" ? "cyan" : "green"}>
                         {supplier.type?.toUpperCase() || t("common.na")}
                     </Tag>
                 </div>

@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { api } from "../../api/api";
 import useI18n from "../useI18n";
+import { resolveApiErrorMessage } from "../../utils/apiError";
+
+const DELETE_PRODUCT_ERROR_CODES = {
+    product_has_history: "products.delete_conflict_history",
+};
 
 export const useProducts = () => {
     const { t } = useI18n();
@@ -105,8 +110,12 @@ export const useProducts = () => {
             }
         } catch (err) {
             console.error("Delete product error:", err);
-            const errorMessage =
-                err.response?.data?.message || t("products.failed_delete_product");
+            const errorMessage = resolveApiErrorMessage(
+                err,
+                t,
+                DELETE_PRODUCT_ERROR_CODES,
+                "products.failed_delete_product"
+            );
             toast.error(errorMessage);
             return { success: false, error: errorMessage };
         }

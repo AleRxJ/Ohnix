@@ -24,6 +24,7 @@ import { generatePurchaseNo } from "../../utils/purchaseUtils";
 import { Form } from "antd";
 import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
+import { useInventoryTour } from "../../context/InventoryTourContext";
 
 const { Title } = Typography;
 
@@ -46,10 +47,12 @@ const PurchaseList = ({
     const [returnPreviewModalVisible, setReturnPreviewModalVisible] =
         useState(false);
     const [selectedPurchase, setSelectedPurchase] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
     const [form] = Form.useForm();
     const { t } = useI18n();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("purchases", "edit");
+    const { isOpen: isTutorialActive, effectiveSteps, stepIndex, createdRefs } = useInventoryTour();
 
     const handleViewDetails = async (purchase) => {
         setSelectedPurchase(purchase);
@@ -63,19 +66,38 @@ const PurchaseList = ({
     };
 
     const handleCreatePurchase = async (values) => {
-        const result = await onCreatePurchase(values);
-        if (result.success) {
-            setModalVisible(false);
-            form.resetFields();
+        setSubmitting(true);
+        try {
+            const result = await onCreatePurchase(values);
+            if (result.success) {
+                setModalVisible(false);
+                form.resetFields();
+            }
+        } finally {
+            setSubmitting(false);
         }
     };
 
     const handleAddPurchase = () => {
         form.resetFields();
+        const isTourCreateStep = isTutorialActive && effectiveSteps[stepIndex]?.id === "create-purchase";
+        const practiceProduct = isTourCreateStep
+            ? products.find((p) => p._id === createdRefs.product?.id)
+            : null;
+
         form.setFieldsValue({
             purchase_no: generatePurchaseNo(),
             purchase_status: "pending",
-            details: [{}],
+            details: isTourCreateStep
+                ? [
+                      {
+                          product_id: createdRefs.product?.id,
+                          quantity: 5,
+                          unitcost: practiceProduct?.buying_price ?? 10000,
+                      },
+                  ]
+                : [{}],
+            ...(isTourCreateStep && createdRefs.supplier?.id ? { supplier_id: createdRefs.supplier.id } : {}),
         });
         setModalVisible(true);
     };
@@ -164,6 +186,7 @@ const PurchaseList = ({
                 suppliers={suppliers}
                 products={products}
                 form={form}
+                submitting={submitting}
                 initialValues={{
                     purchase_no: generatePurchaseNo(),
                     purchase_status: "pending",

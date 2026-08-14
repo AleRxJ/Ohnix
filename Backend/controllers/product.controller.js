@@ -6,6 +6,7 @@ import { prisma } from "../db/prisma.js";
 import { normalizeCountryCode } from "../services/companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { recordStockMovement } from "../services/stockMovement.service.js";
+import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -553,11 +554,14 @@ const deleteProduct = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, {}, "Product deleted successfully"));
     } catch (error) {
-        if (error.code === "P2003") {
+        if (isForeignKeyRestrictError(error)) {
             return next(
                 new ApiError(
                     409,
-                    "This product can't be deleted because it has purchases, sales, or stock movements on record. Remove or reassign that history first."
+                    "This product can't be deleted because it has purchases, sales, or stock movements on record. Remove or reassign that history first.",
+                    [],
+                    "",
+                    "product_has_history"
                 )
             );
         }

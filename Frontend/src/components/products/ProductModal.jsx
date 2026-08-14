@@ -24,6 +24,7 @@ const ProductModal = ({
     onSave,
     onCancel,
     onImageChange,
+    isTourCreateStep,
 }) => {
     const { t } = useI18n();
     const { currency } = useCurrency();
@@ -137,11 +138,13 @@ const ProductModal = ({
                                                 },
                                             ]}
                                             className="mb-3"
+                                            extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
                                         >
                                             <Input
                                                 placeholder={t("products.enter_product_name")}
                                                 size="large"
                                                 className="rounded-md auth-ohnix-input"
+                                                disabled={isTourCreateStep}
                                             />
                                         </Form.Item>
                                     </Col>
@@ -168,7 +171,7 @@ const ProductModal = ({
                                         >
                                             <Input
                                                 placeholder={t("products.enter_product_code")}
-                                                disabled={!!editingProduct}
+                                                disabled={!!editingProduct || isTourCreateStep}
                                                 size="large"
                                                 className="rounded-md auth-ohnix-input"
                                             />
@@ -190,11 +193,13 @@ const ProductModal = ({
                                                 },
                                             ]}
                                             className="mb-0"
+                                            extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
                                         >
                                             <Select
                                                 placeholder={t("products.select_category")}
                                                 size="large"
                                                 className="rounded-md auth-ohnix-input"
+                                                disabled={isTourCreateStep}
                                             >
                                                 {categories.map((category) => (
                                                     <Option
@@ -223,11 +228,13 @@ const ProductModal = ({
                                                 },
                                             ]}
                                             className="mb-0"
+                                            extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
                                         >
                                             <Select
                                                 placeholder={t("products.select_unit")}
                                                 size="large"
                                                 className="rounded-md auth-ohnix-input"
+                                                disabled={isTourCreateStep}
                                             >
                                                 {units.map((unit) => (
                                                     <Option
@@ -281,6 +288,7 @@ const ProductModal = ({
                                                 className="rounded-md auth-ohnix-input"
                                                 formatter={currencyInputProps.formatter}
                                                 parser={currencyInputProps.parser}
+                                                disabled={isTourCreateStep}
                                             />
                                         </Form.Item>
                                     </Col>
@@ -315,6 +323,7 @@ const ProductModal = ({
                                                 className="rounded-md auth-ohnix-input"
                                                 formatter={currencyInputProps.formatter}
                                                 parser={currencyInputProps.parser}
+                                                disabled={isTourCreateStep}
                                             />
                                         </Form.Item>
                                     </Col>

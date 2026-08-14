@@ -22,6 +22,7 @@ import {
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
+import { useInventoryTour } from "../../context/InventoryTourContext";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -37,6 +38,9 @@ const CustomerForm = ({
 }) => {
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
+    const { isOpen: isTutorialActive, effectiveSteps, stepIndex } = useInventoryTour();
+    const isTourCreateStep =
+        isTutorialActive && !editingCustomer && effectiveSteps[stepIndex]?.id === "create-customer";
     const usesColombianEInvoicing =
         user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
     const uploadProps = {
@@ -93,6 +97,7 @@ const CustomerForm = ({
                                         message: t("customers.name_max_length"),
                                     },
                                 ]}
+                                extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
                             >
                                 <Input
                                     placeholder={t("customers.enter_full_name")}
@@ -101,6 +106,7 @@ const CustomerForm = ({
                                         <UserOutlined className="text-[var(--ohnix-text-dim)]" />
                                     }
                                     className="rounded-lg auth-ohnix-input"
+                                    disabled={isTourCreateStep}
                                 />
                             </Form.Item>
                         </Col>
@@ -181,6 +187,7 @@ const CustomerForm = ({
                                         <MailOutlined className="text-[var(--ohnix-text-dim)]" />
                                     }
                                     className="rounded-lg auth-ohnix-input"
+                                    disabled={isTourCreateStep}
                                 />
                             </Form.Item>
                         </Col>
@@ -210,6 +217,7 @@ const CustomerForm = ({
                                         <PhoneOutlined className="text-[var(--ohnix-text-dim)]" />
                                     }
                                     className="rounded-lg auth-ohnix-input"
+                                    disabled={isTourCreateStep}
                                 />
                             </Form.Item>
                         </Col>

@@ -2,20 +2,32 @@ import { useState } from "react";
 import { Form } from "antd";
 import { toast } from "react-hot-toast";
 import useI18n from "../useI18n";
+import { useInventoryTour } from "../../context/InventoryTourContext";
 
 export const useSupplierForm = (onSuccess) => {
     const { t } = useI18n();
+    const { isOpen: isTutorialActive, effectiveSteps, stepIndex } = useInventoryTour();
     const [modalVisible, setModalVisible] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [selectedSupplier, setSelectedSupplier] = useState(null);
     const [fileList, setFileList] = useState([]);
     const [form] = Form.useForm();
 
+    const isTourCreateStep = isTutorialActive && !editMode && effectiveSteps[stepIndex]?.id === "create-supplier";
+
     const openCreateModal = () => {
         setEditMode(false);
         setSelectedSupplier(null);
         form.resetFields();
         setFileList([]);
+        if (isTourCreateStep) {
+            form.setFieldsValue({
+                name: t("inventory_tour.practice_supplier_name"),
+                email: "practica@ohnix.app",
+                phone: "3000000000",
+                address: t("inventory_tour.practice_address"),
+            });
+        }
         setModalVisible(true);
     };
 
@@ -115,5 +127,6 @@ export const useSupplierForm = (onSuccess) => {
         openEditModal,
         closeModal,
         handleSubmit,
+        isTourCreateStep,
     };
 };

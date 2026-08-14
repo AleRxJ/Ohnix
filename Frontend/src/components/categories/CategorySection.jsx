@@ -30,17 +30,23 @@ const CategorySection = ({ user, isAdmin, categoryHook }) => {
     const [viewModalVisible, setViewModalVisible] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null);
     const [viewingCategory, setViewingCategory] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
     const [form] = Form.useForm();
 
     const handleSubmit = async (values) => {
-        const result = editingCategory
-            ? await updateCategory(editingCategory._id, values)
-            : await createCategory(values);
+        setSubmitting(true);
+        try {
+            const result = editingCategory
+                ? await updateCategory(editingCategory._id, values)
+                : await createCategory(values);
 
-        if (result?.success) {
-            setModalVisible(false);
-            form.resetFields();
-            setEditingCategory(null);
+            if (result?.success) {
+                setModalVisible(false);
+                form.resetFields();
+                setEditingCategory(null);
+            }
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -164,6 +170,7 @@ const CategorySection = ({ user, isAdmin, categoryHook }) => {
                 onSubmit={handleSubmit}
                 editingCategory={editingCategory}
                 form={form}
+                submitting={submitting}
             />
 
             <CategoryViewModal

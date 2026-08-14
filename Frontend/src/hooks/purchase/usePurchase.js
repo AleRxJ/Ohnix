@@ -10,7 +10,7 @@ import { useInventoryTour } from "../../context/InventoryTourContext";
 
 export const usePurchase = () => {
     const { t } = useI18n();
-    const { isOpen: isTutorialActive } = useInventoryTour();
+    const { isOpen: isTutorialActive, notifyAction } = useInventoryTour();
     const [purchases, setPurchases] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
@@ -128,6 +128,25 @@ export const usePurchase = () => {
             if (response.data.success) {
                 toast.success(t("purchases.purchase_created"));
                 fetchPurchases();
+                if (isTutorialActive) {
+                    const created = response.data.data;
+                    // Tracking the exact row id lets complete-purchase target
+                    // THIS purchase specifically instead of whichever row
+                    // happens to render first for the shared data-tour
+                    // attribute (real, pre-existing purchases share it too).
+                    notifyAction(
+                        "purchase",
+                        created ? { id: created._id, name: created.purchase_no } : undefined
+                    );
+                    // Created already "completed" (the status field on this
+                    // same form allows that) - stock already went up, so the
+                    // separate "mark it completed" step has nothing left to
+                    // do. Without this, that step would wait forever for a
+                    // pending purchase that will never exist.
+                    if (values.purchase_status === "completed") {
+                        notifyAction("purchase-completed");
+                    }
+                }
                 return { success: true };
             } else {
                 toast.error(
@@ -151,6 +170,7 @@ export const usePurchase = () => {
             if (response.data.success) {
                 toast.success(t("purchases.purchase_updated"));
                 fetchPurchases();
+                if (status === "completed" && isTutorialActive) notifyAction("purchase-completed");
 
                 // Show return information if status is returned
                 if (status === "returned" && response.data.data.returnInfo) {

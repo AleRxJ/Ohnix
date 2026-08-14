@@ -34,17 +34,23 @@ const UnitSection = ({ user, isAdmin, unitHook }) => {
     const [viewModalVisible, setViewModalVisible] = useState(false);
     const [editingUnit, setEditingUnit] = useState(null);
     const [viewingUnit, setViewingUnit] = useState(null);
+    const [submitting, setSubmitting] = useState(false);
     const [form] = Form.useForm();
 
     const handleSubmit = async (values) => {
-        const result = editingUnit
-            ? await updateUnit(editingUnit._id, values)
-            : await createUnit(values);
+        setSubmitting(true);
+        try {
+            const result = editingUnit
+                ? await updateUnit(editingUnit._id, values)
+                : await createUnit(values);
 
-        if (result?.success) {
-            setModalVisible(false);
-            form.resetFields();
-            setEditingUnit(null);
+            if (result?.success) {
+                setModalVisible(false);
+                form.resetFields();
+                setEditingUnit(null);
+            }
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -168,6 +174,7 @@ const UnitSection = ({ user, isAdmin, unitHook }) => {
                 onSubmit={handleSubmit}
                 editingUnit={editingUnit}
                 form={form}
+                submitting={submitting}
             />
 
             <UnitViewModal

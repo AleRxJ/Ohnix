@@ -108,6 +108,7 @@ const OrdersTable = ({
                                 disabled={isTerminal || !canEdit}
                                 className="rounded"
                                 data-tour="tour-order-status-select"
+                                data-order-id={record._id}
                             >
                                 {ORDER_STATUSES.map((status) => (
                                     <Option key={status.value} value={status.value}>
