@@ -97,7 +97,7 @@ const triggerElectronicInvoicingIfCompleted = ({ orderId, userId, userRole, trig
 
 class OrderService {
     async createOrder(orderData, userId, userRole) {
-        const { customer_id, order_status, orderItems } = orderData;
+        const { customer_id, order_status, orderItems, is_tutorial_data } = orderData;
 
         if (!customer_id || !Array.isArray(orderItems) || orderItems.length === 0) {
             throw new ApiError(400, "Invalid order data");
@@ -203,6 +203,7 @@ class OrderService {
                     gst,
                     total,
                     invoiceNo,
+                    isTutorialData: is_tutorial_data === true,
                     createdById: userId,
                     updatedById: userId,
                 },
@@ -307,12 +308,17 @@ class OrderService {
                 }
             }
 
-            triggerElectronicInvoicingIfCompleted({
-                orderId: order.id,
-                userId,
-                userRole,
-                trigger: "order_create_completed",
-            });
+            // Practice orders created by the "how does Ohnix work" tour must
+            // never reach DIAN - it's a real government-facing document, not
+            // something a synthetic tutorial sale should ever generate.
+            if (!order.isTutorialData) {
+                triggerElectronicInvoicingIfCompleted({
+                    orderId: order.id,
+                    userId,
+                    userRole,
+                    trigger: "order_create_completed",
+                });
+            }
         }
 
         return {
@@ -519,12 +525,14 @@ class OrderService {
                 });
             });
 
-            triggerElectronicInvoicingIfCompleted({
-                orderId: updated.id,
-                userId,
-                userRole,
-                trigger: "order_status_completed",
-            });
+            if (!updated.isTutorialData) {
+                triggerElectronicInvoicingIfCompleted({
+                    orderId: updated.id,
+                    userId,
+                    userRole,
+                    trigger: "order_status_completed",
+                });
+            }
 
             return {
                 _id: toExternalId(updated),

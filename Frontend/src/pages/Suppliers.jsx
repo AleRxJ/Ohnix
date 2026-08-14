@@ -101,6 +101,7 @@ const Suppliers = () => {
                                 size="large"
                                 className="w-full min-w-[120px] sm:w-auto"
                                 disabled={!canEdit}
+                                data-tour="tour-add-supplier"
                             >
                                 {t("suppliers.add_supplier")}
                             </Button>

@@ -46,7 +46,7 @@ const findCategoryByAnyId = async (id) =>
     });
 
 const createCategory = asyncHandler(async (req, res, next) => {
-    const { category_name } = req.body;
+    const { category_name, is_tutorial_data } = req.body;
 
     if (!category_name?.trim()) {
         return next(new ApiError(400, "Category name is required"));
@@ -70,6 +70,7 @@ const createCategory = asyncHandler(async (req, res, next) => {
         const created = await prisma.category.create({
             data: {
                 categoryName: category_name.trim(),
+                isTutorialData: is_tutorial_data === true,
                 createdById: creatorId,
             },
             include: {

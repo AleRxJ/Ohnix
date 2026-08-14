@@ -75,6 +75,7 @@ const ProductsTable = ({
                                 onClick={() => onViewDetails(product)}
                                 type="text"
                                 size="small"
+                                className="text-[#44F3F0] hover:!text-[#44F3F0]"
                             />
                             <Tooltip title={canEdit ? t("products.adjust_stock") : t("common.no_permission_to_edit")}>
                                 <Button
@@ -83,6 +84,7 @@ const ProductsTable = ({
                                     type="text"
                                     size="small"
                                     disabled={!canEdit}
+                                    className="text-[#29D8D5] hover:!text-[#29D8D5] disabled:!text-[var(--ohnix-text-dim)]"
                                 />
                             </Tooltip>
                             <Button
@@ -91,6 +93,7 @@ const ProductsTable = ({
                                 type="text"
                                 size="small"
                                 disabled={!canEdit}
+                                className="text-[var(--ohnix-text-muted)] hover:!text-[#44F3F0] disabled:!text-[var(--ohnix-text-dim)]"
                             />
                             <Popconfirm
                                 title={t("products.delete_product")}
@@ -253,7 +256,7 @@ const ProductsTable = ({
         {
             title: t("common.actions"),
             key: "actions",
-            width: 120,
+            width: 150,
             render: (_, record) => (
                 <Space size="small">
                     <Tooltip title={t("common.info")}>
@@ -262,6 +265,7 @@ const ProductsTable = ({
                             onClick={() => onViewDetails(record)}
                             type="text"
                             size="small"
+                            className="text-[#44F3F0] hover:!text-[#44F3F0] hover:bg-[var(--ohnix-hover-overlay)]"
                             data-tour="tour-view-product"
                         />
                     </Tooltip>
@@ -272,6 +276,7 @@ const ProductsTable = ({
                             type="text"
                             size="small"
                             disabled={!canEdit}
+                            className="text-[#29D8D5] hover:!text-[#29D8D5] hover:bg-[var(--ohnix-hover-overlay)] disabled:!text-[var(--ohnix-text-dim)]"
                             data-tour="tour-adjust-stock"
                         />
                     </Tooltip>
@@ -282,6 +287,7 @@ const ProductsTable = ({
                             type="text"
                             size="small"
                             disabled={!canEdit}
+                            className="text-[var(--ohnix-text-muted)] hover:!text-[#44F3F0] hover:bg-[var(--ohnix-hover-overlay)] disabled:!text-[var(--ohnix-text-dim)]"
                         />
                     </Tooltip>
                     <Tooltip title={canEdit ? t("common.delete") : t("common.no_permission_to_delete")}>

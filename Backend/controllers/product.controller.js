@@ -72,6 +72,7 @@ const mapProduct = (product) => ({
     tax_rate: product.taxRate === null ? null : Number(product.taxRate),
     is_tax_excluded: product.isTaxExcluded,
     low_stock_threshold: product.lowStockThreshold,
+    is_tutorial_data: product.isTutorialData,
     created_by: product.createdBy
         ? {
               _id: toExternalId(product.createdBy),
@@ -185,6 +186,7 @@ const createProduct = asyncHandler(async (req, res, next) => {
         tax_rate,
         is_tax_excluded,
         low_stock_threshold,
+        is_tutorial_data,
     } = req.body;
 
     if (
@@ -256,6 +258,7 @@ const createProduct = asyncHandler(async (req, res, next) => {
                 sellingPrice,
                 productImage: productImageUrl,
                 stock: 0,
+                isTutorialData: is_tutorial_data === true || is_tutorial_data === "true",
                 createdById: req.user.prismaId,
                 ...(unit_measure_code !== undefined && { unitMeasureCode: String(unit_measure_code).trim() }),
                 ...(standard_code !== undefined && { standardCode: String(standard_code).trim() }),

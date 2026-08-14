@@ -3,10 +3,12 @@ import { api } from "../../api/api";
 import { useAuth } from "../useAuth";
 import toast from "react-hot-toast";
 import useI18n from "../useI18n";
+import { useInventoryTour } from "../../context/InventoryTourContext";
 
 export const useCategories = () => {
     const { user, isAdmin } = useAuth();
     const { t } = useI18n();
+    const { isOpen: isTutorialActive } = useInventoryTour();
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState("");
@@ -55,7 +57,10 @@ export const useCategories = () => {
         async (values) => {
             const loadingToast = toast.loading(t("categories.creating_category"));
             try {
-                const response = await api.post("/categories", values);
+                const response = await api.post("/categories", {
+                    ...values,
+                    ...(isTutorialActive && { is_tutorial_data: true }),
+                });
 
                 if (response.data.success) {
                     toast.success(t("categories.category_added"), {
@@ -76,7 +81,7 @@ export const useCategories = () => {
                 return { success: false, error: errorMsg };
             }
         },
-        [loadCategories]
+        [loadCategories, isTutorialActive]
     );
 
     const updateCategory = useCallback(

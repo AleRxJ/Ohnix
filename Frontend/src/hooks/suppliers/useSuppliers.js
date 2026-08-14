@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { api } from "../../api/api";
 import useI18n from "../useI18n";
+import { useInventoryTour } from "../../context/InventoryTourContext";
 
 export const useSuppliers = (isAdmin = false) => {
     const { t } = useI18n();
+    const { isOpen: isTutorialActive } = useInventoryTour();
     const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [stats, setStats] = useState({
@@ -55,6 +57,9 @@ export const useSuppliers = (isAdmin = false) => {
 
     const createSupplier = async (formData) => {
         try {
+            if (isTutorialActive) {
+                formData.append("is_tutorial_data", "true");
+            }
             await api.post("/suppliers", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });

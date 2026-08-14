@@ -13,6 +13,7 @@ import { toast } from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { useTheme } from "../../context/ThemeContext";
 import InventoryTour from "../inventoryTour/InventoryTour";
+import InventoryTourFab from "../inventoryTour/InventoryTourFab";
 
 const { Content } = Layout;
 
@@ -318,6 +319,7 @@ const DashboardLayout = () => {
     return (
         <Layout className="dashboard-app min-h-screen relative overflow-hidden">
             <InventoryTour />
+            <InventoryTourFab />
             <div className="pointer-events-none absolute inset-0 opacity-70 section-glow" />
             <DashboardSidebar
                 collapsed={collapsed}

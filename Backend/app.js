@@ -109,6 +109,7 @@ import electronicInvoiceRouter from "./routes/electronicInvoice.routes.js";
 import apiKeyRouter from "./routes/apiKey.routes.js";
 import publicApiRouter from "./routes/publicApi.routes.js";
 import teamRouter from "./routes/team.routes.js";
+import tutorialDataRouter from "./routes/tutorialData.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -128,6 +129,7 @@ app.use("/api/v1/electronic-invoices", electronicInvoiceRouter);
 app.use("/api/v1/api-keys", apiKeyRouter);
 app.use("/api/v1/public", publicApiRouter);
 app.use("/api/v1", teamRouter);
+app.use("/api/v1/tutorial-data", tutorialDataRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________

@@ -60,6 +60,7 @@ const createSupplier = asyncHandler(async (req, res, next) => {
         bank_name,
         account_holder,
         account_number,
+        is_tutorial_data,
     } = req.body;
 
     if (!name || !email || !phone || !address) {
@@ -103,6 +104,7 @@ const createSupplier = asyncHandler(async (req, res, next) => {
                 accountHolder: account_holder?.trim() || null,
                 accountNumber: account_number?.trim() || null,
                 photo: photoUrl,
+                isTutorialData: is_tutorial_data === true || is_tutorial_data === "true",
                 createdById: req.user.prismaId,
             },
             include: {

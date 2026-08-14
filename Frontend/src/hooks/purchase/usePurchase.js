@@ -6,9 +6,11 @@ import { calculateStats } from "../../utils/purchaseUtils.js";
 import AuthContext from "../../context/AuthContext.jsx";
 import { formatCurrency } from "../../utils/currency.js";
 import useI18n from "../useI18n";
+import { useInventoryTour } from "../../context/InventoryTourContext";
 
 export const usePurchase = () => {
     const { t } = useI18n();
+    const { isOpen: isTutorialActive } = useInventoryTour();
     const [purchases, setPurchases] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
@@ -119,7 +121,10 @@ export const usePurchase = () => {
     // Create purchase
     const createPurchase = async (values) => {
         try {
-            const response = await api.post("/purchases", values);
+            const response = await api.post("/purchases", {
+                ...values,
+                ...(isTutorialActive && { is_tutorial_data: true }),
+            });
             if (response.data.success) {
                 toast.success(t("purchases.purchase_created"));
                 fetchPurchases();

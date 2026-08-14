@@ -3,10 +3,12 @@ import { api } from "../../api/api";
 import { useAuth } from "../useAuth";
 import toast from "react-hot-toast";
 import useI18n from "../useI18n";
+import { useInventoryTour } from "../../context/InventoryTourContext";
 
 export const useUnits = () => {
     const { user, isAdmin } = useAuth();
     const { t } = useI18n();
+    const { isOpen: isTutorialActive } = useInventoryTour();
     const [units, setUnits] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState("");
@@ -54,7 +56,10 @@ export const useUnits = () => {
         async (values) => {
             const loadingToast = toast.loading(t("units.creating_unit"));
             try {
-                const response = await api.post("/units", values);
+                const response = await api.post("/units", {
+                    ...values,
+                    ...(isTutorialActive && { is_tutorial_data: true }),
+                });
 
                 if (response.data.success) {
                     toast.success(t("units.unit_created"), {
@@ -74,7 +79,7 @@ export const useUnits = () => {
                 return { success: false, error: errorMsg };
             }
         },
-        [loadUnits]
+        [loadUnits, isTutorialActive]
     );
 
     const updateUnit = useCallback(

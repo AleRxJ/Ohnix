@@ -42,7 +42,7 @@ const findPurchaseByAnyId = async (id) =>
 
 class PurchaseService {
     async createPurchase(purchaseData, userId, userRole) {
-        const { supplier_id, purchase_no, purchase_status, details } = purchaseData;
+        const { supplier_id, purchase_no, purchase_status, details, is_tutorial_data } = purchaseData;
 
         if (
             !supplier_id ||
@@ -110,6 +110,7 @@ class PurchaseService {
                         supplierId: supplier.id,
                         purchaseNo: String(purchase_no).trim(),
                         purchaseStatus: initialStatus,
+                        isTutorialData: is_tutorial_data === true,
                         createdById: userId,
                         updatedById: userId,
                     },

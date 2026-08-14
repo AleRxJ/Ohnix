@@ -122,6 +122,7 @@ const CategorySection = ({ user, isAdmin, categoryHook }) => {
                                         fontWeight: 500
                                     }}
                                     disabled={!canEdit}
+                                    data-tour="tour-add-category"
                                 >
                                     <span className="hidden sm:inline">{t("categories.add_category")}</span>
                                     <span className="sm:hidden">{t("common.add")}</span>

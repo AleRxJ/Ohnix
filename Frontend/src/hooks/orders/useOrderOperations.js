@@ -3,9 +3,11 @@ import { toast } from "react-hot-toast";
 import { api } from "../../api/api";
 import { calculateOrderTotals } from "../../utils/orderHelpers";
 import useI18n from "../useI18n";
+import { useInventoryTour } from "../../context/InventoryTourContext";
 
 export const useOrderOperations = (refreshOrders) => {
     const { t } = useI18n();
+    const { isOpen: isTutorialActive } = useInventoryTour();
     const [orderDetails, setOrderDetails] = useState([]);
     const [detailsLoading, setDetailsLoading] = useState(false);
 
@@ -90,6 +92,7 @@ export const useOrderOperations = (refreshOrders) => {
                 gst,
                 total,
                 total_products: values.orderItems.length,
+                ...(isTutorialActive && { is_tutorial_data: true }),
             };
 
             await api.post("/orders", orderData);

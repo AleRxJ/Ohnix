@@ -72,6 +72,7 @@ const createCustomer = asyncHandler(async (req, res, next) => {
         store_name,
         account_holder,
         account_number,
+        is_tutorial_data,
     } = req.body;
 
     if (!name || !email || !phone) {
@@ -112,6 +113,7 @@ const createCustomer = asyncHandler(async (req, res, next) => {
                 accountHolder: account_holder?.trim() || null,
                 accountNumber: account_number?.trim() || null,
                 photo: photoUrl,
+                isTutorialData: is_tutorial_data === true || is_tutorial_data === "true",
                 createdById: req.user.prismaId,
                 ...fiscalCustomerData(req.body),
             },

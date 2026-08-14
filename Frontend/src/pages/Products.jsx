@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from "react";
 import { Layout, Card, Button, Form, message, Tooltip } from "antd";
-import { PlusOutlined, ProductOutlined, LockOutlined, QuestionCircleOutlined } from "@ant-design/icons";
+import { PlusOutlined, ProductOutlined, LockOutlined } from "@ant-design/icons";
 
 import ProductSearchBar from "../components/products/ProductSearchBar";
 import ProductsTable from "../components/products/ProductsTable";
@@ -42,7 +42,7 @@ const Products = () => {
     const { can } = useSubscription();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("products", "edit");
-    const { start: startTour } = useInventoryTour();
+    const { isOpen: isTutorialActive } = useInventoryTour();
 
     const [form] = Form.useForm();
 
@@ -158,6 +158,9 @@ const Products = () => {
 
             setModalLoading(true);
             const formData = prepareProductFormData(values, imageFile);
+            if (!editingProduct && isTutorialActive) {
+                formData.append("is_tutorial_data", "true");
+            }
 
             const result = editingProduct
                 ? await updateProduct(editingProduct._id, formData)
@@ -247,16 +250,6 @@ const Products = () => {
                                     </span>
                                 </Tooltip>
                             )}
-                            <Button
-                                icon={<QuestionCircleOutlined />}
-                                onClick={startTour}
-                                size="large"
-                                className="w-full sm:w-auto"
-                            >
-                                <span className="hidden xs:inline">
-                                    {t("inventory_tour.trigger_button")}
-                                </span>
-                            </Button>
                             <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
                                 <span className="w-full sm:w-auto inline-block">
                                     <Button

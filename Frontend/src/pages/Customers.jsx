@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 import { api } from "../api/api";
 import useI18n from "../hooks/useI18n";
 import { useTeam } from "../context/TeamContext";
+import { useInventoryTour } from "../context/InventoryTourContext";
 import {
     CustomerStats,
     CustomerTable,
@@ -16,6 +17,7 @@ const Customers = () => {
     const { t } = useI18n();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("customers", "edit");
+    const { isOpen: isTutorialActive } = useInventoryTour();
     // State management
     const [state, setState] = useState({
         customers: [],
@@ -123,6 +125,10 @@ const Customers = () => {
 
         if (editing.fileList.length > 0 && editing.fileList[0].originFileObj) {
             formData.append("photo", editing.fileList[0].originFileObj);
+        }
+
+        if (!editing.customer && isTutorialActive) {
+            formData.append("is_tutorial_data", "true");
         }
 
         return formData;
@@ -239,6 +245,7 @@ const Customers = () => {
                             size="large"
                             className="min-w-40"
                             disabled={!canEdit}
+                            data-tour="tour-add-customer"
                         >
                             {t("customers.add_customer")}
                         </Button>

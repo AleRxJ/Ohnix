@@ -267,13 +267,16 @@ model Subscription {
 }
 
 model Category {
-  id            String   @id @default(cuid())
-  legacyMongoId String?  @unique @map("legacy_mongo_id")
-  categoryName  String   @map("category_name")
-  createdById   String   @map("created_by")
-  updatedById   String?  @map("updated_by")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(cuid())
+  legacyMongoId  String?  @unique @map("legacy_mongo_id")
+  categoryName   String   @map("category_name")
+  // Created by the interactive "how does Ohnix work" tour as practice data -
+  // see tutorialData.service.js, the only thing that ever deletes these.
+  isTutorialData Boolean  @default(false) @map("is_tutorial_data")
+  createdById    String   @map("created_by")
+  updatedById    String?  @map("updated_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   createdBy User      @relation("CategoryCreatedBy", fields: [createdById], references: [id])
   updatedBy User?     @relation("CategoryUpdatedBy", fields: [updatedById], references: [id])
@@ -284,13 +287,14 @@ model Category {
 }
 
 model Unit {
-  id            String   @id @default(cuid())
-  legacyMongoId String?  @unique @map("legacy_mongo_id")
-  unitName      String   @map("unit_name")
-  createdById   String   @map("created_by")
-  updatedById   String?  @map("updated_by")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(cuid())
+  legacyMongoId  String?  @unique @map("legacy_mongo_id")
+  unitName       String   @map("unit_name")
+  isTutorialData Boolean  @default(false) @map("is_tutorial_data")
+  createdById    String   @map("created_by")
+  updatedById    String?  @map("updated_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   createdBy User      @relation("UnitCreatedBy", fields: [createdById], references: [id])
   updatedBy User?     @relation("UnitUpdatedBy", fields: [updatedById], references: [id])
@@ -301,21 +305,22 @@ model Unit {
 }
 
 model Supplier {
-  id            String   @id @default(cuid())
-  legacyMongoId String?  @unique @map("legacy_mongo_id")
-  name          String
-  email         String
-  phone         String
-  address       String
-  shopname      String?
-  type          String?
-  bankName      String?  @map("bank_name")
-  accountHolder String?  @map("account_holder")
-  accountNumber String?  @map("account_number")
-  photo         String
-  createdById   String   @map("created_by")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(cuid())
+  legacyMongoId  String?  @unique @map("legacy_mongo_id")
+  name           String
+  email          String
+  phone          String
+  address        String
+  shopname       String?
+  type           String?
+  bankName       String?  @map("bank_name")
+  accountHolder  String?  @map("account_holder")
+  accountNumber  String?  @map("account_number")
+  photo          String
+  isTutorialData Boolean  @default(false) @map("is_tutorial_data")
+  createdById    String   @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   createdBy User       @relation(fields: [createdById], references: [id])
   purchases Purchase[]
@@ -342,6 +347,7 @@ model Customer {
   tributeCode                String?  @map("tribute_code")
   municipalityCode           String?  @map("municipality_code")
   countryCode                String?  @map("country_code")
+  isTutorialData              Boolean  @default(false) @map("is_tutorial_data")
   createdById                String   @map("created_by")
   createdAt                  DateTime @default(now()) @map("created_at")
   updatedAt                  DateTime @updatedAt @map("updated_at")
@@ -372,6 +378,7 @@ model Product {
   // Per-product override for the low-stock alert threshold (Escala+ plan
   // feature). Null means "use the account-wide default threshold".
   lowStockThreshold Int?     @map("low_stock_threshold")
+  isTutorialData    Boolean  @default(false) @map("is_tutorial_data")
   createdById       String   @map("created_by")
   updatedById       String?  @map("updated_by")
   createdAt         DateTime @default(now()) @map("created_at")
@@ -441,6 +448,7 @@ model Purchase {
   purchaseNo     String         @unique @map("purchase_no")
   supplierId     String         @map("supplier_id")
   purchaseStatus PurchaseStatus @default(pending) @map("purchase_status")
+  isTutorialData Boolean        @default(false) @map("is_tutorial_data")
   createdById    String         @map("created_by")
   updatedById    String?        @map("updated_by")
   createdAt      DateTime       @default(now()) @map("created_at")
@@ -490,6 +498,7 @@ model Order {
   gst           Decimal     @default(0) @db.Decimal(12, 2)
   total         Decimal     @db.Decimal(12, 2)
   invoiceNo     String      @unique @map("invoice_no")
+  isTutorialData Boolean    @default(false) @map("is_tutorial_data")
   createdById   String      @map("created_by")
   updatedById   String?     @map("updated_by")
   createdAt     DateTime    @default(now()) @map("created_at")

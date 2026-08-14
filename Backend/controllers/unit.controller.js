@@ -46,7 +46,7 @@ const findUnitByAnyId = async (id) =>
     });
 
 const createUnit = asyncHandler(async (req, res, next) => {
-    const { unit_name } = req.body;
+    const { unit_name, is_tutorial_data } = req.body;
 
     if (!unit_name?.trim()) {
         return next(new ApiError(400, "Unit name is required"));
@@ -68,6 +68,7 @@ const createUnit = asyncHandler(async (req, res, next) => {
         const created = await prisma.unit.create({
             data: {
                 unitName: unit_name.trim(),
+                isTutorialData: is_tutorial_data === true,
                 createdById: req.user.prismaId,
             },
             include: {
