@@ -7,15 +7,18 @@ import { normalizeCountryCode } from "../services/companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { recordStockMovement } from "../services/stockMovement.service.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
+import { getColombiaTaxSettings } from "../utils/systemSettings.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
-const COLOMBIA_DEFAULT_TAX_RATE = 19;
+const TAX_TREATMENTS = ["taxed", "excluded", "exempt"];
 
 // Product.taxRate defaults to 0 at the schema level so it stays neutral for
 // companies outside Colombia. When a CO company creates a product without an
 // explicit tax rate, default it to the DIAN general VAT rate here instead -
 // silently leaving it at 0 would understate IVA on every electronic invoice.
+// The rate itself comes from SystemSetting (admin-editable), not a hardcoded
+// constant, since it only ever changes by government decree (ET art. 468).
 const resolveDefaultTaxRate = async (userId, explicitTaxRate) => {
     if (explicitTaxRate !== undefined) {
         return Number(explicitTaxRate);
@@ -26,9 +29,12 @@ const resolveDefaultTaxRate = async (userId, explicitTaxRate) => {
         select: { company: { select: { countryCode: true } } },
     });
 
-    return normalizeCountryCode(creator?.company?.countryCode) === "CO"
-        ? COLOMBIA_DEFAULT_TAX_RATE
-        : undefined;
+    if (normalizeCountryCode(creator?.company?.countryCode) !== "CO") {
+        return undefined;
+    }
+
+    const { vatRate } = await getColombiaTaxSettings();
+    return vatRate;
 };
 
 // configurableAlerts is an Escala+ feature - silently drop the field for
@@ -71,7 +77,7 @@ const mapProduct = (product) => ({
     standard_code: product.standardCode,
     tax_code: product.taxCode,
     tax_rate: product.taxRate === null ? null : Number(product.taxRate),
-    is_tax_excluded: product.isTaxExcluded,
+    tax_treatment: product.taxTreatment,
     low_stock_threshold: product.lowStockThreshold,
     is_tutorial_data: product.isTutorialData,
     created_by: product.createdBy
@@ -185,10 +191,14 @@ const createProduct = asyncHandler(async (req, res, next) => {
         standard_code,
         tax_code,
         tax_rate,
-        is_tax_excluded,
+        tax_treatment,
         low_stock_threshold,
         is_tutorial_data,
     } = req.body;
+
+    if (tax_treatment !== undefined && !TAX_TREATMENTS.includes(tax_treatment)) {
+        return next(new ApiError(400, `tax_treatment must be one of: ${TAX_TREATMENTS.join(", ")}`));
+    }
 
     if (
         !product_name ||
@@ -268,7 +278,7 @@ const createProduct = asyncHandler(async (req, res, next) => {
                 ...(standard_code !== undefined && { standardCode: String(standard_code).trim() }),
                 ...(tax_code !== undefined && { taxCode: String(tax_code).trim() || null }),
                 ...(resolvedTaxRate !== undefined && { taxRate: resolvedTaxRate }),
-                ...(typeof is_tax_excluded === "boolean" && { isTaxExcluded: is_tax_excluded }),
+                ...(tax_treatment !== undefined && { taxTreatment: tax_treatment }),
                 ...(resolvedLowStockThreshold !== undefined && { lowStockThreshold: resolvedLowStockThreshold }),
             },
             include: {
@@ -377,6 +387,13 @@ const updateProduct = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
     const updateData = req.body;
 
+    if (
+        updateData.tax_treatment !== undefined &&
+        !TAX_TREATMENTS.includes(updateData.tax_treatment)
+    ) {
+        return next(new ApiError(400, `tax_treatment must be one of: ${TAX_TREATMENTS.join(", ")}`));
+    }
+
     try {
         const existingProduct = await findProductByAnyId(id);
 
@@ -458,9 +475,7 @@ const updateProduct = asyncHandler(async (req, res, next) => {
                 taxCode: String(updateData.tax_code).trim() || null,
             }),
             ...(updateData.tax_rate !== undefined && { taxRate: Number(updateData.tax_rate) }),
-            ...(typeof updateData.is_tax_excluded === "boolean" && {
-                isTaxExcluded: updateData.is_tax_excluded,
-            }),
+            ...(updateData.tax_treatment !== undefined && { taxTreatment: updateData.tax_treatment }),
             ...(resolvedLowStockThreshold !== undefined && { lowStockThreshold: resolvedLowStockThreshold }),
             productImage,
             updatedById: req.user.prismaId,

@@ -173,6 +173,24 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                 </div>
 
                 {selectedCountry === "CO" && (
+                    <div className="module-shell rounded-2xl border border-[var(--ohnix-line-4)] p-4 mb-4">
+                        <div className="mb-1 text-sm font-bold text-[var(--ohnix-text-primary)]">{t("admin.vat_responsible_title")}</div>
+                        <p className="mb-3 text-xs text-[var(--ohnix-text-dim)]">{t("admin.vat_responsible_hint")}</p>
+                        <Form.Item name="vatResponsible" label={t("admin.vat_responsible_label")} initialValue="unset" className="mb-0">
+                            <Select
+                                size="large"
+                                className="auth-ohnix-input"
+                                options={[
+                                    { value: "unset", label: t("admin.vat_status_unset") },
+                                    { value: "responsible", label: t("admin.vat_status_responsible") },
+                                    { value: "not_responsible", label: t("admin.vat_status_not_responsible") },
+                                ]}
+                            />
+                        </Form.Item>
+                    </div>
+                )}
+
+                {selectedCountry === "CO" && (
                     <div className="relative overflow-hidden rounded-2xl border border-[#29D8D5]/25 bg-[radial-gradient(circle_at_90%_10%,rgba(41,216,213,.20),transparent_35%),linear-gradient(135deg,rgba(16,39,43,.9),rgba(14,12,31,.88))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,.07)]">
                         <div className="absolute right-[-22px] top-[-25px] h-24 w-24 rounded-full border border-[#44F3F0]/20" />
                         <div className="relative mb-1 flex items-center gap-2 text-sm font-bold text-[var(--ohnix-text-primary)]">

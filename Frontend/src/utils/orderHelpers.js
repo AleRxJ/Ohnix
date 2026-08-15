@@ -10,7 +10,8 @@ export const getStatusColor = (status) => {
 
 // This is only a client-side preview shown while building the order - the
 // backend always recomputes subTotal/gst/total from each product's own
-// taxRate/isTaxExcluded before persisting, so it stays the source of truth.
+// taxTreatment/taxRate (and the company's VAT responsibility) before
+// persisting, so it stays the source of truth.
 export const calculateOrderTotals = (orderItems, productsById = {}) => {
     let subTotal = 0;
     let gst = 0;
@@ -20,7 +21,7 @@ export const calculateOrderTotals = (orderItems, productsById = {}) => {
         subTotal += lineTotal;
 
         const product = productsById[item.product_id];
-        if (product && !product.is_tax_excluded) {
+        if (product && product.tax_treatment === "taxed") {
             const rate = Number(product.tax_rate) || 0;
             gst += (lineTotal * rate) / 100;
         }

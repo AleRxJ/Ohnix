@@ -18,7 +18,11 @@ const parseIsoCountryCode = (value) => {
     return /^[A-Z]{2}$/.test(normalized) ? normalized : null;
 };
 
+const VAT_RESPONSIBILITIES = ["unset", "responsible", "not_responsible"];
+
 const companyFiscalSelect = {
+    vatResponsible: true,
+    vatResponsibleEffectiveFrom: true,
     electronicInvoicingEnabled: true,
     electronicInvoicingProvider: true,
     factusNumberingRangeId: true,
@@ -33,6 +37,21 @@ const companyFiscalSelect = {
     alanubeTestSetId: true,
     alanubeInvoiceResolution: true,
     alanubeCreditNoteResolution: true,
+};
+
+// vatResponsibleEffectiveFrom records when the company's current VAT status
+// (ET art. 437) started applying, so a later change of status never rewrites
+// the tax treatment of orders placed under the previous one - only bump it
+// when the value is actually changing, not on every unrelated save.
+const normalizeVatResponsible = (body, currentValue) => {
+    if (body.vatResponsible === undefined) return {};
+    const normalized = `${body.vatResponsible || ""}`.trim();
+    if (!VAT_RESPONSIBILITIES.includes(normalized)) return null;
+    const config = { vatResponsible: normalized };
+    if (normalized !== currentValue) {
+        config.vatResponsibleEffectiveFrom = normalized === "unset" ? null : new Date();
+    }
+    return config;
 };
 
 const normalizeFactusConfig = (body) => {
@@ -132,6 +151,11 @@ export const createCompanyAdmin = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "countryCode must be a valid ISO-2 code (e.g. CO, ES)"));
     }
 
+    const vatResponsibleConfig = normalizeVatResponsible(req.body, undefined);
+    if (vatResponsibleConfig === null) {
+        return next(new ApiError(400, `vatResponsible must be one of: ${VAT_RESPONSIBILITIES.join(", ")}`));
+    }
+
     const existed = await prisma.company.findFirst({
         where: {
             name: {
@@ -153,6 +177,7 @@ export const createCompanyAdmin = asyncHandler(async (req, res, next) => {
             countryCode: normalizedCountryCode,
             contactEmail: normalizedContactEmail,
             phone: phone?.trim() || null,
+            ...vatResponsibleConfig,
             ...normalizeFactusConfig(req.body),
             ...normalizeAlanubeConfig(req.body),
             isActive: true,
@@ -165,6 +190,8 @@ export const createCompanyAdmin = asyncHandler(async (req, res, next) => {
             contactEmail: true,
             phone: true,
             isActive: true,
+            vatResponsible: true,
+            vatResponsibleEffectiveFrom: true,
             createdAt: true,
             updatedAt: true,
         },
@@ -195,11 +222,16 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
 
     const existing = await prisma.company.findUnique({
         where: { id: companyId },
-        select: { id: true },
+        select: { id: true, vatResponsible: true },
     });
 
     if (!existing) {
         return next(new ApiError(404, "Company not found"));
+    }
+
+    const vatResponsibleConfig = normalizeVatResponsible(req.body, existing.vatResponsible);
+    if (vatResponsibleConfig === null) {
+        return next(new ApiError(400, `vatResponsible must be one of: ${VAT_RESPONSIBILITIES.join(", ")}`));
     }
 
     if (name?.trim()) {
@@ -234,6 +266,7 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
             ...(typeof isActive === "boolean" ? { isActive } : {}),
             ...(pdfFooterText !== undefined ? { pdfFooterText: pdfFooterText?.trim() || null } : {}),
             ...(pdfAccentColor !== undefined ? { pdfAccentColor: trimmedAccentColor || null } : {}),
+            ...vatResponsibleConfig,
             ...normalizeFactusConfig(req.body),
             ...normalizeAlanubeConfig(req.body),
         },

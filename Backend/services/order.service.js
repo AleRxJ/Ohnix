@@ -39,32 +39,54 @@ const findProductByAnyId = async (id) =>
             stock: true,
             taxRate: true,
             taxCode: true,
-            isTaxExcluded: true,
+            taxTreatment: true,
             lowStockThreshold: true,
         },
     });
 
 // The order's tax total must always be derived from each product's own tax
-// rate (Product.taxRate/isTaxExcluded), never a flat assumed percentage -
-// this is what gets validated against Factus/DIAN at invoicing time.
-const computeOrderTotals = (resolvedItems) => {
+// treatment (Product.taxTreatment/taxRate), never a flat assumed percentage -
+// this is what gets validated against Factus/DIAN at invoicing time. On top
+// of that, a company explicitly marked `not_responsible` for VAT (ET art.
+// 437) never charges VAT on anything it sells, regardless of how any
+// individual product is classified - that condition dominates the product's
+// own treatment (see "El IVA en Ohnix" section 3). A company that hasn't
+// configured its VAT responsibility yet (`unset`) keeps the pre-existing
+// per-product behavior so this doesn't retroactively zero out totals for
+// every company that predates this field.
+// Resolves the effective treatment/rate/amount for a single line - the same
+// values get frozen onto its OrderDetail row (see createOrder below) so
+// nothing downstream ever has to redo this resolution against a Product/
+// Company that may have since changed.
+const computeItemTax = (item, companyCollectsVat) => {
+    const treatment = companyCollectsVat ? item.product.taxTreatment : "excluded";
+    if (treatment !== "taxed") {
+        return { treatment, rate: 0, amount: 0 };
+    }
+    const rate = Number(item.product.taxRate) || 0;
+    const lineTotal = item.quantity * item.unitcost;
+    return { treatment, rate, amount: Number(((lineTotal * rate) / 100).toFixed(2)) };
+};
+
+const computeOrderTotals = (resolvedItems, { companyVatResponsible } = {}) => {
     let subTotal = 0;
     let gst = 0;
+    const companyCollectsVat = companyVatResponsible !== "not_responsible";
+    const itemTaxes = [];
 
     for (const item of resolvedItems) {
         const lineTotal = item.quantity * item.unitcost;
         subTotal += lineTotal;
-        if (!item.product.isTaxExcluded) {
-            const rate = Number(item.product.taxRate) || 0;
-            gst += (lineTotal * rate) / 100;
-        }
+        const itemTax = computeItemTax(item, companyCollectsVat);
+        gst += itemTax.amount;
+        itemTaxes.push(itemTax);
     }
 
     subTotal = Number(subTotal.toFixed(2));
     gst = Number(gst.toFixed(2));
     const total = Number((subTotal + gst).toFixed(2));
 
-    return { subTotal, gst, total };
+    return { subTotal, gst, total, itemTaxes };
 };
 
 const findOrderByAnyId = async (id) =>
@@ -190,7 +212,13 @@ class OrderService {
             }
         }
 
-        const { subTotal, gst, total } = computeOrderTotals(resolvedItems);
+        const owner = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { company: { select: { vatResponsible: true } } },
+        });
+        const { subTotal, gst, total, itemTaxes } = computeOrderTotals(resolvedItems, {
+            companyVatResponsible: owner?.company?.vatResponsible,
+        });
 
         const order = await prisma.$transaction(async (tx) => {
             const createdOrder = await tx.order.create({
@@ -209,7 +237,8 @@ class OrderService {
                 },
             });
 
-            for (const item of resolvedItems) {
+            for (const [index, item] of resolvedItems.entries()) {
+                const itemTax = itemTaxes[index];
                 await tx.orderDetail.create({
                     data: {
                         orderId: createdOrder.id,
@@ -217,6 +246,9 @@ class OrderService {
                         quantity: item.quantity,
                         unitcost: item.unitcost,
                         total: item.quantity * item.unitcost,
+                        taxTreatmentApplied: itemTax.treatment,
+                        taxRateApplied: itemTax.rate,
+                        taxAmount: itemTax.amount,
                     },
                 });
 

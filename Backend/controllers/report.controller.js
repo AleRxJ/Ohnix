@@ -831,6 +831,102 @@ const getPeriodComparisonReport = asyncHandler(async (req, res, next) => {
     }
 });
 
+// VAT (IVA) report - Colombia only, Escala+. Reads exclusively from the tax
+// snapshot frozen on each OrderDetail at sale time (taxTreatmentApplied/
+// taxRateApplied/taxAmount - see order.service.js#computeOrderTotals), never
+// from the live Product/Company, so a report for a closed period never
+// changes value just because a product's tax classification was edited
+// later. This is a bookkeeping aid for the company's own IVA filing, not a
+// DIAN submission and not tax advice (see "El IVA en Ohnix" section 5,
+// category D - Ohnix calculates, it doesn't decide or file on the user's
+// behalf).
+const round2 = (value) => Number((Number(value) || 0).toFixed(2));
+
+const getVatReport = asyncHandler(async (req, res, next) => {
+    const { start_date, end_date } = req.query;
+    const userId = req.user.prismaId;
+    const isAdmin = req.user.role === "admin";
+    const dateFilter = buildDateFilter(start_date, end_date);
+
+    try {
+        const orderDetails = await prisma.orderDetail.findMany({
+            where: {
+                order: {
+                    ...(isAdmin ? {} : { createdById: userId }),
+                    orderStatus: { not: "cancelled" },
+                    ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
+                },
+            },
+            select: {
+                total: true,
+                taxTreatmentApplied: true,
+                taxRateApplied: true,
+                taxAmount: true,
+                order: { select: { orderDate: true } },
+            },
+        });
+
+        const byTreatmentMap = new Map();
+        const byRateMap = new Map();
+        const byPeriodMap = new Map();
+        const summary = { taxedBase: 0, excludedBase: 0, exemptBase: 0, taxCollected: 0, lineCount: orderDetails.length };
+
+        for (const detail of orderDetails) {
+            const base = Number(detail.total);
+            const taxAmount = Number(detail.taxAmount);
+            const rate = Number(detail.taxRateApplied);
+            const treatment = detail.taxTreatmentApplied;
+
+            summary.taxCollected += taxAmount;
+            if (treatment === "taxed") summary.taxedBase += base;
+            else if (treatment === "excluded") summary.excludedBase += base;
+            else if (treatment === "exempt") summary.exemptBase += base;
+
+            const treatmentEntry = byTreatmentMap.get(treatment) || { treatment, base: 0, taxAmount: 0, lineCount: 0 };
+            treatmentEntry.base += base;
+            treatmentEntry.taxAmount += taxAmount;
+            treatmentEntry.lineCount += 1;
+            byTreatmentMap.set(treatment, treatmentEntry);
+
+            if (treatment === "taxed") {
+                const rateEntry = byRateMap.get(rate) || { rate, base: 0, taxAmount: 0, lineCount: 0 };
+                rateEntry.base += base;
+                rateEntry.taxAmount += taxAmount;
+                rateEntry.lineCount += 1;
+                byRateMap.set(rate, rateEntry);
+            }
+
+            const periodKey = detail.order.orderDate.toISOString().slice(0, 7); // YYYY-MM
+            const periodEntry = byPeriodMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+            periodEntry.base += base;
+            periodEntry.taxAmount += taxAmount;
+            byPeriodMap.set(periodKey, periodEntry);
+        }
+
+        const report = {
+            summary: {
+                ...summary,
+                taxedBase: round2(summary.taxedBase),
+                excludedBase: round2(summary.excludedBase),
+                exemptBase: round2(summary.exemptBase),
+                taxCollected: round2(summary.taxCollected),
+            },
+            byTreatment: [...byTreatmentMap.values()].map((e) => ({ ...e, base: round2(e.base), taxAmount: round2(e.taxAmount) })),
+            byRate: [...byRateMap.values()]
+                .sort((a, b) => a.rate - b.rate)
+                .map((e) => ({ ...e, base: round2(e.base), taxAmount: round2(e.taxAmount) })),
+            byPeriod: [...byPeriodMap.values()]
+                .sort((a, b) => a.period.localeCompare(b.period))
+                .map((e) => ({ ...e, base: round2(e.base), taxAmount: round2(e.taxAmount) })),
+        };
+
+        return res.status(200).json(new ApiResponse(200, report, "VAT report fetched successfully"));
+    } catch (error) {
+        console.error("VAT report error:", error);
+        return next(new ApiError(500, error.message));
+    }
+});
+
 export {
     getDashboardMetrics,
     getStockReport,
@@ -842,6 +938,7 @@ export {
     getTopCustomersReport,
     getSalesByTeamReport,
     getPeriodComparisonReport,
+    getVatReport,
     exportReportPdf,
     authorizeCsvExport,
     authorizeExcelExport,

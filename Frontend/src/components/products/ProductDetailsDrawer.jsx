@@ -342,7 +342,8 @@ const ProductDetailsDrawer = ({
                         <div className="p-5 space-y-3">
                             <div className="flex justify-between"><Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.unit")}</Text><Text className="text-sm text-[var(--ohnix-text-primary)]">{product.unit_measure_code || "—"}</Text></div>
                             <div className="flex justify-between"><Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.dian_standard_code")}</Text><Text className="text-sm text-[var(--ohnix-text-primary)]">{product.standard_code || "—"}</Text></div>
-                            <div className="flex justify-between"><Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.dian_tax")}</Text><Text className="text-sm text-[var(--ohnix-text-primary)]">{product.is_tax_excluded ? t("products.dian_excluded") : `${product.tax_code || "01"} · ${product.tax_rate ?? 0}%`}</Text></div>
+                            <div className="flex justify-between"><Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.tax_treatment")}</Text><Text className="text-sm text-[var(--ohnix-text-primary)]">{t(`products.tax_treatment_${product.tax_treatment || "taxed"}`)}</Text></div>
+                            <div className="flex justify-between"><Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.dian_tax")}</Text><Text className="text-sm text-[var(--ohnix-text-primary)]">{product.tax_treatment === "excluded" ? t("products.dian_excluded") : product.tax_treatment === "exempt" ? `${product.tax_code || "01"} · ${t("products.dian_exempt")}` : `${product.tax_code || "01"} · ${product.tax_rate ?? 0}%`}</Text></div>
                         </div>
                     </div>
                 )}

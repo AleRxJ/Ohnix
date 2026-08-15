@@ -62,6 +62,23 @@ const toNumber = (value) => {
 const money = (value) => toNumber(value).toFixed(2);
 const text = (value) => `${value || ""}`.trim();
 
+// Every item below reads taxTreatmentApplied/taxRateApplied/taxAmount off
+// the OrderDetail row, not off the live Product/Company - those three
+// columns are frozen once, at order creation (order.service.js#
+// computeOrderTotals), already resolved against both the product's
+// classification and the company's VAT responsibility at that moment. This
+// is what stops a later product tax-rate edit, or a company's VAT status
+// changing, from silently rewriting the tax on a document already sold.
+//
+// "exento" (ET art. 477/478/481) still carries the VAT tax code, just at a
+// 0% rate - unlike "excluido" (art. 424/476), which drops the tax code
+// entirely.
+const taxesForItem = (item) => {
+    if (item.taxTreatmentApplied === "excluded") return [{ is_excluded: true }];
+    const rate = item.taxTreatmentApplied === "exempt" ? "0.00" : money(item.taxRateApplied);
+    return [{ code: item.product.taxCode, rate }];
+};
+
 // The official Factus V2 collection sends numbering_range_id as a bare JSON
 // number for bills/credit notes created against legacy numeric ranges (e.g.
 // 389), but some other document types (payrolls) show ULID-style string IDs
@@ -126,6 +143,9 @@ const fiscalErrorsForOrder = (order) => {
     const company = order.createdBy?.company;
     const customer = order.customer;
     if (!company?.electronicInvoicingEnabled) errors.push("company.electronicInvoicingEnabled must be enabled");
+    if (!company?.vatResponsible || company.vatResponsible === "unset") {
+        errors.push("company.vatResponsible must be set to responsible or not_responsible before issuing a DIAN document (ET art. 437)");
+    }
     if (!text(company?.factusNumberingRangeId)) errors.push("company.factusNumberingRangeId is required");
     for (const field of ["identificationDocumentCode", "identification", "legalOrganizationCode", "tributeCode", "municipalityCode"]) {
         if (!text(customer?.[field])) errors.push(`customer.${field} is required`);
@@ -135,8 +155,8 @@ const fiscalErrorsForOrder = (order) => {
         const label = item.product?.productCode || item.productId;
         if (!text(item.product?.unitMeasureCode)) errors.push(`product ${label}: unitMeasureCode is required`);
         if (!text(item.product?.standardCode)) errors.push(`product ${label}: standardCode is required`);
-        if (!item.product?.isTaxExcluded && (!text(item.product?.taxCode) || item.product?.taxRate === null)) {
-            errors.push(`product ${label}: taxCode and taxRate are required`);
+        if (item.taxTreatmentApplied !== "excluded" && !text(item.product?.taxCode)) {
+            errors.push(`product ${label}: taxCode is required`);
         }
     }
     return errors;
@@ -190,9 +210,7 @@ const buildFactusPayload = (order) => {
             price: money(item.unitcost),
             unit_measure_code: item.product.unitMeasureCode,
             standard_code: item.product.standardCode,
-            taxes: item.product.isTaxExcluded
-                ? [{ is_excluded: true }]
-                : [{ code: item.product.taxCode, rate: money(item.product.taxRate) }],
+            taxes: taxesForItem(item),
         })),
     };
 };
@@ -226,12 +244,11 @@ const buildAlanubeCustomerPayload = (customer) => {
     return payload;
 };
 
-const buildAlanubeItems = (order) => order.orderDetails.map((item) => {
+const buildAlanubeItems = (orderDetails) => orderDetails.map((item) => {
     const quantity = toNumber(item.quantity);
     const price = toNumber(item.unitcost);
     const subtotal = toNumber(quantity * price);
-    const taxRate = item.product.isTaxExcluded ? 0 : toNumber(item.product.taxRate);
-    const taxAmount = item.product.isTaxExcluded ? 0 : toNumber((subtotal * taxRate) / 100);
+    const taxAmount = toNumber(item.taxAmount);
     return {
         code: item.product.productCode || item.productId,
         standardCode: { identificationId: "999", id: item.product.standardCode },
@@ -242,9 +259,9 @@ const buildAlanubeItems = (order) => order.orderDetails.map((item) => {
         subtotal,
         taxAmount,
         total: toNumber(subtotal + taxAmount),
-        taxes: item.product.isTaxExcluded
+        taxes: item.taxTreatmentApplied === "excluded"
             ? []
-            : [{ taxCode: item.product.taxCode, taxAmount, taxPercentage: money(taxRate) }],
+            : [{ taxCode: item.product.taxCode, taxAmount, taxPercentage: money(item.taxRateApplied) }],
     };
 });
 
@@ -273,6 +290,9 @@ const alanubeFiscalErrors = (order) => {
     const company = order.createdBy?.company;
     const customer = order.customer;
     if (!company?.electronicInvoicingEnabled) errors.push("company.electronicInvoicingEnabled must be enabled");
+    if (!company?.vatResponsible || company.vatResponsible === "unset") {
+        errors.push("company.vatResponsible must be set to responsible or not_responsible before issuing a DIAN document (ET art. 437)");
+    }
     if (!text(company?.alanubeCompanyId)) errors.push("company.alanubeCompanyId is required - register the company with Alanube first");
     if (!company?.alanubeInvoiceResolution?.resolutionNumber) errors.push("company.alanubeInvoiceResolution is required");
     for (const field of ["identificationDocumentCode", "identification", "legalOrganizationCode", "tributeCode", "municipalityCode"]) {
@@ -283,8 +303,8 @@ const alanubeFiscalErrors = (order) => {
         const label = item.product?.productCode || item.productId;
         if (!text(item.product?.unitMeasureCode)) errors.push(`product ${label}: unitMeasureCode is required`);
         if (!text(item.product?.standardCode)) errors.push(`product ${label}: standardCode is required`);
-        if (!item.product?.isTaxExcluded && (!text(item.product?.taxCode) || item.product?.taxRate === null)) {
-            errors.push(`product ${label}: taxCode and taxRate are required`);
+        if (item.taxTreatmentApplied !== "excluded" && !text(item.product?.taxCode)) {
+            errors.push(`product ${label}: taxCode is required`);
         }
     }
     return errors;
@@ -311,7 +331,7 @@ const buildAlanubePayload = (order, { number }) => {
 
     const company = order.createdBy.company;
     const resolution = company.alanubeInvoiceResolution;
-    const items = buildAlanubeItems(order);
+    const items = buildAlanubeItems(order.orderDetails);
 
     return {
         documentType: "01",
@@ -366,7 +386,7 @@ const buildAlanubeCreditNotePayload = (order, invoice, company, { conceptCode, o
         }).filter(Boolean)
         : order.orderDetails;
 
-    const lineItems = buildAlanubeItems({ orderDetails: sourceDetails });
+    const lineItems = buildAlanubeItems(sourceDetails);
     const resolution = company.alanubeCreditNoteResolution || company.alanubeInvoiceResolution;
 
     return {
@@ -633,9 +653,7 @@ const buildCreditNotePayload = (order, invoice, company, { conceptCode, observat
                     price: money(detail.unitcost),
                     unit_measure_code: detail.product.unitMeasureCode,
                     standard_code: detail.product.standardCode,
-                    taxes: detail.product.isTaxExcluded
-                        ? [{ is_excluded: true }]
-                        : [{ code: detail.product.taxCode, rate: money(detail.product.taxRate) }],
+                    taxes: taxesForItem(detail),
                 };
             })
             .filter(Boolean);

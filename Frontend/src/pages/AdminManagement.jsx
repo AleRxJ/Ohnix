@@ -10,6 +10,7 @@ import {
     AdminStats,
     CompaniesTab,
     UsersTab,
+    ColombiaTaxSettingsTab,
     CompanyFormModal,
     UserFormModal,
     AssignCompanyModal,
@@ -245,6 +246,11 @@ const AdminManagement = () => {
                                     onToggleVerification={toggleUserVerification}
                                 />
                             ),
+                        },
+                        {
+                            key: "colombia-tax",
+                            label: t("admin.colombia_tax_tab"),
+                            children: <ColombiaTaxSettingsTab />,
                         },
                     ]}
                 />

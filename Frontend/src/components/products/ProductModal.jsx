@@ -38,6 +38,7 @@ const ProductModal = ({
     const currencyInputProps = getCurrencyInputProps(currency.code);
     const usesColombianEInvoicing =
         ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
+    const taxTreatment = Form.useWatch("tax_treatment", form) || "taxed";
     const [scannerOpen, setScannerOpen] = useState(false);
     const codeFieldDisabled = !!editingProduct || isTourCreateStep;
 
@@ -409,18 +410,43 @@ const ProductModal = ({
                                                 <Input size="large" className="auth-ohnix-input" placeholder="999" />
                                             </Form.Item>
                                         </Col>
-                                        <Col xs={24} sm={12}>
-                                            <Form.Item name="tax_code" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.dian_tax")}</span>} initialValue="01">
-                                                <Select size="large" className="auth-ohnix-input" options={[{ value: "01", label: t("customers.dian_tax_vat") }, { value: "04", label: "INC" }]} />
+                                        <Col xs={24}>
+                                            {/* ET art. 424/476 (excluded) never causes VAT and has no tax
+                                                code/rate at all; art. 477/478/481 (exempt) still carries the
+                                                VAT code at a 0% rate - only "taxed" needs a real rate. */}
+                                            <Form.Item
+                                                name="tax_treatment"
+                                                label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.tax_treatment")}</span>}
+                                                extra={<span className="text-[var(--ohnix-text-dim)]">{t("products.tax_treatment_hint")}</span>}
+                                                initialValue="taxed"
+                                            >
+                                                <Select
+                                                    size="large"
+                                                    className="auth-ohnix-input"
+                                                    options={[
+                                                        { value: "taxed", label: t("products.tax_treatment_taxed") },
+                                                        { value: "excluded", label: t("products.tax_treatment_excluded") },
+                                                        { value: "exempt", label: t("products.tax_treatment_exempt") },
+                                                    ]}
+                                                />
                                             </Form.Item>
                                         </Col>
-                                        <Col xs={24} sm={12}>
-                                            {/* Defaults to Colombia's general VAT rate since this block only
-                                                renders for CO companies with electronic invoicing enabled. */}
-                                            <Form.Item name="tax_rate" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.dian_tax_rate")}</span>} initialValue={19}>
-                                                <InputNumber min={0} max={100} precision={2} size="large" className="w-full auth-ohnix-input" />
-                                            </Form.Item>
-                                        </Col>
+                                        {taxTreatment !== "excluded" && (
+                                            <Col xs={24} sm={12}>
+                                                <Form.Item name="tax_code" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.dian_tax")}</span>} initialValue="01">
+                                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "01", label: t("customers.dian_tax_vat") }, { value: "04", label: "INC" }]} />
+                                                </Form.Item>
+                                            </Col>
+                                        )}
+                                        {taxTreatment === "taxed" && (
+                                            <Col xs={24} sm={12}>
+                                                {/* Defaults to Colombia's general VAT rate since this block only
+                                                    renders for CO companies with electronic invoicing enabled. */}
+                                                <Form.Item name="tax_rate" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.dian_tax_rate")}</span>} initialValue={19}>
+                                                    <InputNumber min={0} max={100} precision={2} size="large" className="w-full auth-ohnix-input" />
+                                                </Form.Item>
+                                            </Col>
+                                        )}
                                     </Row>
                                 </div>
                             )}

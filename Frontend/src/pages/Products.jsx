@@ -113,6 +113,7 @@ const Products = () => {
             standard_code: product.standard_code,
             tax_code: product.tax_code,
             tax_rate: product.tax_rate,
+            tax_treatment: product.tax_treatment,
             low_stock_threshold: product.low_stock_threshold,
         });
         setIsModalVisible(true);

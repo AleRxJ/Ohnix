@@ -44,4 +44,18 @@ export const adminService = {
         const response = await api.patch(`/users/admin/users/${userId}`, payload);
         return response.data;
     },
+
+    // Colombia VAT config (general rate, ET art. 437 UVT threshold, DIAN's
+    // yearly UVT peso value) - see Backend/utils/systemSettings.js. These
+    // change by government decree, not by a code deploy, so an admin edits
+    // them here instead of a constant in the codebase.
+    async getColombiaTaxSettings() {
+        const response = await api.get("/system-settings/colombia-tax");
+        return response.data;
+    },
+
+    async updateColombiaTaxSettings(payload) {
+        const response = await api.patch("/system-settings/colombia-tax", payload);
+        return response.data;
+    },
 };

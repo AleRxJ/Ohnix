@@ -9,7 +9,7 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from "recharts";
-import { CalendarOutlined, RiseOutlined, FallOutlined } from "@ant-design/icons";
+import { CalendarOutlined, RiseOutlined, FallOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { api } from "../../api/api";
 import AuthContext from "../../context/AuthContext";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -38,6 +38,7 @@ const AdvancedReports = () => {
     const [customersData, setCustomersData] = useState(null);
     const [teamData, setTeamData] = useState(null);
     const [comparisonData, setComparisonData] = useState(null);
+    const [vatData, setVatData] = useState(null);
     const { user } = useContext(AuthContext);
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -51,16 +52,18 @@ const AdvancedReports = () => {
         try {
             setLoading(true);
             const params = dateParams();
-            const [margin, customers, team, comparison] = await Promise.all([
+            const [margin, customers, team, comparison, vat] = await Promise.all([
                 api.get("/reports/profit-margin", { params }),
                 api.get("/reports/top-customers", { params }),
                 api.get("/reports/sales-by-team", { params }),
                 api.get("/reports/period-comparison", { params }),
+                api.get("/reports/vat", { params }),
             ]);
             setMarginData(margin.data.data);
             setCustomersData(customers.data.data);
             setTeamData(team.data.data);
             setComparisonData(comparison.data.data);
+            setVatData(vat.data.data);
         } catch (error) {
             toast.error(error.response?.data?.message || t("reports.advanced.failed"));
         } finally {
@@ -98,6 +101,13 @@ const AdvancedReports = () => {
         { title: t("reports.advanced.team_member"), dataIndex: "username", key: "username", ellipsis: true },
         { title: t("reports.advanced.orders_count"), dataIndex: "orderCount", key: "orderCount", width: 100 },
         { title: t("reports.total_sales"), dataIndex: "totalRevenue", key: "totalRevenue", render: (v) => formatCurrency(v), width: 130 },
+    ];
+
+    const vatColumns = [
+        { title: t("reports.advanced.vat_rate_column"), dataIndex: "rate", key: "rate", render: (v) => `${v}%`, width: 90 },
+        { title: t("reports.advanced.vat_base_column"), dataIndex: "base", key: "base", render: (v) => formatCurrency(v), width: 130 },
+        { title: t("reports.advanced.vat_tax_column"), dataIndex: "taxAmount", key: "taxAmount", render: (v) => formatCurrency(v), width: 130 },
+        { title: t("reports.advanced.vat_lines_column"), dataIndex: "lineCount", key: "lineCount", width: 90, responsive: ["sm"] },
     ];
 
     const filterBar = (
@@ -223,6 +233,48 @@ const AdvancedReports = () => {
                         </Card>
                     </Col>
                 </Row>
+            ),
+        },
+        {
+            key: "vat",
+            label: t("reports.advanced.vat_tab"),
+            children: vatData && (
+                <>
+                    <div className="mb-4 flex items-start gap-2 rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] p-3 text-xs text-[var(--ohnix-text-muted)]">
+                        <InfoCircleOutlined className="mt-0.5 text-[#44F3F0]" />
+                        <span>{t("reports.advanced.vat_disclaimer")}</span>
+                    </div>
+                    <Row gutter={[16, 16]} className="mb-4">
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.vat_taxed_base")} value={vatData.summary.taxedBase} formatter={formatCurrency} valueStyle={{ color: "#1890ff" }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.vat_excluded_base")} value={vatData.summary.excludedBase} formatter={formatCurrency} valueStyle={{ color: "#7C6AF7" }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.vat_exempt_base")} value={vatData.summary.exemptBase} formatter={formatCurrency} valueStyle={{ color: "#f59e0b" }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.vat_collected")} value={vatData.summary.taxCollected} formatter={formatCurrency} valueStyle={{ color: "#52c41a" }} />
+                        </Col>
+                    </Row>
+                    {vatData.byPeriod.length > 0 && (
+                        <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.vat_by_period")}>
+                            <ResponsiveContainer width="100%" height={280}>
+                                <BarChart data={vatData.byPeriod}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="period" tick={{ fontSize: 10 }} />
+                                    <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                                    <Tooltip formatter={(v) => formatCurrency(v)} />
+                                    <Bar dataKey="taxAmount" fill="#52c41a" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </Card>
+                    )}
+                    <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("reports.advanced.vat_by_rate")}>
+                        <Table columns={vatColumns} dataSource={vatData.byRate} rowKey="rate" loading={loading} pagination={false} className="module-dark-table" scroll={{ x: 400 }} />
+                    </Card>
+                </>
             ),
         },
     ];
