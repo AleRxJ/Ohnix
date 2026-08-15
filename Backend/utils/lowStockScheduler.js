@@ -401,7 +401,7 @@ class LowStockScheduler {
         if (targetUserId) {
             const user = await prisma.user.findUnique({
                 where: { id: targetUserId },
-                select: { id: true, username: true, email: true },
+                select: { id: true, username: true, email: true, preferredLanguage: true },
             });
 
             if (!user || !user.email) {
@@ -409,7 +409,7 @@ class LowStockScheduler {
             }
 
             console.log(`Manually triggering low stock alert test for a single account: ${user.username}`);
-            const result = await this.sendUserLowStockAlert(user.id, user.email, user.username);
+            const result = await this.sendUserLowStockAlert(user.id, user.email, user.username, user.preferredLanguage);
 
             return {
                 success: true,

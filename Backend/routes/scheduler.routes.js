@@ -77,7 +77,8 @@ router.post(
         const result = await lowStockScheduler.sendSelfTestAlert(
             req.user.prismaId,
             req.user.email,
-            req.user.username
+            req.user.username,
+            req.user.preferredLanguage
         );
 
         if (!result.sent) {
