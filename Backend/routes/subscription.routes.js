@@ -13,6 +13,7 @@ import {
     getMyUpgradeRequests,
     getMySubscription,
     getMyUsage,
+    getPlanCatalog,
     getUpgradeRequestsAdmin,
     getUserUsageAdmin,
     pauseMySubscription,
@@ -42,6 +43,7 @@ router.use(verifyJWT);
 // the permission. The frontend still hides the billing UI/nav for members
 // without billing:view (Dashboard.jsx, data.jsx) - this is just the status
 // check the whole app's access gate depends on.
+router.route("/plans").get(getPlanCatalog);
 router.route("/me").get(getMySubscription);
 router.route("/me/usage").get(getMyUsage);
 router.route("/me/checkout-payment-methods").get(requireModulePermission("billing", "view"), getCheckoutPaymentMethods);

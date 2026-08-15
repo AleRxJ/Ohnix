@@ -14,7 +14,7 @@ import {
     FireOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
-import { PLAN_FEATURES, FEATURE_MINIMUM_PLAN } from "../../hooks/useSubscription";
+import { PLAN_FEATURES, FEATURE_MINIMUM_PLAN, FEATURE_LABELS } from "../../hooks/useSubscription";
 
 const { Title, Text } = Typography;
 
@@ -24,17 +24,6 @@ const PLAN_COLORS = {
     scale:      "#7C6AF7",
     enterprise: "#f59e0b",
 };
-
-// Feature labels for the features panel (key → i18n label)
-const FEATURE_ROWS = [
-    { key: "reportSales",       es: "Reportes de ventas y compras",    en: "Sales & purchase reports"     },
-    { key: "exportCsv",         es: "Exportación CSV",                 en: "CSV export"                   },
-    { key: "bulkUpload",        es: "Carga masiva de productos",       en: "Bulk product upload"          },
-    { key: "autoEmailAlerts",   es: "Alertas email automáticas",       en: "Automatic email alerts"       },
-    { key: "configurableAlerts",es: "Alertas por umbral configurable", en: "Configurable stock thresholds" },
-    { key: "apiAccess",         es: "Acceso a API REST",               en: "REST API access"              },
-    { key: "advancedReports",   es: "Reportes avanzados (margen, clientes, equipo)", en: "Advanced reports (margin, customers, team)" },
-];
 
 const StatusTag = ({ status, t }) => {
     const color =
@@ -147,6 +136,30 @@ const SubscriptionPlanCard = ({
             {
                 label: t("profile.subscription.metrics.monthly_purchases"),
                 key: "monthlyPurchases",
+            },
+            {
+                label: t("profile.subscription.metrics.categories"),
+                key: "categories",
+            },
+            {
+                label: t("profile.subscription.metrics.units"),
+                key: "units",
+            },
+            {
+                label: t("profile.subscription.metrics.orders"),
+                key: "orders",
+            },
+            {
+                label: t("profile.subscription.metrics.purchases"),
+                key: "purchases",
+            },
+            {
+                // Only present in the API response for a user who owns a
+                // team (see getUsageSnapshot) - the `.filter((item) =>
+                // item.value)` below drops this row entirely for everyone
+                // else instead of showing a misleading "0 / 3".
+                label: t("profile.subscription.metrics.team_seats"),
+                key: "teamSeats",
             },
         ]
             .map((item) => ({
@@ -327,7 +340,7 @@ const SubscriptionPlanCard = ({
                             {lang === "es" ? "Funcionalidades de tu plan" : "Your plan features"}
                         </Text>
                         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            {FEATURE_ROWS.map(({ key, es, en }) => {
+                            {FEATURE_LABELS.map(({ key, es, en }) => {
                                 const enabled = planFeatures[key] ?? false;
                                 const minPlan  = FEATURE_MINIMUM_PLAN[key];
                                 return (

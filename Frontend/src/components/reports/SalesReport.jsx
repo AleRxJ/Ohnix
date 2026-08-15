@@ -131,26 +131,34 @@ const SalesReport = () => {
         return rows;
     };
 
-    const exportToCSV = () => {
+    const exportToCSV = async () => {
         if (!salesData) {
             toast.error(t("reports.no_data_to_export"));
             return;
         }
-        downloadCsv(buildReportRows(), `sales-report-${dayjs().format("YYYY-MM-DD")}.csv`);
-        toast.success(t("reports.sales_report_exported"));
+        try {
+            await downloadCsv(buildReportRows(), `sales-report-${dayjs().format("YYYY-MM-DD")}.csv`);
+            toast.success(t("reports.sales_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_csv_failed"));
+        }
     };
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
         if (!salesData) {
             toast.error(t("reports.no_data_to_export"));
             return;
         }
-        downloadExcel(
-            buildReportRows(),
-            `sales-report-${dayjs().format("YYYY-MM-DD")}.xlsx`,
-            t("reports.sales_report_summary")
-        );
-        toast.success(t("reports.sales_report_exported"));
+        try {
+            await downloadExcel(
+                buildReportRows(),
+                `sales-report-${dayjs().format("YYYY-MM-DD")}.xlsx`,
+                t("reports.sales_report_summary")
+            );
+            toast.success(t("reports.sales_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_excel_failed"));
+        }
     };
 
     const exportToPdf = async () => {

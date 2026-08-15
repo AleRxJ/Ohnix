@@ -8,6 +8,7 @@ import { useTeam } from "../context/TeamContext";
 import useI18n from "../hooks/useI18n";
 import { subscriptionService } from "../services/subscriptionService";
 import SubscriptionPlanCard from "../components/profile/SubscriptionPlanCard";
+import PlanComparisonCard from "../components/profile/PlanComparisonCard";
 import ApiKeysPanel from "../components/billing/ApiKeysPanel";
 
 const { Title, Text } = Typography;
@@ -675,6 +676,15 @@ const Billing = () => {
                         onReactivate={handleReactivate}
                         onRequestUpgrade={handleRequestUpgrade}
                         onRenew={handleRenew}
+                    />
+
+                    <PlanComparisonCard
+                        currentPlan={
+                            (subscription || user?.subscription)?.effectivePlan ||
+                            (subscription || user?.subscription)?.plan ||
+                            "starter"
+                        }
+                        onRequestUpgrade={handleRequestUpgrade}
                     />
 
                     <ApiKeysPanel />

@@ -11,6 +11,8 @@ import {
     getSalesByTeamReport,
     getPeriodComparisonReport,
     exportReportPdf,
+    authorizeCsvExport,
+    authorizeExcelExport,
 } from "../controllers/report.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
@@ -58,6 +60,14 @@ router.route("/export/pdf").post(
     enforcePlanFeature("exportPdf"),
     exportReportPdf
 );
+
+// CSV/Excel are generated client-side from data already on screen - these
+// two routes exist only so the browser has a real server check to pass
+// before it's allowed to build that file locally (see exportReportPdf's
+// comment in the controller for why this can't just be a client-side
+// `can()` check, e.g. Stock report data is ungated but Excel export isn't).
+router.route("/export/csv/authorize").get(requireModulePermission("reports", "view"), enforcePlanFeature("exportCsv"), authorizeCsvExport);
+router.route("/export/excel/authorize").get(requireModulePermission("reports", "view"), enforcePlanFeature("exportExcel"), authorizeExcelExport);
 
 // Admin-only routes - could be added if needed
 // router.route("/admin/all-users-sales").get(isAdmin, getAllUsersSalesReport);

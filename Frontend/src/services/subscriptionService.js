@@ -6,6 +6,15 @@ import { api } from "../api/api";
 import i18n from "../i18n/config";
 
 export const subscriptionService = {
+    // Full per-tier limits/features/price catalog - single source of truth
+    // for the plan comparison UI, instead of the frontend hand-duplicating
+    // pricing.middleware.js's numbers (see useSubscription.js's PLAN_FEATURES,
+    // which already drifts this way for feature flags alone).
+    async getPlanCatalog() {
+        const response = await api.get("/subscriptions/plans");
+        return response.data;
+    },
+
     async getMySubscription() {
         const response = await api.get("/subscriptions/me");
         return response.data;

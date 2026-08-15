@@ -8,6 +8,11 @@ import {
     getMonthBounds,
     getPlanLimits,
     getTeamSeatLimit,
+    PLAN_DISPLAY_NAMES,
+    PLAN_PRICES_USD,
+    PLAN_LIMITS,
+    PLAN_FEATURES,
+    TEAM_SEAT_LIMITS,
 } from "../middleware/pricing.middleware.js";
 import {
     notifyAdminsUpgradeRequestCreated,
@@ -161,6 +166,34 @@ const getUsageSnapshot = async (userId, subscription) => {
 
         return acc;
     }, {});
+
+    // Team seats aren't in PLAN_LIMITS (they come from the separate
+    // TEAM_SEAT_LIMITS map) and only apply to a user who actually owns a
+    // team - a solo/no-team account or an invited member gets no row at all
+    // instead of a misleading "0 / 3".
+    const ownedTeam = await prisma.team.findUnique({
+        where: { ownerId: userId },
+        select: { id: true },
+    });
+    if (ownedTeam) {
+        const [activeMembers, pendingInvitations] = await Promise.all([
+            prisma.teamMember.count({ where: { teamId: ownedTeam.id, status: "active" } }),
+            prisma.teamInvitation.count({
+                where: { teamId: ownedTeam.id, status: "pending", expiresAt: { gt: new Date() } },
+            }),
+        ]);
+        const seatsUsed = activeMembers + pendingInvitations;
+        const seatLimit = getTeamSeatLimit(effectivePlan);
+        withProgress.teamSeats = {
+            used: seatsUsed,
+            limit: seatLimit,
+            remaining: seatLimit === null ? null : Math.max(0, seatLimit - seatsUsed),
+            usagePercent:
+                seatLimit === null || seatLimit === 0
+                    ? null
+                    : Number(((seatsUsed / seatLimit) * 100).toFixed(2)),
+        };
+    }
 
     return {
         plan: subscription?.plan,
@@ -529,6 +562,28 @@ export const resolvePendingPaymentStatus = async (request) => {
 
     return request;
 };
+
+// Single source of truth for "what does each plan actually include" - the
+// frontend used to hand-duplicate a copy of PLAN_FEATURES (useSubscription.js)
+// that could silently drift from this file, and never had numeric limits or
+// prices mirrored at all, which is exactly why Billing.jsx had no real
+// "your plan vs the next tier" comparison. Every tier's data ships in one
+// response so the frontend can build that comparison without any more
+// hand-copied config.
+const PLAN_ORDER = ["starter", "growth", "scale", "enterprise"];
+
+export const getPlanCatalog = asyncHandler(async (_req, res) => {
+    const plans = PLAN_ORDER.map((planKey) => ({
+        key: planKey,
+        displayName: PLAN_DISPLAY_NAMES[planKey],
+        priceUSD: PLAN_PRICES_USD[planKey],
+        limits: PLAN_LIMITS[planKey],
+        features: PLAN_FEATURES[planKey],
+        teamSeats: TEAM_SEAT_LIMITS[planKey],
+    }));
+
+    return res.status(200).json(new ApiResponse(200, { plans }, "Plan catalog fetched successfully"));
+});
 
 export const getMySubscription = asyncHandler(async (req, res) => {
     const subscription = await ensureUserSubscription(req.user.prismaId);

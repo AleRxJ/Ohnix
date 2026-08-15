@@ -70,6 +70,27 @@ export const TEAM_SEAT_LIMITS = {
     enterprise: null,
 };
 
+// Feature labels (key → i18n label), shared by SubscriptionPlanCard's
+// feature list and PlanComparisonCard's "what you'd gain" list - every
+// boolean flag in PLAN_FEATURES above needs a row here. This used to be
+// defined only inside SubscriptionPlanCard.jsx and listed just 8 of the 12
+// flags, silently hiding reportPurchases, reportTopProducts, exportExcel
+// and exportPdf from a user auditing what their plan actually includes.
+export const FEATURE_LABELS = [
+    { key: "reportSales",       es: "Reportes de ventas",              en: "Sales reports"                },
+    { key: "reportPurchases",   es: "Reportes de compras",             en: "Purchase reports"              },
+    { key: "reportTopProducts", es: "Reporte de productos más vendidos", en: "Top-selling products report" },
+    { key: "exportCsv",         es: "Exportación CSV",                 en: "CSV export"                   },
+    { key: "exportExcel",       es: "Exportación Excel",               en: "Excel export"                 },
+    { key: "exportPdf",         es: "Exportación PDF",                 en: "PDF export"                   },
+    { key: "bulkUpload",        es: "Carga masiva de productos",       en: "Bulk product upload"          },
+    { key: "autoEmailAlerts",   es: "Alertas email automáticas",       en: "Automatic email alerts"       },
+    { key: "configurableAlerts",es: "Alertas por umbral configurable", en: "Configurable stock thresholds" },
+    { key: "apiAccess",         es: "Acceso a API REST",               en: "REST API access"              },
+    { key: "electronicInvoicing", es: "Facturación electrónica DIAN",  en: "DIAN electronic invoicing"    },
+    { key: "advancedReports",   es: "Reportes avanzados (margen, clientes, equipo)", en: "Advanced reports (margin, customers, team)" },
+];
+
 // The minimum plan that unlocks each feature (used for "upgrade to X" messages)
 export const FEATURE_MINIMUM_PLAN = {
     reportSales:         "growth",

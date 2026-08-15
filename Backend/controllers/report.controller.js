@@ -40,6 +40,26 @@ const exportReportPdf = asyncHandler(async (req, res, next) => {
     });
 });
 
+// CSV/Excel generation itself happens entirely client-side, from data the
+// browser already fetched through an already-gated report endpoint (see
+// Frontend/src/utils/exportReport.js) - unlike the PDF export above, there's
+// no file for the server to produce here. But the Stock report has no plan
+// gate on the underlying data (it's open to every plan), and exportExcel is
+// an Escala-only feature that a Negocio user could otherwise trigger just by
+// calling the browser's local download function directly - the "can()"
+// check that hides the button in ReportExportButtons.jsx is trivially
+// bypassable from devtools. These two routes exist purely so the frontend
+// has something real to check against before it's allowed to build the
+// file locally: enforcePlanFeature does the actual gating, a 200 here is
+// the only thing this endpoint means.
+const authorizeCsvExport = asyncHandler(async (req, res) => {
+    return res.status(200).json(new ApiResponse(200, {}, "Authorized"));
+});
+
+const authorizeExcelExport = asyncHandler(async (req, res) => {
+    return res.status(200).json(new ApiResponse(200, {}, "Authorized"));
+});
+
 const getDashboardMetrics = asyncHandler(async (req, res, next) => {
     try {
         const userId = req.user.prismaId;
@@ -823,4 +843,6 @@ export {
     getSalesByTeamReport,
     getPeriodComparisonReport,
     exportReportPdf,
+    authorizeCsvExport,
+    authorizeExcelExport,
 };

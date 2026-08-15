@@ -127,26 +127,34 @@ const StockReport = () => {
         return rows;
     };
 
-    const exportToCSV = () => {
+    const exportToCSV = async () => {
         if (filteredData.length === 0) {
             toast.error(t("reports.no_data_to_export"));
             return;
         }
-        downloadCsv(buildReportRows(), `stock-report-${dayjs().format("YYYY-MM-DD")}.csv`);
-        toast.success(t("reports.stock_report_exported"));
+        try {
+            await downloadCsv(buildReportRows(), `stock-report-${dayjs().format("YYYY-MM-DD")}.csv`);
+            toast.success(t("reports.stock_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_csv_failed"));
+        }
     };
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
         if (filteredData.length === 0) {
             toast.error(t("reports.no_data_to_export"));
             return;
         }
-        downloadExcel(
-            buildReportRows(),
-            `stock-report-${dayjs().format("YYYY-MM-DD")}.xlsx`,
-            t("reports.stock_report_summary")
-        );
-        toast.success(t("reports.stock_report_exported"));
+        try {
+            await downloadExcel(
+                buildReportRows(),
+                `stock-report-${dayjs().format("YYYY-MM-DD")}.xlsx`,
+                t("reports.stock_report_summary")
+            );
+            toast.success(t("reports.stock_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_excel_failed"));
+        }
     };
 
     const buildPdfPayload = () => {

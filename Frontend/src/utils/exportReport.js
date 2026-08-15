@@ -1,7 +1,17 @@
 import * as XLSX from "xlsx";
 import { api } from "../api/api";
 
-export const downloadCsv = (rows, filename) => {
+// CSV/Excel are built entirely client-side from data already on screen, so
+// there's no server endpoint actually producing a file to gate the way PDF
+// export is gated below - without this, the plan check hiding the button in
+// ReportExportButtons.jsx is just UI, trivially bypassed by calling
+// downloadCsv/downloadExcel directly (e.g. from devtools). This call throws
+// (propagating the 403 from enforcePlanFeature) before any file is built.
+const authorizeExport = (feature) => api.get(`/reports/export/${feature}/authorize`);
+
+export const downloadCsv = async (rows, filename) => {
+    await authorizeExport("csv");
+
     const csvContent = rows
         .map((row) => row.map((field) => `"${field ?? ""}"`).join(","))
         .join("\n");
@@ -20,7 +30,9 @@ export const downloadCsv = (rows, filename) => {
     }
 };
 
-export const downloadExcel = (rows, filename, sheetName = "Report") => {
+export const downloadExcel = async (rows, filename, sheetName = "Report") => {
+    await authorizeExport("excel");
+
     const worksheet = XLSX.utils.aoa_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName.slice(0, 31));

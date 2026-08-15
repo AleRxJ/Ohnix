@@ -125,26 +125,34 @@ const TopProductsReport = () => {
         return rows;
     };
 
-    const exportToCSV = () => {
+    const exportToCSV = async () => {
         if (topProducts.length === 0) {
             toast.error(t("reports.no_data_to_export"));
             return;
         }
-        downloadCsv(buildReportRows(), `top-products-report-${dayjs().format("YYYY-MM-DD")}.csv`);
-        toast.success(t("reports.top_products_report_exported"));
+        try {
+            await downloadCsv(buildReportRows(), `top-products-report-${dayjs().format("YYYY-MM-DD")}.csv`);
+            toast.success(t("reports.top_products_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_csv_failed"));
+        }
     };
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
         if (topProducts.length === 0) {
             toast.error(t("reports.no_data_to_export"));
             return;
         }
-        downloadExcel(
-            buildReportRows(),
-            `top-products-report-${dayjs().format("YYYY-MM-DD")}.xlsx`,
-            t("reports.top_products_report_summary")
-        );
-        toast.success(t("reports.top_products_report_exported"));
+        try {
+            await downloadExcel(
+                buildReportRows(),
+                `top-products-report-${dayjs().format("YYYY-MM-DD")}.xlsx`,
+                t("reports.top_products_report_summary")
+            );
+            toast.success(t("reports.top_products_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_excel_failed"));
+        }
     };
 
     const exportToPdf = async () => {

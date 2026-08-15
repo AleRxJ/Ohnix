@@ -273,6 +273,15 @@
       "undo_cancellation": "Deshacer cancelación",
       "support_note": "¿Necesitas un cupo personalizado? Contacta ventas.",
       "top_plan_reached": "Ya tienes el plan mas alto.",
+      "comparison": {
+        "title": "Sube a {{plan}} y obtén:",
+        "cta": "Solicitar {{plan}}",
+        "more_capacity": "Más cupo",
+        "new_features": "Funciones nuevas",
+        "custom_price": "A medida",
+        "per_month": "/mes",
+        "top_plan_message": "Ya tienes el plan más alto — todo ilimitado y sin restricciones."
+      },
       "requests_title": "Solicitudes de upgrade",
       "requests_description": "Consulta tus solicitudes de cambio de plan y su estado de revision.",
       "no_requests": "Aun no hay solicitudes de upgrade.",
@@ -382,8 +391,13 @@
         "products": "Productos",
         "customers": "Clientes",
         "suppliers": "Proveedores",
+        "categories": "Categorías",
+        "units": "Unidades",
+        "orders": "Pedidos (total)",
+        "purchases": "Compras (total)",
         "monthly_orders": "Pedidos mensuales",
-        "monthly_purchases": "Compras mensuales"
+        "monthly_purchases": "Compras mensuales",
+        "team_seats": "Cupos de equipo"
       }
     }
   },
@@ -1390,6 +1404,8 @@
     "export_excel_locked_tooltip": "Exportar Excel disponible desde el plan Escala",
     "export_pdf_locked_tooltip": "Descargar PDF disponible desde el plan Negocio",
     "export_pdf_failed": "No se pudo generar el PDF",
+    "export_csv_failed": "No se pudo exportar el CSV",
+    "export_excel_failed": "No se pudo exportar el Excel",
     "total_sales_revenue": "Ingresos totales por ventas",
     "sales_trend_over_time": "Tendencia de ventas en el tiempo",
     "sales_amount": "Importe de ventas",

@@ -273,6 +273,15 @@
       "undo_cancellation": "Undo cancellation",
       "support_note": "Need a custom quota? Contact sales.",
       "top_plan_reached": "You are already on the highest plan.",
+      "comparison": {
+        "title": "Upgrade to {{plan}} and get:",
+        "cta": "Request {{plan}}",
+        "more_capacity": "More capacity",
+        "new_features": "New features",
+        "custom_price": "Custom",
+        "per_month": "/mo",
+        "top_plan_message": "You're already on our top plan — everything unlimited, no restrictions."
+      },
       "requests_title": "Upgrade requests",
       "requests_description": "Track your submitted plan upgrade requests and their review status.",
       "no_requests": "No upgrade requests yet.",
@@ -382,8 +391,13 @@
         "products": "Products",
         "customers": "Customers",
         "suppliers": "Suppliers",
+        "categories": "Categories",
+        "units": "Units",
+        "orders": "Orders (total)",
+        "purchases": "Purchases (total)",
         "monthly_orders": "Monthly orders",
-        "monthly_purchases": "Monthly purchases"
+        "monthly_purchases": "Monthly purchases",
+        "team_seats": "Team seats"
       }
     }
   },
@@ -1389,6 +1403,8 @@
     "export_excel_locked_tooltip": "Excel export available from the Scale plan",
     "export_pdf_locked_tooltip": "PDF download available from the Business plan",
     "export_pdf_failed": "Couldn't generate the PDF",
+    "export_csv_failed": "Couldn't export the CSV",
+    "export_excel_failed": "Couldn't export the Excel file",
     "total_sales_revenue": "Total Sales Revenue",
     "sales_trend_over_time": "Sales Trend Over Time",
     "sales_amount": "Sales Amount",
