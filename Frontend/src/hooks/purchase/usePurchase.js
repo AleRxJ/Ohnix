@@ -15,7 +15,7 @@ const UPDATE_STATUS_ERROR_CODES = {
 
 export const usePurchase = () => {
     const { t } = useI18n();
-    const { isOpen: isTutorialActive, notifyAction } = useInventoryTour();
+    const { isOpen: isTutorialActive, notifyAction, createdRefs } = useInventoryTour();
     const [purchases, setPurchases] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
@@ -180,7 +180,12 @@ export const usePurchase = () => {
             if (response.data.success) {
                 toast.success(t("purchases.purchase_updated"));
                 await fetchPurchases();
-                if (status === "completed" && isTutorialActive) notifyAction("purchase-completed");
+                // Only the tutorial's OWN practice purchase counts - completing
+                // any other (real, pre-existing) purchase shares the same
+                // status control and must not be mistaken for finishing this step.
+                if (status === "completed" && isTutorialActive && purchaseId === createdRefs?.purchase?.id) {
+                    notifyAction("purchase-completed");
+                }
 
                 // Show return information if status is returned
                 if (status === "returned" && response.data.data.returnInfo) {

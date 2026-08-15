@@ -814,6 +814,45 @@ body {
   color: var(--ohnix-status-amber) !important;
 }
 
+/* Recharts (used throughout Reports: Sales/Purchase/TopProducts/Advanced)
+   ships its own light-theme defaults completely independent of antd -
+   axis tick labels default to a mid-gray fill and the legend/tooltip
+   default to near-black text, none of which read against Ohnix's dark
+   background. Recharts renders these as real SVG/DOM nodes (not a
+   portal), so plain scoped selectors reach them fine. */
+.dashboard-app .recharts-text,
+.dashboard-app .recharts-cartesian-axis-tick-value,
+.dashboard-app .recharts-polar-angle-axis-tick-value,
+.dashboard-app .recharts-label {
+  fill: var(--ohnix-text-muted) !important;
+}
+
+.dashboard-app .recharts-cartesian-axis-line,
+.dashboard-app .recharts-cartesian-axis-tick-line {
+  stroke: var(--ohnix-line-4) !important;
+}
+
+.dashboard-app .recharts-cartesian-grid-horizontal line,
+.dashboard-app .recharts-cartesian-grid-vertical line {
+  stroke: var(--ohnix-line-2) !important;
+}
+
+.dashboard-app .recharts-legend-item-text {
+  color: var(--ohnix-text-soft) !important;
+}
+
+.dashboard-app .recharts-default-tooltip {
+  background: var(--ohnix-surface-card) !important;
+  border: 1px solid var(--ohnix-line-4) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--ohnix-shadow-dropdown) !important;
+}
+
+.dashboard-app .recharts-tooltip-label,
+.dashboard-app .recharts-tooltip-item {
+  color: var(--ohnix-text-primary) !important;
+}
+
 /* antd's default disabled-field style is a near-white background with
    near-transparent black text - meant for a light theme, so on Ohnix's dark
    modals it renders as a pale box with barely-visible text (this is what

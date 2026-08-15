@@ -12,7 +12,7 @@ const UPDATE_STATUS_ERROR_CODES = {
 
 export const useOrderOperations = (refreshOrders) => {
     const { t } = useI18n();
-    const { isOpen: isTutorialActive, notifyAction } = useInventoryTour();
+    const { isOpen: isTutorialActive, notifyAction, createdRefs } = useInventoryTour();
     const [orderDetails, setOrderDetails] = useState([]);
     const [detailsLoading, setDetailsLoading] = useState(false);
     // Which order's status Select is mid-request - the status PATCH gave no
@@ -47,7 +47,12 @@ export const useOrderOperations = (refreshOrders) => {
             });
             toast.success(t("orders.order_updated"));
             await refreshOrders();
-            if (newStatus === "completed" && isTutorialActive) notifyAction("order-completed");
+            // Only the tutorial's OWN practice order counts - completing any
+            // other (real, pre-existing) order shares the same status Select
+            // and must not be mistaken for finishing this step.
+            if (newStatus === "completed" && isTutorialActive && orderId === createdRefs?.order?.id) {
+                notifyAction("order-completed");
+            }
         } catch (error) {
             toast.error(
                 describeStockErrors(error) ||

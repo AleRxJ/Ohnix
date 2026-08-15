@@ -27,6 +27,7 @@ import useSubscription from "../hooks/useSubscription";
 const Reports = () => {
     const [activeTab, setActiveTab] = useState("stock");
     const [triggeringAlert, setTriggeringAlert] = useState(false);
+    const [sendingSelfTest, setSendingSelfTest] = useState(false);
     const [schedulerStatus, setSchedulerStatus] = useState(null);
     const { user } = useContext(AuthContext);
     const { t, currentLanguage } = useI18n();
@@ -111,6 +112,30 @@ const Reports = () => {
                     t("reports.trigger_low_stock_alerts_failed")
             );
             setTriggeringAlert(false);
+        }
+    };
+
+    // Sends a low-stock alert email to the admin's OWN inbox, regardless of
+    // whether their account has any real low-stock products - unlike
+    // triggerLowStockAlert above, this never touches another account's data.
+    const sendSelfTestAlert = async () => {
+        try {
+            setSendingSelfTest(true);
+            const response = await api.post("/scheduler/send-test-alert");
+            if (response.data.success) {
+                toast.success(
+                    response.data.data?.isSample
+                        ? t("reports.self_test_alert_sent_sample")
+                        : t("reports.self_test_alert_sent_real")
+                );
+            }
+        } catch (error) {
+            toast.error(
+                error.response?.data?.message ||
+                    t("reports.trigger_low_stock_alerts_failed")
+            );
+        } finally {
+            setSendingSelfTest(false);
         }
     };
 
@@ -299,6 +324,15 @@ const Reports = () => {
                                             }
                                         />
                                     )}
+                                    <Button
+                                        type="link"
+                                        icon={<MailOutlined />}
+                                        size="small"
+                                        onClick={sendSelfTestAlert}
+                                        loading={sendingSelfTest}
+                                    >
+                                        {t("reports.send_self_test_alert")}
+                                    </Button>
                                     <Button
                                         type="link"
                                         icon={<SettingOutlined />}

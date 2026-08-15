@@ -60,6 +60,36 @@ router.post(
     })
 );
 
+// Send a low-stock alert email to the requesting admin's OWN inbox (admin
+// only). Unlike /trigger-alerts, this never touches any other account and
+// always sends - using the admin's real low-stock products if they have
+// any, otherwise clearly-labeled sample data - so it works as a genuine
+// "confirm delivery works" test regardless of what that admin's own
+// product catalog looks like.
+router.post(
+    "/send-test-alert",
+    isAdmin,
+    asyncHandler(async (req, res) => {
+        if (!req.user.email) {
+            throw new ApiError(400, "Your account has no email address on file");
+        }
+
+        const result = await lowStockScheduler.sendSelfTestAlert(
+            req.user.prismaId,
+            req.user.email,
+            req.user.username
+        );
+
+        if (!result.sent) {
+            throw new ApiError(500, result.error || "Failed to send test alert");
+        }
+
+        return res
+            .status(200)
+            .json(new ApiResponse(200, result, "Test alert sent successfully"));
+    })
+);
+
 // Update threshold (admin only)
 router.put(
     "/threshold",
