@@ -1636,7 +1636,13 @@
         "nodeThree": "Reports"
       },
       "footer_note": "Traceability on every movement",
-      "product_image_alt": "Ohnix inventory dashboard"
+      "product_image_alt": "Ohnix inventory dashboard",
+      "cycling_words": {
+        "one": "Inventory",
+        "two": "Assets",
+        "three": "Operations",
+        "four": "Warehouse"
+      }
     },
     "about": {
       "eyebrow": "About Ohnix",
@@ -1894,7 +1900,119 @@
       "tagline": "Ohnix by iTcycle — inventory, purchases, sales, and reports with full traceability.",
       "contact_title": "Contact",
       "email": "info@itcycle.com",
-      "copyright": "All rights reserved."
+      "copyright": "All rights reserved.",
+      "links": {
+        "pymes": "SMB software",
+        "team": "Team collaboration",
+        "pricing": "Pricing",
+        "comparison": "Ohnix vs Alegra",
+        "blog": "Blog"
+      }
+    },
+    "seo": {
+      "title": "Inventory and sales software for SMBs | Ohnix",
+      "description": "Ohnix centralizes inventory, purchases, orders, and reports for SMBs in a single platform with real-time traceability."
+    },
+    "hub": {
+      "eyebrow": "ADVANCED CAPABILITIES",
+      "title": "Feature Hub",
+      "description": "Powerful tools to power your business",
+      "features": {
+        "teams": {
+          "label": "TEAMS",
+          "title": "Team Collaboration",
+          "description": "Invite your team with roles and permissions per module, see in real time who's viewing or editing each record, and avoid two people stepping on the same data. Available from the Business plan.",
+          "highlights": {
+            "one": "Roles and permissions per module",
+            "two": "Live presence",
+            "three": "Simultaneous edit locking"
+          }
+        },
+        "rbac": {
+          "label": "RBAC",
+          "title": "Access Control",
+          "description": "Manage granular permissions by role. Define who can view, create, edit, or delete based on their position in the company — without compromising security.",
+          "highlights": {
+            "one": "Custom roles",
+            "two": "Permissions per module",
+            "three": "Access audit trail"
+          }
+        },
+        "analytics": {
+          "label": "ANALYTICS",
+          "title": "Automatic Insights",
+          "description": "Real-time intelligent analysis. Detect trends, low-stock alerts, and optimization opportunities without manual reports.",
+          "highlights": {
+            "one": "Real-time analysis",
+            "two": "Automatic alerts",
+            "three": "Sales trends"
+          }
+        },
+        "calc": {
+          "label": "CALC",
+          "title": "Ad Hoc Calculator",
+          "description": "Build custom calculations on your real data. Simulate scenarios, project results, and export in seconds without leaving the platform.",
+          "highlights": {
+            "one": "Custom formulas",
+            "two": "Simulations",
+            "three": "Export results"
+          }
+        }
+      }
+    },
+    "support_widget": {
+      "cta_title": "Talk to support",
+      "cta_subtitle": "Response in minutes",
+      "aria_label": "Contact via WhatsApp"
+    },
+    "video_modal": {
+      "close_aria_label": "Close",
+      "default_title": "Ohnix Demo",
+      "coming_soon_title": "Demo coming soon",
+      "coming_soon_description": "We're preparing the demo video. Contact us for a live demonstration."
+    },
+    "hero_dashboard": {
+      "window_title": "ohnix — Dashboard",
+      "live": "Live",
+      "products_label": "Products",
+      "value_label": "Value",
+      "alerts_label": "Alerts",
+      "low_stock_note": "below min.",
+      "movements_label": "Movements — 12 wks.",
+      "recent_stock_label": "Recent stock"
+    },
+    "contact_form": {
+      "name_label": "Name",
+      "name_placeholder": "Your name",
+      "email_label": "Email",
+      "email_placeholder": "you@company.com",
+      "company_label": "Company",
+      "company_placeholder": "Your company name",
+      "message_label": "Message",
+      "message_placeholder": "Tell us what you need...",
+      "submit": "Contact Now",
+      "submitting": "Sending...",
+      "success": "✓ Thanks! We'll be in touch soon.",
+      "questions_title": "Questions?",
+      "questions_subtitle": "Reach us through:",
+      "email_channel_label": "Email",
+      "whatsapp_channel_label": "WhatsApp"
+    },
+    "explore": {
+      "title": "Explore key Ohnix pages",
+      "description": "Compare plans, review the solution for SMBs, and check our comparison to make a better decision.",
+      "pymes": {
+        "title": "Software for SMBs",
+        "description": "Inventory, purchases, and orders in one flow."
+      },
+      "pricing": {
+        "title": "Plans & pricing",
+        "description": "Choose the plan that fits your stage."
+      },
+      "comparison": {
+        "title": "Ohnix vs Alegra comparison",
+        "description": "Evaluate differences by operational approach."
+      }
     }
   },
   "categories_units": {

@@ -1630,7 +1630,13 @@
         "nodeThree": "Reportes"
       },
       "footer_note": "Trazabilidad en cada movimiento",
-      "product_image_alt": "Panel de inventario de Ohnix"
+      "product_image_alt": "Panel de inventario de Ohnix",
+      "cycling_words": {
+        "one": "Inventario",
+        "two": "Activos",
+        "three": "Operaciones",
+        "four": "Almacén"
+      }
     },
     "about": {
       "eyebrow": "Acerca de Ohnix",
@@ -1888,7 +1894,119 @@
       "tagline": "Ohnix by iTcycle — inventario, compras, ventas y reportes con trazabilidad total.",
       "contact_title": "Contacto",
       "email": "info@itcycle.com",
-      "copyright": "Todos los derechos reservados."
+      "copyright": "Todos los derechos reservados.",
+      "links": {
+        "pymes": "Software pymes",
+        "team": "Equipos colaborativos",
+        "pricing": "Precios",
+        "comparison": "Ohnix vs Alegra",
+        "blog": "Blog"
+      }
+    },
+    "seo": {
+      "title": "Software de inventario y ventas para pymes | Ohnix",
+      "description": "Ohnix centraliza inventario, compras, pedidos y reportes para pymes en una sola plataforma con trazabilidad en tiempo real."
+    },
+    "hub": {
+      "eyebrow": "CAPACIDADES AVANZADAS",
+      "title": "Hub de Funcionalidades",
+      "description": "Herramientas poderosas para potenciar tu negocio",
+      "features": {
+        "teams": {
+          "label": "TEAMS",
+          "title": "Colaboración en Equipo",
+          "description": "Invita a tu equipo con roles y permisos por módulo, mira en tiempo real quién está viendo o editando cada registro, y evita que dos personas se pisen sobre el mismo dato. Disponible desde el plan Negocio.",
+          "highlights": {
+            "one": "Roles y permisos por módulo",
+            "two": "Presencia en vivo",
+            "three": "Bloqueo de edición simultánea"
+          }
+        },
+        "rbac": {
+          "label": "RBAC",
+          "title": "Control de Acceso",
+          "description": "Gestiona permisos granulares por rol. Define quién puede ver, crear, editar o eliminar según su posición en la empresa — sin comprometer la seguridad.",
+          "highlights": {
+            "one": "Roles personalizados",
+            "two": "Permisos por módulo",
+            "three": "Auditoría de acceso"
+          }
+        },
+        "analytics": {
+          "label": "ANALYTICS",
+          "title": "Insights Automáticos",
+          "description": "Análisis inteligente en tiempo real. Detecta tendencias, alertas de stock bajo y oportunidades de optimización sin necesidad de reportes manuales.",
+          "highlights": {
+            "one": "Análisis en tiempo real",
+            "two": "Alertas automáticas",
+            "three": "Tendencias de venta"
+          }
+        },
+        "calc": {
+          "label": "CALC",
+          "title": "Calculadora Ad Hoc",
+          "description": "Construye cálculos personalizados sobre tus datos reales. Simula escenarios, proyecta resultados y exporta en segundos sin salir de la plataforma.",
+          "highlights": {
+            "one": "Fórmulas personalizadas",
+            "two": "Simulaciones",
+            "three": "Exportar resultados"
+          }
+        }
+      }
+    },
+    "support_widget": {
+      "cta_title": "Hablar con soporte",
+      "cta_subtitle": "Respuesta en minutos",
+      "aria_label": "Contactar por WhatsApp"
+    },
+    "video_modal": {
+      "close_aria_label": "Cerrar",
+      "default_title": "Demo Ohnix",
+      "coming_soon_title": "Demo próximamente",
+      "coming_soon_description": "Estamos preparando el video de demo. Contáctanos para una demostración en vivo."
+    },
+    "hero_dashboard": {
+      "window_title": "ohnix — Dashboard",
+      "live": "En vivo",
+      "products_label": "Productos",
+      "value_label": "Valor",
+      "alerts_label": "Alertas",
+      "low_stock_note": "bajo mín.",
+      "movements_label": "Movimientos — 12 sem.",
+      "recent_stock_label": "Stock reciente"
+    },
+    "contact_form": {
+      "name_label": "Nombre",
+      "name_placeholder": "Tu nombre",
+      "email_label": "Email",
+      "email_placeholder": "tu@empresa.com",
+      "company_label": "Empresa",
+      "company_placeholder": "Nombre de tu empresa",
+      "message_label": "Mensaje",
+      "message_placeholder": "Cuéntanos qué necesitas...",
+      "submit": "Contactar Ahora",
+      "submitting": "Enviando...",
+      "success": "✓ Gracias! Te contactaremos pronto.",
+      "questions_title": "¿Preguntas?",
+      "questions_subtitle": "Contáctanos por:",
+      "email_channel_label": "Email",
+      "whatsapp_channel_label": "WhatsApp"
+    },
+    "explore": {
+      "title": "Explora rutas clave de Ohnix",
+      "description": "Compara planes, revisa la solución para pymes y evalúa nuestra comparativa para tomar una mejor decisión.",
+      "pymes": {
+        "title": "Software para pymes",
+        "description": "Inventario, compras y pedidos en un flujo."
+      },
+      "pricing": {
+        "title": "Planes y precios",
+        "description": "Elige el plan que se ajusta a tu etapa."
+      },
+      "comparison": {
+        "title": "Comparativa Ohnix vs Alegra",
+        "description": "Evalúa diferencias por enfoque operativo."
+      }
     }
   },
   "categories_units": {

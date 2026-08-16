@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import useI18n from "../../hooks/useI18n";
 import {
     ArrowRightOutlined,
     ApiOutlined,
@@ -107,6 +108,7 @@ const TypewriterWord = ({ words }) => {
 
 /* ── Live dashboard mockup ──────────────────────────────────────────── */
 export const HeroDashboard = () => {
+    const { t } = useI18n();
     const [productCount, setProductCount] = useState(0);
     const [valueCount, setValueCount]     = useState(0);
     const [highlightRow, setHighlightRow] = useState(0);
@@ -154,20 +156,20 @@ export const HeroDashboard = () => {
                     <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]/80" />
                 </div>
                 <span className="flex-1 text-center text-[11px] font-medium text-[#555]">
-                    ohnix — Dashboard
+                    {t("landing.hero_dashboard.window_title")}
                 </span>
                 <div className="flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_8px_rgba(41,216,213,0.9)] animate-pulse" />
-                    <span className="text-[10px] font-semibold text-[#29D8D5]">En vivo</span>
+                    <span className="text-[10px] font-semibold text-[#29D8D5]">{t("landing.hero_dashboard.live")}</span>
                 </div>
             </div>
 
             {/* KPI strip */}
             <div className="grid grid-cols-3 divide-x divide-white/5 border-b border-white/6">
                 {[
-                    { label: "Productos",  value: productCount.toLocaleString(), note: "+8.2%",    pos: true  },
-                    { label: "Valor",      value: `$${(valueCount / 10).toFixed(1)}k`, note: "+5.1%", pos: true  },
-                    { label: "Alertas",    value: "3",                           note: "bajo mín.", pos: false },
+                    { label: t("landing.hero_dashboard.products_label"), value: productCount.toLocaleString(), note: "+8.2%",    pos: true  },
+                    { label: t("landing.hero_dashboard.value_label"),    value: `$${(valueCount / 10).toFixed(1)}k`, note: "+5.1%", pos: true  },
+                    { label: t("landing.hero_dashboard.alerts_label"),   value: "3",                           note: t("landing.hero_dashboard.low_stock_note"), pos: false },
                 ].map((k) => (
                     <div key={k.label} className="bg-[#080808] px-3 py-2.5">
                         <div className="text-[9px] uppercase tracking-widest text-[#444]">{k.label}</div>
@@ -182,7 +184,7 @@ export const HeroDashboard = () => {
             {/* Sparkline */}
             <div className="border-b border-white/6 bg-[#060606] px-3 py-2.5">
                 <div className="flex items-center justify-between">
-                    <span className="text-[9px] uppercase tracking-widest text-[#444]">Movimientos — 12 sem.</span>
+                    <span className="text-[9px] uppercase tracking-widest text-[#444]">{t("landing.hero_dashboard.movements_label")}</span>
                     <span className="text-[9px] font-semibold text-[#29D8D5]">+18.4% ↑</span>
                 </div>
                 <svg viewBox={`0 0 ${W} ${H}`} className="mt-1.5 w-full" preserveAspectRatio="none" style={{ height: "36px" }}>
@@ -200,7 +202,7 @@ export const HeroDashboard = () => {
 
             {/* Rows */}
             <div className="bg-[#080808] px-3 py-2">
-                <div className="mb-1.5 text-[9px] uppercase tracking-widest text-[#444]">Stock reciente</div>
+                <div className="mb-1.5 text-[9px] uppercase tracking-widest text-[#444]">{t("landing.hero_dashboard.recent_stock_label")}</div>
                 <div>
                     {rows.map((r, i) => (
                         <div
@@ -345,6 +347,7 @@ export const PageOrbitalLayer = () => {
 };
 
 export const VideoModal = ({ isOpen, onClose, src, title }) => {
+    const { t } = useI18n();
     useEffect(() => {
         document.body.style.overflow = isOpen ? "hidden" : "";
         return () => { document.body.style.overflow = ""; };
@@ -375,7 +378,7 @@ export const VideoModal = ({ isOpen, onClose, src, title }) => {
                     type="button"
                     onClick={onClose}
                     className="absolute -right-1 -top-12 flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white transition-all hover:bg-white/20 hover:border-white/30"
-                    aria-label="Cerrar"
+                    aria-label={t("landing.video_modal.close_aria_label")}
                 >
                     <CloseOutlined />
                 </button>
@@ -384,7 +387,7 @@ export const VideoModal = ({ isOpen, onClose, src, title }) => {
                     <div className="aspect-video bg-[#090909]">
                         {embedSrc ? (
                             <iframe
-                                title={title || "Demo Ohnix"}
+                                title={title || t("landing.video_modal.default_title")}
                                 className="h-full w-full"
                                 src={embedSrc}
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -401,8 +404,8 @@ export const VideoModal = ({ isOpen, onClose, src, title }) => {
                                     </div>
                                 </div>
                                 <div>
-                                    <p className="text-lg font-semibold text-white">Demo próximamente</p>
-                                    <p className="mt-2 text-sm text-[#A9B3B8]">Estamos preparando el video de demo. Contáctanos para una demostración en vivo.</p>
+                                    <p className="text-lg font-semibold text-white">{t("landing.video_modal.coming_soon_title")}</p>
+                                    <p className="mt-2 text-sm text-[#A9B3B8]">{t("landing.video_modal.coming_soon_description")}</p>
                                 </div>
                             </div>
                         )}
@@ -1122,15 +1125,20 @@ export const PlusIcon = () => (
 
 // ─────── Feature Hub Section ─────────────────────────────────────────────
 export const FeatureHubSection = ({ heading }) => {
+    const { t } = useI18n();
     const [ref, visible] = useScrollReveal();
     const [active, setActive] = useState(0);
 
     const features = [
         {
-            title: "Colaboración en Equipo",
-            label: "TEAMS",
-            description: "Invita a tu equipo con roles y permisos por módulo, mira en tiempo real quién está viendo o editando cada registro, y evita que dos personas se pisen sobre el mismo dato. Disponible desde el plan Negocio.",
-            highlights: ["Roles y permisos por módulo", "Presencia en vivo", "Bloqueo de edición simultánea"],
+            title: t("landing.hub.features.teams.title"),
+            label: t("landing.hub.features.teams.label"),
+            description: t("landing.hub.features.teams.description"),
+            highlights: [
+                t("landing.hub.features.teams.highlights.one"),
+                t("landing.hub.features.teams.highlights.two"),
+                t("landing.hub.features.teams.highlights.three"),
+            ],
             accent: "#22C55E",
             icon: (
                 <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
@@ -1143,10 +1151,14 @@ export const FeatureHubSection = ({ heading }) => {
             ),
         },
         {
-            title: "Control de Acceso",
-            label: "RBAC",
-            description: "Gestiona permisos granulares por rol. Define quién puede ver, crear, editar o eliminar según su posición en la empresa — sin comprometer la seguridad.",
-            highlights: ["Roles personalizados", "Permisos por módulo", "Auditoría de acceso"],
+            title: t("landing.hub.features.rbac.title"),
+            label: t("landing.hub.features.rbac.label"),
+            description: t("landing.hub.features.rbac.description"),
+            highlights: [
+                t("landing.hub.features.rbac.highlights.one"),
+                t("landing.hub.features.rbac.highlights.two"),
+                t("landing.hub.features.rbac.highlights.three"),
+            ],
             accent: "#29D8D5",
             icon: (
                 <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
@@ -1160,10 +1172,14 @@ export const FeatureHubSection = ({ heading }) => {
             ),
         },
         {
-            title: "Insights Automáticos",
-            label: "ANALYTICS",
-            description: "Análisis inteligente en tiempo real. Detecta tendencias, alertas de stock bajo y oportunidades de optimización sin necesidad de reportes manuales.",
-            highlights: ["Análisis en tiempo real", "Alertas automáticas", "Tendencias de venta"],
+            title: t("landing.hub.features.analytics.title"),
+            label: t("landing.hub.features.analytics.label"),
+            description: t("landing.hub.features.analytics.description"),
+            highlights: [
+                t("landing.hub.features.analytics.highlights.one"),
+                t("landing.hub.features.analytics.highlights.two"),
+                t("landing.hub.features.analytics.highlights.three"),
+            ],
             accent: "#7C6AF7",
             icon: (
                 <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
@@ -1176,10 +1192,14 @@ export const FeatureHubSection = ({ heading }) => {
             ),
         },
         {
-            title: "Calculadora Ad Hoc",
-            label: "CALC",
-            description: "Construye cálculos personalizados sobre tus datos reales. Simula escenarios, proyecta resultados y exporta en segundos sin salir de la plataforma.",
-            highlights: ["Fórmulas personalizadas", "Simulaciones", "Exportar resultados"],
+            title: t("landing.hub.features.calc.title"),
+            label: t("landing.hub.features.calc.label"),
+            description: t("landing.hub.features.calc.description"),
+            highlights: [
+                t("landing.hub.features.calc.highlights.one"),
+                t("landing.hub.features.calc.highlights.two"),
+                t("landing.hub.features.calc.highlights.three"),
+            ],
             accent: "#F97316",
             icon: (
                 <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
@@ -1200,9 +1220,9 @@ export const FeatureHubSection = ({ heading }) => {
         <ContentSection id="feature-hub">
             <div ref={ref} className="space-y-12">
                 <SectionHeading
-                    eyebrow={heading?.eyebrow || "CAPACIDADES AVANZADAS"}
-                    title={heading?.title || "Hub de Funcionalidades"}
-                    description={heading?.description || "Herramientas diseñadas para operar con precisión"}
+                    eyebrow={heading?.eyebrow || t("landing.hub.eyebrow")}
+                    title={heading?.title || t("landing.hub.title")}
+                    description={heading?.description || t("landing.hub.description")}
                 />
 
                 {/* Layout: selector izquierda + detalle derecha */}
@@ -1334,6 +1354,7 @@ export const WhatsAppSupportButton = ({
     phoneNumber = "+573142193936",
     message = "Hola, vi Ohnix y tengo preguntas 👋",
 }) => {
+    const { t } = useI18n();
     const [hovered, setHovered] = useState(false);
     const whatsappUrl = `https://wa.me/${phoneNumber.replace(/[^\d]/g, "")}?text=${encodeURIComponent(message)}`;
 
@@ -1344,7 +1365,7 @@ export const WhatsAppSupportButton = ({
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Contactar por WhatsApp"
+                aria-label={t("landing.support_widget.aria_label")}
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
                 className="fixed bottom-8 right-8 z-50 hidden sm:flex items-center gap-3 no-underline"
@@ -1438,7 +1459,7 @@ export const WhatsAppSupportButton = ({
                             whiteSpace: "nowrap",
                         }}
                     >
-                        Hablar con soporte
+                        {t("landing.support_widget.cta_title")}
                     </p>
                     <p
                         style={{
@@ -1449,7 +1470,7 @@ export const WhatsAppSupportButton = ({
                             lineHeight: 1,
                         }}
                     >
-                        Respuesta en minutos
+                        {t("landing.support_widget.cta_subtitle")}
                     </p>
                 </div>
 
@@ -1531,10 +1552,10 @@ export const WhatsAppSupportButton = ({
                     </div>
                     <div>
                         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", lineHeight: 1 }}>
-                            Hablar con soporte
+                            {t("landing.support_widget.cta_title")}
                         </p>
                         <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6b7280", lineHeight: 1 }}>
-                            Respuesta en minutos
+                            {t("landing.support_widget.cta_subtitle")}
                         </p>
                     </div>
                 </div>
@@ -1561,6 +1582,7 @@ export const WhatsAppSupportButton = ({
 
 // ─────── Advanced Contact Section with Form ──────────────────────────────
 export const ContactFormSection = ({ heading, primaryCta, contact }) => {
+    const { t } = useI18n();
     const [ref, visible] = useScrollReveal();
     const [formData, setFormData] = useState({ name: "", email: "", message: "", company: "" });
     const [submitted, setSubmitted] = useState(false);
@@ -1591,9 +1613,9 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
         <ContentSection className={sectionShell}>
             <div ref={ref} className="space-y-12">
                 <SectionHeading
-                    eyebrow={heading?.eyebrow || "COMIENZA HOY"}
-                    title={heading?.title || "Únete a Ohnix"}
-                    description={heading?.description || "Contacta con nuestro equipo para empezar tu transformación"}
+                    eyebrow={heading?.eyebrow || t("landing.contact.eyebrow")}
+                    title={heading?.title || t("landing.contact.title")}
+                    description={heading?.description || t("landing.contact.description")}
                 />
 
                 <div className="grid grid-cols-1 gap-12 md:grid-cols-2 items-center">
@@ -1601,47 +1623,47 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                     <div className={`space-y-6 transition-all duration-500 ${visible ? "translate-x-0 opacity-100" : "-translate-x-8 opacity-0"}`}>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-white mb-2">Nombre</label>
+                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.name_label")}</label>
                                 <input
                                     type="text"
                                     name="name"
                                     value={formData.name}
                                     onChange={handleInputChange}
-                                    placeholder="Tu nombre"
+                                    placeholder={t("landing.contact_form.name_placeholder")}
                                     required
                                     className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/10 text-white placeholder-[#6B7280] focus:border-[#29D8D5] focus:outline-none transition-colors"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-white mb-2">Email</label>
+                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.email_label")}</label>
                                 <input
                                     type="email"
                                     name="email"
                                     value={formData.email}
                                     onChange={handleInputChange}
-                                    placeholder="tu@empresa.com"
+                                    placeholder={t("landing.contact_form.email_placeholder")}
                                     required
                                     className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/10 text-white placeholder-[#6B7280] focus:border-[#29D8D5] focus:outline-none transition-colors"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-white mb-2">Empresa</label>
+                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.company_label")}</label>
                                 <input
                                     type="text"
                                     name="company"
                                     value={formData.company}
                                     onChange={handleInputChange}
-                                    placeholder="Nombre de tu empresa"
+                                    placeholder={t("landing.contact_form.company_placeholder")}
                                     className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/10 text-white placeholder-[#6B7280] focus:border-[#29D8D5] focus:outline-none transition-colors"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-white mb-2">Mensaje</label>
+                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.message_label")}</label>
                                 <textarea
                                     name="message"
                                     value={formData.message}
                                     onChange={handleInputChange}
-                                    placeholder="Cuéntanos qué necesitas..."
+                                    placeholder={t("landing.contact_form.message_placeholder")}
                                     rows="4"
                                     required
                                     className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/10 text-white placeholder-[#6B7280] focus:border-[#29D8D5] focus:outline-none transition-colors resize-none"
@@ -1652,17 +1674,17 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 disabled={loading}
                                 className="w-full px-6 py-3 rounded-full bg-[#29D8D5] text-[#021314] font-semibold hover:bg-[#44F3F0] disabled:opacity-50 transition-all duration-300"
                             >
-                                {loading ? "Enviando..." : "Contactar Ahora"}
+                                {loading ? t("landing.contact_form.submitting") : t("landing.contact_form.submit")}
                             </button>
-                            {submitted && <div className="text-[#29D8D5] text-sm text-center">✓ Gracias! Te contactaremos pronto.</div>}
+                            {submitted && <div className="text-[#29D8D5] text-sm text-center">{t("landing.contact_form.success")}</div>}
                         </form>
                     </div>
 
                     {/* Información de contacto */}
                     <div className={`space-y-8 transition-all duration-500 ${visible ? "translate-x-0 opacity-100" : "translate-x-8 opacity-0"}`}>
                         <div>
-                            <h3 className="text-2xl font-bold text-white mb-2">¿Preguntas?</h3>
-                            <p className="text-[#A9B3B8]">Contáctanos por:</p>
+                            <h3 className="text-2xl font-bold text-white mb-2">{t("landing.contact_form.questions_title")}</h3>
+                            <p className="text-[#A9B3B8]">{t("landing.contact_form.questions_subtitle")}</p>
                         </div>
                         <div className="space-y-4">
                             <div className="flex items-center gap-4">
@@ -1670,7 +1692,7 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                     <MailOutlined className="text-xl" />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-[#A9B3B8]">Email</p>
+                                    <p className="text-sm text-[#A9B3B8]">{t("landing.contact_form.email_channel_label")}</p>
                                     <a href="mailto:info@itcycle.com" className="text-white font-medium hover:text-[#29D8D5]">info@itcycle.com</a>
                                 </div>
                             </div>
@@ -1681,7 +1703,7 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                     </svg>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-[#A9B3B8]">WhatsApp</p>
+                                    <p className="text-sm text-[#A9B3B8]">{t("landing.contact_form.whatsapp_channel_label")}</p>
                                     <a href="https://wa.me/573142193936" target="_blank" rel="noopener noreferrer" className="text-white font-medium hover:text-[#29D8D5]">+57 314 219 3936</a>
                                 </div>
                             </div>

@@ -269,8 +269,7 @@ const LandingPage = () => {
         },
     ];
 
-    const landingDescription =
-        "Ohnix centraliza inventario, compras, pedidos y reportes para pymes en una sola plataforma con trazabilidad en tiempo real.";
+    const landingDescription = t("landing.seo.description");
 
     const faqStructuredData = {
         "@context": "https://schema.org",
@@ -317,7 +316,7 @@ const LandingPage = () => {
     return (
         <div className="min-h-screen bg-[#050505]">
             <SeoHead
-                title="Software de inventario y ventas para pymes | Ohnix"
+                title={t("landing.seo.title")}
                 description={landingDescription}
                 canonicalPath="/"
                 lang={currentLanguage || "es"}
@@ -335,7 +334,7 @@ const LandingPage = () => {
                    src="https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
                    Leave src undefined to show the "coming soon" placeholder */
                 src={undefined}
-                title="Demo Ohnix"
+                title={t("landing.demo.video_title")}
             />
             <Navbar />
             <main className="bg-[#050505] pb-24 md:pb-0">
@@ -352,7 +351,12 @@ const LandingPage = () => {
                     footerNote={t("landing.hero.footer_note")}
                     productImageAlt={t("landing.hero.product_image_alt")}
                     heroVisual={<HeroDashboard />}
-                    cyclingWords={["Inventario", "Activos", "Operaciones", "Almacén"]}
+                    cyclingWords={[
+                        t("landing.hero.cycling_words.one"),
+                        t("landing.hero.cycling_words.two"),
+                        t("landing.hero.cycling_words.three"),
+                        t("landing.hero.cycling_words.four"),
+                    ]}
                 />
 
                 <MarqueeStrip items={marqueeItems} />
@@ -368,9 +372,9 @@ const LandingPage = () => {
 
                 <FeatureHubSection
                     heading={{
-                        eyebrow: t("landing.hub.eyebrow", "CAPACIDADES AVANZADAS"),
-                        title: t("landing.hub.title", "Hub de Funcionalidades"),
-                        description: t("landing.hub.description", "Herramientas poderosas para potenciar tu negocio"),
+                        eyebrow: t("landing.hub.eyebrow"),
+                        title: t("landing.hub.title"),
+                        description: t("landing.hub.description"),
                     }}
                 />
 
@@ -425,9 +429,9 @@ const LandingPage = () => {
 
                 <ContactFormSection
                     heading={{
-                        eyebrow: t("landing.contact.eyebrow", "COMIENZA HOY"),
-                        title: t("landing.contact.title", "Únete a Ohnix"),
-                        description: t("landing.contact.description", "Contacta con nuestro equipo para empezar tu transformación"),
+                        eyebrow: t("landing.contact.eyebrow"),
+                        title: t("landing.contact.title"),
+                        description: t("landing.contact.description"),
                     }}
                     contact={{
                         email: "info@itcycle.com",
@@ -436,9 +440,9 @@ const LandingPage = () => {
 
                 <section className="px-6 pb-16 md:px-10">
                     <div className="mx-auto max-w-7xl rounded-[24px] border border-white/10 bg-white/[0.03] p-6 md:p-8">
-                        <h2 className="text-2xl font-semibold text-white">Explora rutas clave de Ohnix</h2>
+                        <h2 className="text-2xl font-semibold text-white">{t("landing.explore.title")}</h2>
                         <p className="mt-3 text-sm leading-7 text-[#A9B3B8]">
-                            Compara planes, revisa la solucion para pymes y evalua nuestra comparativa para tomar una mejor decision.
+                            {t("landing.explore.description")}
                         </p>
                         <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                             <button
@@ -446,24 +450,24 @@ const LandingPage = () => {
                                 onClick={() => navigate("/software-inventario-pymes")}
                                 className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-left text-white hover:border-[#29D8D5]/35"
                             >
-                                <span className="block text-sm font-semibold">Software para pymes</span>
-                                <span className="mt-1 block text-xs text-[#A9B3B8]">Inventario, compras y pedidos en un flujo.</span>
+                                <span className="block text-sm font-semibold">{t("landing.explore.pymes.title")}</span>
+                                <span className="mt-1 block text-xs text-[#A9B3B8]">{t("landing.explore.pymes.description")}</span>
                             </button>
                             <button
                                 type="button"
                                 onClick={() => navigate("/precios")}
                                 className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-left text-white hover:border-[#29D8D5]/35"
                             >
-                                <span className="block text-sm font-semibold">Planes y precios</span>
-                                <span className="mt-1 block text-xs text-[#A9B3B8]">Elige el plan que se ajusta a tu etapa.</span>
+                                <span className="block text-sm font-semibold">{t("landing.explore.pricing.title")}</span>
+                                <span className="mt-1 block text-xs text-[#A9B3B8]">{t("landing.explore.pricing.description")}</span>
                             </button>
                             <button
                                 type="button"
                                 onClick={() => navigate("/comparativa/ohnix-vs-alegra")}
                                 className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-left text-white hover:border-[#29D8D5]/35"
                             >
-                                <span className="block text-sm font-semibold">Comparativa Ohnix vs Alegra</span>
-                                <span className="mt-1 block text-xs text-[#A9B3B8]">Evalua diferencias por enfoque operativo.</span>
+                                <span className="block text-sm font-semibold">{t("landing.explore.comparison.title")}</span>
+                                <span className="mt-1 block text-xs text-[#A9B3B8]">{t("landing.explore.comparison.description")}</span>
                             </button>
                         </div>
                     </div>

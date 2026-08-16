@@ -93,19 +93,19 @@ const Footer = () => {
                             {t("landing.nav.home")}
                         </Link>
                         <Link to="/software-inventario-pymes" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
-                            Software pymes
+                            {t("landing.footer.links.pymes")}
                         </Link>
                         <Link to="/colaboracion-en-equipo" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
-                            Equipos colaborativos
+                            {t("landing.footer.links.team")}
                         </Link>
                         <Link to="/precios" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
-                            Precios
+                            {t("landing.footer.links.pricing")}
                         </Link>
                         <Link to="/comparativa/ohnix-vs-alegra" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
-                            Ohnix vs Alegra
+                            {t("landing.footer.links.comparison")}
                         </Link>
                         <Link to="/blog" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
-                            Blog
+                            {t("landing.footer.links.blog")}
                         </Link>
                     </div>
                 </div>
