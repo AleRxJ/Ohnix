@@ -4,7 +4,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 import esCommon from '../locales/es/common.json';
 import enCommon from '../locales/en/common.json';
-import { applyCountryLanguageDefault, MANUAL_LANGUAGE_KEY } from './geoLanguage.js';
+import { applyCountryLanguageDefault, shouldRunCountryDetection, MANUAL_LANGUAGE_KEY } from './geoLanguage.js';
 
 const resources = {
   es: {
@@ -40,13 +40,14 @@ i18n
     },
   });
 
-// As long as the user hasn't explicitly chosen a language, refine the
-// browser-language guess above with the visitor's current country
-// (Spanish-speaking country -> es, otherwise -> en). This runs on every
-// page load - not just the first ever - so it reflects real location
-// changes (e.g. VPN, travel). A manual pick from LanguageSwitcher always
-// wins and stops this check for good.
-if (!isManuallySelected) {
+// As long as the user hasn't explicitly chosen a language, periodically
+// (every 30 days, see AUTO_DETECTION_TTL_MS) refine the browser-language
+// guess above with the visitor's current country (Spanish-speaking country
+// -> es, otherwise -> en). This catches real location changes (moving,
+// long trips) without a network call - or a possible language flash - on
+// every single page load. A manual pick from LanguageSwitcher always wins
+// and stops this check for good.
+if (!isManuallySelected && shouldRunCountryDetection()) {
   applyCountryLanguageDefault(i18n);
 }
 

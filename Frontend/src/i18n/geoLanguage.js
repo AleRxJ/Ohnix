@@ -14,6 +14,20 @@ const GEO_LOOKUP_TIMEOUT_MS = 3000;
 // and useI18n.js (writes it on manual selection).
 export const MANUAL_LANGUAGE_KEY = "language_manual";
 
+// Timestamp (ms) of the last successful automatic country detection. Used
+// to re-check periodically instead of either "once ever" (misses real
+// location changes) or "every single load" (a network call - and a
+// possible language flash - on every visit, forever).
+const AUTO_DETECTION_TIMESTAMP_KEY = "language_auto_detected_at";
+const AUTO_DETECTION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+export function shouldRunCountryDetection() {
+    if (typeof window === "undefined") return false;
+    const lastRunAt = Number(window.localStorage.getItem(AUTO_DETECTION_TIMESTAMP_KEY));
+    if (!lastRunAt) return true;
+    return Date.now() - lastRunAt > AUTO_DETECTION_TTL_MS;
+}
+
 function languageForCountryCode(countryCode) {
     if (!countryCode) return null;
     return SPANISH_SPEAKING_COUNTRY_CODES.has(countryCode.toUpperCase()) ? "es" : "en";
@@ -40,16 +54,19 @@ async function detectCountryCode() {
     }
 }
 
-// Called on every load for as long as the language is still an automatic
-// guess (config.js gates on MANUAL_LANGUAGE_KEY). i18next's synchronous
-// navigator-based guess already applies immediately so the page never
-// blocks on this; if the country-based result disagrees, it corrects the
-// language shortly after load, reflecting the visitor's actual current
-// country (including VPN/travel changes) on the next load.
+// Called by config.js when shouldRunCountryDetection() says the cached
+// result (if any) has gone stale. i18next's synchronous navigator-based
+// guess already applies immediately so the page never blocks on this; if
+// the country-based result disagrees, it corrects the language shortly
+// after load and the 30-day timer resets, so this stays a rare background
+// check rather than a per-visit one.
 export async function applyCountryLanguageDefault(i18nInstance) {
     const countryCode = await detectCountryCode();
     const detectedLanguage = languageForCountryCode(countryCode);
+    // Only mark the check as "done" on a successful lookup - a network
+    // failure should retry on the next load rather than go quiet for 30 days.
     if (!detectedLanguage) return;
+    window.localStorage.setItem(AUTO_DETECTION_TIMESTAMP_KEY, String(Date.now()));
 
     // Don't clobber a language the user explicitly picked while this lookup
     // was in flight.

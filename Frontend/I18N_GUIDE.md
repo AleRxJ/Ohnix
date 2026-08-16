@@ -146,7 +146,9 @@ El idioma seleccionado se guarda automáticamente en `localStorage` y se recuper
 
 En cada carga, i18next primero revisa `localStorage` y luego el idioma del navegador para decidir el idioma inicial.
 
-Mientras el usuario **no haya elegido un idioma manualmente**, además se consulta el país del visitante por IP en cada carga completa de la página (`src/i18n/geoLanguage.js`, servicio `ipwho.is`) para afinar ese resultado: si el país es de habla hispana, el idioma queda en español; si no, en inglés. Esta consulta es asíncrona y no bloquea la carga de la página — si el idioma detectado por país difiere del que ya se aplicó por el navegador, se corrige unos instantes después. Al repetirse en cada carga (no solo la primera visita), refleja cambios reales de ubicación (viajes, VPN) sin necesidad de borrar `localStorage`. Si la consulta falla (red, timeout, bloqueo del navegador), se mantiene el idioma detectado por el navegador sin errores visibles.
+Mientras el usuario **no haya elegido un idioma manualmente**, además se consulta el país del visitante por IP (`src/i18n/geoLanguage.js`, servicio `ipwho.is`) para afinar ese resultado: si el país es de habla hispana, el idioma queda en español; si no, en inglés. Esta consulta es asíncrona y no bloquea la carga de la página — si el idioma detectado por país difiere del que ya se aplicó por el navegador, se corrige unos instantes después.
+
+Esta consulta **no se repite en cada carga**: se guarda la fecha del último chequeo exitoso (`language_auto_detected_at`) y solo se vuelve a ejecutar cuando pasaron más de 30 días, o si el chequeo anterior falló (red, timeout, bloqueo del navegador). Así se cubren cambios reales de ubicación (mudanzas, viajes largos) sin pagar una consulta de red — ni un posible parpadeo de idioma — en cada visita.
 
 Un cambio de idioma manual (vía `LanguageSwitcher`) se guarda en `localStorage` (clave `language_manual`) y desde ese momento tiene prioridad absoluta: la detección por país deja de ejecutarse para ese navegador hasta que se borre esa clave.
 
