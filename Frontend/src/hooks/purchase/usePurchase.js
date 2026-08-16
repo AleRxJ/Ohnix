@@ -136,7 +136,14 @@ export const usePurchase = () => {
             });
             if (response.data.success) {
                 toast.success(t("purchases.purchase_created"));
-                fetchPurchases();
+                // Awaited (not fire-and-forget) specifically so that when the
+                // tour is active, the new row already exists in the DOM by
+                // the time notifyAction() below starts the complete-purchase
+                // step's target search - otherwise that search starts before
+                // this GET resolves and falls back to whichever pending
+                // purchase happens to already be rendered (a real,
+                // pre-existing one), not the practice purchase just created.
+                await fetchPurchases();
                 if (isTutorialActive) {
                     const created = response.data.data;
                     // Tracking the exact row id lets complete-purchase target

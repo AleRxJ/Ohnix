@@ -114,7 +114,14 @@ export const useOrderOperations = (refreshOrders) => {
 
             const response = await api.post("/orders", orderData);
             toast.success(t("orders.order_created"));
-            refreshOrders();
+            // Awaited (not fire-and-forget) specifically so that when the
+            // tour is active, the new row already exists in the DOM by the
+            // time notifyAction() below starts the complete-order step's
+            // target search - otherwise that search starts before this
+            // refetch resolves and falls back to whichever pending order
+            // happens to already be rendered (a real, pre-existing one), not
+            // the practice order just created.
+            await refreshOrders();
             if (isTutorialActive) {
                 const created = response.data?.data;
                 // Tracking the exact row id lets complete-order target THIS

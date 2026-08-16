@@ -138,13 +138,22 @@ const InventoryTour = () => {
 
         const interval = setInterval(() => {
             if (cancelled) return;
-            // If the exact tracked row isn't found yet (still loading, or
-            // the id-tagged fix hasn't rolled out to an old resumed session)
-            // fall back to the plain selector rather than waiting forever.
-            const el =
-                document.querySelector(effectiveSelector) ||
-                (trackedId ? document.querySelector(step.selector) : null);
             attempts += 1;
+            const exact = document.querySelector(effectiveSelector);
+            // The create/complete hook fires notifyAction() (which starts
+            // this poll) before its own refetch resolves, so the tracked
+            // row genuinely isn't in the DOM yet for the first several
+            // ticks - that's expected, not a failure. Only fall back to
+            // "any row matching the shared selector" (which real,
+            // pre-existing purchases/orders share too, e.g. QA fixtures or
+            // other pending records) once we're almost out of polling
+            // budget, so it stays a last resort for stale/resumed sessions
+            // predating the id-tagging fix, not the default path.
+            const el =
+                exact ||
+                (trackedId && attempts >= POLL_MAX_ATTEMPTS - 3
+                    ? document.querySelector(step.selector)
+                    : null);
             if (el) {
                 setTargetEl(el);
                 targetElStepIdRef.current = step.id;
