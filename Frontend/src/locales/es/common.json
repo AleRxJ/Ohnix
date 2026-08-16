@@ -1735,25 +1735,25 @@
         }
       }
     },
-    "testimonials": {
-      "eyebrow": "Equipos",
+    "useCases": {
+      "eyebrow": "Casos de uso",
       "title": "Para quienes necesitan control, no complejidad.",
-      "description": "Ejemplos de cómo los negocios usan Ohnix para mantener inventario exacto y ventas en marcha.",
+      "description": "Escenarios comunes que Ohnix ayuda a resolver en el día a día.",
       "items": {
         "first": {
-          "name": "Jefe de almacén",
-          "role": "Distribución mayorista",
-          "content": "Por fin vemos las mismas cifras de stock en oficina y en bodega. Compras y ventas alineadas sin doble digitación."
+          "context": "Distribución mayorista",
+          "title": "Una sola fuente de stock",
+          "description": "Oficina y bodega ven las mismas cifras. Compras y ventas quedan alineadas sin doble digitación."
         },
         "second": {
-          "name": "Dueña de tienda",
-          "role": "Retail",
-          "content": "Las alertas de stock bajo y los reportes rápidos nos salvaron de quiebres repetidos. Facturar desde pedidos ahorra horas cada semana."
+          "context": "Retail",
+          "title": "Menos quiebres de stock",
+          "description": "Alertas de stock bajo y reportes rápidos ayudan a evitar quiebres repetidos. Facturar desde pedidos ahorra horas cada semana."
         },
         "third": {
-          "name": "Líder de operaciones",
-          "role": "Multi-sucursal",
-          "content": "Integrar al equipo fue sencillo: productos, proveedores y pedidos en un panel con permisos claros."
+          "context": "Multi-sucursal",
+          "title": "Equipo alineado desde el día uno",
+          "description": "Productos, proveedores y pedidos en un panel con permisos claros para todo el equipo."
         }
       }
     },

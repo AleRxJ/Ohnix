@@ -894,7 +894,7 @@ export const ImpactMetricsSection = ({ heading, metrics }) => {
     );
 };
 
-export const TestimonialsSection = ({ heading, testimonials }) => (
+export const UseCasesSection = ({ heading, useCases }) => (
     <ContentSection id="stories">
         <SectionHeading
             eyebrow={heading.eyebrow}
@@ -903,17 +903,14 @@ export const TestimonialsSection = ({ heading, testimonials }) => (
         />
 
         <div className="mt-14 grid gap-5 lg:grid-cols-3">
-            {testimonials.map((testimonial) => (
+            {useCases.map((useCase) => (
                 <article
-                    key={testimonial.name}
+                    key={useCase.title}
                     className="rounded-[28px] border border-white/8 bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#29D8D5]/30"
                 >
-                    <div className="text-3xl leading-none text-[#29D8D5]">“</div>
-                    <p className="mt-4 text-sm leading-7 text-[#D4DBDF]">{testimonial.content}</p>
-                    <div className="mt-8 border-t border-white/8 pt-5">
-                        <div className="text-sm font-semibold text-white">{testimonial.name}</div>
-                        <div className="mt-1 text-xs uppercase tracking-[0.3em] text-[#A9B3B8]">{testimonial.role}</div>
-                    </div>
+                    <div className="text-xs uppercase tracking-[0.3em] text-[#29D8D5]">{useCase.context}</div>
+                    <div className="mt-4 text-lg font-semibold text-white">{useCase.title}</div>
+                    <p className="mt-3 text-sm leading-7 text-[#D4DBDF]">{useCase.description}</p>
                 </article>
             ))}
         </div>

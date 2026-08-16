@@ -144,7 +144,11 @@ El idioma seleccionado se guarda automáticamente en `localStorage` y se recuper
 
 ## Detección de Idioma
 
-i18next detecta automáticamente el idioma del navegador. Si el navegador está en un idioma no soportado, usa el idioma por defecto (inglés).
+En cada carga, i18next primero revisa `localStorage` y luego el idioma del navegador para decidir el idioma inicial.
+
+Mientras el usuario **no haya elegido un idioma manualmente**, además se consulta el país del visitante por IP en cada carga completa de la página (`src/i18n/geoLanguage.js`, servicio `ipwho.is`) para afinar ese resultado: si el país es de habla hispana, el idioma queda en español; si no, en inglés. Esta consulta es asíncrona y no bloquea la carga de la página — si el idioma detectado por país difiere del que ya se aplicó por el navegador, se corrige unos instantes después. Al repetirse en cada carga (no solo la primera visita), refleja cambios reales de ubicación (viajes, VPN) sin necesidad de borrar `localStorage`. Si la consulta falla (red, timeout, bloqueo del navegador), se mantiene el idioma detectado por el navegador sin errores visibles.
+
+Un cambio de idioma manual (vía `LanguageSwitcher`) se guarda en `localStorage` (clave `language_manual`) y desde ese momento tiene prioridad absoluta: la detección por país deja de ejecutarse para ese navegador hasta que se borre esa clave.
 
 ## Próximos Pasos
 

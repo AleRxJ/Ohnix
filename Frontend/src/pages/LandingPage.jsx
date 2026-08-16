@@ -10,7 +10,7 @@ import {
     PricingSection,
     CycleTimelineSection,
     ImpactMetricsSection,
-    TestimonialsSection,
+    UseCasesSection,
     FaqSection,
     ContactSection,
     MobileStickyCta,
@@ -169,21 +169,21 @@ const LandingPage = () => {
         },
     ];
 
-    const testimonials = [
+    const useCases = [
         {
-            name: t("landing.testimonials.items.first.name"),
-            role: t("landing.testimonials.items.first.role"),
-            content: t("landing.testimonials.items.first.content"),
+            context: t("landing.useCases.items.first.context"),
+            title: t("landing.useCases.items.first.title"),
+            description: t("landing.useCases.items.first.description"),
         },
         {
-            name: t("landing.testimonials.items.second.name"),
-            role: t("landing.testimonials.items.second.role"),
-            content: t("landing.testimonials.items.second.content"),
+            context: t("landing.useCases.items.second.context"),
+            title: t("landing.useCases.items.second.title"),
+            description: t("landing.useCases.items.second.description"),
         },
         {
-            name: t("landing.testimonials.items.third.name"),
-            role: t("landing.testimonials.items.third.role"),
-            content: t("landing.testimonials.items.third.content"),
+            context: t("landing.useCases.items.third.context"),
+            title: t("landing.useCases.items.third.title"),
+            description: t("landing.useCases.items.third.description"),
         },
     ];
 
@@ -414,13 +414,13 @@ const LandingPage = () => {
                     items={faqItems}
                 />
 
-                <TestimonialsSection
+                <UseCasesSection
                     heading={{
-                        eyebrow: t("landing.testimonials.eyebrow"),
-                        title: t("landing.testimonials.title"),
-                        description: t("landing.testimonials.description"),
+                        eyebrow: t("landing.useCases.eyebrow"),
+                        title: t("landing.useCases.title"),
+                        description: t("landing.useCases.description"),
                     }}
-                    testimonials={testimonials}
+                    useCases={useCases}
                 />
 
                 <ContactFormSection

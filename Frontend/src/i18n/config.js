@@ -4,6 +4,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 import esCommon from '../locales/es/common.json';
 import enCommon from '../locales/en/common.json';
+import { applyCountryLanguageDefault, MANUAL_LANGUAGE_KEY } from './geoLanguage.js';
 
 const resources = {
   es: {
@@ -13,6 +14,13 @@ const resources = {
     common: enCommon,
   },
 };
+
+// True only once the user has explicitly picked a language via
+// LanguageSwitcher (see useI18n.js). Until then, the language is just an
+// automatic guess (browser-language and/or country-based) and is fair game
+// to re-evaluate on every load.
+const isManuallySelected =
+  typeof window !== 'undefined' && window.localStorage.getItem(MANUAL_LANGUAGE_KEY) === '1';
 
 i18n
   .use(LanguageDetector)
@@ -31,5 +39,15 @@ i18n
       lookupLocalStorage: 'language',
     },
   });
+
+// As long as the user hasn't explicitly chosen a language, refine the
+// browser-language guess above with the visitor's current country
+// (Spanish-speaking country -> es, otherwise -> en). This runs on every
+// page load - not just the first ever - so it reflects real location
+// changes (e.g. VPN, travel). A manual pick from LanguageSwitcher always
+// wins and stops this check for good.
+if (!isManuallySelected) {
+  applyCountryLanguageDefault(i18n);
+}
 
 export default i18n;

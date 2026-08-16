@@ -1741,25 +1741,25 @@
         }
       }
     },
-    "testimonials": {
-      "eyebrow": "Teams",
-      "title": "Trusted by operators who need control, not complexity.",
-      "description": "Examples of how businesses use Ohnix to keep inventory accurate and sales moving.",
+    "useCases": {
+      "eyebrow": "Use cases",
+      "title": "Built for operators who need control, not complexity.",
+      "description": "Common scenarios Ohnix helps solve day to day.",
       "items": {
         "first": {
-          "name": "Warehouse Manager",
-          "role": "Wholesale distribution",
-          "content": "We finally see the same stock numbers in the office and on the floor. Purchases and sales stay aligned without duplicate entries."
+          "context": "Wholesale distribution",
+          "title": "One source of stock truth",
+          "description": "Office and floor see the same numbers. Purchases and sales stay aligned without duplicate entries."
         },
         "second": {
-          "name": "Store Owner",
-          "role": "Retail",
-          "content": "Low-stock alerts and quick reports saved us from repeated outages. Invoicing from orders alone cut hours each week."
+          "context": "Retail",
+          "title": "Fewer stockouts",
+          "description": "Low-stock alerts and quick reports help avoid repeated outages. Invoicing from orders alone cuts hours each week."
         },
         "third": {
-          "name": "Operations Lead",
-          "role": "Multi-branch",
-          "content": "Onboarding the team was straightforward: products, suppliers, and orders in one panel with clear permissions."
+          "context": "Multi-branch",
+          "title": "One team, aligned from day one",
+          "description": "Products, suppliers, and orders in one panel with clear permissions for the whole team."
         }
       }
     },
