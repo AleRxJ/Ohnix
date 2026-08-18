@@ -913,9 +913,11 @@ export const createUpgradeRequest = asyncHandler(async (req, res, next) => {
             targetPlan,
             notes: trimmedNotes,
             status: requiresReview ? "open" : "approved",
-            adminResponse: requiresReview
-                ? null
-                : "Auto-approved for standard checkout. Complete payment to activate your plan.",
+            // No adminResponse boilerplate here - the frontend's
+            // request_status_help_approved i18n string already says this,
+            // translated. A hardcoded English sentence here used to render
+            // as a second, untranslated line right next to it.
+            adminResponse: null,
             paymentStatus: requiresReview ? null : "awaiting_checkout",
         },
         select: UPGRADE_REQUEST_SELECT,
@@ -963,9 +965,103 @@ export const getMyUpgradeRequests = asyncHandler(async (req, res) => {
         },
     });
 
+    // Self-healing read: re-verify any still-"pending" payment against its
+    // provider every time this list loads (i.e. every time Billing.jsx
+    // mounts or refreshes), instead of only ever reporting whatever the DB
+    // last had. Before this, the only read path that actually re-checked a
+    // pending payment was the exact `?payment=cancelled&requestId=...`
+    // redirect handler in Billing.jsx - simply opening/reloading Billing
+    // later showed a stale "still verifying" notice until the 15-min
+    // reconcile job got to it. Same self-healing pattern already used by
+    // getMyUpgradeCheckoutStatus for a single request, applied here to the
+    // whole list.
+    const resolvedRequests = await Promise.all(
+        requests.map((request) =>
+            request.status === "approved" && request.paymentStatus === "pending"
+                ? resolvePendingPaymentStatus(request)
+                : request
+        )
+    );
+
     return res
         .status(200)
-        .json(new ApiResponse(200, requests, "Upgrade requests fetched successfully"));
+        .json(new ApiResponse(200, resolvedRequests, "Upgrade requests fetched successfully"));
+});
+
+/**
+ * PATCH /subscriptions/me/upgrade-requests/:id/cancel
+ *
+ * Lets the customer withdraw their own upgrade request while it's still
+ * safe to do so: before it's been reviewed ("open"/"reviewing"), or after
+ * approval but only while no payment is actually in flight
+ * (paymentStatus !== "pending" - a checkout that's mid-verification must
+ * resolve on its own first, since cancelling out from under a payment that
+ * ends up succeeding a moment later would leave a paid, closed request).
+ *
+ * Deliberately does NOT reuse closeApprovedRequestAndActivatePlan - that
+ * helper unconditionally activates the subscription on close (it backs the
+ * admin panel's "close" action, which can represent a manually-confirmed
+ * payment). A customer cancelling their own unpaid request must never
+ * activate anything, so this only ever flips status -> "closed".
+ */
+export const cancelMyUpgradeRequest = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+
+    const existing = await prisma.planUpgradeRequest.findFirst({
+        where: { id, userId: req.user.prismaId },
+        select: { id: true, status: true, paymentStatus: true },
+    });
+
+    if (!existing) {
+        return next(new ApiError(404, "Upgrade request not found"));
+    }
+
+    if (existing.status === "approved" && existing.paymentStatus === "pending") {
+        return next(
+            new ApiError(
+                409,
+                "A payment for this request is still being verified. It can't be cancelled until that finishes."
+            )
+        );
+    }
+
+    if (!["open", "reviewing", "approved"].includes(existing.status)) {
+        return next(new ApiError(409, "This request can no longer be cancelled"));
+    }
+
+    // Atomic re-check of the same condition in the WHERE clause, so a
+    // payment that flips to "pending" between the read above and this write
+    // (e.g. the customer clicks "Pagar" in another tab) loses the race
+    // instead of getting silently cancelled out from under it.
+    const updated = await prisma.planUpgradeRequest.updateMany({
+        where: {
+            id,
+            userId: req.user.prismaId,
+            OR: [
+                { status: { in: ["open", "reviewing"] } },
+                { status: "approved", paymentStatus: { not: "pending" } },
+            ],
+        },
+        data: { status: "closed" },
+    });
+
+    if (updated.count === 0) {
+        return next(
+            new ApiError(
+                409,
+                "A payment for this request is still being verified. It can't be cancelled until that finishes."
+            )
+        );
+    }
+
+    const cancelledRequest = await prisma.planUpgradeRequest.findUnique({
+        where: { id },
+        select: UPGRADE_REQUEST_SELECT,
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, cancelledRequest, "Upgrade request cancelled"));
 });
 
 export const getCheckoutPaymentMethods = asyncHandler(async (req, res) => {

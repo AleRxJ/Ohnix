@@ -192,9 +192,13 @@ const registerUser = asyncHandler(async (req, res, next) => {
                               currentPlan: "starter",
                               targetPlan: normalizedDesiredPlan,
                               status: signupRequestStatus,
-                              notes: "Requested during signup",
-                              adminResponse:
-                                  "Auto-approved for standard checkout. Complete payment to activate your plan.",
+                              // No notes/adminResponse boilerplate - the
+                              // frontend's request_status_help_approved
+                              // i18n string already covers this, translated
+                              // (see createUpgradeRequest in
+                              // subscription.controller.js for the same
+                              // fix). "Requested during signup" wasn't
+                              // useful customer-facing info anyway.
                               paymentStatus: "awaiting_checkout",
                           },
                       },

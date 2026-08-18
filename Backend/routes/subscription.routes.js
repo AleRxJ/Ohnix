@@ -4,6 +4,7 @@ import { isAdmin } from "../middleware/admin.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
 import {
     cancelMySubscription,
+    cancelMyUpgradeRequest,
     createMyUpgradeCheckoutSession,
     createRenewalCheckout,
     createUpgradeRequest,
@@ -52,6 +53,7 @@ router.route("/me/upgrade-requests")
     .post(requireModulePermission("billing", "edit"), createUpgradeRequest);
 
 // Billing mutations: require edit-level billing access.
+router.route("/me/upgrade-requests/:id/cancel").patch(requireModulePermission("billing", "edit"), cancelMyUpgradeRequest);
 router.route("/me/upgrade-requests/:id/checkout-session").post(requireModulePermission("billing", "edit"), createMyUpgradeCheckoutSession);
 router.route("/me/upgrade-requests/:id/checkout-status").get(requireModulePermission("billing", "view"), getMyUpgradeCheckoutStatus);
 router.route("/me/upgrade-requests/:id/verify-activate").post(requireModulePermission("billing", "edit"), verifyAndActivateBySession);

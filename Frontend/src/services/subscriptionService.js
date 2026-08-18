@@ -79,6 +79,13 @@ export const subscriptionService = {
         return response.data;
     },
 
+    async cancelUpgradeRequest(requestId) {
+        const response = await api.patch(
+            `/subscriptions/me/upgrade-requests/${requestId}/cancel`
+        );
+        return response.data;
+    },
+
     async createUpgradeCheckoutSession(requestId) {
         const response = await api.post(
             `/subscriptions/me/upgrade-requests/${requestId}/checkout-session`,

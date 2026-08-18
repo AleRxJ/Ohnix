@@ -24,6 +24,18 @@ const REQUEST_STATUS_COLORS = {
     closed: "default",
 };
 
+// Custom status pill for the customer's own request cards - matches the
+// glow-pill treatment already used elsewhere on this page (see the
+// "Completar pago" header pill below) instead of a plain antd Tag, which is
+// what the admin table still uses (REQUEST_STATUS_COLORS above).
+const REQUEST_STATUS_PILL_STYLES = {
+    open: { wrapperClass: "border-[#38BDF8]/25 bg-[#38BDF8]/8 text-[#38BDF8]", dotClass: "bg-[#38BDF8] shadow-[0_0_5px_#38BDF8]" },
+    reviewing: { wrapperClass: "border-[#F5B301]/25 bg-[#F5B301]/8 text-[#F5B301]", dotClass: "bg-[#F5B301] shadow-[0_0_5px_#F5B301]" },
+    approved: { wrapperClass: "border-[#34D399]/25 bg-[#34D399]/8 text-[#34D399]", dotClass: "bg-[#34D399] shadow-[0_0_5px_#34D399]" },
+    rejected: { wrapperClass: "border-[#FB7185]/25 bg-[#FB7185]/8 text-[#FB7185]", dotClass: "bg-[#FB7185] shadow-[0_0_5px_#FB7185]" },
+    closed: { wrapperClass: "border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-muted)]", dotClass: "bg-[var(--ohnix-text-muted)]" },
+};
+
 const REQUEST_STATUS_OPTIONS = [
     "open",
     "reviewing",
@@ -119,6 +131,10 @@ const UPGRADE_REQUEST_ERROR_I18N_MAP = {
         "profile.subscription.error_upgrade_request_in_progress",
     "You are already on this plan":
         "profile.subscription.error_already_on_target_plan",
+    "A payment for this request is still being verified. It can't be cancelled until that finishes.":
+        "profile.subscription.error_cancel_payment_pending",
+    "This request can no longer be cancelled":
+        "profile.subscription.error_cancel_not_allowed",
 };
 
 const Billing = () => {
@@ -152,6 +168,8 @@ const Billing = () => {
     const [adminModalOpen, setAdminModalOpen] = useState(false);
     const [adminSubmitting, setAdminSubmitting] = useState(false);
     const [checkoutLoadingRequestId, setCheckoutLoadingRequestId] = useState("");
+    const [cancelTargetRequest, setCancelTargetRequest] = useState(null);
+    const [cancellingRequestId, setCancellingRequestId] = useState("");
     const [checkoutMethodsByCountry, setCheckoutMethodsByCountry] = useState({});
     const [checkoutSelectionByRequestId, setCheckoutSelectionByRequestId] = useState({});
     const [pricingByCountry, setPricingByCountry] = useState({});
@@ -181,6 +199,22 @@ const Billing = () => {
     const TERMINAL_FAILED_PAYMENT_STATUSES = ["rejected", "failed", "amount_mismatch", "expired", "cancelled"];
     const failedPaymentStatusForRequest = (request) =>
         TERMINAL_FAILED_PAYMENT_STATUSES.includes(request?.paymentStatus) ? request.paymentStatus : null;
+
+    // Mirrors the backend's cancelMyUpgradeRequest guard exactly: safe to
+    // withdraw before review, or after approval as long as no payment is
+    // actually mid-verification right now - cancelling out from under a
+    // payment that's about to succeed would leave a paid, closed request
+    // behind. The backend re-checks this atomically regardless, so this is
+    // only about showing/hiding the button, not the real guarantee.
+    const isRequestCancellable = (request) => {
+        if (!request) return false;
+        if (["open", "reviewing"].includes(request.status)) return true;
+        return (
+            request.status === "approved" &&
+            request.paymentStatus !== "pending" &&
+            !isPlanAlreadyActiveForRequest(request)
+        );
+    };
 
     const isRequestInProgress = (request) => {
         if (!request) {
@@ -564,6 +598,27 @@ const Billing = () => {
         }
     };
 
+    const handleConfirmCancelRequest = async () => {
+        const request = cancelTargetRequest;
+        if (!request?.id) {
+            return;
+        }
+
+        try {
+            setCancellingRequestId(request.id);
+            await subscriptionService.cancelUpgradeRequest(request.id);
+            toast.success(t("profile.subscription.cancel_request_success"));
+            setCancelTargetRequest(null);
+            await fetchSubscriptionData();
+        } catch (error) {
+            toast.error(
+                resolveLocalizedErrorMessage(error, "profile.subscription.cancel_request_error")
+            );
+        } finally {
+            setCancellingRequestId("");
+        }
+    };
+
     const handleStartCheckoutColombia = async (request) => {
         if (!request?.id) {
             return;
@@ -836,6 +891,7 @@ const Billing = () => {
 
                         <List
                             className="mt-4"
+                            split={false}
                             dataSource={safeRequests}
                             locale={{
                                 emptyText: (
@@ -845,21 +901,26 @@ const Billing = () => {
                                 ),
                             }}
                             renderItem={(item) => (
-                                <List.Item className="!border-[var(--ohnix-line-4)]">
+                                <List.Item className="!border-0 !p-0 !mb-3 last:!mb-0">
                                     {(() => {
                                         const paymentUrl = item.paymentLink || extractFirstUrl(item.adminResponse);
                                         const selection = ensureCheckoutSelection(item.id);
                                         const methodsForCountry =
                                             checkoutMethodsByCountry[selection.country] || [];
+                                        const statusPillStyle =
+                                            REQUEST_STATUS_PILL_STYLES[item.status] || REQUEST_STATUS_PILL_STYLES.closed;
 
                                         return (
-                                    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                        <div>
-                                            <Text className="text-[var(--ohnix-text-primary)]">
-                                                {t(`profile.subscription.plan_${item.currentPlan}`)} → {" "}
-                                                {t(`profile.subscription.plan_${item.targetPlan}`)}
-                                            </Text>
-                                            <div className="text-xs text-[var(--ohnix-text-muted)]">
+                                    <div className="relative w-full overflow-hidden rounded-2xl border border-[var(--ohnix-line-4)] bg-gradient-to-br from-[var(--ohnix-surface-card)] to-[var(--ohnix-surface-card-soft)] p-4 transition-colors duration-200 hover:border-[#29D8D5]/25 sm:p-5">
+                                        <div className="pointer-events-none absolute -top-10 right-6 h-24 w-40 rounded-full bg-[#29D8D5]/5 blur-3xl" />
+                                    <div className="relative flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex flex-wrap items-center gap-1.5 text-sm font-semibold text-[var(--ohnix-text-primary)] sm:text-base">
+                                                <span>{t(`profile.subscription.plan_${item.currentPlan}`)}</span>
+                                                <span className="text-[#29D8D5]">→</span>
+                                                <span>{t(`profile.subscription.plan_${item.targetPlan}`)}</span>
+                                            </div>
+                                            <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
                                                 {new Date(item.createdAt).toLocaleString()}
                                             </div>
                                             {item.notes ? (
@@ -1078,9 +1139,24 @@ const Billing = () => {
                                                 })()
                                             ) : null}
                                         </div>
-                                        <Tag color={REQUEST_STATUS_COLORS[item.status] || "default"}>
-                                            {t(`profile.subscription.request_status_${item.status}`)}
-                                        </Tag>
+                                        <div className="flex shrink-0 flex-row items-center gap-2 sm:flex-col sm:items-end">
+                                            <span
+                                                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${statusPillStyle.wrapperClass}`}
+                                            >
+                                                <span className={`h-1.5 w-1.5 rounded-full ${statusPillStyle.dotClass}`} />
+                                                {t(`profile.subscription.request_status_${item.status}`)}
+                                            </span>
+                                            {isRequestCancellable(item) ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCancelTargetRequest(item)}
+                                                    className="text-[11px] font-medium text-[var(--ohnix-text-muted)] underline decoration-dotted underline-offset-2 transition-colors hover:text-rose-300"
+                                                >
+                                                    {t("profile.subscription.cancel_request_button")}
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </div>
                                     </div>
                                         );
                                     })()}
@@ -1346,6 +1422,28 @@ const Billing = () => {
                         />
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            <Modal
+                title={
+                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                        {t("profile.subscription.cancel_request_confirm_title")}
+                    </span>
+                }
+                open={Boolean(cancelTargetRequest)}
+                onCancel={() => setCancelTargetRequest(null)}
+                onOk={handleConfirmCancelRequest}
+                okText={t("profile.subscription.cancel_request_confirm_ok")}
+                cancelText={t("common.cancel")}
+                okButtonProps={{ danger: true, className: "h-10 px-6 rounded-md font-medium" }}
+                cancelButtonProps={{ className: "h-10 px-6 rounded-md" }}
+                confirmLoading={cancellingRequestId === cancelTargetRequest?.id}
+                destroyOnClose
+                styles={darkModalStyles}
+            >
+                <Text className="text-[var(--ohnix-text-muted)]">
+                    {t("profile.subscription.cancel_request_confirm_body")}
+                </Text>
             </Modal>
         </div>
     );
