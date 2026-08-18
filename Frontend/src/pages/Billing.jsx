@@ -728,6 +728,7 @@ const Billing = () => {
                         onReactivate={handleReactivate}
                         onRequestUpgrade={handleRequestUpgrade}
                         onRenew={handleRenew}
+                        isAdmin={isAdmin}
                     />
 
                     <PlanComparisonCard

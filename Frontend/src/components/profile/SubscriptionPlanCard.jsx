@@ -73,6 +73,7 @@ const SubscriptionPlanCard = ({
     onRenew,
     compact = false,
     onOpenBilling,
+    isAdmin = false,
 }) => {
     const { t, currentLanguage } = useI18n();
     const lang = currentLanguage === "es" ? "es" : "en";
@@ -315,6 +316,15 @@ const SubscriptionPlanCard = ({
                     <Tag color="cyan" className="capitalize">
                         {t(`profile.subscription.plan_${plan}`)}
                     </Tag>
+                    {/* Admins bypass every plan feature/limit check
+                        (enforcePlanFeature, useSubscription's can()) - without
+                        this, the plan tag above looks like a real restriction
+                        that isn't actually being enforced for this account. */}
+                    {isAdmin && (
+                        <Tag color="gold">
+                            {lang === "es" ? "Admin · sin restricciones de plan" : "Admin · no plan restrictions"}
+                        </Tag>
+                    )}
                     <StatusTag status={status} t={t} />
                     <Button
                         type="text"

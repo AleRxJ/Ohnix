@@ -529,6 +529,7 @@ export const resolvePendingPaymentStatus = async (request) => {
                 EPAYCO_STATE.REVERSED,
                 EPAYCO_STATE.EXPIRED,
                 EPAYCO_STATE.ABANDONED,
+                EPAYCO_STATE.CANCELLED,
             ]);
 
             if (TERMINAL_FAILED_STATES.has(stateCode)) {
@@ -537,6 +538,8 @@ export const resolvePendingPaymentStatus = async (request) => {
                     paymentStatus = "expired";
                 } else if (stateCode === EPAYCO_STATE.REJECTED) {
                     paymentStatus = "rejected";
+                } else if (stateCode === EPAYCO_STATE.CANCELLED) {
+                    paymentStatus = "cancelled";
                 } else {
                     paymentStatus = "failed";
                 }
@@ -1808,6 +1811,27 @@ export const handleEpaycoConfirmation = async (req, res) => {
             return res.status(200).json({ success: true, message: "Already processed" });
         }
 
+        // Persist ePayco's own transaction reference as soon as we see it,
+        // regardless of the transaction's outcome. Until now this only got
+        // written on acceptance (inside closeApprovedRequestAndActivatePlan
+        // below) - every other outcome left paymentSessionId at whatever
+        // checkout-time invoice placeholder was set when the session was
+        // created (see payment.service.js), which is NOT a valid ref_payco.
+        // queryEpaycoTransaction (the reconcile job's / "verify now"'s live
+        // lookup) needs the real ref_payco to find the transaction at all -
+        // confirmed against a real stuck production request, where querying
+        // by the stored placeholder returned "Transacción no existe" even
+        // once the query endpoint itself was fixed. Without this, the live
+        // lookup can never work for a request whose webhook hasn't already
+        // fully resolved it, for any outcome (rejected/failed/expired/
+        // cancelled), not just the "Cancelada" case that surfaced this.
+        if (refPayco && existingRequest.paymentSessionId !== refPayco) {
+            await prisma.planUpgradeRequest.updateMany({
+                where: { id: requestId, status: "approved" },
+                data: { paymentSessionId: refPayco },
+            });
+        }
+
         if (isEpaycoTransactionApproved(stateCode)) {
             // The signature only proves the payload wasn't tampered with in
             // transit - it says nothing about whether the amount actually
@@ -1855,6 +1879,8 @@ export const handleEpaycoConfirmation = async (req, res) => {
             await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus });
         } else if (stateCode === EPAYCO_STATE.EXPIRED || stateCode === EPAYCO_STATE.ABANDONED) {
             await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus: "expired" });
+        } else if (stateCode === EPAYCO_STATE.CANCELLED) {
+            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus: "cancelled" });
         } else if (
             stateCode === EPAYCO_STATE.PENDING ||
             stateCode === EPAYCO_STATE.RETAINED ||
@@ -1920,8 +1946,19 @@ export const handleEpaycoResponse = (req, res) => {
     }
 
     // Codes that are definitely a failure — ePayco sends these explicitly
-    // 2=Rejected, 4=Failed, 6=Reversed, 9=Expired, 10=Abandoned
-    const FAILED_STATES = new Set([2, 4, 6, 9, 10]);
+    // 2=Rejected, 4=Failed, 6=Reversed, 9=Expired, 10=Abandoned,
+    // 11=Cancelled (not in ePayco's docs - see EPAYCO_STATE.CANCELLED).
+    // Missing this one used to send a customer who cancelled straight to
+    // the success page instead of the cancelled page, since it fell into
+    // the "everything else" branch below.
+    const FAILED_STATES = new Set([
+        EPAYCO_STATE.REJECTED,
+        EPAYCO_STATE.FAILED,
+        EPAYCO_STATE.REVERSED,
+        EPAYCO_STATE.EXPIRED,
+        EPAYCO_STATE.ABANDONED,
+        EPAYCO_STATE.CANCELLED,
+    ]);
 
     if (FAILED_STATES.has(stateCode)) {
         return res.redirect(

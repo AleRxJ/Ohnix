@@ -271,18 +271,21 @@ export const EPAYCO_STATE = {
     STARTED: 8,
     EXPIRED: 9,
     ABANDONED: 10,
+    // Not in ePayco's public docs (missing from the state list at the
+    // Reference link above) - confirmed by querying a live production
+    // transaction that ePayco's own merchant dashboard showed as
+    // "Cancelada": it came back with x_cod_transaction_state: 11 and
+    // x_transaction_state: "Cancelada".
+    CANCELLED: 11,
 };
 
 export const isEpaycoTransactionApproved = (stateCode) =>
     parseInt(stateCode, 10) === EPAYCO_STATE.ACCEPTED;
 
-// ePayco's merchant dashboard shows a distinct "Cancelada" state for
-// transactions the customer backed out of (x_response contains "Cancelada
-// por el cliente"), but that state's numeric x_cod_transaction_state isn't
-// documented alongside the codes above and doesn't reliably match any of
-// them - so it (and any other future state ePayco adds) shows up here as an
-// unrecognized code. Callers detect it by response text instead of relying
-// on a guessed number.
+// Belt-and-suspenders for any *other* state ePayco adds later that isn't in
+// the enum above (same blind spot CANCELLED was in until it got confirmed
+// by hand) - callers fall back to this text match on x_response /
+// x_response_reason_text instead of silently doing nothing.
 export const isEpaycoCancelledResponse = (responseText) =>
     `${responseText || ""}`.toLowerCase().includes("cancel");
 
@@ -290,41 +293,93 @@ export const isEpaycoCancelledResponse = (responseText) =>
 // Transaction query (optional fallback verification)
 //
 // Used when you need to verify a payment without relying solely on the
-// confirmation webhook.
-// Reference: https://docs.epayco.com/docs/paginas-de-respuestas - the
-// previous URL here (/api/1.0/payment/transaction/{ref}) was never a real
-// ePayco endpoint; it returned HTTP 200 with an HTML page, which crashed
-// response.json() with "Unexpected token '<'" (confirmed in production
-// logs). The correct endpoint per ePayco's own docs is /validation/v1/
-// reference/{ref_payco}, GET, no Authorization header documented - Basic
-// Auth with the API keys was never mentioned in ePayco's docs for this
-// specific endpoint and may itself have been causing the wrong response.
+// confirmation webhook - this is what the reconcile job (every 15 min, see
+// server.js) and the frontend's "verify now" fallbacks use to self-heal a
+// stuck pending payment without a human touching anything.
+//
+// Reference: https://docs.epayco.com/docs/paginas-de-respuestas.
+// This previously called GET /validation/v1/reference/{ref_payco} with no
+// auth, per that doc page - but that endpoint reliably returns
+// {"status":false,"message":"Error de datos o conexión."} for real
+// transactions (confirmed against a live production ref_payco, and matches
+// a long-standing unresolved report: github.com/epayco/resources/issues/13).
+// The endpoint the official epayco-sdk-node package actually uses instead
+// (lib/resources/charge.js) is this authenticated one, confirmed working
+// against the same live transaction.
 // ---------------------------------------------------------------------------
+
+// The bearer token from /v1/auth/login is valid for a while and reconcile
+// runs can check several pending payments per cycle - caching it in memory
+// for this process avoids a fresh login call per transaction. Cleared and
+// re-fetched on the next call whenever it's missing/expired, or once on a
+// 401 from the transaction query itself (token revoked/rejected server-side
+// despite our own expiry estimate).
+let cachedApiToken = null;
+
+const fetchEpaycoApiToken = async () => {
+    const { publicKey, privateKey } = getEpaycoConfig();
+    const response = await fetch("https://api.secure.payco.co/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ public_key: publicKey, private_key: privateKey }),
+    });
+    const parsed = await response.json().catch(() => null);
+    if (!response.ok || !parsed?.bearer_token) {
+        throw new Error(
+            parsed?.message || `ePayco auth login returned HTTP ${response.status}`
+        );
+    }
+    // Not parsed from the JWT's own exp claim to avoid a dependency just for
+    // this - 10 minutes is comfortably under ePayco's token lifetime and the
+    // 401 fallback below covers the rest.
+    cachedApiToken = { token: parsed.bearer_token, expiresAt: Date.now() + 10 * 60 * 1000 };
+    return cachedApiToken.token;
+};
+
+const getEpaycoApiToken = async () => {
+    if (cachedApiToken && cachedApiToken.expiresAt > Date.now() + 5000) {
+        return cachedApiToken.token;
+    }
+    return fetchEpaycoApiToken();
+};
 
 export const queryEpaycoTransaction = async (refPayco) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
     try {
-        const response = await fetch(
-            `https://secure.epayco.co/validation/v1/reference/${encodeURIComponent(refPayco)}`,
-            {
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                signal: controller.signal,
-            }
-        );
+        const { publicKey } = getEpaycoConfig();
+        const requestOnce = async (token) =>
+            fetch(
+                `https://secure.payco.co/restpagos/transaction/response.json?ref_payco=${encodeURIComponent(refPayco)}&public_key=${encodeURIComponent(publicKey)}`,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        type: "sdk-jwt",
+                        lang: "NODE",
+                        Accept: "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    signal: controller.signal,
+                }
+            );
+
+        let token = await getEpaycoApiToken();
+        let response = await requestOnce(token);
+
+        if (response.status === 401) {
+            // Cached token rejected - force a fresh login once and retry,
+            // instead of failing the whole reconcile pass on a stale cache.
+            cachedApiToken = null;
+            token = await getEpaycoApiToken();
+            response = await requestOnce(token);
+        }
 
         const rawText = await response.text();
         let parsed = null;
         try {
             parsed = JSON.parse(rawText);
         } catch {
-            // Log the raw body (truncated) so a future failure is
-            // diagnosable from logs instead of guessing again - this
-            // endpoint has a documented history of returning unexpected
-            // non-JSON responses (see github.com/epayco/resources/issues/13).
             console.error("[epayco] Transaction query returned non-JSON response", {
                 refPayco,
                 status: response.status,
