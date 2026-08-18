@@ -1,9 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import {
-    GithubOutlined,
-    TwitterOutlined,
-    LinkedinFilled,
+    FacebookFilled,
     InstagramFilled,
     MailOutlined,
 } from "@ant-design/icons";
@@ -30,25 +28,7 @@ const Footer = () => {
                         </p>
                         <div className="mt-8 flex items-center gap-4 text-3xl">
                             <a
-                                href="https://github.com/iTCycle/Ohnix"
-                                target="_blank"
-                                rel="noreferrer"
-                                aria-label="GitHub"
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
-                            >
-                                <GithubOutlined className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
-                            </a>
-                            <a
-                                href="https://github.com/iTCycle/Ohnix"
-                                target="_blank"
-                                rel="noreferrer"
-                                aria-label="Twitter"
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
-                            >
-                                <TwitterOutlined className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
-                            </a>
-                            <a
-                                href="https://github.com/iTCycle/Ohnix"
+                                href="https://www.instagram.com/ohnix.co/"
                                 target="_blank"
                                 rel="noreferrer"
                                 aria-label="Instagram"
@@ -57,13 +37,13 @@ const Footer = () => {
                                 <InstagramFilled className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
                             </a>
                             <a
-                                href="https://github.com/iTCycle/Ohnix"
+                                href="https://www.facebook.com/ohnix.co"
                                 target="_blank"
                                 rel="noreferrer"
-                                aria-label="LinkedIn"
+                                aria-label="Facebook"
                                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 transition-colors duration-200 hover:border-[#29D8D5]/35 hover:bg-white/[0.04]"
                             >
-                                <LinkedinFilled className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
+                                <FacebookFilled className="text-[#A9B3B8] transition-colors duration-200 hover:text-white" />
                             </a>
                         </div>
                     </div>

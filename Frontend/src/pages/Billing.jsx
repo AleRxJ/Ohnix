@@ -7,6 +7,8 @@ import AuthContext from "../context/AuthContext";
 import { useTeam } from "../context/TeamContext";
 import useI18n from "../hooks/useI18n";
 import { subscriptionService } from "../services/subscriptionService";
+import { pricingService } from "../services/pricingService";
+import { formatCurrency } from "../utils/currency";
 import SubscriptionPlanCard from "../components/profile/SubscriptionPlanCard";
 import PlanComparisonCard from "../components/profile/PlanComparisonCard";
 import ApiKeysPanel from "../components/billing/ApiKeysPanel";
@@ -70,11 +72,17 @@ const PAYMENT_METHOD_LABELS = {
     sepa_debit: "SEPA Débito",
 };
 
-// COP display prices — keep in sync with EPAYCO_AMOUNT_*_COP in .env
-const PLAN_COP_DISPLAY = {
-    growth: "COP $99.000",
-    scale: "COP $200.000",
-    enterprise: "COP $299.000",
+// Friendly labels for the country selector - falls back to the raw code for
+// any Eurozone country not listed here, and to "Resto del mundo" for the
+// USD catch-all bucket (see COUNTRY_CONFIG.OTHER in payment.service.js).
+const COUNTRY_LABELS = {
+    ES: "España",
+    FR: "Francia",
+    DE: "Alemania",
+    IT: "Italia",
+    PT: "Portugal",
+    NL: "Países Bajos",
+    OTHER: "Resto del mundo (USD)",
 };
 
 const formatEtaDuration = (remainingMs, t) => {
@@ -146,6 +154,7 @@ const Billing = () => {
     const [checkoutLoadingRequestId, setCheckoutLoadingRequestId] = useState("");
     const [checkoutMethodsByCountry, setCheckoutMethodsByCountry] = useState({});
     const [checkoutSelectionByRequestId, setCheckoutSelectionByRequestId] = useState({});
+    const [pricingByCountry, setPricingByCountry] = useState({});
     const [billingLoadWarning, setBillingLoadWarning] = useState("");
     const [selectedAdminRequest, setSelectedAdminRequest] = useState(null);
     const [upgradeForm] = Form.useForm();
@@ -369,6 +378,49 @@ const Billing = () => {
             return changed ? next : prev;
         });
     }, [checkoutMethodsByCountry, safeRequests]);
+
+    // Checkout price preview - fetched lazily per country actually selected,
+    // from the same public endpoint /precios uses (getPublicPricing), so the
+    // amount shown here always matches what the provider will actually
+    // charge instead of a second hand-typed number (this used to be a
+    // PLAN_COP_DISPLAY constant hardcoded separately from EPAYCO_AMOUNT_*_COP).
+    useEffect(() => {
+        const countries = new Set(
+            Object.values(checkoutSelectionByRequestId)
+                .map((selection) => selection?.country)
+                .filter(Boolean)
+        );
+
+        countries.forEach((country) => {
+            if (pricingByCountry[country]) return;
+            pricingService
+                .getPublicPricing(country)
+                .then((response) => {
+                    if (response?.data) {
+                        setPricingByCountry((prev) =>
+                            prev[country] ? prev : { ...prev, [country]: response.data }
+                        );
+                    }
+                })
+                .catch(() => {
+                    // Best-effort - checkout still works without a price preview.
+                });
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [checkoutSelectionByRequestId]);
+
+    const formatPlanPriceForCountry = (country, planKey) => {
+        const pricing = pricingByCountry[country];
+        const planPricing = pricing?.plans?.find((plan) => plan.key === planKey);
+        if (!planPricing || planPricing.amount === null || planPricing.amount === undefined) {
+            return null;
+        }
+
+        const currency = pricing.currency?.toUpperCase();
+        const formatted = formatCurrency(planPricing.amount, currency);
+        // "$" alone is ambiguous between USD and COP.
+        return currency === "COP" ? `${formatted} COP` : formatted;
+    };
 
     const handleRefreshSubscription = async () => {
         try {
@@ -843,7 +895,10 @@ const Billing = () => {
                                             ) : item.status === "approved" && !isPlanAlreadyActiveForRequest(item) ? (
                                                 (() => {
                                                     const isColombiaFlow = selection.country === "CO";
-                                                    const copPrice = PLAN_COP_DISPLAY[item.targetPlan];
+                                                    const planPriceLabel = formatPlanPriceForCountry(
+                                                        selection.country,
+                                                        item.targetPlan
+                                                    );
                                                     const isLoading = checkoutLoadingRequestId === item.id;
 
                                                     if (isColombiaFlow) {
@@ -873,9 +928,9 @@ const Billing = () => {
                                                                                     {t(`profile.subscription.plan_${item.targetPlan}`)}
                                                                                 </span>
                                                                             </div>
-                                                                            {copPrice && (
+                                                                            {planPriceLabel && (
                                                                                 <div className="mt-0.5 text-xs text-[#6b8090]">
-                                                                                    {copPrice}
+                                                                                    {planPriceLabel}
                                                                                     <span className="text-[#4a5e69]">/mes</span>
                                                                                 </div>
                                                                             )}
@@ -963,6 +1018,11 @@ const Billing = () => {
                                                                     <span className="font-semibold text-[var(--ohnix-text-primary)]">
                                                                         {t(`profile.subscription.plan_${item.targetPlan}`)}
                                                                     </span>
+                                                                    {planPriceLabel && (
+                                                                        <span className="ml-1 text-[#6b8090]">
+                                                                            ({planPriceLabel}/mes)
+                                                                        </span>
+                                                                    )}
                                                                 </div>
 
                                                                 {/* Selectors */}
@@ -974,7 +1034,7 @@ const Billing = () => {
                                                                             .filter((c) => c !== "CO")
                                                                             .map((countryCode) => ({
                                                                                 value: countryCode,
-                                                                                label: countryCode === "ES" ? "España" : countryCode,
+                                                                                label: COUNTRY_LABELS[countryCode] || countryCode,
                                                                             }))}
                                                                         onChange={(country) => updateCheckoutCountry(item.id, country)}
                                                                     />

@@ -33,7 +33,10 @@ function languageForCountryCode(countryCode) {
     return SPANISH_SPEAKING_COUNTRY_CODES.has(countryCode.toUpperCase()) ? "es" : "en";
 }
 
-async function detectCountryCode() {
+// Exported so other features that need the visitor's country (e.g. the
+// public pricing page's currency market) reuse this same geo-IP lookup
+// instead of standing up a second ipwho.is integration.
+export async function detectCountryCode() {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), GEO_LOOKUP_TIMEOUT_MS);
 

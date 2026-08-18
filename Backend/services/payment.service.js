@@ -16,16 +16,44 @@ const getStripe = () => {
     });
 };
 
+// Eurozone member states (countries that actually settle in EUR) - not the
+// broader EU (which still includes non-euro members like Poland/Sweden/
+// Denmark, whom Stripe would need to charge in PLN/SEK/DKK, not EUR). Ohnix
+// only has EUR pricing configured (STRIPE_AMOUNT_*_EUR), so this list is
+// intentionally scoped to countries where charging EUR is actually correct.
+const EUR_COUNTRY_CODES = [
+    "AT", "BE", "HR", "CY", "EE", "FI", "FR", "DE", "GR", "IE",
+    "IT", "LV", "LT", "LU", "MT", "NL", "PT", "SK", "SI", "ES",
+];
+
+// Bizum is a Spain-only payment app - offering it to other Eurozone
+// countries would be wrong, unlike card/sepa_debit which work pan-EU.
+const buildEurCountryConfig = (country) => ({
+    currency: "eur",
+    supportedMethods:
+        country === "ES" ? ["card", "bizum", "sepa_debit"] : ["card", "sepa_debit"],
+});
+
+// Fallback bucket for any country that isn't Colombia or a Eurozone member -
+// "resto del mundo", charged in USD via Stripe card checkout. Selectable
+// explicitly from the frontend as the literal country "OTHER", and also the
+// implicit fallback resolveCountryConfig() resolves any other real ISO code
+// to below.
+const REST_OF_WORLD_CONFIG = {
+    currency: "usd",
+    supportedMethods: ["card"],
+};
+
 const COUNTRY_CONFIG = {
     CO: {
         currency: "cop",
         // epayco is the first option for CO so it appears first in the UI
         supportedMethods: ["epayco", "pse", "bancolombia_button", "card"],
     },
-    ES: {
-        currency: "eur",
-        supportedMethods: ["card", "bizum", "sepa_debit"],
-    },
+    ...Object.fromEntries(
+        EUR_COUNTRY_CODES.map((code) => [code, buildEurCountryConfig(code)])
+    ),
+    OTHER: REST_OF_WORLD_CONFIG,
 };
 
 const truthyValues = new Set(["1", "true", "yes", "on"]);
@@ -159,10 +187,23 @@ const getCancelUrl = (requestId) => {
     return `${frontendBase}/billing?payment=cancelled&requestId=${encodeURIComponent(requestId)}`;
 };
 
-const resolveCountryConfig = (country) => {
+// Any real ISO country code that isn't Colombia or a Eurozone member falls
+// through to the USD "rest of world" bucket instead of being rejected - a
+// checkout attempt from e.g. the US or Mexico used to throw "Unsupported
+// checkout country" here because COUNTRY_CONFIG only ever listed CO and ES.
+export const resolveCountryConfig = (country) => {
     const normalized = `${country || ""}`.trim().toUpperCase();
-    return COUNTRY_CONFIG[normalized] ? { country: normalized, ...COUNTRY_CONFIG[normalized] } : null;
+    if (!normalized) {
+        return null;
+    }
+    const config = COUNTRY_CONFIG[normalized] || REST_OF_WORLD_CONFIG;
+    return { country: normalized, ...config };
 };
+
+// currency used for a given country's public pricing/checkout - "cop",
+// "eur", or "usd". Shared by the public pricing endpoint so the number a
+// visitor sees always matches what resolveCountryConfig() would charge them.
+export const getCurrencyForCountry = (country) => resolveCountryConfig(country)?.currency || "usd";
 
 export const getAmountForPlanAndCurrency = (targetPlan, currency) => {
     const planConfig = PLAN_ONE_TIME_AMOUNT_BY_CURRENCY[targetPlan];

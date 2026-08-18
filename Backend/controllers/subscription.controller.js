@@ -23,6 +23,7 @@ import {
 import {
     createUpgradeCheckoutSession as createUpgradeCheckoutSessionProvider,
     getAmountForPlanAndCurrency,
+    getCurrencyForCountry,
     getStripeCheckoutSessionState,
     getSupportedPaymentMethodsByCountry,
     isAutonomousCheckoutConfigured,
@@ -583,6 +584,48 @@ export const getPlanCatalog = asyncHandler(async (_req, res) => {
     }));
 
     return res.status(200).json(new ApiResponse(200, { plans }, "Plan catalog fetched successfully"));
+});
+
+// Public (unauthenticated) pricing for the marketing /precios page and any
+// other pre-signup surface - mounted outside the verifyJWT router, see
+// routes/pricing.routes.js. Currency is resolved from `country` via the same
+// resolveCountryConfig() used at actual checkout time (payment.service.js),
+// so a visitor's market always maps to the currency they'd really be
+// charged: CO -> COP, Eurozone -> EUR, everything else -> USD.
+//
+// Amounts come from the same STRIPE_AMOUNT_*_<CURRENCY> env vars Stripe
+// checkout charges (getAmountForPlanAndCurrency) - not a second hand-typed
+// number - so the public price and the checkout price cannot drift apart.
+// USD checkout amounts aren't configured yet (no STRIPE_AMOUNT_*_USD in
+// .env), so for "rest of world" visitors this falls back to PLAN_PRICES_USD,
+// the existing approved reference price already shown elsewhere in-app
+// (SubscriptionPlanCard, PlanComparisonCard) - not a new invented number.
+export const getPublicPricing = asyncHandler(async (req, res) => {
+    const currency = getCurrencyForCountry(req.query?.country);
+
+    const plans = PLAN_ORDER.map((planKey) => {
+        if (planKey === "enterprise") {
+            // Always custom/consultative pricing - never shown as a fixed
+            // number on the public pricing page, regardless of market.
+            return { key: planKey, currency, amount: null, source: "custom" };
+        }
+
+        const checkoutAmount = getAmountForPlanAndCurrency(planKey, currency);
+        if (checkoutAmount !== null) {
+            // Stripe/ePayco amounts are in the smallest currency unit - COP
+            // has no minor unit (see .env.example), EUR/USD are cents.
+            const amount = currency === "cop" ? checkoutAmount : checkoutAmount / 100;
+            return { key: planKey, currency, amount, source: "checkout" };
+        }
+
+        if (currency === "usd" && PLAN_PRICES_USD[planKey] != null) {
+            return { key: planKey, currency, amount: PLAN_PRICES_USD[planKey], source: "reference" };
+        }
+
+        return { key: planKey, currency, amount: null, source: "unavailable" };
+    });
+
+    return res.status(200).json(new ApiResponse(200, { currency, plans }, "Public pricing fetched successfully"));
 });
 
 export const getMySubscription = asyncHandler(async (req, res) => {

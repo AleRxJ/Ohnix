@@ -4,6 +4,7 @@ import useI18n from "../hooks/useI18n";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
+import { useMarketPricing } from "../hooks/useMarketPricing";
 import {
     OrbitalHero,
     CardGrid,
@@ -30,6 +31,10 @@ const LandingPage = () => {
     const navigate = useNavigate();
     const { t, currentLanguage } = useI18n();
     const [showDemo, setShowDemo] = useState(false);
+    // Shared with Precios.jsx so the landing pricing teaser and the full
+    // pricing page never disagree (previously this section always showed
+    // the static USD-labeled locale strings regardless of visitor country).
+    const { priceByPlanKey } = useMarketPricing();
 
     const handleGetStarted = () => {
         navigate("/signup");
@@ -192,7 +197,7 @@ const LandingPage = () => {
             key: "starter",
             name: t("landing.pricing.plans.starter.name"),
             subtitle: t("landing.pricing.plans.starter.subtitle"),
-            price: t("landing.pricing.plans.starter.price"),
+            price: priceByPlanKey.starter || t("landing.pricing.plans.starter.price"),
             billing: t("landing.pricing.plans.starter.billing"),
             description: t("landing.pricing.plans.starter.description"),
             features: [
@@ -211,7 +216,7 @@ const LandingPage = () => {
             key: "growth",
             name: t("landing.pricing.plans.growth.name"),
             subtitle: t("landing.pricing.plans.growth.subtitle"),
-            price: t("landing.pricing.plans.growth.price"),
+            price: priceByPlanKey.growth || t("landing.pricing.plans.growth.price"),
             billing: t("landing.pricing.plans.growth.billing"),
             description: t("landing.pricing.plans.growth.description"),
             features: [
@@ -232,7 +237,7 @@ const LandingPage = () => {
             key: "scale",
             name: t("landing.pricing.plans.scale.name"),
             subtitle: t("landing.pricing.plans.scale.subtitle"),
-            price: t("landing.pricing.plans.scale.price"),
+            price: priceByPlanKey.scale || t("landing.pricing.plans.scale.price"),
             billing: t("landing.pricing.plans.scale.billing"),
             description: t("landing.pricing.plans.scale.description"),
             features: [

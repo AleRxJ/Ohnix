@@ -4,16 +4,26 @@ import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
 import useI18n from "../hooks/useI18n";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
+import { useMarketPricing } from "../hooks/useMarketPricing";
 
 const Precios = () => {
     const navigate = useNavigate();
     const { t, currentLanguage } = useI18n();
 
+    // Market-aware pricing: marketPricing is null until resolved, so the
+    // page falls back to the static (USD-reference) locale strings below
+    // rather than showing blank prices while detection/fetch is in flight
+    // or if either fails - this also matches what the build-time
+    // prerenderer (scripts/prerender.js) captures for crawlers if the geo
+    // lookup doesn't finish in time. Shared with LandingPage.jsx's pricing
+    // teaser so both pages always agree.
+    const { marketPricing, priceByPlanKey } = useMarketPricing();
+
     const plans = [
         {
             key: "starter",
             name: t("landing.pricing.plans.starter.name"),
-            price: t("landing.pricing.plans.starter.price"),
+            price: priceByPlanKey.starter || t("landing.pricing.plans.starter.price"),
             billing: t("landing.pricing.plans.starter.billing"),
             description: t("landing.pricing.plans.starter.description"),
             cta: "Empezar gratis",
@@ -21,7 +31,7 @@ const Precios = () => {
         {
             key: "growth",
             name: t("landing.pricing.plans.growth.name"),
-            price: t("landing.pricing.plans.growth.price"),
+            price: priceByPlanKey.growth || t("landing.pricing.plans.growth.price"),
             billing: t("landing.pricing.plans.growth.billing"),
             description: t("landing.pricing.plans.growth.description"),
             cta: "Escalar operacion",
@@ -30,7 +40,7 @@ const Precios = () => {
         {
             key: "scale",
             name: t("landing.pricing.plans.scale.name"),
-            price: t("landing.pricing.plans.scale.price"),
+            price: priceByPlanKey.scale || t("landing.pricing.plans.scale.price"),
             billing: t("landing.pricing.plans.scale.billing"),
             description: t("landing.pricing.plans.scale.description"),
             cta: "Escalar operacion",
@@ -38,6 +48,7 @@ const Precios = () => {
         {
             key: "enterprise",
             name: t("landing.pricing.plans.enterprise.name"),
+            // Custom/consultative pricing in every market - never a fixed number.
             price: t("landing.pricing.plans.enterprise.price"),
             billing: t("landing.pricing.plans.enterprise.billing"),
             description: t("landing.pricing.plans.enterprise.description"),
@@ -48,12 +59,20 @@ const Precios = () => {
     const description =
         "Conoce los planes de Ohnix para controlar inventario, compras y ventas en pymes con claridad operativa y escalabilidad.";
 
-    // Numeric prices (USD/mo) mirror Backend/middleware/pricing.middleware.js's
-    // PLAN_PRICES_USD - schema.org Offer.price needs a bare number, not the
-    // display string ("$19") already used for the on-page cards. Enterprise
-    // has no fixed price (t(...).price is "A medida") so it's excluded from
-    // Offer pricing rather than putting a placeholder number in front of search results.
-    const PLAN_OFFER_PRICE_USD = { starter: "19", growth: "49", scale: "99" };
+    // Schema.org Offer.price needs a bare number in the market's real
+    // currency, not the display string ("$19", "$59.900 COP"). Sourced from
+    // the same resolved market pricing as the on-page cards (falls back to
+    // the existing USD reference numbers if detection/fetch hasn't
+    // resolved yet) so structured data never disagrees with what's shown.
+    const offerCurrency = marketPricing?.currency?.toUpperCase() || "USD";
+    const offerAmountByPlanKey = marketPricing?.plans
+        ? marketPricing.plans.reduce((acc, plan) => {
+              if (plan.amount !== null && plan.amount !== undefined) {
+                  acc[plan.key] = plan.amount;
+              }
+              return acc;
+          }, {})
+        : { starter: 19, growth: 49, scale: 99 };
 
     const structuredData = [
         {
@@ -75,7 +94,7 @@ const Precios = () => {
             ],
         },
         ...plans
-            .filter((plan) => PLAN_OFFER_PRICE_USD[plan.key])
+            .filter((plan) => offerAmountByPlanKey[plan.key] !== undefined)
             .map((plan) => ({
                 "@context": "https://schema.org",
                 "@type": "Product",
@@ -85,8 +104,8 @@ const Precios = () => {
                 offers: {
                     "@type": "Offer",
                     url: "https://www.ohnix.co/precios",
-                    priceCurrency: "USD",
-                    price: PLAN_OFFER_PRICE_USD[plan.key],
+                    priceCurrency: offerCurrency,
+                    price: String(offerAmountByPlanKey[plan.key]),
                     priceValidUntil: "2026-12-31",
                     availability: "https://schema.org/InStock",
                 },
