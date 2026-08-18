@@ -254,32 +254,33 @@ const registerUser = asyncHandler(async (req, res, next) => {
     }
 
     // Sending Welcome Email
+    const isWelcomeEN = `${normalizedPreferredLanguage || ""}`.toLowerCase().startsWith("en");
+    const welcomeFrontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
+    const welcomeSubject = isWelcomeEN ? "Welcome to Ohnix" : "Bienvenido a Ohnix";
+    const welcomeCta = isWelcomeEN ? "Go to Dashboard" : "Ir al Dashboard";
+    const welcomeGreeting = isWelcomeEN
+        ? `Hello <strong>${createdUser.username}</strong>,`
+        : `Hola <strong>${createdUser.username}</strong>,`;
+    const welcomeBody = isWelcomeEN
+        ? "Your account has been created. Ohnix helps you manage inventory, sales, and billing in one place — let's get you started."
+        : "Tu cuenta ha sido creada. Ohnix te ayuda a gestionar inventario, ventas y facturación en un solo lugar — empecemos.";
     const mailOptions = {
-        from: process.env.SENDER_EMAIL,
+        from: `Ohnix <${process.env.SENDER_EMAIL}>`,
         to: createdUser.email,
-        subject: "Welcome to our platform",
-        text: `Hello ${createdUser.username}, Welcome to our platform`,
+        subject: welcomeSubject,
+        text: `${welcomeGreeting.replace(/<\/?strong>/g, "")} ${welcomeBody}`,
         html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; background-color: #f9f9f9;">
-            <h1 style="color: #333; text-align: center;">Welcome, ${createdUser.username}!</h1>
-            <p style="font-size: 16px; color: #555; text-align: center;">
-                Thank you for joining our platform. We are excited to have you here!
-            </p>
-            <p style="font-size: 16px; color: #555; text-align: center;">
-                Explore our features and make the most of our platform.
-            </p>
-            <p style="font-size: 16px; color: #555; text-align: center;">
-                If you have any questions, feel free to reach out to our support team at 
-                <a href="mailto:sekharsurya111@gmail.com" style="color: #4CAF50; text-decoration: none;">sekharsurya111@gmail.com</a>.
-            </p>
-            <p style="font-size: 16px; color: #555; text-align: center; margin-top: 20px;">
-                Regards, <strong> Surya</strong>
-            </p>
-            <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-            <p style="text-align: center; font-size: 14px; color: #888;">
-                &copy; ${new Date().getFullYear()} Surya. All rights reserved.
-            </p>
-        </div>
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
+                <div style="font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#29D8D5;font-weight:700;margin-bottom:8px;">OHNIX</div>
+                <h2 style="color:#29D8D5;margin:0 0 16px;">${welcomeSubject}</h2>
+                <p style="font-size:15px;color:#e5e7eb;margin:0 0 6px;">${welcomeGreeting}</p>
+                <p style="font-size:15px;color:#e5e7eb;line-height:1.6;margin:0 0 20px;">${welcomeBody}</p>
+                <div style="text-align:center;margin:28px 0;">
+                    <a href="${welcomeFrontendBase}" style="background:#29D8D5;color:#021314;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:15px;">${welcomeCta}</a>
+                </div>
+                <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+                <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle. ${isWelcomeEN ? "All rights reserved." : "Todos los derechos reservados."}</p>
+            </div>
         `,
     };
 
