@@ -154,7 +154,8 @@ const getAllPurchases = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (err) {
-        return next(new ApiError(500, err.message));
+        console.error(err);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -203,7 +204,8 @@ const getPurchaseDetails = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (err) {
-        return next(new ApiError(500, err.message));
+        console.error(err);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -308,7 +310,8 @@ const getReturnPreview = asyncHandler(async (req, res, next) => {
             )
         );
     } catch (err) {
-        return next(new ApiError(500, err.message));
+        console.error(err);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 

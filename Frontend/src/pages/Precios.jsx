@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { CheckOutlined } from "@ant-design/icons";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
@@ -19,30 +20,71 @@ const Precios = () => {
     // teaser so both pages always agree.
     const { marketPricing, priceByPlanKey } = useMarketPricing();
 
+    // "$" alone is ambiguous between USD and COP - rendered as a separate
+    // small pill next to the amount (same treatment as the landing page's
+    // pricing teaser) instead of concatenated into the same giant string,
+    // which used to force "$ 38.000 COP" to wrap mid-price inside the card.
+    const planPrice = (planKey, fallback) => {
+        const priceInfo = priceByPlanKey[planKey];
+        if (!priceInfo) return { price: fallback, currencyBadge: null };
+        return { price: priceInfo.label, currencyBadge: priceInfo.currency === "COP" ? "COP" : null };
+    };
+
     const plans = [
         {
             key: "starter",
             name: t("landing.pricing.plans.starter.name"),
-            price: priceByPlanKey.starter || t("landing.pricing.plans.starter.price"),
+            ...planPrice("starter", t("landing.pricing.plans.starter.price")),
             billing: t("landing.pricing.plans.starter.billing"),
             description: t("landing.pricing.plans.starter.description"),
+            features: [
+                t("landing.pricing.plans.starter.features.limits"),
+                t("landing.pricing.plans.starter.features.core"),
+                t("landing.pricing.plans.starter.features.reports"),
+                t("landing.pricing.plans.starter.features.pdf"),
+                t("landing.pricing.plans.starter.features.alerts"),
+                t("landing.pricing.plans.starter.features.support"),
+            ],
             cta: "Empezar gratis",
         },
         {
             key: "growth",
             name: t("landing.pricing.plans.growth.name"),
-            price: priceByPlanKey.growth || t("landing.pricing.plans.growth.price"),
+            ...planPrice("growth", t("landing.pricing.plans.growth.price")),
             billing: t("landing.pricing.plans.growth.billing"),
             description: t("landing.pricing.plans.growth.description"),
+            features: [
+                t("landing.pricing.plans.growth.features.unlimited"),
+                t("landing.pricing.plans.growth.features.team"),
+                t("landing.pricing.plans.growth.features.presence"),
+                t("landing.pricing.plans.growth.features.limits"),
+                t("landing.pricing.plans.growth.features.reports"),
+                t("landing.pricing.plans.growth.features.export"),
+                t("landing.pricing.plans.growth.features.pdf"),
+                t("landing.pricing.plans.growth.features.alerts"),
+                t("landing.pricing.plans.growth.features.invoicing"),
+                t("landing.pricing.plans.growth.features.support"),
+            ],
             cta: "Escalar operacion",
             featured: true,
         },
         {
             key: "scale",
             name: t("landing.pricing.plans.scale.name"),
-            price: priceByPlanKey.scale || t("landing.pricing.plans.scale.price"),
+            ...planPrice("scale", t("landing.pricing.plans.scale.price")),
             billing: t("landing.pricing.plans.scale.billing"),
             description: t("landing.pricing.plans.scale.description"),
+            features: [
+                t("landing.pricing.plans.scale.features.unlimited"),
+                t("landing.pricing.plans.scale.features.team"),
+                t("landing.pricing.plans.scale.features.presence"),
+                t("landing.pricing.plans.scale.features.limits"),
+                t("landing.pricing.plans.scale.features.reports"),
+                t("landing.pricing.plans.scale.features.pdf"),
+                t("landing.pricing.plans.scale.features.api"),
+                t("landing.pricing.plans.scale.features.alerts"),
+                t("landing.pricing.plans.scale.features.support"),
+            ],
             cta: "Escalar operacion",
         },
         {
@@ -52,6 +94,15 @@ const Precios = () => {
             price: t("landing.pricing.plans.enterprise.price"),
             billing: t("landing.pricing.plans.enterprise.billing"),
             description: t("landing.pricing.plans.enterprise.description"),
+            features: [
+                t("landing.pricing.plans.enterprise.features.unlimited"),
+                t("landing.pricing.plans.enterprise.features.team"),
+                t("landing.pricing.plans.enterprise.features.api"),
+                t("landing.pricing.plans.enterprise.features.integrations"),
+                t("landing.pricing.plans.enterprise.features.manager"),
+                t("landing.pricing.plans.enterprise.features.sla"),
+                t("landing.pricing.plans.enterprise.features.onboarding"),
+            ],
             cta: "Hablar con ventas",
         },
     ];
@@ -143,9 +194,35 @@ const Precios = () => {
                                 }`}
                             >
                                 <h2 className="text-2xl font-semibold text-white">{plan.name}</h2>
-                                <p className="mt-3 text-4xl font-semibold text-white">{plan.price}</p>
-                                <p className="mt-1 text-sm text-[#A9B3B8]">{plan.billing}</p>
+                                {/* Price, billing and currency badge always on one
+                                    row (flex-nowrap) - the badge is deliberately
+                                    compact (tight padding, no letter-spacing) so
+                                    even the longest amount ("$200.000 /mes COP")
+                                    fits without wrapping, keeping every card's
+                                    row identical instead of depending on digit count. */}
+                                <div className="mt-3 flex flex-nowrap items-baseline gap-1.5 whitespace-nowrap">
+                                    <span className="text-4xl font-semibold text-white">{plan.price}</span>
+                                    {plan.billing && (
+                                        <span className="text-sm text-[#A9B3B8]">{plan.billing}</span>
+                                    )}
+                                    {plan.currencyBadge && (
+                                        <span className="inline-flex items-center rounded-full border border-[#29D8D5]/25 bg-[#29D8D5]/8 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-[#44F3F0]">
+                                            {plan.currencyBadge}
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="mt-4 text-sm leading-7 text-[#D4DBDF]">{plan.description}</p>
+                                <div className="mt-5 border-t border-white/[0.06]" />
+                                <ul className="mt-4 space-y-2">
+                                    {plan.features.map((feature) => (
+                                        <li key={feature} className="flex items-start gap-2 text-[13px] text-[#C4CDD2]">
+                                            <span className="mt-[3px] flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#29D8D5]/15 text-[#44F3F0]">
+                                                <CheckOutlined className="text-[7px]" />
+                                            </span>
+                                            <span className="leading-snug">{feature}</span>
+                                        </li>
+                                    ))}
+                                </ul>
                                 <button
                                     type="button"
                                     onClick={() => navigate(`/signup?plan=${plan.key}&source=seo-precios`)}

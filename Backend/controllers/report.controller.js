@@ -194,7 +194,8 @@ const getDashboardMetrics = asyncHandler(async (req, res, next) => {
             );
     } catch (error) {
         console.error("Dashboard metrics error:", error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -254,7 +255,8 @@ const getStockReport = asyncHandler(async (req, res, next) => {
             );
     } catch (error) {
         console.error("Stock report error:", error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -346,7 +348,8 @@ const getSalesReport = asyncHandler(async (req, res, next) => {
             );
     } catch (error) {
         console.error("Sales report error:", error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -414,7 +417,8 @@ const getTopProducts = asyncHandler(async (req, res, next) => {
             );
     } catch (error) {
         console.error("Top products error:", error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -503,7 +507,8 @@ const getPurchaseReport = asyncHandler(async (req, res, next) => {
             );
     } catch (error) {
         console.error("Purchase report error:", error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -583,7 +588,8 @@ const getLowStockAlerts = asyncHandler(async (req, res, next) => {
         );
     } catch (error) {
         console.error("Low stock alerts error:", error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -672,7 +678,8 @@ const getProfitMarginReport = asyncHandler(async (req, res, next) => {
         return res.status(200).json(new ApiResponse(200, { byProduct, summary }, "Profit margin report fetched successfully"));
     } catch (error) {
         console.error("Profit margin report error:", error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -722,7 +729,8 @@ const getTopCustomersReport = asyncHandler(async (req, res, next) => {
         return res.status(200).json(new ApiResponse(200, { customers }, "Top customers report fetched successfully"));
     } catch (error) {
         console.error("Top customers report error:", error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -767,7 +775,8 @@ const getSalesByTeamReport = asyncHandler(async (req, res, next) => {
         return res.status(200).json(new ApiResponse(200, { members }, "Sales by team report fetched successfully"));
     } catch (error) {
         console.error("Sales by team report error:", error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -827,7 +836,8 @@ const getPeriodComparisonReport = asyncHandler(async (req, res, next) => {
         );
     } catch (error) {
         console.error("Period comparison report error:", error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -923,7 +933,8 @@ const getVatReport = asyncHandler(async (req, res, next) => {
         return res.status(200).json(new ApiResponse(200, report, "VAT report fetched successfully"));
     } catch (error) {
         console.error("VAT report error:", error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 

@@ -181,7 +181,7 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
         : { createdAt: "desc" };
 
     const pageNum = Number.parseInt(page, 10) || 1;
-    const limitNum = Number.parseInt(limit, 10) || 10;
+    const limitNum = Math.min(Number.parseInt(limit, 10) || 10, 100);
     const skip = (pageNum - 1) * limitNum;
 
     try {
@@ -258,7 +258,8 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
             )
         );
     } catch (err) {
-        return next(new ApiError(500, err.message));
+        console.error(err);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -308,7 +309,8 @@ const getOrderDetails = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (err) {
-        return next(new ApiError(500, err.message));
+        console.error(err);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -727,7 +729,8 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
 
         doc.end();
     } catch (err) {
-        return next(new ApiError(500, err.message));
+        console.error(err);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 

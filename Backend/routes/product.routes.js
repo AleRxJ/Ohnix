@@ -14,13 +14,14 @@ import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.middleware.js";
 import { upload, csvUpload } from "../middleware/multer.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
+import { bulkUploadRateLimiter } from "../middleware/rateLimit.middleware.js";
 
 const router = Router();
 
 router.use(verifyJWT);
 
 // Bulk upload — Negocio ($49) and above
-router.route("/bulk-upload").post(requireModulePermission("products", "edit"), enforcePlanFeature("bulkUpload"), csvUpload.single("file"), bulkUploadProducts);
+router.route("/bulk-upload").post(bulkUploadRateLimiter, requireModulePermission("products", "edit"), enforcePlanFeature("bulkUpload"), csvUpload.single("file"), bulkUploadProducts);
 
 router
     .route("/")

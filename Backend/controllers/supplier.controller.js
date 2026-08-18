@@ -133,7 +133,8 @@ const createSupplier = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -164,7 +165,8 @@ const getSuppliers = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -194,7 +196,8 @@ const getAllSuppliers = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -286,7 +289,8 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -327,7 +331,8 @@ const deleteSupplier = asyncHandler(async (req, res, next) => {
                 )
             );
         }
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 

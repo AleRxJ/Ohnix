@@ -304,7 +304,8 @@ const createProduct = asyncHandler(async (req, res, next) => {
         if (error.code === "P2002") {
             return next(new ApiError(409, "Product with this code already exists"));
         }
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -379,7 +380,8 @@ const getAllProducts = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, products.map(mapProduct), "Products fetched successfully"));
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -554,7 +556,8 @@ const updateProduct = asyncHandler(async (req, res, next) => {
         if (error.code === "P2002") {
             return next(new ApiError(409, "Product with this code already exists"));
         }
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -595,7 +598,8 @@ const deleteProduct = asyncHandler(async (req, res, next) => {
                 )
             );
         }
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -677,7 +681,8 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
             .json(new ApiResponse(200, mapProduct(result), "Stock adjusted successfully"));
     } catch (error) {
         if (error instanceof ApiError) return next(error);
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -730,7 +735,8 @@ const getProductStockMovements = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, mapped, "Stock movements fetched successfully"));
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -758,7 +764,8 @@ const getAllProductsAdmin = asyncHandler(async (_req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, products.map(mapProduct), "All products fetched successfully"));
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 

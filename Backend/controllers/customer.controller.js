@@ -132,7 +132,8 @@ const createCustomer = asyncHandler(async (req, res, next) => {
             .status(201)
             .json(new ApiResponse(201, mapCustomer(customer), "Customer created successfully"));
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -157,7 +158,8 @@ const getAllCustomers = asyncHandler(async (_req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -183,7 +185,8 @@ const getUserCustomers = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -262,7 +265,8 @@ const updateCustomer = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, mapCustomer(customer), "Customer updated successfully"));
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -303,7 +307,8 @@ const deleteCustomer = asyncHandler(async (req, res, next) => {
                 )
             );
         }
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 

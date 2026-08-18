@@ -1065,13 +1065,25 @@ export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) 
                         </div>
                     </div>
 
-                    {/* Price */}
-                    <div className="mt-5 flex items-baseline gap-1.5">
+                    {/* Price, billing and currency badge always on one row
+                        (flex-nowrap) - the badge is deliberately compact
+                        (tight padding, no letter-spacing) so even the longest
+                        amount ("$200.000 /mes COP") fits without wrapping,
+                        keeping every card's row identical regardless of
+                        digit count. */}
+                    <div className="mt-5 flex flex-nowrap items-baseline gap-1.5 whitespace-nowrap">
                         <span className={`font-semibold tracking-tight text-white ${plan.billing ? "text-4xl" : "text-2xl"}`}>
                             {plan.price}
                         </span>
                         {plan.billing && (
                             <span className="text-sm text-[#6B7880]">{plan.billing}</span>
+                        )}
+                        {/* Currency badge - only shown for COP, since "$" alone
+                            is ambiguous between USD and COP. */}
+                        {plan.currencyBadge && (
+                            <span className="inline-flex items-center rounded-full border border-[#29D8D5]/25 bg-[#29D8D5]/8 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-[#44F3F0]">
+                                {plan.currencyBadge}
+                            </span>
                         )}
                     </div>
 

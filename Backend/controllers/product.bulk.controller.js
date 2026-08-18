@@ -304,7 +304,8 @@ export const bulkUploadProducts = asyncHandler(async (req, res, next) => {
                     ],
                 });
             } else {
-                return next(new ApiError(500, error.message));
+                console.error(error);
+                return next(new ApiError(500, "Something went wrong. Please try again."));
             }
         }
     }

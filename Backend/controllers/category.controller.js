@@ -102,7 +102,8 @@ const createCategory = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -138,7 +139,8 @@ const getAllCategories = asyncHandler(async (_req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -175,7 +177,8 @@ const getUserCategories = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -227,7 +230,8 @@ const getAvailableCategories = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -292,7 +296,8 @@ const updateCategory = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -335,7 +340,8 @@ const deleteCategory = asyncHandler(async (req, res, next) => {
                 )
             );
         }
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 

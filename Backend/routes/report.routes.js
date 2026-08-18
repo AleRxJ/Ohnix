@@ -19,6 +19,7 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforcePlanFeature } from "../middleware/pricing.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
+import { reportExportRateLimiter } from "../middleware/rateLimit.middleware.js";
 
 const router = express.Router();
 
@@ -58,6 +59,7 @@ router.route("/vat").get(requireModulePermission("reports", "view"), enforcePlan
 // parser with a higher limit rather than raising it globally.
 router.route("/export/pdf").post(
     express.json({ limit: "5mb" }),
+    reportExportRateLimiter,
     requireModulePermission("reports", "view"),
     enforcePlanFeature("exportPdf"),
     exportReportPdf

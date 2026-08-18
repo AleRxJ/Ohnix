@@ -1842,6 +1842,7 @@
           "features": {
             "unlimited": "Todo en Emprendedor",
             "team": "Equipos colaborativos (hasta 3 usuarios) con roles y permisos",
+            "presence": "Indicador en tiempo real de quién ve o edita cada registro",
             "limits": "500 productos · 300 clientes · 100 proveedores",
             "reports": "Todos los reportes: ventas, compras, top productos",
             "export": "Exportación CSV · Carga masiva de productos",
@@ -1857,10 +1858,11 @@
           "subtitle": "Para empresas en crecimiento con equipo",
           "price": "$99",
           "billing": "/mes",
-          "description": "API, reportes avanzados y personalización completa para equipos de 5 a 20 personas.",
+          "description": "API, reportes avanzados y personalización completa para equipos en crecimiento.",
           "features": {
             "unlimited": "Todo en Negocio",
-            "team": "Equipos colaborativos (hasta 10 usuarios) con presencia en vivo",
+            "team": "Equipos colaborativos (hasta 10 usuarios)",
+            "presence": "Indicador en tiempo real de quién ve o edita cada registro",
             "limits": "2,000 productos · 1,000 clientes · 400 proveedores",
             "reports": "Reportes avanzados + exportación Excel",
             "pdf": "PDF completamente personalizable",

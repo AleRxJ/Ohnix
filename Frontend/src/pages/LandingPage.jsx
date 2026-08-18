@@ -36,6 +36,14 @@ const LandingPage = () => {
     // the static USD-labeled locale strings regardless of visitor country).
     const { priceByPlanKey } = useMarketPricing();
 
+    // "$" alone is ambiguous between USD and COP - PricingSection renders
+    // planPrice() as a currencyBadge pill next to the amount when set.
+    const planPrice = (planKey, fallback) => {
+        const priceInfo = priceByPlanKey[planKey];
+        if (!priceInfo) return { price: fallback, currencyBadge: null };
+        return { price: priceInfo.label, currencyBadge: priceInfo.currency === "COP" ? "COP" : null };
+    };
+
     const handleGetStarted = () => {
         navigate("/signup");
     };
@@ -197,7 +205,7 @@ const LandingPage = () => {
             key: "starter",
             name: t("landing.pricing.plans.starter.name"),
             subtitle: t("landing.pricing.plans.starter.subtitle"),
-            price: priceByPlanKey.starter || t("landing.pricing.plans.starter.price"),
+            ...planPrice("starter", t("landing.pricing.plans.starter.price")),
             billing: t("landing.pricing.plans.starter.billing"),
             description: t("landing.pricing.plans.starter.description"),
             features: [
@@ -216,12 +224,13 @@ const LandingPage = () => {
             key: "growth",
             name: t("landing.pricing.plans.growth.name"),
             subtitle: t("landing.pricing.plans.growth.subtitle"),
-            price: priceByPlanKey.growth || t("landing.pricing.plans.growth.price"),
+            ...planPrice("growth", t("landing.pricing.plans.growth.price")),
             billing: t("landing.pricing.plans.growth.billing"),
             description: t("landing.pricing.plans.growth.description"),
             features: [
                 t("landing.pricing.plans.growth.features.unlimited"),
                 t("landing.pricing.plans.growth.features.team"),
+                t("landing.pricing.plans.growth.features.presence"),
                 t("landing.pricing.plans.growth.features.limits"),
                 t("landing.pricing.plans.growth.features.reports"),
                 t("landing.pricing.plans.growth.features.export"),
@@ -237,12 +246,13 @@ const LandingPage = () => {
             key: "scale",
             name: t("landing.pricing.plans.scale.name"),
             subtitle: t("landing.pricing.plans.scale.subtitle"),
-            price: priceByPlanKey.scale || t("landing.pricing.plans.scale.price"),
+            ...planPrice("scale", t("landing.pricing.plans.scale.price")),
             billing: t("landing.pricing.plans.scale.billing"),
             description: t("landing.pricing.plans.scale.description"),
             features: [
                 t("landing.pricing.plans.scale.features.unlimited"),
                 t("landing.pricing.plans.scale.features.team"),
+                t("landing.pricing.plans.scale.features.presence"),
                 t("landing.pricing.plans.scale.features.limits"),
                 t("landing.pricing.plans.scale.features.reports"),
                 t("landing.pricing.plans.scale.features.pdf"),

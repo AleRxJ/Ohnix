@@ -1,4 +1,5 @@
 import express from "express";
+import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
@@ -19,6 +20,14 @@ const app = express();
 // (login, OTP requests, etc.) end up shared across all users instead of
 // per-visitor, and express-rate-limit logs a ValidationError on every hit.
 app.set("trust proxy", 1);
+
+// This is a JSON API, not an HTML-rendering server, so the default CSP
+// (meant for pages with scripts/styles/images) has nothing to allow-list
+// here and only risks blocking the few static files under Backend/public.
+// contentSecurityPolicy: false keeps the other protections (X-Frame-Options,
+// X-Content-Type-Options: nosniff, HSTS, etc.) without a policy tuned for a
+// use case this server doesn't have.
+app.use(helmet({ contentSecurityPolicy: false }));
 
 app.get("/", (req, res) => {
    res.json({

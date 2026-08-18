@@ -1,3 +1,4 @@
+import { randomInt } from "crypto";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
@@ -8,7 +9,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../db/prisma.js";
 import { notifyAdminsUpgradeRequestCreated, notifyUserEmailVerified, notifyAdminsNewUserRegistered } from "../utils/upgradeRequestNotifications.js";
 import { clearActiveSession, isSessionValid } from "../utils/sessionStore.js";
-import { issueAuthTokens, userLookupByTokenId } from "../utils/authTokens.js";
+import { issueAuthTokens, userLookupByTokenId, AUTH_COOKIE_OPTIONS } from "../utils/authTokens.js";
 
 // ─── Bilingual OTP email builder ─────────────────────────────────────────────
 const buildOtpEmail = ({ username, otp, locale, context }) => {
@@ -328,8 +329,11 @@ const loginUser = asyncHandler(async (req, res, next) => {
         },
     });
 
+    // Same status/message whether the account doesn't exist or the password
+    // is wrong - a distinct "does not exist" response would let this
+    // endpoint be used to enumerate registered emails/usernames.
     if (!user) {
-        return next(new ApiError(404, "User does not exist"));
+        return next(new ApiError(401, "Invalid user credentials"));
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -351,19 +355,10 @@ const loginUser = asyncHandler(async (req, res, next) => {
         select: userPublicSelect,
     });
 
-    // Updated cookie options for deployment
-    const options = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Changed for cross-origin
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        path: "/",
-    };
-
     return res
         .status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
+        .cookie("accessToken", accessToken, AUTH_COOKIE_OPTIONS.access)
+        .cookie("refreshToken", refreshToken, AUTH_COOKIE_OPTIONS.refresh)
         .json(
             new ApiResponse(
                 200,
@@ -464,14 +459,6 @@ const refreshAccessToken = asyncHandler(async (req, res, next) => {
             );
         }
 
-        const options = {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days for refresh token
-            path: "/",
-        };
-
         const { accessToken, refreshToken: newRefreshToken } =
             await issueAuthTokens(user.legacyMongoId || user.id, {
                 sid: decodedToken?.sid,
@@ -480,11 +467,8 @@ const refreshAccessToken = asyncHandler(async (req, res, next) => {
 
         return res
             .status(200)
-            .cookie("accessToken", accessToken, {
-                ...options,
-                maxAge: 24 * 60 * 60 * 1000, // 24 hours for access token
-            })
-            .cookie("refreshToken", newRefreshToken, options)
+            .cookie("accessToken", accessToken, AUTH_COOKIE_OPTIONS.access)
+            .cookie("refreshToken", newRefreshToken, AUTH_COOKIE_OPTIONS.refresh)
             .json(
                 new ApiResponse(
                     200,
@@ -836,7 +820,7 @@ const sendVerifyOtp = asyncHandler(async (req, res, next) => {
             return next(new ApiError(400, "User is already verified"));
         }
 
-        const otp = String(Math.floor(100000 + Math.random() * 900000));
+        const otp = String(randomInt(100000, 1000000));
         await prisma.user.update({
             where: { id: user.id },
             data: {
@@ -886,7 +870,8 @@ const sendVerifyOtp = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -907,7 +892,7 @@ const sendChangePasswordOtp = asyncHandler(async (req, res, next) => {
             return next(new ApiError(404, "User not found"));
         }
 
-        const otp = String(Math.floor(100000 + Math.random() * 900000));
+        const otp = String(randomInt(100000, 1000000));
         await prisma.user.update({
             where: { id: user.id },
             data: {
@@ -957,7 +942,8 @@ const sendChangePasswordOtp = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -1095,11 +1081,22 @@ const sendResetOtp = asyncHandler(async (req, res, next) => {
             },
         });
 
+        // Don't reveal whether this email is registered - always resolve
+        // through the same success response either way. Only a real `user`
+        // actually gets an OTP generated and an email sent below.
         if (!user) {
-            return next(new ApiError(404, "User not found"));
+            return res
+                .status(200)
+                .json(
+                    new ApiResponse(
+                        200,
+                        {},
+                        "If this email is registered, a password reset code has been sent"
+                    )
+                );
         }
 
-        const otp = String(Math.floor(100000 + Math.random() * 900000));
+        const otp = String(randomInt(100000, 1000000));
         await prisma.user.update({
             where: { id: user.id },
             data: {
@@ -1146,11 +1143,12 @@ const sendResetOtp = asyncHandler(async (req, res, next) => {
                 new ApiResponse(
                     200,
                     {},
-                    "Password reset OTP sent to your email successfully"
+                    "If this email is registered, a password reset code has been sent"
                 )
             );
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -1174,16 +1172,20 @@ const resetPassword = asyncHandler(async (req, res, next) => {
             },
         });
 
+        // All three failure branches below (no such user, wrong code,
+        // expired code) return the identical message/status - a distinct
+        // "user not found" response here would let this endpoint be used to
+        // enumerate registered emails the same way sendResetOtp used to.
         if (!user) {
-            return next(new ApiError(404, "User not found"));
+            return next(new ApiError(400, "Invalid or expired code"));
         }
 
         if (user.resetOtp !== otp || user.resetOtp === "") {
-            return next(new ApiError(400, "Invalid OTP"));
+            return next(new ApiError(400, "Invalid or expired code"));
         }
 
         if (Number(user.resetOtpExpiry) < Date.now()) {
-            return next(new ApiError(400, "OTP expired"));
+            return next(new ApiError(400, "Invalid or expired code"));
         }
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -1207,7 +1209,8 @@ const resetPassword = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, {}, "Password reset successfully"));
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 

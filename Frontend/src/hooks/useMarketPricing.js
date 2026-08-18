@@ -28,12 +28,15 @@ const setSessionDetectedCountry = (countryCode) => {
     }
 };
 
-// "$" alone is ambiguous between USD and COP - make Colombia's currency
-// explicit instead of relying on the sign alone.
+// Returns { label, currency } instead of a single concatenated string
+// ("$38.000 COP") - callers render `label` at whatever size fits their
+// layout and `currency` as a separately-styled badge only when it's "COP"
+// (the ambiguous one, since "$" alone could be COP or USD). Concatenating
+// them into one string made the on-page price cards wrap awkwardly (COP
+// amounts run longer digit-wise than USD/EUR ones).
 const formatPlanPrice = (amount, currency) => {
     if (amount === null || amount === undefined) return null;
-    const formatted = formatCurrency(amount, currency);
-    return currency === "COP" ? `${formatted} COP` : formatted;
+    return { label: formatCurrency(amount, currency), currency };
 };
 
 // Returns { marketPricing, priceByPlanKey }. `marketPricing` is null until

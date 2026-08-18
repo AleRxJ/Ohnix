@@ -8,7 +8,6 @@ import SeoHead from "../../components/common/SeoHead";
 import { EmailInput, PasswordInput } from "../../components/auth/FormItems";
 import AuthButton from "../../components/auth/AuthButton";
 import useI18n from "../../hooks/useI18n";
-import toast from "react-hot-toast";
 
 const Login = () => {
     const [form] = Form.useForm();
@@ -46,12 +45,6 @@ const Login = () => {
         const result = await login(values);
         if (result.success) {
             navigate(postLoginRedirect, { replace: true });
-        } else if (
-            typeof result.message === "string" &&
-            result.message.toLowerCase().includes("does not exist")
-        ) {
-            toast.error(t("auth.account_not_found_redirect_signup"));
-            navigate(`/signup?email=${encodeURIComponent(values.email || "")}`);
         }
         setLoading(false);
     };

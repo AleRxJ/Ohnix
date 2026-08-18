@@ -94,7 +94,8 @@ const createUnit = asyncHandler(async (req, res, next) => {
             .status(201)
             .json(new ApiResponse(201, mapUnit(created), "Unit created successfully"));
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -140,7 +141,8 @@ const getAvailableUnits = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, deduped, "Available units fetched successfully"));
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -174,7 +176,8 @@ const getAllUnits = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, units.map(mapUnit), "Units fetched successfully"));
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -227,7 +230,8 @@ const updateUnit = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, mapUnit(updated), "Unit updated successfully"));
     } catch (error) {
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 
@@ -264,7 +268,8 @@ const deleteUnit = asyncHandler(async (req, res, next) => {
                 )
             );
         }
-        return next(new ApiError(500, error.message));
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
     }
 });
 

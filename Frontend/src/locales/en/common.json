@@ -1848,6 +1848,7 @@
           "features": {
             "unlimited": "Everything in Starter",
             "team": "Team collaboration (up to 3 users) with roles & permissions",
+            "presence": "Real-time indicator of who's viewing or editing each record",
             "limits": "500 products · 300 customers · 100 suppliers",
             "reports": "All reports: sales, purchases, top products",
             "export": "CSV export · Bulk product upload",
@@ -1863,10 +1864,11 @@
           "subtitle": "For growing companies with a team",
           "price": "$99",
           "billing": "/month",
-          "description": "API access, advanced reports, and full customization for teams of 5–20.",
+          "description": "API access, advanced reports, and full customization for growing teams.",
           "features": {
             "unlimited": "Everything in Business",
-            "team": "Team collaboration (up to 10 users) with live presence",
+            "team": "Team collaboration (up to 10 users)",
+            "presence": "Real-time indicator of who's viewing or editing each record",
             "limits": "2,000 products · 1,000 customers · 400 suppliers",
             "reports": "Advanced report filters + Excel export",
             "pdf": "Fully customizable PDF templates",
