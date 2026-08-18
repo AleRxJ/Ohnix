@@ -19,6 +19,12 @@ const OrderFormItems = ({ products, onRemove, name, restField, locked }) => {
         return initial ? initial.stock : null;
     });
 
+    const revalidateProductFields = () => {
+        const items = form.getFieldValue("orderItems") || [];
+        const paths = items.map((_, idx) => ["orderItems", idx, "product_id"]);
+        form.validateFields(paths).catch(() => {});
+    };
+
     const handleProductChange = (productId) => {
         const selected = products.find((p) => p._id === productId);
         if (selected) {
@@ -35,6 +41,7 @@ const OrderFormItems = ({ products, onRemove, name, restField, locked }) => {
         } else {
             setAvailableStock(null);
         }
+        revalidateProductFields();
     };
 
     return (
@@ -42,7 +49,10 @@ const OrderFormItems = ({ products, onRemove, name, restField, locked }) => {
             <Button
                 type="text"
                 danger
-                onClick={onRemove}
+                onClick={() => {
+                    onRemove();
+                    revalidateProductFields();
+                }}
                 className="absolute top-3 right-3 flex items-center justify-center h-8 w-8 rounded-lg hover:bg-red-500/10 z-10"
                 icon={<DeleteOutlined className="text-sm" />}
             />
@@ -62,6 +72,21 @@ const OrderFormItems = ({ products, onRemove, name, restField, locked }) => {
                                 {
                                     required: true,
                                     message: t("orders.select_product_message"),
+                                },
+                                {
+                                    validator: (_, value) => {
+                                        if (!value) return Promise.resolve();
+                                        const items = form.getFieldValue("orderItems") || [];
+                                        const occurrences = items.filter(
+                                            (item) => item?.product_id === value
+                                        ).length;
+                                        if (occurrences > 1) {
+                                            return Promise.reject(
+                                                new Error(t("orders.duplicate_product_message"))
+                                            );
+                                        }
+                                        return Promise.resolve();
+                                    },
                                 },
                             ]}
                             className="mb-0"

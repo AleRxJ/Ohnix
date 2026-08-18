@@ -16,12 +16,21 @@ const PurchaseFormItem = ({ products, onRemove, name, restField, locked, onProdu
     const selectedProductId = form.getFieldValue(["details", name, "product_id"]);
     const selectedProduct = products.find((p) => p._id === selectedProductId);
 
+    const revalidateProductFields = () => {
+        const details = form.getFieldValue("details") || [];
+        const paths = details.map((_, idx) => ["details", idx, "product_id"]);
+        form.validateFields(paths).catch(() => {});
+    };
+
     return (
         <div className="relative module-shell border border-[var(--ohnix-line-4)] rounded-2xl p-5 mb-4">
             <Button
                 type="text"
                 danger
-                onClick={onRemove}
+                onClick={() => {
+                    onRemove();
+                    revalidateProductFields();
+                }}
                 className="absolute top-3 right-3 flex items-center justify-center h-8 w-8 rounded-lg hover:bg-red-500/10 z-10"
                 icon={<DeleteOutlined className="text-sm" />}
             />
@@ -37,7 +46,24 @@ const PurchaseFormItem = ({ products, onRemove, name, restField, locked, onProdu
                                     {t("products.product")}
                                 </span>
                             }
-                            rules={[{ required: true, message: t("purchases.select_product_message") }]}
+                            rules={[
+                                { required: true, message: t("purchases.select_product_message") },
+                                {
+                                    validator: (_, value) => {
+                                        if (!value) return Promise.resolve();
+                                        const details = form.getFieldValue("details") || [];
+                                        const occurrences = details.filter(
+                                            (d) => d?.product_id === value
+                                        ).length;
+                                        if (occurrences > 1) {
+                                            return Promise.reject(
+                                                new Error(t("purchases.duplicate_product_message"))
+                                            );
+                                        }
+                                        return Promise.resolve();
+                                    },
+                                },
+                            ]}
                             className="mb-0"
                             extra={locked ? t("inventory_tour.practice_locked_hint") : undefined}
                         >
@@ -47,7 +73,10 @@ const PurchaseFormItem = ({ products, onRemove, name, restField, locked, onProdu
                                 optionFilterProp="label"
                                 size="large"
                                 className="w-full auth-ohnix-input"
-                                onChange={(val) => onProductChange(val, name)}
+                                onChange={(val) => {
+                                    onProductChange(val, name);
+                                    revalidateProductFields();
+                                }}
                                 disabled={locked}
                             >
                                 {products.map((product) => (

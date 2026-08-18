@@ -65,7 +65,13 @@ class PurchaseService {
         const productIds = details.map((d) => d.product_id?.toString()).filter(Boolean);
         const uniqueProductIds = [...new Set(productIds)];
         if (uniqueProductIds.length !== productIds.length) {
-            throw new ApiError(400, "Duplicate products in purchase details");
+            throw new ApiError(
+                400,
+                "Duplicate products in purchase details",
+                [],
+                "",
+                "duplicate_purchase_products"
+            );
         }
 
         const products = await Promise.all(uniqueProductIds.map((id) => findProductByAnyId(id)));

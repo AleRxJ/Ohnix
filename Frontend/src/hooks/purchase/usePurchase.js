@@ -13,6 +13,10 @@ const UPDATE_STATUS_ERROR_CODES = {
     invalid_purchase_status_transition: "purchases.invalid_status_transition",
 };
 
+const CREATE_PURCHASE_ERROR_CODES = {
+    duplicate_purchase_products: "purchases.duplicate_product_message",
+};
+
 export const usePurchase = () => {
     const { t } = useI18n();
     const { isOpen: isTutorialActive, notifyAction, createdRefs } = useInventoryTour();
@@ -171,7 +175,9 @@ export const usePurchase = () => {
                 return { success: false };
             }
         } catch (error) {
-            toast.error(t("purchases.error_creating_purchase"));
+            toast.error(
+                resolveApiErrorMessage(error, t, CREATE_PURCHASE_ERROR_CODES, "purchases.error_creating_purchase")
+            );
             console.error("Error:", error);
             return { success: false };
         }
