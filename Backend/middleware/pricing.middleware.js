@@ -92,6 +92,12 @@ export const PLAN_FEATURES = {
         apiAccess:           false,
         electronicInvoicing: false,
         advancedReports:     false,
+        // Team features (roles, live presence, activity log) are gated by
+        // planSupportsTeams() (team.service.js) - Starter has 0 seats
+        // (TEAM_SEAT_LIMITS.starter), so it gets no team features at all.
+        teamRoles:           false,
+        teamLivePresence:    false,
+        teamActivityLog:     false,
     },
     // $49/mes — Negocio: full analytics + exports + DIAN e-invoicing
     // (electronicInvoicing costs real money per document via Alanube - never
@@ -109,6 +115,13 @@ export const PLAN_FEATURES = {
         apiAccess:           false,
         electronicInvoicing: true,
         advancedReports:     false,
+        // Once a plan has any team seats at all (TEAM_SEAT_LIMITS.growth = 3),
+        // it gets the full team feature set - team.service.js's createRole/
+        // live/socketServer.js presence/ActivityTab logging have no further
+        // per-tier gating beyond planSupportsTeams().
+        teamRoles:           true,
+        teamLivePresence:    true,
+        teamActivityLog:     true,
     },
     // $99/mes — Escala: API + advanced reports (profit margin, top
     // customers, sales-by-team-member, period comparison - see
@@ -127,6 +140,9 @@ export const PLAN_FEATURES = {
         apiAccess:           true,
         electronicInvoicing: true,
         advancedReports:     true,
+        teamRoles:           true,
+        teamLivePresence:    true,
+        teamActivityLog:     true,
     },
     // Custom — Enterprise: everything
     enterprise: {
@@ -142,6 +158,9 @@ export const PLAN_FEATURES = {
         apiAccess:           true,
         electronicInvoicing: true,
         advancedReports:     true,
+        teamRoles:           true,
+        teamLivePresence:    true,
+        teamActivityLog:     true,
     },
 };
 

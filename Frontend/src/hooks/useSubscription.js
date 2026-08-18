@@ -17,6 +17,9 @@ export const PLAN_FEATURES = {
         apiAccess:           false,
         electronicInvoicing: false,
         advancedReports:     false,
+        teamRoles:           false,
+        teamLivePresence:    false,
+        teamActivityLog:     false,
     },
     growth: {
         reportSales:         true,
@@ -31,6 +34,9 @@ export const PLAN_FEATURES = {
         apiAccess:           false,
         electronicInvoicing: true,
         advancedReports:     false,
+        teamRoles:           true,
+        teamLivePresence:    true,
+        teamActivityLog:     true,
     },
     scale: {
         reportSales:         true,
@@ -45,6 +51,9 @@ export const PLAN_FEATURES = {
         apiAccess:           true,
         electronicInvoicing: true,
         advancedReports:     true,
+        teamRoles:           true,
+        teamLivePresence:    true,
+        teamActivityLog:     true,
     },
     enterprise: {
         reportSales:         true,
@@ -59,6 +68,9 @@ export const PLAN_FEATURES = {
         apiAccess:           true,
         electronicInvoicing: true,
         advancedReports:     true,
+        teamRoles:           true,
+        teamLivePresence:    true,
+        teamActivityLog:     true,
     },
 };
 
@@ -89,6 +101,9 @@ export const FEATURE_LABELS = [
     { key: "apiAccess",         es: "Acceso a API REST",               en: "REST API access"              },
     { key: "electronicInvoicing", es: "Facturación electrónica DIAN",  en: "DIAN electronic invoicing"    },
     { key: "advancedReports",   es: "Reportes avanzados (margen, clientes, equipo)", en: "Advanced reports (margin, customers, team)" },
+    { key: "teamRoles",         es: "Roles y permisos por módulo",     en: "Per-module roles & permissions" },
+    { key: "teamLivePresence",  es: "Presencia en vivo y bloqueo de registros", en: "Live presence & record locking" },
+    { key: "teamActivityLog",   es: "Log de actividad del equipo",     en: "Team activity log"            },
 ];
 
 // The minimum plan that unlocks each feature (used for "upgrade to X" messages)
@@ -105,6 +120,9 @@ export const FEATURE_MINIMUM_PLAN = {
     apiAccess:           "scale",
     electronicInvoicing: "growth",
     advancedReports:     "scale",
+    teamRoles:           "growth",
+    teamLivePresence:    "growth",
+    teamActivityLog:     "growth",
 };
 
 const useSubscription = () => {
