@@ -614,7 +614,7 @@ All routes require authentication except:
 
 **GitHub Repository**: [iTCycle/Ohnix](https://github.com/iTCycle/Ohnix)
 
-**Email**: sekharsurya111@gmail.com
+**Email**: info@itcycle.com
 
 ---
 
