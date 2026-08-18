@@ -317,6 +317,7 @@
       "payment_status_failed": "No pudimos procesar tu pago. No se realizo ningun cargo. Puedes intentarlo de nuevo desde Facturacion.",
       "payment_status_amount_mismatch": "Detectamos una inconsistencia en el monto del pago y no activamos el plan por seguridad. Contacta a soporte si crees que esto es un error.",
       "payment_status_expired": "El tiempo para completar este pago se agoto y no se realizo ningun cargo. Puedes intentarlo de nuevo desde Facturacion.",
+      "payment_status_cancelled": "Cancelaste este pago. No se realizo ningun cargo. Puedes intentarlo de nuevo desde Facturacion.",
       "payment_still_pending_title": "Tu pago sigue en verificacion",
       "payment_still_pending_description": "Algunos metodos de pago (como transferencias bancarias) pueden tardar varias horas en confirmarse. Te avisaremos por correo en cuanto se confirme — no es necesario que hagas nada mas.",
       "payment_success_processing": "Estamos confirmando tu pago y activando tu plan...",

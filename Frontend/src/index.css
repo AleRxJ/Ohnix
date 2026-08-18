@@ -1385,6 +1385,20 @@ textarea.ant-input[disabled] {
 .dark-alert-purple .ant-alert-icon {
   color: #7c6af7 !important;
 }
+.dark-alert-amber.ant-alert {
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+  background: rgba(245, 158, 11, 0.1) !important;
+}
+.dark-alert-amber .ant-alert-icon {
+  color: var(--ohnix-status-amber) !important;
+}
+.dark-alert-rose.ant-alert {
+  border: 1px solid rgba(251, 113, 133, 0.3) !important;
+  background: rgba(251, 113, 133, 0.1) !important;
+}
+.dark-alert-rose .ant-alert-icon {
+  color: var(--ohnix-status-rose) !important;
+}
 
 /* Moved out of CategoryTable.jsx's inline `<style jsx>` (Next.js-only
    syntax that isn't valid in this plain Vite/React app - React was passing

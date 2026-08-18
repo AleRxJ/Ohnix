@@ -151,6 +151,12 @@ const PAYMENT_FAILED_COPY = {
         en: (planLabel, username) =>
             `Hello <strong>${username || "there"}</strong>, the time window to complete your payment to upgrade to <strong>${planLabel}</strong> ran out. No charge was made to your account. You can try again anytime.`,
     },
+    cancelled: {
+        es: (planLabel, username) =>
+            `Hola <strong>${username || ""}</strong>, cancelaste el pago para actualizar a <strong>${planLabel}</strong>. No se activó ningún cargo en tu cuenta. Puedes intentarlo de nuevo cuando quieras.`,
+        en: (planLabel, username) =>
+            `Hello <strong>${username || "there"}</strong>, you cancelled the payment to upgrade to <strong>${planLabel}</strong>. No charge was made to your account. You can try again anytime.`,
+    },
     default: {
         es: (planLabel, username) =>
             `Hola <strong>${username || ""}</strong>, no pudimos confirmar tu pago para actualizar a <strong>${planLabel}</strong> con nuestro proveedor de pagos. No se activó ningún cargo en tu cuenta. Puedes intentarlo de nuevo con el mismo método u otro distinto.`,

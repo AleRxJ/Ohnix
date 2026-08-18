@@ -317,6 +317,7 @@
       "payment_status_failed": "We could not process your payment. No charge was made. You can try again from Billing.",
       "payment_status_amount_mismatch": "We detected a mismatch in the payment amount and did not activate the plan for safety. Contact support if you believe this is a mistake.",
       "payment_status_expired": "The time window to complete this payment ran out and no charge was made. You can try again from Billing.",
+      "payment_status_cancelled": "You cancelled this payment. No charge was made. You can try again from Billing.",
       "payment_still_pending_title": "Your payment is still being verified",
       "payment_still_pending_description": "Some payment methods (like bank transfers) can take several hours to confirm. We'll email you as soon as it's confirmed — there's nothing else you need to do.",
       "payment_success_processing": "We are confirming your payment and activating your plan...",

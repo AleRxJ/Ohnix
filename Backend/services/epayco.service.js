@@ -276,6 +276,16 @@ export const EPAYCO_STATE = {
 export const isEpaycoTransactionApproved = (stateCode) =>
     parseInt(stateCode, 10) === EPAYCO_STATE.ACCEPTED;
 
+// ePayco's merchant dashboard shows a distinct "Cancelada" state for
+// transactions the customer backed out of (x_response contains "Cancelada
+// por el cliente"), but that state's numeric x_cod_transaction_state isn't
+// documented alongside the codes above and doesn't reliably match any of
+// them - so it (and any other future state ePayco adds) shows up here as an
+// unrecognized code. Callers detect it by response text instead of relying
+// on a guessed number.
+export const isEpaycoCancelledResponse = (responseText) =>
+    `${responseText || ""}`.toLowerCase().includes("cancel");
+
 // ---------------------------------------------------------------------------
 // Transaction query (optional fallback verification)
 //

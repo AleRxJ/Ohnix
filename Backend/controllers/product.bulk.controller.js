@@ -11,7 +11,9 @@ import {
 } from "../middleware/pricing.middleware.js";
 
 const parseCSV = (csvText) => {
-    const lines = csvText
+    const normalized =
+        csvText.charCodeAt(0) === 0xfeff ? csvText.slice(1) : csvText;
+    const lines = normalized
         .replace(/\r\n/g, "\n")
         .replace(/\r/g, "\n")
         .split("\n")
@@ -27,7 +29,12 @@ const parseCSV = (csvText) => {
         for (let i = 0; i < line.length; i++) {
             const char = line[i];
             if (char === '"') {
-                inQuotes = !inQuotes;
+                if (inQuotes && line[i + 1] === '"') {
+                    current += '"';
+                    i += 1;
+                } else {
+                    inQuotes = !inQuotes;
+                }
             } else if (char === "," && !inQuotes) {
                 result.push(current.trim());
                 current = "";
@@ -174,8 +181,8 @@ export const bulkUploadProducts = asyncHandler(async (req, res, next) => {
         if (!productName) rowErrors.push("product_name is required");
         if (!productCode) {
             rowErrors.push("product_code is required");
-        } else if (productCode.length > 5) {
-            rowErrors.push("product_code must be 5 characters or less");
+        } else if (productCode.length > 40) {
+            rowErrors.push("product_code must be 40 characters or less");
         }
 
         const categoryId = categoryName

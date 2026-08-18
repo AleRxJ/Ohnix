@@ -178,7 +178,7 @@ const Billing = () => {
     // "ready to pay" request again (correct - it IS retryable now - but the
     // one-time toast/email is easy to miss, e.g. if the payment redirect
     // landed on an expired session and bounced through /login first).
-    const TERMINAL_FAILED_PAYMENT_STATUSES = ["rejected", "failed", "amount_mismatch", "expired"];
+    const TERMINAL_FAILED_PAYMENT_STATUSES = ["rejected", "failed", "amount_mismatch", "expired", "cancelled"];
     const failedPaymentStatusForRequest = (request) =>
         TERMINAL_FAILED_PAYMENT_STATUSES.includes(request?.paymentStatus) ? request.paymentStatus : null;
 

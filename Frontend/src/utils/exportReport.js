@@ -13,10 +13,16 @@ export const downloadCsv = async (rows, filename) => {
     await authorizeExport("csv");
 
     const csvContent = rows
-        .map((row) => row.map((field) => `"${field ?? ""}"`).join(","))
+        .map((row) =>
+            row
+                .map((field) => `"${String(field ?? "").replace(/"/g, '""')}"`)
+                .join(",")
+        )
         .join("\n");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["﻿" + csvContent], {
+        type: "text/csv;charset=utf-8;",
+    });
     const link = document.createElement("a");
     if (link.download !== undefined) {
         const url = URL.createObjectURL(blob);

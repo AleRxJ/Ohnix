@@ -37,6 +37,7 @@ import {
     getEpaycoAmount,
     EPAYCO_STATE,
     isEpaycoTransactionApproved,
+    isEpaycoCancelledResponse,
 } from "../services/epayco.service.js";
 
 const normalizePaymentLink = (value) => {
@@ -539,6 +540,27 @@ export const resolvePendingPaymentStatus = async (request) => {
                 } else {
                     paymentStatus = "failed";
                 }
+                await markUpgradeRequestPaymentFailed({ upgradeRequestId: request.id, paymentStatus });
+                return { ...request, paymentStatus };
+            }
+
+            const NON_TERMINAL_STATES = new Set([
+                EPAYCO_STATE.PENDING,
+                EPAYCO_STATE.RETAINED,
+                EPAYCO_STATE.STARTED,
+            ]);
+
+            // Any other non-zero code - notably ePayco's "Cancelada" state
+            // (customer backed out of checkout), which isn't covered by any
+            // documented code above - is terminal from the customer's
+            // perspective. Resolve it now instead of leaving them blocked
+            // behind the "a payment is already in progress" guard until the
+            // 48h staleness ceiling below finally kicks in. stateCode === 0
+            // means the query didn't return a usable state at all (not a
+            // real "unknown" transaction state), so that case still falls
+            // through to the staleness check untouched.
+            if (stateCode !== 0 && !NON_TERMINAL_STATES.has(stateCode)) {
+                const paymentStatus = isEpaycoCancelledResponse(responseText) ? "cancelled" : "failed";
                 await markUpgradeRequestPaymentFailed({ upgradeRequestId: request.id, paymentStatus });
                 return { ...request, paymentStatus };
             }
@@ -1735,6 +1757,7 @@ export const handleEpaycoConfirmation = async (req, res) => {
         const currencyCode = `${data.x_currency_code || ""}`.trim();
         const signature = `${data.x_signature || ""}`.trim();
         const stateCode = parseInt(`${data.x_cod_transaction_state || 0}`, 10);
+        const responseText = `${data.x_response || ""}`.trim();
         const requestId = `${data.x_extra1 || ""}`.trim(); // set as p_extra1 during checkout
 
         // Reject incomplete payloads silently (ePayco test pings may be empty)
@@ -1846,9 +1869,19 @@ export const handleEpaycoConfirmation = async (req, res) => {
                 `[epayco-confirmation] Non-terminal state ${stateCode} for requestId ${requestId} — waiting for final confirmation`
             );
         } else {
+            // Any other code - notably ePayco's "Cancelada" state (the
+            // customer backed out of checkout), which isn't covered by the
+            // documented codes above - is terminal from the customer's
+            // perspective: they won't come back and complete this specific
+            // attempt. Resolving it now instead of silently ignoring it
+            // frees them to retry immediately instead of sitting blocked
+            // behind the "a payment is already in progress" guard for up to
+            // the 48h staleness ceiling.
+            const paymentStatus = isEpaycoCancelledResponse(responseText) ? "cancelled" : "failed";
             console.warn(
-                `[epayco-confirmation] Unrecognized transaction state ${stateCode} for requestId ${requestId}`
+                `[epayco-confirmation] Unrecognized transaction state ${stateCode} ("${responseText}") for requestId ${requestId} — treating as terminal (${paymentStatus})`
             );
+            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus });
         }
 
         return res.status(200).json({ success: true });

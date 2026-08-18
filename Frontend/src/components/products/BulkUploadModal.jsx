@@ -117,7 +117,7 @@ const BulkUploadModal = ({
             `"Example Product",EX001,"${exampleCategory}","${exampleUnit}",100.00,150.00`,
         ].join("\n");
 
-        const blob = new Blob([csvContent], {
+        const blob = new Blob(["﻿" + csvContent], {
             type: "text/csv;charset=utf-8;",
         });
         const url = URL.createObjectURL(blob);
@@ -301,6 +301,7 @@ const BulkUploadModal = ({
                                 icon={<CheckCircleOutlined />}
                                 message={t("products.upload_success", { count: result.inserted })}
                                 showIcon
+                                className="dark-alert dark-alert-teal"
                             />
                         )}
 
@@ -309,6 +310,7 @@ const BulkUploadModal = ({
                                 type="warning"
                                 message={t("products.upload_partial_success", { inserted: result.inserted, failed: result.failed })}
                                 showIcon
+                                className="dark-alert dark-alert-amber"
                             />
                         )}
 
@@ -318,6 +320,7 @@ const BulkUploadModal = ({
                                 icon={<CloseCircleOutlined />}
                                 message={t("products.upload_failed", { count: result.failed })}
                                 showIcon
+                                className="dark-alert dark-alert-rose"
                             />
                         )}
 

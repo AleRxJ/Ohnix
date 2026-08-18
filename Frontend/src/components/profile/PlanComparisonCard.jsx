@@ -4,6 +4,7 @@ import { RocketOutlined, CheckCircleOutlined, ArrowRightOutlined, TrophyOutlined
 import useI18n from "../../hooks/useI18n";
 import { subscriptionService } from "../../services/subscriptionService";
 import { FEATURE_LABELS } from "../../hooks/useSubscription";
+import { useMarketPricing } from "../../hooks/useMarketPricing";
 
 const { Title, Text } = Typography;
 
@@ -36,6 +37,12 @@ const PlanComparisonCard = ({ currentPlan, onRequestUpgrade }) => {
     const lang = currentLanguage === "es" ? "es" : "en";
     const [plans, setPlans] = useState(null);
     const [loading, setLoading] = useState(true);
+    // Market-aware price for the "Sube a X y obtén" header - this used to
+    // always show `$${priceUSD}` (the USD reference number) regardless of
+    // the visitor's real currency, so a Colombian user could see "$49/mes"
+    // here right above the real "$99.000 COP/mes" checkout price below,
+    // contradicting each other on the same page.
+    const { priceByPlanKey } = useMarketPricing();
 
     useEffect(() => {
         let active = true;
@@ -87,8 +94,13 @@ const PlanComparisonCard = ({ currentPlan, onRequestUpgrade }) => {
         );
     }
 
-    const priceLabel = (plan) =>
-        plan.priceUSD === null ? t("profile.subscription.comparison.custom_price") : `$${plan.priceUSD}`;
+    const priceLabel = (plan) => {
+        if (plan.priceUSD === null) return t("profile.subscription.comparison.custom_price");
+        const marketPrice = priceByPlanKey[plan.key];
+        if (!marketPrice) return `$${plan.priceUSD}`;
+        // "$" alone is ambiguous between USD and COP.
+        return marketPrice.currency === "COP" ? `${marketPrice.label} COP` : marketPrice.label;
+    };
 
     const newFeatures = FEATURE_LABELS.filter(({ key }) => !current.features[key] && next.features[key]);
 
