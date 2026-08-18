@@ -303,7 +303,7 @@
       "request_status_help_approved_activated": "Aprobada y activada. Tu plan solicitado ya esta activo.",
       "request_status_help_rejected": "Tu solicitud fue rechazada. Puedes enviar una nueva con mas contexto.",
       "request_status_help_closed": "Esta solicitud fue cerrada y ya no esta activa.",
-      "payment_pending_notice": "Ya iniciaste un pago para esta solicitud y sigue en verificacion (algunos metodos bancarios pueden tardar horas). No inicies un pago nuevo — te avisaremos por correo en cuanto se confirme.",
+      "payment_pending_notice": "Ya iniciaste un pago para esta solicitud y sigue en verificacion (algunos metodos pueden tardar horas, y metodos como debito SEPA pueden tardar varios dias habiles). No inicies un pago nuevo — te avisaremos por correo en cuanto se confirme.",
       "payment_ready_title": "Paso de pago disponible",
       "payment_ready_description": "Completa el pago para activar tu plan solicitado automaticamente.",
       "checkout_cta": "Pagar y activar ahora",

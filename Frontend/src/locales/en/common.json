@@ -303,7 +303,7 @@
       "request_status_help_approved_activated": "Approved and activated. Your requested plan is already active.",
       "request_status_help_rejected": "Your request was rejected. You can submit a new request with more context.",
       "request_status_help_closed": "This request was closed and is no longer active.",
-      "payment_pending_notice": "You already started a payment for this request and it's still being verified (some bank methods can take hours). Don't start a new payment — we'll email you as soon as it's confirmed.",
+      "payment_pending_notice": "You already started a payment for this request and it's still being verified (some methods can take hours, and methods like SEPA Direct Debit can take several business days). Don't start a new payment — we'll email you as soon as it's confirmed.",
       "payment_ready_title": "Payment step available",
       "payment_ready_description": "Complete payment to activate your requested plan automatically.",
       "checkout_cta": "Pay and activate now",

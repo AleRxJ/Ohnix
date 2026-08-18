@@ -376,14 +376,31 @@ const markUpgradeRequestPaymentFailed = async ({ upgradeRequestId, paymentStatus
     }
 };
 
-// A checkout session that has sat at paymentStatus "pending" this long is no
-// longer trusted even if the provider never sent (or we never received) a
-// definitive signal - this is the hard ceiling that guarantees a customer
-// can never be stuck indefinitely. Generous enough to not cut off slow
-// bank-transfer methods (PSE etc. can legitimately take hours per their own
-// docs) while still bounding the worst case to under 2 days instead of
-// forever.
+// A checkout session that has sat at paymentStatus "pending" this long,
+// with NO confirmation from the provider that a real payment is actually in
+// flight (customer never finished checkout, or we simply never heard back),
+// is no longer trusted - this is the hard ceiling that guarantees a
+// customer can never be stuck indefinitely for that case. Deliberately NOT
+// used for a payment the provider has positively confirmed is genuinely
+// still processing (see PENDING_PAYMENT_VERIFIED_PROCESSING_TIMEOUT_MS
+// below) - PSE-style methods settle within hours, so 48h is already
+// generous for "we heard nothing at all".
 const PENDING_PAYMENT_TIMEOUT_MS = 48 * 60 * 60 * 1000; // 48h
+
+// Some payment methods are legitimately slow even once the customer has
+// fully submitted them - Stripe SEPA Direct Debit in particular can take up
+// to 14 business days to clear (Stripe's own guidance), and ePayco can hold
+// a transaction "Retenida" for its own fraud review. Auto-expiring one of
+// these on the same 48h clock as an abandoned checkout would be actively
+// dangerous: the customer sees "expired, try again", pays a second time
+// with a different method, and the original slow payment then clears days
+// later too - a real double charge, not just a UX annoyance. So once the
+// provider has explicitly confirmed "this is real and still processing"
+// (not merely "we have no news"), resolvePendingPaymentStatus never invents
+// an "expired" verdict on our own clock - it only ever reports what the
+// provider itself eventually says, bounded by this much longer ceiling
+// purely as a backstop against the provider never answering at all.
+const PENDING_PAYMENT_VERIFIED_PROCESSING_TIMEOUT_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
 // The single source of truth for "is this pending payment actually still
 // pending". Re-verifies directly against the provider (Stripe / ePayco) and
@@ -414,6 +431,12 @@ export const resolvePendingPaymentStatus = async (request) => {
     const isStale =
         Number.isFinite(pendingSinceMs) &&
         Date.now() - pendingSinceMs > PENDING_PAYMENT_TIMEOUT_MS;
+
+    // Set below whenever the provider itself confirms a real payment is in
+    // flight (not merely "we got no answer") - see
+    // PENDING_PAYMENT_VERIFIED_PROCESSING_TIMEOUT_MS for why that case must
+    // never be auto-expired on the same clock as an abandoned checkout.
+    let verifiedStillProcessing = false;
 
     try {
         if (provider.startsWith("stripe") && request.paymentSessionId) {
@@ -464,9 +487,19 @@ export const resolvePendingPaymentStatus = async (request) => {
                 return { ...request, paymentStatus: "expired" };
             }
 
-            // status === "open": genuinely still awaiting the customer -
-            // fall through to the staleness check below instead of
-            // resolving anything here.
+            // status === "complete" with payment_status still "unpaid" is
+            // NOT the same as "open" - the customer already fully submitted
+            // the checkout (e.g. authorized a SEPA Direct Debit mandate),
+            // and Stripe is genuinely still waiting on the bank to clear it,
+            // which can take days. Stripe's own async_payment_succeeded/
+            // _failed webhook is the only thing allowed to resolve this -
+            // our 48h clock must not invent an "expired" verdict while the
+            // real payment might still land. Only a session still stuck at
+            // "open" (customer never finished checkout at all) falls
+            // through to that staleness check below.
+            if (status === "complete") {
+                verifiedStillProcessing = true;
+            }
         } else if (provider.startsWith("epayco") && request.paymentSessionId) {
             const transaction = await queryEpaycoTransaction(request.paymentSessionId);
             const txData = transaction?.data || transaction || {};
@@ -568,8 +601,20 @@ export const resolvePendingPaymentStatus = async (request) => {
                 return { ...request, paymentStatus };
             }
 
-            // 3=Pending, 7=Retained, 8=Started: genuinely still processing -
-            // fall through to the staleness check below.
+            // 3=Pending ("the customer already submitted a payment, e.g. a
+            // PSE bank redirect, and we're waiting on the bank to confirm")
+            // and 7=Retained ("ePayco itself is holding it for fraud
+            // review") both mean a real payment attempt exists and is
+            // genuinely still being decided - same class of risk as
+            // Stripe's "complete but unpaid" above, so this must not be
+            // auto-expired on the abandoned-checkout clock either. 8=Started
+            // ("Iniciada") is the ambiguous one - a transaction record was
+            // created but there's no confirmation the customer ever
+            // actually submitted payment details, so it stays on the
+            // regular staleness check instead of being trusted indefinitely.
+            if (stateCode === EPAYCO_STATE.PENDING || stateCode === EPAYCO_STATE.RETAINED) {
+                verifiedStillProcessing = true;
+            }
         }
     } catch (error) {
         // A provider outage/timeout must not itself become a second reason
@@ -579,6 +624,24 @@ export const resolvePendingPaymentStatus = async (request) => {
             "[payment-reconcile] Provider verification failed, relying on timeout only",
             { requestId: request.id, provider, message: error?.message }
         );
+    }
+
+    if (verifiedStillProcessing) {
+        // The provider confirmed this is real and still in flight - only
+        // its own eventual answer (webhook or a later call here) can
+        // resolve it. The far-longer ceiling here exists purely so a
+        // provider that never answers at all still doesn't block a
+        // customer forever, not as a normal expectation.
+        const isVeryStale =
+            Number.isFinite(pendingSinceMs) &&
+            Date.now() - pendingSinceMs > PENDING_PAYMENT_VERIFIED_PROCESSING_TIMEOUT_MS;
+
+        if (isVeryStale) {
+            await markUpgradeRequestPaymentFailed({ upgradeRequestId: request.id, paymentStatus: "expired" });
+            return { ...request, paymentStatus: "expired" };
+        }
+
+        return request;
     }
 
     if (isStale) {
