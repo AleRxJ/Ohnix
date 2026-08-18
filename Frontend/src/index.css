@@ -946,6 +946,34 @@ textarea.ant-input[disabled] {
   color: var(--ohnix-text-dim) !important;
 }
 
+/* Checkbox label text had no override anywhere in this file - it defaults
+   to antd's light-theme near-black, which is nearly invisible against a
+   dark modal background (e.g. Billing.jsx's "requiresManualReview" checkbox
+   in the upgrade-request modal). Unscoped + !important for the same reason
+   as .ant-form-item-label above: most Checkbox usage lives inside a
+   portaled Modal/Drawer, which a `.dashboard-app`-scoped rule can't reach. */
+.ant-checkbox-wrapper {
+  color: var(--ohnix-text-soft) !important;
+}
+
+.ant-checkbox-wrapper:hover .ant-checkbox-inner {
+  border-color: #29d8d5 !important;
+}
+
+.ant-checkbox-inner {
+  background-color: var(--ohnix-surface-2) !important;
+  border-color: var(--ohnix-line-5) !important;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #29d8d5 !important;
+  border-color: #29d8d5 !important;
+}
+
+.ant-checkbox-checked::after {
+  border-color: #29d8d5 !important;
+}
+
 .auth-ohnix-input input:-webkit-autofill,
 .auth-ohnix-input input:-webkit-autofill:hover,
 .auth-ohnix-input input:-webkit-autofill:focus,
@@ -1880,5 +1908,24 @@ textarea.ant-input[disabled] {
   background: var(--ohnix-line-1);
   border-color: var(--ohnix-line-4);
   color: #44f3f0;
+}
+
+/* antd's Upload.Dragger ships its own light-theme chrome (white background,
+   solid grey border) on the outer .ant-upload-drag node - stripped here so
+   the dashed/gradient styling lives entirely on .csv-dropzone-inner below,
+   and the active-drag state (.ant-upload-drag-hover, toggled by antd itself
+   while a file is dragged over) drives the same hover look as a real
+   pointer hover instead of only reacting to mouse :hover. */
+.csv-dropzone.ant-upload.ant-upload-drag {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+.csv-dropzone .ant-upload-drag-container {
+  display: block;
+}
+.csv-dropzone.ant-upload-drag-hover .csv-dropzone-inner {
+  border-color: rgba(41, 216, 213, 0.6) !important;
+  background: var(--ohnix-hover-overlay) !important;
 }
 

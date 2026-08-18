@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import {
     Modal,
     Upload,
@@ -12,10 +13,11 @@ import {
     message,
 } from "antd";
 import {
-    UploadOutlined,
+    InboxOutlined,
     DownloadOutlined,
     CheckCircleOutlined,
     CloseCircleOutlined,
+    CloseOutlined,
     FileTextOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/api";
@@ -35,6 +37,16 @@ const BulkUploadModal = ({
     const [result, setResult] = useState(null);
     const [progress, setProgress] = useState(0);
     const { t } = useI18n();
+
+    const hasCategories = categories.length > 0;
+    const hasUnits = units.length > 0;
+    const missingTaxonomyMessage = !hasCategories && !hasUnits
+        ? t("products.bulk_missing_both")
+        : !hasCategories
+            ? t("products.bulk_missing_categories")
+            : !hasUnits
+                ? t("products.bulk_missing_units")
+                : null;
 
     const handleFileSelect = (selectedFile) => {
         const isCSV =
@@ -109,8 +121,13 @@ const BulkUploadModal = ({
     };
 
     const handleDownloadTemplate = () => {
-        const exampleCategory = categories[0]?.category_name || "Electronics";
-        const exampleUnit = units[0]?.unit_name || "Piece";
+        // Falls back to an obviously-fake placeholder (not a plausible real
+        // category/unit name like the old "Electronics"/"Piece" strings) when
+        // the account has none yet - otherwise the template looks valid but
+        // every row fails on upload with a "Category/Unit not found" error
+        // the user has no way to anticipate.
+        const exampleCategory = categories[0]?.category_name || "TU_CATEGORIA";
+        const exampleUnit = units[0]?.unit_name || "TU_UNIDAD";
 
         const csvContent = [
             "product_name,product_code,category_name,unit_name,buying_price,selling_price",
@@ -199,76 +216,131 @@ const BulkUploadModal = ({
             }}
         >
             <div className="space-y-4 py-2">
-                <div className="bg-[#29D8D5]/10 border border-[#29D8D5]/25 rounded-lg p-4">
-                    <div className="flex items-start justify-between gap-4">
-                        <div>
-                            <Text className="font-semibold !text-[var(--ohnix-text-primary)] block mb-1">
-                                {t("products.step_1_download_template")}
+                {missingTaxonomyMessage && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        className="dark-alert dark-alert-amber"
+                        message={missingTaxonomyMessage}
+                        description={
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span>{t("products.bulk_missing_taxonomy_suffix")}</span>
+                                <Link
+                                    to="/categories"
+                                    onClick={handleClose}
+                                    className="font-semibold !text-[#44F3F0] hover:!text-[#29D8D5] whitespace-nowrap"
+                                >
+                                    {t("products.bulk_missing_taxonomy_cta")} →
+                                </Link>
+                            </div>
+                        }
+                    />
+                )}
+
+                <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#29D8D5] to-[#44F3F0] text-xs font-bold text-[#021314]">
+                            1
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                                <Text className="font-semibold !text-[var(--ohnix-text-primary)]">
+                                    {t("products.step_1_download_template")}
+                                </Text>
+                                <Button
+                                    icon={<DownloadOutlined />}
+                                    onClick={handleDownloadTemplate}
+                                    size="small"
+                                    className="flex-shrink-0"
+                                >
+                                    {t("products.template")}
+                                </Button>
+                            </div>
+                            <Text className="text-sm !text-[var(--ohnix-text-muted)] block mt-1 mb-2.5">
+                                {t("products.template_csv_instruction")}
                             </Text>
-                            <Text className="text-sm !text-[var(--ohnix-text-muted)]">
-                                {t("products.template_csv_instruction")}{" "}
-                                <Text code className="text-xs">
-                                    product_name
-                                </Text>
-                                ,{" "}
-                                <Text code className="text-xs">
-                                    product_code
-                                </Text>
-                                ,{" "}
-                                <Text code className="text-xs">
-                                    category_name
-                                </Text>
-                                ,{" "}
-                                <Text code className="text-xs">
-                                    unit_name
-                                </Text>
-                                ,{" "}
-                                <Text code className="text-xs">
-                                    buying_price
-                                </Text>
-                                ,{" "}
-                                <Text code className="text-xs">
-                                    selling_price
-                                </Text>
+                            <div className="flex flex-wrap gap-1.5">
+                                {[
+                                    "product_name",
+                                    "product_code",
+                                    "category_name",
+                                    "unit_name",
+                                    "buying_price",
+                                    "selling_price",
+                                ].map((col) => (
+                                    <span
+                                        key={col}
+                                        className="rounded-md border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] px-2 py-0.5 font-mono text-[11px] text-[#44F3F0]"
+                                    >
+                                        {col}
+                                    </span>
+                                ))}
+                            </div>
+                            <Text className="text-xs !text-[var(--ohnix-text-dim)] block mt-2.5">
+                                {t("products.bulk_taxonomy_match_hint")}
                             </Text>
                         </div>
-                        <Button
-                            icon={<DownloadOutlined />}
-                            onClick={handleDownloadTemplate}
-                            size="small"
-                            className="flex-shrink-0"
-                        >
-                            {t("products.template")}
-                        </Button>
                     </div>
                 </div>
 
-                <div>
-                    <Text className="font-semibold block mb-2">
-                        {t("products.step_2_select_csv")}
-                    </Text>
-                    <Upload
-                        accept=".csv"
-                        beforeUpload={handleFileSelect}
-                        maxCount={1}
-                        showUploadList={false}
-                        onRemove={() => setFile(null)}
-                    >
-                        <Button
-                            icon={<UploadOutlined />}
-                            size="large"
-                            className="w-full"
-                        >
-                            {file
-                                ? `${t("products.selected")}: ${file.name}`
-                                : t("products.click_to_select_csv")}
-                        </Button>
-                    </Upload>
-                    {file && (
-                        <Text type="secondary" className="text-xs mt-1 block">
-                            {(file.size / 1024).toFixed(1)} {t("products.kb_supported_rows")}
-                        </Text>
-                    )}
+                <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#29D8D5] to-[#44F3F0] text-xs font-bold text-[#021314]">
+                            2
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <Text className="font-semibold !text-[var(--ohnix-text-primary)] block mb-2.5">
+                                {t("products.step_2_select_csv")}
+                            </Text>
+
+                            {file ? (
+                                <div className="flex items-center gap-3 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-4)] px-3.5 py-3">
+                                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                                        <FileTextOutlined className="text-[#44F3F0]" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <Text className="!text-[var(--ohnix-text-primary)] text-sm font-medium block truncate">
+                                            {file.name}
+                                        </Text>
+                                        <Text className="!text-[var(--ohnix-text-muted)] text-xs block">
+                                            {(file.size / 1024).toFixed(1)} {t("products.kb_supported_rows")}
+                                        </Text>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setFile(null);
+                                            setResult(null);
+                                        }}
+                                        aria-label={t("products.remove_file")}
+                                        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[var(--ohnix-text-dim)] transition-colors duration-200 hover:bg-[var(--ohnix-line-3)] hover:text-white"
+                                    >
+                                        <CloseOutlined className="text-xs" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <Upload.Dragger
+                                    accept=".csv"
+                                    beforeUpload={handleFileSelect}
+                                    maxCount={1}
+                                    showUploadList={false}
+                                    className="csv-dropzone"
+                                >
+                                    <div className="csv-dropzone-inner flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--ohnix-line-5)] bg-[var(--ohnix-surface-4)] px-6 py-7 text-center transition-all duration-300 hover:border-[#29D8D5]/60 hover:bg-[var(--ohnix-hover-overlay)]">
+                                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#29D8D5] to-[#44F3F0] shadow-[0_8px_20px_rgba(41,216,213,0.35)]">
+                                            <InboxOutlined className="text-lg text-[#021314]" />
+                                        </div>
+                                        <Text className="!text-[var(--ohnix-text-primary)] text-sm font-semibold">
+                                            {t("products.drag_drop_csv_hint")}
+                                        </Text>
+                                        <Text className="!text-[var(--ohnix-text-muted)] text-xs">
+                                            {t("products.csv_dropzone_subtitle")}
+                                        </Text>
+                                    </div>
+                                </Upload.Dragger>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {uploading && (
