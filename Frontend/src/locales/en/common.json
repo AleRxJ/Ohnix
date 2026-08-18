@@ -252,6 +252,16 @@
     "otp_invalid_toast": "Invalid OTP",
     "password_change_success_toast": "Your password has been changed successfully",
     "password_change_failed_toast": "Failed to change password",
+    "otp_modal": {
+      "verify_password_change_title": "Verify Password Change",
+      "verify_email_title": "Verify Your Email",
+      "verify_password_change_description": "Enter the verification code sent to your email to confirm your password change.",
+      "verify_email_description": "We've sent a 6-digit verification code to your email address.",
+      "otp_required": "Please input the OTP!",
+      "verify_code": "Verify Code",
+      "no_code_received": "Didn't receive the code?",
+      "resend": "Resend"
+    },
     "subscription": {
       "title": "Plan and usage",
       "description": "Track your plan status and how much quota your team is consuming.",

@@ -252,6 +252,16 @@
     "otp_invalid_toast": "Código OTP inválido",
     "password_change_success_toast": "Tu contraseña se cambió correctamente",
     "password_change_failed_toast": "No se pudo cambiar la contraseña",
+    "otp_modal": {
+      "verify_password_change_title": "Verificar cambio de contraseña",
+      "verify_email_title": "Verifica tu correo",
+      "verify_password_change_description": "Ingresa el código de verificación enviado a tu correo para confirmar el cambio de contraseña.",
+      "verify_email_description": "Te enviamos un código de 6 dígitos a tu correo electrónico.",
+      "otp_required": "¡Ingresa el código OTP!",
+      "verify_code": "Verificar código",
+      "no_code_received": "¿No recibiste el código?",
+      "resend": "Reenviar"
+    },
     "subscription": {
       "title": "Plan y uso",
       "description": "Consulta el estado de tu plan y cuánto cupo está consumiendo tu equipo.",

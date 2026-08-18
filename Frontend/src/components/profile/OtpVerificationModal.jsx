@@ -1,6 +1,7 @@
 import React from "react";
 import { Modal, Form, Input, Button, Typography } from "antd";
 import { MailOutlined, SafetyOutlined } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 const { Text } = Typography;
 
@@ -13,6 +14,7 @@ const OtpVerificationModal = ({
     loading,
     newPasswordData,
 }) => {
+    const { t } = useI18n();
     return (
         <Modal
             title={null}
@@ -38,13 +40,13 @@ const OtpVerificationModal = ({
                 </div>
                 <h2 className="text-xl font-semibold text-[var(--ohnix-text-primary)] mb-2">
                     {newPasswordData
-                        ? "Verify Password Change"
-                        : "Verify Your Email"}
+                        ? t("profile.otp_modal.verify_password_change_title")
+                        : t("profile.otp_modal.verify_email_title")}
                 </h2>
                 <Text className="text-[var(--ohnix-text-muted)] text-sm">
                     {newPasswordData
-                        ? "Enter the verification code sent to your email to confirm your password change."
-                        : "We've sent a 6-digit verification code to your email address."}
+                        ? t("profile.otp_modal.verify_password_change_description")
+                        : t("profile.otp_modal.verify_email_description")}
                 </Text>
             </div>
 
@@ -54,7 +56,7 @@ const OtpVerificationModal = ({
                     rules={[
                         {
                             required: true,
-                            message: "Please input the OTP!",
+                            message: t("profile.otp_modal.otp_required"),
                         },
                     ]}
                     className="mb-6"
@@ -75,19 +77,19 @@ const OtpVerificationModal = ({
                         block
                         className="bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 rounded-lg h-11 font-medium shadow-sm text-[#021314]"
                     >
-                        Verify Code
+                        {t("profile.otp_modal.verify_code")}
                     </Button>
 
                     <div className="flex items-center justify-center gap-2 text-sm">
                         <Text className="text-[var(--ohnix-text-muted)]">
-                            Didn't receive the code?
+                            {t("profile.otp_modal.no_code_received")}
                         </Text>
                         <Button
                             type="link"
                             onClick={() => handleSendOtp()}
                             className="text-[#44F3F0] hover:!text-[#29D8D5] p-0 h-auto font-medium"
                         >
-                            Resend
+                            {t("profile.otp_modal.resend")}
                         </Button>
                     </div>
                 </div>
