@@ -268,6 +268,14 @@ model PlanUpgradeRequest {
   paymentSessionId String?              @unique @map("payment_session_id")
   paymentStatus    String?              @map("payment_status")
   paidAt           DateTime?            @map("paid_at")
+  // Snapshot of the subscription period THIS request activated, taken at
+  // the moment it did - the Subscription's own `endsAt` gets overwritten on
+  // every renewal, so without this a closed/paid request from a few
+  // renewals ago has no way to say what period it actually covered. Only
+  // set when this request's payment was confirmed (paymentStatus "paid");
+  // null on every other outcome.
+  periodStartsAt   DateTime?            @map("period_starts_at")
+  periodEndsAt     DateTime?            @map("period_ends_at")
   createdAt        DateTime             @default(now()) @map("created_at")
   updatedAt        DateTime             @updatedAt @map("updated_at")
 

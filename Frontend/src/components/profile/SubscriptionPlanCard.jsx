@@ -310,6 +310,16 @@ const SubscriptionPlanCard = ({
                         <Text className="text-[var(--ohnix-text-muted)] text-sm">
                             {t("profile.subscription.description")}
                         </Text>
+                        {/* Always-visible renewal date - the banners above
+                            only appear once expiry is close (≤7 days) or a
+                            cancellation is already scheduled, so outside
+                            those windows there was nowhere on the page that
+                            said when the current plan actually runs out. */}
+                        {planEndsAt && !cancelAtPeriodEnd && (
+                            <Text className="text-[var(--ohnix-text-muted)] text-xs mt-0.5 block">
+                                {t("profile.subscription.plan_valid_until", { date: cancelDateLabel })}
+                            </Text>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">

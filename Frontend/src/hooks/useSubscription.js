@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext } from "react";
 import AuthContext from "../context/AuthContext";
 import { subscriptionService } from "../services/subscriptionService";
+import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
 
 // Mirror of Backend PLAN_FEATURES — keep in sync with pricing.middleware.js
 export const PLAN_FEATURES = {
@@ -88,6 +89,11 @@ export const TEAM_SEAT_LIMITS = {
 // defined only inside SubscriptionPlanCard.jsx and listed just 8 of the 12
 // flags, silently hiding reportPurchases, reportTopProducts, exportExcel
 // and exportPdf from a user auditing what their plan actually includes.
+// electronicInvoicing is filtered out while ELECTRONIC_INVOICING_ENABLED is
+// false (see config/features.js) - the feature isn't actually offered yet,
+// so it shouldn't be advertised as something a plan includes. Every other
+// consumer of that flag (nav, routes, product forms) already hides it the
+// same way; this list was the one place still listing it unconditionally.
 export const FEATURE_LABELS = [
     { key: "reportSales",       es: "Reportes de ventas",              en: "Sales reports"                },
     { key: "reportPurchases",   es: "Reportes de compras",             en: "Purchase reports"              },
@@ -104,7 +110,7 @@ export const FEATURE_LABELS = [
     { key: "teamRoles",         es: "Roles y permisos por módulo",     en: "Per-module roles & permissions" },
     { key: "teamLivePresence",  es: "Presencia en vivo y bloqueo de registros", en: "Live presence & record locking" },
     { key: "teamActivityLog",   es: "Log de actividad del equipo",     en: "Team activity log"            },
-];
+].filter((feature) => ELECTRONIC_INVOICING_ENABLED || feature.key !== "electronicInvoicing");
 
 // The minimum plan that unlocks each feature (used for "upgrade to X" messages)
 export const FEATURE_MINIMUM_PLAN = {

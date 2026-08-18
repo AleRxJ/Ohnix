@@ -137,6 +137,22 @@ const UPGRADE_REQUEST_ERROR_I18N_MAP = {
         "profile.subscription.error_cancel_not_allowed",
 };
 
+// Older upgrade requests (created before the backend stopped writing these)
+// still carry these exact system-generated English sentences in `notes` /
+// `adminResponse` - hardcoded because they were never meant to be free
+// text, just boilerplate. Recognized here and suppressed regardless of the
+// viewer's language, instead of showing raw English or a translated line
+// that would just duplicate request_status_help_approved right below it.
+// This works for every existing row without a data migration, and for any
+// new one created before that backend fix is deployed - display never
+// depends on what's literally stored for these two known strings. A real
+// admin-authored note/response (anything else) still renders as-is.
+const SUPPRESSED_SYSTEM_TEXT = new Set([
+    "Auto-approved for standard checkout. Complete payment to activate your plan.",
+    "Requested during signup",
+]);
+const isDisplayableFreeText = (value) => Boolean(value) && !SUPPRESSED_SYSTEM_TEXT.has(value);
+
 const Billing = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -923,21 +939,56 @@ const Billing = () => {
                                             <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
                                                 {new Date(item.createdAt).toLocaleString()}
                                             </div>
-                                            {item.notes ? (
+                                            {isDisplayableFreeText(item.notes) ? (
                                                 <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
                                                     {item.notes}
                                                 </div>
                                             ) : null}
-                                            {item.adminResponse ? (
+                                            {isDisplayableFreeText(item.adminResponse) ? (
                                                 <div className="mt-1 text-xs text-[#44F3F0]">
                                                     {item.adminResponse}
                                                 </div>
                                             ) : null}
 
                                             <div className="mt-2 text-xs text-[var(--ohnix-text-muted)]">
-                                                {item.status === "approved" && isPlanAlreadyActiveForRequest(item)
-                                                    ? t("profile.subscription.request_status_help_approved_activated")
-                                                    : t(`profile.subscription.request_status_help_${item.status}`)}
+                                                {item.status === "closed" ? (
+                                                    item.paymentStatus === "paid" ? (
+                                                        <>
+                                                            {t("profile.subscription.request_closed_paid", {
+                                                                date: new Date(item.paidAt || item.updatedAt).toLocaleDateString(),
+                                                            })}
+                                                            {item.periodStartsAt && item.periodEndsAt ? (
+                                                                // Exact period this request activated, snapshotted
+                                                                // at the time - accurate even for a renewal from
+                                                                // several cycles ago that's since been superseded.
+                                                                <>
+                                                                    {" "}
+                                                                    {t("profile.subscription.request_closed_period", {
+                                                                        start: new Date(item.periodStartsAt).toLocaleDateString(),
+                                                                        end: new Date(item.periodEndsAt).toLocaleDateString(),
+                                                                    })}
+                                                                </>
+                                                            ) : isPlanAlreadyActiveForRequest(item) && subscription?.endsAt ? (
+                                                                // Older request, created before periodStartsAt/
+                                                                // periodEndsAt existed - best-effort fallback, only
+                                                                // accurate when this happens to be the request
+                                                                // behind the currently active period.
+                                                                <>
+                                                                    {" "}
+                                                                    {t("profile.subscription.request_closed_valid_until", {
+                                                                        date: new Date(subscription.endsAt).toLocaleDateString(),
+                                                                    })}
+                                                                </>
+                                                            ) : null}
+                                                        </>
+                                                    ) : (
+                                                        t("profile.subscription.request_closed_unpaid")
+                                                    )
+                                                ) : item.status === "approved" && isPlanAlreadyActiveForRequest(item) ? (
+                                                    t("profile.subscription.request_status_help_approved_activated")
+                                                ) : (
+                                                    t(`profile.subscription.request_status_help_${item.status}`)
+                                                )}
                                             </div>
 
                                             {item.status === "approved" &&

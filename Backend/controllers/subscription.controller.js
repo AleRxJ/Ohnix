@@ -94,6 +94,8 @@ export const UPGRADE_REQUEST_SELECT = {
     paymentSessionId: true,
     paymentStatus: true,
     paidAt: true,
+    periodStartsAt: true,
+    periodEndsAt: true,
     createdAt: true,
     updatedAt: true,
 };
@@ -239,15 +241,19 @@ const closeApprovedRequestAndActivatePlan = async ({
             return { request: existing, activated: false };
         }
 
-        // For renewals: extend from current endsAt so no days are lost
+        // For renewals: extend from current endsAt so no days are lost.
+        // `base` is also the period's start - kept outside the `if` so a
+        // straight upgrade (not a renewal) still gets a periodStartsAt of
+        // "now" below instead of only renewals recording one.
         const isRenewal = existing.currentPlan === existing.targetPlan;
+        let base = new Date();
         let endsAt = defaultEndsAt;
         if (isRenewal) {
             const currentSub = await tx.subscription.findUnique({
                 where: { userId: existing.userId },
                 select: { endsAt: true },
             });
-            const base = currentSub?.endsAt && new Date(currentSub.endsAt) > new Date()
+            base = currentSub?.endsAt && new Date(currentSub.endsAt) > new Date()
                 ? new Date(currentSub.endsAt)   // still active → extend from expiry
                 : new Date();                    // already expired → extend from now
             endsAt = new Date(base.getTime() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000);
@@ -271,10 +277,20 @@ const closeApprovedRequestAndActivatePlan = async ({
                 paymentStatus,
                 paymentLink: paymentLink || existing.paymentLink,
                 paidAt: paymentStatus === "paid" ? new Date() : existing.paidAt,
-                adminResponse:
-                    adminResponse?.trim() ||
-                    existing.adminResponse ||
-                    "Payment confirmed automatically. Plan activated.",
+                // Snapshot of the period THIS payment covers - the
+                // Subscription row's own endsAt gets overwritten on the
+                // next renewal, so without this a request from a few
+                // renewals ago has no way to say what it actually covered
+                // (see the Prisma model comment). Only meaningful when a
+                // real payment just activated the plan.
+                periodStartsAt: paymentStatus === "paid" ? base : existing.periodStartsAt,
+                periodEndsAt: paymentStatus === "paid" ? endsAt : existing.periodEndsAt,
+                // No fallback boilerplate text here - request_closed_paid
+                // (Billing.jsx) already tells the customer this, translated,
+                // from paymentStatus/paidAt/periodEndsAt. A literal English
+                // fallback string here used to end up stored and shown
+                // verbatim regardless of the viewer's language.
+                adminResponse: adminResponse?.trim() || existing.adminResponse || null,
             },
         });
 
