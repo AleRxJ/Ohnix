@@ -18,7 +18,7 @@ import { PLAN_FEATURES, FEATURE_MINIMUM_PLAN, FEATURE_LABELS } from "../../hooks
 
 const { Title, Text } = Typography;
 
-const PLAN_COLORS = {
+export const PLAN_COLORS = {
     starter:    "#9ca3af",
     growth:     "#29D8D5",
     scale:      "#7C6AF7",

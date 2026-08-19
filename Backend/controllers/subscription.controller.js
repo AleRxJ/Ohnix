@@ -302,28 +302,43 @@ const closeApprovedRequestAndActivatePlan = async ({
             return { request: current, activated: false };
         }
 
-        await tx.subscription.upsert({
-            where: { userId: existing.userId },
-            update: {
-                plan: existing.targetPlan,
-                status: "active",
-                endsAt,
-                trialEndsAt: null,
-            },
-            create: {
-                userId: existing.userId,
-                plan: existing.targetPlan,
-                status: "active",
-                endsAt,
-            },
-        });
+        // Closing the request is not by itself proof the customer paid - an
+        // admin can close an "approved" request whose automated checkout
+        // never actually completed (e.g. unsticking one still stuck at
+        // paymentStatus "pending" because the customer abandoned checkout
+        // and neither ePayco/Stripe ever sent a definitive signal - see
+        // resolvePendingPaymentStatus's 48h backstop above). Before this
+        // guard, closing such a request granted the target plan for free
+        // regardless of what paymentStatus was actually passed in, because
+        // this upsert ran unconditionally. Every OTHER caller of this
+        // function already hardcodes paymentStatus: "paid" (webhook /
+        // reconcile / verify-now paths), so this only changes behavior for
+        // the one caller (the admin status-update endpoint) that can pass
+        // anything else.
+        if (paymentStatus === "paid") {
+            await tx.subscription.upsert({
+                where: { userId: existing.userId },
+                update: {
+                    plan: existing.targetPlan,
+                    status: "active",
+                    endsAt,
+                    trialEndsAt: null,
+                },
+                create: {
+                    userId: existing.userId,
+                    plan: existing.targetPlan,
+                    status: "active",
+                    endsAt,
+                },
+            });
+        }
 
         const closedRequest = await tx.planUpgradeRequest.findUnique({
             where: { id: existing.id },
             select: UPGRADE_REQUEST_SELECT,
         });
 
-        return { request: closedRequest, activated: true };
+        return { request: closedRequest, activated: paymentStatus === "paid" };
     });
 
     if (!result?.request) {

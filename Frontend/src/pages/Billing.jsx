@@ -8,6 +8,9 @@ import {
     CloseCircleOutlined,
     ClockCircleOutlined,
     WarningOutlined,
+    CheckCircleOutlined,
+    CheckOutlined,
+    ArrowRightOutlined,
 } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -17,8 +20,10 @@ import useI18n from "../hooks/useI18n";
 import { subscriptionService } from "../services/subscriptionService";
 import { pricingService } from "../services/pricingService";
 import { formatCurrency } from "../utils/currency";
-import SubscriptionPlanCard from "../components/profile/SubscriptionPlanCard";
-import PlanComparisonCard from "../components/profile/PlanComparisonCard";
+import { FEATURE_LABELS } from "../hooks/useSubscription";
+import { useMarketPricing } from "../hooks/useMarketPricing";
+import SubscriptionPlanCard, { PLAN_COLORS } from "../components/profile/SubscriptionPlanCard";
+import PlanComparisonCard, { LIMIT_ROWS, formatLimit, getPlanPriceLabel } from "../components/profile/PlanComparisonCard";
 import ApiKeysPanel from "../components/billing/ApiKeysPanel";
 
 const { Title, Text } = Typography;
@@ -73,6 +78,63 @@ const darkModalStyles = {
         padding: "20px 24px 16px",
     },
     body: { padding: 24 },
+};
+
+// Plan picker for the upgrade-request modal - a grid of selectable cards
+// (one per plan the user can move to) instead of a bare <Select> with no
+// price or context. Behaves like any other antd custom form control: Form.Item
+// injects `value`/`onChange(newValue)` automatically since this is its only
+// child.
+const PlanPickerCards = ({ value, onChange, options, catalog, priceByPlanKey, t }) => {
+    const catalogByKey = (catalog || []).reduce((acc, plan) => {
+        acc[plan.key] = plan;
+        return acc;
+    }, {});
+
+    return (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {options.map((planKey) => {
+                const plan = catalogByKey[planKey];
+                const color = PLAN_COLORS[planKey] || "#29D8D5";
+                const isSelected = value === planKey;
+                const priceLabel = plan ? getPlanPriceLabel(plan, priceByPlanKey, t) : null;
+
+                return (
+                    <button
+                        type="button"
+                        key={planKey}
+                        onClick={() => onChange?.(planKey)}
+                        className="relative flex flex-col items-start gap-1.5 rounded-2xl border px-4 py-3.5 text-left transition-all border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] hover:border-[var(--ohnix-line-6)]"
+                        style={
+                            isSelected
+                                ? { borderColor: color, boxShadow: `0 0 0 1px ${color}, 0 0 24px ${color}33`, backgroundColor: "var(--ohnix-line-2)" }
+                                : undefined
+                        }
+                    >
+                        {isSelected && (
+                            <span
+                                className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-[#041316]"
+                                style={{ backgroundColor: color }}
+                            >
+                                <CheckOutlined style={{ fontSize: 10 }} />
+                            </span>
+                        )}
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color }}>
+                            {t(`profile.subscription.plan_${planKey}`)}
+                        </span>
+                        <span className="text-lg font-bold text-[var(--ohnix-text-primary)]">
+                            {priceLabel || <span className="inline-block h-5 w-16 animate-pulse rounded bg-[var(--ohnix-line-3)] align-middle" />}
+                            {priceLabel && plan?.priceUSD !== null && (
+                                <span className="ml-1 text-xs font-normal text-[var(--ohnix-text-muted)]">
+                                    {t("profile.subscription.comparison.per_month")}
+                                </span>
+                            )}
+                        </span>
+                    </button>
+                );
+            })}
+        </div>
+    );
 };
 
 const SLA_HOURS_BY_TARGET_PLAN = {
@@ -167,7 +229,8 @@ const Billing = () => {
     const { user, refreshUser } = useContext(AuthContext);
     const { isOwner, hasPermission } = useTeam();
     const canViewBilling = isOwner || hasPermission("billing", "view");
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
+    const lang = currentLanguage === "en" ? "en" : "es";
 
     const resolveLocalizedErrorMessage = (error, fallbackKey = "common.error") => {
         const backendMessage = error?.response?.data?.message;
@@ -201,6 +264,12 @@ const Billing = () => {
     const [selectedAdminRequest, setSelectedAdminRequest] = useState(null);
     const [upgradeForm] = Form.useForm();
     const [adminReviewForm] = Form.useForm();
+    const [planCatalog, setPlanCatalog] = useState(null);
+    const { priceByPlanKey } = useMarketPricing();
+    // Reactively reflects the plan currently picked in the upgrade-request
+    // modal's card grid, so the "what changes" panel below it updates live
+    // instead of only showing a fixed "current -> next tier" comparison.
+    const selectedTargetPlan = Form.useWatch("targetPlan", upgradeForm);
 
     const isAdmin = user?.role === "admin";
     const currentPlan = subscription?.plan || user?.subscription?.plan || "starter";
@@ -380,6 +449,25 @@ const Billing = () => {
 
         run();
     }, [t, isAdmin, adminFilterStatus, canViewBilling]);
+
+    // Plan catalog (prices, limits, features per plan) powers the "what
+    // changes" panel in the upgrade-request modal below - fetched once since
+    // it's the same static catalog PlanComparisonCard already loads.
+    useEffect(() => {
+        if (!canViewBilling) return;
+        let active = true;
+        subscriptionService
+            .getPlanCatalog()
+            .then((res) => {
+                if (active) setPlanCatalog(res?.data?.plans || null);
+            })
+            .catch(() => {
+                if (active) setPlanCatalog(null);
+            });
+        return () => {
+            active = false;
+        };
+    }, [canViewBilling]);
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -761,6 +849,31 @@ const Billing = () => {
             </div>
         );
     }
+
+    // "What changes" data for the upgrade-request modal - mirrors
+    // PlanComparisonCard's delta logic exactly, but against whichever plan
+    // is actually selected in the modal's card grid (selectedTargetPlan),
+    // not just the fixed "next tier" that card shows on the page behind it.
+    const currentPlanCatalogEntry = planCatalog?.find((p) => p.key === currentPlan) || null;
+    const targetPlanCatalogEntry = planCatalog?.find((p) => p.key === selectedTargetPlan) || null;
+    const modalLimitDeltas =
+        currentPlanCatalogEntry && targetPlanCatalogEntry
+            ? LIMIT_ROWS.map((row) => ({
+                  ...row,
+                  currentValue: currentPlanCatalogEntry.limits[row.limitKey],
+                  nextValue: targetPlanCatalogEntry.limits[row.limitKey],
+              })).filter((row) => row.nextValue !== row.currentValue)
+            : [];
+    const modalSeatsChanged =
+        currentPlanCatalogEntry &&
+        targetPlanCatalogEntry &&
+        currentPlanCatalogEntry.teamSeats !== targetPlanCatalogEntry.teamSeats;
+    const modalNewFeatures =
+        currentPlanCatalogEntry && targetPlanCatalogEntry
+            ? FEATURE_LABELS.filter(
+                  ({ key }) => !currentPlanCatalogEntry.features[key] && targetPlanCatalogEntry.features[key]
+              )
+            : [];
 
     return (
         <div className="min-h-screen bg-[var(--ohnix-bg-alt)] text-[var(--ohnix-text-primary)] relative overflow-hidden">
@@ -1356,6 +1469,7 @@ const Billing = () => {
                 cancelButtonProps={{ className: "h-10 px-6 rounded-md" }}
                 confirmLoading={requestSubmitting}
                 destroyOnClose
+                width={640}
                 styles={darkModalStyles}
             >
                 <Form
@@ -1363,18 +1477,88 @@ const Billing = () => {
                     layout="vertical"
                     onFinish={submitUpgradeRequest}
                 >
+                    <div className="mb-1 flex items-center gap-2 text-xs text-[var(--ohnix-text-muted)]">
+                        <span className="rounded-full border border-[var(--ohnix-line-5)] bg-[var(--ohnix-line-1)] px-2.5 py-1">
+                            {t("profile.subscription.payment_success_limits")}: <strong className="text-[var(--ohnix-text-primary)]">{t(`profile.subscription.plan_${currentPlan}`)}</strong>
+                        </span>
+                    </div>
+
                     <Form.Item
                         name="targetPlan"
                         label={t("profile.subscription.target_plan")}
                         rules={[{ required: true, message: t("validation.required_field") }]}
+                        className="!mb-4"
                     >
-                        <Select
-                            options={availableUpgradeOptions.map((plan) => ({
-                                value: plan,
-                                label: t(`profile.subscription.plan_${plan}`),
-                            }))}
+                        <PlanPickerCards
+                            options={availableUpgradeOptions}
+                            catalog={planCatalog}
+                            priceByPlanKey={priceByPlanKey}
+                            t={t}
                         />
                     </Form.Item>
+
+                    {targetPlanCatalogEntry && (
+                        <div className="mb-5 rounded-2xl border border-[#29D8D5]/20 bg-gradient-to-br from-[#29D8D5]/[0.06] to-transparent p-4">
+                            <Text className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ohnix-text-muted)]">
+                                {t("profile.subscription.comparison.title", {
+                                    plan: t(`profile.subscription.plan_${selectedTargetPlan}`),
+                                })}
+                            </Text>
+
+                            {(modalLimitDeltas.length > 0 || modalSeatsChanged) && (
+                                <div className="mt-3">
+                                    <Text className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ohnix-text-muted)]">
+                                        {t("profile.subscription.comparison.more_capacity")}
+                                    </Text>
+                                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                        {modalLimitDeltas.map((row) => (
+                                            <div
+                                                key={row.limitKey}
+                                                className="flex items-center justify-between rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 py-2 text-xs"
+                                            >
+                                                <span className="text-[var(--ohnix-text-muted)]">
+                                                    {t(`profile.subscription.metrics.${row.metricKey}`)}
+                                                </span>
+                                                <span className="font-semibold text-[var(--ohnix-text-primary)]">
+                                                    {formatLimit(row.currentValue)}
+                                                    <ArrowRightOutlined style={{ fontSize: 10 }} className="mx-1 text-[#29D8D5]" />
+                                                    {formatLimit(row.nextValue)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                        {modalSeatsChanged && (
+                                            <div className="flex items-center justify-between rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 py-2 text-xs">
+                                                <span className="text-[var(--ohnix-text-muted)]">
+                                                    {t("profile.subscription.metrics.team_seats")}
+                                                </span>
+                                                <span className="font-semibold text-[var(--ohnix-text-primary)]">
+                                                    {formatLimit(currentPlanCatalogEntry.teamSeats)}
+                                                    <ArrowRightOutlined style={{ fontSize: 10 }} className="mx-1 text-[#29D8D5]" />
+                                                    {formatLimit(targetPlanCatalogEntry.teamSeats)}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {modalNewFeatures.length > 0 && (
+                                <div className="mt-3">
+                                    <Text className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--ohnix-text-muted)]">
+                                        {t("profile.subscription.comparison.new_features")}
+                                    </Text>
+                                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                        {modalNewFeatures.map(({ key, es, en }) => (
+                                            <div key={key} className="flex items-center gap-2 text-xs text-[var(--ohnix-text-soft)]">
+                                                <CheckCircleOutlined className="text-[#29D8D5]" style={{ fontSize: 13 }} />
+                                                <span>{lang === "en" ? en : es}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     <Form.Item
                         name="notes"

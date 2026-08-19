@@ -14,7 +14,7 @@ const PLAN_ORDER = ["starter", "growth", "scale", "enterprise"];
 // matches the shared profile.subscription.metrics.* labels already used by
 // SubscriptionPlanCard's usage bars, so a numeric limit reads with the same
 // name in both places. }
-const LIMIT_ROWS = [
+export const LIMIT_ROWS = [
     { limitKey: "maxProducts", metricKey: "products" },
     { limitKey: "maxCustomers", metricKey: "customers" },
     { limitKey: "maxSuppliers", metricKey: "suppliers" },
@@ -26,7 +26,19 @@ const LIMIT_ROWS = [
     { limitKey: "maxMonthlyPurchases", metricKey: "monthly_purchases" },
 ];
 
-const formatLimit = (value) => (value === null || value === undefined ? "∞" : value.toLocaleString());
+export const formatLimit = (value) => (value === null || value === undefined ? "∞" : value.toLocaleString());
+
+// Shared with the upgrade-request modal (Billing.jsx) so both places show
+// the exact same market-aware price for a given plan instead of the modal
+// growing its own copy that could drift from this one.
+export const getPlanPriceLabel = (plan, priceByPlanKey, t) => {
+    if (!plan) return null;
+    if (plan.priceUSD === null) return t("profile.subscription.comparison.custom_price");
+    const marketPrice = priceByPlanKey[plan.key];
+    if (!marketPrice) return `$${plan.priceUSD}`;
+    // "$" alone is ambiguous between USD and COP.
+    return marketPrice.currency === "COP" ? `${marketPrice.label} COP` : marketPrice.label;
+};
 
 // "What's missing, what would I gain by upgrading" - the thing Billing.jsx
 // never actually answered before: it only showed the current plan's own
@@ -94,13 +106,7 @@ const PlanComparisonCard = ({ currentPlan, onRequestUpgrade }) => {
         );
     }
 
-    const priceLabel = (plan) => {
-        if (plan.priceUSD === null) return t("profile.subscription.comparison.custom_price");
-        const marketPrice = priceByPlanKey[plan.key];
-        if (!marketPrice) return `$${plan.priceUSD}`;
-        // "$" alone is ambiguous between USD and COP.
-        return marketPrice.currency === "COP" ? `${marketPrice.label} COP` : marketPrice.label;
-    };
+    const priceLabel = (plan) => getPlanPriceLabel(plan, priceByPlanKey, t);
 
     const newFeatures = FEATURE_LABELS.filter(({ key }) => !current.features[key] && next.features[key]);
 
