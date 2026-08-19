@@ -1760,6 +1760,47 @@ export const verifyAndActivateByEpayco = asyncHandler(async (req, res, next) => 
 });
 
 /**
+ * POST /subscriptions/me/upgrade-requests/:id/epayco-checkout-closed
+ *
+ * Self-reported "the customer closed the ePayco checkout without
+ * finishing" signal, sent by EpaycoCheckout.jsx's onClosed hook (only
+ * fires in onpage/embedded checkout mode - see buildEpaycoWidgetParams).
+ *
+ * This is NOT a source of truth the way the signed confirmation webhook
+ * is - it's purely a fast-path so an obviously-abandoned checkout doesn't
+ * sit blocking retries for the full 48h PENDING_PAYMENT_TIMEOUT_MS backstop
+ * in resolvePendingPaymentStatus. Safe even if the signal is wrong, late,
+ * or spoofed by the request's own owner: it can only ever move a request
+ * the caller already owns from paymentStatus "pending" to "cancelled" -
+ * never "paid" - so it can't grant anything. Worst case is the customer
+ * cancels their own still-genuinely-pending payment a little early and has
+ * to retry, which is exactly what they were already trying to do.
+ */
+export const reportEpaycoCheckoutClosed = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+
+    const request = await prisma.planUpgradeRequest.findFirst({
+        where: { id, userId: req.user.prismaId },
+        select: { id: true, status: true, paymentStatus: true },
+    });
+
+    if (!request) {
+        return next(new ApiError(404, "Upgrade request not found"));
+    }
+
+    if (request.status !== "approved" || request.paymentStatus !== "pending") {
+        // Already resolved by something else (webhook, a poll's self-heal,
+        // or this exact signal already firing once) - nothing to do, and
+        // definitely not worth surfacing as an error to the customer.
+        return res.status(200).json(new ApiResponse(200, { updated: false }, "Nothing to update"));
+    }
+
+    await markUpgradeRequestPaymentFailed({ upgradeRequestId: id, paymentStatus: "cancelled" });
+
+    return res.status(200).json(new ApiResponse(200, { updated: true }, "Checkout marked as cancelled"));
+});
+
+/**
  * POST /subscriptions/me/renew
  *
  * Creates an auto-approved renewal request for the current plan and

@@ -37,6 +37,11 @@ const EpaycoCheckout = () => {
     const handlerRef = useRef(null);
     const pollTimerRef = useRef(null);
     const pollCountRef = useRef(0);
+    // Set the moment ePayco reports any transaction result (onResponse) -
+    // lets onClosed tell a genuine abandonment ("closed with nothing ever
+    // reported") apart from the normal "closed right after completing"
+    // case, where onClosed also fires per ePayco's docs.
+    const gotResponseRef = useRef(false);
 
     const stopPolling = () => {
         if (pollTimerRef.current) {
@@ -109,6 +114,40 @@ const EpaycoCheckout = () => {
 
                     handlerRef.current = handler;
 
+                    // onpage (external: "false") keeps the checkout embedded on
+                    // this page instead of navigating the browser away to
+                    // ePayco's own hosted page - that's what makes setHooks
+                    // below actually fire; ePayco's docs are explicit that
+                    // these hooks (onClosed in particular) only exist for the
+                    // onpage implementation type, not "external"/Standard.
+                    if (typeof handler.setHooks === "function") {
+                        handler.setHooks({
+                            onResponse: () => {
+                                gotResponseRef.current = true;
+                            },
+                            onClosed: () => {
+                                if (!isMounted || gotResponseRef.current) {
+                                    // Either unmounted, or the widget already
+                                    // reported a real result before closing
+                                    // (e.g. a completed payment) - let the
+                                    // existing polling below keep handling
+                                    // that the same way it always has.
+                                    return;
+                                }
+                                // Closed with no transaction result ever
+                                // reported - a real abandonment. Best-effort:
+                                // if this fails, the 48h backstop in
+                                // resolvePendingPaymentStatus still applies,
+                                // so nothing is lost, just slower.
+                                subscriptionService
+                                    .reportEpaycoCheckoutClosed(requestId)
+                                    .catch(() => {});
+                                stopPolling();
+                                navigate("/billing");
+                            },
+                        });
+                    }
+
                     handler.open({
                         name: params.name,
                         description: params.description,
@@ -119,7 +158,7 @@ const EpaycoCheckout = () => {
                         tax: "0",
                         country: "CO",
                         lang: "es",
-                        external: "true",
+                        external: "false",
                         response: params.responseUrl,
                         confirmation: params.confirmationUrl,
                         email_billing: params.email,

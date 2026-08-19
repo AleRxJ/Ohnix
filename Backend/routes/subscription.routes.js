@@ -19,6 +19,7 @@ import {
     getUserUsageAdmin,
     pauseMySubscription,
     reactivateMySubscription,
+    reportEpaycoCheckoutClosed,
     updateUpgradeRequestAdmin,
     updateUserPlan,
     verifyAndActivateBySession,
@@ -61,6 +62,9 @@ router.route("/me/upgrade-requests/:id/verify-activate").post(requireModulePermi
 router.route("/me/upgrade-requests/:id/epayco-params").get(requireModulePermission("billing", "edit"), getEpaycoCheckoutParams);
 // ePayco: fallback verification when confirmation webhook is delayed
 router.route("/me/upgrade-requests/:id/epayco-verify").post(requireModulePermission("billing", "edit"), verifyAndActivateByEpayco);
+// ePayco: self-reported "closed the checkout without finishing" signal from
+// the onClosed hook (onpage/embedded checkout only) - see EpaycoCheckout.jsx
+router.route("/me/upgrade-requests/:id/epayco-checkout-closed").post(requireModulePermission("billing", "edit"), reportEpaycoCheckoutClosed);
 // Renewal: creates checkout for the same current plan
 router.route("/me/renew").post(requireModulePermission("billing", "edit"), createRenewalCheckout);
 router.route("/me/pause").patch(requireModulePermission("billing", "edit"), pauseMySubscription);

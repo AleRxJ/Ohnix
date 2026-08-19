@@ -136,6 +136,19 @@ export const subscriptionService = {
         return response.data;
     },
 
+    // Self-reported "the customer closed the ePayco checkout without
+    // finishing" signal - fired from EpaycoCheckout.jsx's onClosed hook
+    // (only available in onpage/embedded mode). Purely a fast-path so an
+    // obviously-abandoned checkout doesn't sit blocking retries for the
+    // full 48h backstop; safe to call even if the request already
+    // resolved by other means (backend no-ops in that case).
+    async reportEpaycoCheckoutClosed(requestId) {
+        const response = await api.post(
+            `/subscriptions/me/upgrade-requests/${requestId}/epayco-checkout-closed`
+        );
+        return response.data;
+    },
+
     async createRenewalCheckout(payload = {}) {
         const response = await api.post("/subscriptions/me/renew", payload);
         return response.data;
