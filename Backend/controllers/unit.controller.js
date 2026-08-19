@@ -110,12 +110,8 @@ const createUnit = asyncHandler(async (req, res, next) => {
 
 const getAvailableUnits = asyncHandler(async (req, res, next) => {
     try {
-        const userId = req.user.prismaId;
-
         const units = await prisma.unit.findMany({
-            where: {
-                OR: [{ createdById: userId }, { createdBy: { role: "admin" } }],
-            },
+            where: { createdById: req.user.prismaId },
             orderBy: { createdAt: "desc" },
             include: {
                 createdBy: {
@@ -135,20 +131,9 @@ const getAvailableUnits = asyncHandler(async (req, res, next) => {
             },
         });
 
-        const deduped = [];
-        const seen = new Set();
-
-        for (const unit of units) {
-            const externalId = toExternalId(unit);
-            if (!seen.has(externalId)) {
-                seen.add(externalId);
-                deduped.push(mapUnit(unit));
-            }
-        }
-
         return res
             .status(200)
-            .json(new ApiResponse(200, deduped, "Available units fetched successfully"));
+            .json(new ApiResponse(200, units.map(mapUnit), "Available units fetched successfully"));
     } catch (error) {
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
@@ -210,6 +195,19 @@ const updateUnit = asyncHandler(async (req, res, next) => {
             return next(
                 new ApiError(403, "You don't have permission to update this unit")
             );
+        }
+
+        const duplicateUnit = await prisma.unit.findFirst({
+            where: {
+                unitName: unit_name.trim(),
+                createdById: unit.createdById,
+                NOT: { id: unit.id },
+            },
+            select: { id: true },
+        });
+
+        if (duplicateUnit) {
+            return next(new ApiError(409, "Unit already exists", [], "", "unit_already_exists"));
         }
 
         const updated = await prisma.unit.update({

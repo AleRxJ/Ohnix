@@ -14,7 +14,7 @@ import { useTeam } from "../../context/TeamContext";
 
 const UnitSection = ({ user, isAdmin, unitHook }) => {
     const { t } = useI18n();
-    const { hasPermission } = useTeam();
+    const { hasPermission, team } = useTeam();
     const canEdit = isAdmin || hasPermission("units", "edit");
     const {
         units,
@@ -152,6 +152,7 @@ const UnitSection = ({ user, isAdmin, unitHook }) => {
                         onClear={clearFilters}
                         placeholder={t("units.search_units")}
                         isAdmin={isAdmin}
+                        hasTeam={Boolean(team)}
                     />
 
                     <div className="overflow-x-auto">

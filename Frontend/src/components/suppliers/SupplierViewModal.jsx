@@ -53,7 +53,7 @@ const SupplierViewModal = ({ visible, onCancel, supplier, onEdit }) => {
                     />
                     <h3 className="mt-2 mb-0 text-[var(--ohnix-text-primary)]">{supplier.name}</h3>
                     <Tag color={supplier.type === "company" ? "cyan" : "green"}>
-                        {supplier.type?.toUpperCase() || t("common.na")}
+                        {supplier.type ? t(`suppliers.${supplier.type}`) : t("common.na")}
                     </Tag>
                 </div>
 

@@ -195,12 +195,8 @@ const getUserCategories = asyncHandler(async (req, res, next) => {
 
 const getAvailableCategories = asyncHandler(async (req, res, next) => {
     try {
-        const userId = req.user.prismaId;
-
         const categories = await prisma.category.findMany({
-            where: {
-                OR: [{ createdById: userId }, { createdBy: { role: "admin" } }],
-            },
+            where: { createdById: req.user.prismaId },
             orderBy: { createdAt: "desc" },
             include: {
                 createdBy: {
@@ -220,23 +216,12 @@ const getAvailableCategories = asyncHandler(async (req, res, next) => {
             },
         });
 
-        const deduped = [];
-        const seen = new Set();
-
-        for (const category of categories) {
-            const externalId = toExternalId(category);
-            if (!seen.has(externalId)) {
-                seen.add(externalId);
-                deduped.push(mapCategory(category));
-            }
-        }
-
         return res
             .status(200)
             .json(
                 new ApiResponse(
                     200,
-                    deduped,
+                    categories.map(mapCategory),
                     "Available categories fetched successfully"
                 )
             );
@@ -271,6 +256,19 @@ const updateCategory = asyncHandler(async (req, res, next) => {
                     "You don't have permission to update this category"
                 )
             );
+        }
+
+        const duplicateCategory = await prisma.category.findFirst({
+            where: {
+                categoryName: category_name.trim(),
+                createdById: category.createdById,
+                NOT: { id: category.id },
+            },
+            select: { id: true },
+        });
+
+        if (duplicateCategory) {
+            return next(new ApiError(409, "Category already exists", [], "", "category_already_exists"));
         }
 
         const updated = await prisma.category.update({

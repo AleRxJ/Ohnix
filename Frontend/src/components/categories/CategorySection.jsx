@@ -10,7 +10,7 @@ import { useTeam } from "../../context/TeamContext";
 
 const CategorySection = ({ user, isAdmin, categoryHook }) => {
     const { t } = useI18n();
-    const { hasPermission } = useTeam();
+    const { hasPermission, team } = useTeam();
     const canEdit = isAdmin || hasPermission("categories", "edit");
     const {
         categories,
@@ -148,6 +148,7 @@ const CategorySection = ({ user, isAdmin, categoryHook }) => {
                         onClear={clearFilters}
                         placeholder={t("categories.search_categories")}
                         isAdmin={isAdmin}
+                        hasTeam={Boolean(team)}
                     />
 
                     <div className="overflow-x-auto">

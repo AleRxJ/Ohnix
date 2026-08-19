@@ -141,9 +141,13 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }
                 </div>
             )}
 
-            {!editingUnit && !isTourCreateStep && (
+            {editingUnit && team && (
+                <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+            )}
+
+            {!isTourCreateStep && (
                 <Tabs
-                    value={mode}
+                    activeKey={mode}
                     onChange={setMode}
                     items={[
                         {
@@ -213,7 +217,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }
                                                         loading={submitting}
                                                         className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                                                     >
-                                                        {t("units.create_unit")}
+                                                        {editingUnit ? t("units.update_unit") : t("units.create_unit")}
                                                     </Button>
                                                 </div>
                                             </Form.Item>
@@ -242,21 +246,6 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }
                     ]}
                     className="unit-modal-tabs"
                 />
-            )}
-
-            {editingUnit && (
-                <>
-                    {team && <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />}
-                    <CustomUnitForm
-                        form={form}
-                        onSubmit={handleSubmit}
-                        onCancel={onClose}
-                        editingUnit={editingUnit}
-                        t={t}
-                        locked={isTourCreateStep}
-                        submitting={submitting}
-                    />
-                </>
             )}
         </Modal>
     );

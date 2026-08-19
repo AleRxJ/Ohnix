@@ -187,11 +187,17 @@ const InventoryTour = () => {
     }, [isOpen, step, stepIndex, targetEl, createdRefs]);
 
     // Watch for any antd overlay opening/closing so the mask can step out of
-    // the way - checked on every action step (not just opensDialog: true
-    // ones) since a Popconfirm or a Select's dropdown menu can appear
-    // without a full Modal ever mounting.
+    // the way - checked on every step that targets an element (not just
+    // action/opensDialog: true ones) since a Popconfirm, a Select's dropdown
+    // menu, or a Drawer left open by the PREVIOUS step (e.g. "view-history"
+    // opens the product details drawer and nothing closes it before the
+    // tour moves on to "low-stock-alerts", an info step pointing at a button
+    // that drawer now sits on top of) can still be open when this step
+    // renders. Without this, the spotlight box gets drawn around the real
+    // target's coordinates while the drawer's unrelated content is what's
+    // actually visible there, making the highlight look misaligned.
     useEffect(() => {
-        if (!isOpen || step?.kind !== "action") {
+        if (!isOpen || !step?.selector) {
             setDialogOpen(false);
             return;
         }

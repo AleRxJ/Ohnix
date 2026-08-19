@@ -17,14 +17,20 @@ const CategoryViewModal = ({
     onEdit,
 }) => {
     const { t } = useI18n();
-    const { hasPermission } = useTeam();
+    const { hasPermission, team } = useTeam();
     if (!category) return null;
 
     // Module-level grant (Team > Roles), not "did I create this row" - see
     // the comment in CategoryTable.jsx.
     const showEditButton = isAdmin || hasPermission("categories", "edit");
-    const createdByName = getOwnershipText(category, user);
+    const createdByName = getOwnershipText(category);
     const updatedByName = category.updated_by?.username || createdByName;
+    // "Tu categoría" vs "de otro usuario" only means something for a solo
+    // account - team resources are always registered under the owner's id
+    // (see getOwnershipText), so this would show "de otro usuario" on 100%
+    // of records for every team member, even ones they just created
+    // themselves. Hidden for any team account (owner or member), same as
+    // StatsSection's showMineStats.
     const isOwner =
         (category.created_by?._id || category.created_by) === user?._id;
 
@@ -69,20 +75,22 @@ const CategoryViewModal = ({
                                 <Title level={4} className="mb-1 !text-[var(--ohnix-text-primary)]">
                                     {category.category_name}
                                 </Title>
-                                <Tag
-                                    color={isOwner ? "success" : "processing"}
-                                    className="border-0 rounded-full px-3 py-1 text-xs font-medium"
-                                    style={{
-                                        backgroundColor: isOwner
-                                            ? "rgba(41,216,213,0.12)"
-                                            : "rgba(68,243,240,0.12)",
-                                        color: isOwner ? "#44F3F0" : "var(--ohnix-text-muted)",
-                                    }}
-                                >
-                                    {isOwner
-                                        ? t("categories.your_category")
-                                        : t("categories.other_users_category")}
-                                </Tag>
+                                {!team && (
+                                    <Tag
+                                        color={isOwner ? "success" : "processing"}
+                                        className="border-0 rounded-full px-3 py-1 text-xs font-medium"
+                                        style={{
+                                            backgroundColor: isOwner
+                                                ? "rgba(41,216,213,0.12)"
+                                                : "rgba(68,243,240,0.12)",
+                                            color: isOwner ? "#44F3F0" : "var(--ohnix-text-muted)",
+                                        }}
+                                    >
+                                        {isOwner
+                                            ? t("categories.your_category")
+                                            : t("categories.other_users_category")}
+                                    </Tag>
+                                )}
                             </div>
                         </div>
                     </div>

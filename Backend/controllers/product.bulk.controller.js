@@ -119,15 +119,7 @@ export const bulkUploadProducts = asyncHandler(async (req, res, next) => {
 
     const [availableCategories, allUnits] = await Promise.all([
         prisma.category.findMany({
-            where:
-                req.user.role === "admin"
-                    ? {}
-                    : {
-                          OR: [
-                              { createdById: userId },
-                              { createdBy: { role: "admin" } },
-                          ],
-                      },
+            where: req.user.role === "admin" ? {} : { createdById: userId },
             select: {
                 id: true,
                 categoryName: true,

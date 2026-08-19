@@ -1496,11 +1496,11 @@ textarea.ant-input[disabled] {
   border: 1px solid var(--ohnix-line-3);
 }
 .category-table .ant-pagination .ant-pagination-item-active {
-  background: #29d8d5;
-  border-color: #29d8d5;
+  background: #29d8d5 !important;
+  border-color: #29d8d5 !important;
 }
 .category-table .ant-pagination .ant-pagination-item-active a {
-  color: #021314;
+  color: #021314 !important;
 }
 
 @media (max-width: 768px) {
@@ -1657,11 +1657,11 @@ textarea.ant-input[disabled] {
                     border: 1px solid var(--ohnix-line-3);
                 }
                 .unit-table .ant-pagination .ant-pagination-item-active {
-                    background: #44F3F0;
-                    border-color: #44F3F0;
+                    background: #44F3F0 !important;
+                    border-color: #44F3F0 !important;
                 }
                 .unit-table .ant-pagination .ant-pagination-item-active a {
-                    color: #021314;
+                    color: #021314 !important;
                 }
 
                 @media (max-width: 768px) {

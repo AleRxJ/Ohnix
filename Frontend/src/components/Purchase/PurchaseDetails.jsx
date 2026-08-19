@@ -166,7 +166,7 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                                 )}
                                 className="font-medium"
                             >
-                                {purchase.purchase_status.toUpperCase()}
+                                {t(`purchases.${purchase.purchase_status}`) || purchase.purchase_status.toUpperCase()}
                             </Tag>
                         </Descriptions.Item>
                         <Descriptions.Item label={t("common.created_by")}>

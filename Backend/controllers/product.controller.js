@@ -133,14 +133,7 @@ const resolveCategoryForUser = async (categoryId, user) => {
 
     if (!category) return null;
 
-    if (user.role === "admin") {
-        return category;
-    }
-
-    if (
-        category.createdById === user.prismaId ||
-        category.createdBy?.role === "admin"
-    ) {
+    if (user.role === "admin" || category.createdById === user.prismaId) {
         return category;
     }
 
@@ -163,16 +156,7 @@ const resolveUnitForUser = async (unitId, user) => {
 
     if (!unit) return null;
 
-    if (user.role === "admin") {
-        return unit;
-    }
-
-    // Matches resolveCategoryForUser: units created by a platform admin are
-    // treated as global/shared, same as admin-created categories.
-    if (
-        unit.createdById === user.prismaId ||
-        unit.createdBy?.role === "admin"
-    ) {
+    if (user.role === "admin" || unit.createdById === user.prismaId) {
         return unit;
     }
 

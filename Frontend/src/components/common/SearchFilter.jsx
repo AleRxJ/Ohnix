@@ -19,6 +19,7 @@ const SearchFilter = ({
     onClear,
     placeholder = "Search...",
     isAdmin = false,
+    hasTeam = false,
 }) => {
     const { t } = useI18n();
     return (
@@ -56,11 +57,18 @@ const SearchFilter = ({
                                     {t("filter.all_items")}
                                 </span>
                             </Option>
-                            <Option value={FILTER_OPTIONS.MINE}>
-                                <span className="flex items-center gap-2">
-                                    {t("filter.my_items")}
-                                </span>
-                            </Option>
+                            {/* "Mine" only means something for a solo account -
+                                every team resource is registered under the
+                                owner's id regardless of which member created
+                                it, so this would show empty for a member who
+                                just created something themselves. */}
+                            {!hasTeam && (
+                                <Option value={FILTER_OPTIONS.MINE}>
+                                    <span className="flex items-center gap-2">
+                                        {t("filter.my_items")}
+                                    </span>
+                                </Option>
+                            )}
                             {isAdmin && (
                                 <Option value={FILTER_OPTIONS.OTHERS}>
                                     <span className="flex items-center gap-2">

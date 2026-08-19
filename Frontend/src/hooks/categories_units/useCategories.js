@@ -10,6 +10,10 @@ const DELETE_CATEGORY_ERROR_CODES = {
     category_has_products: "categories.delete_conflict_products",
 };
 
+const SAVE_CATEGORY_ERROR_CODES = {
+    category_already_exists: "categories.duplicate_category_message",
+};
+
 export const useCategories = () => {
     const { user, isAdmin } = useAuth();
     const { t } = useI18n();
@@ -82,9 +86,12 @@ export const useCategories = () => {
                     return { success: false, error: response.data.message };
                 }
             } catch (error) {
-                const errorMsg =
-                    error.response?.data?.message ||
-                    t("categories.failed_create_category");
+                const errorMsg = resolveApiErrorMessage(
+                    error,
+                    t,
+                    SAVE_CATEGORY_ERROR_CODES,
+                    "categories.failed_create_category"
+                );
                 console.error("[useCategories] Create error:", error);
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
@@ -110,9 +117,12 @@ export const useCategories = () => {
                     return { success: true, data: response.data.data };
                 }
             } catch (error) {
-                const errorMsg =
-                    error.response?.data?.message ||
-                    t("categories.failed_update_category");
+                const errorMsg = resolveApiErrorMessage(
+                    error,
+                    t,
+                    SAVE_CATEGORY_ERROR_CODES,
+                    "categories.failed_update_category"
+                );
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
             }

@@ -10,14 +10,16 @@ const { Title, Text } = Typography;
 
 const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
     const { t } = useI18n();
-    const { hasPermission } = useTeam();
+    const { hasPermission, team } = useTeam();
     if (!unit) return null;
 
     // Module-level grant (Team > Roles), not "did I create this row" - see
     // the comment in UnitTable.jsx.
     const showEditButton = isAdmin || hasPermission("units", "edit");
-    const createdByName = getOwnershipText(unit, user);
+    const createdByName = getOwnershipText(unit);
     const updatedByName = unit.updated_by?.username || createdByName;
+    // Hidden for any team account - see the matching comment in
+    // CategoryViewModal.jsx.
     const isOwner = (unit.created_by?._id || unit.created_by) === user?._id;
 
     return (
@@ -59,20 +61,22 @@ const UnitViewModal = ({ visible, onClose, unit, user, isAdmin, onEdit }) => {
                                 <Title level={4} className="mb-1 !text-[var(--ohnix-text-primary)]">
                                     {unit.unit_name}
                                 </Title>
-                                <Tag
-                                    color={isOwner ? "success" : "processing"}
-                                    className="border-0 rounded-full px-3 py-1 text-xs font-medium"
-                                    style={{
-                                        backgroundColor: isOwner
-                                            ? "rgba(41,216,213,0.12)"
-                                            : "rgba(68,243,240,0.12)",
-                                        color: isOwner ? "#44F3F0" : "var(--ohnix-text-muted)",
-                                    }}
-                                >
-                                    {isOwner
-                                        ? t("units.your_unit")
-                                        : t("units.other_users_unit")}
-                                </Tag>
+                                {!team && (
+                                    <Tag
+                                        color={isOwner ? "success" : "processing"}
+                                        className="border-0 rounded-full px-3 py-1 text-xs font-medium"
+                                        style={{
+                                            backgroundColor: isOwner
+                                                ? "rgba(41,216,213,0.12)"
+                                                : "rgba(68,243,240,0.12)",
+                                            color: isOwner ? "#44F3F0" : "var(--ohnix-text-muted)",
+                                        }}
+                                    >
+                                        {isOwner
+                                            ? t("units.your_unit")
+                                            : t("units.other_users_unit")}
+                                    </Tag>
+                                )}
                             </div>
                         </div>
                     </div>
