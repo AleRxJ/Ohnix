@@ -64,7 +64,15 @@ const createUnit = asyncHandler(async (req, res, next) => {
         });
 
         if (existingUnit) {
-            return next(new ApiError(409, "Unit already exists"));
+            return next(
+                new ApiError(
+                    409,
+                    "Unit already exists",
+                    [],
+                    "",
+                    "unit_already_exists"
+                )
+            );
         }
 
         const created = await prisma.unit.create({

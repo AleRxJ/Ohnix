@@ -1,6 +1,14 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Button, Typography, Modal, Form, Select, Input, List, Tag, Checkbox } from "antd";
-import { ArrowLeftOutlined, LockOutlined, RocketOutlined, AuditOutlined } from "@ant-design/icons";
+import {
+    ArrowLeftOutlined,
+    LockOutlined,
+    RocketOutlined,
+    AuditOutlined,
+    CloseCircleOutlined,
+    ClockCircleOutlined,
+    WarningOutlined,
+} from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
@@ -783,8 +791,9 @@ const Billing = () => {
                     </Text>
 
                     {billingLoadWarning ? (
-                        <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                            {billingLoadWarning}
+                        <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-xs text-[var(--ohnix-alert-amber-text)]">
+                            <WarningOutlined className="mt-0.5 shrink-0 text-amber-400" />
+                            <span>{billingLoadWarning}</span>
                         </div>
                     ) : null}
 
@@ -994,16 +1003,20 @@ const Billing = () => {
                                             {item.status === "approved" &&
                                             !isPlanAlreadyActiveForRequest(item) &&
                                             failedPaymentStatusForRequest(item) ? (
-                                                <div className="mt-4 rounded-2xl border border-rose-400/25 bg-rose-500/8 p-4 text-sm text-rose-100">
-                                                    {t(`profile.subscription.payment_status_${failedPaymentStatusForRequest(item)}`)}
+                                                <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-rose-400/25 bg-rose-500/8 p-4 text-sm text-[var(--ohnix-alert-rose-text)]">
+                                                    <CloseCircleOutlined className="mt-0.5 shrink-0 text-rose-400" />
+                                                    <span>
+                                                        {t(`profile.subscription.payment_status_${failedPaymentStatusForRequest(item)}`)}
+                                                    </span>
                                                 </div>
                                             ) : null}
 
                                             {item.status === "approved" &&
                                             !isPlanAlreadyActiveForRequest(item) &&
                                             isPaymentPendingForRequest(item) ? (
-                                                <div className="mt-4 rounded-2xl border border-amber-400/25 bg-amber-500/8 p-4 text-sm text-amber-100">
-                                                    {t("profile.subscription.payment_pending_notice")}
+                                                <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-amber-400/25 bg-amber-500/8 p-4 text-sm text-[var(--ohnix-alert-amber-text)]">
+                                                    <ClockCircleOutlined className="mt-0.5 shrink-0 text-amber-400" />
+                                                    <span>{t("profile.subscription.payment_pending_notice")}</span>
                                                 </div>
                                             ) : item.status === "approved" && !isPlanAlreadyActiveForRequest(item) ? (
                                                 (() => {

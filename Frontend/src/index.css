@@ -46,6 +46,7 @@ body {
      tint reads fine on a dark page but disappears on a light one. */
   --ohnix-alert-amber-text: #fde68a;
   --ohnix-alert-cyan-text: #a5f3fc;
+  --ohnix-alert-rose-text: #fecdd3;
 
   /* Surfaces */
   --ohnix-bg-alt: #050608;
@@ -104,6 +105,7 @@ body {
 
   --ohnix-alert-amber-text: #92400e;
   --ohnix-alert-cyan-text: #0e7490;
+  --ohnix-alert-rose-text: #9f1239;
 
   --ohnix-bg-alt: #eef1f4;
   --ohnix-surface-3: #eef2f4;

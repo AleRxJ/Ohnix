@@ -66,7 +66,15 @@ const createCategory = asyncHandler(async (req, res, next) => {
         });
 
         if (existingCategory) {
-            return next(new ApiError(409, "Category already exists"));
+            return next(
+                new ApiError(
+                    409,
+                    "Category already exists",
+                    [],
+                    "",
+                    "category_already_exists"
+                )
+            );
         }
 
         const created = await prisma.category.create({

@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import { Alert, Button, Card, Progress, Spin, Typography, Tag } from "antd";
+import { Button, Card, Progress, Spin, Typography, Tag } from "antd";
 import { CheckCircleOutlined } from "@ant-design/icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { subscriptionService } from "../services/subscriptionService";
@@ -17,6 +17,71 @@ const CHECKLIST_STEP_KEYS = [
 ];
 
 const ONBOARDING_PROGRESS_STORAGE_KEY = "ohnix:onboarding-checklist";
+
+// Three genuinely different things can land the user on this "error" state -
+// a declined payment, a broken/incomplete link (no requestId at all), or a
+// network/server hiccup while loading the status - and each needs its own
+// framing and next step instead of one hardcoded "your payment was declined"
+// card. Keyed by errorKind, set alongside setErrorMessage at each call site.
+const ERROR_STATE_CONFIG = {
+    payment_failed: {
+        badge: "Pago no procesado",
+        heading: "No pudimos activar tu plan",
+        glow: "rgba(244,63,94,0.06)",
+        iconWrapClass: "border-rose-400/30 bg-gradient-to-br from-rose-500/15 to-rose-600/5",
+        iconShadow: "0 0 40px rgba(244,63,94,0.15)",
+        iconColor: "text-rose-300",
+        iconPath: "M6 18L18 6M6 6l12 12",
+        badgeDotClass: "bg-rose-400",
+        badgeWrapClass: "border-rose-400/25 bg-rose-500/8",
+        badgeTextClass: "text-rose-300",
+        showPlanTransition: true,
+        primaryLabel: "Intentar de nuevo →",
+        primaryAction: "billing",
+        secondaryHoverClass: "hover:!border-rose-400/40 hover:!text-rose-200",
+        showSupport: true,
+        supportSubject: "Pago rechazado - Ohnix upgrade de plan",
+        supportBody: (ctx) =>
+            `Hola equipo, mi pago para actualizar de plan no se pudo procesar.\n\nUsuario: ${ctx.userEmail}\nSolicitud: ${ctx.requestId}\nMensaje: ${ctx.errorMessage}`,
+    },
+    missing_request: {
+        badge: "Enlace incompleto",
+        heading: "No encontramos tu pago",
+        glow: "rgba(148,163,184,0.06)",
+        iconWrapClass: "border-[var(--ohnix-line-6)] bg-gradient-to-br from-[var(--ohnix-line-2)] to-[var(--ohnix-line-1)]",
+        iconShadow: "0 0 40px rgba(148,163,184,0.10)",
+        iconColor: "text-[#8AA4AB]",
+        iconPath: "M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z",
+        badgeDotClass: "bg-[#6A8F97]",
+        badgeWrapClass: "border-[var(--ohnix-line-5)] bg-[var(--ohnix-line-1)]",
+        badgeTextClass: "text-[#8AA4AB]",
+        showPlanTransition: false,
+        primaryLabel: "Ir a facturación",
+        primaryAction: "billing",
+        secondaryHoverClass: "hover:!border-[var(--ohnix-line-7)]",
+        showSupport: false,
+    },
+    load_failed: {
+        badge: "Error temporal",
+        heading: "No pudimos cargar el estado de tu pago",
+        glow: "rgba(251,191,36,0.06)",
+        iconWrapClass: "border-amber-400/30 bg-gradient-to-br from-amber-500/15 to-amber-600/5",
+        iconShadow: "0 0 40px rgba(251,191,36,0.15)",
+        iconColor: "text-amber-300",
+        iconPath: "M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99",
+        badgeDotClass: "bg-amber-400",
+        badgeWrapClass: "border-amber-400/25 bg-amber-500/8",
+        badgeTextClass: "text-amber-300",
+        showPlanTransition: false,
+        primaryLabel: "Reintentar",
+        primaryAction: "reload",
+        secondaryHoverClass: "hover:!border-amber-400/40 hover:!text-amber-200",
+        showSupport: true,
+        supportSubject: "Error cargando el estado de mi pago - Ohnix",
+        supportBody: (ctx) =>
+            `Hola equipo, no pude ver el estado de mi pago al cargar esta pagina.\n\nUsuario: ${ctx.userEmail}\nSolicitud: ${ctx.requestId}\nError: ${ctx.errorMessage}`,
+    },
+};
 
 const readStoredChecklist = () => {
     if (typeof window === "undefined") {
@@ -49,6 +114,11 @@ const PaymentSuccess = () => {
     const [statusData, setStatusData] = useState(null);
     const [usageData, setUsageData] = useState(null);
     const [errorMessage, setErrorMessage] = useState("");
+    // Distinguishes WHY errorMessage is set, so the UI doesn't tell someone
+    // their payment was declined when it was really a broken link or a
+    // network hiccup loading the status - each needs different framing and
+    // a different next step, not the same rose "declined" card.
+    const [errorKind, setErrorKind] = useState("");
     const [pollTimedOut, setPollTimedOut] = useState(false);
     const [manualChecklistDone, setManualChecklistDone] = useState(() => readStoredChecklist());
 
@@ -71,6 +141,7 @@ const PaymentSuccess = () => {
         const load = async () => {
             if (!requestId) {
                 if (isMounted) {
+                    setErrorKind("missing_request");
                     setErrorMessage(t("profile.subscription.payment_success_missing_request"));
                     setLoading(false);
                 }
@@ -109,6 +180,7 @@ const PaymentSuccess = () => {
                 // takes the backend to actually know the answer.
                 const currentPaymentStatus = statusResponse?.data?.request?.paymentStatus;
                 if (["rejected", "failed", "amount_mismatch", "expired", "cancelled"].includes(currentPaymentStatus)) {
+                    setErrorKind("payment_failed");
                     setErrorMessage(t(`profile.subscription.payment_status_${currentPaymentStatus}`));
                     setLoading(false);
                     return;
@@ -149,6 +221,7 @@ const PaymentSuccess = () => {
                 }
             } catch (error) {
                 if (isMounted) {
+                    setErrorKind("load_failed");
                     setErrorMessage(
                         error?.response?.data?.message ||
                             t("profile.subscription.payment_success_load_failed")
@@ -379,6 +452,16 @@ const PaymentSuccess = () => {
     };
     const planHighlights = PLAN_HIGHLIGHTS[request?.targetPlan] || [];
 
+    const errorConfig = ERROR_STATE_CONFIG[errorKind] || ERROR_STATE_CONFIG.payment_failed;
+    const openSupportEmail = () => {
+        const body = errorConfig.supportBody?.({
+            userEmail: user?.email || "N/A",
+            requestId: requestId || "N/A",
+            errorMessage,
+        }) || "";
+        window.location.href = `mailto:info@itcycle.com?subject=${encodeURIComponent(errorConfig.supportSubject || "Ohnix - soporte")}&body=${encodeURIComponent(body)}`;
+    };
+
     return (
         <div className="relative min-h-screen overflow-hidden bg-[var(--ohnix-bg-alt)] px-4 py-8 text-[var(--ohnix-text-primary)] sm:py-12">
             <div className="pointer-events-none absolute inset-0 opacity-90">
@@ -453,27 +536,117 @@ const PaymentSuccess = () => {
                             )}
                         </div>
                     ) : errorMessage ? (
-                        <Alert type="error" message={errorMessage} showIcon className="!rounded-xl !border !border-red-300/25 !bg-red-500/10 !text-[var(--ohnix-text-primary)]" />
+                        /* ── ESTADO DE ERROR: rejected / missing-link / load-failed comparten
+                           estructura, cada uno con su propio tono/ícono/CTA vía errorConfig ── */
+                        <div className="relative min-h-[420px] flex flex-col items-center justify-center gap-6 py-14 px-6 text-center overflow-hidden">
+                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                <div className="h-[420px] w-[420px] rounded-full" style={{ background: `radial-gradient(circle, ${errorConfig.glow} 0%, transparent 70%)` }} />
+                            </div>
+                            <div className={`relative z-10 flex h-16 w-16 items-center justify-center rounded-2xl border ${errorConfig.iconWrapClass}`}
+                                style={{ boxShadow: errorConfig.iconShadow }}>
+                                <svg className={`h-8 w-8 ${errorConfig.iconColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d={errorConfig.iconPath} />
+                                </svg>
+                            </div>
+                            <div className="relative z-10 flex flex-col items-center gap-3 max-w-md">
+                                <div className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 ${errorConfig.badgeWrapClass}`}>
+                                    <span className={`h-1.5 w-1.5 rounded-full ${errorConfig.badgeDotClass}`} />
+                                    <span className={`text-[11px] font-semibold uppercase tracking-[0.15em] ${errorConfig.badgeTextClass}`}>{errorConfig.badge}</span>
+                                </div>
+                                <h2 className="text-3xl font-extrabold tracking-tight text-[var(--ohnix-text-primary)] sm:text-4xl">
+                                    {errorConfig.heading}
+                                </h2>
+                                <p className="text-[#8AA4AB] text-sm leading-relaxed">{errorMessage}</p>
+                            </div>
+                            {errorConfig.showPlanTransition && request && (
+                                <div className="relative z-10 flex items-center gap-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-6 py-3.5">
+                                    <span className="text-sm text-[#6A8F97]">{fromPlanLabel}</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="h-px w-4 bg-rose-400/30" />
+                                        <span className="text-rose-400 text-xs font-bold">✕</span>
+                                        <div className="h-px w-4 bg-rose-400/30" />
+                                    </div>
+                                    <span className="text-sm font-bold text-[#6A8F97] line-through decoration-rose-400/50">{toPlanLabel}</span>
+                                </div>
+                            )}
+                            <div className="relative z-10 flex flex-wrap items-center justify-center gap-3 mt-1">
+                                <Button
+                                    type="primary"
+                                    size="large"
+                                    className="!rounded-xl !border-0 !bg-[#29D8D5] !px-7 !text-[#041316] !font-semibold hover:!bg-[#44F3F0] !h-11"
+                                    onClick={() => (errorConfig.primaryAction === "reload" ? window.location.reload() : navigate("/billing"))}
+                                >
+                                    {errorConfig.primaryLabel}
+                                </Button>
+                                {errorConfig.showSupport && (
+                                    <Button
+                                        size="large"
+                                        className={`!rounded-xl !border-[var(--ohnix-line-6)] !bg-[var(--ohnix-line-1)] !px-6 !text-[var(--ohnix-text-primary)] !h-11 ${errorConfig.secondaryHoverClass}`}
+                                        onClick={openSupportEmail}
+                                    >
+                                        Contactar soporte
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
                     ) : pollTimedOut ? (
-                        <div className="flex flex-col items-center gap-4 py-12 px-6 text-center">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-400/30 bg-amber-500/10">
-                                <svg className="h-7 w-7 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <div className="relative min-h-[420px] flex flex-col items-center justify-center gap-6 py-14 px-6 text-center overflow-hidden">
+                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                <div className="h-[420px] w-[420px] rounded-full" style={{ background: "radial-gradient(circle, rgba(251,191,36,0.06) 0%, transparent 70%)" }} />
+                            </div>
+                            <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/15 to-amber-600/5"
+                                style={{ boxShadow: "0 0 40px rgba(251,191,36,0.15)" }}>
+                                <svg className="h-8 w-8 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
-                            <h2 className="text-2xl font-bold text-[var(--ohnix-text-primary)]">
-                                {t("profile.subscription.payment_still_pending_title")}
-                            </h2>
-                            <p className="max-w-md text-sm text-[var(--ohnix-text-muted)]">
-                                {t("profile.subscription.payment_still_pending_description")}
-                            </p>
-                            <Button
-                                type="primary"
-                                className="!mt-2 !rounded-xl !border-0 !bg-[#29D8D5] !px-7 !text-[#041316] !font-semibold hover:!bg-[#44F3F0]"
-                                onClick={() => navigate("/billing")}
-                            >
-                                {t("profile.subscription.back_to_billing")}
-                            </Button>
+                            <div className="relative z-10 flex flex-col items-center gap-3 max-w-md">
+                                <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-500/8 px-4 py-1.5">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                                    <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-amber-300">Verificación en curso</span>
+                                </div>
+                                <h2 className="text-3xl font-extrabold tracking-tight text-[var(--ohnix-text-primary)] sm:text-4xl">
+                                    {t("profile.subscription.payment_still_pending_title")}
+                                </h2>
+                                <p className="text-[#8AA4AB] text-sm leading-relaxed">
+                                    {t("profile.subscription.payment_still_pending_description")}
+                                </p>
+                            </div>
+                            {request && (
+                                <div className="relative z-10 flex items-center gap-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-6 py-3.5">
+                                    <span className="text-sm text-[#6A8F97]">{fromPlanLabel}</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="h-px w-4 bg-amber-400/30" />
+                                        <span className="text-amber-400 text-xs">⋯</span>
+                                        <div className="h-px w-4 bg-amber-400/30" />
+                                    </div>
+                                    <span className="text-sm font-bold text-[#B7A26A]">{toPlanLabel}</span>
+                                </div>
+                            )}
+                            <div className="relative z-10 flex flex-wrap items-center justify-center gap-3 mt-1">
+                                <Button
+                                    type="primary"
+                                    size="large"
+                                    className="!rounded-xl !border-0 !bg-[#29D8D5] !px-7 !text-[#041316] !font-semibold hover:!bg-[#44F3F0] !h-11"
+                                    onClick={() => navigate("/billing")}
+                                >
+                                    {t("profile.subscription.back_to_billing")}
+                                </Button>
+                                <Button
+                                    size="large"
+                                    className="!rounded-xl !border-[var(--ohnix-line-6)] !bg-[var(--ohnix-line-1)] !px-6 !text-[var(--ohnix-text-primary)] hover:!border-amber-400/40 hover:!text-amber-200 !h-11"
+                                    onClick={() => {
+                                        const email = "info@itcycle.com";
+                                        const subject = encodeURIComponent("Pago pendiente por mucho tiempo - Ohnix upgrade de plan");
+                                        const body = encodeURIComponent(
+                                            `Hola equipo, mi pago para actualizar de plan sigue en verificacion despues de varios minutos.\n\nUsuario: ${user?.email || "N/A"}\nSolicitud: ${requestId || "N/A"}`
+                                        );
+                                        window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+                                    }}
+                                >
+                                    Contactar soporte
+                                </Button>
+                            </div>
                         </div>
                     ) : (
                         /* ── ACTIVADO: celebración ── */

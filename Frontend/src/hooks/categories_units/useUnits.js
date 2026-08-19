@@ -10,6 +10,10 @@ const DELETE_UNIT_ERROR_CODES = {
     unit_has_products: "units.delete_conflict_products",
 };
 
+const SAVE_UNIT_ERROR_CODES = {
+    unit_already_exists: "units.duplicate_unit_message",
+};
+
 export const useUnits = () => {
     const { user, isAdmin } = useAuth();
     const { t } = useI18n();
@@ -81,8 +85,12 @@ export const useUnits = () => {
                     return { success: false, error: response.data.message };
                 }
             } catch (error) {
-                const errorMsg =
-                    error.response?.data?.message || t("units.failed_create_unit");
+                const errorMsg = resolveApiErrorMessage(
+                    error,
+                    t,
+                    SAVE_UNIT_ERROR_CODES,
+                    "units.failed_create_unit"
+                );
                 console.error("[useUnits] Create error:", error);
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
@@ -104,8 +112,12 @@ export const useUnits = () => {
                     return { success: true, data: response.data.data };
                 }
             } catch (error) {
-                const errorMsg =
-                    error.response?.data?.message || t("units.failed_update_unit");
+                const errorMsg = resolveApiErrorMessage(
+                    error,
+                    t,
+                    SAVE_UNIT_ERROR_CODES,
+                    "units.failed_update_unit"
+                );
                 toast.error(errorMsg, { id: loadingToast });
                 return { success: false, error: errorMsg };
             }
