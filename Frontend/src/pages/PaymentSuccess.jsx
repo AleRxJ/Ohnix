@@ -92,9 +92,30 @@ const PaymentSuccess = () => {
 
                 const requestStatus = statusResponse?.data?.request?.status;
                 const targetPlanActive = statusResponse?.data?.targetPlanActive;
+                const activated = requestStatus === "closed" && targetPlanActive;
+
+                if (activated) {
+                    setLoading(false);
+                    return;
+                }
+
+                // The backend self-heals paymentStatus on every single call to
+                // getUpgradeCheckoutStatus (see resolvePendingPaymentStatus), so a
+                // definite rejection/failure can already be known as early as poll
+                // #1 — it does NOT require exhausting the full poll budget below.
+                // Checking this immediately (instead of only after pollCount hits
+                // 15) is what keeps a known-rejected payment from sitting behind
+                // the "Confirmando pago" animation for up to 60s longer than it
+                // takes the backend to actually know the answer.
+                const currentPaymentStatus = statusResponse?.data?.request?.paymentStatus;
+                if (["rejected", "failed", "amount_mismatch", "expired", "cancelled"].includes(currentPaymentStatus)) {
+                    setErrorMessage(t(`profile.subscription.payment_status_${currentPaymentStatus}`));
+                    setLoading(false);
+                    return;
+                }
 
                 // After 5 polls without activation, try fallback verification
-                if (!(requestStatus === "closed" && targetPlanActive) && pollCount === 5) {
+                if (pollCount === 5) {
                     try {
                         // Stripe fallback: only if session_id is present in the URL
                         if (sessionId) {
@@ -115,25 +136,15 @@ const PaymentSuccess = () => {
                     }
                 }
 
-                if (!(requestStatus === "closed" && targetPlanActive) && pollCount < 15) {
+                if (pollCount < 15) {
                     pollCount += 1;
                     pollTimer = setTimeout(load, 4000);
-                } else if (!(requestStatus === "closed" && targetPlanActive)) {
-                    // Polling gave up without an activation - distinguish a
-                    // definite rejection/failure (show it, the user needs to
-                    // know) from a payment that's still genuinely pending
-                    // (delayed bank methods can take hours; don't keep
-                    // showing the "confirming, seconds away" animation).
-                    const finalPaymentStatus = statusResponse?.data?.request?.paymentStatus;
-                    if (["rejected", "failed", "amount_mismatch", "expired"].includes(finalPaymentStatus)) {
-                        setErrorMessage(
-                            t(`profile.subscription.payment_status_${finalPaymentStatus}`)
-                        );
-                    } else {
-                        setPollTimedOut(true);
-                    }
-                    setLoading(false);
                 } else {
+                    // Polling gave up without an activation or a definite
+                    // failure - the payment is still genuinely pending (delayed
+                    // bank methods can take hours; don't keep showing the
+                    // "confirming, seconds away" animation).
+                    setPollTimedOut(true);
                     setLoading(false);
                 }
             } catch (error) {
@@ -406,10 +417,10 @@ const PaymentSuccess = () => {
                                     <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#29D8D5]">Confirmando pago</span>
                                 </div>
                                 <h2 className="text-4xl font-extrabold tracking-tight text-[var(--ohnix-text-primary)] sm:text-5xl" style={{ textShadow: "0 0 40px rgba(41,216,213,0.3)" }}>
-                                    Pago recibido
+                                    Confirmando tu pago
                                 </h2>
                                 <p className="text-[#8AA4AB] text-sm">
-                                    Verificando confirmación con ePayco
+                                    Verificando el resultado con ePayco
                                     <span className="inline-flex gap-0.5 ml-1">
                                         <span style={{ animation: "psDot 1.4s ease-in-out infinite 0s" }}>·</span>
                                         <span style={{ animation: "psDot 1.4s ease-in-out infinite 0.2s" }}>·</span>

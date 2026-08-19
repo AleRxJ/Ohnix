@@ -1280,6 +1280,9 @@
     "create_first_category": "Create your first category to get started",
     "add_new_category": "Add New Category",
     "enter_category_name": "Enter category name",
+    "category_name_required": "Please enter category name",
+    "category_name_min_length": "Category name must be at least 2 characters",
+    "category_name_max_length": "Category name cannot exceed 50 characters",
     "update_category": "Update Category",
     "create_category": "Create Category",
     "search_categories": "Search categories...",
@@ -1298,12 +1301,16 @@
     "failed_update_category": "Failed to update category",
     "deleting_category": "Deleting category...",
     "failed_delete_category": "Failed to delete category",
-    "delete_conflict_products": "This category can't be deleted because it still has products assigned to it. Reassign or delete those products first."
+    "delete_conflict_products": "This category can't be deleted because it still has products assigned to it. Reassign or delete those products first.",
+    "duplicate_category_message": "A category with that name already exists."
   },
   "units": {
     "unit": "Unit",
     "units": "Units",
     "unit_name": "Unit Name",
+    "unit_name_required": "Please enter unit name",
+    "unit_name_min_length": "Unit name must be at least 1 character",
+    "unit_name_max_length": "Unit name cannot exceed 20 characters",
     "unit_of_measurement": "Unit of Measurement",
     "search_units": "Search units...",
     "add_unit": "Add Unit",
@@ -1382,7 +1389,8 @@
     "deleting_unit": "Deleting unit...",
     "unit_deleted": "Unit deleted successfully",
     "failed_delete_unit": "Failed to delete unit",
-    "delete_conflict_products": "This unit can't be deleted because it still has products assigned to it. Reassign or delete those products first."
+    "delete_conflict_products": "This unit can't be deleted because it still has products assigned to it. Reassign or delete those products first.",
+    "duplicate_unit_message": "A unit with that name already exists."
   },
   "reports": {
     "growth_trend": "Growth trend",
@@ -2058,9 +2066,11 @@
     "categories_units": "Categories & Units",
     "manage_inventory_categories_units": "Manage your inventory categories and units",
     "total_categories": "Total Categories",
-    "your_categories": "Your Categories",
+    "categories_in_use": "Categories in Use",
+    "categories_in_use_hint": "{{count}} categories with no products assigned",
     "total_units": "Total Units",
-    "your_units": "Your Units"
+    "units_in_use": "Units in Use",
+    "units_in_use_hint": "{{count}} units with no products assigned"
   },
   "filter": {
     "all_items": "All Items",

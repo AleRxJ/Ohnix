@@ -9,6 +9,7 @@ const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 const mapUnit = (unit) => ({
     _id: toExternalId(unit),
     unit_name: unit.unitName,
+    products_count: unit._count?.products ?? 0,
     created_by: {
         _id: toExternalId(unit.createdBy),
         username: unit.createdBy.username,
@@ -169,6 +170,7 @@ const getAllUnits = asyncHandler(async (req, res, next) => {
                         username: true,
                     },
                 },
+                _count: { select: { products: true } },
             },
         });
 

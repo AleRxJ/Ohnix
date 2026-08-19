@@ -174,15 +174,14 @@ export const useCategories = () => {
     }, []);
 
     const stats = useMemo(() => {
-        const calculated = {
+        const inUse = categories.filter((cat) => (cat.products_count ?? 0) > 0)
+            .length;
+        return {
             total: categories.length,
-            mine: categories.filter((cat) => cat.created_by._id === user?._id)
-                .length,
-            others: categories.filter((cat) => cat.created_by._id !== user?._id)
-                .length,
+            inUse,
+            unused: categories.length - inUse,
         };
-        return calculated;
-    }, [categories, user?._id]);
+    }, [categories]);
 
     return {
         categories: filteredCategories,

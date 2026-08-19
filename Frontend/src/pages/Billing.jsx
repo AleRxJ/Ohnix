@@ -1032,12 +1032,12 @@ const Billing = () => {
                                                                     {/* Plan row */}
                                                                     <div className="mb-5 flex items-center justify-between gap-3">
                                                                         <div>
-                                                                            <div className="text-sm text-[var(--ohnix-text-muted)]">
+                                                                            <div className="text-sm text-[#a9b3b8]">
                                                                                 {t(`profile.subscription.plan_${item.currentPlan}`)}
                                                                                 {" "}
                                                                                 <span className="text-[#29D8D5]">→</span>
                                                                                 {" "}
-                                                                                <span className="font-semibold text-[var(--ohnix-text-primary)]">
+                                                                                <span className="font-semibold text-white">
                                                                                     {t(`profile.subscription.plan_${item.targetPlan}`)}
                                                                                 </span>
                                                                             </div>
@@ -1065,16 +1065,16 @@ const Billing = () => {
                                                                         ].join(" ")}
                                                                     >
                                                                         {/* Shimmer on hover */}
-                                                                        <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-[var(--ohnix-line-2)] to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                                                                        <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/[0.06] to-transparent transition-transform duration-700 group-hover:translate-x-full" />
 
                                                                         <div className="flex items-center justify-between">
                                                                             <div className="flex items-center gap-3">
                                                                                 {/* ePayco wordmark */}
                                                                                 <div className="flex items-baseline gap-0.5">
                                                                                     <span className="text-xl font-black leading-none text-[#00AFF0]">e</span>
-                                                                                    <span className="text-base font-bold leading-none text-[var(--ohnix-text-primary)]">Payco</span>
+                                                                                    <span className="text-base font-bold leading-none text-white">Payco</span>
                                                                                 </div>
-                                                                                <div className="h-4 w-px bg-[var(--ohnix-line-4)]" />
+                                                                                <div className="h-4 w-px bg-white/10" />
                                                                                 <span className="text-sm font-medium text-white/90">
                                                                                     {isLoading ? "Redirigiendo..." : "Pagar con ePayco"}
                                                                                 </span>

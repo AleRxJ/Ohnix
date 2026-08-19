@@ -9,6 +9,7 @@ const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 const mapCategory = (category) => ({
     _id: toExternalId(category),
     category_name: category.categoryName,
+    products_count: category._count?.products ?? 0,
     created_by: {
         _id: toExternalId(category.createdBy),
         username: category.createdBy.username,
@@ -126,6 +127,7 @@ const getAllCategories = asyncHandler(async (_req, res, next) => {
                         username: true,
                     },
                 },
+                _count: { select: { products: true } },
             },
         });
 
@@ -164,6 +166,7 @@ const getUserCategories = asyncHandler(async (req, res, next) => {
                         username: true,
                     },
                 },
+                _count: { select: { products: true } },
             },
         });
 

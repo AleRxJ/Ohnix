@@ -163,15 +163,14 @@ export const useUnits = () => {
     }, []);
 
     const stats = useMemo(() => {
-        const calculated = {
+        const inUse = units.filter((unit) => (unit.products_count ?? 0) > 0)
+            .length;
+        return {
             total: units.length,
-            mine: units.filter((unit) => unit.created_by._id === user?._id)
-                .length,
-            others: units.filter((unit) => unit.created_by._id !== user?._id)
-                .length,
+            inUse,
+            unused: units.length - inUse,
         };
-        return calculated;
-    }, [units, user?._id]);
+    }, [units]);
 
     return {
         units: filteredUnits,

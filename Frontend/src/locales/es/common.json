@@ -1281,6 +1281,9 @@
     "create_first_category": "Crea tu primera categoría para comenzar",
     "add_new_category": "Agregar nueva categoría",
     "enter_category_name": "Ingresa el nombre de la categoría",
+    "category_name_required": "Por favor ingresa el nombre de la categoría",
+    "category_name_min_length": "El nombre de la categoría debe tener al menos 2 caracteres",
+    "category_name_max_length": "El nombre de la categoría no puede exceder 50 caracteres",
     "update_category": "Actualizar categoría",
     "create_category": "Crear categoría",
     "search_categories": "Buscar categorías...",
@@ -1299,12 +1302,16 @@
     "failed_update_category": "No se pudo actualizar la categoría",
     "deleting_category": "Eliminando categoría...",
     "failed_delete_category": "No se pudo eliminar la categoría",
-    "delete_conflict_products": "Esta categoría no se puede eliminar porque todavía tiene productos asignados. Reasigna o elimina esos productos primero."
+    "delete_conflict_products": "Esta categoría no se puede eliminar porque todavía tiene productos asignados. Reasigna o elimina esos productos primero.",
+    "duplicate_category_message": "Ya existe una categoría con ese nombre."
   },
   "units": {
     "unit": "Unidad",
     "units": "Unidades",
     "unit_name": "Nombre de la unidad",
+    "unit_name_required": "Por favor ingresa el nombre de la unidad",
+    "unit_name_min_length": "El nombre de la unidad debe tener al menos 1 carácter",
+    "unit_name_max_length": "El nombre de la unidad no puede exceder 20 caracteres",
     "unit_of_measurement": "Unidad de medida",
     "search_units": "Buscar unidades...",
     "add_unit": "Agregar unidad",
@@ -1383,7 +1390,8 @@
     "deleting_unit": "Eliminando unidad...",
     "unit_deleted": "Unidad eliminada correctamente",
     "failed_delete_unit": "No se pudo eliminar la unidad",
-    "delete_conflict_products": "Esta unidad no se puede eliminar porque todavía tiene productos asignados. Reasigna o elimina esos productos primero."
+    "delete_conflict_products": "Esta unidad no se puede eliminar porque todavía tiene productos asignados. Reasigna o elimina esos productos primero.",
+    "duplicate_unit_message": "Ya existe una unidad con ese nombre."
   },
   "reports": {
     "growth_trend": "Tendencia de crecimiento",
@@ -2052,9 +2060,11 @@
     "categories_units": "Categorías y Unidades",
     "manage_inventory_categories_units": "Administra tus categorías e unidades de inventario",
     "total_categories": "Total de categorías",
-    "your_categories": "Tus categorías",
+    "categories_in_use": "Categorías en uso",
+    "categories_in_use_hint": "{{count}} categorías sin productos asignados",
     "total_units": "Total de unidades",
-    "your_units": "Tus unidades"
+    "units_in_use": "Unidades en uso",
+    "units_in_use_hint": "{{count}} unidades sin productos asignados"
   },
   "filter": {
     "all_items": "Todos los elementos",
