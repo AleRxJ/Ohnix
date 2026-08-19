@@ -818,7 +818,7 @@ const Billing = () => {
                             <Title level={5} className="!text-[var(--ohnix-text-primary)] !mb-2">
                                 {t("profile.subscription.tracker_title")}
                             </Title>
-                            <Text className="text-[#CFE8E8]">
+                            <Text className="text-[var(--ohnix-text-muted)]">
                                 {t("profile.subscription.tracker_description")}
                             </Text>
 
@@ -848,8 +848,8 @@ const Billing = () => {
                                 <div
                                     className={`mt-3 rounded-xl border p-3 text-xs ${
                                         trackerEta.overdue
-                                            ? "border-amber-300/30 bg-amber-500/10 text-amber-100"
-                                            : "border-cyan-300/30 bg-cyan-500/10 text-cyan-100"
+                                            ? "border-amber-300/30 bg-amber-500/10 text-[var(--ohnix-alert-amber-text)]"
+                                            : "border-cyan-300/30 bg-cyan-500/10 text-[var(--ohnix-alert-cyan-text)]"
                                     }`}
                                 >
                                     <span className="font-semibold">
@@ -887,7 +887,7 @@ const Billing = () => {
                                                           : t("profile.subscription.tracker_pending")}
                                                 </Tag>
                                             </div>
-                                            <div className="mt-1 text-xs text-[#C9D3D9]">
+                                            <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
                                                 {t(`profile.subscription.tracker_step_${stepKey}_description`)}
                                             </div>
                                         </div>

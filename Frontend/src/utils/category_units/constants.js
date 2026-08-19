@@ -15,18 +15,18 @@ export const TABLE_SCROLL_CONFIG = {
     x: 600,
 };
 
-export const FORM_RULES = {
+export const getFormRules = (t) => ({
     CATEGORY_NAME: [
-        { required: true, message: "Please enter category name" },
-        { min: 2, message: "Category name must be at least 2 characters" },
-        { max: 50, message: "Category name cannot exceed 50 characters" },
+        { required: true, message: t("categories.category_name_required") },
+        { min: 2, message: t("categories.category_name_min_length") },
+        { max: 50, message: t("categories.category_name_max_length") },
     ],
     UNIT_NAME: [
-        { required: true, message: "Please enter unit name" },
-        { min: 1, message: "Unit name must be at least 1 character" },
-        { max: 20, message: "Unit name cannot exceed 20 characters" },
+        { required: true, message: t("units.unit_name_required") },
+        { min: 1, message: t("units.unit_name_min_length") },
+        { max: 20, message: t("units.unit_name_max_length") },
     ],
-};
+});
 
 export const MODAL_WIDTH = {
     FORM: 500,

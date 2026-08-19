@@ -1,16 +1,19 @@
 import React from "react";
 import { Form, Input } from "antd";
 import { LockOutlined, UserOutlined, MailOutlined } from "@ant-design/icons";
+import useI18n from "../../hooks/useI18n";
 
 export const UsernameFormItem = ({
     required = true,
     disabled = false,
     value,
 }) => {
+    const { t } = useI18n();
+
     return (
         <Form.Item
             label={
-                <span className="text-indigo-700 font-medium">Username</span>
+                <span className="text-indigo-700 font-medium">{t("common.username")}</span>
             }
             name="username"
             rules={
@@ -18,7 +21,7 @@ export const UsernameFormItem = ({
                     ? [
                           {
                               required: true,
-                              message: "Please input your username!",
+                              message: t("auth.username_required"),
                           },
                       ]
                     : []
@@ -26,7 +29,7 @@ export const UsernameFormItem = ({
         >
             <Input
                 prefix={<UserOutlined className="text-indigo-400" />}
-                placeholder="Username"
+                placeholder={t("common.username")}
                 size="large"
                 className="rounded-lg h-12"
                 disabled={disabled}
@@ -37,9 +40,11 @@ export const UsernameFormItem = ({
 };
 
 export const EmailFormItem = ({ disabled = true, value }) => {
+    const { t } = useI18n();
+
     return (
         <Form.Item
-            label={<span className="text-indigo-700 font-medium">Email</span>}
+            label={<span className="text-indigo-700 font-medium">{t("common.email")}</span>}
         >
             <Input
                 prefix={<MailOutlined className="text-indigo-400" />}
@@ -63,6 +68,8 @@ export const PasswordFormItem = ({
     placeholder,
     required = true,
 }) => {
+    const { t } = useI18n();
+
     return (
         <Form.Item
             label={<span className="text-indigo-700 font-medium">{label}</span>}
@@ -70,11 +77,11 @@ export const PasswordFormItem = ({
             rules={[
                 {
                     required: required,
-                    message: `Please input your Password!`,
+                    message: t("auth.password_required"),
                 },
                 name === "password" && {
                     min: 6,
-                    message: "Password must be at least 6 characters",
+                    message: t("validation.password_too_short"),
                 },
             ].filter(Boolean)}
         >
@@ -89,11 +96,13 @@ export const PasswordFormItem = ({
 };
 
 export const ConfirmPasswordFormItem = () => {
+    const { t } = useI18n();
+
     return (
         <Form.Item
             label={
                 <span className="text-indigo-700 font-medium">
-                    Confirm New Password
+                    {t("auth.confirm_new_password")}
                 </span>
             }
             name="confirmPassword"
@@ -101,7 +110,7 @@ export const ConfirmPasswordFormItem = () => {
             rules={[
                 {
                     required: true,
-                    message: "Please confirm your new password!",
+                    message: t("auth.confirm_password_required"),
                 },
                 ({ getFieldValue }) => ({
                     validator(_, value) {
@@ -109,7 +118,7 @@ export const ConfirmPasswordFormItem = () => {
                             return Promise.resolve();
                         }
                         return Promise.reject(
-                            new Error("The two passwords do not match!")
+                            new Error(t("auth.password_mismatch"))
                         );
                     },
                 }),
@@ -117,7 +126,7 @@ export const ConfirmPasswordFormItem = () => {
         >
             <Input.Password
                 prefix={<LockOutlined className="text-indigo-400" />}
-                placeholder="Confirm New Password"
+                placeholder={t("auth.confirm_new_password")}
                 size="large"
                 className="rounded-lg h-12"
             />

@@ -36,37 +36,37 @@ export const getStockStatus = (stock, lowStockThreshold = DEFAULT_LOW_STOCK_THRE
     return { status: "success", text: "In Stock", color: "green" };
 };
 
-export const validateProductData = (productData) => {
+export const validateProductData = (productData, t) => {
     const errors = {};
     let isValid = true;
 
     if (!productData.product_name?.trim()) {
-        errors.product_name = "Product name is required";
+        errors.product_name = t("products.enter_product_name_required");
         isValid = false;
     }
 
     if (!productData.product_code?.trim()) {
-        errors.product_code = "Product code is required";
+        errors.product_code = t("products.enter_product_code_required");
         isValid = false;
     }
 
     if (!productData.category_id) {
-        errors.category_id = "Category is required";
+        errors.category_id = t("products.select_category_required");
         isValid = false;
     }
 
     if (!productData.unit_id) {
-        errors.unit_id = "Unit is required";
+        errors.unit_id = t("products.select_unit_required");
         isValid = false;
     }
 
     if (!productData.buying_price || productData.buying_price <= 0) {
-        errors.buying_price = "Buying price must be greater than 0";
+        errors.buying_price = t("products.price_must_be_positive");
         isValid = false;
     }
 
     if (!productData.selling_price || productData.selling_price <= 0) {
-        errors.selling_price = "Selling price must be greater than 0";
+        errors.selling_price = t("products.price_must_be_positive");
         isValid = false;
     }
 
@@ -75,8 +75,9 @@ export const validateProductData = (productData) => {
         productData.buying_price &&
         productData.selling_price < productData.buying_price
     ) {
-        errors.selling_price =
-            "Selling price should be greater than buying price";
+        errors.selling_price = t(
+            "products.selling_price_greater_than_buying_price"
+        );
         isValid = false;
     }
 

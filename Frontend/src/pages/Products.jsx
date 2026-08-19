@@ -162,7 +162,7 @@ const Products = () => {
         try {
             const values = await form.validateFields();
 
-            const validation = validateProductData(values);
+            const validation = validateProductData(values, t);
             if (!validation.isValid) {
                 Object.keys(validation.errors).forEach((key) => {
                     message.error(validation.errors[key]);

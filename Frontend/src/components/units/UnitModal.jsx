@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Modal, Form, Input, Button, Space, Select, Tabs, Divider } from "antd";
 import { AppstoreOutlined } from "@ant-design/icons";
-import { FORM_RULES, MODAL_WIDTH } from "../../utils/category_units/constants";
+import { getFormRules, MODAL_WIDTH } from "../../utils/category_units/constants";
 import { COMMON_UNITS, UNIT_CATEGORIES, getUnitsByCategory } from "../../utils/commonUnits";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
@@ -263,6 +263,8 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }
 };
 
 const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t, locked, submitting }) => {
+    const FORM_RULES = getFormRules(t);
+
     return (
         <Form
             form={form}

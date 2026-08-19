@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Modal, Form, Input, Button, Space } from "antd";
 import { TagsOutlined } from "@ant-design/icons";
-import { FORM_RULES, MODAL_WIDTH } from "../../utils/category_units/constants";
+import { getFormRules, MODAL_WIDTH } from "../../utils/category_units/constants";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
@@ -18,6 +18,7 @@ const CategoryModal = ({
     submitting,
 }) => {
     const { t } = useI18n();
+    const FORM_RULES = getFormRules(t);
     const { user } = useContext(AuthContext);
     const { team } = useTeam();
     const { isOpen: isTutorialActive, effectiveSteps, stepIndex } = useInventoryTour();

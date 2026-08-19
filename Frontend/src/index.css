@@ -41,6 +41,12 @@ body {
   --ohnix-status-rose: #fb7185;
   --ohnix-status-amber: #f59e0b;
 
+  /* Text colors for content sitting on tinted alert/badge backgrounds
+     (e.g. bg-amber-500/10) - these need to flip per theme since a pale
+     tint reads fine on a dark page but disappears on a light one. */
+  --ohnix-alert-amber-text: #fde68a;
+  --ohnix-alert-cyan-text: #a5f3fc;
+
   /* Surfaces */
   --ohnix-bg-alt: #050608;
   --ohnix-surface-3: #121316;
@@ -95,6 +101,9 @@ body {
   /* --ohnix-accent / --ohnix-accent-2 / status-purple / status-rose /
      status-amber intentionally omitted: brand + semantic colors stay
      identical to Dark in both themes (see task section 4). */
+
+  --ohnix-alert-amber-text: #92400e;
+  --ohnix-alert-cyan-text: #0e7490;
 
   --ohnix-bg-alt: #eef1f4;
   --ohnix-surface-3: #eef2f4;
