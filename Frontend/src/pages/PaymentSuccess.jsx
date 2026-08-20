@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { subscriptionService } from "../services/subscriptionService";
 import useI18n from "../hooks/useI18n";
 import AuthContext from "../context/AuthContext";
+import BusinessInfoPrompt from "../components/billing/BusinessInfoPrompt";
 
 const { Title, Text } = Typography;
 
@@ -464,6 +465,9 @@ const PaymentSuccess = () => {
 
     return (
         <div className="relative min-h-screen overflow-hidden bg-[var(--ohnix-bg-alt)] px-4 py-8 text-[var(--ohnix-text-primary)] sm:py-12">
+            {/* Asked once, right after the plan actually activates - not
+                during signup. See BusinessInfoPrompt for why here specifically. */}
+            {activated && <BusinessInfoPrompt />}
             <div className="pointer-events-none absolute inset-0 opacity-90">
                 <div className="payment-success-glow payment-success-glow-left" />
                 <div className="payment-success-glow payment-success-glow-right" />

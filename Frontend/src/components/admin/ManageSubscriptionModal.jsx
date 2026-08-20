@@ -1,12 +1,16 @@
 // Frontend/src/components/admin/ManageSubscriptionModal.jsx
 //
-// Shared "gestionar suscripción" modal - cancel/uncancel/extend a user's
-// subscription plus the admin-action audit trail for that user. Extracted
-// out of AdminPayments.jsx so AdminSubscriptions.jsx (the customer-centric
-// view) can reuse the exact same actions instead of duplicating ~250 lines.
+// Shared "gestionar suscripción" modal - the single per-user admin view:
+// current subscription (cancel/uncancel/extend), payment history scoped to
+// just this person (with a "Reverificar" action per stuck payment), and the
+// admin-action audit trail. Used to be two separate pages (a payments
+// ledger and a subscriptions list) - merged into one because filtering a
+// global ledger down to "just this person's payments" is exactly what this
+// modal already needed to do anyway, so there was no reason to keep a
+// second top-level page around for it.
 import React, { useEffect, useState } from "react";
-import { Modal, Tag, Button, InputNumber, Spin, Empty } from "antd";
-import { PlusCircleOutlined, StopOutlined, UndoOutlined } from "@ant-design/icons";
+import { Modal, Tag, Button, InputNumber, Spin, Empty, Tooltip } from "antd";
+import { PlusCircleOutlined, StopOutlined, UndoOutlined, SyncOutlined, CopyOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import { subscriptionService } from "../../services/subscriptionService";
 
@@ -16,6 +20,22 @@ export const SUBSCRIPTION_STATUS_STYLES = {
 };
 
 export const formatDate = (value) => (value ? new Date(value).toLocaleString("es-CO") : "-");
+
+const PAYMENT_STATUS_STYLES = {
+    pending: { color: "gold", label: "Pendiente" },
+    paid: { color: "green", label: "Pagado" },
+    rejected: { color: "red", label: "Rechazado" },
+    failed: { color: "red", label: "Fallido" },
+    expired: { color: "default", label: "Expirado" },
+    cancelled: { color: "default", label: "Cancelado" },
+    amount_mismatch: { color: "volcano", label: "Monto no coincide" },
+};
+
+const TEST_MODE_STYLES = {
+    true: { color: "purple", label: "Prueba" },
+    false: { color: "green", label: "Real" },
+    unknown: { color: "default", label: "Sin registrar" },
+};
 
 const AUDIT_ACTION_LABELS = {
     set_plan: "Cambió el plan",
@@ -49,8 +69,17 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
     const [loading, setLoading] = useState(false);
     const [subscription, setSubscription] = useState(null);
     const [auditLog, setAuditLog] = useState([]);
+    const [payments, setPayments] = useState([]);
     const [actionLoading, setActionLoading] = useState("");
+    const [reverifyingId, setReverifyingId] = useState("");
     const [extendDays, setExtendDays] = useState(30);
+
+    const loadPayments = async (userId) => {
+        const response = await subscriptionService
+            .getAdminPayments({ userId, pageSize: 20 })
+            .catch(() => null);
+        setPayments(response?.data?.requests || []);
+    };
 
     const load = async (userId) => {
         try {
@@ -58,6 +87,7 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
             const [subResponse, auditResponse] = await Promise.all([
                 subscriptionService.getUserSubscriptionAdmin(userId),
                 subscriptionService.getUserAuditLogAdmin(userId).catch(() => null),
+                loadPayments(userId),
             ]);
             setSubscription(subResponse?.data?.subscription || null);
             setAuditLog(auditResponse?.data?.entries || []);
@@ -72,6 +102,7 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
         if (!target?.userId) return;
         setExtendDays(30);
         load(target.userId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [target?.userId]);
 
     const runAction = async (action, actionFn) => {
@@ -88,6 +119,30 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
         } finally {
             setActionLoading("");
         }
+    };
+
+    const handleReverify = async (payment) => {
+        try {
+            setReverifyingId(payment.id);
+            const response = await subscriptionService.reverifyAdminPayment(payment.id);
+            const result = response?.data;
+            toast.success(
+                result?.changed
+                    ? `Estado actualizado: ${PAYMENT_STATUS_STYLES[result.paymentStatus]?.label || result.paymentStatus}`
+                    : "El proveedor no reportó ningún cambio todavía."
+            );
+            await loadPayments(target.userId);
+            onChanged?.();
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Error");
+        } finally {
+            setReverifyingId("");
+        }
+    };
+
+    const copyReference = (value) => {
+        if (!value) return;
+        navigator.clipboard?.writeText(value).then(() => toast.success("Referencia copiada"), () => {});
     };
 
     return (
@@ -107,6 +162,7 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
             onCancel={onClose}
             footer={null}
             destroyOnClose
+            width={640}
         >
             {loading ? (
                 <div className="flex justify-center py-8">
@@ -188,6 +244,76 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
                         <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
                             Extiende desde la fecha de vencimiento actual (o desde hoy si ya venció), mantiene el mismo plan y deshace una cancelación pendiente.
                         </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ohnix-text-muted)]">
+                            Historial de pagos
+                        </div>
+                        {payments.length === 0 ? (
+                            <p className="text-xs text-[var(--ohnix-text-muted)]">
+                                Este usuario todavía no tiene intentos de pago registrados.
+                            </p>
+                        ) : (
+                            <div className="max-h-64 space-y-2 overflow-y-auto">
+                                {payments.map((payment) => {
+                                    const canReverify = payment.status === "approved" && payment.paymentStatus === "pending";
+                                    const modeKey =
+                                        payment.isTestPayment === null || payment.isTestPayment === undefined
+                                            ? "unknown"
+                                            : String(payment.isTestPayment);
+                                    return (
+                                        <div
+                                            key={payment.id}
+                                            className="rounded-lg border border-[var(--ohnix-line-3)] px-3 py-2 text-xs"
+                                        >
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span className="font-medium text-[var(--ohnix-text-primary)]">
+                                                        {payment.currentPlan} → {payment.targetPlan}
+                                                    </span>
+                                                    {payment.paymentStatus && (
+                                                        <Tag color={PAYMENT_STATUS_STYLES[payment.paymentStatus]?.color || "default"}>
+                                                            {PAYMENT_STATUS_STYLES[payment.paymentStatus]?.label || payment.paymentStatus}
+                                                        </Tag>
+                                                    )}
+                                                    <Tag color={TEST_MODE_STYLES[modeKey].color}>{TEST_MODE_STYLES[modeKey].label}</Tag>
+                                                </div>
+                                                {canReverify && (
+                                                    <Button
+                                                        size="small"
+                                                        icon={<SyncOutlined spin={reverifyingId === payment.id} />}
+                                                        loading={reverifyingId === payment.id}
+                                                        onClick={() => handleReverify(payment)}
+                                                        className="rounded-lg border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0]"
+                                                    >
+                                                        Reverificar
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[var(--ohnix-text-muted)]">
+                                                <span>
+                                                    {payment.paymentProvider ? payment.paymentProvider.toUpperCase() : "-"}
+                                                    {payment.paymentSessionId && (
+                                                        <Tooltip title={payment.paymentSessionId}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => copyReference(payment.paymentSessionId)}
+                                                                className="ml-2 inline-flex items-center gap-1 text-[#29D8D5] hover:text-[#44F3F0]"
+                                                            >
+                                                                <span className="max-w-[90px] truncate">{payment.paymentSessionId}</span>
+                                                                <CopyOutlined />
+                                                            </button>
+                                                        </Tooltip>
+                                                    )}
+                                                </span>
+                                                <span>{formatDate(payment.createdAt)}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
                     <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">

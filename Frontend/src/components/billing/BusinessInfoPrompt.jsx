@@ -7,7 +7,7 @@
 // creation was otherwise entirely admin-only until companySelf.controller.js
 // added a self-service branding-only path. This reuses that same endpoint,
 // extended to also accept taxIdentification/countryCode, so the admin
-// payments/subscriptions ledgers (see AdminPayments.jsx) can show which
+// admin subscriptions ledger (see AdminSubscriptions.jsx) can show which
 // accounts are businesses without a human manually assigning every one.
 //
 // Deliberately optional and asked at most once per browser: "Omitir" (or

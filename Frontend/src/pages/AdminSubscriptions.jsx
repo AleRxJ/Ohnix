@@ -1,11 +1,15 @@
 // Frontend/src/pages/AdminSubscriptions.jsx
 //
-// Customer-centric admin view: one row per subscriber, showing the plan
-// they actually have active right now - the counterpart to
-// AdminPayments.jsx, which is payment-attempt-centric (one row per
-// PlanUpgradeRequest, so a user who's upgraded/renewed several times shows
-// up several times with no obvious "which one is current"). This is the
-// view for "manage this person/company's plan", not "audit this payment".
+// The single admin billing view: one row per subscriber, showing the plan
+// they actually have active right now. Used to be split across two pages -
+// this one (customer-centric) and a separate payment-attempt-centric ledger
+// (one row per PlanUpgradeRequest, so a user who'd upgraded/renewed several
+// times showed up several times with no obvious "which one is current").
+// They were merged because "show me just this person's payments" was
+// already exactly what the per-user drill-down needed - see the "Historial
+// de pagos" section inside ManageSubscriptionModal, opened via "Gestionar"
+// below, for that payment history and the reference/reverify actions that
+// used to live on the separate page.
 import React, { useContext, useEffect, useState } from "react";
 import { Table, Tag, Select, Input, Button, Empty, Alert } from "antd";
 import { ReloadOutlined, SettingOutlined, ShopOutlined, CrownOutlined } from "@ant-design/icons";

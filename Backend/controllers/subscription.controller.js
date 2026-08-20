@@ -1513,12 +1513,18 @@ export const getAdminSubscriptions = asyncHandler(async (req, res) => {
  * paginated, across every request regardless of workflow status by default.
  */
 export const getAdminPayments = asyncHandler(async (req, res) => {
-    const { paymentStatus, status, search, page, pageSize, isTestPayment, hasCompany } = req.query;
+    const { paymentStatus, status, search, page, pageSize, isTestPayment, hasCompany, userId } = req.query;
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
 
     const where = {};
+    // Exact match, not part of the fuzzy `search` below - this is what
+    // scopes the ledger to "this one user's payment history" for the
+    // per-subscriber drill-down in ManageSubscriptionModal.
+    if (userId) {
+        where.userId = userId;
+    }
     if (PAYMENT_STATUS_VALUES.includes(paymentStatus)) {
         where.paymentStatus = paymentStatus;
     }
