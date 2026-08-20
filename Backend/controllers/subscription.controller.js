@@ -2,6 +2,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { logAdminAction } from "../utils/adminAudit.js";
 import {
     ensureUserSubscription,
     getEffectivePlan,
@@ -38,6 +39,7 @@ import {
     EPAYCO_STATE,
     isEpaycoTransactionApproved,
     isEpaycoCancelledResponse,
+    parseEpaycoTestFlag,
 } from "../services/epayco.service.js";
 
 const normalizePaymentLink = (value) => {
@@ -90,6 +92,7 @@ export const UPGRADE_REQUEST_SELECT = {
     paymentProvider: true,
     paymentSessionId: true,
     paymentStatus: true,
+    isTestPayment: true,
     paidAt: true,
     periodStartsAt: true,
     periodEndsAt: true,
@@ -217,6 +220,7 @@ const closeApprovedRequestAndActivatePlan = async ({
     paymentProvider = "stripe",
     paymentLink,
     adminResponse,
+    isTestPayment,
 }) => {
     // Paid plans renew every 30 days — set endsAt on activation.
     // For renewals (currentPlan === targetPlan), extend from the current endsAt
@@ -272,6 +276,7 @@ const closeApprovedRequestAndActivatePlan = async ({
                 paymentProvider,
                 paymentSessionId: paymentSessionId || existing.paymentSessionId,
                 paymentStatus,
+                ...(typeof isTestPayment === "boolean" ? { isTestPayment } : {}),
                 paymentLink: paymentLink || existing.paymentLink,
                 paidAt: paymentStatus === "paid" ? new Date() : existing.paidAt,
                 // Snapshot of the period THIS payment covers - the
@@ -376,12 +381,19 @@ const closeApprovedRequestAndActivatePlan = async ({
 // conclusion was already reached by the reconciliation fallback below, or
 // vice versa) is a no-op instead of re-notifying or clobbering a status set
 // by a different, possibly more specific, caller in the meantime.
-const markUpgradeRequestPaymentFailed = async ({ upgradeRequestId, paymentStatus }) => {
+// isTestPayment is optional and only ever set (never cleared) here - a
+// caller that doesn't know the provider's test/live flag (e.g. the
+// self-reported "customer closed the checkout" path) must not overwrite a
+// value a more informed caller already recorded.
+const markUpgradeRequestPaymentFailed = async ({ upgradeRequestId, paymentStatus, isTestPayment }) => {
     if (!upgradeRequestId) return;
 
     const updated = await prisma.planUpgradeRequest.updateMany({
         where: { id: upgradeRequestId, status: "approved", paymentStatus: "pending" },
-        data: { paymentStatus },
+        data: {
+            paymentStatus,
+            ...(typeof isTestPayment === "boolean" ? { isTestPayment } : {}),
+        },
     });
 
     if (updated.count > 0) {
@@ -538,6 +550,7 @@ export const resolvePendingPaymentStatus = async (request) => {
             const responseText = `${txData.x_response ?? txData.response ?? txData.estado ?? ""}`
                 .trim()
                 .toLowerCase();
+            const isTestPayment = parseEpaycoTestFlag(txData.x_test_request ?? txData.test_request);
             const approved =
                 isEpaycoTransactionApproved(stateCode) ||
                 (stateCode === 0 && ["aceptada", "accepted", "approved"].includes(responseText));
@@ -560,6 +573,7 @@ export const resolvePendingPaymentStatus = async (request) => {
                     await markUpgradeRequestPaymentFailed({
                         upgradeRequestId: request.id,
                         paymentStatus: "amount_mismatch",
+                        isTestPayment,
                     });
                     return { ...request, paymentStatus: "amount_mismatch" };
                 }
@@ -570,6 +584,7 @@ export const resolvePendingPaymentStatus = async (request) => {
                     paymentSessionId: request.paymentSessionId,
                     paymentProvider: "epayco",
                     paymentStatus: "paid",
+                    isTestPayment,
                 });
                 return { ...request, status: "closed", paymentStatus: "paid" };
             }
@@ -604,7 +619,7 @@ export const resolvePendingPaymentStatus = async (request) => {
                 } else {
                     paymentStatus = "failed";
                 }
-                await markUpgradeRequestPaymentFailed({ upgradeRequestId: request.id, paymentStatus });
+                await markUpgradeRequestPaymentFailed({ upgradeRequestId: request.id, paymentStatus, isTestPayment });
                 return { ...request, paymentStatus };
             }
 
@@ -625,7 +640,7 @@ export const resolvePendingPaymentStatus = async (request) => {
             // through to the staleness check untouched.
             if (stateCode !== 0 && !NON_TERMINAL_STATES.has(stateCode)) {
                 const paymentStatus = isEpaycoCancelledResponse(responseText) ? "cancelled" : "failed";
-                await markUpgradeRequestPaymentFailed({ upgradeRequestId: request.id, paymentStatus });
+                await markUpgradeRequestPaymentFailed({ upgradeRequestId: request.id, paymentStatus, isTestPayment });
                 return { ...request, paymentStatus };
             }
 
@@ -905,7 +920,7 @@ export const updateUserPlan = asyncHandler(async (req, res, next) => {
         }
     }
 
-    await ensureUserSubscription(targetUser.id);
+    const before = await ensureUserSubscription(targetUser.id);
 
     const updated = await prisma.subscription.update({
         where: { userId: targetUser.id },
@@ -923,9 +938,212 @@ export const updateUserPlan = asyncHandler(async (req, res, next) => {
         },
     });
 
+    // Hand-setting a plan is the single most consequential admin action here
+    // (instant, unpaid access to any plan including enterprise) - it had
+    // zero trace anywhere before this.
+    await logAdminAction({
+        adminId: req.user.prismaId,
+        action: "set_plan",
+        targetType: "subscription",
+        targetId: updated.userId,
+        targetUserId: targetUser.id,
+        metadata: { fromPlan: before.plan, toPlan: plan },
+    });
+
     return res
         .status(200)
         .json(new ApiResponse(200, updated, "User plan updated successfully"));
+});
+
+const SUBSCRIPTION_SELECT_ADMIN = {
+    userId: true,
+    plan: true,
+    status: true,
+    startedAt: true,
+    endsAt: true,
+    trialEndsAt: true,
+    cancelAtPeriodEnd: true,
+};
+
+const findTargetUserOrFail = async (userId, next) => {
+    const targetUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, username: true, company: { select: { id: true, name: true } } },
+    });
+    if (!targetUser) {
+        next(new ApiError(404, "Target user not found"));
+        return null;
+    }
+    return targetUser;
+};
+
+/**
+ * GET /subscriptions/admin/users/:userId/subscription
+ *
+ * The single "what's actually active for this person right now" answer -
+ * distinct from the payments ledger's per-attempt history (getAdminPayments),
+ * which has no way on its own to say which of a user's several upgrade
+ * requests over time is the one currently in effect. Includes company (if
+ * any) so the admin can tell a business account from an individual one at a
+ * glance - the same relation the payments ledger now surfaces per row.
+ */
+export const getUserSubscriptionAdmin = asyncHandler(async (req, res, next) => {
+    const targetUser = await findTargetUserOrFail(req.params.userId, next);
+    if (!targetUser) return;
+
+    const subscription = await ensureUserSubscription(targetUser.id);
+
+    return res.status(200).json(
+        new ApiResponse(200, { user: targetUser, subscription }, "User subscription fetched successfully")
+    );
+});
+
+/**
+ * GET /subscriptions/admin/users/:userId/audit-log
+ *
+ * "Who did what to this person and when" - see AdminAuditLog / logAdminAction
+ * (Backend/utils/adminAudit.js). Every cancel/extend/uncancel, hand-set
+ * plan, payment re-verify, and upgrade-request status change on this user
+ * shows up here with which admin did it.
+ */
+export const getUserAuditLogAdmin = asyncHandler(async (req, res, next) => {
+    const targetUser = await findTargetUserOrFail(req.params.userId, next);
+    if (!targetUser) return;
+
+    const entries = await prisma.adminAuditLog.findMany({
+        where: { targetUserId: targetUser.id },
+        select: {
+            id: true,
+            action: true,
+            targetType: true,
+            targetId: true,
+            metadata: true,
+            createdAt: true,
+            admin: { select: { id: true, email: true, username: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+    });
+
+    return res.status(200).json(new ApiResponse(200, { entries }, "Audit log fetched successfully"));
+});
+
+/**
+ * POST /subscriptions/admin/users/:userId/subscription/cancel
+ *
+ * Admin-initiated version of cancelMySubscription (same endpoint's self-
+ * service twin, above) - identical semantics on purpose: cancelAtPeriodEnd,
+ * NOT an immediate cutoff. The customer keeps access through what they
+ * already paid for; subscriptionRenewalScheduler blocks access once endsAt
+ * actually passes, the same natural-expiry path a non-renewal would take.
+ */
+export const cancelUserSubscriptionAdmin = asyncHandler(async (req, res, next) => {
+    const targetUser = await findTargetUserOrFail(req.params.userId, next);
+    if (!targetUser) return;
+
+    const subscription = await ensureUserSubscription(targetUser.id);
+
+    if (!subscription.endsAt) {
+        return next(new ApiError(400, "There is no active paid period to cancel."));
+    }
+
+    const updated = await prisma.subscription.update({
+        where: { userId: targetUser.id },
+        data: { cancelAtPeriodEnd: true },
+        select: SUBSCRIPTION_SELECT_ADMIN,
+    });
+
+    await logAdminAction({
+        adminId: req.user.prismaId,
+        action: "cancel_subscription",
+        targetType: "subscription",
+        targetId: targetUser.id,
+        targetUserId: targetUser.id,
+        metadata: { plan: updated.plan, endsAt: updated.endsAt },
+    });
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            updated,
+            "Subscription will not renew, but the customer keeps access until it expires."
+        )
+    );
+});
+
+/**
+ * POST /subscriptions/admin/users/:userId/subscription/uncancel
+ *
+ * Undoes a pending cancelAtPeriodEnd - the counterpart to cancel above, for
+ * when the cancellation was a mistake or the customer changed their mind.
+ */
+export const uncancelUserSubscriptionAdmin = asyncHandler(async (req, res, next) => {
+    const targetUser = await findTargetUserOrFail(req.params.userId, next);
+    if (!targetUser) return;
+
+    const updated = await prisma.subscription.update({
+        where: { userId: targetUser.id },
+        data: { cancelAtPeriodEnd: false },
+        select: SUBSCRIPTION_SELECT_ADMIN,
+    });
+
+    await logAdminAction({
+        adminId: req.user.prismaId,
+        action: "uncancel_subscription",
+        targetType: "subscription",
+        targetId: targetUser.id,
+        targetUserId: targetUser.id,
+        metadata: { plan: updated.plan },
+    });
+
+    return res.status(200).json(new ApiResponse(200, updated, "Cancellation undone."));
+});
+
+/**
+ * POST /subscriptions/admin/users/:userId/subscription/extend
+ *
+ * Pushes endsAt out by `days` (body param, 1-365). Extends from the current
+ * endsAt if it's still in the future, or from now if it already lapsed or
+ * was never set - the same "don't lose unused days" logic
+ * closeApprovedRequestAndActivatePlan already uses for renewals. Also clears
+ * a pending cancelAtPeriodEnd and ensures status is active: extending a
+ * subscription that's mid-cancellation should mean "keep this customer
+ * going", not "give the cancellation a longer runway".
+ */
+export const extendUserSubscriptionAdmin = asyncHandler(async (req, res, next) => {
+    const targetUser = await findTargetUserOrFail(req.params.userId, next);
+    if (!targetUser) return;
+
+    const days = parseInt(req.body?.days, 10);
+    if (!Number.isFinite(days) || days < 1 || days > 365) {
+        return next(new ApiError(400, "days must be a number between 1 and 365"));
+    }
+
+    const subscription = await ensureUserSubscription(targetUser.id);
+    const base =
+        subscription.endsAt && new Date(subscription.endsAt) > new Date()
+            ? new Date(subscription.endsAt)
+            : new Date();
+    const endsAt = new Date(base.getTime() + days * 24 * 60 * 60 * 1000);
+
+    const updated = await prisma.subscription.update({
+        where: { userId: targetUser.id },
+        data: { endsAt, status: "active", cancelAtPeriodEnd: false },
+        select: SUBSCRIPTION_SELECT_ADMIN,
+    });
+
+    await logAdminAction({
+        adminId: req.user.prismaId,
+        action: "extend_subscription",
+        targetType: "subscription",
+        targetId: targetUser.id,
+        targetUserId: targetUser.id,
+        metadata: { days, previousEndsAt: subscription.endsAt, newEndsAt: updated.endsAt },
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, updated, `Subscription extended by ${days} day(s).`));
 });
 
 export const getUserUsageAdmin = asyncHandler(async (req, res, next) => {
@@ -1200,6 +1418,268 @@ export const getUpgradeRequestsAdmin = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, requests, "Admin upgrade requests fetched successfully"));
 });
 
+const PAYMENT_STATUS_VALUES = ["pending", "paid", "rejected", "failed", "expired", "cancelled", "amount_mismatch"];
+
+/**
+ * GET /subscriptions/admin/subscriptions
+ *
+ * Customer-centric counterpart to getAdminPayments below: one row per
+ * subscriber (queries Subscription directly), not one row per payment
+ * attempt. Answers "what plan does this person/company actually have right
+ * now" directly, instead of making the admin infer it from a payments
+ * ledger that could have several rows per user across months.
+ */
+export const getAdminSubscriptions = asyncHandler(async (req, res) => {
+    const { plan, status, hasCompany, search, page, pageSize } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
+
+    const where = {};
+    if (["starter", "growth", "scale", "enterprise"].includes(plan)) {
+        where.plan = plan;
+    }
+    if (["active", "paused", "canceled"].includes(status)) {
+        where.status = status;
+    }
+
+    const userWhere = {};
+    if (hasCompany === "true") {
+        userWhere.companyId = { not: null };
+    } else if (hasCompany === "false") {
+        userWhere.companyId = null;
+    }
+
+    const trimmedSearch = `${search || ""}`.trim();
+    if (trimmedSearch) {
+        userWhere.OR = [
+            { email: { contains: trimmedSearch, mode: "insensitive" } },
+            { username: { contains: trimmedSearch, mode: "insensitive" } },
+            { company: { name: { contains: trimmedSearch, mode: "insensitive" } } },
+        ];
+    }
+    if (Object.keys(userWhere).length) {
+        where.user = userWhere;
+    }
+
+    const [total, subscriptions] = await Promise.all([
+        prisma.subscription.count({ where }),
+        prisma.subscription.findMany({
+            where,
+            select: {
+                userId: true,
+                plan: true,
+                status: true,
+                startedAt: true,
+                endsAt: true,
+                trialEndsAt: true,
+                cancelAtPeriodEnd: true,
+                updatedAt: true,
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        username: true,
+                        company: { select: { id: true, name: true } },
+                    },
+                },
+            },
+            // Most-recently-changed subscription first - surfaces whoever
+            // just upgraded/cancelled/renewed instead of an arbitrary order.
+            orderBy: { updatedAt: "desc" },
+            skip: (pageNum - 1) * pageSizeNum,
+            take: pageSizeNum,
+        }),
+    ]);
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            { subscriptions, total, page: pageNum, pageSize: pageSizeNum },
+            "Admin subscriptions fetched successfully"
+        )
+    );
+});
+
+/**
+ * GET /subscriptions/admin/payments
+ *
+ * Dedicated payments ledger for the admin panel - existing
+ * getUpgradeRequestsAdmin above is really an "upgrade requests I need to
+ * review" queue (defaults to open/reviewing only, filters by workflow
+ * `status`), not a payments view: it never surfaces paymentStatus,
+ * paymentProvider, paymentSessionId, paidAt, or the period covered, and it
+ * can't be filtered/searched by any of them. This exposes exactly that,
+ * paginated, across every request regardless of workflow status by default.
+ */
+export const getAdminPayments = asyncHandler(async (req, res) => {
+    const { paymentStatus, status, search, page, pageSize, isTestPayment, hasCompany } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize, 10) || 20));
+
+    const where = {};
+    if (PAYMENT_STATUS_VALUES.includes(paymentStatus)) {
+        where.paymentStatus = paymentStatus;
+    }
+    if (["open", "reviewing", "approved", "rejected", "closed"].includes(status)) {
+        where.status = status;
+    }
+    // "unknown" filters for the (pre-this-feature) rows we genuinely never
+    // recorded a test/live flag for - distinct from explicitly false.
+    if (isTestPayment === "true") {
+        where.isTestPayment = true;
+    } else if (isTestPayment === "false") {
+        where.isTestPayment = false;
+    } else if (isTestPayment === "unknown") {
+        where.isTestPayment = null;
+    }
+
+    // "Empresa" account = the user belongs to a Company (see User.companyId) -
+    // an independent/individual user has none. Lets the admin filter for
+    // exactly the "is this a business" distinction the payments ledger
+    // otherwise has no way to surface at all.
+    if (hasCompany === "true") {
+        where.user = { ...(where.user || {}), companyId: { not: null } };
+    } else if (hasCompany === "false") {
+        where.user = { ...(where.user || {}), companyId: null };
+    }
+
+    const trimmedSearch = `${search || ""}`.trim();
+    if (trimmedSearch) {
+        where.OR = [
+            { id: trimmedSearch },
+            { paymentSessionId: { contains: trimmedSearch, mode: "insensitive" } },
+            { user: { email: { contains: trimmedSearch, mode: "insensitive" } } },
+            { user: { username: { contains: trimmedSearch, mode: "insensitive" } } },
+            { user: { company: { name: { contains: trimmedSearch, mode: "insensitive" } } } },
+        ];
+    }
+
+    const [total, requests] = await Promise.all([
+        prisma.planUpgradeRequest.count({ where }),
+        prisma.planUpgradeRequest.findMany({
+            where,
+            select: {
+                ...UPGRADE_REQUEST_SELECT,
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        username: true,
+                        company: { select: { id: true, name: true } },
+                    },
+                },
+            },
+            orderBy: { createdAt: "desc" },
+            skip: (pageNum - 1) * pageSizeNum,
+            take: pageSizeNum,
+        }),
+    ]);
+
+    // The ledger is a history of individual payment attempts - a user who's
+    // upgraded/renewed several times has one row per attempt, and nothing in
+    // that list says which one reflects what's actually active right now.
+    // Attaching each row's user's CURRENT Subscription (a separate table
+    // entirely - see the Subscription model) answers "which of these is the
+    // real one" directly in the ledger instead of making the admin go
+    // cross-reference by hand.
+    const uniqueUserIds = [...new Set(requests.map((r) => r.userId))];
+    const subscriptions = uniqueUserIds.length
+        ? await prisma.subscription.findMany({
+              where: { userId: { in: uniqueUserIds } },
+              select: {
+                  userId: true,
+                  plan: true,
+                  status: true,
+                  endsAt: true,
+                  trialEndsAt: true,
+                  cancelAtPeriodEnd: true,
+              },
+          })
+        : [];
+    const subscriptionByUserId = Object.fromEntries(subscriptions.map((s) => [s.userId, s]));
+    const enrichedRequests = requests.map((r) => ({
+        ...r,
+        currentSubscription: subscriptionByUserId[r.userId] || null,
+    }));
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            { requests: enrichedRequests, total, page: pageNum, pageSize: pageSizeNum },
+            "Admin payments fetched successfully"
+        )
+    );
+});
+
+/**
+ * POST /subscriptions/admin/upgrade-requests/:id/reverify-payment
+ *
+ * Lets an admin force a live re-check against the provider for ANY user's
+ * stuck "pending" payment, instead of waiting on the 15-min reconcile job
+ * or the 48h backstop in resolvePendingPaymentStatus. Deliberately thin:
+ * this reuses that exact same trusted function every other self-heal path
+ * already goes through (the user's own checkout-status poll, the
+ * epayco-verify/verify-activate fallbacks, the periodic reconcile job) -
+ * no new trust boundary, no way to activate a plan this function itself
+ * doesn't already gate on independently re-verified amount/currency.
+ */
+export const reverifyAdminPayment = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+
+    const request = await prisma.planUpgradeRequest.findUnique({
+        where: { id },
+        select: UPGRADE_REQUEST_SELECT,
+    });
+
+    if (!request) {
+        return next(new ApiError(404, "Upgrade request not found"));
+    }
+
+    if (request.status !== "approved" || request.paymentStatus !== "pending") {
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                { changed: false, status: request.status, paymentStatus: request.paymentStatus },
+                "Nothing to re-verify"
+            )
+        );
+    }
+
+    let resolved;
+    try {
+        resolved = await resolvePendingPaymentStatus(request);
+    } catch (error) {
+        console.error("[admin-reverify] Provider verification failed", {
+            requestId: id,
+            message: error?.message,
+        });
+        return next(new ApiError(502, "Could not verify against the provider. Please try again shortly."));
+    }
+
+    await logAdminAction({
+        adminId: req.user.prismaId,
+        action: "reverify_payment",
+        targetType: "payment",
+        targetId: id,
+        targetUserId: request.userId,
+        metadata: { fromPaymentStatus: request.paymentStatus, toPaymentStatus: resolved.paymentStatus },
+    });
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                changed: resolved.paymentStatus !== "pending",
+                status: resolved.status,
+                paymentStatus: resolved.paymentStatus,
+            },
+            "Re-verification complete"
+        )
+    );
+});
+
 export const createMyUpgradeCheckoutSession = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
     const { country, paymentMethod } = req.body || {};
@@ -1469,6 +1949,13 @@ const activateFromCheckoutSession = async ({ session, provider }) => {
             Math.abs(paidAmount - expectedAmount) <= 1;
     }
 
+    // Stripe checkout sessions carry their own livemode flag - true test/live
+    // truth for this specific session, not just "whatever key we're
+    // currently configured with" (which is all epayco.service.js's env-based
+    // `test` config can ever say, since it doesn't vary per-transaction).
+    const isTestPayment =
+        provider === "stripe" && typeof session?.livemode === "boolean" ? !session.livemode : undefined;
+
     if (!amountOk) {
         console.error("[payment-webhook] Amount/currency mismatch — refusing to activate", {
             upgradeRequestId,
@@ -1478,7 +1965,10 @@ const activateFromCheckoutSession = async ({ session, provider }) => {
         });
         await prisma.planUpgradeRequest.updateMany({
             where: { id: upgradeRequestId, status: "approved" },
-            data: { paymentStatus: "amount_mismatch" },
+            data: {
+                paymentStatus: "amount_mismatch",
+                ...(typeof isTestPayment === "boolean" ? { isTestPayment } : {}),
+            },
         });
         return;
     }
@@ -1490,6 +1980,7 @@ const activateFromCheckoutSession = async ({ session, provider }) => {
         paymentProvider: provider,
         paymentStatus: "paid",
         paymentLink: session?.url || session?.checkoutUrl || session?.paymentUrl || null,
+        isTestPayment,
     });
 };
 
@@ -1632,6 +2123,20 @@ export const updateUpgradeRequestAdmin = asyncHandler(async (req, res, next) => 
             adminResponse,
         });
 
+        await logAdminAction({
+            adminId: req.user.prismaId,
+            action: "close_upgrade_request",
+            targetType: "upgrade_request",
+            targetId: existing.id,
+            targetUserId: existing.userId,
+            metadata: {
+                fromStatus: existing.status,
+                toStatus: status,
+                paymentStatus: existing.paymentStatus,
+                activated: Boolean(closedResult?.activated),
+            },
+        });
+
         return res
             .status(200)
             .json(
@@ -1657,6 +2162,15 @@ export const updateUpgradeRequestAdmin = asyncHandler(async (req, res, next) => 
                       : existing.paymentStatus,
         },
         select: UPGRADE_REQUEST_SELECT,
+    });
+
+    await logAdminAction({
+        adminId: req.user.prismaId,
+        action: "update_upgrade_request",
+        targetType: "upgrade_request",
+        targetId: id,
+        targetUserId: existing.userId,
+        metadata: { fromStatus: existing.status, toStatus: status },
     });
 
     if (statusChanged && ["approved", "rejected", "closed"].includes(status)) {
@@ -2115,6 +2629,7 @@ export const handleEpaycoConfirmation = async (req, res) => {
         const stateCode = parseInt(`${data.x_cod_transaction_state || 0}`, 10);
         const responseText = `${data.x_response || ""}`.trim();
         const requestId = `${data.x_extra1 || ""}`.trim(); // set as p_extra1 during checkout
+        const isTestPayment = parseEpaycoTestFlag(data.x_test_request);
 
         // Reject incomplete payloads silently (ePayco test pings may be empty)
         if (!requestId || !refPayco || !transactionId || !signature) {
@@ -2203,7 +2718,10 @@ export const handleEpaycoConfirmation = async (req, res) => {
                 });
                 await prisma.planUpgradeRequest.updateMany({
                     where: { id: requestId, status: "approved" },
-                    data: { paymentStatus: "amount_mismatch" },
+                    data: {
+                        paymentStatus: "amount_mismatch",
+                        ...(typeof isTestPayment === "boolean" ? { isTestPayment } : {}),
+                    },
                 });
                 return res.status(200).json({ success: false, message: "Amount mismatch" });
             }
@@ -2215,6 +2733,7 @@ export const handleEpaycoConfirmation = async (req, res) => {
                 paymentSessionId: refPayco,
                 paymentProvider: "epayco",
                 paymentStatus: "paid",
+                isTestPayment,
             });
 
             console.log("[epayco-confirmation] Plan activated for requestId:", requestId);
@@ -2229,11 +2748,11 @@ export const handleEpaycoConfirmation = async (req, res) => {
             // frontend copy and the payment-failed email (see
             // upgradeRequestNotifications.js's PAYMENT_FAILED_COPY).
             const paymentStatus = stateCode === EPAYCO_STATE.REJECTED ? "rejected" : "failed";
-            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus });
+            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus, isTestPayment });
         } else if (stateCode === EPAYCO_STATE.EXPIRED || stateCode === EPAYCO_STATE.ABANDONED) {
-            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus: "expired" });
+            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus: "expired", isTestPayment });
         } else if (stateCode === EPAYCO_STATE.CANCELLED) {
-            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus: "cancelled" });
+            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus: "cancelled", isTestPayment });
         } else if (
             stateCode === EPAYCO_STATE.PENDING ||
             stateCode === EPAYCO_STATE.RETAINED ||
@@ -2260,7 +2779,7 @@ export const handleEpaycoConfirmation = async (req, res) => {
             console.warn(
                 `[epayco-confirmation] Unrecognized transaction state ${stateCode} ("${responseText}") for requestId ${requestId} — treating as terminal (${paymentStatus})`
             );
-            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus });
+            await markUpgradeRequestPaymentFailed({ upgradeRequestId: requestId, paymentStatus, isTestPayment });
         }
 
         return res.status(200).json({ success: true });

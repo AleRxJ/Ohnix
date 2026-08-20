@@ -156,6 +156,9 @@ model User {
   teamMemberships TeamMember[]
   invitationsSent TeamInvitation[] @relation("InvitationsSent")
 
+  adminAuditLogsPerformed AdminAuditLog[] @relation("AdminAuditLogAdmin")
+  adminAuditLogsReceived  AdminAuditLog[] @relation("AdminAuditLogTarget")
+
   @@map("users")
 }
 
@@ -267,6 +270,13 @@ model PlanUpgradeRequest {
   paymentProvider  String?              @map("payment_provider")
   paymentSessionId String?              @unique @map("payment_session_id")
   paymentStatus    String?              @map("payment_status")
+  // Null = unknown/not tracked (every row created before this column
+  // existed). Set explicitly (true/false) once we actually learn it - from
+  // ePayco's own x_test_request flag on the confirmation webhook or a live
+  // transaction query, or from which Stripe key mode processed it - never
+  // just assumed from today's env config, since that can flip between when
+  // a request was created and when its payment actually resolved.
+  isTestPayment    Boolean?             @map("is_test_payment")
   paidAt           DateTime?            @map("paid_at")
   // Snapshot of the subscription period THIS request activated, taken at
   // the moment it did - the Subscription's own `endsAt` gets overwritten on
@@ -303,6 +313,32 @@ model Subscription {
   user User @relation(fields: [userId], references: [id])
 
   @@map("subscriptions")
+}
+
+// Every consequential admin-panel action on a customer's billing/plan
+// (cancel/extend/uncancel a subscription, force-reverify a payment, hand-set
+// a plan, approve/close an upgrade request) writes one row here - before
+// this model, "who did that and when" existed nowhere: the admin's name was
+// only ever used to word the customer-facing notification email, never
+// actually persisted. targetUserId is nullable because not every audited
+// action has a clear single target (kept generic on purpose so this covers
+// whatever admin action needs logging next, not just subscriptions).
+model AdminAuditLog {
+  id           String   @id @default(cuid())
+  adminId      String   @map("admin_id")
+  action       String
+  targetType   String   @map("target_type")
+  targetId     String?  @map("target_id")
+  targetUserId String?  @map("target_user_id")
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  admin      User  @relation("AdminAuditLogAdmin", fields: [adminId], references: [id])
+  targetUser User? @relation("AdminAuditLogTarget", fields: [targetUserId], references: [id])
+
+  @@index([targetUserId, createdAt])
+  @@index([adminId, createdAt])
+  @@map("admin_audit_logs")
 }
 
 model Category {

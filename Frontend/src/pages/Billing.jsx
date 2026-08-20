@@ -887,6 +887,13 @@ const Billing = () => {
               )
             : [];
 
+    // Subscription/usage/requests/admin-requests are all refetched together
+    // (fetchSubscriptionData) - during that window the previous data stays
+    // on screen, so every action below that reads or mutates it (checkout,
+    // cancel request, upgrade CTA, admin review) must be disabled or it can
+    // fire against data that's already stale mid-refresh.
+    const pageBusy = loadingSubscription || refreshingSubscription;
+
     return (
         <div className="min-h-screen bg-[var(--ohnix-bg-alt)] text-[var(--ohnix-text-primary)] relative overflow-hidden">
             <div className="pointer-events-none absolute inset-0 opacity-80">
@@ -943,6 +950,7 @@ const Billing = () => {
                             "starter"
                         }
                         onRequestUpgrade={handleRequestUpgrade}
+                        disabled={pageBusy}
                     />
 
                     <ApiKeysPanel />
@@ -1243,11 +1251,11 @@ const Billing = () => {
 
                                                                     {/* ePayco button */}
                                                                     <button
-                                                                        onClick={() => !isLoading && handleStartCheckoutColombia(item)}
-                                                                        disabled={isLoading}
+                                                                        onClick={() => !isLoading && !pageBusy && handleStartCheckoutColombia(item)}
+                                                                        disabled={isLoading || pageBusy}
                                                                         className={[
                                                                             "group relative w-full overflow-hidden rounded-xl border px-5 py-4 text-left transition-all duration-200",
-                                                                            isLoading
+                                                                            isLoading || pageBusy
                                                                                 ? "cursor-not-allowed border-[#00AFF0]/20 bg-[#00AFF0]/5 opacity-60"
                                                                                 : "cursor-pointer border-[#00AFF0]/35 bg-[#00AFF0]/8 hover:border-[#00AFF0]/60 hover:bg-[#00AFF0]/15",
                                                                         ].join(" ")}
@@ -1354,8 +1362,9 @@ const Billing = () => {
                                                                     <Button
                                                                         type="primary"
                                                                         loading={isLoading}
+                                                                        disabled={pageBusy}
                                                                         onClick={() => handleStartCheckout(item)}
-                                                                        className="!w-full !h-10 !rounded-xl !bg-[#29D8D5] !text-[#021314] !font-semibold hover:!bg-[#44F3F0] !border-0"
+                                                                        className="!w-full !h-10 !rounded-xl !bg-[#29D8D5] !text-[#021314] !font-semibold hover:!bg-[#44F3F0] !border-0 disabled:!opacity-40 disabled:!cursor-not-allowed disabled:!pointer-events-none"
                                                                     >
                                                                         {t("profile.subscription.checkout_cta")}
                                                                     </Button>
@@ -1388,8 +1397,9 @@ const Billing = () => {
                                             {isRequestCancellable(item) ? (
                                                 <button
                                                     type="button"
-                                                    onClick={() => setCancelTargetRequest(item)}
-                                                    className="text-[11px] font-medium text-[var(--ohnix-text-muted)] underline decoration-dotted underline-offset-2 transition-colors hover:text-rose-300"
+                                                    onClick={() => !pageBusy && setCancelTargetRequest(item)}
+                                                    disabled={pageBusy}
+                                                    className="text-[11px] font-medium text-[var(--ohnix-text-muted)] underline decoration-dotted underline-offset-2 transition-colors hover:text-rose-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
                                                 >
                                                     {t("profile.subscription.cancel_request_button")}
                                                 </button>
@@ -1497,7 +1507,8 @@ const Billing = () => {
                                                 <Button
                                                     size="small"
                                                     onClick={() => openAdminReview(item)}
-                                                    className="rounded-lg border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0]"
+                                                    disabled={pageBusy}
+                                                    className="rounded-lg border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
                                                 >
                                                     {t("profile.subscription.review_request")}
                                                 </Button>

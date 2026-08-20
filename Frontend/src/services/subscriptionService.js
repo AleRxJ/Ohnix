@@ -86,6 +86,72 @@ export const subscriptionService = {
         return response.data;
     },
 
+    // Customer-centric: one row per subscriber - see getAdminSubscriptions.
+    // Same filters shape as getAdminPayments below.
+    async getAdminSubscriptions(filters = {}) {
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== "") {
+                params.set(key, value);
+            }
+        });
+        const query = params.toString();
+        const response = await api.get(`/subscriptions/admin/subscriptions${query ? `?${query}` : ""}`);
+        return response.data;
+    },
+
+    // Dedicated payments ledger for the admin panel - see getAdminPayments
+    // in Backend/controllers/subscription.controller.js. filters is an
+    // object of { paymentStatus, status, search, page, pageSize }; only
+    // non-empty values are sent.
+    async getAdminPayments(filters = {}) {
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== "") {
+                params.set(key, value);
+            }
+        });
+        const query = params.toString();
+        const response = await api.get(`/subscriptions/admin/payments${query ? `?${query}` : ""}`);
+        return response.data;
+    },
+
+    async reverifyAdminPayment(requestId) {
+        const response = await api.post(`/subscriptions/admin/payments/${requestId}/reverify`);
+        return response.data;
+    },
+
+    // "What's actually active right now" for a user, distinct from the
+    // payments ledger's per-attempt history - plus the admin cancel/extend
+    // actions the panel previously had no way to trigger for anyone but the
+    // user themselves.
+    async getUserSubscriptionAdmin(userId) {
+        const response = await api.get(`/subscriptions/admin/users/${userId}/subscription`);
+        return response.data;
+    },
+
+    // "Who did what to this person and when" - see AdminAuditLog /
+    // logAdminAction in the backend.
+    async getUserAuditLogAdmin(userId) {
+        const response = await api.get(`/subscriptions/admin/users/${userId}/audit-log`);
+        return response.data;
+    },
+
+    async cancelUserSubscriptionAdmin(userId) {
+        const response = await api.post(`/subscriptions/admin/users/${userId}/subscription/cancel`);
+        return response.data;
+    },
+
+    async uncancelUserSubscriptionAdmin(userId) {
+        const response = await api.post(`/subscriptions/admin/users/${userId}/subscription/uncancel`);
+        return response.data;
+    },
+
+    async extendUserSubscriptionAdmin(userId, days) {
+        const response = await api.post(`/subscriptions/admin/users/${userId}/subscription/extend`, { days });
+        return response.data;
+    },
+
     async createUpgradeCheckoutSession(requestId) {
         const response = await api.post(
             `/subscriptions/me/upgrade-requests/${requestId}/checkout-session`,

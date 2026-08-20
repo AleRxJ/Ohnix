@@ -50,6 +50,8 @@ const Category = lazy(() => import("./pages/Category"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Billing = lazy(() => import("./pages/Billing"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
+const AdminPayments = lazy(() => import("./pages/AdminPayments"));
+const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
 const EpaycoResponseRedirect = lazy(() => import("./pages/EpaycoResponseRedirect"));
@@ -226,6 +228,8 @@ function App() {
                                 <Route path="billing/epayco-checkout" element={<RequireBillingAccess><EpaycoCheckout /></RequireBillingAccess>} />
                                 <Route path="billing/epayco-response" element={<RequireBillingAccess><EpaycoResponseRedirect /></RequireBillingAccess>} />
                                 <Route path="admin/management" element={<AdminManagement />} />
+                                <Route path="admin/payments" element={<AdminPayments />} />
+                                <Route path="admin/subscriptions" element={<AdminSubscriptions />} />
                             </Route>
 
                             {/* catch all - uses antd (Result/Button), stays inside AntdRoutesLayout */}

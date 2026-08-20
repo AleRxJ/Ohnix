@@ -4,6 +4,18 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
 import { ensureUserSubscription, getEffectivePlan } from "../middleware/pricing.middleware.js";
+import { computeNitCheckDigit } from "../utils/nit.util.js";
+
+// Same ISO-2 validator company.controller.js's admin endpoints use - kept as
+// its own copy rather than a shared import since that file is entirely
+// isAdmin-gated and this one deliberately isn't; duplicating six lines beats
+// creating a cross-dependency between an admin-only controller and a
+// customer-facing one.
+const parseIsoCountryCode = (value) => {
+    const normalized = `${value || ""}`.trim().toUpperCase();
+    if (!normalized) return null;
+    return /^[A-Z]{2}$/.test(normalized) ? normalized : null;
+};
 
 // Self-service counterpart to company.controller.js's *Admin functions -
 // those only let an Ohnix platform admin edit a company (company.routes.js
@@ -23,6 +35,14 @@ const SELF_SELECT = {
     logoUrl: true,
     pdfFooterText: true,
     pdfAccentColor: true,
+    // taxIdentification/taxIdentificationDv are readable/writable here too -
+    // see updateMyCompany. Deliberately NOT electronicInvoicingEnabled or any
+    // Alanube/Factus field: turning e-invoicing on involves real external
+    // registration side effects (see company.controller.js), so that stays
+    // admin-only. This just captures the NIT/country while the customer
+    // already has it top of mind, so it doesn't have to be asked for twice.
+    taxIdentification: true,
+    taxIdentificationDv: true,
 };
 
 const isValidHexColor = (value) => /^#[0-9A-Fa-f]{6}$/.test(value || "");
@@ -59,7 +79,8 @@ export const getMyCompany = asyncHandler(async (req, res) => {
 });
 
 export const updateMyCompany = asyncHandler(async (req, res, next) => {
-    const { name, legalName, contactEmail, phone, pdfFooterText, pdfAccentColor } = req.body || {};
+    const { name, legalName, contactEmail, phone, pdfFooterText, pdfAccentColor, taxIdentification, countryCode } =
+        req.body || {};
 
     const subscription = await ensureUserSubscription(req.user.prismaId);
     const effectivePlan = getEffectivePlan(subscription);
@@ -76,10 +97,34 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "pdfAccentColor debe ser un color hexadecimal, ej. #29D8D5"));
     }
 
+    const hasExplicitCountry = countryCode !== undefined && `${countryCode || ""}`.trim() !== "";
+    const normalizedCountryCode = parseIsoCountryCode(countryCode);
+    if (hasExplicitCountry && !normalizedCountryCode) {
+        return next(new ApiError(400, "countryCode debe ser un código ISO-2 válido, ej. CO"));
+    }
+
+    const trimmedTaxId = taxIdentification !== undefined ? `${taxIdentification || ""}`.replace(/[^0-9]/g, "") : undefined;
+    if (taxIdentification !== undefined && taxIdentification && !trimmedTaxId) {
+        return next(new ApiError(400, "El NIT/tax ID debe contener al menos un dígito."));
+    }
+
     const user = await prisma.user.findUnique({
         where: { id: req.user.prismaId },
-        select: { companyId: true, username: true },
+        select: {
+            companyId: true,
+            username: true,
+            company: trimmedTaxId && !hasExplicitCountry ? { select: { countryCode: true } } : undefined,
+        },
     });
+
+    // The DIAN check digit only means anything for a Colombian NIT. If this
+    // request didn't also (re-)state countryCode, fall back to the
+    // company's own already-stored value (existing company) rather than
+    // assuming "CO" - only a brand-new company with no country on record
+    // yet defaults there, matching Ohnix's Colombia-first design elsewhere.
+    const effectiveCountryForDv = hasExplicitCountry
+        ? normalizedCountryCode
+        : user?.company?.countryCode || "CO";
 
     const data = {
         ...(legalName !== undefined ? { legalName: legalName?.trim() || null } : {}),
@@ -87,6 +132,17 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         ...(phone !== undefined ? { phone: phone?.trim() || null } : {}),
         ...(pdfFooterText !== undefined ? { pdfFooterText: pdfFooterText?.trim() || null } : {}),
         ...(pdfAccentColor !== undefined ? { pdfAccentColor: trimmedAccentColor || null } : {}),
+        ...(countryCode !== undefined ? { countryCode: hasExplicitCountry ? normalizedCountryCode : null } : {}),
+        // For any other country this just stores the raw identifier with no
+        // computed digit, same as company.controller.js's admin path leaves
+        // it to be set explicitly there.
+        ...(trimmedTaxId !== undefined
+            ? {
+                  taxIdentification: trimmedTaxId || null,
+                  taxIdentificationDv:
+                      trimmedTaxId && effectiveCountryForDv === "CO" ? computeNitCheckDigit(trimmedTaxId) : null,
+              }
+            : {}),
     };
 
     let company;

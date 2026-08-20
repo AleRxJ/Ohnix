@@ -5,9 +5,13 @@ import { requireModulePermission } from "../middleware/team.permissions.js";
 import {
     cancelMySubscription,
     cancelMyUpgradeRequest,
+    cancelUserSubscriptionAdmin,
     createMyUpgradeCheckoutSession,
     createRenewalCheckout,
     createUpgradeRequest,
+    extendUserSubscriptionAdmin,
+    getAdminPayments,
+    getAdminSubscriptions,
     getCheckoutPaymentMethods,
     getEpaycoCheckoutParams,
     getMyUpgradeCheckoutStatus,
@@ -16,11 +20,15 @@ import {
     getMyUsage,
     getPlanCatalog,
     getUpgradeRequestsAdmin,
+    getUserAuditLogAdmin,
+    getUserSubscriptionAdmin,
     getUserUsageAdmin,
     pauseMySubscription,
     reactivateMySubscription,
     reportEpaycoCheckoutClosed,
     reportEpaycoTransactionReference,
+    reverifyAdminPayment,
+    uncancelUserSubscriptionAdmin,
     updateUpgradeRequestAdmin,
     updateUserPlan,
     verifyAndActivateBySession,
@@ -79,7 +87,21 @@ router.route("/me/reactivate").patch(requireModulePermission("billing", "edit"),
 
 router.route("/admin/users/:userId/plan").patch(isAdmin, updateUserPlan);
 router.route("/admin/users/:userId/usage").get(isAdmin, getUserUsageAdmin);
+// "What's actually active right now" for a user, distinct from the payments
+// ledger's per-attempt history - plus cancel/extend actions the admin panel
+// previously had no way to trigger for anyone but the user themselves.
+router.route("/admin/users/:userId/subscription").get(isAdmin, getUserSubscriptionAdmin);
+router.route("/admin/users/:userId/audit-log").get(isAdmin, getUserAuditLogAdmin);
+router.route("/admin/users/:userId/subscription/cancel").post(isAdmin, cancelUserSubscriptionAdmin);
+router.route("/admin/users/:userId/subscription/uncancel").post(isAdmin, uncancelUserSubscriptionAdmin);
+router.route("/admin/users/:userId/subscription/extend").post(isAdmin, extendUserSubscriptionAdmin);
 router.route("/admin/upgrade-requests").get(isAdmin, getUpgradeRequestsAdmin);
 router.route("/admin/upgrade-requests/:id").patch(isAdmin, updateUpgradeRequestAdmin);
+// Dedicated payments ledger (see getAdminPayments) - distinct from the
+// "requests I need to review" queue above.
+// Customer-centric: one row per subscriber - see getAdminSubscriptions.
+router.route("/admin/subscriptions").get(isAdmin, getAdminSubscriptions);
+router.route("/admin/payments").get(isAdmin, getAdminPayments);
+router.route("/admin/payments/:id/reverify").post(isAdmin, reverifyAdminPayment);
 
 export default router;

@@ -303,6 +303,18 @@ export const isEpaycoTransactionApproved = (stateCode) =>
 export const isEpaycoCancelledResponse = (responseText) =>
     `${responseText || ""}`.toLowerCase().includes("cancel");
 
+// ePayco includes x_test_request on both the confirmation webhook and the
+// transaction query response - truthy when the transaction ran against
+// their sandbox keys. Returns null (not false) when the field is missing
+// or blank, since an absent flag means "we don't actually know", not
+// "definitely a real charge" - conflating the two would mislabel a real
+// payment as untested just because one particular response happened to
+// omit the field. Powers the admin payments ledger's test/real distinction.
+export const parseEpaycoTestFlag = (value) => {
+    if (value === undefined || value === null || value === "") return null;
+    return ["1", "true", "yes"].includes(`${value}`.trim().toLowerCase());
+};
+
 // ---------------------------------------------------------------------------
 // Transaction query (optional fallback verification)
 //

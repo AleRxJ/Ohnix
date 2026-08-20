@@ -14,6 +14,8 @@ import {
     UndoOutlined,
     FileTextOutlined,
     UsergroupAddOutlined,
+    DollarCircleOutlined,
+    CrownOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 
@@ -177,6 +179,16 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             key: "admin",
             icon: <ApartmentOutlined />,
             label: <Link to="/admin/management">{t("common.admin_panel")}</Link>,
+        });
+        items.push({
+            key: "admin-subscriptions",
+            icon: <CrownOutlined />,
+            label: <Link to="/admin/subscriptions">Suscripciones</Link>,
+        });
+        items.push({
+            key: "admin-payments",
+            icon: <DollarCircleOutlined />,
+            label: <Link to="/admin/payments">Pagos</Link>,
         });
     }
 

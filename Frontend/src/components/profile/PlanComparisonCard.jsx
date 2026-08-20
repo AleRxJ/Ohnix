@@ -44,7 +44,7 @@ export const getPlanPriceLabel = (plan, priceByPlanKey, t) => {
 // never actually answered before: it only showed the current plan's own
 // feature list with a small "minimum plan" tag on locked rows, no numeric
 // limit deltas and no dedicated "here's what changes" summary anywhere.
-const PlanComparisonCard = ({ currentPlan, onRequestUpgrade }) => {
+const PlanComparisonCard = ({ currentPlan, onRequestUpgrade, disabled = false }) => {
     const { t, currentLanguage } = useI18n();
     const lang = currentLanguage === "es" ? "es" : "en";
     const [plans, setPlans] = useState(null);
@@ -142,7 +142,8 @@ const PlanComparisonCard = ({ currentPlan, onRequestUpgrade }) => {
                     type="primary"
                     icon={<RocketOutlined />}
                     onClick={onRequestUpgrade}
-                    className="h-9 shrink-0 rounded-lg border-0 bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] font-medium text-[#021314]"
+                    disabled={disabled}
+                    className="h-9 shrink-0 rounded-lg border-0 bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] font-medium text-[#021314] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
                 >
                     {t("profile.subscription.comparison.cta", { plan: next.displayName[lang] })}
                 </Button>
