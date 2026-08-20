@@ -25,6 +25,13 @@ export const subscriptionService = {
         return response.data;
     },
 
+    // threshold: a positive integer, or null to clear the account-wide
+    // override and fall back to the platform default (see LowStockAlertsPanel.jsx).
+    async updateMyLowStockThreshold(threshold) {
+        const response = await api.patch("/subscriptions/me/low-stock-threshold", { threshold });
+        return response.data;
+    },
+
     async pauseMySubscription() {
         const response = await api.patch("/subscriptions/me/pause");
         if (response.data?.success) {

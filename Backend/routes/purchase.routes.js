@@ -5,6 +5,7 @@ import {
     getPurchaseDetails,
     updatePurchaseStatus,
     getReturnPreview,
+    processReturn,
 } from "../controllers/purchase.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
@@ -33,5 +34,10 @@ router.route("/:id")
 
 // Return preview route - to check what can be returned before processing
 router.route("/:id/return-preview").get(requireModulePermission("purchases", "view"), getReturnPreview);
+
+// Process a granular, repeatable return - the caller picks which lines and
+// how much of each; can be called more than once while any line still has
+// quantity - returnedQuantity left.
+router.route("/:id/returns").post(requireModulePermission("purchases", "edit"), processReturn);
 
 export default router;

@@ -174,15 +174,20 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
         });
 
     if (role === "admin") {
+        // Keys are "admin-<second path segment>" on purpose - DashboardLayout.jsx
+        // derives its selectedKeys/document-title lookup the same way for
+        // every /admin/* route, so a bare "admin" key here would never
+        // actually get selected (every /admin/* path collapses to that
+        // prefix) and this whole submenu would silently never highlight.
         items.push({
-            key: "admin",
+            key: "admin-management",
             icon: <ApartmentOutlined />,
             label: <Link to="/admin/management">{t("common.admin_panel")}</Link>,
         });
         items.push({
             key: "admin-subscriptions",
             icon: <CrownOutlined />,
-            label: <Link to="/admin/subscriptions">Suscripciones</Link>,
+            label: <Link to="/admin/subscriptions">{t("common.admin_subscriptions")}</Link>,
         });
     }
 

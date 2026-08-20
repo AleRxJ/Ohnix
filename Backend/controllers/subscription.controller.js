@@ -7,6 +7,7 @@ import {
     ensureUserSubscription,
     getEffectivePlan,
     getMonthBounds,
+    getPlanFeatures,
     getPlanLimits,
     getTeamSeatLimit,
     PLAN_DISPLAY_NAMES,
@@ -774,10 +775,46 @@ export const getMySubscription = asyncHandler(async (req, res) => {
                 endsAt: subscription.endsAt ?? null,
                 cancelAtPeriodEnd: subscription.cancelAtPeriodEnd ?? false,
                 limits: getPlanLimits(effectivePlan),
+                lowStockThreshold: subscription.lowStockThreshold ?? null,
             },
             "Subscription fetched successfully"
         )
     );
+});
+
+// Account-wide low-stock threshold (Escala+ feature, same gate as the
+// per-product override in product.controller.js#resolveLowStockThreshold) -
+// null clears the override and falls back to the platform-wide default an
+// admin controls via PUT /scheduler/threshold. Owner-only: this lives on the
+// Subscription row (see companySelf.controller.js for why account-wide
+// settings like this stay out of team members' hands even with billing:edit).
+export const updateMyLowStockThreshold = asyncHandler(async (req, res, next) => {
+    const { threshold } = req.body || {};
+
+    const subscription = await ensureUserSubscription(req.user.prismaId);
+    const effectivePlan = getEffectivePlan(subscription);
+    const canConfigure = req.user.role === "admin" || getPlanFeatures(effectivePlan).configurableAlerts;
+
+    if (!canConfigure) {
+        return next(
+            new ApiError(403, "El umbral general de alertas de stock bajo está disponible desde el plan Escala.")
+        );
+    }
+
+    const value = threshold === null || threshold === "" ? null : Number(threshold);
+    if (value !== null && (!Number.isFinite(value) || value < 1)) {
+        return next(new ApiError(400, "El umbral debe ser un número positivo."));
+    }
+
+    const updated = await prisma.subscription.update({
+        where: { userId: req.user.prismaId },
+        data: { lowStockThreshold: value },
+        select: { lowStockThreshold: true },
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, updated, "Umbral actualizado correctamente"));
 });
 
 export const getMyUsage = asyncHandler(async (req, res) => {

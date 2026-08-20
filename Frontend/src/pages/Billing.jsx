@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { Button, Typography, Modal, Form, Select, Input, List, Tag, Checkbox } from "antd";
+import { Button, Typography, Modal, Form, Select, Input, List, Tag, Checkbox, Tooltip } from "antd";
 import {
     ArrowLeftOutlined,
     LockOutlined,
@@ -11,6 +11,7 @@ import {
     CheckCircleOutlined,
     CheckOutlined,
     ArrowRightOutlined,
+    CopyOutlined,
 } from "@ant-design/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
@@ -63,6 +64,24 @@ const UPGRADE_OPTIONS_BY_PLAN = {
     scale:      ["enterprise"],
     enterprise: [],
 };
+
+// paymentProvider is stored as a compound "stripe:card:CO" while a checkout
+// is still pending (see createMyUpgradeCheckoutSession) and collapses to a
+// plain "stripe"/"epayco"/"manual" once it resolves - only the part before
+// the first ":" is ever meaningful to show a customer.
+const PROVIDER_LABELS = { stripe: "Stripe", epayco: "ePayco", manual: "Manual" };
+const formatPaymentProviderLabel = (raw) => {
+    const base = `${raw || ""}`.split(":")[0];
+    return PROVIDER_LABELS[base] || base;
+};
+
+// paymentSessionId starts life as our own internal placeholder
+// ("OHNIX-<requestId>-<timestamp>", see generateEpaycoReference /
+// createEpaycoCheckoutSession) before the provider's real transaction
+// reference replaces it - showing that placeholder to a customer as "your
+// payment reference" would be actively misleading, since it's not anything
+// ePayco/Stripe's own support can look up.
+const isRealPaymentReference = (value) => Boolean(value) && !value.startsWith("OHNIX-");
 
 const darkModalStyles = {
     mask: { backgroundColor: "rgba(0,0,0,0.55)" },
@@ -326,6 +345,23 @@ const Billing = () => {
     };
 
     const latestActiveRequest = safeRequests.find(isRequestInProgress);
+
+    // The specific request behind what's active right now - not just "any
+    // closed+paid request for this plan" (several renewals over time can
+    // all match that), but the one whose periodEndsAt snapshot lines up
+    // with the subscription's actual current endsAt. Older requests
+    // (created before periodStartsAt/periodEndsAt existed) fall back to the
+    // same "closed+paid and the plan matches" best-effort assumption
+    // request_closed_valid_until below already makes. safeRequests is
+    // sorted newest-first (see getMyUpgradeRequests), so .find() lands on
+    // the most recent candidate instead of an arbitrary older one.
+    const currentActiveRequest = safeRequests.find((request) => {
+        if (request.status !== "closed" || request.paymentStatus !== "paid") return false;
+        if (request.periodEndsAt && subscription?.endsAt) {
+            return new Date(request.periodEndsAt).getTime() === new Date(subscription.endsAt).getTime();
+        }
+        return isPlanAlreadyActiveForRequest(request);
+    });
 
     const trackerCurrentStep = (() => {
         if (!latestActiveRequest) {
@@ -1081,6 +1117,36 @@ const Billing = () => {
                                             <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
                                                 {new Date(item.createdAt).toLocaleString()}
                                             </div>
+                                            {(item.paymentProvider || isRealPaymentReference(item.paymentSessionId)) && (
+                                                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-[var(--ohnix-text-muted)]">
+                                                    {item.paymentProvider && (
+                                                        <span>
+                                                            {t("profile.subscription.payment_provider_label")}:{" "}
+                                                            <span className="text-[var(--ohnix-text-soft)]">
+                                                                {formatPaymentProviderLabel(item.paymentProvider)}
+                                                            </span>
+                                                        </span>
+                                                    )}
+                                                    {isRealPaymentReference(item.paymentSessionId) && (
+                                                        <Tooltip title={item.paymentSessionId}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    navigator.clipboard?.writeText(item.paymentSessionId).then(
+                                                                        () => toast.success(t("profile.subscription.payment_reference_copied")),
+                                                                        () => {}
+                                                                    );
+                                                                }}
+                                                                className="inline-flex items-center gap-1 text-[#29D8D5] hover:text-[#44F3F0]"
+                                                            >
+                                                                {t("profile.subscription.payment_reference_label")}:{" "}
+                                                                <span className="max-w-[140px] truncate">{item.paymentSessionId}</span>
+                                                                <CopyOutlined />
+                                                            </button>
+                                                        </Tooltip>
+                                                    )}
+                                                </div>
+                                            )}
                                             {isDisplayableFreeText(item.notes) ? (
                                                 <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
                                                     {item.notes}
@@ -1388,6 +1454,12 @@ const Billing = () => {
                                             ) : null}
                                         </div>
                                         <div className="flex shrink-0 flex-row items-center gap-2 sm:flex-col sm:items-end">
+                                            {currentActiveRequest?.id === item.id && (
+                                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-300">
+                                                    <CheckCircleOutlined className="text-[10px]" />
+                                                    {t("profile.subscription.active_request_badge")}
+                                                </span>
+                                            )}
                                             <span
                                                 className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${statusPillStyle.wrapperClass}`}
                                             >

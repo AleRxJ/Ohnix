@@ -96,30 +96,34 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
             title: t("purchases.return_status"),
             key: "return_status",
             render: (_, record) => {
-                if (record.return_processed) {
-                    return (
-                        <Space
-                            direction="vertical"
-                            size="small"
-                            className="w-full"
-                        >
-                            <Tag color="red" className="font-medium">{t("purchases.returned")}</Tag>
-                            <div className="text-xs text-[var(--ohnix-text-muted)] space-y-1">
-                                <div>
-                                    {t("purchases.qty")}:{" "}
-                                    <span className="font-medium">{record.returned_quantity || 0}</span>
-                                </div>
-                                <div>
-                                    {t("purchases.refund")}:{" "}
-                                    <span className="font-medium text-red-400">{formatCurrency(record.refund_amount)}</span>
-                                </div>
-                            </div>
-                        </Space>
-                    );
+                if (!record.returned_quantity) {
+                    return <Tag color="default" className="!bg-[var(--ohnix-line-1)] !border-[var(--ohnix-line-4)] !text-[var(--ohnix-text-muted)]">{t("purchases.not_returned")}</Tag>;
                 }
-                return <Tag color="default" className="!bg-[var(--ohnix-line-1)] !border-[var(--ohnix-line-4)] !text-[var(--ohnix-text-muted)]">{t("purchases.not_returned")}</Tag>;
+                return (
+                    <Space direction="vertical" size="small" className="w-full">
+                        <Tag color={record.fully_returned ? "red" : "gold"} className="font-medium">
+                            {t(record.fully_returned ? "purchases.returned" : "purchases.return_preview_partial_return")}
+                        </Tag>
+                        <div className="text-xs text-[var(--ohnix-text-muted)] space-y-1">
+                            <div>
+                                {t("purchases.qty")}:{" "}
+                                <span className="font-medium">{record.returned_quantity}</span>
+                            </div>
+                            {record.pending_quantity > 0 && (
+                                <div>
+                                    {t("purchases.return_col_pending")}:{" "}
+                                    <span className="font-medium text-[#44F3F0]">{record.pending_quantity}</span>
+                                </div>
+                            )}
+                            <div>
+                                {t("purchases.refund")}:{" "}
+                                <span className="font-medium text-red-400">{formatCurrency(record.refund_amount)}</span>
+                            </div>
+                        </div>
+                    </Space>
+                );
             },
-            width: 140,
+            width: 160,
         },
     ];
 

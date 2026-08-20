@@ -193,9 +193,12 @@ class PurchaseService {
             throw new ApiError(403, "You don't have permission to update this purchase");
         }
 
+        // "returned" is no longer a client-settable transition - it's only
+        // ever reached as a side effect of processReturn() once every line
+        // has nothing left pending. See that method for the return flow.
         const validTransitions = {
             pending: ["completed"],
-            completed: ["returned"],
+            completed: [],
             returned: [],
         };
 
@@ -209,19 +212,16 @@ class PurchaseService {
             );
         }
 
-        let returnInfo = null;
-
         const updatedPurchase = await prisma.$transaction(async (tx) => {
-            // Atomically claim this transition before touching any stock or
-            // refund data - the purchaseStatus/validTransitions check above
-            // read from a query executed before this transaction started, so
-            // by itself it can't stop two concurrent "returned" (or
-            // "completed") requests for the same purchase from both passing
-            // it and both mutating stock/refunds. This UPDATE ... WHERE
-            // forces Postgres to serialize concurrent callers on this row -
-            // the loser's WHERE clause re-evaluates against the
-            // already-committed new status once it can proceed, matching 0
-            // rows (same technique already used by
+            // Atomically claim this transition before touching any stock -
+            // the purchaseStatus/validTransitions check above read from a
+            // query executed before this transaction started, so by itself
+            // it can't stop two concurrent "completed" requests for the same
+            // purchase from both passing it and both adding stock. This
+            // UPDATE ... WHERE forces Postgres to serialize concurrent
+            // callers on this row - the loser's WHERE clause re-evaluates
+            // against the already-committed new status once it can proceed,
+            // matching 0 rows (same technique already used by
             // subscription.controller.js's closeApprovedRequestAndActivatePlan).
             const claim = await tx.purchase.updateMany({
                 where: { id: purchase.id, purchaseStatus: purchase.purchaseStatus },
@@ -235,101 +235,7 @@ class PurchaseService {
                 );
             }
 
-            if (newStatus === "returned") {
-                const details = await tx.purchaseDetail.findMany({
-                    where: { purchaseId: purchase.id },
-                    include: {
-                        product: {
-                            select: {
-                                id: true,
-                                legacyMongoId: true,
-                                stock: true,
-                                createdById: true,
-                            },
-                        },
-                    },
-                });
-
-                const returnResults = [];
-                let totalRefundAmount = 0;
-
-                for (const detail of details) {
-                    if (detail.returnProcessed) {
-                        returnResults.push({
-                            product_id: toExternalId(detail.product),
-                            purchased_quantity: detail.quantity,
-                            returned_quantity: detail.returnedQuantity,
-                            refund_amount: Number(detail.refundAmount),
-                            fully_returned:
-                                detail.returnedQuantity === detail.quantity,
-                            skipped: true,
-                        });
-                        totalRefundAmount += Number(detail.refundAmount);
-                        continue;
-                    }
-
-                    const returnableQuantity = Math.min(
-                        detail.quantity,
-                        detail.product.stock
-                    );
-
-                    if (returnableQuantity > 0) {
-                        const updatedProduct = await tx.product.update({
-                            where: { id: detail.product.id },
-                            data: {
-                                stock: {
-                                    decrement: returnableQuantity,
-                                },
-                            },
-                            select: { stock: true },
-                        });
-
-                        await recordStockMovement(tx, {
-                            productId: detail.product.id,
-                            accountId: detail.product.createdById,
-                            delta: -returnableQuantity,
-                            balanceAfter: updatedProduct.stock,
-                            sourceType: "purchase_return",
-                            sourceId: purchase.id,
-                            createdById: userId,
-                        });
-                    }
-
-                    const refundAmount = returnableQuantity * Number(detail.unitcost);
-                    totalRefundAmount += refundAmount;
-
-                    await tx.purchaseDetail.update({
-                        where: { id: detail.id },
-                        data: {
-                            returnProcessed: true,
-                            returnDate: new Date(),
-                            returnedQuantity: returnableQuantity,
-                            refundAmount,
-                        },
-                    });
-
-                    returnResults.push({
-                        product_id: toExternalId(detail.product),
-                        purchased_quantity: detail.quantity,
-                        returned_quantity: returnableQuantity,
-                        refund_amount: refundAmount,
-                        fully_returned: returnableQuantity === detail.quantity,
-                    });
-                }
-
-                returnInfo = {
-                    total_refund_amount: totalRefundAmount,
-                    return_details: returnResults,
-                    return_summary: {
-                        total_items_processed: returnResults.length,
-                        fully_returned_items: returnResults.filter((i) => i.fully_returned)
-                            .length,
-                        partially_returned_items: returnResults.filter(
-                            (i) => !i.fully_returned
-                        ).length,
-                    },
-                };
-            } else if (newStatus === "completed") {
+            if (newStatus === "completed") {
                 const purchaseDetails = await tx.purchaseDetail.findMany({
                     where: { purchaseId: purchase.id },
                     select: {
@@ -376,7 +282,214 @@ class PurchaseService {
                 createdAt: updatedPurchase.createdAt,
                 updatedAt: updatedPurchase.updatedAt,
             },
-            ...(returnInfo && { returnInfo }),
+        };
+    }
+
+    // Explicit, per-line return: the caller picks which purchase details to
+    // return and how much of each, instead of the system silently returning
+    // "whatever is still in stock" for every line at once. Can be called more
+    // than once per purchase while any line still has quantity - returnedQuantity
+    // > 0 left. purchaseStatus only flips to "returned" once every line on the
+    // purchase has nothing left pending - see the schema comment on
+    // PurchaseDetail for why returnedQuantity/refundAmount are running totals.
+    async processReturn(purchaseId, lines, userId, userRole) {
+        const purchase = await findPurchaseByAnyId(purchaseId);
+
+        if (!purchase) {
+            throw new ApiError(404, "Purchase not found");
+        }
+
+        if (userRole !== "admin" && purchase.createdById !== userId) {
+            throw new ApiError(403, "You don't have permission to return items from this purchase");
+        }
+
+        if (purchase.purchaseStatus !== "completed") {
+            throw new ApiError(
+                400,
+                purchase.purchaseStatus === "returned"
+                    ? "This purchase has already been fully returned"
+                    : "Only completed purchases can be returned",
+                [],
+                "",
+                "purchase_not_returnable"
+            );
+        }
+
+        if (!Array.isArray(lines) || lines.length === 0) {
+            throw new ApiError(400, "At least one return line is required");
+        }
+
+        const detailIds = lines.map((l) => l.purchase_detail_id?.toString()).filter(Boolean);
+        const uniqueDetailIds = [...new Set(detailIds)];
+        if (detailIds.length !== lines.length || uniqueDetailIds.length !== detailIds.length) {
+            throw new ApiError(400, "Duplicate or missing purchase detail id in return request");
+        }
+
+        for (const line of lines) {
+            const quantity = Number(line.quantity);
+            if (!Number.isInteger(quantity) || quantity < 1) {
+                throw new ApiError(400, "Quantity must be a positive integer for every return line");
+            }
+        }
+
+        // Matched by id OR legacyMongoId, same "any id" pattern as
+        // findProductByAnyId/findPurchaseByAnyId above - getReturnPreview
+        // hands the client toExternalId(detail), which is the legacy id for
+        // rows migrated from Mongo.
+        const details = await prisma.purchaseDetail.findMany({
+            where: {
+                purchaseId: purchase.id,
+                OR: [{ id: { in: uniqueDetailIds } }, { legacyMongoId: { in: uniqueDetailIds } }],
+            },
+            include: {
+                product: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        productName: true,
+                        stock: true,
+                        createdById: true,
+                    },
+                },
+            },
+        });
+
+        if (details.length !== uniqueDetailIds.length) {
+            throw new ApiError(400, "One or more return lines do not belong to this purchase");
+        }
+
+        const detailById = new Map(details.map((d) => [toExternalId(d), d]));
+
+        const insufficientItems = [];
+        for (const line of lines) {
+            const detail = detailById.get(line.purchase_detail_id);
+            const pending = detail.quantity - detail.returnedQuantity;
+            const maxReturnable = Math.min(pending, detail.product.stock);
+            if (Number(line.quantity) > maxReturnable) {
+                insufficientItems.push({
+                    purchase_detail_id: toExternalId(detail),
+                    product_id: toExternalId(detail.product),
+                    product_name: detail.product.productName,
+                    requested: Number(line.quantity),
+                    available: Math.max(maxReturnable, 0),
+                    reason: pending <= 0 ? "already_fully_returned" : "insufficient_stock",
+                });
+            }
+        }
+
+        if (insufficientItems.length > 0) {
+            throw new ApiError(
+                422,
+                "One or more return lines exceed what can be returned",
+                insufficientItems
+            );
+        }
+
+        const { results, purchaseFullyReturned } = await prisma.$transaction(async (tx) => {
+            const results = [];
+
+            for (const line of lines) {
+                const detail = detailById.get(line.purchase_detail_id);
+                const quantity = Number(line.quantity);
+
+                // Same atomic-claim idiom as adjustProductStock and the
+                // "completed" branch above: the stock read used for the
+                // insufficientItems check predates this transaction, so it
+                // can't by itself stop a concurrent sale/adjustment from
+                // taking the same stock in between.
+                const claim = await tx.product.updateMany({
+                    where: { id: detail.product.id, stock: { gte: quantity } },
+                    data: { stock: { decrement: quantity } },
+                });
+
+                if (claim.count === 0) {
+                    throw new ApiError(
+                        409,
+                        `Not enough stock left to return "${detail.product.productName}". Please refresh and try again.`
+                    );
+                }
+
+                const updatedProduct = await tx.product.findUniqueOrThrow({
+                    where: { id: detail.product.id },
+                    select: { stock: true },
+                });
+
+                await recordStockMovement(tx, {
+                    productId: detail.product.id,
+                    accountId: detail.product.createdById,
+                    delta: -quantity,
+                    balanceAfter: updatedProduct.stock,
+                    sourceType: "purchase_return",
+                    sourceId: purchase.id,
+                    createdById: userId,
+                });
+
+                const refundNow = quantity * Number(detail.unitcost);
+
+                // Same claim idiom as the product stock update just above:
+                // the returnedQuantity read that fed the insufficientItems
+                // check predates this transaction, so without this guard two
+                // concurrent returns on the *same line* could each pass
+                // validation and both increment it, pushing returnedQuantity
+                // past quantity even though the product-stock claim alone
+                // would still stop physical stock from going negative.
+                const detailClaim = await tx.purchaseDetail.updateMany({
+                    where: { id: detail.id, returnedQuantity: detail.returnedQuantity },
+                    data: {
+                        returnDate: new Date(),
+                        returnedQuantity: { increment: quantity },
+                        refundAmount: { increment: refundNow },
+                    },
+                });
+
+                if (detailClaim.count === 0) {
+                    throw new ApiError(
+                        409,
+                        `"${detail.product.productName}" was returned by another request. Please refresh and try again.`
+                    );
+                }
+
+                const updatedDetail = await tx.purchaseDetail.findUniqueOrThrow({
+                    where: { id: detail.id },
+                    select: { returnedQuantity: true, refundAmount: true },
+                });
+
+                results.push({
+                    purchase_detail_id: toExternalId(detail),
+                    product_id: toExternalId(detail.product),
+                    returned_now: quantity,
+                    refund_now: refundNow,
+                    returned_quantity: updatedDetail.returnedQuantity,
+                    refund_amount: Number(updatedDetail.refundAmount),
+                    pending_quantity: detail.quantity - updatedDetail.returnedQuantity,
+                    fully_returned: updatedDetail.returnedQuantity === detail.quantity,
+                });
+            }
+
+            const allDetails = await tx.purchaseDetail.findMany({
+                where: { purchaseId: purchase.id },
+                select: { quantity: true, returnedQuantity: true },
+            });
+            const purchaseFullyReturned = allDetails.every(
+                (d) => d.returnedQuantity === d.quantity
+            );
+
+            if (purchaseFullyReturned) {
+                await tx.purchase.updateMany({
+                    where: { id: purchase.id, purchaseStatus: "completed" },
+                    data: { purchaseStatus: "returned", updatedById: userId },
+                });
+            }
+
+            return { results, purchaseFullyReturned };
+        });
+
+        return {
+            purchase_id: toExternalId(purchase),
+            purchase_status: purchaseFullyReturned ? "returned" : "completed",
+            purchase_fully_returned: purchaseFullyReturned,
+            total_refund_amount: results.reduce((sum, r) => sum + r.refund_now, 0),
+            return_details: results,
         };
     }
 }

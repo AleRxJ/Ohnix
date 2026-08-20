@@ -50,10 +50,11 @@ const mapPurchaseDetail = (detail) => ({
     quantity: detail.quantity,
     unitcost: Number(detail.unitcost),
     total: Number(detail.total),
-    return_processed: detail.returnProcessed,
     return_date: detail.returnDate,
     returned_quantity: detail.returnedQuantity,
+    pending_quantity: detail.quantity - detail.returnedQuantity,
     refund_amount: Number(detail.refundAmount),
+    fully_returned: detail.returnedQuantity === detail.quantity,
     createdAt: detail.createdAt,
     updatedAt: detail.updatedAt,
 });
@@ -281,19 +282,23 @@ const getReturnPreview = asyncHandler(async (req, res, next) => {
 
         const returnPreview = purchaseDetails.map((detail) => {
             const product = detail.product;
-            const returnableQuantity = Math.min(detail.quantity, product.stock);
+            const pendingQuantity = detail.quantity - detail.returnedQuantity;
+            const returnableQuantity = Math.max(Math.min(pendingQuantity, product.stock), 0);
             const refundAmount = returnableQuantity * Number(detail.unitcost);
             totalPotentialRefund += refundAmount;
 
             return {
+                purchase_detail_id: toExternalId(detail),
                 product_id: toExternalId(product),
                 product_name: product.productName,
                 purchased_quantity: detail.quantity,
+                already_returned_quantity: detail.returnedQuantity,
+                pending_quantity: Math.max(pendingQuantity, 0),
                 current_stock: product.stock,
                 returnable_quantity: returnableQuantity,
                 unit_cost: Number(detail.unitcost),
                 potential_refund: refundAmount,
-                can_fully_return: returnableQuantity === detail.quantity,
+                can_fully_return: returnableQuantity === pendingQuantity,
             };
         });
 
@@ -315,10 +320,43 @@ const getReturnPreview = asyncHandler(async (req, res, next) => {
     }
 });
 
+const processReturn = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+    const { lines } = req.body;
+
+    if (!Array.isArray(lines) || lines.length === 0) {
+        return next(new ApiError(400, "At least one return line is required"));
+    }
+
+    try {
+        const result = await purchaseService.processReturn(
+            id,
+            lines,
+            req.user.prismaId,
+            req.user.role
+        );
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    result,
+                    result.purchase_fully_returned
+                        ? "Purchase fully returned"
+                        : "Return processed successfully"
+                )
+            );
+    } catch (err) {
+        return next(err);
+    }
+});
+
 export {
     createPurchase,
     getAllPurchases,
     getPurchaseDetails,
     updatePurchaseStatus,
     getReturnPreview,
+    processReturn,
 };

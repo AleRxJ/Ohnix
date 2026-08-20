@@ -150,8 +150,9 @@ Purchase order management with return processing and stock updates.
 | **POST**  | `/purchases`                    | Create a new purchase order                         | ✅   | User  |
 | **GET**   | `/purchases`                    | Get all purchase orders                             | ✅   | User  |
 | **GET**   | `/purchases/:id`                | Get detailed purchase information by ID             | ✅   | User  |
-| **PATCH** | `/purchases/:id`                | Update purchase status (pending/completed/returned) | ✅   | User  |
-| **GET**   | `/purchases/:id/return-preview` | Preview return details before processing            | ✅   | User  |
+| **PATCH** | `/purchases/:id`                | Update purchase status (pending → completed only; `returned` is set automatically once every line is fully returned) | ✅   | User  |
+| **GET**   | `/purchases/:id/return-preview` | Per-line return status: purchased/already returned/pending/returnable now | ✅   | User  |
+| **POST**  | `/purchases/:id/returns`        | Process a return for one or more lines: `{ lines: [{ purchase_detail_id, quantity }] }`. Can be called more than once per purchase while any line has quantity left pending. | ✅   | User  |
 | **GET**   | `/purchases/all`                | Get all purchases across all users                  | ✅   | Admin |
 
 ---
@@ -605,7 +606,7 @@ All routes require authentication except:
 - Maximum payload size: 16KB (configurable)
 - Stock automatically updates on purchase completion and order creation
 - Users can only access their own resources (except admins)
-- Purchase status flow: `pending` → `completed` → `returned`
+- Purchase status flow: `pending` → `completed` → `returned` (the last transition is derived automatically from per-line returns via `POST /purchases/:id/returns`, not client-settable)
 - Order status flow: `pending` → `processing` → `completed` or `cancelled`
 
 ---

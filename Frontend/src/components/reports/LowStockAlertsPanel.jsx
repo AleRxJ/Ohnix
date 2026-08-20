@@ -1,12 +1,13 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Tooltip, Modal } from "antd";
-import { MailOutlined, SettingOutlined, LockOutlined, ArrowRightOutlined } from "@ant-design/icons";
+import { Button, Tooltip, Modal, InputNumber } from "antd";
+import { MailOutlined, SettingOutlined, LockOutlined, ArrowRightOutlined, EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import AuthContext from "../../context/AuthContext";
 import useSubscription from "../../hooks/useSubscription";
 import useI18n from "../../hooks/useI18n";
 import { api } from "../../api/api";
+import { subscriptionService } from "../../services/subscriptionService";
 
 // Single consolidated module for the weekly low-stock email alert: status,
 // schedule, and (admin-only) the send/trigger actions. This used to be split
@@ -21,11 +22,24 @@ const LowStockAlertsPanel = () => {
 
     const isAdmin = user?.role === "admin";
     const hasAutoEmailAlerts = can("autoEmailAlerts");
+    const canConfigureAccountThreshold = can("configurableAlerts");
     const isActive = isAdmin || hasAutoEmailAlerts;
 
     const [schedulerStatus, setSchedulerStatus] = useState(null);
     const [triggeringAlert, setTriggeringAlert] = useState(false);
     const [sendingSelfTest, setSendingSelfTest] = useState(false);
+    const [editingThreshold, setEditingThreshold] = useState(false);
+    const [thresholdDraft, setThresholdDraft] = useState(null);
+    const [savingThreshold, setSavingThreshold] = useState(false);
+
+    // Account-wide threshold (Escala+): distinct from schedulerStatus.threshold
+    // above, which is the admin-only PLATFORM default. This one lives on the
+    // requesting user's own Subscription row and only applies to their own
+    // catalog - see subscription.controller.js#updateMyLowStockThreshold.
+    const [accountThreshold, setAccountThreshold] = useState(null);
+    const [editingAccountThreshold, setEditingAccountThreshold] = useState(false);
+    const [accountThresholdDraft, setAccountThresholdDraft] = useState(null);
+    const [savingAccountThreshold, setSavingAccountThreshold] = useState(false);
 
     useEffect(() => {
         if (!isAdmin) return;
@@ -35,6 +49,16 @@ const LowStockAlertsPanel = () => {
             })
             .catch((error) => console.error("Failed to get scheduler status:", error));
     }, [isAdmin]);
+
+    useEffect(() => {
+        if (isAdmin || !hasAutoEmailAlerts) return;
+        subscriptionService
+            .getMySubscription()
+            .then((response) => {
+                if (response.success) setAccountThreshold(response.data.lowStockThreshold ?? null);
+            })
+            .catch((error) => console.error("Failed to get account threshold:", error));
+    }, [isAdmin, hasAutoEmailAlerts]);
 
     const sendConfirmedAlerts = async () => {
         try {
@@ -108,6 +132,65 @@ const LowStockAlertsPanel = () => {
             toast.error(error.response?.data?.message || t("reports.trigger_low_stock_alerts_failed"));
         } finally {
             setSendingSelfTest(false);
+        }
+    };
+
+    const startEditingThreshold = () => {
+        setThresholdDraft(schedulerStatus?.threshold ?? 5);
+        setEditingThreshold(true);
+    };
+
+    const cancelEditingThreshold = () => {
+        setEditingThreshold(false);
+        setThresholdDraft(null);
+    };
+
+    const saveThreshold = async () => {
+        if (!thresholdDraft || thresholdDraft < 1) return;
+        try {
+            setSavingThreshold(true);
+            const response = await api.put("/scheduler/threshold", { threshold: thresholdDraft });
+            if (response.data.success) {
+                const updated = response.data.data.threshold;
+                setSchedulerStatus((prev) => (prev ? { ...prev, threshold: updated } : prev));
+                toast.success(t("reports.threshold_update_success", { threshold: updated }));
+                setEditingThreshold(false);
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.threshold_update_failed"));
+        } finally {
+            setSavingThreshold(false);
+        }
+    };
+
+    const startEditingAccountThreshold = () => {
+        setAccountThresholdDraft(accountThreshold ?? 5);
+        setEditingAccountThreshold(true);
+    };
+
+    const cancelEditingAccountThreshold = () => {
+        setEditingAccountThreshold(false);
+        setAccountThresholdDraft(null);
+    };
+
+    const saveAccountThreshold = async (value) => {
+        try {
+            setSavingAccountThreshold(true);
+            const response = await subscriptionService.updateMyLowStockThreshold(value);
+            if (response.success) {
+                const updated = response.data.lowStockThreshold ?? null;
+                setAccountThreshold(updated);
+                toast.success(
+                    updated === null
+                        ? t("reports.account_threshold_reset")
+                        : t("reports.threshold_update_success", { threshold: updated })
+                );
+                setEditingAccountThreshold(false);
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.threshold_update_failed"));
+        } finally {
+            setSavingAccountThreshold(false);
         }
     };
 
@@ -217,15 +300,140 @@ const LowStockAlertsPanel = () => {
                         />
                         {schedulerStatus.isRunning ? t("reports.scheduler_running") : t("reports.scheduler_stopped")}
                     </span>
-                    <span>
-                        {t("reports.threshold")}: {schedulerStatus.threshold} {t("reports.units")}
-                    </span>
+                    {editingThreshold ? (
+                        <span className="inline-flex items-center gap-1.5">
+                            {t("reports.threshold")}:
+                            <InputNumber
+                                min={1}
+                                size="small"
+                                autoFocus
+                                value={thresholdDraft}
+                                onChange={setThresholdDraft}
+                                onPressEnter={saveThreshold}
+                                disabled={savingThreshold}
+                                className="w-16"
+                            />
+                            {t("reports.units")}
+                            <Tooltip title={t("common.save")}>
+                                <Button
+                                    icon={<CheckOutlined />}
+                                    size="small"
+                                    type="text"
+                                    loading={savingThreshold}
+                                    onClick={saveThreshold}
+                                    className="text-[#44F3F0]"
+                                />
+                            </Tooltip>
+                            <Tooltip title={t("common.cancel")}>
+                                <Button
+                                    icon={<CloseOutlined />}
+                                    size="small"
+                                    type="text"
+                                    disabled={savingThreshold}
+                                    onClick={cancelEditingThreshold}
+                                    className="text-[var(--ohnix-text-dim)]"
+                                />
+                            </Tooltip>
+                        </span>
+                    ) : (
+                        <Tooltip title={t("reports.threshold_hint")}>
+                            <span className="inline-flex items-center gap-1.5">
+                                {t("reports.threshold")}: {schedulerStatus.threshold} {t("reports.units")}
+                                <button
+                                    type="button"
+                                    onClick={startEditingThreshold}
+                                    className="text-[var(--ohnix-text-dim)] hover:text-[#44F3F0]"
+                                    aria-label={t("reports.edit_threshold")}
+                                >
+                                    <EditOutlined />
+                                </button>
+                            </span>
+                        </Tooltip>
+                    )}
                     <span>
                         {t("reports.next_run")}:{" "}
                         {schedulerStatus.nextRun
                             ? new Date(schedulerStatus.nextRun).toLocaleString(currentLanguage)
                             : t("reports.not_scheduled")}
                     </span>
+                </div>
+            )}
+
+            {!isAdmin && hasAutoEmailAlerts && (
+                <div className="relative mt-4 flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-[var(--ohnix-line-3)] pt-3 text-xs text-[var(--ohnix-text-dim)]">
+                    {!canConfigureAccountThreshold ? (
+                        <Tooltip title={t("reports.account_threshold_hint")}>
+                            <span className="inline-flex items-center gap-1.5">
+                                <LockOutlined />
+                                {t("reports.account_threshold_upsell")}
+                            </span>
+                        </Tooltip>
+                    ) : editingAccountThreshold ? (
+                        <span className="inline-flex items-center gap-1.5">
+                            {t("reports.account_threshold")}:
+                            <InputNumber
+                                min={1}
+                                size="small"
+                                autoFocus
+                                value={accountThresholdDraft}
+                                onChange={setAccountThresholdDraft}
+                                onPressEnter={() => saveAccountThreshold(accountThresholdDraft)}
+                                disabled={savingAccountThreshold}
+                                className="w-16"
+                            />
+                            {t("reports.units")}
+                            <Tooltip title={t("common.save")}>
+                                <Button
+                                    icon={<CheckOutlined />}
+                                    size="small"
+                                    type="text"
+                                    loading={savingAccountThreshold}
+                                    disabled={!accountThresholdDraft || accountThresholdDraft < 1}
+                                    onClick={() => saveAccountThreshold(accountThresholdDraft)}
+                                    className="text-[#44F3F0]"
+                                />
+                            </Tooltip>
+                            <Tooltip title={t("common.cancel")}>
+                                <Button
+                                    icon={<CloseOutlined />}
+                                    size="small"
+                                    type="text"
+                                    disabled={savingAccountThreshold}
+                                    onClick={cancelEditingAccountThreshold}
+                                    className="text-[var(--ohnix-text-dim)]"
+                                />
+                            </Tooltip>
+                        </span>
+                    ) : (
+                        <>
+                            <Tooltip title={t("reports.account_threshold_hint")}>
+                                <span className="inline-flex items-center gap-1.5">
+                                    {t("reports.account_threshold")}:{" "}
+                                    {accountThreshold !== null
+                                        ? `${accountThreshold} ${t("reports.units")}`
+                                        : t("reports.account_threshold_not_set")}
+                                    <button
+                                        type="button"
+                                        onClick={startEditingAccountThreshold}
+                                        className="text-[var(--ohnix-text-dim)] hover:text-[#44F3F0]"
+                                        aria-label={t("reports.edit_account_threshold")}
+                                    >
+                                        <EditOutlined />
+                                    </button>
+                                </span>
+                            </Tooltip>
+                            {accountThreshold !== null && (
+                                <button
+                                    type="button"
+                                    onClick={() => saveAccountThreshold(null)}
+                                    disabled={savingAccountThreshold}
+                                    className="text-[var(--ohnix-text-dim)] underline decoration-dotted hover:text-[#44F3F0]"
+                                >
+                                    {t("reports.account_threshold_reset")}
+                                </button>
+                            )}
+                        </>
+                    )}
                 </div>
             )}
         </div>

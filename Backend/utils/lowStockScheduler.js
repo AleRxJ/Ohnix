@@ -133,7 +133,20 @@ class LowStockScheduler {
     }
 
     async getLowStockProductsForUser(userId) {
-        const defaultThreshold = await getLowStockDefaultThreshold();
+        const platformDefaultThreshold = await getLowStockDefaultThreshold();
+
+        // Three-level fallback: a product's own threshold wins if set,
+        // otherwise the owning account's general threshold (Escala+ feature,
+        // see subscription.controller.js#updateMyLowStockThreshold), and
+        // only then the platform-wide admin default. `userId` here is always
+        // the product OWNER's id (see getEligibleUsers' productOwnerId), so
+        // one subscription lookup covers every product in this call.
+        const subscription = await prisma.subscription.findUnique({
+            where: { userId },
+            select: { lowStockThreshold: true },
+        });
+        const accountThreshold = subscription?.lowStockThreshold ?? null;
+        const effectiveDefaultThreshold = accountThreshold ?? platformDefaultThreshold;
 
         // Per-product thresholds (Escala+ feature) can't be expressed as a
         // single Prisma `where` comparison against a column, so fetch the
@@ -156,7 +169,7 @@ class LowStockScheduler {
         });
 
         return allProducts.filter(
-            (product) => product.stock < (product.lowStockThreshold ?? defaultThreshold)
+            (product) => product.stock < (product.lowStockThreshold ?? effectiveDefaultThreshold)
         );
     }
 

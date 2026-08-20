@@ -21,7 +21,10 @@ export const SUBSCRIPTION_STATUS_STYLES = {
 
 export const formatDate = (value) => (value ? new Date(value).toLocaleString("es-CO") : "-");
 
-const PAYMENT_STATUS_STYLES = {
+// Exported so the general payments ledger tab in AdminSubscriptions.jsx can
+// render the exact same status/mode tags as this modal's per-user history,
+// instead of redefining them and drifting out of sync.
+export const PAYMENT_STATUS_STYLES = {
     pending: { color: "gold", label: "Pendiente" },
     paid: { color: "green", label: "Pagado" },
     rejected: { color: "red", label: "Rechazado" },
@@ -31,7 +34,7 @@ const PAYMENT_STATUS_STYLES = {
     amount_mismatch: { color: "volcano", label: "Monto no coincide" },
 };
 
-const TEST_MODE_STYLES = {
+export const TEST_MODE_STYLES = {
     true: { color: "purple", label: "Prueba" },
     false: { color: "green", label: "Real" },
     unknown: { color: "default", label: "Sin registrar" },

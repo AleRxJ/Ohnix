@@ -199,16 +199,6 @@ export const usePurchase = () => {
                 if (status === "completed" && isTutorialActive && purchaseId === createdRefs?.purchase?.id) {
                     notifyAction("purchase-completed");
                 }
-
-                // Show return information if status is returned
-                if (status === "returned" && response.data.data.returnInfo) {
-                    const returnInfo = response.data.data.returnInfo;
-                    message.success(
-                        t("purchases.return_success_toast", {
-                            amount: formatCurrency(returnInfo.total_refund_amount),
-                        })
-                    );
-                }
                 return { success: true };
             } else {
                 toast.error(
@@ -219,6 +209,43 @@ export const usePurchase = () => {
         } catch (error) {
             toast.error(
                 resolveApiErrorMessage(error, t, UPDATE_STATUS_ERROR_CODES, "purchases.error_updating_status")
+            );
+            console.error("Error:", error);
+            return { success: false };
+        } finally {
+            setUpdatingPurchaseId(null);
+        }
+    };
+
+    // Process a granular return: `lines` is [{ purchase_detail_id, quantity }],
+    // chosen by the user in the return form - not auto-computed by the server.
+    const processReturn = async (purchaseId, lines) => {
+        setUpdatingPurchaseId(purchaseId);
+        try {
+            const response = await api.post(`/purchases/${purchaseId}/returns`, {
+                lines,
+            });
+            if (response.data.success) {
+                const result = response.data.data;
+                message.success(
+                    t(
+                        result.purchase_fully_returned
+                            ? "purchases.return_success_toast"
+                            : "purchases.return_partial_success_toast",
+                        { amount: formatCurrency(result.total_refund_amount) }
+                    )
+                );
+                await fetchPurchases();
+                return { success: true, result };
+            } else {
+                toast.error(
+                    response.data.message || t("purchases.failed_process_return")
+                );
+                return { success: false };
+            }
+        } catch (error) {
+            toast.error(
+                resolveApiErrorMessage(error, t, {}, "purchases.error_processing_return")
             );
             console.error("Error:", error);
             return { success: false };
@@ -253,6 +280,7 @@ export const usePurchase = () => {
         fetchReturnPreview,
         createPurchase,
         updatePurchaseStatus,
+        processReturn,
 
         // Setters
         setPurchaseDetails,

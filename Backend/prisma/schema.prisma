@@ -307,6 +307,13 @@ model Subscription {
   // plan access until `endsAt` - subscriptionRenewalScheduler's existing
   // expiry job downgrades to starter then, same as a natural non-renewal.
   cancelAtPeriodEnd Boolean            @default(false) @map("cancel_at_period_end")
+  // Account-wide low-stock alert threshold (Escala+ feature, gated the same
+  // way as Product.lowStockThreshold below) - null means "no override, fall
+  // back to the platform-wide SystemSetting.lowStockDefaultThreshold". This
+  // sits between the per-product threshold and that global admin default:
+  // Product.lowStockThreshold ?? Subscription.lowStockThreshold ?? platform
+  // default. See lowStockScheduler.js#getLowStockProductsForUser.
+  lowStockThreshold Int?               @map("low_stock_threshold")
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
 
@@ -563,7 +570,12 @@ model PurchaseDetail {
   quantity         Int
   unitcost         Decimal   @db.Decimal(12, 2)
   total            Decimal   @db.Decimal(12, 2)
-  returnProcessed  Boolean   @default(false) @map("return_processed")
+  // Running totals across every partial return event for this line, not a
+  // single fixed value - mirrors Product.stock as a fast-read cache in front
+  // of the StockMovement ledger (sourceType "purchase_return", sourceId =
+  // this purchase's id) that is the actual append-only source of truth.
+  // "Fully returned" is derived as returnedQuantity === quantity rather than
+  // stored, since a line can be returned across more than one event.
   returnDate       DateTime? @map("return_date")
   returnedQuantity Int       @default(0) @map("returned_quantity")
   refundAmount     Decimal   @default(0) @map("refund_amount") @db.Decimal(12, 2)

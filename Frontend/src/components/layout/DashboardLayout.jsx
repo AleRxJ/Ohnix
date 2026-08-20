@@ -35,7 +35,8 @@ const PAGE_TITLE_KEYS = {
     reports: "common.reports",
     team: "common.team_nav",
     billing: "common.billing",
-    admin: "common.admin_panel",
+    "admin-management": "common.admin_panel",
+    "admin-subscriptions": "common.admin_subscriptions",
 };
 
 const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false }) => (
@@ -251,7 +252,18 @@ const DashboardLayout = () => {
 
     const currentPath = location.pathname;
     const pathSegments = currentPath.split("/").filter(Boolean);
-    const currentPage = pathSegments.length > 0 ? pathSegments[0] : "dashboard";
+    // /admin/* has several distinct sub-pages (management, subscriptions, ...)
+    // sharing the same first segment - collapsing them all to "admin" meant
+    // the sidebar's selectedKeys (data/index.jsx uses "admin-management",
+    // "admin-subscriptions", etc. as keys) could never actually match, so
+    // the highlighted item silently never changed between them. Every
+    // other top-level route is still just its bare first segment.
+    const currentPage =
+        pathSegments[0] === "admin" && pathSegments[1]
+            ? `admin-${pathSegments[1]}`
+            : pathSegments.length > 0
+              ? pathSegments[0]
+              : "dashboard";
 
     useEffect(() => {
         const titleKey = PAGE_TITLE_KEYS[currentPage];

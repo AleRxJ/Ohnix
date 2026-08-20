@@ -36,6 +36,7 @@ const PurchaseList = ({
     stats,
     onCreatePurchase,
     onUpdateStatus,
+    onProcessReturn,
     updatingPurchaseId,
     onFetchPurchaseDetails,
     onFetchReturnPreview,
@@ -206,9 +207,9 @@ const PurchaseList = ({
             <ReturnPreview
                 visible={returnPreviewModalVisible}
                 onCancel={() => setReturnPreviewModalVisible(false)}
-                onProceed={onUpdateStatus}
+                onSubmit={onProcessReturn}
                 returnPreviewData={returnPreviewData}
-                purchases={purchases}
+                submitting={updatingPurchaseId === returnPreviewData?.purchase_id}
             />
         </div>
     );

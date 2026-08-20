@@ -2,6 +2,7 @@ import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
+import { blockTeamMembers } from "../middleware/teamGuard.middleware.js";
 import {
     cancelMySubscription,
     cancelMyUpgradeRequest,
@@ -19,6 +20,7 @@ import {
     getMySubscription,
     getMyUsage,
     getPlanCatalog,
+    updateMyLowStockThreshold,
     getUpgradeRequestsAdmin,
     getUserAuditLogAdmin,
     getUserSubscriptionAdmin,
@@ -57,6 +59,10 @@ router.use(verifyJWT);
 router.route("/plans").get(getPlanCatalog);
 router.route("/me").get(getMySubscription);
 router.route("/me/usage").get(getMyUsage);
+// Account-wide low-stock threshold override - owner-only (blockTeamMembers),
+// same rule as company branding/billing: a team member's module permissions
+// never extend to account-wide settings. See teamGuard.middleware.js.
+router.route("/me/low-stock-threshold").patch(blockTeamMembers, updateMyLowStockThreshold);
 router.route("/me/checkout-payment-methods").get(requireModulePermission("billing", "view"), getCheckoutPaymentMethods);
 router.route("/me/upgrade-requests")
     .get(requireModulePermission("billing", "view"), getMyUpgradeRequests)
