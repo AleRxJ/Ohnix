@@ -47,7 +47,7 @@ export const setActiveSession = async (userId, sid, { deviceInfo } = {}) => {
             "EX",
             ttlSeconds
         );
-        await redis.publish(SESSION_INVALIDATE_CHANNEL, JSON.stringify({ userId, sid }));
+        await redis.publish(SESSION_INVALIDATE_CHANNEL, JSON.stringify({ userId, sid, reason: "login" }));
     } catch (err) {
         console.error("[session] Failed to set active session:", err?.message);
     }
@@ -72,10 +72,12 @@ export const clearActiveSession = async (userId) => {
 
     try {
         await redis.del(sessionKey(userId));
-        // sid: null - any connected socket (its sid is always a real value)
-        // no longer matches, so the subscriber in socketServer.js drops all
-        // of this user's live connections on explicit logout too.
-        await redis.publish(SESSION_INVALIDATE_CHANNEL, JSON.stringify({ userId, sid: null }));
+        // reason: "logout" - tells the subscriber in socketServer.js to drop
+        // this user's live connections quietly. Without it, sid: null never
+        // matches any connected socket's real sid, so an explicit logout was
+        // indistinguishable from a takeover and wrongly showed the "you were
+        // signed out because you logged in elsewhere" toast on every logout.
+        await redis.publish(SESSION_INVALIDATE_CHANNEL, JSON.stringify({ userId, sid: null, reason: "logout" }));
     } catch (err) {
         console.error("[session] Failed to clear active session:", err?.message);
     }

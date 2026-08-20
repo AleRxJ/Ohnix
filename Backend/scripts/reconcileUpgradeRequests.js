@@ -3,9 +3,6 @@ import { prisma } from "../db/prisma.js";
 
 dotenv.config();
 
-const SPECIAL_ENTERPRISE_REVIEW_REGEX =
-    /(factura|invoice|descuento|discount|negoci|custom|personaliz|contrato|contract|sla|onboarding|implementation|implementacion|po\b|purchase\s*order)/i;
-
 const AUTO_APPROVED_RESPONSE =
     "Auto-approved by reconciliation. Complete payment to activate your plan.";
 
@@ -17,11 +14,10 @@ const isLegacySignupRequest = (request) =>
     `${request.notes || ""}`.trim().toLowerCase() ===
     "requested during signup".toLowerCase();
 
-const isSpecialCase = (request) => {
-    const notes = `${request.notes || ""}`;
-    return request.targetPlan === "enterprise" && SPECIAL_ENTERPRISE_REVIEW_REGEX.test(notes);
-};
-
+// Enterprise has no fixed price and no configured checkout amount (see
+// shouldRouteToManualReview in subscription.controller.js) - it can never
+// be auto-approved, only approved by an admin who's set a manual payment
+// link after negotiating the amount.
 const shouldAutoApprove = (request) => {
     if (isLegacySignupRequest(request)) {
         return true;
@@ -29,10 +25,6 @@ const shouldAutoApprove = (request) => {
 
     if (request.targetPlan === "growth") {
         return true;
-    }
-
-    if (request.targetPlan === "enterprise") {
-        return !isSpecialCase(request);
     }
 
     return false;

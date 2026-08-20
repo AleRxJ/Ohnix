@@ -174,6 +174,11 @@ const SubscriptionPlanCard = ({
 
     const status = subscription?.status || "active";
     const canRequestUpgrade = plan !== "enterprise";
+    // While the card is fetching (initial load) or re-fetching (manual
+    // refresh), Spin only dims the content - it doesn't block clicks - so
+    // every action button here must be explicitly disabled or a click
+    // during that window fires against stale/incoming data.
+    const isBusy = loading || refreshing;
 
     return (
         <Card className="mt-4 rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.18)] border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-primary)]">
@@ -196,6 +201,7 @@ const SubscriptionPlanCard = ({
                             <Button
                                 size="small"
                                 onClick={onRenew}
+                                disabled={isBusy}
                                 className="shrink-0 border-red-400/60 text-red-300 hover:border-red-300 hover:text-red-200 bg-transparent"
                             >
                                 {lang === "es" ? "Contratar" : "Subscribe"}
@@ -231,6 +237,7 @@ const SubscriptionPlanCard = ({
                         {onRenew && (
                             <Button size="small"
                                 onClick={onRenew}
+                                disabled={isBusy}
                                 className={`shrink-0 bg-transparent ${
                                     renewalDaysLeft <= 0
                                         ? "border-red-400/60 text-red-300 hover:border-red-300"
@@ -255,6 +262,7 @@ const SubscriptionPlanCard = ({
                             <Button
                                 size="small"
                                 onClick={onReactivate}
+                                disabled={isBusy}
                                 className="shrink-0 border-[#29D8D5]/45 text-[#44F3F0] hover:border-[#29D8D5] bg-transparent"
                             >
                                 {t("profile.subscription.undo_cancellation")}
@@ -278,6 +286,7 @@ const SubscriptionPlanCard = ({
                             <Button
                                 size="small"
                                 onClick={onRenew}
+                                disabled={isBusy}
                                 className="shrink-0 border-orange-400/60 text-orange-300 hover:border-orange-300 hover:text-orange-200 bg-transparent"
                             >
                                 {lang === "es" ? "Contratar" : "Subscribe"}
@@ -341,6 +350,7 @@ const SubscriptionPlanCard = ({
                         icon={<ReloadOutlined />}
                         onClick={onRefresh}
                         loading={refreshing}
+                        disabled={loading}
                         className="text-[var(--ohnix-text-primary)]"
                     />
                 </div>
@@ -390,6 +400,7 @@ const SubscriptionPlanCard = ({
                         <Button
                             icon={<RocketOutlined />}
                             onClick={onOpenBilling}
+                            disabled={isBusy}
                             className="h-10 rounded-xl border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0]"
                         >
                             {t("profile.subscription.manage_plan")}
@@ -405,6 +416,7 @@ const SubscriptionPlanCard = ({
                             icon={<RocketOutlined />}
                             onClick={onRenew}
                             size="large"
+                            disabled={isBusy}
                             className="h-11 rounded-xl border-[#29D8D5]/50 bg-[#29D8D5]/15 text-[#44F3F0] font-semibold col-span-1 sm:col-span-2"
                         >
                             {lang === "es" ? "Contratar un plan ahora" : "Subscribe to a plan now"}
@@ -419,6 +431,7 @@ const SubscriptionPlanCard = ({
                             <Button
                                 icon={<PauseCircleOutlined />}
                                 onClick={onPause}
+                                disabled={isBusy}
                                 className="h-10 rounded-xl border-[var(--ohnix-line-6)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-primary)]"
                             >
                                 {t("profile.subscription.pause")}
@@ -427,6 +440,7 @@ const SubscriptionPlanCard = ({
                             <Button
                                 icon={<PlayCircleOutlined />}
                                 onClick={onReactivate}
+                                disabled={isBusy}
                                 className="h-10 rounded-xl border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0]"
                             >
                                 {t("profile.subscription.reactivate")}
@@ -437,6 +451,7 @@ const SubscriptionPlanCard = ({
                             <Button
                                 icon={<PlayCircleOutlined />}
                                 onClick={onReactivate}
+                                disabled={isBusy}
                                 className="h-10 rounded-xl border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0]"
                             >
                                 {t("profile.subscription.undo_cancellation")}
@@ -450,9 +465,11 @@ const SubscriptionPlanCard = ({
                                 okText={t("common.yes")}
                                 cancelText={t("common.no")}
                                 onConfirm={onCancel}
+                                disabled={isBusy}
                             >
                                 <Button
                                     icon={<StopOutlined />}
+                                    disabled={isBusy}
                                     className="h-10 rounded-xl border-red-400/30 bg-red-500/10 text-red-200"
                                 >
                                     {t("profile.subscription.cancel")}
@@ -463,7 +480,7 @@ const SubscriptionPlanCard = ({
                         <Button
                             icon={<RocketOutlined />}
                             onClick={onRequestUpgrade}
-                            disabled={!canRequestUpgrade}
+                            disabled={!canRequestUpgrade || isBusy}
                             className="h-10 rounded-xl border-[#29D8D5]/35 bg-[#29D8D5]/10 text-[#44F3F0] disabled:border-[var(--ohnix-line-6)] disabled:bg-[var(--ohnix-line-1)] disabled:text-[var(--ohnix-text-muted)]"
                         >
                             {canRequestUpgrade

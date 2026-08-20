@@ -149,6 +149,21 @@ export const subscriptionService = {
         return response.data;
     },
 
+    // Self-reported ref_payco from the browser (response redirect or the
+    // onResponse hook) - backstop for when the signed confirmation webhook
+    // never lands (e.g. a Render cold start swallowing it). Only ever fills
+    // in a lookup key for the backend's existing trusted verification -
+    // never activates anything by itself. See reportEpaycoTransactionReference
+    // in Backend/controllers/subscription.controller.js for the full guard.
+    async reportEpaycoTransactionReference(requestId, refPayco) {
+        if (!refPayco) return null;
+        const response = await api.post(
+            `/subscriptions/me/upgrade-requests/${requestId}/epayco-reference`,
+            { refPayco }
+        );
+        return response.data;
+    },
+
     async createRenewalCheckout(payload = {}) {
         const response = await api.post("/subscriptions/me/renew", payload);
         return response.data;

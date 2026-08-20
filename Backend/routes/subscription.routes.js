@@ -20,6 +20,7 @@ import {
     pauseMySubscription,
     reactivateMySubscription,
     reportEpaycoCheckoutClosed,
+    reportEpaycoTransactionReference,
     updateUpgradeRequestAdmin,
     updateUserPlan,
     verifyAndActivateBySession,
@@ -65,6 +66,11 @@ router.route("/me/upgrade-requests/:id/epayco-verify").post(requireModulePermiss
 // ePayco: self-reported "closed the checkout without finishing" signal from
 // the onClosed hook (onpage/embedded checkout only) - see EpaycoCheckout.jsx
 router.route("/me/upgrade-requests/:id/epayco-checkout-closed").post(requireModulePermission("billing", "edit"), reportEpaycoCheckoutClosed);
+// ePayco: self-reported ref_payco from the browser (response redirect /
+// onResponse hook) - backstop for when the signed confirmation webhook is
+// lost (e.g. Render cold start). Only ever fills in a lookup key for the
+// existing trusted verification pipeline - see reportEpaycoTransactionReference.
+router.route("/me/upgrade-requests/:id/epayco-reference").post(requireModulePermission("billing", "edit"), reportEpaycoTransactionReference);
 // Renewal: creates checkout for the same current plan
 router.route("/me/renew").post(requireModulePermission("billing", "edit"), createRenewalCheckout);
 router.route("/me/pause").patch(requireModulePermission("billing", "edit"), pauseMySubscription);

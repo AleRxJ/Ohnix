@@ -201,7 +201,12 @@ export const initSocketServer = (httpServer) => {
             }
             for (const socket of io.sockets.sockets.values()) {
                 if (socket.data.user?.id === payload.userId && socket.data.user?.sid !== payload.sid) {
-                    socket.emit("session:replaced");
+                    // Only an actual takeover (reason "login") deserves the
+                    // "signed out because you logged in elsewhere" toast - a
+                    // plain logout should just drop the connection quietly.
+                    if (payload.reason === "login") {
+                        socket.emit("session:replaced");
+                    }
                     socket.disconnect(true);
                 }
             }

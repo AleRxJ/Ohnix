@@ -1,5 +1,5 @@
-import React, { useState, useContext, useEffect } from "react";
-import { Card, Tabs, Badge, Button, Space, Alert, Tooltip, Modal } from "antd";
+import React, { useState, useContext } from "react";
+import { Card, Tabs, Badge, Alert } from "antd";
 import {
     FileTextOutlined,
     ShoppingCartOutlined,
@@ -7,9 +7,6 @@ import {
     TrophyOutlined,
     AlertOutlined,
     BarChartOutlined,
-    MailOutlined,
-    ClockCircleOutlined,
-    SettingOutlined,
 } from "@ant-design/icons";
 import PageHeader from "../components/common/PageHeader";
 import StockReport from "../components/reports/StockReport";
@@ -17,21 +14,18 @@ import SalesReport from "../components/reports/SalesReport";
 import PurchaseReport from "../components/reports/PurchaseReport";
 import TopProductsReport from "../components/reports/TopProductsReport";
 import AdvancedReports from "../components/reports/AdvancedReports";
+import LowStockAlertsPanel from "../components/reports/LowStockAlertsPanel";
 import PlanGate from "../components/common/PlanGate";
 import AuthContext from "../context/AuthContext";
-import { api } from "../api/api";
-import toast from "react-hot-toast";
 import useI18n from "../hooks/useI18n";
 import useSubscription from "../hooks/useSubscription";
 
 const Reports = () => {
     const [activeTab, setActiveTab] = useState("stock");
-    const [triggeringAlert, setTriggeringAlert] = useState(false);
-    const [sendingSelfTest, setSendingSelfTest] = useState(false);
-    const [schedulerStatus, setSchedulerStatus] = useState(null);
     const { user } = useContext(AuthContext);
     const { t, currentLanguage } = useI18n();
     const { can } = useSubscription();
+    const hasAutoEmailAlerts = can("autoEmailAlerts");
     const isMobile = window.innerWidth < 768;
 
     const tabLabelByKey = {
@@ -43,120 +37,6 @@ const Reports = () => {
             : t("reports.top_products"),
         advanced: t("reports.advanced.tab_label"),
     };
-
-    const sendConfirmedAlerts = async () => {
-        try {
-            setTriggeringAlert(true);
-            const response = await api.post("/scheduler/trigger-alerts", { confirm: true });
-
-            if (response.data.success) {
-                const { sent, failed, noLowStock, total } = response.data.data;
-                toast.success(
-                    t("reports.alert_process_completed", {
-                        sent,
-                        noLowStock,
-                        failed,
-                        total,
-                    })
-                );
-            }
-        } catch (error) {
-            toast.error(
-                error.response?.data?.message ||
-                    t("reports.trigger_low_stock_alerts_failed")
-            );
-        } finally {
-            setTriggeringAlert(false);
-        }
-    };
-
-    // Admin-only. This used to send real emails to every eligible customer
-    // on a single click labeled "test" - now it's a dry run first: fetch how
-    // many REAL accounts would be emailed and make the admin explicitly
-    // confirm that blast radius before anything actually sends.
-    const triggerLowStockAlert = async () => {
-        try {
-            setTriggeringAlert(true);
-            const response = await api.post("/scheduler/trigger-alerts");
-
-            if (response.data.success && response.data.data?.dryRun) {
-                const { eligibleCount } = response.data.data;
-                setTriggeringAlert(false);
-                Modal.confirm({
-                    title: t("reports.confirm_send_real_alerts_title"),
-                    content: t("reports.confirm_send_real_alerts_desc", { count: eligibleCount }),
-                    okText: t("reports.confirm_send_real_alerts_ok"),
-                    cancelText: t("common.cancel"),
-                    okButtonProps: { danger: true, className: "h-10 px-6 rounded-md font-medium" },
-                    cancelButtonProps: { className: "h-10 px-6 rounded-md" },
-                    className: "ohnix-confirm-modal",
-                    styles: {
-                        mask: { backgroundColor: "rgba(0,0,0,0.55)" },
-                        content: {
-                            background:
-                                "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
-                            border: "1px solid var(--ohnix-line-4)",
-                            boxShadow: "0 24px 70px rgba(0,0,0,0.6)",
-                            borderRadius: "24px",
-                        },
-                    },
-                    onOk: sendConfirmedAlerts,
-                });
-                return;
-            }
-
-            setTriggeringAlert(false);
-        } catch (error) {
-            toast.error(
-                error.response?.data?.message ||
-                    t("reports.trigger_low_stock_alerts_failed")
-            );
-            setTriggeringAlert(false);
-        }
-    };
-
-    // Sends a low-stock alert email to the admin's OWN inbox, regardless of
-    // whether their account has any real low-stock products - unlike
-    // triggerLowStockAlert above, this never touches another account's data.
-    const sendSelfTestAlert = async () => {
-        try {
-            setSendingSelfTest(true);
-            const response = await api.post("/scheduler/send-test-alert");
-            if (response.data.success) {
-                toast.success(
-                    response.data.data?.isSample
-                        ? t("reports.self_test_alert_sent_sample")
-                        : t("reports.self_test_alert_sent_real")
-                );
-            }
-        } catch (error) {
-            toast.error(
-                error.response?.data?.message ||
-                    t("reports.trigger_low_stock_alerts_failed")
-            );
-        } finally {
-            setSendingSelfTest(false);
-        }
-    };
-
-    // Get scheduler status (for admin)
-    const getSchedulerStatus = async () => {
-        try {
-            const response = await api.get("/scheduler/status");
-            if (response.data.success) {
-                setSchedulerStatus(response.data.data);
-            }
-        } catch (error) {
-            console.error("Failed to get scheduler status:", error);
-        }
-    };
-
-    // Load scheduler status on component mount for admin
-    useEffect(() => {
-        if (user?.role === "admin") {
-            getSchedulerStatus();
-        }
-    }, [user]);
 
     const tabItems = [
         {
@@ -296,122 +176,7 @@ const Reports = () => {
                 />
             )}
 
-            {/* Automatic Low Stock Alert Info */}
-            <Alert
-                message={t("reports.automatic_low_stock_alerts")}
-                description={
-                    <div className="flex flex-col gap-2">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <span className={isMobile ? "text-xs" : "text-sm"}>
-                                {t("reports.low_stock_alert_schedule")}
-                                {user?.role === "admin"
-                                    ? ` ${t("reports.low_stock_alert_admin_suffix")}`
-                                    : ` ${t("reports.low_stock_alert_user_suffix")}`}
-                            </span>
-                            {user?.role === "admin" && (
-                                <div className="flex gap-2 items-center">
-                                    {schedulerStatus && (
-                                        <Badge
-                                            status={
-                                                schedulerStatus.isRunning
-                                                    ? "processing"
-                                                    : "error"
-                                            }
-                                            text={
-                                                schedulerStatus.isRunning
-                                                    ? t("reports.scheduler_running")
-                                                    : t("reports.scheduler_stopped")
-                                            }
-                                        />
-                                    )}
-                                    <Button
-                                        type="link"
-                                        icon={<MailOutlined />}
-                                        size="small"
-                                        onClick={sendSelfTestAlert}
-                                        loading={sendingSelfTest}
-                                    >
-                                        {t("reports.send_self_test_alert")}
-                                    </Button>
-                                    <Button
-                                        type="link"
-                                        icon={<SettingOutlined />}
-                                        size="small"
-                                        onClick={triggerLowStockAlert}
-                                        loading={triggeringAlert}
-                                    >
-                                        {t("reports.test_alerts")}
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                        {schedulerStatus && user?.role === "admin" && (
-                            <div className="text-xs text-gray-500">
-                                {t("reports.threshold")}:{" "}
-                                {schedulerStatus.threshold} {t("reports.units")} |
-                                {t("reports.next_run")}:{" "}
-                                {schedulerStatus.nextRun
-                                    ? new Date(
-                                          schedulerStatus.nextRun
-                                      ).toLocaleString(currentLanguage)
-                                    : t("reports.not_scheduled")}
-                            </div>
-                        )}
-                    </div>
-                }
-                type="success"
-                showIcon
-                icon={<ClockCircleOutlined />}
-                className="no-print mb-4 sm:mb-6 dark-alert dark-alert-teal"
-            />
-
-            {/* Quick Actions */}
-            <Card
-                className="no-print mb-4 sm:mb-6 border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)]"
-                size={isMobile ? "small" : "default"}
-            >
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex-1">
-                        <h3
-                            className={`font-semibold mb-2 ${
-                                isMobile ? "text-base" : "text-lg"
-                            }`}
-                        >
-                            {t("reports.quick_actions")}
-                        </h3>
-                        <p
-                            className={`text-[var(--ohnix-text-muted)] ${
-                                isMobile ? "text-xs" : "text-sm"
-                            }`}
-                        >
-                            {isMobile
-                                ? t("reports.business_insights_and_actions")
-                                : reportDescriptions[activeTab]}
-                        </p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-2">
-                        {user?.role === "admin" && (
-                            <Tooltip title={t("reports.manual_trigger_alerts_tooltip")}>
-                                <Button
-                                    type="primary"
-                                    icon={<AlertOutlined />}
-                                    onClick={triggerLowStockAlert}
-                                    loading={triggeringAlert}
-                                    size={isMobile ? "middle" : "default"}
-                                    disabled={
-                                        schedulerStatus &&
-                                        !schedulerStatus.isRunning
-                                    }
-                                >
-                                    {isMobile
-                                        ? t("reports.test_alerts")
-                                        : t("reports.trigger_test_alerts")}
-                                </Button>
-                            </Tooltip>
-                        )}
-                    </div>
-                </div>
-            </Card>
+            <LowStockAlertsPanel />
 
             {/* Reports Tabs */}
             <Card className="shadow-sm border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)]" size={isMobile ? "small" : "default"}>
@@ -489,7 +254,9 @@ const Reports = () => {
                         : ` ${t("reports.data_filtered_to_your_account")}`}
                 </p>
                 <p className="mt-1 px-2">
-                    {t("reports.low_stock_alerts_footer")}
+                    {user?.role === "admin" || hasAutoEmailAlerts
+                        ? t("reports.low_stock_alerts_footer")
+                        : t("reports.low_stock_alerts_footer_locked")}
                 </p>
                 <p className="mt-1 px-2">
                     {t("reports.last_updated")}: {new Date().toLocaleString(currentLanguage)}

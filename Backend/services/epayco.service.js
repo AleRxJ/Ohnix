@@ -38,12 +38,26 @@ const getBackendBaseUrl = () => {
 const getEpaycoConfig = () => {
     const base = getBackendBaseUrl();
     const epaycoBase = `${base}/api/v1/subscriptions/payments/epayco`;
+    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
 
     // If EPAYCO_RESPONSE_URL / EPAYCO_CONFIRMATION_URL are explicitly set, use them.
-    // Otherwise derive them from the backend's own public URL so no extra config is needed.
+    // Otherwise derive them so no extra config is needed. The response URL
+    // (the browser redirect target right after checkout) defaults to the
+    // FRONTEND, not the backend, on purpose: the backend runs on Render's
+    // free tier, which spins down after inactivity - a customer who just
+    // paid landing on Render's own "waking up" splash for 15-50s before
+    // ever seeing Ohnix is a real, observed bad first impression. The
+    // static frontend has no such cold start. The routing decision this
+    // page makes is pure UX triage (which shell page to show), not a trust
+    // boundary - actual payment truth still only ever comes from the
+    // signed confirmation webhook below. See EpaycoResponseRedirect.jsx.
     const responseUrl =
         `${process.env.EPAYCO_RESPONSE_URL || ""}`.trim() ||
-        `${epaycoBase}/response`;
+        `${frontendBase}/billing/epayco-response`;
+    // The confirmation webhook is server-to-server (ePayco calling us, not
+    // the customer's browser) - it must stay on the backend, and its own
+    // cold-start delay doesn't create the same bad first impression since
+    // the customer never sees it directly.
     const confirmationUrl =
         `${process.env.EPAYCO_CONFIRMATION_URL || ""}`.trim() ||
         `${epaycoBase}/confirmation`;

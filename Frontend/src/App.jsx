@@ -52,6 +52,7 @@ const Billing = lazy(() => import("./pages/Billing"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
+const EpaycoResponseRedirect = lazy(() => import("./pages/EpaycoResponseRedirect"));
 const ElectronicInvoices = lazy(() => import("./pages/ElectronicInvoices"));
 const Team = lazy(() => import("./pages/Team"));
 const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
@@ -223,6 +224,7 @@ function App() {
                                 <Route path="billing" element={<RequireBillingAccess><Billing /></RequireBillingAccess>} />
                                 <Route path="billing/payment-success" element={<RequireBillingAccess><PaymentSuccess /></RequireBillingAccess>} />
                                 <Route path="billing/epayco-checkout" element={<RequireBillingAccess><EpaycoCheckout /></RequireBillingAccess>} />
+                                <Route path="billing/epayco-response" element={<RequireBillingAccess><EpaycoResponseRedirect /></RequireBillingAccess>} />
                                 <Route path="admin/management" element={<AdminManagement />} />
                             </Route>
 

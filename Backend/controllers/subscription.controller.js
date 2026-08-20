@@ -62,23 +62,20 @@ const ALLOWED_STATUS_TRANSITIONS = {
     closed: [],
 };
 
-const SPECIAL_ENTERPRISE_REVIEW_REGEX =
-    /(factura|invoice|descuento|discount|negoci|custom|personaliz|contrato|contract|sla|onboarding|implementation|implementacion|po\b|purchase\s*order)/i;
-
-const shouldRouteToManualReview = ({
-    targetPlan,
-    notes,
-    requiresManualReview,
-}) => {
-    if (requiresManualReview === true) {
+// Enterprise has no fixed price (PLAN_PRICES_USD.enterprise is null - see
+// pricing.middleware.js) and no configured checkout amount in any currency,
+// so it can never go through the automated checkout path. It always needs
+// an admin to negotiate the amount/capacity and hand back a manual payment
+// link (see updateUpgradeRequestAdmin below) - regardless of whether the
+// requester checked "requires manual review" or what their free-text notes
+// happened to say. Auto-approving one straight to "awaiting_checkout" used
+// to send the requester to a checkout that could never succeed.
+const shouldRouteToManualReview = ({ targetPlan, requiresManualReview }) => {
+    if (targetPlan === "enterprise") {
         return true;
     }
 
-    if (targetPlan !== "enterprise") {
-        return false;
-    }
-
-    return SPECIAL_ENTERPRISE_REVIEW_REGEX.test(`${notes || ""}`);
+    return requiresManualReview === true;
 };
 
 export const UPGRADE_REQUEST_SELECT = {
@@ -1600,6 +1597,30 @@ export const updateUpgradeRequestAdmin = asyncHandler(async (req, res, next) => 
         return next(new ApiError(400, "Payment link must be a valid http/https URL"));
     }
 
+    // Enterprise has no automated checkout amount to fall back on (see
+    // shouldRouteToManualReview above), so approving one without a manual
+    // payment link would leave the requester on "approved" with nothing to
+    // actually pay - the frontend has no automated checkout to offer them.
+    // adminResponse is required too: it's the only place the negotiated
+    // capacity/price actually gets written down anywhere the requester can
+    // see it - a payment link with no adminResponse asks them to pay for
+    // terms they were never shown.
+    if (statusChanged && status === "approved" && existing.targetPlan === "enterprise") {
+        if (!(normalizedPaymentLink || existing.paymentLink)) {
+            return next(
+                new ApiError(400, "A payment link is required to approve an Enterprise request")
+            );
+        }
+        if (!(adminResponse?.trim() || existing.adminResponse)) {
+            return next(
+                new ApiError(
+                    400,
+                    "An admin response describing the agreed plan is required to approve an Enterprise request"
+                )
+            );
+        }
+    }
+
     if (statusChanged && existing.status === "approved" && status === "closed") {
         const closedResult = await closeApprovedRequestAndActivatePlan({
             requestId: existing.id,
@@ -1798,6 +1819,107 @@ export const reportEpaycoCheckoutClosed = asyncHandler(async (req, res, next) =>
     await markUpgradeRequestPaymentFailed({ upgradeRequestId: id, paymentStatus: "cancelled" });
 
     return res.status(200).json(new ApiResponse(200, { updated: true }, "Checkout marked as cancelled"));
+});
+
+/**
+ * POST /subscriptions/me/upgrade-requests/:id/epayco-reference
+ *
+ * Self-reported "here's the real ref_payco ePayco gave the browser" signal,
+ * sent from EpaycoResponseRedirect.jsx (the response-URL redirect, which
+ * ePayco's own docs confirm includes `ref_payco` in the query string) and
+ * from EpaycoCheckout.jsx's onResponse hook.
+ *
+ * Why this exists: paymentSessionId starts as our own internal placeholder
+ * (see generateEpaycoReference) and, before this endpoint, only ever got
+ * overwritten with the REAL ref_payco by the signed confirmation webhook.
+ * That webhook hits this backend on Render, which spins down when idle -
+ * if ePayco's webhook call lands during a cold start and ePayco doesn't
+ * retry (undocumented - could not confirm either way), that payment's real
+ * reference is lost forever: resolvePendingPaymentStatus's live-query
+ * fallback can't query a placeholder, so a genuinely-paid customer could
+ * sit "pending" until the 48h ceiling silently mislabels it "expired" -
+ * actively wrong if money really was taken. This gives that live-query
+ * fallback a second, independent way to learn the real reference.
+ *
+ * Trust model - this is NOT a trusted source of truth the way the signed
+ * webhook is (the browser/client controls what refPayco value gets sent
+ * here), so it is deliberately restricted to doing only one thing: filling
+ * in paymentSessionId so the EXISTING trusted verification pipeline
+ * (resolvePendingPaymentStatus, called on every poll and every 15-min
+ * reconcile cycle) has something real to query. It never itself activates,
+ * marks paid, or marks failed - resolvePendingPaymentStatus still
+ * independently re-verifies state/amount/currency against ePayco's own
+ * authenticated API before doing any of that.
+ *
+ * Two guards close the gap a forged refPayco could otherwise open (a client
+ * choosing an arbitrary REAL approved transaction of the right amount to
+ * try to activate a plan for free):
+ *  1. Only fills in paymentSessionId while it's still literally our own
+ *     untouched placeholder ("OHNIX-<requestId>-...") - never overwrites a
+ *     value the trusted webhook already wrote.
+ *  2. Refuses a refPayco that's already the paymentSessionId of a
+ *     DIFFERENT closed+paid request - a real payment can only ever unlock
+ *     the one upgrade it was actually made for, not be replayed across
+ *     several.
+ */
+export const reportEpaycoTransactionReference = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+    const refPayco = `${req.body?.refPayco || ""}`.trim();
+
+    if (!refPayco) {
+        return res.status(200).json(new ApiResponse(200, { updated: false }, "No reference provided"));
+    }
+
+    const request = await prisma.planUpgradeRequest.findFirst({
+        where: { id, userId: req.user.prismaId },
+        select: { id: true, status: true, paymentStatus: true, paymentProvider: true, paymentSessionId: true },
+    });
+
+    if (!request) {
+        return next(new ApiError(404, "Upgrade request not found"));
+    }
+
+    const isEpaycoRequest = `${request.paymentProvider || ""}`.toLowerCase().includes("epayco");
+    const stillUntouchedPlaceholder = `${request.paymentSessionId || ""}`.startsWith(`OHNIX-${id}-`);
+
+    if (
+        !isEpaycoRequest ||
+        request.status !== "approved" ||
+        request.paymentStatus !== "pending" ||
+        !stillUntouchedPlaceholder
+    ) {
+        // Already resolved, not ePayco, or paymentSessionId already holds a
+        // real reference (from the trusted webhook, or a prior call here) -
+        // nothing safe to do, and definitely not worth erroring over.
+        return res.status(200).json(new ApiResponse(200, { updated: false }, "Nothing to update"));
+    }
+
+    const alreadyConsumedBy = await prisma.planUpgradeRequest.findFirst({
+        where: {
+            paymentSessionId: refPayco,
+            status: "closed",
+            paymentStatus: "paid",
+            NOT: { id },
+        },
+        select: { id: true },
+    });
+
+    if (alreadyConsumedBy) {
+        console.warn("[epayco-reference] Rejected reused ref_payco", { requestId: id, refPayco });
+        return res.status(200).json(new ApiResponse(200, { updated: false }, "Reference already in use"));
+    }
+
+    await prisma.planUpgradeRequest.updateMany({
+        where: {
+            id,
+            status: "approved",
+            paymentStatus: "pending",
+            paymentSessionId: request.paymentSessionId,
+        },
+        data: { paymentSessionId: refPayco },
+    });
+
+    return res.status(200).json(new ApiResponse(200, { updated: true }, "Reference recorded"));
 });
 
 /**
@@ -2166,41 +2288,21 @@ export const handleEpaycoResponse = (req, res) => {
         `${data.x_extra1 || data.extra1 || ""}`.trim() ||
         `${req.query.requestId || ""}`.trim();
 
-    const stateCode = parseInt(
-        `${data.x_cod_transaction_state || data.cod_transaction_state || 0}`,
-        10
-    );
     const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
 
     if (!requestId) {
         return res.redirect(`${frontendBase}/billing`);
     }
 
-    // Codes that are definitely a failure — ePayco sends these explicitly
-    // 2=Rejected, 4=Failed, 6=Reversed, 9=Expired, 10=Abandoned,
-    // 11=Cancelled (not in ePayco's docs - see EPAYCO_STATE.CANCELLED).
-    // Missing this one used to send a customer who cancelled straight to
-    // the success page instead of the cancelled page, since it fell into
-    // the "everything else" branch below.
-    const FAILED_STATES = new Set([
-        EPAYCO_STATE.REJECTED,
-        EPAYCO_STATE.FAILED,
-        EPAYCO_STATE.REVERSED,
-        EPAYCO_STATE.EXPIRED,
-        EPAYCO_STATE.ABANDONED,
-        EPAYCO_STATE.CANCELLED,
-    ]);
-
-    if (FAILED_STATES.has(stateCode)) {
-        return res.redirect(
-            `${frontendBase}/billing?payment=cancelled&requestId=${encodeURIComponent(requestId)}`
-        );
-    }
-
-    // State 1=Accepted, 3=Pending, 7=Retained, 8=Started, or 0=unknown
-    // (ePayco sometimes omits x_cod_transaction_state in test mode)
-    // → Always go to success page; the polling there checks the real status
-    //   via the confirmation webhook that already activated the plan.
+    // Every outcome (accepted, rejected, abandoned, whatever) goes to the
+    // same success page - no need to branch on x_cod_transaction_state here
+    // at all. Its own poll re-checks paymentStatus on every cycle and
+    // renders the matching card (celebration or rejected+retry) itself.
+    // Splitting failures off to a bare `/billing?payment=cancelled` toast
+    // used to be necessary only because this page's pending state used to
+    // misleadingly say "Pago recibido" for a rejection too; now that it
+    // doesn't, one continuous loading -> result page is both simpler and
+    // the cleaner redirect a payment result deserves.
     return res.redirect(
         `${frontendBase}/billing/payment-success?requestId=${encodeURIComponent(requestId)}`
     );

@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
-import { Modal, Form, Input, Select, InputNumber, Row, Col, Button } from "antd";
-import { AppstoreOutlined, ScanOutlined } from "@ant-design/icons";
+import { Modal, Form, Input, Select, InputNumber, Row, Col, Button, Tooltip } from "antd";
+import { AppstoreOutlined, ScanOutlined, LockOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import ProductImageUpload from "./ProductImageUpload";
 import BarcodeScannerModal from "./BarcodeScannerModal";
@@ -366,8 +366,13 @@ const ProductModal = ({
                                 <Form.Item
                                     name="low_stock_threshold"
                                     label={
-                                        <span className="text-xs font-medium text-[var(--ohnix-text-muted)]">
+                                        <span className="text-xs font-medium text-[var(--ohnix-text-muted)] inline-flex items-center gap-1.5">
                                             {t("products.low_stock_threshold")}
+                                            {!can("configurableAlerts") && (
+                                                <Tooltip title={t("products.low_stock_threshold_upsell")}>
+                                                    <LockOutlined className="text-[var(--ohnix-text-dim)]" />
+                                                </Tooltip>
+                                            )}
                                         </span>
                                     }
                                     extra={

@@ -270,6 +270,10 @@ const Billing = () => {
     // modal's card grid, so the "what changes" panel below it updates live
     // instead of only showing a fixed "current -> next tier" comparison.
     const selectedTargetPlan = Form.useWatch("targetPlan", upgradeForm);
+    // Enterprise can't rely on the automated checkout (no fixed price), so
+    // approving one has to carry a manual payment link the admin negotiated
+    // - required only for this plan, only once the admin picks "approved".
+    const adminReviewStatus = Form.useWatch("status", adminReviewForm);
 
     const isAdmin = user?.role === "admin";
     const currentPlan = subscription?.plan || user?.subscription?.plan || "starter";
@@ -495,6 +499,14 @@ const Billing = () => {
                     // the next normal page load will still pick it up.
                 });
         }
+
+        // Strip ?payment=cancelled&requestId=... from the address bar once
+        // handled - landing here at all is now just a defensive fallback
+        // (see EpaycoResponseRedirect.jsx, which routes this same outcome
+        // through /billing/payment-success's proper loading -> result flow
+        // instead), so there's no reason to leave a stale query string
+        // sitting in the URL after the toast/self-heal above already ran.
+        navigate(location.pathname, { replace: true });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [location.search, t]);
 
@@ -1108,6 +1120,13 @@ const Billing = () => {
                                                     )
                                                 ) : item.status === "approved" && isPlanAlreadyActiveForRequest(item) ? (
                                                     t("profile.subscription.request_status_help_approved_activated")
+                                                ) : item.status === "approved" &&
+                                                  item.targetPlan === "enterprise" &&
+                                                  !paymentUrl ? (
+                                                    // Overrides the generic "continue with payment" help
+                                                    // text below - there's nothing to pay yet until an
+                                                    // admin negotiates the amount and sets a payment link.
+                                                    t("profile.subscription.request_status_help_approved_enterprise_pending")
                                                 ) : (
                                                     t(`profile.subscription.request_status_help_${item.status}`)
                                                 )}
@@ -1139,6 +1158,49 @@ const Billing = () => {
                                                         item.targetPlan
                                                     );
                                                     const isLoading = checkoutLoadingRequestId === item.id;
+
+                                                    // Enterprise has no fixed price, so there's no
+                                                    // automated checkout to offer here (see
+                                                    // shouldRouteToManualReview on the backend) - only
+                                                    // the payment link an admin sets after negotiating
+                                                    // the amount can complete this request.
+                                                    if (item.targetPlan === "enterprise") {
+                                                        return paymentUrl ? (
+                                                            <div className="mt-4 rounded-2xl border border-[#29D8D5]/25 bg-[var(--ohnix-line-1)] p-4">
+                                                                <div className="mb-3 text-xs text-[var(--ohnix-text-muted)]">
+                                                                    {t("profile.subscription.enterprise_payment_ready_notice")}
+                                                                </div>
+                                                                {isDisplayableFreeText(item.adminResponse) ? (
+                                                                    // The negotiated capacity/price - required from
+                                                                    // the admin before they can even set this
+                                                                    // request to "approved" (see
+                                                                    // updateUpgradeRequestAdmin), so this should
+                                                                    // never be empty here. Shown right next to the
+                                                                    // pay button instead of only in the generic
+                                                                    // notes area above, where it was easy to miss.
+                                                                    <div className="mb-3 rounded-xl border border-[#29D8D5]/15 bg-[#29D8D5]/5 p-3 text-xs text-[var(--ohnix-text-soft)]">
+                                                                        <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#29D8D5]">
+                                                                            {t("profile.subscription.enterprise_agreed_details_label")}
+                                                                        </div>
+                                                                        {item.adminResponse}
+                                                                    </div>
+                                                                ) : null}
+                                                                <a
+                                                                    href={paymentUrl}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="block w-full rounded-xl bg-[#29D8D5] px-5 py-3 text-center font-semibold text-[#021314] transition-colors hover:bg-[#44F3F0]"
+                                                                >
+                                                                    {t("profile.subscription.checkout_cta")}
+                                                                </a>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-4 flex items-start gap-2.5 rounded-2xl border border-amber-400/25 bg-amber-500/8 p-4 text-sm text-[var(--ohnix-alert-amber-text)]">
+                                                                <ClockCircleOutlined className="mt-0.5 shrink-0 text-amber-400" />
+                                                                <span>{t("profile.subscription.enterprise_awaiting_payment_link")}</span>
+                                                            </div>
+                                                        );
+                                                    }
 
                                                     if (isColombiaFlow) {
                                                         return (
@@ -1563,26 +1625,47 @@ const Billing = () => {
                     <Form.Item
                         name="notes"
                         label={t("profile.subscription.request_notes")}
-                        rules={[{ max: 800 }]}
+                        rules={[
+                            { max: 800 },
+                            ...(selectedTargetPlan === "enterprise"
+                                ? [{ required: true, message: t("validation.required_field") }]
+                                : []),
+                        ]}
                     >
                         <TextArea
                             rows={4}
                             className="auth-ohnix-input"
-                            placeholder={t("profile.subscription.request_notes_placeholder")}
+                            placeholder={
+                                selectedTargetPlan === "enterprise"
+                                    ? t("profile.subscription.request_notes_placeholder_enterprise")
+                                    : t("profile.subscription.request_notes_placeholder")
+                            }
                         />
                     </Form.Item>
 
-                    <Form.Item
-                        name="requiresManualReview"
-                        valuePropName="checked"
-                    >
-                        <Checkbox>
-                            {t("profile.subscription.special_review_checkbox")}
-                        </Checkbox>
-                        <div className="mt-1 text-xs text-[var(--ohnix-text-dim)]">
-                            {t("profile.subscription.special_review_help")}
+                    {selectedTargetPlan === "enterprise" ? (
+                        // Enterprise has no fixed price - every request is
+                        // routed to manual review regardless of this
+                        // checkbox (see shouldRouteToManualReview on the
+                        // backend), so showing it here would just promise a
+                        // choice that doesn't exist. This notice replaces it.
+                        <div className="mb-2 flex items-start gap-2.5 rounded-xl border border-amber-400/25 bg-amber-500/8 px-3 py-2.5 text-xs text-[var(--ohnix-alert-amber-text)]">
+                            <ClockCircleOutlined className="mt-0.5 shrink-0 text-amber-400" />
+                            <span>{t("profile.subscription.enterprise_review_notice")}</span>
                         </div>
-                    </Form.Item>
+                    ) : (
+                        <Form.Item
+                            name="requiresManualReview"
+                            valuePropName="checked"
+                        >
+                            <Checkbox>
+                                {t("profile.subscription.special_review_checkbox")}
+                            </Checkbox>
+                            <div className="mt-1 text-xs text-[var(--ohnix-text-dim)]">
+                                {t("profile.subscription.special_review_help")}
+                            </div>
+                        </Form.Item>
+                    )}
                 </Form>
             </Modal>
 
@@ -1632,22 +1715,72 @@ const Billing = () => {
                     <Form.Item
                         name="adminResponse"
                         label={t("profile.subscription.admin_response")}
-                        rules={[{ max: 800 }]}
+                        extra={
+                            selectedAdminRequest?.targetPlan === "enterprise" &&
+                            adminReviewStatus === "approved"
+                                ? t("profile.subscription.admin_response_required_on_approved_enterprise")
+                                : undefined
+                        }
+                        rules={[
+                            { max: 800 },
+                            {
+                                validator: (_, value) => {
+                                    if (
+                                        !value?.trim() &&
+                                        selectedAdminRequest?.targetPlan === "enterprise" &&
+                                        adminReviewStatus === "approved" &&
+                                        !selectedAdminRequest?.adminResponse
+                                    ) {
+                                        return Promise.reject(
+                                            new Error(
+                                                t(
+                                                    "profile.subscription.admin_response_required_on_approved_enterprise"
+                                                )
+                                            )
+                                        );
+                                    }
+                                    return Promise.resolve();
+                                },
+                            },
+                        ]}
                     >
                         <TextArea
                             rows={4}
                             className="auth-ohnix-input"
-                            placeholder={t("profile.subscription.admin_response_placeholder")}
+                            placeholder={
+                                selectedAdminRequest?.targetPlan === "enterprise"
+                                    ? t("profile.subscription.admin_response_placeholder_enterprise")
+                                    : t("profile.subscription.admin_response_placeholder")
+                            }
                         />
                     </Form.Item>
 
                     <Form.Item
                         name="paymentLink"
                         label={t("profile.subscription.payment_link")}
+                        extra={
+                            selectedAdminRequest?.targetPlan === "enterprise" &&
+                            adminReviewStatus === "approved"
+                                ? t("profile.subscription.payment_link_required_on_approved")
+                                : undefined
+                        }
                         rules={[
                             {
                                 validator: (_, value) => {
                                     if (!value) {
+                                        if (
+                                            selectedAdminRequest?.targetPlan === "enterprise" &&
+                                            adminReviewStatus === "approved" &&
+                                            !selectedAdminRequest?.paymentLink
+                                        ) {
+                                            return Promise.reject(
+                                                new Error(
+                                                    t(
+                                                        "profile.subscription.payment_link_required_on_approved"
+                                                    )
+                                                )
+                                            );
+                                        }
                                         return Promise.resolve();
                                     }
 

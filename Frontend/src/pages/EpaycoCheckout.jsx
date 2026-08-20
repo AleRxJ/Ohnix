@@ -5,23 +5,36 @@
 // Flow:
 //  1. Reads requestId from the query string
 //  2. Fetches checkout params from the backend (JWT-authenticated)
-//  3. Dynamically loads the ePayco JS widget and opens it automatically
-//  4. Starts background polling: as soon as the ePayco confirmation webhook
-//     fires and the plan is activated, the page redirects automatically to
-//     /billing/payment-success — no action required from the user.
-//  5. Primary path: ePayco also redirects the browser via EPAYCO_RESPONSE_URL.
+//  3. Dynamically loads the ePayco JS widget and opens it embedded/onpage
+//     (external: "false") so setHooks (onResponse/onClosed) actually fires -
+//     the customer never leaves this page, unlike the old external/Standard
+//     redirect flow.
+//  4. Starts background polling: on a clean success, redirects immediately
+//     to /billing/payment-success. That's the only outcome this poll acts
+//     on by itself - a rejection is deliberately NOT treated as final here,
+//     because ePayco's own onpage widget shows its own "Transacción
+//     Rechazada" screen with a "Reintentar" button, letting the customer
+//     submit a different card in the SAME session. Reacting to that first
+//     attempt would yank the widget away mid-retry.
+//  5. onClosed is what actually decides "this checkout is over": if the
+//     widget never reported any result at all, it self-reports the
+//     abandonment (so a genuinely-abandoned checkout doesn't sit blocking
+//     retries for the full 48h paymentStatus-pending backstop); otherwise
+//     (closed after at least one real attempt, retried or not) it hands off
+//     to /billing/payment-success, which shows whatever the current truth
+//     actually is.
 
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Spin } from "antd";
 import { subscriptionService } from "../services/subscriptionService";
+import { api } from "../api/api";
 import useI18n from "../hooks/useI18n";
 
 const EPAYCO_SCRIPT_URL = "https://checkout.epayco.co/checkout.js";
 const EPAYCO_SCRIPT_ID = "epayco-checkout-script";
 
 const POLL_INTERVAL_MS = 4000;
-const POLL_MAX_ATTEMPTS = 23; // ~92 s total
 
 const EpaycoCheckout = () => {
     const [searchParams] = useSearchParams();
@@ -36,11 +49,13 @@ const EpaycoCheckout = () => {
 
     const handlerRef = useRef(null);
     const pollTimerRef = useRef(null);
-    const pollCountRef = useRef(0);
-    // Set the moment ePayco reports any transaction result (onResponse) -
-    // lets onClosed tell a genuine abandonment ("closed with nothing ever
-    // reported") apart from the normal "closed right after completing"
-    // case, where onClosed also fires per ePayco's docs.
+    // True once ePayco has told us ANYTHING at all - onResponse firing (even
+    // for a rejected attempt the customer might still retry within the same
+    // widget session), the poll below catching a completed activation, or an
+    // explicit "Cancelar y volver" click. onClosed uses this to tell a real
+    // abandonment (never got any result) apart from the widget concluding
+    // after a real attempt - see onClosed below for why that distinction,
+    // not this poll, is what actually decides when the checkout is done.
     const gotResponseRef = useRef(false);
 
     const stopPolling = () => {
@@ -54,21 +69,35 @@ const EpaycoCheckout = () => {
     const startPolling = (rid) => {
         if (!rid) return;
         setPolling(true);
-        pollCountRef.current = 0;
 
         const tick = async () => {
-            if (pollCountRef.current >= POLL_MAX_ATTEMPTS) {
-                setPolling(false);
-                return;
-            }
-            pollCountRef.current += 1;
+            // No upper bound on how long this keeps polling while the page
+            // stays open. It used to give up after ~92s and either strand
+            // the customer or (in an earlier version of this fix) navigate
+            // them away on a definite rejection - both wrong once you
+            // account for ePayco's own onpage widget having its own
+            // multi-attempt retry flow: a rejected card shows ePayco's own
+            // "Transacción Rechazada" screen with a "Reintentar" button
+            // (confirmed against a real test), letting the customer submit
+            // a second, different card in the SAME widget session. Reacting
+            // to that first attempt's rejection - whether by navigating
+            // away outright or by treating a stale poll count as "done" -
+            // would yank the still-open widget out from under someone
+            // mid-retry. onClosed (below) is the only reliable "the whole
+            // session is actually over" signal; this poll's only job is to
+            // catch a clean SUCCESS as early as possible, not to guess when
+            // to give up.
 
             try {
                 const res = await subscriptionService.getUpgradeCheckoutStatus(rid);
                 const { request, targetPlanActive } = res?.data || {};
 
                 if (request?.status === "closed" && targetPlanActive) {
-                    // Plan activated — redirect to success automatically
+                    // Plan activated — redirect to success automatically.
+                    // Success is always final (no retry flow applies once
+                    // paid), so this is the one outcome safe to act on
+                    // immediately instead of waiting for onClosed.
+                    gotResponseRef.current = true;
                     navigate(
                         `/billing/payment-success?requestId=${encodeURIComponent(rid)}`,
                         { replace: true }
@@ -122,28 +151,60 @@ const EpaycoCheckout = () => {
                     // onpage implementation type, not "external"/Standard.
                     if (typeof handler.setHooks === "function") {
                         handler.setHooks({
-                            onResponse: () => {
+                            onResponse: (response) => {
                                 gotResponseRef.current = true;
+                                // ePayco's docs don't pin down this callback's
+                                // exact field names, so check every plausible
+                                // one defensively - reportEpaycoTransactionReference
+                                // is a no-op if this is empty/wrong, never
+                                // harmful either way.
+                                const refPayco =
+                                    response?.x_ref_payco ||
+                                    response?.ref_payco ||
+                                    response?.data?.x_ref_payco ||
+                                    response?.data?.ref_payco ||
+                                    "";
+                                if (refPayco) {
+                                    subscriptionService
+                                        .reportEpaycoTransactionReference(requestId, refPayco)
+                                        .catch(() => {});
+                                }
                             },
                             onClosed: () => {
-                                if (!isMounted || gotResponseRef.current) {
-                                    // Either unmounted, or the widget already
-                                    // reported a real result before closing
-                                    // (e.g. a completed payment) - let the
-                                    // existing polling below keep handling
-                                    // that the same way it always has.
+                                if (!isMounted) return;
+
+                                if (!gotResponseRef.current) {
+                                    // Closed with no transaction result ever
+                                    // reported - a real abandonment. Best-effort:
+                                    // if this fails, the 48h backstop in
+                                    // resolvePendingPaymentStatus still applies,
+                                    // so nothing is lost, just slower.
+                                    subscriptionService
+                                        .reportEpaycoCheckoutClosed(requestId)
+                                        .catch(() => {});
+                                    stopPolling();
+                                    navigate("/billing");
                                     return;
                                 }
-                                // Closed with no transaction result ever
-                                // reported - a real abandonment. Best-effort:
-                                // if this fails, the 48h backstop in
-                                // resolvePendingPaymentStatus still applies,
-                                // so nothing is lost, just slower.
-                                subscriptionService
-                                    .reportEpaycoCheckoutClosed(requestId)
-                                    .catch(() => {});
+
+                                // The widget concluded after at least one real
+                                // attempt - whether that means a rejection the
+                                // customer chose not to retry, ePayco's own
+                                // 10s auto-close after showing a result, or a
+                                // retry that already succeeded. This is the
+                                // one reliable "the whole session is actually
+                                // over" signal (see the long comment in tick()
+                                // above for why the poll itself must not act
+                                // on an interim rejection - the customer may
+                                // still be mid-retry with a different card).
+                                // Hand off to PaymentSuccess.jsx, whose own
+                                // poll re-checks paymentStatus and renders
+                                // whatever the current truth actually is.
                                 stopPolling();
-                                navigate("/billing");
+                                navigate(
+                                    `/billing/payment-success?requestId=${encodeURIComponent(requestId)}`,
+                                    { replace: true }
+                                );
                             },
                         });
                     }
@@ -213,6 +274,45 @@ const EpaycoCheckout = () => {
         };
     }, [requestId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Independent, SDK-agnostic fallback for real abandonment: whether or
+    // not ePayco's own onClosed hook exists/fires in this widget version
+    // (unverified - see EpaycoCheckout.jsx's module comment), the browser
+    // itself always fires pagehide when the customer actually leaves this
+    // page (closes the tab, hits back, types a new URL) with nothing
+    // resolved yet. A normal axios/fetch call gets killed mid-flight during
+    // page teardown, so this uses sendBeacon - built exactly for "fire this
+    // request even as the page unloads". No body/headers needed: the
+    // endpoint only reads :id from the URL, and sendBeacon still carries
+    // the session cookie cross-origin the same way api.js's
+    // withCredentials does for every other request.
+    useEffect(() => {
+        const reportAbandonmentViaBeacon = () => {
+            if (gotResponseRef.current || !requestId) return;
+            if (typeof navigator === "undefined" || typeof navigator.sendBeacon !== "function") return;
+            navigator.sendBeacon(
+                `${api.defaults.baseURL}/subscriptions/me/upgrade-requests/${requestId}/epayco-checkout-closed`
+            );
+        };
+
+        window.addEventListener("pagehide", reportAbandonmentViaBeacon);
+        return () => window.removeEventListener("pagehide", reportAbandonmentViaBeacon);
+    }, [requestId]);
+
+    // Explicit "Cancelar y volver" click - the clearest possible abandonment
+    // signal there is, so report it immediately instead of leaving it to
+    // onClosed/pagehide to eventually notice. Marking gotResponseRef here
+    // too keeps those other two paths from redundantly reporting it again
+    // (harmless either way since the backend call is idempotent, but no
+    // reason to fire it three times for one cancellation).
+    const handleCancelAndReturn = () => {
+        gotResponseRef.current = true;
+        if (requestId) {
+            subscriptionService.reportEpaycoCheckoutClosed(requestId).catch(() => {});
+        }
+        stopPolling();
+        navigate("/billing");
+    };
+
     if (error) {
         return (
             <div className="min-h-screen bg-[var(--ohnix-bg-alt)] text-[var(--ohnix-text-primary)] flex flex-col items-center justify-center gap-5 px-4">
@@ -243,7 +343,7 @@ const EpaycoCheckout = () => {
                         </span>
                     </p>
                     <button
-                        onClick={() => navigate("/billing")}
+                        onClick={handleCancelAndReturn}
                         className="mt-2 text-xs text-[var(--ohnix-text-muted)] underline hover:text-[var(--ohnix-text-primary)] transition-colors"
                     >
                         Cancelar y volver
@@ -267,7 +367,7 @@ const EpaycoCheckout = () => {
                     )}
 
                     <button
-                        onClick={() => { stopPolling(); navigate("/billing"); }}
+                        onClick={handleCancelAndReturn}
                         className="text-xs text-[#6b7a80] underline hover:text-[var(--ohnix-text-primary)] transition-colors"
                     >
                         Cancelar y volver
