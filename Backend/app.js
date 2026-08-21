@@ -125,6 +125,7 @@ import apiKeyRouter from "./routes/apiKey.routes.js";
 import publicApiRouter from "./routes/publicApi.routes.js";
 import teamRouter from "./routes/team.routes.js";
 import pointOfSaleRouter from "./routes/pointOfSale.routes.js";
+import stockTransferRouter from "./routes/stockTransfer.routes.js";
 import tutorialDataRouter from "./routes/tutorialData.routes.js";
 import systemSettingsRouter from "./routes/systemSettings.routes.js";
 
@@ -148,6 +149,7 @@ app.use("/api/v1/api-keys", apiKeyRouter);
 app.use("/api/v1/public", publicApiRouter);
 app.use("/api/v1", teamRouter);
 app.use("/api/v1", pointOfSaleRouter);
+app.use("/api/v1/stock-transfers", stockTransferRouter);
 app.use("/api/v1/tutorial-data", tutorialDataRouter);
 app.use("/api/v1/system-settings", systemSettingsRouter);
 

@@ -152,26 +152,27 @@ model User {
   subscription      Subscription?
   company           Company?      @relation(fields: [companyId], references: [id])
 
-  categoriesCreated     Category[]           @relation("CategoryCreatedBy")
-  categoriesUpdated     Category[]           @relation("CategoryUpdatedBy")
-  unitsCreated          Unit[]               @relation("UnitCreatedBy")
-  unitsUpdated          Unit[]               @relation("UnitUpdatedBy")
-  productsCreated       Product[]            @relation("ProductCreatedBy")
-  productsUpdated       Product[]            @relation("ProductUpdatedBy")
-  customers             Customer[]
-  suppliers             Supplier[]
-  purchasesCreated      Purchase[]           @relation("PurchaseCreatedBy")
-  purchasesUpdated      Purchase[]           @relation("PurchaseUpdatedBy")
-  ordersCreated         Order[]              @relation("OrderCreatedBy")
-  ordersUpdated         Order[]              @relation("OrderUpdatedBy")
-  planUpgradeRequests   PlanUpgradeRequest[]
-  apiKeys               ApiKey[]
-  stockMovementsCreated StockMovement[]      @relation("StockMovementCreatedBy")
+  categoriesCreated       Category[]           @relation("CategoryCreatedBy")
+  categoriesUpdated       Category[]           @relation("CategoryUpdatedBy")
+  unitsCreated            Unit[]               @relation("UnitCreatedBy")
+  unitsUpdated            Unit[]               @relation("UnitUpdatedBy")
+  productsCreated         Product[]            @relation("ProductCreatedBy")
+  productsUpdated         Product[]            @relation("ProductUpdatedBy")
+  customers               Customer[]
+  suppliers               Supplier[]
+  purchasesCreated        Purchase[]           @relation("PurchaseCreatedBy")
+  purchasesUpdated        Purchase[]           @relation("PurchaseUpdatedBy")
+  ordersCreated           Order[]              @relation("OrderCreatedBy")
+  ordersUpdated           Order[]              @relation("OrderUpdatedBy")
+  planUpgradeRequests     PlanUpgradeRequest[]
+  apiKeys                 ApiKey[]
+  stockMovementsCreated   StockMovement[]      @relation("StockMovementCreatedBy")
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
   // (starter/growth without a Team row) still need exactly one default
   // location - see PointOfSale below.
-  pointsOfSaleOwned     PointOfSale[]        @relation("PointOfSaleAccount")
+  pointsOfSaleOwned       PointOfSale[]        @relation("PointOfSaleAccount")
+  stockTransfersRequested StockTransfer[]      @relation("StockTransferRequestedBy")
 
   // Teams: a user is either a team owner (ownedTeam), a member of exactly one
   // active team at a time (via TeamMember, enforced in team.service.js - not
@@ -531,6 +532,7 @@ model Product {
   purchaseDetails PurchaseDetail[]
   stockMovements  StockMovement[]
   locationStock   ProductLocationStock[]
+  transfers       StockTransfer[]
 
   @@unique([productCode, createdById])
   @@index([createdById])
@@ -561,6 +563,76 @@ model ProductLocationStock {
   @@unique([productId, pointOfSaleId])
   @@index([pointOfSaleId])
   @@map("product_location_stock")
+}
+
+enum StockTransferStatus {
+  requested
+  approved
+  in_transit
+  received
+  cancelled
+}
+
+// A movement of one product between two of the account's locations,
+// tracked through its own lifecycle rather than as a single instantaneous
+// event - see the 2026-08-21 multi-location inventory spec. Stock only
+// actually moves at two of the five states: approved -> in_transit claims
+// quantitySent from fromPointOfSale's ProductLocationStock (the same
+// atomic-claim guard as every other stock decrement - see
+// stockTransfer.service.js), and in_transit -> received credits
+// quantityReceived (not necessarily quantitySent - see discrepancy below)
+// to toPointOfSale's. Between those two transitions the quantity is
+// neither location's available stock: it's "in transit", computed as
+// SUM(quantitySent) over in_transit rows destined for a location (see
+// productLocationStock.service.js#getLocationStockSummary) rather than
+// stored as a separate counter anywhere, so it can never drift from the
+// transfers that actually produced it.
+//
+// isQuickTransfer collapses all four state transitions into one atomic
+// step for a move that already happened physically and doesn't need the
+// request/approve/ship workflow (stockTransfer.service.js#quickTransfer) -
+// it still produces a full StockTransfer row (status jumps straight to
+// received, quantityReceived = quantitySent, every *At timestamp equal) so
+// it's traceable exactly like a workflowed transfer, never a shortcut that
+// skips the ledger.
+model StockTransfer {
+  id                String              @id @default(cuid())
+  accountId         String              @map("account_id")
+  productId         String              @map("product_id")
+  fromPointOfSaleId String              @map("from_point_of_sale_id")
+  toPointOfSaleId   String              @map("to_point_of_sale_id")
+  quantitySent      Int                 @map("quantity_sent")
+  // Null until received - filled in from the caller's count at receipt
+  // time, which is allowed to differ from quantitySent (see the model
+  // comment's "discrepancy" note). Never defaults to quantitySent on
+  // receive; the receiving side must state what actually arrived.
+  quantityReceived  Int?                @map("quantity_received")
+  status            StockTransferStatus @default(requested)
+  isQuickTransfer   Boolean             @default(false) @map("is_quick_transfer")
+  notes             String?             @db.Text
+  cancelReason      String?             @map("cancel_reason") @db.Text
+
+  requestedById String    @map("requested_by")
+  requestedAt   DateTime  @default(now()) @map("requested_at")
+  approvedById  String?   @map("approved_by")
+  approvedAt    DateTime? @map("approved_at")
+  sentById      String?   @map("sent_by")
+  sentAt        DateTime? @map("sent_at")
+  receivedById  String?   @map("received_by")
+  receivedAt    DateTime? @map("received_at")
+  cancelledById String?   @map("cancelled_by")
+  cancelledAt   DateTime? @map("cancelled_at")
+
+  product         Product     @relation(fields: [productId], references: [id])
+  fromPointOfSale PointOfSale @relation("StockTransferFrom", fields: [fromPointOfSaleId], references: [id])
+  toPointOfSale   PointOfSale @relation("StockTransferTo", fields: [toPointOfSaleId], references: [id])
+  requestedBy     User        @relation("StockTransferRequestedBy", fields: [requestedById], references: [id])
+
+  @@index([accountId, status])
+  @@index([productId])
+  @@index([fromPointOfSaleId, status])
+  @@index([toPointOfSaleId, status])
+  @@map("stock_transfers")
 }
 
 // The append-only ledger behind every Product.stock change. `stock` itself
@@ -944,14 +1016,31 @@ model TeamMemberPointOfSale {
 // somewhere to point. Escala is what allows an account to create more than
 // one - enforced by PLAN_LIMITS.maxPointsOfSale (pricing.middleware.js), not
 // by anything in this model itself.
+//
+// The model name/table stayed "PointOfSale" (renaming it would have meant
+// touching every file built on top of it this session for zero functional
+// gain), but it is NOT rigidly a retail counter - `locationType` is what
+// keeps this a general inventory-location concept, per the 2026-08-21
+// multi-location inventory spec: a warehouse or distribution center is a
+// PointOfSale row with locationType != point_of_sale, and everything that
+// scopes by pointOfSaleId (orders, stock, transfers, LIVE rooms) works on
+// it identically. Selling FROM a warehouse isn't blocked at this layer -
+// that's a product/business decision, not a schema one.
+enum LocationType {
+  point_of_sale
+  warehouse
+  distribution_center
+}
+
 model PointOfSale {
-  id        String   @id @default(cuid())
-  accountId String   @map("account_id")
-  name      String
-  isDefault Boolean  @default(false) @map("is_default")
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String       @id @default(cuid())
+  accountId    String       @map("account_id")
+  name         String
+  locationType LocationType @default(point_of_sale) @map("location_type")
+  isDefault    Boolean      @default(false) @map("is_default")
+  isActive     Boolean      @default(true) @map("is_active")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
 
   account        User                    @relation("PointOfSaleAccount", fields: [accountId], references: [id])
   members        TeamMemberPointOfSale[]
@@ -959,6 +1048,8 @@ model PointOfSale {
   purchases      Purchase[]
   stockMovements StockMovement[]
   locationStock  ProductLocationStock[]
+  transfersOut   StockTransfer[]         @relation("StockTransferFrom")
+  transfersIn    StockTransfer[]         @relation("StockTransferTo")
 
   @@index([accountId, isActive])
   @@map("points_of_sale")

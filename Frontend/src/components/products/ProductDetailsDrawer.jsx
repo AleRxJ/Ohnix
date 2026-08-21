@@ -18,6 +18,7 @@ import { useCurrency } from "../../context/CurrencyContext";
 import useI18n from "../../hooks/useI18n";
 import { DEFAULT_LOW_STOCK_THRESHOLD } from "../../utils/productUtils";
 import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
+import LocationStockPanel from "./LocationStockPanel";
 
 const SOURCE_LABEL_KEYS = {
     purchase: "products.movement_purchase",
@@ -292,6 +293,8 @@ const ProductDetailsDrawer = ({
                         )}
                     </div>
                 </div>
+
+                <LocationStockPanel product={product} />
 
                 <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
                     <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)]">

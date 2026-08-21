@@ -9,14 +9,15 @@ import { recordStockMovement } from "../services/stockMovement.service.js";
 import {
     claimLocationStock,
     creditLocationStock,
-    listLocationStockForProduct,
-    transferStock,
+    getLocationStockSummary,
 } from "../services/productLocationStock.service.js";
+import { quickTransfer } from "../services/stockTransfer.service.js";
+import { mapStockTransfer } from "./stockTransfer.controller.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { getColombiaTaxSettings } from "../utils/systemSettings.js";
 import { emitAccountEvent, emitPosEvent } from "../live/dataEvents.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
-import { resolveOrAssertPointOfSaleId, hasPosAccess, assertPosAccess } from "../middleware/pos.permissions.js";
+import { resolveOrAssertPointOfSaleId, assertPosAccess } from "../middleware/pos.permissions.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -842,21 +843,26 @@ const getProductLocationStock = asyncHandler(async (req, res, next) => {
             );
         }
 
-        const rows = await listLocationStockForProduct(existingProduct.id);
-        const visible = rows.filter(
-            (row) => req.user.role === "admin" || hasPosAccess(req.user, row.pointOfSaleId)
-        );
+        const visibleLocationIds =
+            req.user.role === "admin" || req.user.posScopeAll ? null : req.user.posScopeIds || [];
+        const summary = await getLocationStockSummary(existingProduct.id, existingProduct.createdById, visibleLocationIds);
 
         return res.status(200).json(
             new ApiResponse(
                 200,
-                visible.map((row) => ({
-                    point_of_sale_id: row.pointOfSaleId,
-                    point_of_sale_name: row.pointOfSale.name,
-                    is_default: row.pointOfSale.isDefault,
-                    is_active: row.pointOfSale.isActive,
-                    stock: row.stock,
-                })),
+                {
+                    locations: summary.locations.map((row) => ({
+                        point_of_sale_id: row.pointOfSaleId,
+                        point_of_sale_name: row.name,
+                        location_type: row.locationType,
+                        is_default: row.isDefault,
+                        is_active: row.isActive,
+                        available: row.available,
+                        in_transit: row.inTransit,
+                        total: row.total,
+                    })),
+                    totals: summary.totals,
+                },
                 "Location stock fetched successfully"
             )
         );
@@ -866,9 +872,12 @@ const getProductLocationStock = asyncHandler(async (req, res, next) => {
     }
 });
 
-// Moves stock of one product between two Points of Sale of the same
-// account - see productLocationStock.service.js#transferStock for why this
-// is one atomic operation instead of a decrement + a separate increment.
+// "Traslado rápido" - a move that already happened physically, executed
+// and fully received in one step. See stockTransfer.service.js#quickTransfer
+// for why this still produces a full, traceable StockTransfer row instead
+// of a shortcut that skips the ledger. The multi-step request/approve/
+// ship/receive/cancel workflow lives under /stock-transfers (see
+// stockTransfer.routes.js) - this endpoint only ever does the quick path.
 const transferProductStock = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
     const { from_point_of_sale_id, to_point_of_sale_id, quantity, reason } = req.body || {};
@@ -892,31 +901,18 @@ const transferProductStock = asyncHandler(async (req, res, next) => {
             assertPosAccess(req.user, to_point_of_sale_id);
         }
 
-        const result = await transferStock({
+        const transfer = await quickTransfer({
             accountId: existingProduct.createdById,
             actorId: req.user.actorId,
             productId: existingProduct.id,
             fromPointOfSaleId: from_point_of_sale_id,
             toPointOfSaleId: to_point_of_sale_id,
             quantity: Number(quantity),
-            reason: reason ? String(reason).trim() : null,
+            notes: reason ? String(reason).trim() : null,
         });
 
-        // Two locations changed, not one - a viewer scoped to either side
-        // of the transfer needs to know.
-        emitPosEvent(existingProduct.createdById, from_point_of_sale_id, "product", "stock-changed");
-        emitPosEvent(existingProduct.createdById, to_point_of_sale_id, "product", "stock-changed");
-
         return res.status(200).json(
-            new ApiResponse(
-                200,
-                {
-                    transfer_id: result.transferId,
-                    from_balance: result.fromBalance,
-                    to_balance: result.toBalance,
-                },
-                "Stock transferred successfully"
-            )
+            new ApiResponse(200, mapStockTransfer(transfer), "Stock transferred successfully")
         );
     } catch (error) {
         if (error instanceof ApiError) return next(error);

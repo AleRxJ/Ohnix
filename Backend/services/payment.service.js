@@ -203,7 +203,11 @@ export const resolveCountryConfig = (country) => {
 // currency used for a given country's public pricing/checkout - "cop",
 // "eur", or "usd". Shared by the public pricing endpoint so the number a
 // visitor sees always matches what resolveCountryConfig() would charge them.
-export const getCurrencyForCountry = (country) => resolveCountryConfig(country)?.currency || "usd";
+// Falls back to "cop" (not "usd") when no country was detected/passed -
+// Ohnix's primary market is Colombia, so a failed/blocked geo-IP lookup
+// (ad blockers, timeouts, ipwho.is being down) should default to the price
+// most visitors actually expect instead of silently showing USD.
+export const getCurrencyForCountry = (country) => resolveCountryConfig(country)?.currency || "cop";
 
 export const getAmountForPlanAndCurrency = (targetPlan, currency) => {
     const planConfig = PLAN_ONE_TIME_AMOUNT_BY_CURRENCY[targetPlan];
