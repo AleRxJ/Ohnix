@@ -24,7 +24,11 @@ const SOURCE_LABEL_KEYS = {
     purchase_return: "products.movement_purchase_return",
     order: "products.movement_order",
     order_cancellation: "products.movement_order_cancellation",
+    order_return: "products.movement_order_return",
+    credit_note_restock: "products.movement_credit_note_restock",
     adjustment: "products.movement_adjustment",
+    transfer_out: "products.movement_transfer_out",
+    transfer_in: "products.movement_transfer_in",
 };
 
 const { Text, Title } = Typography;

@@ -130,11 +130,11 @@ export const useProducts = () => {
         }
     };
 
-    const adjustStock = async (productId, { delta, reason }) => {
+    const adjustStock = async (productId, { delta, reason, pointOfSaleId }) => {
         try {
             const response = await api.post(
                 `/products/${productId}/adjust-stock`,
-                { delta, reason },
+                { delta, reason, ...(pointOfSaleId ? { pointOfSaleId } : {}) },
                 idempotencyHeaders()
             );
 
@@ -165,6 +165,39 @@ export const useProducts = () => {
             console.error("Fetch stock movements error:", err);
             toast.error(t("products.failed_load_stock_movements"));
             return [];
+        }
+    };
+
+    const fetchLocationStock = async (productId) => {
+        try {
+            const response = await api.get(`/products/${productId}/location-stock`);
+            if (response.data.success) {
+                return response.data.data;
+            }
+            return [];
+        } catch (err) {
+            console.error("Fetch location stock error:", err);
+            toast.error(t("products.failed_load_location_stock"));
+            return [];
+        }
+    };
+
+    const transferProductStock = async (productId, payload) => {
+        try {
+            const response = await api.post(
+                `/products/${productId}/transfer-stock`,
+                payload,
+                idempotencyHeaders()
+            );
+            if (response.data.success) {
+                toast.success(t("products.transfer_success"));
+                return { success: true, data: response.data.data };
+            }
+        } catch (err) {
+            console.error("Transfer stock error:", err);
+            const errorMessage = err.response?.data?.message || t("products.failed_transfer_stock");
+            toast.error(errorMessage);
+            return { success: false, error: errorMessage };
         }
     };
 
