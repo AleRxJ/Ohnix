@@ -1040,6 +1040,7 @@
     "transfer_success": "Stock transferido correctamente",
     "failed_transfer_stock": "No se pudo transferir el stock",
     "failed_load_location_stock": "No se pudo cargar el stock por punto de venta",
+    "retry_load": "Reintentar",
     "location_column": "Ubicación",
     "location_available": "Disponible",
     "location_in_transit": "En tránsito",

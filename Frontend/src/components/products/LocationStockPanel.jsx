@@ -34,7 +34,18 @@ const LocationStockPanel = ({ product }) => {
     const [pointsOfSale, setPointsOfSale] = useState([]);
     const [summary, setSummary] = useState(null);
     const [transfers, setTransfers] = useState([]);
-    const [loading, setLoading] = useState(true);
+    // Tracked separately from pointsOfSale/loading on purpose: a failed
+    // fetch used to leave pointsOfSale at its initial empty array, which
+    // the render check below read as "this account only has one location"
+    // and hid the whole panel the moment `loading` flipped to false - a
+    // transient network/DB hiccup (Promise.all fires 3 concurrent requests,
+    // and this account's earlier StockTransfer testing already surfaced a
+    // real transient PgBouncer error under concurrent load) made the panel
+    // flash and disappear instead of showing an error. Only "loaded" is
+    // allowed to hide the panel for genuinely having <= 1 location; "error"
+    // keeps whatever was last shown (or a retry prompt on the very first
+    // load) instead of silently vanishing.
+    const [status, setStatus] = useState("loading");
     const [quickOpen, setQuickOpen] = useState(false);
     const [requestOpen, setRequestOpen] = useState(false);
     const [receiveFor, setReceiveFor] = useState(null);
@@ -42,7 +53,7 @@ const LocationStockPanel = ({ product }) => {
 
     const loadAll = useCallback(async () => {
         if (!product?._id) return;
-        setLoading(true);
+        setStatus((prev) => (prev === "loaded" ? prev : "loading"));
         try {
             const [posRes, stockRes, transfersRes] = await Promise.all([
                 pointOfSaleService.list(),
@@ -52,10 +63,10 @@ const LocationStockPanel = ({ product }) => {
             setPointsOfSale((posRes?.data || []).filter((pos) => pos.isActive));
             setSummary(stockRes?.data?.data || null);
             setTransfers(transfersRes?.data || []);
+            setStatus("loaded");
         } catch (err) {
             toast.error(err?.response?.data?.message || t("common.error"));
-        } finally {
-            setLoading(false);
+            setStatus("error");
         }
     }, [product?._id, t]);
 
@@ -118,14 +129,17 @@ const LocationStockPanel = ({ product }) => {
     };
 
     if (!can("multiLocation")) return null;
-    if (!loading && pointsOfSale.length <= 1) return null;
+    // Only hide for genuinely having one location once a load has actually
+    // succeeded and confirmed it - see the `status` state's comment above
+    // for why this can't just be "!loading".
+    if (status === "loaded" && pointsOfSale.length <= 1) return null;
 
     return (
         <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
             <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <SwapOutlined className="text-[#29D8D5]" />
-                    <Text className="text-sm font-bold text-[var(--ohnix-text-primary)]">{t("pointOfSale.location_stock_title")}</Text>
+                    <Text className="text-sm font-bold text-[var(--ohnix-text-primary)]">{t("products.location_stock_title")}</Text>
                 </div>
                 <div className="flex gap-2">
                     <Button size="small" icon={<SendOutlined />} onClick={() => setRequestOpen(true)}>
@@ -138,13 +152,20 @@ const LocationStockPanel = ({ product }) => {
             </div>
 
             <div className="p-5">
-                {loading ? (
+                {status === "loading" ? (
                     <div className="flex justify-center py-6">
                         <Spin size="small" />
                     </div>
+                ) : status === "error" ? (
+                    <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+                        <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.failed_load_location_stock")}</Text>
+                        <Button size="small" onClick={loadAll}>
+                            {t("products.retry_load")}
+                        </Button>
+                    </div>
                 ) : (
                     <>
-                        <Text className="text-xs text-[var(--ohnix-text-dim)] block mb-3">{t("pointOfSale.location_stock_hint")}</Text>
+                        <Text className="text-xs text-[var(--ohnix-text-dim)] block mb-3">{t("products.location_stock_hint")}</Text>
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                                 <thead>

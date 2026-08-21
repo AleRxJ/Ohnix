@@ -154,51 +154,17 @@ export const useProducts = () => {
         }
     };
 
+    // Rethrows on failure rather than swallowing to [] - the only caller
+    // (ProductDetailsDrawer) needs to tell "the fetch failed" apart from
+    // "this product genuinely has no movement history yet", since both
+    // used to render as the exact same empty state. A transient failure
+    // (network blip, or a connection-pool hiccup under concurrent load -
+    // this endpoint is now fetched alongside 3 more when the drawer opens,
+    // see LocationStockPanel) was silently indistinguishable from "no
+    // history" instead of showing a retry.
     const fetchStockMovements = async (productId) => {
-        try {
-            const response = await api.get(`/products/${productId}/stock-movements`);
-            if (response.data.success) {
-                return response.data.data;
-            }
-            return [];
-        } catch (err) {
-            console.error("Fetch stock movements error:", err);
-            toast.error(t("products.failed_load_stock_movements"));
-            return [];
-        }
-    };
-
-    const fetchLocationStock = async (productId) => {
-        try {
-            const response = await api.get(`/products/${productId}/location-stock`);
-            if (response.data.success) {
-                return response.data.data;
-            }
-            return [];
-        } catch (err) {
-            console.error("Fetch location stock error:", err);
-            toast.error(t("products.failed_load_location_stock"));
-            return [];
-        }
-    };
-
-    const transferProductStock = async (productId, payload) => {
-        try {
-            const response = await api.post(
-                `/products/${productId}/transfer-stock`,
-                payload,
-                idempotencyHeaders()
-            );
-            if (response.data.success) {
-                toast.success(t("products.transfer_success"));
-                return { success: true, data: response.data.data };
-            }
-        } catch (err) {
-            console.error("Transfer stock error:", err);
-            const errorMessage = err.response?.data?.message || t("products.failed_transfer_stock");
-            toast.error(errorMessage);
-            return { success: false, error: errorMessage };
-        }
+        const response = await api.get(`/products/${productId}/stock-movements`);
+        return response.data.data || [];
     };
 
     // threshold: a non-negative integer, or null to clear it on all selected

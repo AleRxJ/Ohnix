@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { Drawer, Image, Typography, Divider, Tag, Spin } from "antd";
+import React, { useCallback, useEffect, useState } from "react";
+import { Drawer, Image, Typography, Divider, Tag, Spin, Button } from "antd";
+import toast from "react-hot-toast";
 import {
     TagOutlined,
     InboxOutlined,
@@ -46,26 +47,52 @@ const ProductDetailsDrawer = ({
     const { formatCurrency } = useCurrency();
     const { t, currentLanguage } = useI18n();
     const [movements, setMovements] = useState([]);
-    const [movementsLoading, setMovementsLoading] = useState(false);
+    // "idle" | "loading" | "error" | "loaded" - tracked separately from
+    // `movements` itself so a failed fetch can't render as "no movements
+    // yet" (they used to be the same empty array either way - see
+    // fetchStockMovements in useProducts.js, which now rethrows instead of
+    // swallowing to [] specifically so this distinction is possible).
+    const [movementsStatus, setMovementsStatus] = useState("idle");
+
+    const loadMovements = useCallback(
+        (onCancelledRef) => {
+            if (!product?._id || !onFetchStockMovements) return;
+            setMovementsStatus("loading");
+            onFetchStockMovements(product._id)
+                .then((data) => {
+                    if (onCancelledRef.current) return;
+                    setMovements(data || []);
+                    setMovementsStatus("loaded");
+                })
+                .catch((err) => {
+                    if (onCancelledRef.current) return;
+                    console.error("Fetch stock movements error:", err);
+                    toast.error(err?.response?.data?.message || t("products.failed_load_stock_movements"));
+                    setMovementsStatus("error");
+                });
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [product?._id, onFetchStockMovements]
+    );
 
     useEffect(() => {
         if (!visible || !product?._id || !onFetchStockMovements) {
             setMovements([]);
+            setMovementsStatus("idle");
             return;
         }
-        let cancelled = false;
-        setMovementsLoading(true);
-        onFetchStockMovements(product._id).then((data) => {
-            if (!cancelled) {
-                setMovements(data || []);
-                setMovementsLoading(false);
-            }
-        });
+        const cancelledRef = { current: false };
+        loadMovements(cancelledRef);
         return () => {
-            cancelled = true;
+            cancelledRef.current = true;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible, product?._id]);
+
+    // Retry button's handler - no cancellation guard needed here since
+    // there's no unmount/dependency-change race to protect against a
+    // manual, one-off retry the way the mount effect above has to.
+    const retryMovements = () => loadMovements({ current: false });
 
     if (!product) return null;
 
@@ -218,9 +245,16 @@ const ProductDetailsDrawer = ({
                         </div>
                     </div>
                     <div className="p-5">
-                        {movementsLoading ? (
+                        {movementsStatus === "loading" ? (
                             <div className="flex justify-center py-6">
                                 <Spin size="small" />
+                            </div>
+                        ) : movementsStatus === "error" ? (
+                            <div className="flex flex-col items-center justify-center gap-3 py-6 text-center">
+                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.failed_load_stock_movements")}</Text>
+                                <Button size="small" onClick={retryMovements}>
+                                    {t("products.retry_load")}
+                                </Button>
                             </div>
                         ) : movements.length === 0 ? (
                             // Not antd's <Empty/> - its default illustration + text use
