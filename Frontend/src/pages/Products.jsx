@@ -188,6 +188,12 @@ const Products = () => {
             if (!editingProduct && isTutorialActive) {
                 formData.append("is_tutorial_data", "true");
             }
+            // Lets the backend reject this save if someone else edited the
+            // same product after this form opened, instead of silently
+            // overwriting their changes - see updateProduct/optimisticConcurrency.js.
+            if (editingProduct?.updatedAt) {
+                formData.append("expected_updated_at", editingProduct.updatedAt);
+            }
 
             const result = editingProduct
                 ? await updateProduct(editingProduct._id, formData)

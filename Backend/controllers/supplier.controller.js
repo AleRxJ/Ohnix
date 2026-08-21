@@ -5,6 +5,7 @@ import { uploadFile, deleteFile } from "../utils/storage.js";
 import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { emitAccountEvent } from "../live/dataEvents.js";
+import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -233,8 +234,10 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
             }
         }
 
-        const updatedSupplier = await prisma.supplier.update({
-            where: { id: existingSupplier.id },
+        const updatedSupplier = await updateWithConflictCheck({
+            model: prisma.supplier,
+            id: existingSupplier.id,
+            expectedUpdatedAt: parseExpectedUpdatedAt(req.body.expected_updated_at),
             data: {
                 ...(req.body.name !== undefined && { name: req.body.name.trim() }),
                 ...(req.body.email !== undefined && {
@@ -271,6 +274,7 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
                     },
                 },
             },
+            conflictMessage: "This supplier was changed by someone else. Reload to see the latest version.",
         });
 
         // Fire-and-forget: the old photo is only orphaned once the DB row
@@ -292,6 +296,7 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
+        if (error instanceof ApiError) return next(error);
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
     }

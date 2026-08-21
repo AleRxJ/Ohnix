@@ -9,6 +9,10 @@ const DELETE_PRODUCT_ERROR_CODES = {
     product_has_history: "products.delete_conflict_history",
 };
 
+const STALE_EDIT_ERROR_CODES = {
+    stale_edit_conflict: "common.stale_edit_conflict",
+};
+
 export const useProducts = () => {
     const { t } = useI18n();
     const [products, setProducts] = useState([]);
@@ -90,8 +94,12 @@ export const useProducts = () => {
             }
         } catch (err) {
             console.error("Update product error:", err);
-            const errorMessage =
-                err.response?.data?.message || t("products.failed_update_product");
+            const errorMessage = resolveApiErrorMessage(
+                err,
+                t,
+                STALE_EDIT_ERROR_CODES,
+                "products.failed_update_product"
+            );
             toast.error(errorMessage);
             return { success: false, error: errorMessage };
         }

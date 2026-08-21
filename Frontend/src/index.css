@@ -1784,6 +1784,16 @@ textarea.ant-input[disabled] {
                     background-color: rgba(41, 216, 213, 0.08) !important;
                 }
 
+                /* antd paints the summary row's own <td> cells with an opaque
+                   theme background (needed for its sticky-on-scroll behavior),
+                   which sits on top of and hides whatever background is set on
+                   Table.Summary.Row - so the summary row needs its own
+                   override here, not just a className on the row. */
+                .return-preview-table .ant-table-summary > tr > td {
+                    background: var(--ohnix-line-1) !important;
+                    border-top: 1px solid var(--ohnix-line-3);
+                }
+
                 @media (max-width: 768px) {
                     .return-preview-modal .ant-modal-body {
                         padding: 16px;

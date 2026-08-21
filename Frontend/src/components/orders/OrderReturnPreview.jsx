@@ -222,7 +222,7 @@ const OrderReturnPreview = ({ visible, onCancel, onSubmit, returnPreviewData, su
                         className="return-preview-table module-dark-table"
                         summary={() => (
                             <Table.Summary fixed>
-                                <Table.Summary.Row className="bg-[var(--ohnix-line-1)]">
+                                <Table.Summary.Row>
                                     <Table.Summary.Cell index={0} colSpan={5}>
                                         <div className="text-right">
                                             <Text strong className="!text-[var(--ohnix-text-primary)]">

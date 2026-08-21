@@ -36,8 +36,14 @@ const CategorySection = ({ user, isAdmin, categoryHook }) => {
     const handleSubmit = async (values) => {
         setSubmitting(true);
         try {
+            // Lets the backend reject this save if someone else edited the
+            // same category after this form opened, instead of silently
+            // overwriting their changes.
             const result = editingCategory
-                ? await updateCategory(editingCategory._id, values)
+                ? await updateCategory(editingCategory._id, {
+                      ...values,
+                      expected_updated_at: editingCategory.updatedAt,
+                  })
                 : await createCategory(values);
 
             if (result?.success) {

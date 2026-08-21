@@ -98,7 +98,9 @@
     "end_date": "Fecha de fin",
     "overview": "Resumen",
     "workflow": "Flujo",
-    "showing_of_items": "{{start}}-{{end}} de {{total}} elementos"
+    "showing_of_items": "{{start}}-{{end}} de {{total}} elementos",
+    "stale_edit_conflict": "Otra persona guardó cambios en esto mientras lo editabas. Recarga para ver la última versión antes de volver a intentarlo.",
+    "reload": "Recargar"
   },
   "customers": {
     "failed_fetch_customers": "No se pudieron cargar los clientes",

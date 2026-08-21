@@ -13,6 +13,7 @@ const DELETE_CATEGORY_ERROR_CODES = {
 
 const SAVE_CATEGORY_ERROR_CODES = {
     category_already_exists: "categories.duplicate_category_message",
+    stale_edit_conflict: "common.stale_edit_conflict",
 };
 
 export const useCategories = () => {

@@ -40,8 +40,14 @@ const UnitSection = ({ user, isAdmin, unitHook }) => {
     const handleSubmit = async (values) => {
         setSubmitting(true);
         try {
+            // Lets the backend reject this save if someone else edited the
+            // same unit after this form opened, instead of silently
+            // overwriting their changes.
             const result = editingUnit
-                ? await updateUnit(editingUnit._id, values)
+                ? await updateUnit(editingUnit._id, {
+                      ...values,
+                      expected_updated_at: editingUnit.updatedAt,
+                  })
                 : await createUnit(values);
 
             if (result?.success) {

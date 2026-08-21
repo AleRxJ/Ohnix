@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { emitAccountEvent } from "../live/dataEvents.js";
+import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -278,8 +279,10 @@ const updateCategory = asyncHandler(async (req, res, next) => {
             return next(new ApiError(409, "Category already exists", [], "", "category_already_exists"));
         }
 
-        const updated = await prisma.category.update({
-            where: { id: category.id },
+        const updated = await updateWithConflictCheck({
+            model: prisma.category,
+            id: category.id,
+            expectedUpdatedAt: parseExpectedUpdatedAt(req.body.expected_updated_at),
             data: {
                 categoryName: category_name.trim(),
                 updatedById: req.user.prismaId,
@@ -300,6 +303,7 @@ const updateCategory = asyncHandler(async (req, res, next) => {
                     },
                 },
             },
+            conflictMessage: "This category was changed by someone else. Reload to see the latest version.",
         });
 
         emitAccountEvent(category.createdById, "category", "updated");
@@ -313,6 +317,7 @@ const updateCategory = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
+        if (error instanceof ApiError) return next(error);
         if (error.code === "P2002") {
             return next(new ApiError(409, "Category already exists", [], "", "category_already_exists"));
         }

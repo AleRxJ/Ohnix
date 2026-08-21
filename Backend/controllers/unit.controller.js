@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { emitAccountEvent } from "../live/dataEvents.js";
+import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -217,8 +218,10 @@ const updateUnit = asyncHandler(async (req, res, next) => {
             return next(new ApiError(409, "Unit already exists", [], "", "unit_already_exists"));
         }
 
-        const updated = await prisma.unit.update({
-            where: { id: unit.id },
+        const updated = await updateWithConflictCheck({
+            model: prisma.unit,
+            id: unit.id,
+            expectedUpdatedAt: parseExpectedUpdatedAt(req.body.expected_updated_at),
             data: {
                 unitName: unit_name.trim(),
                 updatedById: req.user.prismaId,
@@ -239,6 +242,7 @@ const updateUnit = asyncHandler(async (req, res, next) => {
                     },
                 },
             },
+            conflictMessage: "This unit was changed by someone else. Reload to see the latest version.",
         });
 
         emitAccountEvent(unit.createdById, "unit", "updated");
@@ -246,6 +250,7 @@ const updateUnit = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, mapUnit(updated), "Unit updated successfully"));
     } catch (error) {
+        if (error instanceof ApiError) return next(error);
         if (error.code === "P2002") {
             return next(new ApiError(409, "Unit already exists", [], "", "unit_already_exists"));
         }

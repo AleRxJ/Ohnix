@@ -9,6 +9,7 @@ import { recordStockMovement } from "../services/stockMovement.service.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { getColombiaTaxSettings } from "../utils/systemSettings.js";
 import { emitAccountEvent } from "../live/dataEvents.js";
+import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -508,8 +509,10 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             return next(new ApiError(400, "Selling price must be >= buying price"));
         }
 
-        const product = await prisma.product.update({
-            where: { id: existingProduct.id },
+        const product = await updateWithConflictCheck({
+            model: prisma.product,
+            id: existingProduct.id,
+            expectedUpdatedAt: parseExpectedUpdatedAt(updateData.expected_updated_at),
             data: payload,
             include: {
                 category: {
@@ -525,6 +528,7 @@ const updateProduct = asyncHandler(async (req, res, next) => {
                     select: { id: true, legacyMongoId: true, username: true },
                 },
             },
+            conflictMessage: "This product was changed by someone else. Reload to see the latest version.",
         });
 
         // Fire-and-forget: the old image is only orphaned once the DB row
@@ -540,6 +544,7 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, mapProduct(product), "Product updated successfully"));
     } catch (error) {
+        if (error instanceof ApiError) return next(error);
         if (error.code === "P2002") {
             return next(new ApiError(409, "Product with this code already exists"));
         }

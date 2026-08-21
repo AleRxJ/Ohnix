@@ -13,6 +13,7 @@ const DELETE_UNIT_ERROR_CODES = {
 
 const SAVE_UNIT_ERROR_CODES = {
     unit_already_exists: "units.duplicate_unit_message",
+    stale_edit_conflict: "common.stale_edit_conflict",
 };
 
 export const useUnits = () => {

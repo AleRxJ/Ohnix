@@ -98,7 +98,9 @@
     "end_date": "End Date",
     "overview": "Overview",
     "workflow": "Workflow",
-    "showing_of_items": "{{start}}-{{end}} of {{total}} items"
+    "showing_of_items": "{{start}}-{{end}} of {{total}} items",
+    "stale_edit_conflict": "Someone else saved changes to this while you were editing it. Reload to see the latest version before trying again.",
+    "reload": "Reload"
   },
   "customers": {
     "failed_fetch_customers": "Failed to load customers",
