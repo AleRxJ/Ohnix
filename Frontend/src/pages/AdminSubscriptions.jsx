@@ -429,7 +429,7 @@ const AdminSubscriptions = () => {
                 </span>
             ),
             children: (
-                <div className="module-shell rounded-3xl p-4 sm:p-5">
+                <div>
                     <div className="mb-3 flex justify-end">
                         <Button
                             icon={<ReloadOutlined />}
@@ -526,7 +526,7 @@ const AdminSubscriptions = () => {
                 </span>
             ),
             children: (
-                <div className="module-shell rounded-3xl p-4 sm:p-5">
+                <div>
                     <div className="mb-3 flex justify-end">
                         <Button
                             icon={<ReloadOutlined />}
@@ -645,7 +645,9 @@ const AdminSubscriptions = () => {
                 icon={<CrownOutlined />}
             />
 
-            <Tabs className="admin-tabs" items={tabItems} defaultActiveKey="subscriptions" />
+            <div className="module-shell rounded-3xl p-4 sm:p-5">
+                <Tabs className="admin-tabs" items={tabItems} defaultActiveKey="subscriptions" />
+            </div>
 
             <ManageSubscriptionModal
                 target={manageTarget}

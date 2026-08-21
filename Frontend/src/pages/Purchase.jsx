@@ -14,6 +14,7 @@ const Purchase = () => {
         returnPreviewData,
         stats,
         updatingPurchaseId,
+        returnPreviewLoadingId,
 
         // Actions
         createPurchase,
@@ -34,6 +35,7 @@ const Purchase = () => {
             onUpdateStatus={updatePurchaseStatus}
             onProcessReturn={processReturn}
             updatingPurchaseId={updatingPurchaseId}
+            returnPreviewLoadingId={returnPreviewLoadingId}
             onFetchPurchaseDetails={fetchPurchaseDetails}
             onFetchReturnPreview={fetchReturnPreview}
             purchaseDetails={purchaseDetails}

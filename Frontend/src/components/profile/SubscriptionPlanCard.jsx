@@ -521,46 +521,6 @@ const SubscriptionPlanCard = ({
                             </Popconfirm>
                         ) : null}
 
-                        {/* "Bajar de plan": only offered when there's an active
-                            paid period to keep through (mirrors the cancel
-                            button's planEndsAt guard), nothing already
-                            scheduled, and at least one lower plan exists. Stays
-                            an active paying customer on the lower tier at
-                            endsAt - not the same as cancel above, which stops
-                            billing entirely. */}
-                        {planEndsAt && !cancelAtPeriodEnd && !scheduledPlan && downgradeOptions.length > 0 && onDowngrade && (
-                            <div className="flex items-center gap-1.5">
-                                <Select
-                                    size="middle"
-                                    placeholder={t("profile.subscription.downgrade_select_placeholder")}
-                                    value={downgradeTarget}
-                                    onChange={setDowngradeTarget}
-                                    disabled={isBusy}
-                                    className="w-40"
-                                    options={downgradeOptions.map((key) => ({
-                                        value: key,
-                                        label: t(`profile.subscription.plan_${key}`),
-                                    }))}
-                                />
-                                <Popconfirm
-                                    title={t("profile.subscription.confirm_downgrade", {
-                                        plan: downgradeTarget ? t(`profile.subscription.plan_${downgradeTarget}`) : "",
-                                    })}
-                                    okText={t("common.yes")}
-                                    cancelText={t("common.no")}
-                                    disabled={isBusy || !downgradeTarget}
-                                    onConfirm={() => onDowngrade(downgradeTarget)}
-                                >
-                                    <Button
-                                        disabled={isBusy || !downgradeTarget}
-                                        className="h-10 rounded-xl border-[var(--ohnix-line-6)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-primary)] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
-                                    >
-                                        {t("profile.subscription.downgrade_confirm_button")}
-                                    </Button>
-                                </Popconfirm>
-                            </div>
-                        )}
-
                         <Button
                             icon={<RocketOutlined />}
                             onClick={onRequestUpgrade}
@@ -574,6 +534,55 @@ const SubscriptionPlanCard = ({
 
                         <div className="flex items-center justify-center rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 text-xs text-[var(--ohnix-text-muted)]">
                             {t("profile.subscription.support_note")}
+                        </div>
+                    </div>
+                )}
+
+                {/* "Bajar de plan": only offered when there's an active paid
+                    period to keep through (mirrors the cancel button's
+                    planEndsAt guard), nothing already scheduled, and at
+                    least one lower plan exists. Stays an active paying
+                    customer on the lower tier at endsAt - not the same as
+                    cancel above, which stops billing entirely. Its own
+                    panel (not a slot in the button grid above) to match
+                    how ManageSubscriptionModal.jsx lays out its
+                    picker-plus-confirm controls ("Cambiar plan",
+                    "Extender suscripción") - a Select+Button combo doesn't
+                    fit a grid cell sized for one plain button. */}
+                {!compact && !trialExpired && planEndsAt && !cancelAtPeriodEnd && !scheduledPlan && downgradeOptions.length > 0 && onDowngrade && (
+                    <div className="mt-3 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                        <Text className="text-xs uppercase tracking-[0.18em] text-[var(--ohnix-text-muted)]">
+                            {t("profile.subscription.downgrade_panel_title")}
+                        </Text>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Select
+                                size="middle"
+                                placeholder={t("profile.subscription.downgrade_select_placeholder")}
+                                value={downgradeTarget}
+                                onChange={setDowngradeTarget}
+                                disabled={isBusy}
+                                className="min-w-[180px]"
+                                options={downgradeOptions.map((key) => ({
+                                    value: key,
+                                    label: t(`profile.subscription.plan_${key}`),
+                                }))}
+                            />
+                            <Popconfirm
+                                title={t("profile.subscription.confirm_downgrade", {
+                                    plan: downgradeTarget ? t(`profile.subscription.plan_${downgradeTarget}`) : "",
+                                })}
+                                okText={t("common.yes")}
+                                cancelText={t("common.no")}
+                                disabled={isBusy || !downgradeTarget}
+                                onConfirm={() => onDowngrade(downgradeTarget)}
+                            >
+                                <Button
+                                    disabled={isBusy || !downgradeTarget}
+                                    className="h-10 rounded-xl border-[var(--ohnix-line-6)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-primary)] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
+                                >
+                                    {t("profile.subscription.downgrade_confirm_button")}
+                                </Button>
+                            </Popconfirm>
                         </div>
                     </div>
                 )}

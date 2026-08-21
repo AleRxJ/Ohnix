@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
+import { emitAccountEvent } from "../live/dataEvents.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -99,10 +100,16 @@ const createUnit = asyncHandler(async (req, res, next) => {
             },
         });
 
+        emitAccountEvent(req.user.prismaId, "unit", "created");
         return res
             .status(201)
             .json(new ApiResponse(201, mapUnit(created), "Unit created successfully"));
     } catch (error) {
+        // The findFirst check above is a read-then-write race - this is the
+        // actual guard (see units_unit_name_created_by_key).
+        if (error.code === "P2002") {
+            return next(new ApiError(409, "Unit already exists", [], "", "unit_already_exists"));
+        }
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
     }
@@ -234,10 +241,14 @@ const updateUnit = asyncHandler(async (req, res, next) => {
             },
         });
 
+        emitAccountEvent(unit.createdById, "unit", "updated");
         return res
             .status(200)
             .json(new ApiResponse(200, mapUnit(updated), "Unit updated successfully"));
     } catch (error) {
+        if (error.code === "P2002") {
+            return next(new ApiError(409, "Unit already exists", [], "", "unit_already_exists"));
+        }
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
     }
@@ -261,6 +272,7 @@ const deleteUnit = asyncHandler(async (req, res, next) => {
 
         await prisma.unit.delete({ where: { id: unit.id } });
 
+        emitAccountEvent(unit.createdById, "unit", "deleted");
         return res
             .status(200)
             .json(new ApiResponse(200, {}, "Unit deleted successfully"));

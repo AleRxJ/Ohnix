@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
+import { useDataInvalidation } from "../useDataInvalidation";
 
 const DELETE_UNIT_ERROR_CODES = {
     unit_has_products: "units.delete_conflict_products",
@@ -60,6 +61,10 @@ export const useUnits = () => {
     useEffect(() => {
         loadUnitsInternal();
     }, []); // Empty dependency array - only run once
+
+    // Another connected user (or this same one, another tab) creating,
+    // renaming, or deleting a unit.
+    useDataInvalidation("unit", loadUnits);
 
     const createUnit = useCallback(
         async (values) => {

@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
+import { emitAccountEvent } from "../live/dataEvents.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -101,6 +102,7 @@ const createCategory = asyncHandler(async (req, res, next) => {
             },
         });
 
+        emitAccountEvent(creatorId, "category", "created");
         return res
             .status(201)
             .json(
@@ -111,6 +113,11 @@ const createCategory = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
+        // The findFirst check above is a read-then-write race - this is the
+        // actual guard (see categories_category_name_created_by_key).
+        if (error.code === "P2002") {
+            return next(new ApiError(409, "Category already exists", [], "", "category_already_exists"));
+        }
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
     }
@@ -295,6 +302,7 @@ const updateCategory = asyncHandler(async (req, res, next) => {
             },
         });
 
+        emitAccountEvent(category.createdById, "category", "updated");
         return res
             .status(200)
             .json(
@@ -305,6 +313,9 @@ const updateCategory = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
+        if (error.code === "P2002") {
+            return next(new ApiError(409, "Category already exists", [], "", "category_already_exists"));
+        }
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
     }
@@ -334,6 +345,7 @@ const deleteCategory = asyncHandler(async (req, res, next) => {
 
         await prisma.category.delete({ where: { id: category.id } });
 
+        emitAccountEvent(category.createdById, "category", "deleted");
         return res
             .status(200)
             .json(new ApiResponse(200, {}, "Category deleted successfully"));

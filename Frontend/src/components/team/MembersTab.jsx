@@ -179,7 +179,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
             key: "role",
             render: (_, record) => {
                 if (record.isOwner) {
-                    return <Tag className="border-amber-500/40 bg-amber-500/10 text-amber-300">{t("team.owner_badge")}</Tag>;
+                    return <Tag className="border-amber-500/40 bg-amber-500/10 text-[var(--ohnix-alert-amber-text)]">{t("team.owner_badge")}</Tag>;
                 }
                 const fullRole = roles.find((r) => r.id === record.role?.id);
                 return (

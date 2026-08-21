@@ -7,7 +7,7 @@ import { getStatusIconPurchase } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
 
-const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onViewDetails = () => {}, onUpdateStatus = () => {}, updatingPurchaseId = null, onReturnPreview = () => {} }) => {
+const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onViewDetails = () => {}, onUpdateStatus = () => {}, updatingPurchaseId = null, returnPreviewLoadingId = null, onReturnPreview = () => {} }) => {
     const { t } = useI18n();
     const { hasPermission } = useTeam();
     // Return preview is a read (purchases:view, matches the backend route);
@@ -89,6 +89,7 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
                                 size="small"
                                 danger
                                 disabled={!canEdit}
+                                loading={returnPreviewLoadingId === record._id}
                                 onClick={() => onReturnPreview(record._id)}
                                 data-tour="tour-return-purchase"
                             />

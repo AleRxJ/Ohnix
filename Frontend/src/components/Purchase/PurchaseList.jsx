@@ -25,6 +25,7 @@ import { Form } from "antd";
 import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
 import { useInventoryTour } from "../../context/InventoryTourContext";
+import { useDataInvalidation } from "../../hooks/useDataInvalidation";
 
 const { Title } = Typography;
 
@@ -38,6 +39,7 @@ const PurchaseList = ({
     onUpdateStatus,
     onProcessReturn,
     updatingPurchaseId,
+    returnPreviewLoadingId,
     onFetchPurchaseDetails,
     onFetchReturnPreview,
     purchaseDetails,
@@ -66,6 +68,16 @@ const PurchaseList = ({
         await onFetchReturnPreview(purchaseId);
         setReturnPreviewModalVisible(true);
     };
+
+    // The return-preview snapshot (current stock, pending/returnable qty) was
+    // read once when the modal opened and never touched again while it stays
+    // open - another user returning/adjusting the same product in the
+    // meantime left it showing stale numbers. Re-fetch it live instead.
+    useDataInvalidation(["product", "purchase"], () => {
+        if (returnPreviewModalVisible && selectedPurchase) {
+            onFetchReturnPreview(selectedPurchase._id);
+        }
+    });
 
     const handleCreatePurchase = async (values) => {
         setSubmitting(true);
@@ -175,6 +187,7 @@ const PurchaseList = ({
                             onViewDetails={handleViewDetails}
                             onUpdateStatus={onUpdateStatus}
                             updatingPurchaseId={updatingPurchaseId}
+                            returnPreviewLoadingId={returnPreviewLoadingId}
                             onReturnPreview={handleReturnPreview}
                         />
                     </div>

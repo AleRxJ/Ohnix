@@ -5,6 +5,20 @@ import { getRedisClient } from "../utils/redisClient.js";
 // comments / conversation). One resource can be "locked" for editing by one
 // user at a time; anyone else gets told who holds it and can't acquire it
 // until they release, heartbeat-timeout, or disconnect.
+//
+// This is UI advisory only - reachable exclusively through the
+// lock:acquire/lock:release/lock:heartbeat socket events (see
+// live/socketServer.js), consumed only to render "X is editing this" in a
+// modal. No REST controller checks a lock before writing, on purpose (that
+// would turn a best-effort UI hint into a hard dependency on Redis being up
+// for every mutation). The atomic-claim UPDATE pattern used across
+// product/purchase/order controllers (`stock: {gte: X}` inside a
+// transaction) is what actually keeps concurrent writes safe regardless of
+// whether a lock is held - see the multi-user concurrency audit
+// (2026-08-20). Don't add a server-side lock check here expecting it to
+// prevent a bad write; it can only ever race-condition itself (Redis lock
+// state and Postgres row state are two different systems with no shared
+// transaction).
 const LOCK_TTL_SECONDS = 5 * 60;
 // Suggested client heartbeat cadence - well under LOCK_TTL_SECONDS so a
 // couple of missed beats (flaky connection) don't drop the lock.

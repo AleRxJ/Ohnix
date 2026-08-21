@@ -37,6 +37,7 @@ import { useCurrency } from "../context/CurrencyContext";
 import { subscriptionService } from "../services/subscriptionService";
 import { useTeam } from "../context/TeamContext";
 import { getFirstAccessibleRoute } from "../utils/teamRouting";
+import { useDataInvalidation } from "../hooks/useDataInvalidation";
 
 const { useToken } = theme;
 const { Title, Text } = Typography;
@@ -84,6 +85,15 @@ const Dashboard = () => {
         if (teamLoading || !canSeeDashboard) return;
         fetchDashboardData();
     }, [timeframe, teamLoading, canSeeDashboard]);
+
+    // Another connected user creating/updating a product, order, or
+    // purchase - the dashboard's totals/low-stock list/recent orders are all
+    // aggregated server-side, so a full re-fetch is the only correct way to
+    // keep them current (nothing here can be patched incrementally).
+    useDataInvalidation(["product", "order", "purchase"], () => {
+        if (teamLoading || !canSeeDashboard) return;
+        fetchDashboardData();
+    });
 
     useEffect(() => {
         if (canSeeBilling) fetchSubscriptionSnapshot();

@@ -84,8 +84,8 @@ const RoleFormModal = ({ open, onCancel, onSubmit, submitting, form, editingRole
                 ) : (
                     sharedByCount > 1 && (
                         <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
-                            <TeamOutlined className="mt-0.5 text-amber-300" />
-                            <p className="m-0 text-xs leading-relaxed text-amber-100">
+                            <TeamOutlined className="mt-0.5 text-[var(--ohnix-alert-amber-text)]" />
+                            <p className="m-0 text-xs leading-relaxed text-[var(--ohnix-alert-amber-text)]">
                                 {t("team.shared_role_warning", { count: sharedByCount })}
                             </p>
                         </div>

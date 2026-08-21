@@ -79,7 +79,7 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
                         >
                             <div className="mb-3 flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    {role.isOwnerRole && <CrownOutlined className="text-amber-300" />}
+                                    {role.isOwnerRole && <CrownOutlined className="text-[var(--ohnix-alert-amber-text)]" />}
                                     <span className="font-semibold text-[var(--ohnix-text-primary)]">{role.name}</span>
                                     {!role.isOwnerRole && (
                                         <Tag className="border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-muted)] text-[10px] m-0 flex items-center gap-1">

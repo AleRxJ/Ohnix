@@ -8,6 +8,7 @@ import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../mi
 import { recordStockMovement } from "../services/stockMovement.service.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { getColombiaTaxSettings } from "../utils/systemSettings.js";
+import { emitAccountEvent } from "../live/dataEvents.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -281,6 +282,7 @@ const createProduct = asyncHandler(async (req, res, next) => {
             },
         });
 
+        emitAccountEvent(req.user.prismaId, "product", "created");
         return res
             .status(201)
             .json(new ApiResponse(201, mapProduct(product), "Product created successfully"));
@@ -533,6 +535,7 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             deleteFile(existingProduct.productImage);
         }
 
+        emitAccountEvent(existingProduct.createdById, "product", "updated");
         return res
             .status(200)
             .json(new ApiResponse(200, mapProduct(product), "Product updated successfully"));
@@ -567,6 +570,7 @@ const deleteProduct = asyncHandler(async (req, res, next) => {
         await prisma.product.delete({ where: { id: existingProduct.id } });
         deleteFile(existingProduct.productImage);
 
+        emitAccountEvent(existingProduct.createdById, "product", "deleted");
         return res
             .status(200)
             .json(new ApiResponse(200, {}, "Product deleted successfully"));
@@ -632,6 +636,7 @@ const bulkUpdateLowStockThreshold = asyncHandler(async (req, res, next) => {
         data: { lowStockThreshold: value, updatedById: req.user.prismaId },
     });
 
+    if (result.count > 0) emitAccountEvent(req.user.prismaId, "product", "updated");
     return res
         .status(200)
         .json(new ApiResponse(200, { updatedCount: result.count }, "Umbrales actualizados correctamente"));
@@ -710,6 +715,7 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
             return updated;
         });
 
+        emitAccountEvent(existingProduct.createdById, "product", "stock-changed");
         return res
             .status(200)
             .json(new ApiResponse(200, mapProduct(result), "Stock adjusted successfully"));

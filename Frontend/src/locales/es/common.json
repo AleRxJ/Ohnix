@@ -285,6 +285,7 @@
       "undo_cancellation": "Deshacer cancelación",
       "downgrade_scheduled_banner": "Pasarás al plan {{plan}} el {{date}}. Conservas tu plan actual completo hasta entonces.",
       "undo_downgrade": "Deshacer cambio de plan",
+      "downgrade_panel_title": "Bajar de plan",
       "downgrade_select_placeholder": "Bajar a...",
       "confirm_downgrade": "¿Bajar a {{plan}} cuando termine tu período actual?",
       "downgrade_confirm_button": "Bajar de plan",
@@ -1076,7 +1077,7 @@
     "return_col_sold_qty": "Cant. vendida",
     "return_blocked_tag": "Requiere nota de crédito",
     "return_requires_credit_note_title": "Esta venta ya tiene factura electrónica emitida",
-    "return_requires_credit_note_desc": "No se puede devolver directamente. Emite una nota de crédito para esta venta; el ajuste de inventario correspondiente se hace aparte.",
+    "return_requires_credit_note_desc": "No se puede devolver directamente. Emite una nota de crédito para esta venta con motivo \"Devolución parcial\" o \"Anulación de factura\" para que el inventario se reponga automáticamente.",
     "return_nothing_pending": "No queda nada pendiente por devolver en este pedido.",
     "return_success_toast": "¡Devolución procesada correctamente! Reembolso total: {{amount}}",
     "return_partial_success_toast": "Devolución parcial procesada. Reembolso: {{amount}}",
@@ -2233,9 +2234,15 @@
       },
       "observation_label": "Observación",
       "observation_placeholder": "Detalle del motivo (opcional)",
+      "items_title": "Artículos a devolver",
+      "items_hint": "Este motivo repone el inventario automáticamente. Indica cuánto de cada artículo regresó físicamente.",
+      "items_required": "Selecciona al menos una línea con cantidad mayor a 0 para este motivo.",
+      "loading_items": "Cargando artículos...",
       "submit": "Emitir",
       "list_title": "Notas crédito",
       "success": "Nota crédito enviada",
+      "stock_restock_applied": "El inventario se repuso automáticamente.",
+      "stock_restock_failed": "La nota de crédito se emitió correctamente, pero no se pudo actualizar el inventario automáticamente. Ajústalo manualmente.",
       "error": "No se pudo emitir la nota crédito"
     }
   }

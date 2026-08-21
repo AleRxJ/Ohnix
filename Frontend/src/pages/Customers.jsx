@@ -7,6 +7,7 @@ import useI18n from "../hooks/useI18n";
 import { useTeam } from "../context/TeamContext";
 import { useInventoryTour } from "../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../utils/apiError";
+import { useDataInvalidation } from "../hooks/useDataInvalidation";
 import {
     CustomerStats,
     CustomerTable,
@@ -48,6 +49,10 @@ const Customers = () => {
     useEffect(() => {
         fetchCustomers();
     }, []);
+
+    // Another connected user (or this same one, another tab) creating,
+    // editing, or deleting a customer.
+    useDataInvalidation("customer", fetchCustomers);
 
     // Utility functions
     const updateState = (updates) => {

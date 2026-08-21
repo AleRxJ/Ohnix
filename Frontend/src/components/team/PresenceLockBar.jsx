@@ -36,8 +36,8 @@ const PresenceLockBar = ({ viewers = [], lock, currentUserId }) => {
 
             {lockedByOther && (
                 <div className="flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1">
-                    <LockOutlined className="text-amber-300 text-xs" />
-                    <span className="text-xs font-medium text-amber-200">
+                    <LockOutlined className="text-[var(--ohnix-alert-amber-text)] text-xs" />
+                    <span className="text-xs font-medium text-[var(--ohnix-alert-amber-text)]">
                         {t("team.lock_held_by", { name: lock.username })}
                     </span>
                 </div>

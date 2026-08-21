@@ -13,6 +13,14 @@ const parsePositiveInt = (value, fallback) => {
 };
 
 const connectDB = async () => {
+    // The live app (server.js) always runs with DB_PROVIDER=postgres - Mongo
+    // is legacy, kept alive only for the one-off scripts under Backend/scripts/
+    // (createSampleData.js, getVerifyOtp.js, markUserVerified.js,
+    // migrateMongoToPostgres.js) that still read/write it directly via the
+    // Mongoose models in Backend/models/. No controller/service touches
+    // Mongo or those models - see the multi-user concurrency audit
+    // (2026-08-20), which confirmed Postgres via Prisma is the only source
+    // of truth for business data.
     const provider = (process.env.DB_PROVIDER || "mongo").toLowerCase();
 
     if (isConnected && connectedProvider === provider) {

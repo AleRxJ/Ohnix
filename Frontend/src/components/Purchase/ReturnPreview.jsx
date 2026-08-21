@@ -202,12 +202,14 @@ const ReturnPreview = ({ visible, onCancel, onSubmit, returnPreviewData, submitt
                             description={t("purchases.return_preview_summary_desc")}
                             type="info"
                             showIcon
+                            className="dark-alert dark-alert-teal"
                         />
                     ) : (
                         <Alert
                             message={t("purchases.return_nothing_pending")}
                             type="success"
                             showIcon
+                            className="dark-alert dark-alert-teal"
                         />
                     )}
 
@@ -221,7 +223,7 @@ const ReturnPreview = ({ visible, onCancel, onSubmit, returnPreviewData, submitt
                         className="return-preview-table module-dark-table"
                         summary={() => (
                             <Table.Summary fixed>
-                                <Table.Summary.Row className="bg-white/[0.03]">
+                                <Table.Summary.Row className="bg-[var(--ohnix-line-1)]">
                                     <Table.Summary.Cell index={0} colSpan={6}>
                                         <div className="text-right">
                                             <Text strong className="!text-[var(--ohnix-text-primary)]">

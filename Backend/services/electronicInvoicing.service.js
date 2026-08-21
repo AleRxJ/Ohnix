@@ -19,6 +19,9 @@ import {
 import { computeNitCheckDigit } from "../utils/nit.util.js";
 import { normalizeCountryCode } from "./companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
+import { recordStockMovement } from "./stockMovement.service.js";
+
+const toExternalId = (entity) => entity?.legacyMongoId || entity?.id;
 
 // Electronic invoicing costs real money per document (Alanube bills per
 // emission), unlike the other plan-gated features - so this is checked
@@ -54,6 +57,13 @@ export const CREDIT_NOTE_CONCEPT_CODES = [
     { code: "4", labelKey: "price_adjustment" },
     { code: "5", labelKey: "other" },
 ];
+
+// Only these concepts represent goods actually coming back - "discount" and
+// "price_adjustment" are financial corrections where the customer keeps the
+// product, so issuing one must never add stock back (confirmed as a
+// business decision, not inferred - see the "Devoluciones y Ajustes"
+// analysis, Fase 3).
+const RESTOCK_CONCEPT_CODES = ["1", "2"];
 
 const toNumber = (value) => {
     const result = Number(value);
@@ -662,6 +672,89 @@ const buildCreditNotePayload = (order, invoice, company, { conceptCode, observat
     return payload;
 };
 
+// Mirrors order.service.js#processReturn's stock-crediting step exactly
+// (same optimistic claim on OrderDetail, same "fully returned" check to
+// flip the order to "returned"), but triggered by an accepted credit note
+// instead of a direct user action - see the try/catch around this call in
+// issueCreditNoteForInvoice for why a failure here doesn't fail the whole
+// request. `items` here is the same { orderDetailId, quantity } shape the
+// caller already validated against each line's pending quantity before the
+// document was ever sent to the provider.
+const applyCreditNoteRestock = async ({ order, items, creditNoteId, userId }) => {
+    const detailById = new Map(order.orderDetails.map((d) => [d.id, d]));
+
+    const { lines, orderFullyReturned } = await prisma.$transaction(async (tx) => {
+        const lines = [];
+
+        for (const { orderDetailId, quantity } of items) {
+            const detail = detailById.get(orderDetailId);
+            const qty = Number(quantity);
+
+            const updatedProduct = await tx.product.update({
+                where: { id: detail.product.id },
+                data: { stock: { increment: qty } },
+                select: { stock: true },
+            });
+
+            await recordStockMovement(tx, {
+                productId: detail.product.id,
+                accountId: detail.product.createdById,
+                delta: qty,
+                balanceAfter: updatedProduct.stock,
+                sourceType: "credit_note_restock",
+                sourceId: creditNoteId,
+                createdById: userId,
+            });
+
+            const refundNow = qty * Number(detail.unitcost);
+
+            // Same optimistic claim as processReturn - the pending-quantity
+            // read that fed the pre-submission validation predates this
+            // transaction (and predates the real provider round-trip), so it
+            // can't by itself stop a concurrent return on the same line.
+            const detailClaim = await tx.orderDetail.updateMany({
+                where: { id: detail.id, returnedQuantity: detail.returnedQuantity },
+                data: {
+                    returnDate: new Date(),
+                    returnedQuantity: { increment: qty },
+                    refundAmount: { increment: refundNow },
+                },
+            });
+
+            if (detailClaim.count === 0) {
+                throw new ApiError(
+                    409,
+                    `"${detail.product.productName}" was returned by another request after this credit note's document was already issued.`
+                );
+            }
+
+            lines.push({ order_detail_id: orderDetailId, returned_now: qty, refund_now: refundNow });
+        }
+
+        const allDetails = await tx.orderDetail.findMany({
+            where: { orderId: order.id },
+            select: { quantity: true, returnedQuantity: true },
+        });
+        const orderFullyReturned = allDetails.every((d) => d.returnedQuantity === d.quantity);
+
+        if (orderFullyReturned) {
+            await tx.order.updateMany({
+                where: { id: order.id, orderStatus: "completed" },
+                data: { orderStatus: "returned", updatedById: userId },
+            });
+        }
+
+        return { lines, orderFullyReturned };
+    });
+
+    return {
+        applied: true,
+        order_fully_returned: orderFullyReturned,
+        total_refund_amount: lines.reduce((sum, l) => sum + l.refund_now, 0),
+        lines,
+    };
+};
+
 export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requesterRole, conceptCode, observation, items }) => {
     if (!text(conceptCode)) throw new ApiError(400, "conceptCode is required to issue a credit note");
 
@@ -674,6 +767,62 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
     if (invoice.status !== "accepted") throw new ApiError(409, "A credit note can only be issued for an accepted electronic invoice");
     if (!invoice.invoiceNumber) throw new ApiError(409, "This invoice does not have a provider bill number yet");
     await ensureElectronicInvoicingPlan(order.createdById);
+
+    // Validated before anything is sent to the provider - a doomed-to-fail
+    // restock should never let a real DIAN document go out first. Only
+    // concepts that mean goods are physically coming back require this; for
+    // "discount"/"price_adjustment"/"other", items stays exactly as
+    // optional/unvalidated as it already was (still just shapes the
+    // provider payload via buildCreditNotePayload/buildAlanubeCreditNotePayload).
+    if (RESTOCK_CONCEPT_CODES.includes(conceptCode)) {
+        if (!Array.isArray(items) || items.length === 0) {
+            throw new ApiError(
+                400,
+                "At least one return line is required for this credit note concept",
+                [],
+                "",
+                "credit_note_items_required"
+            );
+        }
+
+        const detailIds = items.map((l) => l.orderDetailId?.toString()).filter(Boolean);
+        const uniqueDetailIds = [...new Set(detailIds)];
+        if (detailIds.length !== items.length || uniqueDetailIds.length !== detailIds.length) {
+            throw new ApiError(400, "Duplicate or missing orderDetailId in credit note items");
+        }
+
+        const detailById = new Map(order.orderDetails.map((d) => [d.id, d]));
+        const insufficientItems = [];
+        for (const line of items) {
+            const detail = detailById.get(line.orderDetailId);
+            if (!detail) {
+                throw new ApiError(400, "One or more credit note items do not belong to this order");
+            }
+            const quantity = Number(line.quantity);
+            if (!Number.isInteger(quantity) || quantity < 1) {
+                throw new ApiError(400, "Quantity must be a positive integer for every credit note item");
+            }
+            const pending = detail.quantity - detail.returnedQuantity;
+            if (quantity > pending) {
+                insufficientItems.push({
+                    order_detail_id: detail.id,
+                    product_id: toExternalId(detail.product),
+                    product_name: detail.product.productName,
+                    requested: quantity,
+                    available: Math.max(pending, 0),
+                    reason: "exceeds_pending_quantity",
+                });
+            }
+        }
+
+        if (insufficientItems.length > 0) {
+            throw new ApiError(
+                422,
+                "One or more credit note items exceed what can be returned",
+                insufficientItems
+            );
+        }
+    }
 
     const company = order.createdBy.company;
     const provider = invoice.provider;
@@ -724,7 +873,33 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
             });
             return updatedNote;
         });
-        return { creditNote: serializeCreditNote(updated) };
+
+        // Deliberately its own try/catch, separate from the tx above: by
+        // this point the fiscal document already exists for real at
+        // Alanube/Factus, so a failure applying the local stock effect (e.g.
+        // the same line got returned through another path in the meantime)
+        // must not make this request report the credit note itself as
+        // failed - see applyCreditNoteRestock's own comment.
+        let stockRestock = { applied: false, reason: "not_applicable" };
+        if (RESTOCK_CONCEPT_CODES.includes(conceptCode) && mapped.status === "accepted") {
+            try {
+                stockRestock = await applyCreditNoteRestock({
+                    order,
+                    items,
+                    creditNoteId: updated.id,
+                    userId: requesterUserId,
+                });
+            } catch (restockError) {
+                console.error("[credit-note] stock restock failed after successful issuance:", {
+                    creditNoteId: updated.id,
+                    orderId: order.id,
+                    message: restockError?.message || restockError,
+                });
+                stockRestock = { applied: false, reason: restockError?.message || "unknown_error" };
+            }
+        }
+
+        return { creditNote: serializeCreditNote(updated), stock_restock: stockRestock };
     } catch (error) {
         const providerPayload = error instanceof FactusError || error instanceof AlanubeError ? error.payload : null;
         const updated = await prisma.$transaction(async (tx) => {

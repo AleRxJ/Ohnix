@@ -23,6 +23,10 @@ export const useOrderOperations = (refreshOrders) => {
     // visual feedback at all while in flight (no spinner, nothing disabled),
     // so a slow request looked like the click didn't register.
     const [updatingOrderId, setUpdatingOrderId] = useState(null);
+    // Same gap on the "process return" button: it fetches the preview before
+    // opening the modal, and with nothing showing meanwhile a slow request
+    // looked like the click just opened an empty modal (or did nothing).
+    const [returnPreviewLoadingId, setReturnPreviewLoadingId] = useState(null);
 
     // The backend returns a per-product breakdown (name, requested vs
     // available) for 422 stock errors instead of just a flat message - show
@@ -171,6 +175,7 @@ export const useOrderOperations = (refreshOrders) => {
     };
 
     const fetchReturnPreview = async (orderId) => {
+        setReturnPreviewLoadingId(orderId);
         try {
             const response = await api.get(`/orders/${orderId}/return-preview`);
             if (response.data.success) {
@@ -183,6 +188,8 @@ export const useOrderOperations = (refreshOrders) => {
         } catch (error) {
             toast.error(t("orders.error_fetching_return_preview"));
             console.error("Error fetching return preview:", error);
+        } finally {
+            setReturnPreviewLoadingId(null);
         }
     };
 
@@ -229,6 +236,7 @@ export const useOrderOperations = (refreshOrders) => {
         returnPreviewData,
         updateOrderStatus,
         updatingOrderId,
+        returnPreviewLoadingId,
         generateInvoice,
         createOrder,
         fetchOrderDetails,

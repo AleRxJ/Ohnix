@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../../api/api";
+import { useDataInvalidation } from "../useDataInvalidation";
 
 export const useCategories = () => {
     const [categories, setCategories] = useState([]);
@@ -36,6 +37,8 @@ export const useCategories = () => {
     useEffect(() => {
         fetchCategories();
     }, []);
+
+    useDataInvalidation("category", fetchCategories);
 
     return { categories, loading, fetchCategories, fetchUserCategories };
 };

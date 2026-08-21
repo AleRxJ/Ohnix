@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
+import { useDataInvalidation } from "../useDataInvalidation";
 
 const DELETE_CATEGORY_ERROR_CODES = {
     category_has_products: "categories.delete_conflict_products",
@@ -61,6 +62,10 @@ export const useCategories = () => {
     useEffect(() => {
         loadCategoriesInternal(isAdmin);
     }, []); // Empty dependency array - only run once
+
+    // Another connected user (or this same one, another tab) creating,
+    // renaming, or deleting a category.
+    useDataInvalidation("category", loadCategories);
 
     const createCategory = useCallback(
         async (values) => {

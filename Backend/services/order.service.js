@@ -5,6 +5,7 @@ import { issueElectronicInvoiceForOrder } from "./electronicInvoicing.service.js
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { getLowStockDefaultThreshold } from "../utils/systemSettings.js";
 import { recordStockMovement } from "./stockMovement.service.js";
+import { emitAccountEvent } from "../live/dataEvents.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -270,6 +271,15 @@ class OrderService {
                     });
 
                     if (claim.count === 0) {
+                        // The insufficientItems pre-check above read stock
+                        // before this transaction started, so it can't tell
+                        // the caller what's actually available now that a
+                        // concurrent request has taken some of it in between -
+                        // re-read it fresh instead of reporting null.
+                        const current = await tx.product.findUnique({
+                            where: { id: item.product.id },
+                            select: { stock: true },
+                        });
                         throw new ApiError(
                             422,
                             "Insufficient stock for one or more products",
@@ -279,7 +289,7 @@ class OrderService {
                                     product_name: item.product.productName,
                                     product_code: item.product.productCode,
                                     requested: item.quantity,
-                                    available: null,
+                                    available: current?.stock ?? null,
                                     reason: "insufficient_stock",
                                 },
                             ]
@@ -305,6 +315,9 @@ class OrderService {
 
             return createdOrder;
         });
+
+        emitAccountEvent(userId, "order", "created");
+        if (shouldDeductStock) emitAccountEvent(userId, "product", "stock-changed");
 
         // Check for low stock after deduction and alert (fire and forget)
         if (shouldDeductStock) {
@@ -496,6 +509,9 @@ class OrderService {
                 return tx.order.findUniqueOrThrow({ where: { id: order.id } });
             });
 
+            emitAccountEvent(order.createdById, "order", "updated");
+            emitAccountEvent(order.createdById, "product", "stock-changed");
+
             return {
                 _id: toExternalId(updated),
                 order_status: updated.orderStatus,
@@ -574,6 +590,12 @@ class OrderService {
                     });
 
                     if (claim.count === 0) {
+                        // Same reasoning as createOrder's identical branch:
+                        // report what's actually available now, not null.
+                        const current = await tx.product.findUnique({
+                            where: { id: detail.product.id },
+                            select: { stock: true },
+                        });
                         throw new ApiError(
                             422,
                             "Insufficient stock for one or more products",
@@ -583,7 +605,7 @@ class OrderService {
                                     product_name: detail.product.productName,
                                     product_code: detail.product.productCode,
                                     requested: detail.quantity,
-                                    available: null,
+                                    available: current?.stock ?? null,
                                     reason: "insufficient_stock",
                                 },
                             ]
@@ -618,6 +640,9 @@ class OrderService {
                 });
             }
 
+            emitAccountEvent(order.createdById, "order", "updated");
+            emitAccountEvent(order.createdById, "product", "stock-changed");
+
             return {
                 _id: toExternalId(updated),
                 order_status: updated.orderStatus,
@@ -632,6 +657,8 @@ class OrderService {
                 updatedById: userId,
             },
         });
+
+        emitAccountEvent(order.createdById, "order", "updated");
 
         return {
             _id: toExternalId(updated),
@@ -831,6 +858,9 @@ class OrderService {
 
             return { results, orderFullyReturned };
         });
+
+        emitAccountEvent(order.createdById, "order", "updated");
+        emitAccountEvent(order.createdById, "product", "stock-changed");
 
         return {
             order_id: toExternalId(order),

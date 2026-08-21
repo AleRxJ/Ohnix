@@ -9,6 +9,7 @@ import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { idempotencyHeaders } from "../../utils/idempotency";
+import { useDataInvalidation } from "../useDataInvalidation";
 
 const UPDATE_STATUS_ERROR_CODES = {
     invalid_purchase_status_transition: "purchases.invalid_status_transition",
@@ -31,6 +32,10 @@ export const usePurchase = () => {
     // (see useOrderOperations.js): no feedback at all while the PATCH is in
     // flight made a slow request look like the click did nothing.
     const [updatingPurchaseId, setUpdatingPurchaseId] = useState(null);
+    // Same gap on the "process return" button: it fetches the preview before
+    // opening the modal, and with nothing showing meanwhile a slow request
+    // looked like the click just opened an empty modal (or did nothing).
+    const [returnPreviewLoadingId, setReturnPreviewLoadingId] = useState(null);
     const [stats, setStats] = useState({
         pending: 0,
         completed: 0,
@@ -114,6 +119,7 @@ export const usePurchase = () => {
 
     // Fetch return preview
     const fetchReturnPreview = async (purchaseId) => {
+        setReturnPreviewLoadingId(purchaseId);
         try {
             const response = await api.get(
                 `/purchases/${purchaseId}/return-preview`
@@ -129,6 +135,8 @@ export const usePurchase = () => {
         } catch (error) {
             toast.error(t("purchases.error_fetching_return_preview"));
             console.error("Error:", error);
+        } finally {
+            setReturnPreviewLoadingId(null);
         }
     };
 
@@ -266,6 +274,14 @@ export const usePurchase = () => {
         fetchProducts();
     }, []);
 
+    // Another connected user (or this same one, another tab) creating a
+    // purchase, changing its status, or returning items - all of those also
+    // move product stock, so both lists are re-fetched either way.
+    useDataInvalidation(["purchase", "product"], () => {
+        fetchPurchases();
+        fetchProducts();
+    });
+
     return {
         // State
         purchases,
@@ -276,6 +292,7 @@ export const usePurchase = () => {
         returnPreviewData,
         stats,
         updatingPurchaseId,
+        returnPreviewLoadingId,
 
         // Actions
         fetchPurchases,

@@ -193,6 +193,7 @@ const OrderReturnPreview = ({ visible, onCancel, onSubmit, returnPreviewData, su
                             description={t("orders.return_requires_credit_note_desc")}
                             type="warning"
                             showIcon
+                            className="dark-alert dark-alert-amber"
                         />
                     ) : hasPendingLines ? (
                         <Alert
@@ -200,9 +201,15 @@ const OrderReturnPreview = ({ visible, onCancel, onSubmit, returnPreviewData, su
                             description={t("purchases.return_preview_summary_desc")}
                             type="info"
                             showIcon
+                            className="dark-alert dark-alert-teal"
                         />
                     ) : (
-                        <Alert message={t("orders.return_nothing_pending")} type="success" showIcon />
+                        <Alert
+                            message={t("orders.return_nothing_pending")}
+                            type="success"
+                            showIcon
+                            className="dark-alert dark-alert-teal"
+                        />
                     )}
 
                     <Table
@@ -215,7 +222,7 @@ const OrderReturnPreview = ({ visible, onCancel, onSubmit, returnPreviewData, su
                         className="return-preview-table module-dark-table"
                         summary={() => (
                             <Table.Summary fixed>
-                                <Table.Summary.Row className="bg-white/[0.03]">
+                                <Table.Summary.Row className="bg-[var(--ohnix-line-1)]">
                                     <Table.Summary.Cell index={0} colSpan={5}>
                                         <div className="text-right">
                                             <Text strong className="!text-[var(--ohnix-text-primary)]">

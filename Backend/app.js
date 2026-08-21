@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import errorHandler from "./middleware/error.middleware.js";
 import { handlePaymentWebhook, handleEpaycoConfirmation, handleEpaycoResponse } from "./controllers/subscription.controller.js";
 import { isOriginAllowed } from "./utils/allowedOrigins.js";
+import { getRedisHealth } from "./utils/redisClient.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,10 @@ app.get("/", (req, res) => {
       status: "Backend is running",
       timestamp: new Date().toISOString(),
       env: process.env.NODE_ENV || "development",
+      // Redis fails open everywhere it's used (session enforcement,
+      // presence, edit-locks), so an outage was previously invisible
+      // outside console logs - see utils/redisClient.js#getRedisHealth.
+      redis: getRedisHealth(),
    });
 });
 

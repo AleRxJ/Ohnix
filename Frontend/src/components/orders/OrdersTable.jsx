@@ -25,6 +25,7 @@ const OrdersTable = ({
     updatingOrderId = null,
     onGenerateInvoice = () => {},
     onReturnPreview = () => {},
+    returnPreviewLoadingId = null,
 }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -162,6 +163,7 @@ const OrdersTable = ({
                                     type="text"
                                     icon={<UndoOutlined />}
                                     disabled={!canEdit}
+                                    loading={returnPreviewLoadingId === record._id}
                                     onClick={() => onReturnPreview(record._id)}
                                     className="text-[#44F3F0] hover:text-[#44F3F0] hover:bg-[var(--ohnix-hover-overlay)]"
                                 />
@@ -245,6 +247,7 @@ const OrdersTable = ({
                             icon={<UndoOutlined />}
                             size="middle"
                             disabled={!canEdit}
+                            loading={returnPreviewLoadingId === order._id}
                             onClick={() => onReturnPreview(order._id)}
                         />
                     )}

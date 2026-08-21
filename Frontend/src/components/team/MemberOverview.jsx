@@ -66,7 +66,7 @@ const MemberOverview = () => {
                         <div className="min-w-0">
                             <div className="flex items-center gap-2">
                                 <p className="m-0 font-semibold text-[var(--ohnix-text-primary)]">{owner.username}</p>
-                                <Tag className="border-amber-500/40 bg-amber-500/10 text-amber-300 text-[10px] m-0">
+                                <Tag className="border-amber-500/40 bg-amber-500/10 text-[var(--ohnix-alert-amber-text)] text-[10px] m-0">
                                     <CrownOutlined className="mr-1" />
                                     {t("team.owner_badge")}
                                 </Tag>

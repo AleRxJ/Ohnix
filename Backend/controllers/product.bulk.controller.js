@@ -9,6 +9,7 @@ import {
     getEffectivePlan,
     getPlanLimits,
 } from "../middleware/pricing.middleware.js";
+import { emitAccountEvent } from "../live/dataEvents.js";
 
 const parseCSV = (csvText) => {
     const normalized =
@@ -311,6 +312,7 @@ export const bulkUploadProducts = asyncHandler(async (req, res, next) => {
 
     const allErrors = [...errors, ...dbErrors];
 
+    if (insertedCount > 0) emitAccountEvent(userId, "product", "created");
     return res.status(207).json(
         new ApiResponse(
             207,

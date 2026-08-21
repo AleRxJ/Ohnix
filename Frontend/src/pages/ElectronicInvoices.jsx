@@ -1,12 +1,14 @@
 /* eslint-disable react/prop-types */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+    Alert,
     Button,
     Drawer,
     Divider,
     Empty,
     Form,
     Input,
+    InputNumber,
     Modal,
     Select,
     Table,
@@ -28,6 +30,7 @@ import {
     WarningOutlined,
 } from "@ant-design/icons";
 import { electronicInvoiceService } from "../services/electronicInvoiceService";
+import { api } from "../api/api";
 import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
 import { useCurrency } from "../context/CurrencyContext";
@@ -219,9 +222,100 @@ const copyToClipboard = async (value) => {
     }
 };
 
-const CreditNoteModal = ({ open, onCancel, onSubmit, submitting }) => {
+// Concepts where the customer actually hands goods back - mirrors backend's
+// RESTOCK_CONCEPT_CODES (electronicInvoicing.service.js) but keyed by the
+// form's `key` string instead of the DIAN numeric code.
+const RESTOCK_CONCEPT_KEYS = ["partial_return", "cancellation"];
+
+const CreditNoteModal = ({ open, onCancel, onSubmit, submitting, orderId }) => {
     const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
     const [form] = Form.useForm();
+    const concept = Form.useWatch("concept", form);
+    const [lines, setLines] = useState([]);
+    const [loadingLines, setLoadingLines] = useState(false);
+    const [quantities, setQuantities] = useState({});
+
+    const needsItems = RESTOCK_CONCEPT_KEYS.includes(concept);
+
+    useEffect(() => {
+        if (!open || !orderId || !needsItems) {
+            setLines([]);
+            setQuantities({});
+            return;
+        }
+        setLoadingLines(true);
+        api.get(`/orders/${orderId}/return-preview`)
+            .then((response) => {
+                if (response.data.success) {
+                    setLines(response.data.data.return_preview || []);
+                }
+            })
+            .catch(() => setLines([]))
+            .finally(() => setLoadingLines(false));
+    }, [open, orderId, needsItems]);
+
+    const setLineQuantity = (orderDetailId, value) => {
+        setQuantities((prev) => ({ ...prev, [orderDetailId]: value || 0 }));
+    };
+
+    const itemsColumns = [
+        {
+            title: t("products.product"),
+            dataIndex: "product_name",
+            key: "product_name",
+            ellipsis: true,
+        },
+        {
+            title: t("orders.return_col_sold_qty"),
+            dataIndex: "sold_quantity",
+            key: "sold_quantity",
+            align: "center",
+            width: 90,
+        },
+        {
+            title: t("purchases.return_col_pending"),
+            dataIndex: "pending_quantity",
+            key: "pending_quantity",
+            align: "center",
+            width: 90,
+            render: (qty) => <span className="font-medium text-[#44F3F0]">{qty}</span>,
+        },
+        {
+            title: t("purchases.return_col_qty_to_return"),
+            key: "quantity_to_return",
+            align: "center",
+            width: 130,
+            render: (_, record) =>
+                record.pending_quantity > 0 ? (
+                    <InputNumber
+                        min={0}
+                        max={record.pending_quantity}
+                        value={quantities[record.order_detail_id] || 0}
+                        onChange={(value) => setLineQuantity(record.order_detail_id, value)}
+                        size="small"
+                        className="w-20"
+                    />
+                ) : (
+                    <span className="text-[var(--ohnix-text-dim)] text-xs">
+                        {t("purchases.returned")}
+                    </span>
+                ),
+        },
+        {
+            title: t("purchases.return_preview_col_potential_refund"),
+            key: "line_refund",
+            align: "right",
+            render: (_, record) => {
+                const qty = quantities[record.order_detail_id] || 0;
+                return (
+                    <span className="font-semibold text-[#44F3F0]">
+                        {formatCurrency(qty * record.unit_cost)}
+                    </span>
+                );
+            },
+        },
+    ];
 
     return (
         <Modal
@@ -261,8 +355,18 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting }) => {
                 layout="vertical"
                 className="mt-4"
                 onFinish={(values) => {
-                    const concept = CREDIT_NOTE_CONCEPTS.find((c) => c.key === values.concept);
-                    onSubmit({ conceptCode: concept?.code, observation: values.observation });
+                    const conceptEntry = CREDIT_NOTE_CONCEPTS.find((c) => c.key === values.concept);
+                    let items;
+                    if (needsItems) {
+                        items = Object.entries(quantities)
+                            .filter(([, quantity]) => quantity > 0)
+                            .map(([orderDetailId, quantity]) => ({ orderDetailId, quantity }));
+                        if (items.length === 0) {
+                            message.error(t("electronic_invoices.credit_note.items_required"));
+                            return;
+                        }
+                    }
+                    onSubmit({ conceptCode: conceptEntry?.code, observation: values.observation, items });
                 }}
             >
                 <Form.Item
@@ -281,6 +385,29 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting }) => {
                 <Form.Item name="observation" label={t("electronic_invoices.credit_note.observation_label")}>
                     <Input.TextArea rows={3} placeholder={t("electronic_invoices.credit_note.observation_placeholder")} />
                 </Form.Item>
+
+                {needsItems && (
+                    <div className="mb-4">
+                        <Alert
+                            message={t("electronic_invoices.credit_note.items_title")}
+                            description={t("electronic_invoices.credit_note.items_hint")}
+                            type="info"
+                            showIcon
+                            className="mb-3"
+                        />
+                        <Table
+                            columns={itemsColumns}
+                            dataSource={lines}
+                            rowKey="order_detail_id"
+                            pagination={false}
+                            loading={loadingLines}
+                            size="small"
+                            locale={{ emptyText: loadingLines ? t("electronic_invoices.credit_note.loading_items") : t("common.no_data") }}
+                            className="module-dark-table"
+                        />
+                    </div>
+                )}
+
                 <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 mt-2 border-t border-[var(--ohnix-line-4)]">
                     <Button
                         onClick={onCancel}
@@ -586,12 +713,21 @@ const ElectronicInvoices = () => {
         }
     };
 
-    const handleCreateCreditNote = async ({ conceptCode, observation }) => {
+    const handleCreateCreditNote = async ({ conceptCode, observation, items }) => {
         if (!selected?.orderId) return;
         setCreditNoteSubmitting(true);
         try {
-            await electronicInvoiceService.createCreditNote(selected.orderId, { conceptCode, observation });
+            const { data } = await electronicInvoiceService.createCreditNote(selected.orderId, { conceptCode, observation, items });
             message.success(t("electronic_invoices.credit_note.success"));
+            if (data?.stock_restock?.applied) {
+                message.success(t("electronic_invoices.credit_note.stock_restock_applied"));
+            } else if (items?.length) {
+                // Only surface this when items were actually submitted (a
+                // restock-eligible concept) - for discount/price_adjustment/
+                // other, stock_restock.applied === false is the expected,
+                // silent default, not a failure worth a warning toast.
+                message.warning(t("electronic_invoices.credit_note.stock_restock_failed"));
+            }
             setCreditNoteModalOpen(false);
             await loadCreditNotes(selected.orderId);
         } catch (error) {
@@ -917,6 +1053,7 @@ const ElectronicInvoices = () => {
                 onCancel={() => setCreditNoteModalOpen(false)}
                 onSubmit={handleCreateCreditNote}
                 submitting={creditNoteSubmitting}
+                orderId={selected?.orderId}
             />
         </div>
     );

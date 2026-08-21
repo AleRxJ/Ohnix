@@ -1,6 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { recordStockMovement } from "./stockMovement.service.js";
+import { emitAccountEvent } from "../live/dataEvents.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -164,6 +165,9 @@ class PurchaseService {
                 return createdPurchase;
             });
 
+            emitAccountEvent(userId, "purchase", "created");
+            if (shouldAddStock) emitAccountEvent(userId, "product", "stock-changed");
+
             return {
                 _id: toExternalId(purchase),
                 purchase_no: purchase.purchaseNo,
@@ -272,6 +276,9 @@ class PurchaseService {
             // claim above - just read back the current row for the response.
             return tx.purchase.findUniqueOrThrow({ where: { id: purchase.id } });
         });
+
+        emitAccountEvent(purchase.createdById, "purchase", "updated");
+        if (newStatus === "completed") emitAccountEvent(purchase.createdById, "product", "stock-changed");
 
         return {
             purchase: {
@@ -483,6 +490,9 @@ class PurchaseService {
 
             return { results, purchaseFullyReturned };
         });
+
+        emitAccountEvent(purchase.createdById, "purchase", "updated");
+        emitAccountEvent(purchase.createdById, "product", "stock-changed");
 
         return {
             purchase_id: toExternalId(purchase),

@@ -4,6 +4,7 @@ import { api } from "../../api/api";
 import { calculateStats } from "../../utils/orderHelpers";
 import AuthContext from "../../context/AuthContext";
 import useI18n from "../useI18n";
+import { useDataInvalidation } from "../useDataInvalidation";
 
 export const useOrders = () => {
     const { t } = useI18n();
@@ -128,6 +129,15 @@ export const useOrders = () => {
         fetchCustomers();
         fetchProducts();
     }, []);
+
+    // Another connected user (or this same one, another tab) creating an
+    // order, changing its status, or returning items - all of those also
+    // move product stock. Re-fetches the current page/filters rather than
+    // resetting to page 1 with no filters.
+    useDataInvalidation(["order", "product"], () => {
+        fetchOrders(pagination.current, pagination.pageSize, filters);
+        fetchProducts();
+    });
 
     return {
         orders,

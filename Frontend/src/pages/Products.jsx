@@ -17,6 +17,7 @@ import useI18n from "../hooks/useI18n";
 import useSubscription from "../hooks/useSubscription";
 import { useTeam } from "../context/TeamContext";
 import { useInventoryTour } from "../context/InventoryTourContext";
+import { useDataInvalidation } from "../hooks/useDataInvalidation";
 
 import {
     prepareProductFormData,
@@ -85,6 +86,12 @@ const Products = () => {
         setStockFilter(null);
         fetchProducts();
     }, [fetchProducts]);
+
+    // Another connected user (or this same one, another tab) creating,
+    // editing, deleting, or adjusting stock on a product - re-runs the
+    // current search/filter instead of a bare fetchProducts() so an active
+    // filter isn't silently dropped by a background refresh.
+    useDataInvalidation("product", handleSearch);
 
     const handleAddProduct = () => {
         setEditingProduct(null);

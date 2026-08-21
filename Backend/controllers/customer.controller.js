@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
 import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
+import { emitAccountEvent } from "../live/dataEvents.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -128,6 +129,7 @@ const createCustomer = asyncHandler(async (req, res, next) => {
             },
         });
 
+        emitAccountEvent(req.user.prismaId, "customer", "created");
         return res
             .status(201)
             .json(new ApiResponse(201, mapCustomer(customer), "Customer created successfully"));
@@ -261,6 +263,7 @@ const updateCustomer = asyncHandler(async (req, res, next) => {
             deleteFile(existingCustomer.photo);
         }
 
+        emitAccountEvent(existingCustomer.createdById, "customer", "updated");
         return res
             .status(200)
             .json(new ApiResponse(200, mapCustomer(customer), "Customer updated successfully"));
@@ -292,6 +295,7 @@ const deleteCustomer = asyncHandler(async (req, res, next) => {
         await prisma.customer.delete({ where: { id: existingCustomer.id } });
         deleteFile(existingCustomer.photo);
 
+        emitAccountEvent(existingCustomer.createdById, "customer", "deleted");
         return res
             .status(200)
             .json(new ApiResponse(200, {}, "Customer deleted successfully"));

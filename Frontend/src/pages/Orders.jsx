@@ -15,6 +15,7 @@ import { useOrderOperations } from "../hooks/orders/useOrderOperations";
 import useI18n from "../hooks/useI18n";
 import { useTeam } from "../context/TeamContext";
 import { useInventoryTour } from "../context/InventoryTourContext";
+import { useDataInvalidation } from "../hooks/useDataInvalidation";
 
 const Orders = () => {
     const { t } = useI18n();
@@ -46,6 +47,7 @@ const Orders = () => {
         returnPreviewData,
         updateOrderStatus,
         updatingOrderId,
+        returnPreviewLoadingId,
         generateInvoice,
         createOrder,
         fetchOrderDetails,
@@ -90,6 +92,15 @@ const Orders = () => {
         await fetchReturnPreview(orderId);
         setReturnPreviewVisible(true);
     };
+
+    // Same staleness gap as PurchaseList's return preview: the snapshot
+    // (pending/returnable qty) was read once on open and never refreshed
+    // while the modal stays open.
+    useDataInvalidation(["product", "order"], () => {
+        if (returnPreviewVisible && returnPreviewData?.order_id) {
+            fetchReturnPreview(returnPreviewData.order_id);
+        }
+    });
 
     const handleCreateOrder = async (values) => {
         setSubmitting(true);
@@ -176,6 +187,7 @@ const Orders = () => {
                             updatingOrderId={updatingOrderId}
                             onGenerateInvoice={generateInvoice}
                             onReturnPreview={handleReturnPreview}
+                            returnPreviewLoadingId={returnPreviewLoadingId}
                         />
                     </div>
                 </div>

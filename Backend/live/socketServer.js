@@ -32,6 +32,16 @@ const isValidResourceRef = ({ resourceType, resourceId }) =>
     resourceId.length > 0 &&
     resourceId.length < 100;
 
+// Every member of an account joins this the moment they connect (unlike the
+// presence rooms above, which are joined per-record on demand) so
+// live/dataEvents.js can broadcast "this list may be stale" without needing
+// to know who's looking at what - see the multi-user concurrency audit
+// (2026-08-20), which found no mutation ever reached connected users.
+export const accountRoom = (accountId) => `account:${accountId}`;
+
+let ioInstance = null;
+export const getIO = () => ioInstance;
+
 export const initSocketServer = (httpServer) => {
     const io = new Server(httpServer, {
         cors: {
@@ -69,6 +79,7 @@ export const initSocketServer = (httpServer) => {
         const { user } = socket.data;
         socket.data.rooms = new Set();
         socket.data.locks = new Set();
+        socket.join(accountRoom(user.accountId));
 
         const resourceRoom = ({ resourceType, resourceId }) =>
             presenceRoom(user.accountId, resourceType, resourceId);
@@ -213,5 +224,6 @@ export const initSocketServer = (httpServer) => {
         });
     }
 
+    ioInstance = io;
     return io;
 };

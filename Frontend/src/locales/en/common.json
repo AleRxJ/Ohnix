@@ -285,6 +285,7 @@
       "undo_cancellation": "Undo cancellation",
       "downgrade_scheduled_banner": "You'll move to the {{plan}} plan on {{date}}. You keep your current plan in full until then.",
       "undo_downgrade": "Undo plan change",
+      "downgrade_panel_title": "Downgrade plan",
       "downgrade_select_placeholder": "Downgrade to...",
       "confirm_downgrade": "Downgrade to {{plan}} when your current period ends?",
       "downgrade_confirm_button": "Downgrade plan",
@@ -1076,7 +1077,7 @@
     "return_col_sold_qty": "Sold Qty",
     "return_blocked_tag": "Requires credit note",
     "return_requires_credit_note_title": "This sale already has an issued electronic invoice",
-    "return_requires_credit_note_desc": "It can't be returned directly. Issue a credit note for this sale instead; the matching inventory adjustment is handled separately.",
+    "return_requires_credit_note_desc": "It can't be returned directly. Issue a credit note for this sale with reason \"Partial return\" or \"Invoice cancellation\" so inventory restocks automatically.",
     "return_nothing_pending": "Nothing left to return on this order.",
     "return_success_toast": "Order returned successfully! Total refund: {{amount}}",
     "return_partial_success_toast": "Partial return processed. Refund: {{amount}}",
@@ -2239,9 +2240,15 @@
       },
       "observation_label": "Note",
       "observation_placeholder": "Reason detail (optional)",
+      "items_title": "Items to return",
+      "items_hint": "This reason restocks inventory automatically. Enter how much of each item actually came back.",
+      "items_required": "Select at least one line with a quantity greater than 0 for this reason.",
+      "loading_items": "Loading items...",
       "submit": "Issue",
       "list_title": "Credit notes",
       "success": "Credit note sent",
+      "stock_restock_applied": "Inventory was restocked automatically.",
+      "stock_restock_failed": "The credit note was issued successfully, but inventory couldn't be updated automatically. Adjust it manually.",
       "error": "Could not issue the credit note"
     }
   }

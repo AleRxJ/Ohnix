@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../../api/api";
+import { useDataInvalidation } from "../useDataInvalidation";
 
 export const useUnits = () => {
     const [units, setUnits] = useState([]);
@@ -22,6 +23,8 @@ export const useUnits = () => {
     useEffect(() => {
         fetchUnits();
     }, []);
+
+    useDataInvalidation("unit", fetchUnits);
 
     return { units, loading, fetchUnits };
 };

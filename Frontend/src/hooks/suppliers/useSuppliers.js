@@ -4,6 +4,7 @@ import { api } from "../../api/api";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
+import { useDataInvalidation } from "../useDataInvalidation";
 
 const DELETE_SUPPLIER_ERROR_CODES = {
     supplier_has_purchases: "suppliers.delete_conflict_purchases",
@@ -115,6 +116,10 @@ export const useSuppliers = (isAdmin = false) => {
     useEffect(() => {
         fetchSuppliers();
     }, [isAdmin]);
+
+    // Another connected user (or this same one, another tab) creating,
+    // editing, or deleting a supplier.
+    useDataInvalidation("supplier", fetchSuppliers);
 
     return {
         suppliers,

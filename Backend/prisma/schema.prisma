@@ -87,6 +87,13 @@ enum StockMovementSourceType {
   order
   order_cancellation
   order_return
+  // Automatic restock triggered by issuing an electronic-invoice credit note
+  // with a conceptCode that represents goods actually coming back
+  // ("partial_return"/"cancellation" - see
+  // electronicInvoicing.service.js#issueCreditNoteForInvoice). sourceId is
+  // the ElectronicCreditNote's id, not the order's, so a movement traces
+  // back to the specific fiscal document that caused it.
+  credit_note_restock
   adjustment
 }
 
@@ -386,6 +393,10 @@ model Category {
   updatedBy User?     @relation("CategoryUpdatedBy", fields: [updatedById], references: [id])
   products  Product[]
 
+  // Backstop for the duplicate-name check in category.controller.js, which
+  // reads-then-writes and so cannot rule out two concurrent renames to the
+  // same name on its own - see the multi-user concurrency audit (2026-08-20).
+  @@unique([categoryName, createdById])
   @@index([createdById])
   @@map("categories")
 }
@@ -404,6 +415,8 @@ model Unit {
   updatedBy User?     @relation("UnitUpdatedBy", fields: [updatedById], references: [id])
   products  Product[]
 
+  // See Category's matching constraint - same duplicate-name race, same fix.
+  @@unique([unitName, createdById])
   @@index([createdById])
   @@map("units")
 }
