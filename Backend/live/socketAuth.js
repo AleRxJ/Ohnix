@@ -62,5 +62,7 @@ export const authenticateSocket = async (socket) => {
         teamRoleId: accountScope.teamRoleId,
         isTeamMember: accountScope.isTeamMember,
         isTeamOwner: accountScope.isTeamOwner,
+        posScopeAll: accountScope.posScopeAll,
+        posScopeIds: accountScope.posScopeIds,
     };
 };

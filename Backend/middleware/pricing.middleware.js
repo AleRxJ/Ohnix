@@ -31,6 +31,7 @@ export const PLAN_LIMITS = {
         maxPurchases:        300,   // lifetime cumulative
         maxMonthlyOrders:     60,   // ~2 per day
         maxMonthlyPurchases:  30,   // ~1 per day
+        maxPointsOfSale:       1,   // every account has its implicit default location; multi-location is Escala-only
     },
     // $49/mes — Negocio / Business
     // Negocio establecido, todos los reportes, exportación CSV, alertas email.
@@ -44,9 +45,10 @@ export const PLAN_LIMITS = {
         maxPurchases:       5000,   // lifetime cumulative
         maxMonthlyOrders:    300,   // ~10 per day
         maxMonthlyPurchases: 150,
+        maxPointsOfSale:       1,   // multi-location is Escala-only, see planSupportsMultiLocation below
     },
     // $99/mes — Escala / Scale  (requires DB migration: ALTER TYPE "PlanType" ADD VALUE 'scale')
-    // Empresa en crecimiento, API, reportes avanzados, multi-usuario próximamente.
+    // Empresa en crecimiento, API, reportes avanzados, múltiples puntos de venta.
     scale: {
         maxProducts:        2000,
         maxCustomers:       1000,
@@ -57,6 +59,9 @@ export const PLAN_LIMITS = {
         maxPurchases:       null,   // unlimited
         maxMonthlyOrders:   1000,   // ~33 per day
         maxMonthlyPurchases: 500,
+        // Provisional - not a validated pricing/product decision yet. Cheap
+        // to raise later (see PLAN_LIMITS), no migration needed either way.
+        maxPointsOfSale:       5,
     },
     // Custom desde $249/mes — Enterprise
     // Todo ilimitado, API sin restricciones, account manager.
@@ -70,6 +75,7 @@ export const PLAN_LIMITS = {
         maxPurchases:        null,
         maxMonthlyOrders:    null,
         maxMonthlyPurchases: null,
+        maxPointsOfSale:     null,
     },
 };
 
@@ -98,6 +104,10 @@ export const PLAN_FEATURES = {
         teamRoles:           false,
         teamLivePresence:    false,
         teamActivityLog:     false,
+        // Multiple Points of Sale under one account - Escala-only, same
+        // idea as teamRoles above (gated here AND by
+        // PLAN_LIMITS.maxPointsOfSale, see pointOfSale.service.js).
+        multiLocation:       false,
     },
     // $49/mes — Negocio: full analytics + exports + DIAN e-invoicing
     // (electronicInvoicing costs real money per document via Alanube - never
@@ -122,11 +132,13 @@ export const PLAN_FEATURES = {
         teamRoles:           true,
         teamLivePresence:    true,
         teamActivityLog:     true,
+        multiLocation:       false,
     },
     // $99/mes — Escala: API + advanced reports (profit margin, top
     // customers, sales-by-team-member, period comparison - see
     // report.controller.js's getProfitMarginReport/getTopCustomersReport/
-    // getSalesByTeamReport/getPeriodComparisonReport)
+    // getSalesByTeamReport/getPeriodComparisonReport) + multiple Points of
+    // Sale (PLAN_LIMITS.scale.maxPointsOfSale)
     scale: {
         reportSales:         true,
         reportPurchases:     true,
@@ -143,6 +155,7 @@ export const PLAN_FEATURES = {
         teamRoles:           true,
         teamLivePresence:    true,
         teamActivityLog:     true,
+        multiLocation:       true,
     },
     // Custom — Enterprise: everything
     enterprise: {
@@ -161,6 +174,7 @@ export const PLAN_FEATURES = {
         teamRoles:           true,
         teamLivePresence:    true,
         teamActivityLog:     true,
+        multiLocation:       true,
     },
 };
 
@@ -187,6 +201,11 @@ export const getTeamSeatLimit = (plan) =>
 
 export const planSupportsTeams = (plan) => getTeamSeatLimit(plan) !== 0;
 
+// scopeField defaults to "createdById" (every resource so far uses it as
+// its tenant-scope column). pointsOfSale is the first resource whose scope
+// column is named differently (PointOfSale.accountId - see schema.prisma,
+// it deliberately isn't "createdById" since a PointOfSale isn't "created
+// by" anyone in the same sense a product/order is).
 const RESOURCE_CONFIG = {
     products: { model: "product", limitKey: "maxProducts", label: "products" },
     customers: { model: "customer", limitKey: "maxCustomers", label: "customers" },
@@ -195,6 +214,7 @@ const RESOURCE_CONFIG = {
     units: { model: "unit", limitKey: "maxUnits", label: "units" },
     orders: { model: "order", limitKey: "maxOrders", label: "orders" },
     purchases: { model: "purchase", limitKey: "maxPurchases", label: "purchases" },
+    pointsOfSale: { model: "pointOfSale", limitKey: "maxPointsOfSale", label: "points of sale", scopeField: "accountId" },
 };
 
 export const ensureUserSubscription = async (userId) =>
@@ -273,9 +293,15 @@ export const enforceEntityLimit = (resourceKey, incrementResolver = () => 1) =>
         }
 
         const increment = Math.max(1, Number(incrementResolver(req)) || 1);
+        const scopeField = config.scopeField || "createdById";
         const existing = await prisma[config.model].count({
             where: {
-                createdById: req.user.prismaId,
+                [scopeField]: req.user.prismaId,
+                // Points of Sale (and any future scopeField resource) are
+                // never hard-deleted (see pointOfSale.service.js) - a
+                // deactivated one must free its slot, same intent as
+                // TEAM_SEAT_LIMITS only counting `status: "active"` members.
+                ...(scopeField !== "createdById" ? { isActive: true } : {}),
             },
         });
 

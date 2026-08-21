@@ -8,6 +8,8 @@ import {
     getAllProductsAdmin,
     adjustProductStock,
     getProductStockMovements,
+    getProductLocationStock,
+    transferProductStock,
 } from "../controllers/product.controller.js";
 import { bulkUploadProducts } from "../controllers/product.bulk.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
@@ -44,5 +46,14 @@ router
     .route("/:id/adjust-stock")
     .post(requireModulePermission("products", "edit"), idempotent("product.adjust-stock"), adjustProductStock);
 router.route("/:id/stock-movements").get(requireModulePermission("products", "view"), getProductStockMovements);
+router.route("/:id/location-stock").get(requireModulePermission("products", "view"), getProductLocationStock);
+router
+    .route("/:id/transfer-stock")
+    .post(
+        requireModulePermission("products", "edit"),
+        enforcePlanFeature("multiLocation"),
+        idempotent("product.transfer-stock"),
+        transferProductStock
+    );
 
 export default router;

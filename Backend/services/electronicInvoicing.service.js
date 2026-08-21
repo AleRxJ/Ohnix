@@ -20,6 +20,7 @@ import { computeNitCheckDigit } from "../utils/nit.util.js";
 import { normalizeCountryCode } from "./companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { recordStockMovement } from "./stockMovement.service.js";
+import { creditLocationStock } from "./productLocationStock.service.js";
 
 const toExternalId = (entity) => entity?.legacyMongoId || entity?.id;
 
@@ -690,17 +691,18 @@ const applyCreditNoteRestock = async ({ order, items, creditNoteId, userId }) =>
             const detail = detailById.get(orderDetailId);
             const qty = Number(quantity);
 
-            const updatedProduct = await tx.product.update({
-                where: { id: detail.product.id },
-                data: { stock: { increment: qty } },
-                select: { stock: true },
+            const locationBalance = await creditLocationStock(tx, {
+                productId: detail.product.id,
+                pointOfSaleId: order.pointOfSaleId,
+                quantity: qty,
             });
 
             await recordStockMovement(tx, {
                 productId: detail.product.id,
                 accountId: detail.product.createdById,
+                pointOfSaleId: order.pointOfSaleId,
                 delta: qty,
-                balanceAfter: updatedProduct.stock,
+                balanceAfter: locationBalance,
                 sourceType: "credit_note_restock",
                 sourceId: creditNoteId,
                 createdById: userId,

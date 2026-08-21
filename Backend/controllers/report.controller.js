@@ -7,6 +7,15 @@ import { getLowStockDefaultThreshold } from "../utils/systemSettings.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
+// Every report below reads Order/Purchase/StockMovement (all Point-of-Sale
+// scoped - see pos.permissions.js) alongside Product/Category/etc (still
+// global - there's no per-location stock split yet, so those stay
+// unfiltered on purpose). This is the one thing to merge into whichever of
+// those PDV-scoped models a report queries; full-scope actors (the account
+// owner, or a member with posScopeAll) get {} - no filter, same as today.
+const posScopeWhere = (req) =>
+    req.user.posScopeAll ? {} : { pointOfSaleId: { in: req.user.posScopeIds || [] } };
+
 // Renders whichever report tab the client currently has on screen as a
 // branded PDF - the client sends the exact title/sections it already built
 // for its CSV/Excel export (see ReportExportButtons.jsx callers), so the
@@ -66,11 +75,13 @@ const getDashboardMetrics = asyncHandler(async (req, res, next) => {
         const isAdmin = req.user.role === "admin";
 
         const orderWhere = {
-            ...(isAdmin ? {} : { createdById: userId }),
+            ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
             orderStatus: { not: "cancelled" },
         };
 
-        const purchaseWhere = isAdmin ? {} : { purchase: { createdById: userId } };
+        const purchaseWhere = isAdmin
+            ? {}
+            : { purchase: { createdById: userId, ...posScopeWhere(req) } };
         const productWhere = isAdmin ? {} : { createdById: userId };
 
         const defaultThreshold = await getLowStockDefaultThreshold();
@@ -101,7 +112,7 @@ const getDashboardMetrics = asyncHandler(async (req, res, next) => {
                 },
             }),
             prisma.order.findMany({
-                where: isAdmin ? {} : { createdById: userId },
+                where: isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) },
                 orderBy: { createdAt: "desc" },
                 take: 5,
                 include: {
@@ -274,7 +285,7 @@ const getSalesReport = asyncHandler(async (req, res, next) => {
     try {
         const orders = await prisma.order.findMany({
             where: {
-                ...(isAdmin ? {} : { createdById: userId }),
+                ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
                 orderStatus: { not: "cancelled" },
                 ...(Object.keys(dateFilter).length
                     ? { orderDate: dateFilter }
@@ -361,7 +372,7 @@ const getTopProducts = asyncHandler(async (req, res, next) => {
     try {
         const orders = await prisma.order.findMany({
             where: {
-                ...(isAdmin ? {} : { createdById: userId }),
+                ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
                 orderStatus: { not: "cancelled" },
             },
             include: {
@@ -436,7 +447,7 @@ const getPurchaseReport = asyncHandler(async (req, res, next) => {
     try {
         const purchases = await prisma.purchase.findMany({
             where: {
-                ...(isAdmin ? {} : { createdById: userId }),
+                ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
                 ...(Object.keys(dateFilter).length
                     ? { purchaseDate: dateFilter }
                     : {}),
@@ -618,7 +629,7 @@ const getProfitMarginReport = asyncHandler(async (req, res, next) => {
     try {
         const orders = await prisma.order.findMany({
             where: {
-                ...(isAdmin ? {} : { createdById: userId }),
+                ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
                 orderStatus: { not: "cancelled" },
                 ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
             },
@@ -693,7 +704,7 @@ const getTopCustomersReport = asyncHandler(async (req, res, next) => {
     try {
         const orders = await prisma.order.findMany({
             where: {
-                ...(isAdmin ? {} : { createdById: userId }),
+                ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
                 orderStatus: { not: "cancelled" },
                 ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
             },
@@ -745,7 +756,7 @@ const getSalesByTeamReport = asyncHandler(async (req, res, next) => {
     try {
         const orders = await prisma.order.findMany({
             where: {
-                ...(isAdmin ? {} : { createdById: userId }),
+                ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
                 orderStatus: { not: "cancelled" },
                 ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
             },
@@ -800,7 +811,7 @@ const getPeriodComparisonReport = asyncHandler(async (req, res, next) => {
         const fetchTotals = async (gte, lte) => {
             const result = await prisma.order.aggregate({
                 where: {
-                    ...(isAdmin ? {} : { createdById: userId }),
+                    ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
                     orderStatus: { not: "cancelled" },
                     orderDate: { gte, lte },
                 },
@@ -862,7 +873,7 @@ const getVatReport = asyncHandler(async (req, res, next) => {
         const orderDetails = await prisma.orderDetail.findMany({
             where: {
                 order: {
-                    ...(isAdmin ? {} : { createdById: userId }),
+                    ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
                     orderStatus: { not: "cancelled" },
                     ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
                 },

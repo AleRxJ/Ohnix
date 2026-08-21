@@ -1,15 +1,17 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import { Button, Table, Avatar, Tag, Select, Popconfirm, Form, Empty } from "antd";
-import { PlusOutlined, UserOutlined, DeleteOutlined, MailOutlined, ReloadOutlined, SettingOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import { PlusOutlined, UserOutlined, DeleteOutlined, MailOutlined, ReloadOutlined, SettingOutlined, SafetyCertificateOutlined, ShopOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { teamService } from "../../services/teamService";
+import { pointOfSaleService } from "../../services/pointOfSaleService";
 import useSubscription, { TEAM_SEAT_LIMITS } from "../../hooks/useSubscription";
 import InviteMemberModal from "./InviteMemberModal";
 import RoleFormModal from "./RoleFormModal";
 import RolePermissionTags from "./RolePermissionTags";
+import MemberScopeModal from "./MemberScopeModal";
 
 const avatarSrc = (person) =>
     person?.avatar?.trim() ||
@@ -32,6 +34,16 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
     const [permissionsForm] = Form.useForm();
     const [forkingFor, setForkingFor] = useState(null);
     const [permissionsSharedCount, setPermissionsSharedCount] = useState(0);
+    const [pointsOfSale, setPointsOfSale] = useState([]);
+    const [scopeModalFor, setScopeModalFor] = useState(null);
+    const [scopeSubmitting, setScopeSubmitting] = useState(false);
+
+    useEffect(() => {
+        pointOfSaleService
+            .list()
+            .then((res) => setPointsOfSale((res?.data || []).filter((pos) => pos.isActive)))
+            .catch(() => {});
+    }, []);
 
     const load = useCallback(async () => {
         if (!team) return;
@@ -91,6 +103,20 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
             refreshTeam();
         } catch (err) {
             toast.error(err?.response?.data?.message || t("common.error"));
+        }
+    };
+
+    const handleSaveScope = async ({ scopeAll, pointOfSaleIds }) => {
+        setScopeSubmitting(true);
+        try {
+            await pointOfSaleService.setMemberScope(team.id, scopeModalFor.userId, { scopeAll, pointOfSaleIds });
+            toast.success(t("team.scope_updated"));
+            setScopeModalFor(null);
+            load();
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("common.error"));
+        } finally {
+            setScopeSubmitting(false);
         }
     };
 
@@ -211,6 +237,55 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                 );
             },
         },
+        // Only meaningful once the account actually has more than one
+        // active location - with just one, every member's scope is
+        // trivially "all of it" (see pos.permissions.js), so the column
+        // would just repeat the same badge on every row for nothing.
+        ...(pointsOfSale.length > 1
+            ? [
+                  {
+                      title: t("team.col_scope"),
+                      key: "scope",
+                      render: (_, record) => {
+                          if (record.isOwner) {
+                              return (
+                                  <Tag className="border-[#29D8D5]/40 bg-[#29D8D5]/10 text-[#44F3F0] text-xs">
+                                      {t("team.scope_all_badge")}
+                                  </Tag>
+                              );
+                          }
+                          const badge =
+                              record.scopeAll !== false ? (
+                                  <Tag className="border-[#29D8D5]/40 bg-[#29D8D5]/10 text-[#44F3F0] text-xs">
+                                      {t("team.scope_all_badge")}
+                                  </Tag>
+                              ) : (record.pointsOfSale || []).length === 0 ? (
+                                  <Tag className="border-red-500/30 bg-red-500/10 text-red-300 text-xs">
+                                      {t("team.scope_none")}
+                                  </Tag>
+                              ) : (
+                                  <Tag className="border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)] text-xs">
+                                      {t("team.scope_count", { count: record.pointsOfSale.length })}
+                                  </Tag>
+                              );
+                          return (
+                              <div className="flex items-center gap-2">
+                                  {badge}
+                                  {isOwner && (
+                                      <Button
+                                          size="small"
+                                          type="text"
+                                          icon={<ShopOutlined className="text-[var(--ohnix-text-muted)]" />}
+                                          title={t("team.edit_scope")}
+                                          onClick={() => setScopeModalFor(record)}
+                                      />
+                                  )}
+                              </div>
+                          );
+                      },
+                  },
+              ]
+            : []),
         {
             title: t("team.col_joined"),
             key: "joinedAt",
@@ -345,6 +420,15 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                 form={permissionsForm}
                 editingRole={permissionsRole}
                 forkNotice={forkingFor ? { count: permissionsSharedCount - 1, targetName: forkingFor.username } : null}
+            />
+
+            <MemberScopeModal
+                open={Boolean(scopeModalFor)}
+                onCancel={() => setScopeModalFor(null)}
+                onSubmit={handleSaveScope}
+                submitting={scopeSubmitting}
+                member={scopeModalFor}
+                pointsOfSale={pointsOfSale}
             />
         </div>
     );

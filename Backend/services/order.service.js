@@ -5,7 +5,9 @@ import { issueElectronicInvoiceForOrder } from "./electronicInvoicing.service.js
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { getLowStockDefaultThreshold } from "../utils/systemSettings.js";
 import { recordStockMovement } from "./stockMovement.service.js";
-import { emitAccountEvent } from "../live/dataEvents.js";
+import { claimLocationStock, creditLocationStock, getLocationStock } from "./productLocationStock.service.js";
+import { emitPosEvent } from "../live/dataEvents.js";
+import { assertPosAccess } from "../middleware/pos.permissions.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -100,6 +102,7 @@ const findOrderByAnyId = async (id) =>
             legacyMongoId: true,
             createdById: true,
             orderStatus: true,
+            pointOfSaleId: true,
             electronicInvoice: { select: { status: true } },
         },
     });
@@ -120,7 +123,7 @@ const triggerElectronicInvoicingIfCompleted = ({ orderId, userId, userRole, trig
 };
 
 class OrderService {
-    async createOrder(orderData, userId, userRole) {
+    async createOrder(orderData, userId, userRole, pointOfSaleId) {
         const { customer_id, order_status, orderItems, is_tutorial_data } = orderData;
 
         if (!customer_id || !Array.isArray(orderItems) || orderItems.length === 0) {
@@ -193,17 +196,34 @@ class OrderService {
         }
 
         if (shouldDeductStock) {
+            // Available stock is now per-location, not the product's
+            // account-wide total (item.product.stock) - a product can be
+            // well-stocked overall and still have nothing at the specific
+            // PointOfSale this order is for. This is a pre-check for a nice
+            // batched error only; claimLocationStock inside the transaction
+            // below is what's actually atomic against a concurrent request.
+            const locationRows = await prisma.productLocationStock.findMany({
+                where: {
+                    pointOfSaleId,
+                    productId: { in: resolvedItems.map((item) => item.product.id) },
+                },
+                select: { productId: true, stock: true },
+            });
+            const locationStockById = new Map(locationRows.map((row) => [row.productId, row.stock]));
+
             const insufficientItems = resolvedItems
-                .filter((item) => item.product.stock < item.quantity)
-                .map((item) => ({
-                    product_id: toExternalId(item.product),
-                    product_name: item.product.productName,
-                    product_code: item.product.productCode,
-                    requested: item.quantity,
-                    available: item.product.stock,
-                    reason:
-                        item.product.stock === 0 ? "out_of_stock" : "insufficient_stock",
-                }));
+                .filter((item) => (locationStockById.get(item.product.id) ?? 0) < item.quantity)
+                .map((item) => {
+                    const available = locationStockById.get(item.product.id) ?? 0;
+                    return {
+                        product_id: toExternalId(item.product),
+                        product_name: item.product.productName,
+                        product_code: item.product.productCode,
+                        requested: item.quantity,
+                        available,
+                        reason: available === 0 ? "out_of_stock" : "insufficient_stock",
+                    };
+                });
 
             if (insufficientItems.length > 0) {
                 throw new ApiError(
@@ -226,6 +246,7 @@ class OrderService {
             const createdOrder = await tx.order.create({
                 data: {
                     customerId: customer.id,
+                    pointOfSaleId,
                     orderDate: new Date(),
                     orderStatus: initialStatus,
                     totalProducts: orderItems.length,
@@ -255,31 +276,22 @@ class OrderService {
                 });
 
                 if (shouldDeductStock) {
-                    // Guarded conditional update instead of a plain decrement:
-                    // the stock read used for the pre-check above happened
-                    // before this transaction started, so it cannot protect
-                    // against a concurrent request decrementing the same
-                    // product in between. Requiring stock >= quantity in the
-                    // WHERE clause makes the claim atomic - if another
-                    // transaction already took the stock, count is 0 here
-                    // and the whole order rolls back instead of overselling.
-                    const claim = await tx.product.updateMany({
-                        where: { id: item.product.id, stock: { gte: item.quantity } },
-                        data: {
-                            stock: { decrement: item.quantity },
-                        },
+                    // Claims at the (product, location) level, not the
+                    // product's account-wide total - the stock read used for
+                    // the pre-check above happened before this transaction
+                    // started AND before location was even a dimension, so it
+                    // cannot protect against a concurrent request taking the
+                    // same location's stock in between. See
+                    // productLocationStock.service.js#claimLocationStock for
+                    // why this is still atomic.
+                    const locationBalance = await claimLocationStock(tx, {
+                        productId: item.product.id,
+                        pointOfSaleId,
+                        quantity: item.quantity,
                     });
 
-                    if (claim.count === 0) {
-                        // The insufficientItems pre-check above read stock
-                        // before this transaction started, so it can't tell
-                        // the caller what's actually available now that a
-                        // concurrent request has taken some of it in between -
-                        // re-read it fresh instead of reporting null.
-                        const current = await tx.product.findUnique({
-                            where: { id: item.product.id },
-                            select: { stock: true },
-                        });
+                    if (locationBalance === null) {
+                        const available = await getLocationStock(item.product.id, pointOfSaleId);
                         throw new ApiError(
                             422,
                             "Insufficient stock for one or more products",
@@ -289,23 +301,19 @@ class OrderService {
                                     product_name: item.product.productName,
                                     product_code: item.product.productCode,
                                     requested: item.quantity,
-                                    available: current?.stock ?? null,
+                                    available,
                                     reason: "insufficient_stock",
                                 },
                             ]
                         );
                     }
 
-                    const updatedProduct = await tx.product.findUniqueOrThrow({
-                        where: { id: item.product.id },
-                        select: { stock: true },
-                    });
-
                     await recordStockMovement(tx, {
                         productId: item.product.id,
                         accountId: item.product.createdById,
+                        pointOfSaleId,
                         delta: -item.quantity,
-                        balanceAfter: updatedProduct.stock,
+                        balanceAfter: locationBalance,
                         sourceType: "order",
                         sourceId: createdOrder.id,
                         createdById: userId,
@@ -316,8 +324,8 @@ class OrderService {
             return createdOrder;
         });
 
-        emitAccountEvent(userId, "order", "created");
-        if (shouldDeductStock) emitAccountEvent(userId, "product", "stock-changed");
+        emitPosEvent(userId, pointOfSaleId, "order", "created");
+        if (shouldDeductStock) emitPosEvent(userId, pointOfSaleId, "product", "stock-changed");
 
         // Check for low stock after deduction and alert (fire and forget)
         if (shouldDeductStock) {
@@ -383,7 +391,7 @@ class OrderService {
         };
     }
 
-    async updateOrderStatus(orderId, newStatus, userId, userRole) {
+    async updateOrderStatus(orderId, newStatus, userId, userRole, actingUser) {
         const order = await findOrderByAnyId(orderId);
 
         if (!order) {
@@ -393,6 +401,7 @@ class OrderService {
         if (userRole !== "admin" && order.createdById !== userId) {
             throw new ApiError(403, "You are not authorized to update this order");
         }
+        if (actingUser) assertPosAccess(actingUser, order.pointOfSaleId);
 
         const validTransitions = {
             pending: ["processing", "cancelled"],
@@ -470,17 +479,18 @@ class OrderService {
                     const pending = detail.quantity - detail.returnedQuantity;
                     if (pending <= 0) continue;
 
-                    const updatedProduct = await tx.product.update({
-                        where: { id: detail.productId },
-                        data: { stock: { increment: pending } },
-                        select: { stock: true },
+                    const locationBalance = await creditLocationStock(tx, {
+                        productId: detail.productId,
+                        pointOfSaleId: order.pointOfSaleId,
+                        quantity: pending,
                     });
 
                     await recordStockMovement(tx, {
                         productId: detail.productId,
                         accountId: detail.product.createdById,
+                        pointOfSaleId: order.pointOfSaleId,
                         delta: pending,
-                        balanceAfter: updatedProduct.stock,
+                        balanceAfter: locationBalance,
                         sourceType: "order_cancellation",
                         sourceId: order.id,
                         createdById: userId,
@@ -509,8 +519,8 @@ class OrderService {
                 return tx.order.findUniqueOrThrow({ where: { id: order.id } });
             });
 
-            emitAccountEvent(order.createdById, "order", "updated");
-            emitAccountEvent(order.createdById, "product", "stock-changed");
+            emitPosEvent(order.createdById, order.pointOfSaleId, "order", "updated");
+            emitPosEvent(order.createdById, order.pointOfSaleId, "product", "stock-changed");
 
             return {
                 _id: toExternalId(updated),
@@ -536,17 +546,25 @@ class OrderService {
                 },
             });
 
+            const locationRowsForCompletion = await prisma.productLocationStock.findMany({
+                where: { pointOfSaleId: order.pointOfSaleId, productId: { in: details.map((d) => d.product.id) } },
+                select: { productId: true, stock: true },
+            });
+            const locationStockForCompletion = new Map(locationRowsForCompletion.map((r) => [r.productId, r.stock]));
+
             const insufficientItems = details
-                .filter((d) => d.product.stock < d.quantity)
-                .map((d) => ({
-                    product_id: toExternalId(d.product),
-                    product_name: d.product.productName,
-                    product_code: d.product.productCode,
-                    requested: d.quantity,
-                    available: d.product.stock,
-                    reason:
-                        d.product.stock === 0 ? "out_of_stock" : "insufficient_stock",
-                }));
+                .filter((d) => (locationStockForCompletion.get(d.product.id) ?? 0) < d.quantity)
+                .map((d) => {
+                    const available = locationStockForCompletion.get(d.product.id) ?? 0;
+                    return {
+                        product_id: toExternalId(d.product),
+                        product_name: d.product.productName,
+                        product_code: d.product.productCode,
+                        requested: d.quantity,
+                        available,
+                        reason: available === 0 ? "out_of_stock" : "insufficient_stock",
+                    };
+                });
 
             if (insufficientItems.length > 0) {
                 throw new ApiError(
@@ -578,24 +596,20 @@ class OrderService {
                 }
 
                 for (const detail of details) {
-                    // Same guarded claim as createOrder: the stock read above
-                    // predates this transaction, so a concurrent completion
-                    // of another order for the same product could otherwise
-                    // race past this check and oversell.
-                    const claim = await tx.product.updateMany({
-                        where: { id: detail.product.id, stock: { gte: detail.quantity } },
-                        data: {
-                            stock: { decrement: detail.quantity },
-                        },
+                    // Same guarded claim as createOrder, against the
+                    // location now instead of the product's account-wide
+                    // total: the stock read above predates this transaction,
+                    // so a concurrent completion of another order for the
+                    // same product/location could otherwise race past this
+                    // check and oversell.
+                    const locationBalance = await claimLocationStock(tx, {
+                        productId: detail.product.id,
+                        pointOfSaleId: order.pointOfSaleId,
+                        quantity: detail.quantity,
                     });
 
-                    if (claim.count === 0) {
-                        // Same reasoning as createOrder's identical branch:
-                        // report what's actually available now, not null.
-                        const current = await tx.product.findUnique({
-                            where: { id: detail.product.id },
-                            select: { stock: true },
-                        });
+                    if (locationBalance === null) {
+                        const available = await getLocationStock(detail.product.id, order.pointOfSaleId);
                         throw new ApiError(
                             422,
                             "Insufficient stock for one or more products",
@@ -605,23 +619,19 @@ class OrderService {
                                     product_name: detail.product.productName,
                                     product_code: detail.product.productCode,
                                     requested: detail.quantity,
-                                    available: current?.stock ?? null,
+                                    available,
                                     reason: "insufficient_stock",
                                 },
                             ]
                         );
                     }
 
-                    const updatedProduct = await tx.product.findUniqueOrThrow({
-                        where: { id: detail.product.id },
-                        select: { stock: true },
-                    });
-
                     await recordStockMovement(tx, {
                         productId: detail.product.id,
                         accountId: detail.product.createdById,
+                        pointOfSaleId: order.pointOfSaleId,
                         delta: -detail.quantity,
-                        balanceAfter: updatedProduct.stock,
+                        balanceAfter: locationBalance,
                         sourceType: "order",
                         sourceId: order.id,
                         createdById: userId,
@@ -640,8 +650,8 @@ class OrderService {
                 });
             }
 
-            emitAccountEvent(order.createdById, "order", "updated");
-            emitAccountEvent(order.createdById, "product", "stock-changed");
+            emitPosEvent(order.createdById, order.pointOfSaleId, "order", "updated");
+            emitPosEvent(order.createdById, order.pointOfSaleId, "product", "stock-changed");
 
             return {
                 _id: toExternalId(updated),
@@ -658,7 +668,7 @@ class OrderService {
             },
         });
 
-        emitAccountEvent(order.createdById, "order", "updated");
+        emitPosEvent(order.createdById, order.pointOfSaleId, "order", "updated");
 
         return {
             _id: toExternalId(updated),
@@ -677,7 +687,7 @@ class OrderService {
     // "returned" once every line has nothing left pending - see the schema
     // comment on OrderDetail for why returnedQuantity/refundAmount are
     // running totals, same as PurchaseDetail.
-    async processReturn(orderId, lines, userId, userRole) {
+    async processReturn(orderId, lines, userId, userRole, actingUser) {
         const order = await findOrderByAnyId(orderId);
 
         if (!order) {
@@ -687,6 +697,7 @@ class OrderService {
         if (userRole !== "admin" && order.createdById !== userId) {
             throw new ApiError(403, "You don't have permission to return items from this order");
         }
+        if (actingUser) assertPosAccess(actingUser, order.pointOfSaleId);
 
         if (order.orderStatus !== "completed") {
             throw new ApiError(
@@ -785,17 +796,18 @@ class OrderService {
                 const detail = detailById.get(line.order_detail_id);
                 const quantity = Number(line.quantity);
 
-                const updatedProduct = await tx.product.update({
-                    where: { id: detail.product.id },
-                    data: { stock: { increment: quantity } },
-                    select: { stock: true },
+                const locationBalance = await creditLocationStock(tx, {
+                    productId: detail.product.id,
+                    pointOfSaleId: order.pointOfSaleId,
+                    quantity,
                 });
 
                 await recordStockMovement(tx, {
                     productId: detail.product.id,
                     accountId: detail.product.createdById,
+                    pointOfSaleId: order.pointOfSaleId,
                     delta: quantity,
-                    balanceAfter: updatedProduct.stock,
+                    balanceAfter: locationBalance,
                     sourceType: "order_return",
                     sourceId: order.id,
                     createdById: userId,
@@ -859,8 +871,8 @@ class OrderService {
             return { results, orderFullyReturned };
         });
 
-        emitAccountEvent(order.createdById, "order", "updated");
-        emitAccountEvent(order.createdById, "product", "stock-changed");
+        emitPosEvent(order.createdById, order.pointOfSaleId, "order", "updated");
+        emitPosEvent(order.createdById, order.pointOfSaleId, "product", "stock-changed");
 
         return {
             order_id: toExternalId(order),

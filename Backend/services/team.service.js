@@ -4,6 +4,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { issueAuthTokens } from "../utils/authTokens.js";
 import { clearActiveSession } from "../utils/sessionStore.js";
+import { publishPosScopeChange } from "../utils/posScopeStore.js";
 import {
     ensureUserSubscription,
     getEffectivePlan,
@@ -732,6 +733,11 @@ export const listMembers = async (team) => {
             include: {
                 user: { select: { id: true, username: true, email: true, avatar: true } },
                 role: { select: { id: true, name: true } },
+                // Only populated when scopeAll is false - see
+                // TeamMemberPointOfSale's model comment. Cheap to always
+                // include (a full-scope member simply has zero rows here)
+                // rather than a second conditional query per member.
+                pointsOfSale: { include: { pointOfSale: { select: { id: true, name: true } } } },
             },
             orderBy: { joinedAt: "asc" },
         }),
@@ -747,6 +753,11 @@ export const listMembers = async (team) => {
             isOwner: true,
             status: "active",
             joinedAt: owner.createdAt,
+            // The owner is always full-scope (see pos.permissions.js) -
+            // never has TeamMemberPointOfSale rows to read, so this is
+            // stated directly rather than queried.
+            scopeAll: true,
+            pointsOfSale: [],
         },
         ...members.map((m) => ({
             userId: m.user.id,
@@ -757,6 +768,8 @@ export const listMembers = async (team) => {
             isOwner: false,
             status: m.status,
             joinedAt: m.joinedAt,
+            scopeAll: m.scopeAll,
+            pointsOfSale: m.pointsOfSale.map((row) => row.pointOfSale),
         })),
     ];
 };
@@ -812,6 +825,83 @@ export const changeMemberRole = async ({ team, actorId, userId, roleId }) => {
     );
 
     return updated;
+};
+
+// Sets which Points of Sale a member can act on - orthogonal to their role
+// (changeMemberRole above changes WHAT they can do, this changes WHERE).
+// The owner is never affected by this: they're always full-scope, same as
+// they're always "admin" on every module regardless of TeamRolePermission
+// (see team.permissions.js#getModuleAccessLevel and its "rule 4" comment).
+export const changeMemberScope = async ({ team, actorId, userId, scopeAll, pointOfSaleIds }) => {
+    if (userId === team.ownerId) {
+        throw new ApiError(400, "El alcance del owner no se puede cambiar: siempre tiene acceso a todos los puntos de venta.");
+    }
+
+    const member = await prisma.teamMember.findFirst({
+        where: { teamId: team.id, userId, status: "active" },
+        include: { user: { select: { username: true } } },
+    });
+    if (!member) {
+        throw new ApiError(404, "Miembro activo no encontrado");
+    }
+
+    if (scopeAll) {
+        const updated = await prisma.$transaction(async (tx) => {
+            // No reason to keep stale grant rows around once they're
+            // ignored - resolveAccountScope only reads them when
+            // scopeAll is false anyway, but leaving them would silently
+            // resurface if scope were narrowed again without an explicit
+            // new list.
+            await tx.teamMemberPointOfSale.deleteMany({ where: { teamMemberId: member.id } });
+            return tx.teamMember.update({ where: { id: member.id }, data: { scopeAll: true } });
+        });
+
+        await logActivity(
+            team.id,
+            actorId,
+            "member.scope_changed",
+            { targetUsername: member.user.username, scopeAll: true },
+            userId
+        );
+        // This member's already-connected sockets joined a fixed room list
+        // at connect time - force a reconnect so it's recomputed against
+        // their new scope (see utils/posScopeStore.js).
+        publishPosScopeChange({ accountId: team.ownerId, userId }).catch(() => {});
+        return { ...updated, pointsOfSale: [] };
+    }
+
+    const ids = [...new Set(Array.isArray(pointOfSaleIds) ? pointOfSaleIds : [])];
+    if (ids.length === 0) {
+        throw new ApiError(400, "Selecciona al menos un punto de venta, o usa scopeAll: true para acceso a todos.");
+    }
+
+    const validCount = await prisma.pointOfSale.count({
+        where: { id: { in: ids }, accountId: team.ownerId },
+    });
+    if (validCount !== ids.length) {
+        throw new ApiError(400, "Uno o más puntos de venta no pertenecen a esta cuenta.");
+    }
+
+    await prisma.$transaction(async (tx) => {
+        await tx.teamMember.update({ where: { id: member.id }, data: { scopeAll: false } });
+        await tx.teamMemberPointOfSale.deleteMany({ where: { teamMemberId: member.id } });
+        await tx.teamMemberPointOfSale.createMany({
+            data: ids.map((pointOfSaleId) => ({ teamMemberId: member.id, pointOfSaleId })),
+        });
+    });
+
+    const pointsOfSale = await prisma.pointOfSale.findMany({ where: { id: { in: ids } } });
+
+    await logActivity(
+        team.id,
+        actorId,
+        "member.scope_changed",
+        { targetUsername: member.user.username, scopeAll: false, pointOfSaleIds: ids },
+        userId
+    );
+    publishPosScopeChange({ accountId: team.ownerId, userId }).catch(() => {});
+
+    return { ...member, scopeAll: false, pointsOfSale };
 };
 
 export const removeMember = async ({ team, actorId, userId }) => {

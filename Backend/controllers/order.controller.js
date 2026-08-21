@@ -5,6 +5,7 @@ import orderService from "../services/order.service.js";
 import PDFDocument from "pdfkit";
 import { prisma } from "../db/prisma.js";
 import { ensureUserSubscription, getEffectivePlan } from "../middleware/pricing.middleware.js";
+import { resolveOrAssertPointOfSaleId, hasPosAccess } from "../middleware/pos.permissions.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -109,10 +110,12 @@ const findOrderByAnyId = async (id) =>
 
 const createOrder = asyncHandler(async (req, res, next) => {
     try {
+        const pointOfSaleId = await resolveOrAssertPointOfSaleId(req);
         const order = await orderService.createOrder(
             req.body,
             req.user.prismaId,
-            req.user.role
+            req.user.role,
+            pointOfSaleId
         );
         return res
             .status(201)
@@ -141,6 +144,13 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
 
     if (req.user.role !== "admin") {
         where.createdById = req.user.prismaId;
+        // Restricted-scope actors (see pos.permissions.js) only ever see
+        // orders from their own locations - full-scope (owner, or a member
+        // with posScopeAll) needs no extra filter here since it already
+        // means "every location this account has, including future ones".
+        if (!req.user.posScopeAll) {
+            where.pointOfSaleId = { in: req.user.posScopeIds || [] };
+        }
     }
 
     if (search) {
@@ -289,6 +299,9 @@ const getOrderDetails = asyncHandler(async (req, res, next) => {
                 new ApiError(403, "You are not authorized to access this order")
             );
         }
+        if (req.user.role !== "admin" && !hasPosAccess(req.user, order.pointOfSaleId)) {
+            return next(new ApiError(403, "No tienes acceso a este punto de venta."));
+        }
 
         const details = await prisma.orderDetail.findMany({
             where: { orderId: order.id },
@@ -336,7 +349,8 @@ const updateOrderStatus = asyncHandler(async (req, res, next) => {
             id,
             order_status,
             req.user.prismaId,
-            req.user.role
+            req.user.role,
+            req.user
         );
 
         return res
@@ -363,6 +377,9 @@ const getOrderReturnPreview = asyncHandler(async (req, res, next) => {
             return next(
                 new ApiError(403, "You don't have permission to view this order")
             );
+        }
+        if (req.user.role !== "admin" && !hasPosAccess(req.user, order.pointOfSaleId)) {
+            return next(new ApiError(403, "No tienes acceso a este punto de venta."));
         }
 
         if (order.orderStatus === "returned") {
@@ -449,7 +466,8 @@ const processOrderReturn = asyncHandler(async (req, res, next) => {
             id,
             lines,
             req.user.prismaId,
-            req.user.role
+            req.user.role,
+            req.user
         );
 
         return res
@@ -483,7 +501,10 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
             );
         }
 
-        if (req.user.role !== "admin" && order.createdById !== req.user.prismaId) {
+        if (
+            (req.user.role !== "admin" && order.createdById !== req.user.prismaId) ||
+            (req.user.role !== "admin" && !hasPosAccess(req.user, order.pointOfSaleId))
+        ) {
             return next(
                 new ApiError(
                     404,

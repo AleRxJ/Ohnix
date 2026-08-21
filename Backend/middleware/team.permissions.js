@@ -24,6 +24,12 @@ export const MODULE_KEYS = [
     "purchases",
     "reports",
     "billing",
+    // Create/rename/deactivate Points of Sale (Escala) - unlike billing/API
+    // keys this IS grantable to a member (see blockTeamMembers for what
+    // stays hard owner-only). A new module key is safe to add without any
+    // backfill: an existing role with no row for it reads as "none" via
+    // getModuleAccessLevel below, which is the correct default-deny.
+    "pointsOfSale",
 ];
 
 // Modules the UI never shows as an independent toggle - their level always
@@ -55,6 +61,7 @@ export const DEFAULT_MEMBER_ROLE_PERMISSIONS = {
     purchases: "none",
     reports: "none",
     billing: "none",
+    pointsOfSale: "none",
 };
 
 export const OWNER_ROLE_PERMISSIONS = MODULE_KEYS.reduce(
@@ -103,6 +110,7 @@ const MODULE_LABELS_ES = {
     purchases: "compras",
     reports: "reportes",
     billing: "facturación",
+    pointsOfSale: "puntos de venta",
 };
 
 export const requireModulePermission = (moduleKey, minLevel = "view") =>

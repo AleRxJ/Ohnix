@@ -95,6 +95,13 @@ enum StockMovementSourceType {
   // back to the specific fiscal document that caused it.
   credit_note_restock
   adjustment
+  // Paired rows for a transfer between two Points of Sale of the same
+  // account - always written together in one transaction (see
+  // productLocationStock.service.js#transferStock), sharing one sourceId
+  // (a synthetic transfer id) so the two sides of the same move are
+  // traceable to each other in the ledger.
+  transfer_out
+  transfer_in
 }
 
 // Whether a company is a "responsable" or "no responsable" of VAT under
@@ -145,21 +152,26 @@ model User {
   subscription      Subscription?
   company           Company?      @relation(fields: [companyId], references: [id])
 
-  categoriesCreated   Category[]           @relation("CategoryCreatedBy")
-  categoriesUpdated   Category[]           @relation("CategoryUpdatedBy")
-  unitsCreated        Unit[]               @relation("UnitCreatedBy")
-  unitsUpdated        Unit[]               @relation("UnitUpdatedBy")
-  productsCreated     Product[]            @relation("ProductCreatedBy")
-  productsUpdated     Product[]            @relation("ProductUpdatedBy")
-  customers           Customer[]
-  suppliers           Supplier[]
-  purchasesCreated    Purchase[]           @relation("PurchaseCreatedBy")
-  purchasesUpdated    Purchase[]           @relation("PurchaseUpdatedBy")
-  ordersCreated       Order[]              @relation("OrderCreatedBy")
-  ordersUpdated       Order[]              @relation("OrderUpdatedBy")
-  planUpgradeRequests PlanUpgradeRequest[]
-  apiKeys             ApiKey[]
-  stockMovementsCreated StockMovement[]    @relation("StockMovementCreatedBy")
+  categoriesCreated     Category[]           @relation("CategoryCreatedBy")
+  categoriesUpdated     Category[]           @relation("CategoryUpdatedBy")
+  unitsCreated          Unit[]               @relation("UnitCreatedBy")
+  unitsUpdated          Unit[]               @relation("UnitUpdatedBy")
+  productsCreated       Product[]            @relation("ProductCreatedBy")
+  productsUpdated       Product[]            @relation("ProductUpdatedBy")
+  customers             Customer[]
+  suppliers             Supplier[]
+  purchasesCreated      Purchase[]           @relation("PurchaseCreatedBy")
+  purchasesUpdated      Purchase[]           @relation("PurchaseUpdatedBy")
+  ordersCreated         Order[]              @relation("OrderCreatedBy")
+  ordersUpdated         Order[]              @relation("OrderUpdatedBy")
+  planUpgradeRequests   PlanUpgradeRequest[]
+  apiKeys               ApiKey[]
+  stockMovementsCreated StockMovement[]      @relation("StockMovementCreatedBy")
+  // Points of Sale belong to the account (same accountId every other model
+  // scopes by - see teamContext.js), never to a Team, since most accounts
+  // (starter/growth without a Team row) still need exactly one default
+  // location - see PointOfSale below.
+  pointsOfSaleOwned     PointOfSale[]        @relation("PointOfSaleAccount")
 
   // Teams: a user is either a team owner (ownedTeam), a member of exactly one
   // active team at a time (via TeamMember, enforced in team.service.js - not
@@ -177,59 +189,59 @@ model User {
 }
 
 model Company {
-  id                               String   @id @default(cuid())
-  name                             String   @unique
-  legalName                        String?  @map("legal_name")
-  countryCode                      String?  @map("country_code")
-  contactEmail                     String?  @map("contact_email")
+  id                               String            @id @default(cuid())
+  name                             String            @unique
+  legalName                        String?           @map("legal_name")
+  countryCode                      String?           @map("country_code")
+  contactEmail                     String?           @map("contact_email")
   phone                            String?
-  electronicInvoicingEnabled       Boolean  @default(false) @map("electronic_invoicing_enabled")
+  electronicInvoicingEnabled       Boolean           @default(false) @map("electronic_invoicing_enabled")
   // Which provider issues this company's electronic invoices. Factus stays
   // fully wired (see factus.service.js) even though Alanube is the default
   // for new companies - kept dormant per-company rather than removed so it
   // can be switched back without re-integrating from scratch.
-  electronicInvoicingProvider      String   @default("alanube") @map("electronic_invoicing_provider")
-  factusNumberingRangeId           String?  @map("factus_numbering_range_id")
+  electronicInvoicingProvider      String            @default("alanube") @map("electronic_invoicing_provider")
+  factusNumberingRangeId           String?           @map("factus_numbering_range_id")
   // Factus requires a distinct numbering range per document type (invoices
   // are document code 21, credit notes are 22) - they cannot share a range.
-  factusCreditNoteNumberingRangeId String?  @map("factus_credit_note_numbering_range_id")
-  factusDocumentType               String   @default("01") @map("factus_document_type")
-  factusOperationType              String   @default("10") @map("factus_operation_type")
-  factusPaymentForm                String   @default("1") @map("factus_payment_form")
-  factusPaymentMethodCode          String   @default("42") @map("factus_payment_method_code")
+  factusCreditNoteNumberingRangeId String?           @map("factus_credit_note_numbering_range_id")
+  factusDocumentType               String            @default("01") @map("factus_document_type")
+  factusOperationType              String            @default("10") @map("factus_operation_type")
+  factusPaymentForm                String            @default("1") @map("factus_payment_form")
+  factusPaymentMethodCode          String            @default("42") @map("factus_payment_method_code")
   // Alanube (Alegra's e-provider API) requires each company to be registered
   // separately under its own NIT - there is no shared-account/branch model
   // like Factus's numbering ranges. taxIdentificationDv is the DIAN check
   // digit, auto-computed from taxIdentification (see nit.util.js) unless the
   // admin overrides it.
-  taxIdentification                String?  @map("tax_identification")
-  taxIdentificationDv              String?  @map("tax_identification_dv")
-  alanubeCompanyId                 String?  @map("alanube_company_id")
+  taxIdentification                String?           @map("tax_identification")
+  taxIdentificationDv              String?           @map("tax_identification_dv")
+  alanubeCompanyId                 String?           @map("alanube_company_id")
   // DIAN test-set id used to enable the company for a document type.
   // Sandbox uses Alanube's published constant by default; production
   // requires the real id DIAN issues once habilitación is completed.
-  alanubeTestSetId                 String?  @map("alanube_test_set_id")
+  alanubeTestSetId                 String?           @map("alanube_test_set_id")
   // Numbering authorization (DIAN "resolución de numeración"): resolutionNumber,
   // prefix, minNumber, maxNumber, startDate, endDate, technicalKey. Stored as
   // JSON rather than flat columns since it's fetched verbatim from Alanube's
   // getResolutions endpoint in production, or entered from DIAN's sandbox
   // example values for testing.
-  alanubeInvoiceResolution         Json?    @map("alanube_invoice_resolution")
-  alanubeCreditNoteResolution      Json?    @map("alanube_credit_note_resolution")
+  alanubeInvoiceResolution         Json?             @map("alanube_invoice_resolution")
+  alanubeCreditNoteResolution      Json?             @map("alanube_credit_note_resolution")
   // Unlike Factus, Alanube requires the caller to supply the next document
   // number itself (no server-side auto-numbering) - these track the next
   // number to use inside the resolution's [minNumber, maxNumber] range.
   // Null means "not started yet, seed from resolution.minNumber".
-  alanubeNextInvoiceNumber         Int?     @map("alanube_next_invoice_number")
-  alanubeNextCreditNoteNumber      Int?     @map("alanube_next_credit_note_number")
+  alanubeNextInvoiceNumber         Int?              @map("alanube_next_invoice_number")
+  alanubeNextCreditNoteNumber      Int?              @map("alanube_next_credit_note_number")
   // Order PDF branding (Negocio+): logo + legal data replace the generic
   // template. pdfFooterText is the Escala+ "personalizable" extra.
-  logoUrl                          String?  @map("logo_url") @db.Text
-  pdfFooterText                    String?  @map("pdf_footer_text") @db.Text
+  logoUrl                          String?           @map("logo_url") @db.Text
+  pdfFooterText                    String?           @map("pdf_footer_text") @db.Text
   // Escala+ brand color (hex, e.g. "#29D8D5") applied to the PDF's accent
   // line/TOTAL amount in place of the fixed default, completing the "fully
   // customizable" PDF promise alongside logo + footer.
-  pdfAccentColor                   String?  @map("pdf_accent_color")
+  pdfAccentColor                   String?           @map("pdf_accent_color")
   // VAT responsibility (ET art. 437) is a fact about the company, not a
   // billing setting - it belongs next to countryCode, not inside the DIAN/
   // Factus block below, since it also gates local (non-electronic) order
@@ -238,9 +250,9 @@ model Company {
   // the tax treatment of orders already placed before it.
   vatResponsible                   VatResponsibility @default(unset) @map("vat_responsible")
   vatResponsibleEffectiveFrom      DateTime?         @map("vat_responsible_effective_from")
-  isActive                         Boolean  @default(true) @map("is_active")
-  createdAt                        DateTime @default(now()) @map("created_at")
-  updatedAt                        DateTime @updatedAt @map("updated_at")
+  isActive                         Boolean           @default(true) @map("is_active")
+  createdAt                        DateTime          @default(now()) @map("created_at")
+  updatedAt                        DateTime          @updatedAt @map("updated_at")
 
   users              User[]
   electronicInvoices ElectronicInvoice[]
@@ -464,7 +476,7 @@ model Customer {
   tributeCode                String?  @map("tribute_code")
   municipalityCode           String?  @map("municipality_code")
   countryCode                String?  @map("country_code")
-  isTutorialData              Boolean  @default(false) @map("is_tutorial_data")
+  isTutorialData             Boolean  @default(false) @map("is_tutorial_data")
   createdById                String   @map("created_by")
   createdAt                  DateTime @default(now()) @map("created_at")
   updatedAt                  DateTime @updatedAt @map("updated_at")
@@ -477,20 +489,26 @@ model Customer {
 }
 
 model Product {
-  id                String   @id @default(cuid())
-  legacyMongoId     String?  @unique @map("legacy_mongo_id")
-  productName       String   @map("product_name")
-  productCode       String   @map("product_code")
-  categoryId        String   @map("category_id")
-  unitId            String   @map("unit_id")
-  buyingPrice       Decimal  @map("buying_price") @db.Decimal(12, 2)
-  sellingPrice      Decimal  @map("selling_price") @db.Decimal(12, 2)
-  stock             Int      @default(0)
-  productImage      String   @default("default-product.png") @map("product_image")
-  unitMeasureCode   String   @default("94") @map("unit_measure_code")
-  standardCode      String   @default("999") @map("standard_code")
-  taxCode           String?  @default("01") @map("tax_code")
-  taxRate           Decimal? @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  id                String              @id @default(cuid())
+  legacyMongoId     String?             @unique @map("legacy_mongo_id")
+  productName       String              @map("product_name")
+  productCode       String              @map("product_code")
+  categoryId        String              @map("category_id")
+  unitId            String              @map("unit_id")
+  buyingPrice       Decimal             @map("buying_price") @db.Decimal(12, 2)
+  sellingPrice      Decimal             @map("selling_price") @db.Decimal(12, 2)
+  // Account-wide total across every Point of Sale - a fast-read cache kept
+  // in sync with ProductLocationStock the same way ProductLocationStock
+  // itself is a fast-read cache in front of StockMovement (see that
+  // model's comment). Always equals the sum of this product's
+  // ProductLocationStock rows; never written directly except by that sync -
+  // see productLocationStock.service.js#claimLocationStock.
+  stock             Int                 @default(0)
+  productImage      String              @default("default-product.png") @map("product_image")
+  unitMeasureCode   String              @default("94") @map("unit_measure_code")
+  standardCode      String              @default("999") @map("standard_code")
+  taxCode           String?             @default("01") @map("tax_code")
+  taxRate           Decimal?            @default(0) @map("tax_rate") @db.Decimal(5, 2)
   // Replaces the old isTaxExcluded boolean - see ProductTaxTreatment for why
   // "excluded" and "exempt" can't be the same flag. taxRate keeps meaning
   // "the rate to charge when taxTreatment is taxed"; it's ignored for
@@ -498,26 +516,51 @@ model Product {
   taxTreatment      ProductTaxTreatment @default(taxed) @map("tax_treatment")
   // Per-product override for the low-stock alert threshold (Escala+ plan
   // feature). Null means "use the account-wide default threshold".
-  lowStockThreshold Int?     @map("low_stock_threshold")
-  isTutorialData    Boolean  @default(false) @map("is_tutorial_data")
-  createdById       String   @map("created_by")
-  updatedById       String?  @map("updated_by")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  lowStockThreshold Int?                @map("low_stock_threshold")
+  isTutorialData    Boolean             @default(false) @map("is_tutorial_data")
+  createdById       String              @map("created_by")
+  updatedById       String?             @map("updated_by")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
 
-  category        Category         @relation(fields: [categoryId], references: [id])
-  unit            Unit             @relation(fields: [unitId], references: [id])
-  createdBy       User             @relation("ProductCreatedBy", fields: [createdById], references: [id])
-  updatedBy       User?            @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+  category        Category               @relation(fields: [categoryId], references: [id])
+  unit            Unit                   @relation(fields: [unitId], references: [id])
+  createdBy       User                   @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy       User?                  @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
   orderDetails    OrderDetail[]
   purchaseDetails PurchaseDetail[]
   stockMovements  StockMovement[]
+  locationStock   ProductLocationStock[]
 
   @@unique([productCode, createdById])
   @@index([createdById])
   @@index([categoryId])
   @@index([unitId])
   @@map("products")
+}
+
+// Per-location partition of a product's stock - the piece Product.stock
+// alone can't answer once an account has more than one PointOfSale ("10 in
+// Pereira, 25 in Bogotá"). Same fast-read-cache-in-front-of-a-ledger
+// pattern as Product.stock itself: StockMovement (which already carries
+// pointOfSaleId) is the append-only source of truth, this is the current
+// balance for one (product, location) pair. A missing row for a given
+// (productId, pointOfSaleId) means 0, not "unknown" - see
+// productLocationStock.service.js#getOrCreate.
+model ProductLocationStock {
+  id            String   @id @default(cuid())
+  productId     String   @map("product_id")
+  pointOfSaleId String   @map("point_of_sale_id")
+  stock         Int      @default(0)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  product     Product     @relation(fields: [productId], references: [id])
+  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
+
+  @@unique([productId, pointOfSaleId])
+  @@index([pointOfSaleId])
+  @@map("product_location_stock")
 }
 
 // The append-only ledger behind every Product.stock change. `stock` itself
@@ -529,23 +572,30 @@ model Product {
 // createdById (the team/account scope, see teamContext.js) so history
 // queries don't need to join through Product for tenant filtering.
 model StockMovement {
-  id           String                   @id @default(cuid())
-  productId    String                   @map("product_id")
-  accountId    String                   @map("account_id")
-  delta        Int
-  balanceAfter Int                      @map("balance_after")
-  sourceType   StockMovementSourceType  @map("source_type")
-  sourceId     String?                  @map("source_id")
-  reason       String?                  @db.Text
-  createdById  String                   @map("created_by")
-  createdAt    DateTime                 @default(now()) @map("created_at")
+  id            String                  @id @default(cuid())
+  productId     String                  @map("product_id")
+  accountId     String                  @map("account_id")
+  // Which location this movement happened at - see Order.pointOfSaleId.
+  // Stock itself (Product.stock) is not yet partitioned by location (that's
+  // a later phase); this column only attributes history, so it can seed
+  // per-location balances later without re-deriving them from scratch.
+  pointOfSaleId String                  @map("point_of_sale_id")
+  delta         Int
+  balanceAfter  Int                     @map("balance_after")
+  sourceType    StockMovementSourceType @map("source_type")
+  sourceId      String?                 @map("source_id")
+  reason        String?                 @db.Text
+  createdById   String                  @map("created_by")
+  createdAt     DateTime                @default(now()) @map("created_at")
 
-  product   Product @relation(fields: [productId], references: [id])
-  createdBy User    @relation("StockMovementCreatedBy", fields: [createdById], references: [id])
+  product     Product     @relation(fields: [productId], references: [id])
+  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
+  createdBy   User        @relation("StockMovementCreatedBy", fields: [createdById], references: [id])
 
   @@index([productId, createdAt])
   @@index([accountId, createdAt])
   @@index([sourceType, sourceId])
+  @@index([pointOfSaleId, createdAt])
   @@map("stock_movements")
 }
 
@@ -555,8 +605,8 @@ model StockMovement {
 // id - see systemSettings.util.js for the get/set helpers that keep it in
 // sync across the weekly digest, the real-time post-sale alert, and reports.
 model SystemSetting {
-  id                        String   @id @default("singleton")
-  lowStockDefaultThreshold  Int      @default(10) @map("low_stock_default_threshold")
+  id                                 String   @id @default("singleton")
+  lowStockDefaultThreshold           Int      @default(10) @map("low_stock_default_threshold")
   // Colombia VAT config (ET art. 468 general rate, art. 437 par. 3 UVT
   // threshold, DIAN's yearly UVT peso value) - kept as data instead of the
   // hardcoded constants they replace (product.controller.js's old
@@ -569,7 +619,7 @@ model SystemSetting {
   colombiaVatRate                    Decimal  @default(19) @map("colombia_vat_rate") @db.Decimal(5, 2)
   colombiaVatResponsibleThresholdUvt Int      @default(3500) @map("colombia_vat_responsible_threshold_uvt")
   colombiaUvtValue                   Decimal  @default(52374) @map("colombia_uvt_value") @db.Decimal(12, 2)
-  updatedAt                 DateTime @updatedAt @map("updated_at")
+  updatedAt                          DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
 }
@@ -580,6 +630,8 @@ model Purchase {
   purchaseDate   DateTime       @default(now()) @map("purchase_date")
   purchaseNo     String         @unique @map("purchase_no")
   supplierId     String         @map("supplier_id")
+  // Which location received this stock - see Order.pointOfSaleId.
+  pointOfSaleId  String         @map("point_of_sale_id")
   purchaseStatus PurchaseStatus @default(pending) @map("purchase_status")
   isTutorialData Boolean        @default(false) @map("is_tutorial_data")
   createdById    String         @map("created_by")
@@ -588,12 +640,14 @@ model Purchase {
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
   supplier        Supplier         @relation(fields: [supplierId], references: [id])
+  pointOfSale     PointOfSale      @relation(fields: [pointOfSaleId], references: [id])
   createdBy       User             @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
   updatedBy       User?            @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
   purchaseDetails PurchaseDetail[]
 
   @@index([createdById])
   @@index([supplierId])
+  @@index([pointOfSaleId])
   @@map("purchases")
 }
 
@@ -626,23 +680,30 @@ model PurchaseDetail {
 }
 
 model Order {
-  id            String      @id @default(cuid())
-  legacyMongoId String?     @unique @map("legacy_mongo_id")
-  customerId    String      @map("customer_id")
-  orderDate     DateTime    @default(now()) @map("order_date")
-  orderStatus   OrderStatus @default(pending) @map("order_status")
-  totalProducts Int         @map("total_products")
-  subTotal      Decimal     @map("sub_total") @db.Decimal(12, 2)
-  gst           Decimal     @default(0) @db.Decimal(12, 2)
-  total         Decimal     @db.Decimal(12, 2)
-  invoiceNo     String      @unique @map("invoice_no")
-  isTutorialData Boolean    @default(false) @map("is_tutorial_data")
-  createdById   String      @map("created_by")
-  updatedById   String?     @map("updated_by")
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
+  id             String      @id @default(cuid())
+  legacyMongoId  String?     @unique @map("legacy_mongo_id")
+  customerId     String      @map("customer_id")
+  // Which physical location this sale happened at - see PointOfSale.
+  // Every account has at least one default PointOfSale (auto-created), so
+  // this is never optional at the application level - see the
+  // add-point-of-sale migration for how existing rows were backfilled
+  // before this column became NOT NULL.
+  pointOfSaleId  String      @map("point_of_sale_id")
+  orderDate      DateTime    @default(now()) @map("order_date")
+  orderStatus    OrderStatus @default(pending) @map("order_status")
+  totalProducts  Int         @map("total_products")
+  subTotal       Decimal     @map("sub_total") @db.Decimal(12, 2)
+  gst            Decimal     @default(0) @db.Decimal(12, 2)
+  total          Decimal     @db.Decimal(12, 2)
+  invoiceNo      String      @unique @map("invoice_no")
+  isTutorialData Boolean     @default(false) @map("is_tutorial_data")
+  createdById    String      @map("created_by")
+  updatedById    String?     @map("updated_by")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
 
   customer          Customer           @relation(fields: [customerId], references: [id])
+  pointOfSale       PointOfSale        @relation(fields: [pointOfSaleId], references: [id])
   createdBy         User               @relation("OrderCreatedBy", fields: [createdById], references: [id])
   updatedBy         User?              @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
   orderDetails      OrderDetail[]
@@ -650,17 +711,18 @@ model Order {
 
   @@index([createdById])
   @@index([customerId])
+  @@index([pointOfSaleId])
   @@map("orders")
 }
 
 model OrderDetail {
-  id            String   @id @default(cuid())
-  legacyMongoId String?  @unique @map("legacy_mongo_id")
-  orderId       String   @map("order_id")
-  productId     String   @map("product_id")
-  quantity      Int
-  unitcost      Decimal  @db.Decimal(12, 2)
-  total         Decimal  @db.Decimal(12, 2)
+  id                  String              @id @default(cuid())
+  legacyMongoId       String?             @unique @map("legacy_mongo_id")
+  orderId             String              @map("order_id")
+  productId           String              @map("product_id")
+  quantity            Int
+  unitcost            Decimal             @db.Decimal(12, 2)
+  total               Decimal             @db.Decimal(12, 2)
   // Frozen at order creation (order.service.js#computeOrderTotals) - the
   // effective tax treatment/rate actually applied to this line, already
   // resolved against both the product's own classification AND the
@@ -677,11 +739,11 @@ model OrderDetail {
   // (sourceType "order_return", sourceId = this order's id) is the
   // append-only ledger, these are the fast-read cache. "Fully returned" is
   // derived as returnedQuantity === quantity, not stored.
-  returnDate       DateTime? @map("return_date")
-  returnedQuantity Int       @default(0) @map("returned_quantity")
-  refundAmount     Decimal   @default(0) @map("refund_amount") @db.Decimal(12, 2)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  returnDate          DateTime?           @map("return_date")
+  returnedQuantity    Int                 @default(0) @map("returned_quantity")
+  refundAmount        Decimal             @default(0) @map("refund_amount") @db.Decimal(12, 2)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
 
   order   Order   @relation(fields: [orderId], references: [id])
   product Product @relation(fields: [productId], references: [id])
@@ -836,14 +898,70 @@ model TeamMember {
   invitedById String?          @map("invited_by")
   joinedAt    DateTime         @default(now()) @map("joined_at")
   removedAt   DateTime?        @map("removed_at")
+  // Scope is orthogonal to role (see pos.permissions.js): role answers "what
+  // can this member do", scope answers "where". Defaults to true so every
+  // member that existed before Points of Sale shipped keeps exactly the
+  // account-wide access they already had - nobody is silently locked out by
+  // this migration. Only meaningful once the account actually has more than
+  // one PointOfSale; ignored entirely for the account owner, who is always
+  // full-scope regardless of this field (same rule as module permissions).
+  scopeAll    Boolean          @default(true) @map("scope_all")
 
-  team Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user User     @relation(fields: [userId], references: [id])
-  role TeamRole @relation(fields: [roleId], references: [id])
+  team         Team                    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user         User                    @relation(fields: [userId], references: [id])
+  role         TeamRole                @relation(fields: [roleId], references: [id])
+  pointsOfSale TeamMemberPointOfSale[]
 
   @@index([teamId, status])
   @@index([userId])
   @@map("team_members")
+}
+
+// Only has rows when the owning TeamMember.scopeAll is false - explicit
+// grant list of which PointOfSale a restricted-scope member can act on.
+// Membership here is checked in pos.permissions.js#resolvePosScope,
+// mirrored by auth.middleware.js into req.user.posScopeIds.
+model TeamMemberPointOfSale {
+  id            String   @id @default(cuid())
+  teamMemberId  String   @map("team_member_id")
+  pointOfSaleId String   @map("point_of_sale_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  teamMember  TeamMember  @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id], onDelete: Cascade)
+
+  @@unique([teamMemberId, pointOfSaleId])
+  @@index([pointOfSaleId])
+  @@map("team_member_points_of_sale")
+}
+
+// A physical/operational location under one account. Belongs to the account
+// (accountId, same tenant scope teamContext.js resolves everywhere else) -
+// deliberately NOT to Team, since Team only exists for accounts that opted
+// into collaboration on Negocio+ (see team.service.js#createTeam), while
+// every account, including a solo Starter user, has exactly one
+// PointOfSale (isDefault: true) so Order/Purchase/StockMovement always have
+// somewhere to point. Escala is what allows an account to create more than
+// one - enforced by PLAN_LIMITS.maxPointsOfSale (pricing.middleware.js), not
+// by anything in this model itself.
+model PointOfSale {
+  id        String   @id @default(cuid())
+  accountId String   @map("account_id")
+  name      String
+  isDefault Boolean  @default(false) @map("is_default")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  account        User                    @relation("PointOfSaleAccount", fields: [accountId], references: [id])
+  members        TeamMemberPointOfSale[]
+  orders         Order[]
+  purchases      Purchase[]
+  stockMovements StockMovement[]
+  locationStock  ProductLocationStock[]
+
+  @@index([accountId, isActive])
+  @@map("points_of_sale")
 }
 
 model TeamInvitation {

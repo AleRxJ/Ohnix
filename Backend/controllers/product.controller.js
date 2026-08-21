@@ -6,10 +6,17 @@ import { prisma } from "../db/prisma.js";
 import { normalizeCountryCode } from "../services/companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { recordStockMovement } from "../services/stockMovement.service.js";
+import {
+    claimLocationStock,
+    creditLocationStock,
+    listLocationStockForProduct,
+    transferStock,
+} from "../services/productLocationStock.service.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { getColombiaTaxSettings } from "../utils/systemSettings.js";
-import { emitAccountEvent } from "../live/dataEvents.js";
+import { emitAccountEvent, emitPosEvent } from "../live/dataEvents.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
+import { resolveOrAssertPointOfSaleId, hasPosAccess, assertPosAccess } from "../middleware/pos.permissions.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -681,20 +688,37 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
             );
         }
 
-        const requiredStock = parsedDelta < 0 ? -parsedDelta : 0;
+        const pointOfSaleId = await resolveOrAssertPointOfSaleId(req);
 
         const result = await prisma.$transaction(async (tx) => {
-            const claim = await tx.product.updateMany({
-                where: { id: existingProduct.id, stock: { gte: requiredStock } },
-                data: { stock: { increment: parsedDelta }, updatedById: req.user.prismaId },
-            });
+            // An adjustment can go either way - claim (guarded, can fail) for
+            // a decrease, credit (unconditional) for an increase - both
+            // against this location's stock, not the product's account-wide
+            // total.
+            const locationBalance =
+                parsedDelta < 0
+                    ? await claimLocationStock(tx, {
+                          productId: existingProduct.id,
+                          pointOfSaleId,
+                          quantity: -parsedDelta,
+                      })
+                    : await creditLocationStock(tx, {
+                          productId: existingProduct.id,
+                          pointOfSaleId,
+                          quantity: parsedDelta,
+                      });
 
-            if (claim.count === 0) {
+            if (locationBalance === null) {
                 throw new ApiError(
                     409,
                     "Not enough stock to apply this adjustment"
                 );
             }
+
+            await tx.product.update({
+                where: { id: existingProduct.id },
+                data: { updatedById: req.user.prismaId },
+            });
 
             const updated = await tx.product.findUniqueOrThrow({
                 where: { id: existingProduct.id },
@@ -709,8 +733,9 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
             await recordStockMovement(tx, {
                 productId: existingProduct.id,
                 accountId: existingProduct.createdById,
+                pointOfSaleId,
                 delta: parsedDelta,
-                balanceAfter: updated.stock,
+                balanceAfter: locationBalance,
                 sourceType: "adjustment",
                 sourceId: null,
                 reason: String(reason).trim(),
@@ -720,7 +745,7 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
             return updated;
         });
 
-        emitAccountEvent(existingProduct.createdById, "product", "stock-changed");
+        emitPosEvent(existingProduct.createdById, pointOfSaleId, "product", "stock-changed");
         return res
             .status(200)
             .json(new ApiResponse(200, mapProduct(result), "Stock adjusted successfully"));
@@ -755,7 +780,17 @@ const getProductStockMovements = asyncHandler(async (req, res, next) => {
         }
 
         const movements = await prisma.stockMovement.findMany({
-            where: { productId: existingProduct.id },
+            where: {
+                productId: existingProduct.id,
+                // Product is global (shared across every Point of Sale on
+                // the account), but each individual movement isn't - a
+                // restricted-scope actor sees only the history for
+                // locations they're allowed to see, not the product's full
+                // cross-location ledger.
+                ...(req.user.role !== "admin" && !req.user.posScopeAll
+                    ? { pointOfSaleId: { in: req.user.posScopeIds || [] } }
+                    : {}),
+            },
             orderBy: { createdAt: "desc" },
             take: 200,
             include: {
@@ -780,6 +815,111 @@ const getProductStockMovements = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(new ApiResponse(200, mapped, "Stock movements fetched successfully"));
     } catch (error) {
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
+});
+
+// Per-location breakdown for a single product - "10 in Pereira, 25 in
+// Bogotá". Restricted-scope actors only see the locations they're allowed
+// to see, same rule as everywhere else (see pos.permissions.js).
+const getProductLocationStock = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+
+    try {
+        const existingProduct = await findProductByAnyId(id);
+
+        if (!existingProduct) {
+            return next(new ApiError(404, "Product not found"));
+        }
+
+        if (
+            req.user.role !== "admin" &&
+            existingProduct.createdById !== req.user.prismaId
+        ) {
+            return next(
+                new ApiError(403, "You don't have permission to view this product's stock")
+            );
+        }
+
+        const rows = await listLocationStockForProduct(existingProduct.id);
+        const visible = rows.filter(
+            (row) => req.user.role === "admin" || hasPosAccess(req.user, row.pointOfSaleId)
+        );
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                visible.map((row) => ({
+                    point_of_sale_id: row.pointOfSaleId,
+                    point_of_sale_name: row.pointOfSale.name,
+                    is_default: row.pointOfSale.isDefault,
+                    is_active: row.pointOfSale.isActive,
+                    stock: row.stock,
+                })),
+                "Location stock fetched successfully"
+            )
+        );
+    } catch (error) {
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
+});
+
+// Moves stock of one product between two Points of Sale of the same
+// account - see productLocationStock.service.js#transferStock for why this
+// is one atomic operation instead of a decrement + a separate increment.
+const transferProductStock = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+    const { from_point_of_sale_id, to_point_of_sale_id, quantity, reason } = req.body || {};
+
+    try {
+        const existingProduct = await findProductByAnyId(id);
+
+        if (!existingProduct) {
+            return next(new ApiError(404, "Product not found"));
+        }
+        if (
+            req.user.role !== "admin" &&
+            existingProduct.createdById !== req.user.prismaId
+        ) {
+            return next(
+                new ApiError(403, "You don't have permission to transfer this product's stock")
+            );
+        }
+        if (req.user.role !== "admin") {
+            assertPosAccess(req.user, from_point_of_sale_id);
+            assertPosAccess(req.user, to_point_of_sale_id);
+        }
+
+        const result = await transferStock({
+            accountId: existingProduct.createdById,
+            actorId: req.user.actorId,
+            productId: existingProduct.id,
+            fromPointOfSaleId: from_point_of_sale_id,
+            toPointOfSaleId: to_point_of_sale_id,
+            quantity: Number(quantity),
+            reason: reason ? String(reason).trim() : null,
+        });
+
+        // Two locations changed, not one - a viewer scoped to either side
+        // of the transfer needs to know.
+        emitPosEvent(existingProduct.createdById, from_point_of_sale_id, "product", "stock-changed");
+        emitPosEvent(existingProduct.createdById, to_point_of_sale_id, "product", "stock-changed");
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                {
+                    transfer_id: result.transferId,
+                    from_balance: result.fromBalance,
+                    to_balance: result.toBalance,
+                },
+                "Stock transferred successfully"
+            )
+        );
+    } catch (error) {
+        if (error instanceof ApiError) return next(error);
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
     }
@@ -823,4 +963,6 @@ export {
     getAllProductsAdmin,
     adjustProductStock,
     getProductStockMovements,
+    getProductLocationStock,
+    transferProductStock,
 };

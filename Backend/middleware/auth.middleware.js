@@ -110,6 +110,12 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
             teamRoleId: accountScope.teamRoleId,
             isTeamMember: accountScope.isTeamMember,
             isTeamOwner: accountScope.isTeamOwner,
+            // Which of this account's Points of Sale the actor may act on -
+            // see pos.permissions.js. posScopeAll: true means "all,
+            // including ones created later"; posScopeIds is only meaningful
+            // when posScopeAll is false.
+            posScopeAll: accountScope.posScopeAll,
+            posScopeIds: accountScope.posScopeIds,
         };
         next();
     } catch (error) {

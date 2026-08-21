@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import purchaseService from "../services/purchase.service.js";
 import { prisma } from "../db/prisma.js";
+import { resolveOrAssertPointOfSaleId, hasPosAccess } from "../middleware/pos.permissions.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -92,10 +93,12 @@ const findPurchaseByAnyId = async (id) =>
 
 const createPurchase = asyncHandler(async (req, res, next) => {
     try {
+        const pointOfSaleId = await resolveOrAssertPointOfSaleId(req);
         const purchase = await purchaseService.createPurchase(
             req.body,
             req.user.prismaId,
-            req.user.role
+            req.user.role,
+            pointOfSaleId
         );
 
         const fullPurchase = await findPurchaseByAnyId(purchase._id);
@@ -116,8 +119,16 @@ const createPurchase = asyncHandler(async (req, res, next) => {
 
 const getAllPurchases = asyncHandler(async (req, res, next) => {
     try {
+        const where =
+            req.user.role === "admin"
+                ? {}
+                : {
+                      createdById: req.user.prismaId,
+                      ...(req.user.posScopeAll ? {} : { pointOfSaleId: { in: req.user.posScopeIds || [] } }),
+                  };
+
         const purchases = await prisma.purchase.findMany({
-            where: req.user.role === "admin" ? {} : { createdById: req.user.prismaId },
+            where,
             orderBy: { createdAt: "desc" },
             include: {
                 supplier: {
@@ -175,6 +186,9 @@ const getPurchaseDetails = asyncHandler(async (req, res, next) => {
                 new ApiError(403, "You don't have permission to view this purchase")
             );
         }
+        if (req.user.role !== "admin" && !hasPosAccess(req.user, purchase.pointOfSaleId)) {
+            return next(new ApiError(403, "No tienes acceso a este punto de venta."));
+        }
 
         const details = await prisma.purchaseDetail.findMany({
             where: { purchaseId: purchase.id },
@@ -223,7 +237,8 @@ const updatePurchaseStatus = asyncHandler(async (req, res, next) => {
             id,
             purchase_status,
             req.user.prismaId,
-            req.user.role
+            req.user.role,
+            req.user
         );
 
         return res
@@ -254,6 +269,9 @@ const getReturnPreview = asyncHandler(async (req, res, next) => {
             return next(
                 new ApiError(403, "You don't have permission to view this purchase")
             );
+        }
+        if (req.user.role !== "admin" && !hasPosAccess(req.user, purchase.pointOfSaleId)) {
+            return next(new ApiError(403, "No tienes acceso a este punto de venta."));
         }
 
         if (purchase.purchaseStatus === "returned") {
@@ -333,7 +351,8 @@ const processReturn = asyncHandler(async (req, res, next) => {
             id,
             lines,
             req.user.prismaId,
-            req.user.role
+            req.user.role,
+            req.user
         );
 
         return res

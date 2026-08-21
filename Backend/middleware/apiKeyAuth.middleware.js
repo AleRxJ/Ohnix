@@ -74,6 +74,12 @@ export const verifyApiKey = asyncHandler(async (req, _res, next) => {
         ...apiKey.user,
         _id: apiKey.user.legacyMongoId || apiKey.user.id,
         prismaId: apiKey.user.id,
+        // API keys are owner-only (see teamGuard.middleware.js#blockTeamMembers -
+        // a team member can never mint one), so the caller is always the
+        // account owner here, which is always full-scope - same rule as
+        // pos.permissions.js/teamContext.js apply everywhere else.
+        posScopeAll: true,
+        posScopeIds: null,
     };
     next();
 });

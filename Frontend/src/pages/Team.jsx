@@ -18,6 +18,7 @@ import MembersTab from "../components/team/MembersTab";
 import RolesTab from "../components/team/RolesTab";
 import ActivityTab from "../components/team/ActivityTab";
 import SettingsTab from "../components/team/SettingsTab";
+import PointsOfSaleTab from "../components/team/PointsOfSaleTab";
 import MemberOverview from "../components/team/MemberOverview";
 
 const StatTile = ({ icon, label, value, accent = "#29D8D5" }) => (
@@ -118,6 +119,11 @@ const Team = () => {
             key: "members",
             label: t("team.tab_members"),
             children: <MembersTab roles={roles} onRolesChanged={loadRoles} onMembersChanged={loadMembers} />,
+        },
+        {
+            key: "points-of-sale",
+            label: t("team.tab_points_of_sale"),
+            children: <PointsOfSaleTab />,
         },
         {
             key: "roles",

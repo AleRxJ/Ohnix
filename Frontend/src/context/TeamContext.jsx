@@ -21,6 +21,7 @@ export const TeamProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [socketConnected, setSocketConnected] = useState(false);
     const hasWarnedSessionReplaced = useRef(false);
+    const pendingPosScopeReconnect = useRef(false);
 
     const refreshTeam = useCallback(async () => {
         setLoading(true);
@@ -64,11 +65,26 @@ export const TeamProvider = ({ children }) => {
         const token = localStorage.getItem("accessToken");
         if (!token) return;
 
-        const socket = connectSocket(token);
         hasWarnedSessionReplaced.current = false;
+        let current = connectSocket(token);
+        let detachCurrent = () => {};
 
         const handleConnect = () => setSocketConnected(true);
-        const handleDisconnect = () => setSocketConnected(false);
+        const handleDisconnect = () => {
+            setSocketConnected(false);
+            // A pos-scope-driven disconnect is deliberate and self-healing -
+            // socket.io-client only auto-reconnects after an *unplanned*
+            // disconnect, so this opens a fresh connection explicitly, then
+            // re-attaches this same set of handlers to it (attach, below) -
+            // otherwise the new socket instance would sit there with no
+            // lifecycle listeners at all until this effect happened to
+            // re-run for an unrelated reason.
+            if (pendingPosScopeReconnect.current) {
+                pendingPosScopeReconnect.current = false;
+                const latestToken = localStorage.getItem("accessToken");
+                if (latestToken) attach(connectSocket(latestToken));
+            }
+        };
         const handleSessionReplaced = async () => {
             if (hasWarnedSessionReplaced.current) return;
             hasWarnedSessionReplaced.current = true;
@@ -79,16 +95,36 @@ export const TeamProvider = ({ children }) => {
             await logout();
             navigate("/login", { replace: true });
         };
-
-        socket.on("connect", handleConnect);
-        socket.on("disconnect", handleDisconnect);
-        socket.on("session:replaced", handleSessionReplaced);
-
-        return () => {
-            socket.off("connect", handleConnect);
-            socket.off("disconnect", handleDisconnect);
-            socket.off("session:replaced", handleSessionReplaced);
+        // Server-side scope change (a new Point of Sale was created, or
+        // this member's own scope was edited - see Backend's
+        // utils/posScopeStore.js) - unlike session:replaced, this is
+        // invisible on purpose: nothing about the user's own session
+        // changed, only which Point of Sale rooms their connection should
+        // be in. Reconnecting is deferred to handleDisconnect above rather
+        // than done here, since connectSocket's own "already connected"
+        // guard would otherwise race the pending close and silently no-op.
+        const handlePosScopeChanged = () => {
+            pendingPosScopeReconnect.current = true;
         };
+
+        const attach = (socket) => {
+            detachCurrent();
+            current = socket;
+            socket.on("connect", handleConnect);
+            socket.on("disconnect", handleDisconnect);
+            socket.on("session:replaced", handleSessionReplaced);
+            socket.on("pos-scope:changed", handlePosScopeChanged);
+            detachCurrent = () => {
+                socket.off("connect", handleConnect);
+                socket.off("disconnect", handleDisconnect);
+                socket.off("session:replaced", handleSessionReplaced);
+                socket.off("pos-scope:changed", handlePosScopeChanged);
+            };
+        };
+
+        attach(current);
+
+        return () => detachCurrent();
     }, [authenticated, user?.id, logout, navigate, t]);
 
     // moduleKey/minLevel gate mirroring the backend's requireModulePermission

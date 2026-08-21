@@ -1,7 +1,9 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { recordStockMovement } from "./stockMovement.service.js";
-import { emitAccountEvent } from "../live/dataEvents.js";
+import { claimLocationStock, creditLocationStock } from "./productLocationStock.service.js";
+import { emitPosEvent } from "../live/dataEvents.js";
+import { assertPosAccess } from "../middleware/pos.permissions.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -38,11 +40,12 @@ const findPurchaseByAnyId = async (id) =>
             legacyMongoId: true,
             purchaseStatus: true,
             createdById: true,
+            pointOfSaleId: true,
         },
     });
 
 class PurchaseService {
-    async createPurchase(purchaseData, userId, userRole) {
+    async createPurchase(purchaseData, userId, userRole, pointOfSaleId) {
         const { supplier_id, purchase_no, purchase_status, details, is_tutorial_data } = purchaseData;
 
         if (
@@ -115,6 +118,7 @@ class PurchaseService {
                 const createdPurchase = await tx.purchase.create({
                     data: {
                         supplierId: supplier.id,
+                        pointOfSaleId,
                         purchaseNo: String(purchase_no).trim(),
                         purchaseStatus: initialStatus,
                         isTutorialData: is_tutorial_data === true,
@@ -140,21 +144,18 @@ class PurchaseService {
                     });
 
                     if (shouldAddStock) {
-                        const updatedProduct = await tx.product.update({
-                            where: { id: mappedProduct.id },
-                            data: {
-                                stock: {
-                                    increment: Number(detail.quantity),
-                                },
-                            },
-                            select: { stock: true },
+                        const locationBalance = await creditLocationStock(tx, {
+                            productId: mappedProduct.id,
+                            pointOfSaleId,
+                            quantity: Number(detail.quantity),
                         });
 
                         await recordStockMovement(tx, {
                             productId: mappedProduct.id,
                             accountId: mappedProduct.createdById,
+                            pointOfSaleId,
                             delta: Number(detail.quantity),
-                            balanceAfter: updatedProduct.stock,
+                            balanceAfter: locationBalance,
                             sourceType: "purchase",
                             sourceId: createdPurchase.id,
                             createdById: userId,
@@ -165,8 +166,8 @@ class PurchaseService {
                 return createdPurchase;
             });
 
-            emitAccountEvent(userId, "purchase", "created");
-            if (shouldAddStock) emitAccountEvent(userId, "product", "stock-changed");
+            emitPosEvent(userId, pointOfSaleId, "purchase", "created");
+            if (shouldAddStock) emitPosEvent(userId, pointOfSaleId, "product", "stock-changed");
 
             return {
                 _id: toExternalId(purchase),
@@ -186,7 +187,7 @@ class PurchaseService {
         }
     }
 
-    async updatePurchaseStatus(purchaseId, newStatus, userId, userRole) {
+    async updatePurchaseStatus(purchaseId, newStatus, userId, userRole, actingUser) {
         const purchase = await findPurchaseByAnyId(purchaseId);
 
         if (!purchase) {
@@ -196,6 +197,7 @@ class PurchaseService {
         if (userRole !== "admin" && purchase.createdById !== userId) {
             throw new ApiError(403, "You don't have permission to update this purchase");
         }
+        if (actingUser) assertPosAccess(actingUser, purchase.pointOfSaleId);
 
         // "returned" is no longer a client-settable transition - it's only
         // ever reached as a side effect of processReturn() once every line
@@ -250,21 +252,18 @@ class PurchaseService {
                 });
 
                 for (const detail of purchaseDetails) {
-                    const updatedProduct = await tx.product.update({
-                        where: { id: detail.productId },
-                        data: {
-                            stock: {
-                                increment: detail.quantity,
-                            },
-                        },
-                        select: { stock: true },
+                    const locationBalance = await creditLocationStock(tx, {
+                        productId: detail.productId,
+                        pointOfSaleId: purchase.pointOfSaleId,
+                        quantity: detail.quantity,
                     });
 
                     await recordStockMovement(tx, {
                         productId: detail.productId,
                         accountId: detail.product.createdById,
+                        pointOfSaleId: purchase.pointOfSaleId,
                         delta: detail.quantity,
-                        balanceAfter: updatedProduct.stock,
+                        balanceAfter: locationBalance,
                         sourceType: "purchase",
                         sourceId: purchase.id,
                         createdById: userId,
@@ -277,8 +276,8 @@ class PurchaseService {
             return tx.purchase.findUniqueOrThrow({ where: { id: purchase.id } });
         });
 
-        emitAccountEvent(purchase.createdById, "purchase", "updated");
-        if (newStatus === "completed") emitAccountEvent(purchase.createdById, "product", "stock-changed");
+        emitPosEvent(purchase.createdById, purchase.pointOfSaleId, "purchase", "updated");
+        if (newStatus === "completed") emitPosEvent(purchase.createdById, purchase.pointOfSaleId, "product", "stock-changed");
 
         return {
             purchase: {
@@ -299,7 +298,7 @@ class PurchaseService {
     // > 0 left. purchaseStatus only flips to "returned" once every line on the
     // purchase has nothing left pending - see the schema comment on
     // PurchaseDetail for why returnedQuantity/refundAmount are running totals.
-    async processReturn(purchaseId, lines, userId, userRole) {
+    async processReturn(purchaseId, lines, userId, userRole, actingUser) {
         const purchase = await findPurchaseByAnyId(purchaseId);
 
         if (!purchase) {
@@ -309,6 +308,7 @@ class PurchaseService {
         if (userRole !== "admin" && purchase.createdById !== userId) {
             throw new ApiError(403, "You don't have permission to return items from this purchase");
         }
+        if (actingUser) assertPosAccess(actingUser, purchase.pointOfSaleId);
 
         if (purchase.purchaseStatus !== "completed") {
             throw new ApiError(
@@ -367,11 +367,25 @@ class PurchaseService {
 
         const detailById = new Map(details.map((d) => [toExternalId(d), d]));
 
+        // A purchase return can only give back stock this location actually
+        // still has (it may have already been sold or transferred out) -
+        // detail.product.stock is the account-wide total, not what's
+        // available at purchase.pointOfSaleId specifically.
+        const locationRowsForReturn = await prisma.productLocationStock.findMany({
+            where: {
+                pointOfSaleId: purchase.pointOfSaleId,
+                productId: { in: [...new Set(details.map((d) => d.product.id))] },
+            },
+            select: { productId: true, stock: true },
+        });
+        const locationStockForReturn = new Map(locationRowsForReturn.map((r) => [r.productId, r.stock]));
+
         const insufficientItems = [];
         for (const line of lines) {
             const detail = detailById.get(line.purchase_detail_id);
             const pending = detail.quantity - detail.returnedQuantity;
-            const maxReturnable = Math.min(pending, detail.product.stock);
+            const locationStock = locationStockForReturn.get(detail.product.id) ?? 0;
+            const maxReturnable = Math.min(pending, locationStock);
             if (Number(line.quantity) > maxReturnable) {
                 insufficientItems.push({
                     purchase_detail_id: toExternalId(detail),
@@ -400,32 +414,31 @@ class PurchaseService {
                 const quantity = Number(line.quantity);
 
                 // Same atomic-claim idiom as adjustProductStock and the
-                // "completed" branch above: the stock read used for the
-                // insufficientItems check predates this transaction, so it
-                // can't by itself stop a concurrent sale/adjustment from
-                // taking the same stock in between.
-                const claim = await tx.product.updateMany({
-                    where: { id: detail.product.id, stock: { gte: quantity } },
-                    data: { stock: { decrement: quantity } },
+                // "completed" branch above, against this location's stock
+                // now instead of the product's account-wide total: the
+                // stock read used for the insufficientItems check predates
+                // this transaction, so it can't by itself stop a concurrent
+                // sale/adjustment from taking the same location's stock in
+                // between.
+                const locationBalance = await claimLocationStock(tx, {
+                    productId: detail.product.id,
+                    pointOfSaleId: purchase.pointOfSaleId,
+                    quantity,
                 });
 
-                if (claim.count === 0) {
+                if (locationBalance === null) {
                     throw new ApiError(
                         409,
                         `Not enough stock left to return "${detail.product.productName}". Please refresh and try again.`
                     );
                 }
 
-                const updatedProduct = await tx.product.findUniqueOrThrow({
-                    where: { id: detail.product.id },
-                    select: { stock: true },
-                });
-
                 await recordStockMovement(tx, {
                     productId: detail.product.id,
                     accountId: detail.product.createdById,
+                    pointOfSaleId: purchase.pointOfSaleId,
                     delta: -quantity,
-                    balanceAfter: updatedProduct.stock,
+                    balanceAfter: locationBalance,
                     sourceType: "purchase_return",
                     sourceId: purchase.id,
                     createdById: userId,
@@ -491,8 +504,8 @@ class PurchaseService {
             return { results, purchaseFullyReturned };
         });
 
-        emitAccountEvent(purchase.createdById, "purchase", "updated");
-        emitAccountEvent(purchase.createdById, "product", "stock-changed");
+        emitPosEvent(purchase.createdById, purchase.pointOfSaleId, "purchase", "updated");
+        emitPosEvent(purchase.createdById, purchase.pointOfSaleId, "product", "stock-changed");
 
         return {
             purchase_id: toExternalId(purchase),

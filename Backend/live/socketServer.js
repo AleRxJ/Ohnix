@@ -1,8 +1,10 @@
 import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
+import { prisma } from "../db/prisma.js";
 import { isOriginAllowed } from "../utils/allowedOrigins.js";
 import { getRedisClient, isRedisConfigured } from "../utils/redisClient.js";
 import { SESSION_INVALIDATE_CHANNEL } from "../utils/sessionStore.js";
+import { POS_SCOPE_INVALIDATE_CHANNEL } from "../utils/posScopeStore.js";
 import { authenticateSocket } from "./socketAuth.js";
 import { canAccessModule } from "../middleware/team.permissions.js";
 import { presenceRoom, broadcastPresence } from "./presence.js";
@@ -38,6 +40,34 @@ const isValidResourceRef = ({ resourceType, resourceId }) =>
 // to know who's looking at what - see the multi-user concurrency audit
 // (2026-08-20), which found no mutation ever reached connected users.
 export const accountRoom = (accountId) => `account:${accountId}`;
+
+// One room per (account, PointOfSale) - a socket only joins the ones within
+// its own posScope (see joinPosRoomsForUser below), so emitPosEvent
+// (dataEvents.js) reaches exactly the users allowed to see that location,
+// never "everyone on the account, trust the client to filter".
+export const posRoom = (accountId, pointOfSaleId) => `pos:${accountId}:${pointOfSaleId}`;
+
+// Joins every Point of Sale room within this socket's scope. Full-scope
+// actors (owner, or a member with posScopeAll) join every room the account
+// currently has - see POS_SCOPE_INVALIDATE_CHANNEL below for what happens
+// when a new one is created afterwards, since a socket can't know about a
+// room that didn't exist yet when it connected.
+const joinPosRoomsForUser = async (socket, user) => {
+    const pointOfSaleIds = user.posScopeAll
+        ? (
+              await prisma.pointOfSale.findMany({
+                  where: { accountId: user.accountId, isActive: true },
+                  select: { id: true },
+              })
+          ).map((pos) => pos.id)
+        : user.posScopeIds || [];
+
+    for (const pointOfSaleId of pointOfSaleIds) {
+        const room = posRoom(user.accountId, pointOfSaleId);
+        socket.join(room);
+        socket.data.posRooms.add(room);
+    }
+};
 
 let ioInstance = null;
 export const getIO = () => ioInstance;
@@ -75,12 +105,14 @@ export const initSocketServer = (httpServer) => {
         }
     });
 
-    io.on("connection", (socket) => {
+    io.on("connection", async (socket) => {
         const { user } = socket.data;
         socket.data.rooms = new Set();
         socket.data.locks = new Set();
+        socket.data.posRooms = new Set();
         socket.data.focusedField = null;
         socket.join(accountRoom(user.accountId));
+        await joinPosRoomsForUser(socket, user);
 
         const resourceRoom = ({ resourceType, resourceId }) =>
             presenceRoom(user.accountId, resourceType, resourceId);
@@ -239,6 +271,51 @@ export const initSocketServer = (httpServer) => {
                     }
                     socket.disconnect(true);
                 }
+            }
+        });
+    }
+
+    // A PointOfSale was created, or a member's scope changed elsewhere
+    // (see utils/posScopeStore.js) - force a reconnect for whichever
+    // sockets that affects, so they pick up correct room membership
+    // instead of quietly missing/over-receiving live events until they
+    // next happen to reconnect on their own.
+    if (isRedisConfigured()) {
+        const posScopeSub = getRedisClient().duplicate();
+        posScopeSub.subscribe(POS_SCOPE_INVALIDATE_CHANNEL).catch((err) =>
+            console.error("[live] Failed to subscribe to pos-scope-invalidate channel:", err?.message)
+        );
+        posScopeSub.on("message", (channel, message) => {
+            if (channel !== POS_SCOPE_INVALIDATE_CHANNEL) return;
+            let payload;
+            try {
+                payload = JSON.parse(message);
+            } catch {
+                return;
+            }
+            for (const socket of io.sockets.sockets.values()) {
+                const socketUser = socket.data.user;
+                if (!socketUser || socketUser.accountId !== payload.accountId) continue;
+                // null userId = every socket on this account (new
+                // PointOfSale); otherwise only the affected member's own
+                // sockets.
+                if (payload.userId && socketUser.id !== payload.userId) continue;
+                // Unlike a session takeover, this disconnect should be
+                // invisible and self-healing - the frontend reconnects with
+                // the same still-valid token on seeing this event (see
+                // TeamContext.jsx), rather than logging the user out.
+                // socket.disconnect(true) alone won't do that:
+                // socket.io-client deliberately does NOT auto-reconnect
+                // after a server-initiated disconnect ("io server
+                // disconnect" is one of the two reasons its Manager treats
+                // as final) - the client has to reconnect explicitly.
+                // Calling disconnect() in the same tick as emit() races the
+                // outbound packet against the connection teardown - verified
+                // empirically (a 2026-08-21 test caught the event arriving
+                // 0% of the time with no delay) - so this yields one tick
+                // first to let the emit actually flush before closing.
+                socket.emit("pos-scope:changed");
+                setTimeout(() => socket.disconnect(true), 50);
             }
         });
     }

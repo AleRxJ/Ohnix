@@ -635,9 +635,12 @@ body {
 
 /* Table.Summary renders into a <tfoot>, which module-dark-table's
    .ant-table-tbody rules above don't reach - antd paints its own opaque
-   background directly on those <td> cells, so without this the summary row
-   in return-preview-table (and any other module-dark-table with a
-   Table.Summary) shows through as a plain white bar. */
+   white background directly on the <tfoot> itself (not just its cells), so
+   the <td>s' own background (however themed) is composited on top of solid
+   white and still reads as a white bar unless the <tfoot> is cleared too. */
+.module-dark-table .ant-table-summary {
+  background: transparent !important;
+}
 .module-dark-table .ant-table-summary > tr > td {
   background: var(--ohnix-line-1) !important;
   color: var(--ohnix-text-primary) !important;
@@ -1795,11 +1798,16 @@ textarea.ant-input[disabled] {
                     background-color: rgba(41, 216, 213, 0.08) !important;
                 }
 
-                /* antd paints the summary row's own <td> cells with an opaque
-                   theme background (needed for its sticky-on-scroll behavior),
-                   which sits on top of and hides whatever background is set on
-                   Table.Summary.Row - so the summary row needs its own
-                   override here, not just a className on the row. */
+                /* antd paints its own opaque white background directly on the
+                   <tfoot class="ant-table-summary"> element itself, separate
+                   from its <td> cells - clearing only the cells still leaves
+                   a solid white bar showing through underneath them, so the
+                   <tfoot> needs its own override too (confirmed via live DOM
+                   inspection: computed bg on the tfoot was rgb(255,255,255)
+                   even after the td-level fix below). */
+                .return-preview-table .ant-table-summary {
+                    background: transparent !important;
+                }
                 .return-preview-table .ant-table-summary > tr > td {
                     background: var(--ohnix-line-1) !important;
                     border-top: 1px solid var(--ohnix-line-3);

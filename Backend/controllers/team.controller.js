@@ -217,7 +217,7 @@ export const listMembers = asyncHandler(async (req, res) => {
 
 export const updateMember = asyncHandler(async (req, res, next) => {
     const { userId } = req.params;
-    const { roleId, status } = req.body || {};
+    const { roleId, status, scopeAll, pointOfSaleIds } = req.body || {};
 
     if (status === "removed") {
         await teamService.removeMember({ team: req.team, actorId: req.user.actorId, userId });
@@ -234,7 +234,18 @@ export const updateMember = asyncHandler(async (req, res, next) => {
         return res.status(200).json(new ApiResponse(200, member, "Member role updated successfully"));
     }
 
-    return next(new ApiError(400, "Proporciona roleId para cambiar el rol, o status: \"removed\" para remover al miembro"));
+    if (scopeAll !== undefined || pointOfSaleIds !== undefined) {
+        const member = await teamService.changeMemberScope({
+            team: req.team,
+            actorId: req.user.actorId,
+            userId,
+            scopeAll: Boolean(scopeAll),
+            pointOfSaleIds,
+        });
+        return res.status(200).json(new ApiResponse(200, member, "Member scope updated successfully"));
+    }
+
+    return next(new ApiError(400, "Proporciona roleId para cambiar el rol, scopeAll/pointOfSaleIds para el alcance, o status: \"removed\" para remover al miembro"));
 });
 
 // ─── Activity ─────────────────────────────────────────────────────────────
