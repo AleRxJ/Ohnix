@@ -36,15 +36,10 @@ import ManageSubscriptionModal, {
     SUBSCRIPTION_STATUS_STYLES,
     PAYMENT_STATUS_STYLES,
     TEST_MODE_STYLES,
+    PLAN_STYLES,
     formatDate,
 } from "../components/admin/ManageSubscriptionModal";
 
-const PLAN_STYLES = {
-    starter: { color: "default", label: "Emprendedor" },
-    growth: { color: "cyan", label: "Negocio" },
-    scale: { color: "purple", label: "Escala" },
-    enterprise: { color: "gold", label: "Enterprise" },
-};
 const PLAN_OPTIONS = Object.keys(PLAN_STYLES);
 
 const STATUS_LABELS = { active: "Activa", paused: "Pausada", canceled: "Cancelada" };
@@ -489,6 +484,7 @@ const AdminSubscriptions = () => {
 
                     <div className="rounded-2xl border border-[var(--ohnix-line-3)] overflow-hidden overflow-x-auto">
                         <Table
+                            className="module-dark-table"
                             rowKey="userId"
                             loading={subLoading}
                             dataSource={subRows}
@@ -605,6 +601,7 @@ const AdminSubscriptions = () => {
 
                     <div className="rounded-2xl border border-[var(--ohnix-line-3)] overflow-hidden overflow-x-auto">
                         <Table
+                            className="module-dark-table"
                             rowKey="id"
                             loading={payLoading}
                             dataSource={payRows}
@@ -648,7 +645,7 @@ const AdminSubscriptions = () => {
                 icon={<CrownOutlined />}
             />
 
-            <Tabs items={tabItems} defaultActiveKey="subscriptions" />
+            <Tabs className="admin-tabs" items={tabItems} defaultActiveKey="subscriptions" />
 
             <ManageSubscriptionModal
                 target={manageTarget}

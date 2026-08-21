@@ -155,7 +155,16 @@ const useSubscription = () => {
             // the backend already granted them (pricing.middleware.js's
             // getEffectivePlan), contradicting "full access during trial".
             .then((res) => setPlan(res?.data?.effectivePlan ?? res?.data?.plan ?? "starter"))
-            .catch(() => setPlan("starter"))
+            .catch((error) => {
+                // This used to fail silently into "starter" - which looks
+                // identical in the UI to a real Starter account (every
+                // plan-gated feature shows its locked/upsell copy), so a
+                // transient network/5xx blip permanently hid paid-plan
+                // features for the rest of the session with zero trace of
+                // why. Logging it at least makes that failure diagnosable.
+                console.error("useSubscription: failed to load plan, falling back to starter", error);
+                setPlan("starter");
+            })
             .finally(() => setLoading(false));
     }, [user?.id]);
 

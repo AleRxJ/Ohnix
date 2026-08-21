@@ -663,6 +663,24 @@ const Billing = () => {
         }
     };
 
+    const handleDowngrade = async (targetPlan) => {
+        try {
+            await subscriptionService.downgradeMySubscription(targetPlan);
+            await handleRefreshSubscription();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        }
+    };
+
+    const handleUndoDowngrade = async () => {
+        try {
+            await subscriptionService.undoMyDowngrade();
+            await handleRefreshSubscription();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        }
+    };
+
     const handleRequestUpgrade = () => {
         if (availableUpgradeOptions.length === 0) {
             toast.success(t("profile.subscription.top_plan_reached"));
@@ -974,6 +992,8 @@ const Billing = () => {
                         onPause={handlePause}
                         onCancel={handleCancel}
                         onReactivate={handleReactivate}
+                        onDowngrade={handleDowngrade}
+                        onUndoDowngrade={handleUndoDowngrade}
                         onRequestUpgrade={handleRequestUpgrade}
                         onRenew={handleRenew}
                         isAdmin={isAdmin}

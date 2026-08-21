@@ -52,6 +52,11 @@ const mapOrderDetail = (detail) => ({
     quantity: detail.quantity,
     unitcost: Number(detail.unitcost),
     total: Number(detail.total),
+    return_date: detail.returnDate,
+    returned_quantity: detail.returnedQuantity,
+    pending_quantity: detail.quantity - detail.returnedQuantity,
+    refund_amount: Number(detail.refundAmount),
+    fully_returned: detail.returnedQuantity === detail.quantity,
     createdAt: detail.createdAt,
     updatedAt: detail.updatedAt,
 });
@@ -95,6 +100,9 @@ const findOrderByAnyId = async (id) =>
                     legacyMongoId: true,
                     username: true,
                 },
+            },
+            electronicInvoice: {
+                select: { status: true },
             },
         },
     });
@@ -251,6 +259,7 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
                         total,
                         pending: countByStatus("pending"),
                         completed: countByStatus("completed"),
+                        returned: countByStatus("returned"),
                         revenue: Number(revenueAgg._sum.total || 0),
                     },
                 },
@@ -334,6 +343,125 @@ const updateOrderStatus = asyncHandler(async (req, res, next) => {
             .status(200)
             .json(
                 new ApiResponse(200, order, "Order status updated successfully")
+            );
+    } catch (err) {
+        return next(err);
+    }
+});
+
+const getOrderReturnPreview = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+
+    try {
+        const order = await findOrderByAnyId(id);
+
+        if (!order) {
+            return next(new ApiError(404, "Order not found"));
+        }
+
+        if (req.user.role !== "admin" && order.createdById !== req.user.prismaId) {
+            return next(
+                new ApiError(403, "You don't have permission to view this order")
+            );
+        }
+
+        if (order.orderStatus === "returned") {
+            return next(new ApiError(400, "Order is already fully returned"));
+        }
+
+        if (order.orderStatus !== "completed") {
+            return next(new ApiError(400, "Only completed orders can be returned"));
+        }
+
+        const orderDetails = await prisma.orderDetail.findMany({
+            where: { orderId: order.id },
+            include: {
+                product: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        productName: true,
+                        stock: true,
+                    },
+                },
+            },
+        });
+
+        // Unlike a purchase return (bounded by current stock), a sales
+        // return always increases stock - the only ceiling is what's still
+        // outstanding on the line.
+        let totalPotentialRefund = 0;
+
+        const returnPreview = orderDetails.map((detail) => {
+            const product = detail.product;
+            const pendingQuantity = Math.max(detail.quantity - detail.returnedQuantity, 0);
+            const refundAmount = pendingQuantity * Number(detail.unitcost);
+            totalPotentialRefund += refundAmount;
+
+            return {
+                order_detail_id: toExternalId(detail),
+                product_id: toExternalId(product),
+                product_name: product.productName,
+                sold_quantity: detail.quantity,
+                already_returned_quantity: detail.returnedQuantity,
+                pending_quantity: pendingQuantity,
+                current_stock: product.stock,
+                returnable_quantity: pendingQuantity,
+                unit_cost: Number(detail.unitcost),
+                potential_refund: refundAmount,
+                can_fully_return: true,
+            };
+        });
+
+        const requiresCreditNote = ["submitted", "accepted"].includes(
+            order.electronicInvoice?.status
+        );
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                {
+                    order_id: toExternalId(order),
+                    invoice_no: order.invoiceNo,
+                    requires_credit_note: requiresCreditNote,
+                    total_potential_refund: totalPotentialRefund,
+                    return_preview: returnPreview,
+                },
+                "Return preview generated successfully"
+            )
+        );
+    } catch (err) {
+        console.error(err);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
+});
+
+const processOrderReturn = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+    const { lines } = req.body;
+
+    if (!Array.isArray(lines) || lines.length === 0) {
+        return next(new ApiError(400, "At least one return line is required"));
+    }
+
+    try {
+        const result = await orderService.processReturn(
+            id,
+            lines,
+            req.user.prismaId,
+            req.user.role
+        );
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    result,
+                    result.order_fully_returned
+                        ? "Order fully returned"
+                        : "Return processed successfully"
+                )
             );
     } catch (err) {
         return next(err);
@@ -740,5 +868,7 @@ export {
     getAllOrdersAdmin,
     getOrderDetails,
     updateOrderStatus,
+    getOrderReturnPreview,
+    processOrderReturn,
     generateInvoice,
 };

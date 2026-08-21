@@ -24,7 +24,7 @@ const Reports = () => {
     const [activeTab, setActiveTab] = useState("stock");
     const { user } = useContext(AuthContext);
     const { t, currentLanguage } = useI18n();
-    const { can } = useSubscription();
+    const { can, loading: subscriptionLoading } = useSubscription();
     const hasAutoEmailAlerts = can("autoEmailAlerts");
     const isMobile = window.innerWidth < 768;
 
@@ -253,11 +253,17 @@ const Reports = () => {
                         ? ` ${t("reports.admin_view_shows_system_wide_data")}`
                         : ` ${t("reports.data_filtered_to_your_account")}`}
                 </p>
-                <p className="mt-1 px-2">
-                    {user?.role === "admin" || hasAutoEmailAlerts
-                        ? t("reports.low_stock_alerts_footer")
-                        : t("reports.low_stock_alerts_footer_locked")}
-                </p>
+                {/* subscriptionLoading: same plan-resolution race as LowStockAlertsPanel.jsx
+                    (useSubscription's plan starts unresolved) - skip this line entirely
+                    until we actually know, instead of flashing the locked copy on every
+                    Negocio+ account's first paint. */}
+                {!(user?.role === "admin") && subscriptionLoading ? null : (
+                    <p className="mt-1 px-2">
+                        {user?.role === "admin" || hasAutoEmailAlerts
+                            ? t("reports.low_stock_alerts_footer")
+                            : t("reports.low_stock_alerts_footer_locked")}
+                    </p>
+                )}
                 <p className="mt-1 px-2">
                     {t("reports.last_updated")}: {new Date().toLocaleString(currentLanguage)}
                 </p>

@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { api } from "../../api/api";
 import useI18n from "../useI18n";
 import { resolveApiErrorMessage } from "../../utils/apiError";
+import { idempotencyHeaders } from "../../utils/idempotency";
 
 const DELETE_PRODUCT_ERROR_CODES = {
     product_has_history: "products.delete_conflict_history",
@@ -123,10 +124,11 @@ export const useProducts = () => {
 
     const adjustStock = async (productId, { delta, reason }) => {
         try {
-            const response = await api.post(`/products/${productId}/adjust-stock`, {
-                delta,
-                reason,
-            });
+            const response = await api.post(
+                `/products/${productId}/adjust-stock`,
+                { delta, reason },
+                idempotencyHeaders()
+            );
 
             if (response.data.success) {
                 toast.success(t("products.stock_adjusted"));
@@ -155,6 +157,36 @@ export const useProducts = () => {
             console.error("Fetch stock movements error:", err);
             toast.error(t("products.failed_load_stock_movements"));
             return [];
+        }
+    };
+
+    // threshold: a non-negative integer, or null to clear it on all selected
+    // products and fall back to the account/platform default instead. See
+    // Backend/controllers/product.controller.js#bulkUpdateLowStockThreshold.
+    const bulkUpdateLowStockThreshold = async (productIds, threshold) => {
+        try {
+            const response = await api.patch("/products/bulk-low-stock-threshold", {
+                productIds,
+                threshold,
+            });
+
+            if (response.data.success) {
+                toast.success(
+                    t("products.bulk_threshold_updated", { count: response.data.data.updatedCount })
+                );
+                setProducts((prev) =>
+                    prev.map((p) =>
+                        productIds.includes(p._id) ? { ...p, low_stock_threshold: threshold } : p
+                    )
+                );
+                return { success: true, data: response.data.data };
+            }
+        } catch (err) {
+            console.error("Bulk update threshold error:", err);
+            const errorMessage =
+                err.response?.data?.message || t("products.failed_bulk_threshold_update");
+            toast.error(errorMessage);
+            return { success: false, error: errorMessage };
         }
     };
 
@@ -193,5 +225,6 @@ export const useProducts = () => {
         adjustStock,
         fetchStockMovements,
         bulkCreateProducts,
+        bulkUpdateLowStockThreshold,
     };
 };

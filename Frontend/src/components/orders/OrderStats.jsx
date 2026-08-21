@@ -3,6 +3,7 @@ import {
     ShoppingCartOutlined,
     ClockCircleOutlined,
     CheckCircleOutlined,
+    UndoOutlined,
     DollarOutlined,
 } from "@ant-design/icons";
 import StatCard from "../dashboard/StatCard";
@@ -40,6 +41,14 @@ const OrderStats = ({ stats }) => {
                     />
                 </Col>
                 <Col xs={24} sm={12} lg={6} className="stagger-4">
+                    <StatCard
+                        title={t("orders.returned_orders")}
+                        value={stats.returned}
+                        icon={<UndoOutlined className="text-2xl" />}
+                        valueStyle={{ color: "#d4b106" }}
+                    />
+                </Col>
+                <Col xs={24} sm={12} lg={6} className="stagger-5">
                     <StatCard
                         title={t("orders.total_revenue")}
                         value={stats.revenue}

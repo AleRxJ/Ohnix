@@ -4,6 +4,7 @@ import {
     getAllProducts,
     updateProduct,
     deleteProduct,
+    bulkUpdateLowStockThreshold,
     getAllProductsAdmin,
     adjustProductStock,
     getProductStockMovements,
@@ -15,6 +16,7 @@ import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.mi
 import { upload, csvUpload } from "../middleware/multer.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
 import { bulkUploadRateLimiter } from "../middleware/rateLimit.middleware.js";
+import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = Router();
 
@@ -28,6 +30,8 @@ router
     .post(requireModulePermission("products", "edit"), enforceEntityLimit("products"), upload.single("product_image"), createProduct)
     .get(requireModulePermission("products", "view"), getAllProducts);
 
+router.route("/bulk-low-stock-threshold").patch(requireModulePermission("products", "edit"), bulkUpdateLowStockThreshold);
+
 // Admin route
 router.route("/all").get(isAdmin, getAllProductsAdmin);
 
@@ -36,7 +40,9 @@ router
     .patch(requireModulePermission("products", "edit"), upload.single("product_image"), updateProduct)
     .delete(requireModulePermission("products", "edit"), deleteProduct);
 
-router.route("/:id/adjust-stock").post(requireModulePermission("products", "edit"), adjustProductStock);
+router
+    .route("/:id/adjust-stock")
+    .post(requireModulePermission("products", "edit"), idempotent("product.adjust-stock"), adjustProductStock);
 router.route("/:id/stock-movements").get(requireModulePermission("products", "view"), getProductStockMovements);
 
 export default router;

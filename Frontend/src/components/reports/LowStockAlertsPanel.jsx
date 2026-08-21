@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Tooltip, Modal, InputNumber } from "antd";
+import { Button, Tooltip, Modal, InputNumber, Skeleton } from "antd";
 import { MailOutlined, SettingOutlined, LockOutlined, ArrowRightOutlined, EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import AuthContext from "../../context/AuthContext";
@@ -16,7 +16,7 @@ import { subscriptionService } from "../../services/subscriptionService";
 // "is this actually on for me" instead of two panels that could disagree.
 const LowStockAlertsPanel = () => {
     const { user } = useContext(AuthContext);
-    const { can } = useSubscription();
+    const { can, loading: subscriptionLoading } = useSubscription();
     const { t, currentLanguage } = useI18n();
     const navigate = useNavigate();
 
@@ -24,6 +24,13 @@ const LowStockAlertsPanel = () => {
     const hasAutoEmailAlerts = can("autoEmailAlerts");
     const canConfigureAccountThreshold = can("configurableAlerts");
     const isActive = isAdmin || hasAutoEmailAlerts;
+    // useSubscription's plan starts null and only resolves after an async
+    // fetch (admins skip it entirely, see useSubscription.js) - can() has no
+    // way to distinguish "still loading" from "actually on Starter", so
+    // without this every non-admin briefly saw the locked/upsell copy on
+    // every page load even on Negocio+, until the fetch resolved a moment
+    // later and the badge flipped to active.
+    const showLoadingState = !isAdmin && subscriptionLoading;
 
     const [schedulerStatus, setSchedulerStatus] = useState(null);
     const [triggeringAlert, setTriggeringAlert] = useState(false);
@@ -193,6 +200,19 @@ const LowStockAlertsPanel = () => {
             setSavingAccountThreshold(false);
         }
     };
+
+    if (showLoadingState) {
+        return (
+            <div className="module-shell reveal-card relative overflow-hidden rounded-[22px] border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] p-5 sm:p-6 mb-4 sm:mb-6 no-print">
+                <div className="flex items-center gap-3">
+                    <Skeleton.Avatar active size={44} shape="square" />
+                    <div className="flex-1 max-w-md">
+                        <Skeleton active title={{ width: "50%" }} paragraph={{ rows: 1, width: "90%" }} />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="module-shell reveal-card relative overflow-hidden rounded-[22px] border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] p-5 sm:p-6 mb-4 sm:mb-6 no-print">

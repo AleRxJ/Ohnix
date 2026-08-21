@@ -14,6 +14,7 @@ import {
     enforceMonthlyLimit,
 } from "../middleware/pricing.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
+import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = Router();
 
@@ -30,14 +31,16 @@ router.route("/all").get(isAdmin, getAllPurchases); // Guaranteed to get all pur
 
 router.route("/:id")
     .get(requireModulePermission("purchases", "view"), getPurchaseDetails)
-    .patch(requireModulePermission("purchases", "edit"), updatePurchaseStatus);
+    .patch(requireModulePermission("purchases", "edit"), idempotent("purchase.status"), updatePurchaseStatus);
 
 // Return preview route - to check what can be returned before processing
 router.route("/:id/return-preview").get(requireModulePermission("purchases", "view"), getReturnPreview);
 
 // Process a granular, repeatable return - the caller picks which lines and
 // how much of each; can be called more than once while any line still has
-// quantity - returnedQuantity left.
-router.route("/:id/returns").post(requireModulePermission("purchases", "edit"), processReturn);
+// quantity - returnedQuantity left. Because it's *meant* to be repeatable,
+// an accidental duplicate call (retry, double-click) looks exactly like a
+// second real return - `idempotent` is what tells them apart.
+router.route("/:id/returns").post(requireModulePermission("purchases", "edit"), idempotent("purchase.return"), processReturn);
 
 export default router;

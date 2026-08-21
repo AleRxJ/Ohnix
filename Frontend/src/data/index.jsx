@@ -200,6 +200,7 @@ export const getStatusIcon = (status) => {
         processing: <ClockCircleOutlined />,
         completed: <CheckCircleOutlined />,
         cancelled: <ClockCircleOutlined />,
+        returned: <UndoOutlined />,
     };
     return icons[status];
 };

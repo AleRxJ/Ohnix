@@ -96,6 +96,7 @@ const findOrderByAnyId = async (id) =>
         },
         select: {
             id: true,
+            legacyMongoId: true,
             createdById: true,
             orderStatus: true,
             electronicInvoice: { select: { status: true } },
@@ -386,8 +387,12 @@ class OrderService {
             // A completed sale can only be undone by cancelling it, which
             // reverses the stock deduction (see the cancelled branch below).
             // There is no "un-cancel" - a fresh order should be created instead.
+            // "returned" is never a target here - it's only ever reached as a
+            // side effect of processReturn() once every line has nothing left
+            // pending. See that method.
             completed: ["cancelled"],
             cancelled: [],
+            returned: [],
         };
 
         if (!validTransitions[order.orderStatus]?.includes(newStatus)) {
@@ -417,7 +422,10 @@ class OrderService {
             const details = await prisma.orderDetail.findMany({
                 where: { orderId: order.id },
                 select: {
+                    id: true,
                     quantity: true,
+                    unitcost: true,
+                    returnedQuantity: true,
                     productId: true,
                     product: { select: { createdById: true } },
                 },
@@ -441,21 +449,48 @@ class OrderService {
                 }
 
                 for (const detail of details) {
+                    // Only restock/credit whatever is still outstanding on
+                    // this line - a granular return (processReturn) may have
+                    // already covered part of it before this cancellation was
+                    // requested. Crediting the full original quantity again
+                    // here would double-count stock already put back.
+                    const pending = detail.quantity - detail.returnedQuantity;
+                    if (pending <= 0) continue;
+
                     const updatedProduct = await tx.product.update({
                         where: { id: detail.productId },
-                        data: { stock: { increment: detail.quantity } },
+                        data: { stock: { increment: pending } },
                         select: { stock: true },
                     });
 
                     await recordStockMovement(tx, {
                         productId: detail.productId,
                         accountId: detail.product.createdById,
-                        delta: detail.quantity,
+                        delta: pending,
                         balanceAfter: updatedProduct.stock,
                         sourceType: "order_cancellation",
                         sourceId: order.id,
                         createdById: userId,
                     });
+
+                    // Same optimistic claim as processReturn: guards against a
+                    // concurrent granular return on this same line changing
+                    // returnedQuantity between the read above and this write.
+                    const detailClaim = await tx.orderDetail.updateMany({
+                        where: { id: detail.id, returnedQuantity: detail.returnedQuantity },
+                        data: {
+                            returnDate: new Date(),
+                            returnedQuantity: { increment: pending },
+                            refundAmount: { increment: pending * Number(detail.unitcost) },
+                        },
+                    });
+
+                    if (detailClaim.count === 0) {
+                        throw new ApiError(
+                            409,
+                            "This order was updated by another request. Please refresh and try again."
+                        );
+                    }
                 }
 
                 return tx.order.findUniqueOrThrow({ where: { id: order.id } });
@@ -602,6 +637,207 @@ class OrderService {
             _id: toExternalId(updated),
             order_status: updated.orderStatus,
             updatedAt: updated.updatedAt,
+        };
+    }
+
+    // Explicit, per-line sales return: the caller picks which sold lines to
+    // credit back and how much of each, instead of the only previous
+    // "undo a sale" tool (full cancellation). Can be called more than once
+    // per order while any line still has quantity - returnedQuantity left.
+    // Unlike purchase returns, crediting a sale back always *increases*
+    // stock, so there's no stock-availability ceiling to enforce - only how
+    // much of the line is still outstanding. orderStatus only flips to
+    // "returned" once every line has nothing left pending - see the schema
+    // comment on OrderDetail for why returnedQuantity/refundAmount are
+    // running totals, same as PurchaseDetail.
+    async processReturn(orderId, lines, userId, userRole) {
+        const order = await findOrderByAnyId(orderId);
+
+        if (!order) {
+            throw new ApiError(404, "Order not found");
+        }
+
+        if (userRole !== "admin" && order.createdById !== userId) {
+            throw new ApiError(403, "You don't have permission to return items from this order");
+        }
+
+        if (order.orderStatus !== "completed") {
+            throw new ApiError(
+                400,
+                order.orderStatus === "returned"
+                    ? "This order has already been fully returned"
+                    : "Only completed orders can be returned",
+                [],
+                "",
+                "order_not_returnable"
+            );
+        }
+
+        // Same requirement as cancellation above: an issued/accepted
+        // electronic invoice is a DIAN-facing legal document, so a granular
+        // return can't silently adjust stock/refunds behind it either.
+        // Credit notes are the correct path once an invoice has gone out
+        // (not yet wired to restock automatically).
+        if (["submitted", "accepted"].includes(order.electronicInvoice?.status)) {
+            throw new ApiError(
+                409,
+                "This order has an issued electronic invoice. Issue a credit note instead of returning items directly."
+            );
+        }
+
+        if (!Array.isArray(lines) || lines.length === 0) {
+            throw new ApiError(400, "At least one return line is required");
+        }
+
+        const detailIds = lines.map((l) => l.order_detail_id?.toString()).filter(Boolean);
+        const uniqueDetailIds = [...new Set(detailIds)];
+        if (detailIds.length !== lines.length || uniqueDetailIds.length !== detailIds.length) {
+            throw new ApiError(400, "Duplicate or missing order detail id in return request");
+        }
+
+        for (const line of lines) {
+            const quantity = Number(line.quantity);
+            if (!Number.isInteger(quantity) || quantity < 1) {
+                throw new ApiError(400, "Quantity must be a positive integer for every return line");
+            }
+        }
+
+        // Matched by id OR legacyMongoId, same "any id" pattern used
+        // throughout this service and purchase.service.js#processReturn.
+        const details = await prisma.orderDetail.findMany({
+            where: {
+                orderId: order.id,
+                OR: [{ id: { in: uniqueDetailIds } }, { legacyMongoId: { in: uniqueDetailIds } }],
+            },
+            include: {
+                product: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        productName: true,
+                        createdById: true,
+                    },
+                },
+            },
+        });
+
+        if (details.length !== uniqueDetailIds.length) {
+            throw new ApiError(400, "One or more return lines do not belong to this order");
+        }
+
+        const detailById = new Map(details.map((d) => [toExternalId(d), d]));
+
+        const insufficientItems = [];
+        for (const line of lines) {
+            const detail = detailById.get(line.order_detail_id);
+            const pending = detail.quantity - detail.returnedQuantity;
+            if (Number(line.quantity) > pending) {
+                insufficientItems.push({
+                    order_detail_id: toExternalId(detail),
+                    product_id: toExternalId(detail.product),
+                    product_name: detail.product.productName,
+                    requested: Number(line.quantity),
+                    available: Math.max(pending, 0),
+                    reason: "exceeds_pending_quantity",
+                });
+            }
+        }
+
+        if (insufficientItems.length > 0) {
+            throw new ApiError(
+                422,
+                "One or more return lines exceed what can be returned",
+                insufficientItems
+            );
+        }
+
+        const { results, orderFullyReturned } = await prisma.$transaction(async (tx) => {
+            const results = [];
+
+            for (const line of lines) {
+                const detail = detailById.get(line.order_detail_id);
+                const quantity = Number(line.quantity);
+
+                const updatedProduct = await tx.product.update({
+                    where: { id: detail.product.id },
+                    data: { stock: { increment: quantity } },
+                    select: { stock: true },
+                });
+
+                await recordStockMovement(tx, {
+                    productId: detail.product.id,
+                    accountId: detail.product.createdById,
+                    delta: quantity,
+                    balanceAfter: updatedProduct.stock,
+                    sourceType: "order_return",
+                    sourceId: order.id,
+                    createdById: userId,
+                });
+
+                const refundNow = quantity * Number(detail.unitcost);
+
+                // Same claim idiom as purchase.service.js#processReturn: the
+                // returnedQuantity read that fed the insufficientItems check
+                // predates this transaction, so without this guard two
+                // concurrent returns on the same line could each pass
+                // validation and both increment it past quantity.
+                const detailClaim = await tx.orderDetail.updateMany({
+                    where: { id: detail.id, returnedQuantity: detail.returnedQuantity },
+                    data: {
+                        returnDate: new Date(),
+                        returnedQuantity: { increment: quantity },
+                        refundAmount: { increment: refundNow },
+                    },
+                });
+
+                if (detailClaim.count === 0) {
+                    throw new ApiError(
+                        409,
+                        `"${detail.product.productName}" was returned by another request. Please refresh and try again.`
+                    );
+                }
+
+                const updatedDetail = await tx.orderDetail.findUniqueOrThrow({
+                    where: { id: detail.id },
+                    select: { returnedQuantity: true, refundAmount: true },
+                });
+
+                results.push({
+                    order_detail_id: toExternalId(detail),
+                    product_id: toExternalId(detail.product),
+                    returned_now: quantity,
+                    refund_now: refundNow,
+                    returned_quantity: updatedDetail.returnedQuantity,
+                    refund_amount: Number(updatedDetail.refundAmount),
+                    pending_quantity: detail.quantity - updatedDetail.returnedQuantity,
+                    fully_returned: updatedDetail.returnedQuantity === detail.quantity,
+                });
+            }
+
+            const allDetails = await tx.orderDetail.findMany({
+                where: { orderId: order.id },
+                select: { quantity: true, returnedQuantity: true },
+            });
+            const orderFullyReturned = allDetails.every(
+                (d) => d.returnedQuantity === d.quantity
+            );
+
+            if (orderFullyReturned) {
+                await tx.order.updateMany({
+                    where: { id: order.id, orderStatus: "completed" },
+                    data: { orderStatus: "returned", updatedById: userId },
+                });
+            }
+
+            return { results, orderFullyReturned };
+        });
+
+        return {
+            order_id: toExternalId(order),
+            order_status: orderFullyReturned ? "returned" : "completed",
+            order_fully_returned: orderFullyReturned,
+            total_refund_amount: results.reduce((sum, r) => sum + r.refund_now, 0),
+            return_details: results,
         };
     }
 }

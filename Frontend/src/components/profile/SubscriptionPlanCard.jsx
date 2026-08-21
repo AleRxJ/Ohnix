@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { Card, Tag, Typography, Progress, Button, Spin, Popconfirm } from "antd";
+import React, { useMemo, useState } from "react";
+import { Card, Tag, Typography, Progress, Button, Spin, Popconfirm, Select } from "antd";
 import {
     CrownOutlined,
     PauseCircleOutlined,
@@ -24,6 +24,12 @@ export const PLAN_COLORS = {
     scale:      "#7C6AF7",
     enterprise: "#f59e0b",
 };
+
+// Mirrors Backend/controllers/subscription.controller.js's PLAN_ORDER -
+// used here only to compute "which plans rank below the current one", so a
+// customer picking a downgrade target never sees their own plan or a higher
+// one in the list.
+const PLAN_ORDER = ["starter", "growth", "scale", "enterprise"];
 
 const StatusTag = ({ status, t }) => {
     const color =
@@ -71,12 +77,15 @@ const SubscriptionPlanCard = ({
     onReactivate,
     onRequestUpgrade,
     onRenew,
+    onDowngrade,
+    onUndoDowngrade,
     compact = false,
     onOpenBilling,
     isAdmin = false,
 }) => {
     const { t, currentLanguage } = useI18n();
     const lang = currentLanguage === "es" ? "es" : "en";
+    const [downgradeTarget, setDowngradeTarget] = useState(null);
 
     // plan must be declared before effectivePlan uses it
     const plan   = subscription?.plan || "starter";
@@ -97,6 +106,12 @@ const SubscriptionPlanCard = ({
     // so the banner never flickers on initial render from user context data.
     const planEndsAt = typeof subscription?.endsAt === "string" ? subscription.endsAt : null;
     const cancelAtPeriodEnd = Boolean(subscription?.cancelAtPeriodEnd);
+    // "Bajar de plan" - distinct from cancelAtPeriodEnd (stop billing
+    // entirely): stays active on the current plan through planEndsAt, then
+    // switches to scheduledPlan instead of re-billing the current one. See
+    // downgradeMySubscription/Subscription.scheduledPlan on the backend.
+    const scheduledPlan = subscription?.scheduledPlan || null;
+    const downgradeOptions = PLAN_ORDER.slice(0, PLAN_ORDER.indexOf(plan));
     // Starter is a paid plan too (see pricing.middleware.js PLAN_PRICES_USD)
     // and can carry a real endsAt once paid, so it gets no special case here.
     const renewalDaysLeft = planEndsAt
@@ -266,6 +281,35 @@ const SubscriptionPlanCard = ({
                                 className="shrink-0 border-[#29D8D5]/45 text-[#44F3F0] hover:border-[#29D8D5] bg-transparent disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
                             >
                                 {t("profile.subscription.undo_cancellation")}
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Scheduled downgrade banner — full current-plan access continues
+                until endsAt, then switches to scheduledPlan instead of a
+                normal renewal. Mutually exclusive with the cancel banner
+                above in practice (the backend clears one when the other is
+                set), so both showing at once shouldn't happen. */}
+            {scheduledPlan && (
+                <div className="mb-4 rounded-xl border border-[var(--ohnix-line-6)] bg-[var(--ohnix-line-1)] px-4 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                        <ClockCircleOutlined className="text-[var(--ohnix-text-muted)]" />
+                        <span className="flex-1 text-sm text-[var(--ohnix-text-soft)]">
+                            {t("profile.subscription.downgrade_scheduled_banner", {
+                                plan: t(`profile.subscription.plan_${scheduledPlan}`),
+                                date: cancelDateLabel,
+                            })}
+                        </span>
+                        {onUndoDowngrade && (
+                            <Button
+                                size="small"
+                                onClick={onUndoDowngrade}
+                                disabled={isBusy}
+                                className="shrink-0 border-[#29D8D5]/45 text-[#44F3F0] hover:border-[#29D8D5] bg-transparent disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
+                            >
+                                {t("profile.subscription.undo_downgrade")}
                             </Button>
                         )}
                     </div>
@@ -476,6 +520,46 @@ const SubscriptionPlanCard = ({
                                 </Button>
                             </Popconfirm>
                         ) : null}
+
+                        {/* "Bajar de plan": only offered when there's an active
+                            paid period to keep through (mirrors the cancel
+                            button's planEndsAt guard), nothing already
+                            scheduled, and at least one lower plan exists. Stays
+                            an active paying customer on the lower tier at
+                            endsAt - not the same as cancel above, which stops
+                            billing entirely. */}
+                        {planEndsAt && !cancelAtPeriodEnd && !scheduledPlan && downgradeOptions.length > 0 && onDowngrade && (
+                            <div className="flex items-center gap-1.5">
+                                <Select
+                                    size="middle"
+                                    placeholder={t("profile.subscription.downgrade_select_placeholder")}
+                                    value={downgradeTarget}
+                                    onChange={setDowngradeTarget}
+                                    disabled={isBusy}
+                                    className="w-40"
+                                    options={downgradeOptions.map((key) => ({
+                                        value: key,
+                                        label: t(`profile.subscription.plan_${key}`),
+                                    }))}
+                                />
+                                <Popconfirm
+                                    title={t("profile.subscription.confirm_downgrade", {
+                                        plan: downgradeTarget ? t(`profile.subscription.plan_${downgradeTarget}`) : "",
+                                    })}
+                                    okText={t("common.yes")}
+                                    cancelText={t("common.no")}
+                                    disabled={isBusy || !downgradeTarget}
+                                    onConfirm={() => onDowngrade(downgradeTarget)}
+                                >
+                                    <Button
+                                        disabled={isBusy || !downgradeTarget}
+                                        className="h-10 rounded-xl border-[var(--ohnix-line-6)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-primary)] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
+                                    >
+                                        {t("profile.subscription.downgrade_confirm_button")}
+                                    </Button>
+                                </Popconfirm>
+                            </div>
+                        )}
 
                         <Button
                             icon={<RocketOutlined />}

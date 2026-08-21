@@ -10,6 +10,7 @@ import {
     createMyUpgradeCheckoutSession,
     createRenewalCheckout,
     createUpgradeRequest,
+    downgradeMySubscription,
     extendUserSubscriptionAdmin,
     getAdminPayments,
     getAdminSubscriptions,
@@ -31,6 +32,7 @@ import {
     reportEpaycoTransactionReference,
     reverifyAdminPayment,
     uncancelUserSubscriptionAdmin,
+    undoMyDowngrade,
     updateUpgradeRequestAdmin,
     updateUserPlan,
     verifyAndActivateBySession,
@@ -90,6 +92,11 @@ router.route("/me/renew").post(requireModulePermission("billing", "edit"), creat
 router.route("/me/pause").patch(requireModulePermission("billing", "edit"), pauseMySubscription);
 router.route("/me/cancel").patch(requireModulePermission("billing", "edit"), cancelMySubscription);
 router.route("/me/reactivate").patch(requireModulePermission("billing", "edit"), reactivateMySubscription);
+// "Bajar de plan" - stays on the current (higher) plan through the already-
+// paid period, switches at endsAt (see Subscription.scheduledPlan).
+router.route("/me/downgrade")
+    .post(requireModulePermission("billing", "edit"), downgradeMySubscription)
+    .delete(requireModulePermission("billing", "edit"), undoMyDowngrade);
 
 router.route("/admin/users/:userId/plan").patch(isAdmin, updateUserPlan);
 router.route("/admin/users/:userId/usage").get(isAdmin, getUserUsageAdmin);

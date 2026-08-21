@@ -4,6 +4,7 @@ export const getStatusColor = (status) => {
         processing: "blue",
         completed: "green",
         cancelled: "red",
+        returned: "gold",
     };
     return colors[status] || "default";
 };
@@ -40,6 +41,7 @@ export const calculateStats = (orders, pagination) => {
         total: pagination.total,
         pending: orders.filter((o) => o.order_status === "pending").length,
         completed: orders.filter((o) => o.order_status === "completed").length,
+        returned: orders.filter((o) => o.order_status === "returned").length,
         revenue: nonCancelledOrders.reduce(
             (sum, order) => sum + order.total,
             0
@@ -47,7 +49,7 @@ export const calculateStats = (orders, pagination) => {
     };
 };
 
-export const TERMINAL_STATUSES = ["completed", "cancelled"];
+export const TERMINAL_STATUSES = ["completed", "cancelled", "returned"];
 
 // Mirrors Backend/services/order.service.js's validTransitions - kept here
 // purely so the status Select only ever offers moves the backend will
@@ -59,8 +61,13 @@ export const ORDER_STATUS_TRANSITIONS = {
     processing: ["completed", "cancelled"],
     // completed -> cancelled is real but handled by OrdersTable's separate
     // "cancel completed order" Popconfirm button, not this select.
+    // completed -> returned is likewise real but only ever reached as a side
+    // effect of the granular return form (OrderReturnPreview), never a
+    // direct status pick - it depends on how much of each line the user
+    // chooses to return, not a single click.
     completed: [],
     cancelled: [],
+    returned: [],
 };
 
 export const ORDER_STATUSES = [
@@ -68,4 +75,5 @@ export const ORDER_STATUSES = [
     { value: "processing", labelKey: "orders.processing" },
     { value: "completed", labelKey: "orders.completed" },
     { value: "cancelled", labelKey: "orders.cancelled" },
+    { value: "returned", labelKey: "orders.returned" },
 ];

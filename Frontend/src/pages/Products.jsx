@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from "react";
-import { Layout, Card, Button, Form, message, Tooltip } from "antd";
-import { PlusOutlined, ProductOutlined, LockOutlined } from "@ant-design/icons";
+import { Layout, Card, Button, Form, message, Tooltip, Modal, InputNumber } from "antd";
+import { PlusOutlined, ProductOutlined, LockOutlined, CloseOutlined } from "@ant-design/icons";
 
 import ProductSearchBar from "../components/products/ProductSearchBar";
 import ProductsTable from "../components/products/ProductsTable";
@@ -35,11 +35,12 @@ const Products = () => {
         deleteProduct,
         adjustStock,
         fetchStockMovements,
+        bulkUpdateLowStockThreshold,
     } = useProducts();
     const { categories } = useCategories();
     const { units } = useUnits();
     const { t } = useI18n();
-    const { can } = useSubscription();
+    const { can, loading: subscriptionLoading } = useSubscription();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("products", "edit");
     const { isOpen: isTutorialActive, notifyAction, effectiveSteps, stepIndex, createdRefs } = useInventoryTour();
@@ -62,6 +63,11 @@ const Products = () => {
     const [isAdjustStockVisible, setIsAdjustStockVisible] = useState(false);
     const [adjustingProduct, setAdjustingProduct] = useState(null);
     const [adjustStockLoading, setAdjustStockLoading] = useState(false);
+
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+    const [isBulkThresholdVisible, setIsBulkThresholdVisible] = useState(false);
+    const [bulkThresholdValue, setBulkThresholdValue] = useState(null);
+    const [bulkThresholdSaving, setBulkThresholdSaving] = useState(false);
 
     const isSubmittingRef = useRef(false);
 
@@ -229,6 +235,21 @@ const Products = () => {
         fetchProducts();
     };
 
+    const handleOpenBulkThreshold = () => {
+        setBulkThresholdValue(null);
+        setIsBulkThresholdVisible(true);
+    };
+
+    const handleSaveBulkThreshold = async () => {
+        setBulkThresholdSaving(true);
+        const result = await bulkUpdateLowStockThreshold(selectedRowKeys, bulkThresholdValue ?? null);
+        setBulkThresholdSaving(false);
+        if (result?.success) {
+            setIsBulkThresholdVisible(false);
+            setSelectedRowKeys([]);
+        }
+    };
+
     return (
         <Layout className="bg-transparent">
             <Content className="p-2 sm:p-4 lg:p-6 bg-transparent text-[var(--ohnix-text-primary)]">
@@ -244,7 +265,11 @@ const Products = () => {
                             </p>
                         </div>
                         <div className="flex-shrink-0 flex gap-2">
-                            {can("bulkUpload") ? (
+                            {/* subscriptionLoading: plan starts unresolved (useSubscription.js),
+                                so rendering either branch before it settles risks a locked-badge
+                                flash on accounts that actually have the feature - skip both until
+                                we actually know. */}
+                            {subscriptionLoading ? null : can("bulkUpload") ? (
                                 <Button
                                     onClick={() => setIsBulkUploadVisible(true)}
                                     size="large"
@@ -300,6 +325,40 @@ const Products = () => {
                         />
                     </div>
 
+                    {selectedRowKeys.length > 0 && (
+                        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#29D8D5]/30 bg-[#29D8D5]/10 px-4 py-2.5">
+                            <span className="text-sm font-medium text-[var(--ohnix-text-soft)]">
+                                {t("products.bulk_selection_count", { count: selectedRowKeys.length })}
+                            </span>
+                            {subscriptionLoading ? (
+                                <Button size="small" loading disabled>
+                                    {t("products.bulk_adjust_threshold")}
+                                </Button>
+                            ) : can("configurableAlerts") ? (
+                                <Button size="small" onClick={handleOpenBulkThreshold}>
+                                    {t("products.bulk_adjust_threshold")}
+                                </Button>
+                            ) : (
+                                <Tooltip title={t("products.low_stock_threshold_upsell")}>
+                                    <span>
+                                        <Button size="small" disabled icon={<LockOutlined />}>
+                                            {t("products.bulk_adjust_threshold")}
+                                        </Button>
+                                    </span>
+                                </Tooltip>
+                            )}
+                            <Button
+                                size="small"
+                                type="text"
+                                icon={<CloseOutlined />}
+                                onClick={() => setSelectedRowKeys([])}
+                                className="text-[var(--ohnix-text-dim)]"
+                            >
+                                {t("products.bulk_clear_selection")}
+                            </Button>
+                        </div>
+                    )}
+
                     <Card
                         className="overflow-hidden border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] shadow-[0_16px_36px_rgba(0,0,0,0.3)]"
                         bodyStyle={{
@@ -316,6 +375,8 @@ const Products = () => {
                                 onDelete={handleDeleteProduct}
                                 onViewDetails={handleViewDetails}
                                 onAdjustStock={handleAdjustStock}
+                                selectedRowKeys={selectedRowKeys}
+                                onSelectionChange={setSelectedRowKeys}
                             />
                         </div>
                     </Card>
@@ -394,6 +455,32 @@ const Products = () => {
                         onClose={() => setIsBulkUploadVisible(false)}
                         onComplete={handleBulkUploadComplete}
                     />
+
+                    <Modal
+                        title={t("products.bulk_adjust_threshold_title")}
+                        open={isBulkThresholdVisible}
+                        onCancel={() => setIsBulkThresholdVisible(false)}
+                        onOk={handleSaveBulkThreshold}
+                        confirmLoading={bulkThresholdSaving}
+                        okText={t("common.save")}
+                        cancelText={t("common.cancel")}
+                    >
+                        <p className="text-sm text-[var(--ohnix-text-muted)] mb-3">
+                            {t("products.bulk_adjust_threshold_desc", { count: selectedRowKeys.length })}
+                        </p>
+                        <InputNumber
+                            min={0}
+                            precision={0}
+                            size="large"
+                            className="w-full"
+                            placeholder={t("products.bulk_adjust_threshold_placeholder")}
+                            value={bulkThresholdValue}
+                            onChange={setBulkThresholdValue}
+                        />
+                        <p className="text-xs text-[var(--ohnix-text-dim)] mt-2">
+                            {t("products.bulk_adjust_threshold_clear_hint")}
+                        </p>
+                    </Modal>
                 </div>
             </Content>
         </Layout>

@@ -587,6 +587,56 @@ const deleteProduct = asyncHandler(async (req, res, next) => {
     }
 });
 
+// Sets the same low-stock threshold on many products in one request - the
+// per-product field (Escala+, see resolveLowStockThreshold above) used to
+// only be reachable one product at a time through ProductModal, which made
+// re-tuning thresholds across a whole category a real chore. Unlike that
+// helper, this endpoint's whole purpose IS setting the threshold, so an
+// account without the feature gets an explicit 403 instead of resolveLowStockThreshold's
+// silent no-op (which exists for the general product save, where the field
+// is just one of many that may or may not be present).
+const bulkUpdateLowStockThreshold = asyncHandler(async (req, res, next) => {
+    const { productIds, threshold } = req.body || {};
+
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+        return next(new ApiError(400, "productIds must be a non-empty array"));
+    }
+    if (productIds.length > 500) {
+        return next(new ApiError(400, "You can update at most 500 products at once"));
+    }
+
+    const subscription = await ensureUserSubscription(req.user.prismaId);
+    const canConfigure =
+        req.user.role === "admin" || getPlanFeatures(getEffectivePlan(subscription)).configurableAlerts;
+    if (!canConfigure) {
+        return next(
+            new ApiError(403, "Los umbrales personalizados por producto están disponibles desde el plan Escala.")
+        );
+    }
+
+    const value = threshold === null || threshold === "" ? null : Number(threshold);
+    if (value !== null && (!Number.isFinite(value) || value < 0)) {
+        return next(new ApiError(400, "threshold must be a non-negative number, or null to clear it"));
+    }
+
+    // Same dual id lookup as findProductByAnyId (ids may be Prisma cuids or
+    // legacy Mongo ids), scoped to this account's own catalog unless admin -
+    // matches updateProduct/deleteProduct's ownership rule above.
+    const result = await prisma.product.updateMany({
+        where: {
+            AND: [
+                { OR: [{ id: { in: productIds } }, { legacyMongoId: { in: productIds } }] },
+                ...(req.user.role === "admin" ? [] : [{ createdById: req.user.prismaId }]),
+            ],
+        },
+        data: { lowStockThreshold: value, updatedById: req.user.prismaId },
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, { updatedCount: result.count }, "Umbrales actualizados correctamente"));
+});
+
 // Explicit, audited stock correction - the only way to change Product.stock
 // outside of a purchase/sale/return, requiring a reason and always writing a
 // stock_movements row (sourceType: "adjustment"). Replaces the old free
@@ -758,6 +808,7 @@ export {
     getAllProducts,
     updateProduct,
     deleteProduct,
+    bulkUpdateLowStockThreshold,
     getAllProductsAdmin,
     adjustProductStock,
     getProductStockMovements,

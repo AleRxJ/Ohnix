@@ -98,16 +98,46 @@ async function sendTrialEndingReminders() {
 // Every plan (Starter included) requires payment - there is no free tier to
 // fall back to anymore, so a lapsed subscription is blocked (status: "paused",
 // which pricing.middleware.js's ensureActiveSubscription already gates all
-// product/report/API access on) rather than silently downgraded to a
-// still-free "starter". The plan value is left untouched so the user's
-// billing page still shows what they were on when reactivating.
+// product/report/API access on) rather than auto-billed for a renewal (this
+// system has no stored payment method to do that with - every renewal is a
+// manual checkout). `plan` is otherwise left untouched so the user's billing
+// page still shows what they were on when reactivating - EXCEPT for a
+// subscription with a scheduledPlan set (self-service "bajar de plan" - see
+// downgradeMySubscription): that's the one case `plan` DOES change here, on
+// purpose, so the next time they pay it's for the lower plan they actually
+// asked for instead of silently re-billing the higher one.
 async function blockLapsedSubscriptions() {
     const graceCutoff = new Date(Date.now() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+
+    // Handled individually first (each row needs its OWN scheduledPlan value
+    // written to `plan`, which a single updateMany can't express) and
+    // excluded from the bulk updateMany below via scheduledPlan: null there.
+    const withScheduledDowngrade = await prisma.subscription.findMany({
+        where: {
+            status: "active",
+            endsAt: { lt: graceCutoff },
+            scheduledPlan: { not: null },
+        },
+        select: { userId: true, plan: true, scheduledPlan: true },
+    });
+
+    for (const sub of withScheduledDowngrade) {
+        await prisma.subscription.update({
+            where: { userId: sub.userId },
+            data: {
+                plan: sub.scheduledPlan,
+                scheduledPlan: null,
+                status: "paused",
+                cancelAtPeriodEnd: false,
+            },
+        });
+    }
 
     const expiredPaid = await prisma.subscription.updateMany({
         where: {
             status: "active",
             endsAt: { lt: graceCutoff },
+            scheduledPlan: null,
         },
         data: {
             status: "paused",
@@ -127,10 +157,10 @@ async function blockLapsedSubscriptions() {
         },
     });
 
-    const total = expiredPaid.count + expiredTrials.count;
+    const total = withScheduledDowngrade.length + expiredPaid.count + expiredTrials.count;
     if (total > 0) {
         console.log(
-            `[renewal-scheduler] Blocked ${expiredPaid.count} lapsed paid subscription(s) and ${expiredTrials.count} expired trial(s).`
+            `[renewal-scheduler] Blocked ${expiredPaid.count} lapsed paid subscription(s) (${withScheduledDowngrade.length} with a scheduled downgrade applied) and ${expiredTrials.count} expired trial(s).`
         );
     }
 

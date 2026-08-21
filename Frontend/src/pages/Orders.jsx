@@ -8,6 +8,7 @@ import OrderFilters from "../components/orders/OrderFilters";
 import OrdersTable from "../components/orders/OrdersTable";
 import CreateOrderModal from "../components/orders/CreateOrderModal";
 import OrderDetailsDrawer from "../components/orders/OrderDetailsDrawer";
+import OrderReturnPreview from "../components/orders/OrderReturnPreview";
 
 import { useOrders } from "../hooks/orders/useOrders";
 import { useOrderOperations } from "../hooks/orders/useOrderOperations";
@@ -22,6 +23,7 @@ const Orders = () => {
     const { isOpen: isTutorialActive, effectiveSteps, stepIndex, createdRefs } = useInventoryTour();
     const [createModalVisible, setCreateModalVisible] = useState(false);
     const [detailsDrawerVisible, setDetailsDrawerVisible] = useState(false);
+    const [returnPreviewVisible, setReturnPreviewVisible] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [createForm] = Form.useForm();
@@ -41,11 +43,14 @@ const Orders = () => {
     const {
         orderDetails,
         detailsLoading,
+        returnPreviewData,
         updateOrderStatus,
         updatingOrderId,
         generateInvoice,
         createOrder,
         fetchOrderDetails,
+        fetchReturnPreview,
+        processReturn,
     } = useOrderOperations(() =>
         fetchOrders(pagination.current, pagination.pageSize)
     );
@@ -79,6 +84,11 @@ const Orders = () => {
         setSelectedOrder(order);
         setDetailsDrawerVisible(true);
         fetchOrderDetails(order._id);
+    };
+
+    const handleReturnPreview = async (orderId) => {
+        await fetchReturnPreview(orderId);
+        setReturnPreviewVisible(true);
     };
 
     const handleCreateOrder = async (values) => {
@@ -165,6 +175,7 @@ const Orders = () => {
                             onUpdateStatus={updateOrderStatus}
                             updatingOrderId={updatingOrderId}
                             onGenerateInvoice={generateInvoice}
+                            onReturnPreview={handleReturnPreview}
                         />
                     </div>
                 </div>
@@ -189,6 +200,14 @@ const Orders = () => {
                 orderDetails={orderDetails}
                 detailsLoading={detailsLoading}
                 onGenerateInvoice={generateInvoice}
+            />
+
+            <OrderReturnPreview
+                visible={returnPreviewVisible}
+                onCancel={() => setReturnPreviewVisible(false)}
+                onSubmit={processReturn}
+                returnPreviewData={returnPreviewData}
+                submitting={updatingOrderId === returnPreviewData?.order_id}
             />
         </div>
     );

@@ -9,8 +9,8 @@
 // modal already needed to do anyway, so there was no reason to keep a
 // second top-level page around for it.
 import React, { useEffect, useState } from "react";
-import { Modal, Tag, Button, InputNumber, Spin, Empty, Tooltip } from "antd";
-import { PlusCircleOutlined, StopOutlined, UndoOutlined, SyncOutlined, CopyOutlined } from "@ant-design/icons";
+import { Modal, Tag, Button, InputNumber, Select, Spin, Empty, Tooltip } from "antd";
+import { PlusCircleOutlined, StopOutlined, UndoOutlined, SyncOutlined, CopyOutlined, SwapOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import { subscriptionService } from "../../services/subscriptionService";
 
@@ -18,6 +18,17 @@ export const SUBSCRIPTION_STATUS_STYLES = {
     active: { color: "green", label: "Activa" },
     paused: { color: "gold", label: "Pausada" },
 };
+
+// Exported so AdminSubscriptions.jsx's plan filter/column renders the same
+// labels this modal's plan-change select uses, instead of a second copy
+// that can drift.
+export const PLAN_STYLES = {
+    starter: { color: "default", label: "Emprendedor" },
+    growth: { color: "cyan", label: "Negocio" },
+    scale: { color: "purple", label: "Escala" },
+    enterprise: { color: "gold", label: "Enterprise" },
+};
+const PLAN_OPTIONS = Object.keys(PLAN_STYLES);
 
 export const formatDate = (value) => (value ? new Date(value).toLocaleString("es-CO") : "-");
 
@@ -76,6 +87,7 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
     const [actionLoading, setActionLoading] = useState("");
     const [reverifyingId, setReverifyingId] = useState("");
     const [extendDays, setExtendDays] = useState(30);
+    const [planDraft, setPlanDraft] = useState(null);
 
     const loadPayments = async (userId) => {
         const response = await subscriptionService
@@ -92,7 +104,9 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
                 subscriptionService.getUserAuditLogAdmin(userId).catch(() => null),
                 loadPayments(userId),
             ]);
-            setSubscription(subResponse?.data?.subscription || null);
+            const loadedSubscription = subResponse?.data?.subscription || null;
+            setSubscription(loadedSubscription);
+            setPlanDraft(loadedSubscription?.plan || null);
             setAuditLog(auditResponse?.data?.entries || []);
         } catch (error) {
             toast.error(error.response?.data?.message || "Error");
@@ -107,6 +121,25 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
         load(target.userId);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [target?.userId]);
+
+    const handleChangePlan = async () => {
+        if (!planDraft || planDraft === subscription?.plan) return;
+        try {
+            setActionLoading("set_plan");
+            const response = await subscriptionService.setUserPlanAdmin(target.userId, planDraft);
+            toast.success(response?.message || "Plan actualizado.");
+            // The endpoint's response omits trialEndsAt/cancelAtPeriodEnd (it
+            // only touches plan/status/endsAt) - refetch instead of merging
+            // the partial response, so those fields don't silently vanish
+            // from the UI after a plan change.
+            await load(target.userId);
+            onChanged?.();
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Error");
+        } finally {
+            setActionLoading("");
+        }
+    };
 
     const runAction = async (action, actionFn) => {
         try {
@@ -175,8 +208,8 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
                 <div className="space-y-4">
                     <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
                         <div className="flex items-center gap-2">
-                            <Tag color={SUBSCRIPTION_STATUS_STYLES[subscription.status]?.color || "default"}>
-                                {subscription.plan}
+                            <Tag color={PLAN_STYLES[subscription.plan]?.color || "default"}>
+                                {PLAN_STYLES[subscription.plan]?.label || subscription.plan}
                             </Tag>
                             <Tag color={SUBSCRIPTION_STATUS_STYLES[subscription.status]?.color || "default"}>
                                 {SUBSCRIPTION_STATUS_STYLES[subscription.status]?.label || subscription.status}
@@ -221,6 +254,32 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
                                 Cancelar (no renueva)
                             </Button>
                         )}
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ohnix-text-muted)]">
+                            Cambiar plan
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Select
+                                value={planDraft}
+                                onChange={setPlanDraft}
+                                className="min-w-[180px]"
+                                options={PLAN_OPTIONS.map((key) => ({ value: key, label: PLAN_STYLES[key].label }))}
+                            />
+                            <Button
+                                type="primary"
+                                icon={<SwapOutlined />}
+                                loading={actionLoading === "set_plan"}
+                                disabled={!planDraft || planDraft === subscription.plan}
+                                onClick={handleChangePlan}
+                            >
+                                Cambiar plan
+                            </Button>
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
+                            Cambio inmediato y sin cobro (sube o baja el plan directamente) - no pasa por checkout. Si el usuario es dueño de un equipo, se rechaza si el equipo tiene más miembros activos que el cupo del plan nuevo.
+                        </div>
                     </div>
 
                     <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">

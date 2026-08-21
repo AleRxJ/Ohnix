@@ -32,6 +32,8 @@ const ProductsTable = ({
     onDelete,
     onViewDetails,
     onAdjustStock,
+    selectedRowKeys,
+    onSelectionChange,
 }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -138,6 +140,11 @@ const ProductsTable = ({
                                 }
                                 text={product.stock}
                             />
+                            <br />
+                            <Text className="text-[10px] text-[var(--ohnix-text-dim)]">
+                                {t("products.threshold_column")}:{" "}
+                                {product.low_stock_threshold ?? t("products.threshold_general_short")}
+                            </Text>
                         </div>
                         <div>
                             <Text className="text-[var(--ohnix-text-muted)]">{t("products.selling_price")}</Text>
@@ -228,6 +235,18 @@ const ProductsTable = ({
                         <Text className="text-xs text-[var(--ohnix-text-muted)] hidden sm:block">
                             {status}
                         </Text>
+                        <Tooltip
+                            title={
+                                record.low_stock_threshold != null
+                                    ? t("products.low_stock_threshold_hint")
+                                    : t("products.low_stock_threshold_placeholder")
+                            }
+                        >
+                            <Text className="text-[10px] text-[var(--ohnix-text-dim)] hidden sm:block cursor-help">
+                                {t("products.threshold_column")}:{" "}
+                                {record.low_stock_threshold ?? t("products.threshold_general_short")}
+                            </Text>
+                        </Tooltip>
                     </div>
                 );
             },
@@ -350,6 +369,11 @@ const ProductsTable = ({
             columns={columns}
             rowKey="_id"
             loading={loading}
+            rowSelection={
+                canEdit && onSelectionChange
+                    ? { selectedRowKeys, onChange: onSelectionChange }
+                    : undefined
+            }
             scroll={{ x: 800 }}
             pagination={{
                 showSizeChanger: true,

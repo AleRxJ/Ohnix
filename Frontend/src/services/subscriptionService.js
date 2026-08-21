@@ -56,6 +56,25 @@ export const subscriptionService = {
         return response.data;
     },
 
+    // "Bajar de plan" - stays on the current (higher) plan through the
+    // already-paid period; switches to targetPlan at endsAt. Distinct from
+    // cancelMySubscription (which stops billing entirely).
+    async downgradeMySubscription(targetPlan) {
+        const response = await api.post("/subscriptions/me/downgrade", { targetPlan });
+        if (response.data?.success && response.data?.message) {
+            toast.success(response.data.message);
+        }
+        return response.data;
+    },
+
+    async undoMyDowngrade() {
+        const response = await api.delete("/subscriptions/me/downgrade");
+        if (response.data?.success && response.data?.message) {
+            toast.success(response.data.message);
+        }
+        return response.data;
+    },
+
     async getMyUpgradeRequests() {
         const response = await api.get("/subscriptions/me/upgrade-requests");
         return response.data;
@@ -141,6 +160,16 @@ export const subscriptionService = {
     // logAdminAction in the backend.
     async getUserAuditLogAdmin(userId) {
         const response = await api.get(`/subscriptions/admin/users/${userId}/audit-log`);
+        return response.data;
+    },
+
+    // Hand-sets a user's plan directly - instant, unpaid access, including
+    // enterprise. See updateUserPlan in Backend/controllers/subscription.controller.js:
+    // rejected outright if it would leave a team owner's active member count
+    // over the new plan's seat limit. Every use is written to the admin
+    // audit log ("set_plan").
+    async setUserPlanAdmin(userId, plan) {
+        const response = await api.patch(`/subscriptions/admin/users/${userId}/plan`, { plan });
         return response.data;
     },
 

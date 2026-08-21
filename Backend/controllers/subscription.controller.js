@@ -774,6 +774,7 @@ export const getMySubscription = asyncHandler(async (req, res) => {
                 trialEndsAt: subscription.trialEndsAt ?? null,
                 endsAt: subscription.endsAt ?? null,
                 cancelAtPeriodEnd: subscription.cancelAtPeriodEnd ?? false,
+                scheduledPlan: subscription.scheduledPlan ?? null,
                 limits: getPlanLimits(effectivePlan),
                 lowStockThreshold: subscription.lowStockThreshold ?? null,
             },
@@ -856,6 +857,7 @@ const setMyStatus = (status, message) =>
                 startedAt: true,
                 endsAt: true,
                 cancelAtPeriodEnd: true,
+                scheduledPlan: true,
             },
         });
 
@@ -907,6 +909,7 @@ export const cancelMySubscription = asyncHandler(async (req, res, next) => {
             startedAt: true,
             endsAt: true,
             cancelAtPeriodEnd: true,
+            scheduledPlan: true,
         },
     });
 
@@ -917,6 +920,79 @@ export const cancelMySubscription = asyncHandler(async (req, res, next) => {
             "Your plan will not renew, but you keep full access until it expires."
         )
     );
+});
+
+// "Bajar de plan" - distinct from cancelMySubscription above: the customer
+// stays an active, paying customer, just on a lower tier - not "stop
+// billing me entirely". Takes effect at the CURRENT period's end (no
+// proration, no immediate charge - this system has no stored payment
+// method to auto-bill anyway), by recording scheduledPlan for
+// blockLapsedSubscriptions to apply once endsAt actually lapses. Full
+// access to the current (higher) plan is untouched until then.
+export const downgradeMySubscription = asyncHandler(async (req, res, next) => {
+    const { targetPlan } = req.body || {};
+
+    if (!PLAN_ORDER.includes(targetPlan)) {
+        return next(new ApiError(400, "A valid targetPlan is required"));
+    }
+
+    const subscription = await ensureUserSubscription(req.user.prismaId);
+
+    if (PLAN_ORDER.indexOf(targetPlan) >= PLAN_ORDER.indexOf(subscription.plan)) {
+        return next(
+            new ApiError(
+                400,
+                "targetPlan must be lower than your current plan. To move to a higher plan, request an upgrade instead."
+            )
+        );
+    }
+
+    if (!subscription.endsAt) {
+        return next(
+            new ApiError(400, "There is no active paid period to schedule a downgrade for.")
+        );
+    }
+
+    const updated = await prisma.subscription.update({
+        where: { userId: req.user.prismaId },
+        data: { scheduledPlan: targetPlan },
+        select: {
+            plan: true,
+            status: true,
+            startedAt: true,
+            endsAt: true,
+            cancelAtPeriodEnd: true,
+            scheduledPlan: true,
+        },
+    });
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            updated,
+            "Seguirás con tu plan actual hasta que termine tu período pagado; después pasarás automáticamente al plan que elegiste."
+        )
+    );
+});
+
+// Undoes a pending scheduled downgrade - the counterpart to
+// downgradeMySubscription above, for when the customer changes their mind
+// before the current period actually lapses.
+export const undoMyDowngrade = asyncHandler(async (req, res) => {
+    const updated = await prisma.subscription.update({
+        where: { userId: req.user.prismaId },
+        data: { scheduledPlan: null },
+        select: {
+            plan: true,
+            status: true,
+            startedAt: true,
+            endsAt: true,
+            cancelAtPeriodEnd: true,
+            scheduledPlan: true,
+        },
+    });
+
+    return res.status(200).json(new ApiResponse(200, updated, "Cambio de plan cancelado."));
 });
 
 export const updateUserPlan = asyncHandler(async (req, res, next) => {
@@ -1000,6 +1076,7 @@ const SUBSCRIPTION_SELECT_ADMIN = {
     endsAt: true,
     trialEndsAt: true,
     cancelAtPeriodEnd: true,
+    scheduledPlan: true,
 };
 
 const findTargetUserOrFail = async (userId, next) => {
@@ -1224,6 +1301,26 @@ export const createUpgradeRequest = asyncHandler(async (req, res, next) => {
 
     if (subscription.plan === targetPlan) {
         return next(new ApiError(400, "You are already on this plan"));
+    }
+
+    // This endpoint is upgrade-only - it charges immediately via checkout,
+    // and nothing here ever validated that targetPlan actually ranks above
+    // the current plan. The frontend's plan picker never offered a lower
+    // tier, so this was unreachable through the UI, but a direct API call
+    // could ask for a downgrade here and get charged the LOWER plan's price
+    // while closeApprovedRequestAndActivatePlan's renewal math (which keys
+    // off currentPlan === targetPlan) would treat it as a brand-new period
+    // starting today - discarding any remaining paid days on the current,
+    // higher plan with no proration. Downgrades have their own endpoint now
+    // (downgradeMySubscription) that takes effect at the current period's
+    // end instead - see Subscription.scheduledPlan.
+    if (PLAN_ORDER.indexOf(targetPlan) <= PLAN_ORDER.indexOf(subscription.plan)) {
+        return next(
+            new ApiError(
+                400,
+                "targetPlan must be higher than your current plan. To move to a lower plan, use the downgrade endpoint instead."
+            )
+        );
     }
 
     const existingOpenRequest = await prisma.planUpgradeRequest.findFirst({
@@ -1511,6 +1608,7 @@ export const getAdminSubscriptions = asyncHandler(async (req, res) => {
                 endsAt: true,
                 trialEndsAt: true,
                 cancelAtPeriodEnd: true,
+                scheduledPlan: true,
                 updatedAt: true,
                 user: {
                     select: {
@@ -1638,6 +1736,7 @@ export const getAdminPayments = asyncHandler(async (req, res) => {
                   endsAt: true,
                   trialEndsAt: true,
                   cancelAtPeriodEnd: true,
+                  scheduledPlan: true,
               },
           })
         : [];

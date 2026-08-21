@@ -213,6 +213,7 @@ export const ensureUserSubscription = async (userId) =>
             trialEndsAt: true,
             endsAt: true,
             cancelAtPeriodEnd: true,
+            scheduledPlan: true,
             lowStockThreshold: true,
         },
     });

@@ -1,6 +1,6 @@
 import React from "react";
 import { Table, Button, Select, Tag, Space, Tooltip, Card, Popconfirm } from "antd";
-import { EyeOutlined, FilePdfOutlined, UserOutlined, StopOutlined } from "@ant-design/icons";
+import { EyeOutlined, FilePdfOutlined, UserOutlined, StopOutlined, UndoOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import {
     getStatusColor,
@@ -24,6 +24,7 @@ const OrdersTable = ({
     onUpdateStatus = () => {},
     updatingOrderId = null,
     onGenerateInvoice = () => {},
+    onReturnPreview = () => {},
 }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -155,6 +156,18 @@ const OrdersTable = ({
                             </Tooltip>
                         )}
 
+                        {record.order_status === "completed" && (
+                            <Tooltip title={canEdit ? t("orders.process_return") : t("common.no_permission_to_edit")}>
+                                <Button
+                                    type="text"
+                                    icon={<UndoOutlined />}
+                                    disabled={!canEdit}
+                                    onClick={() => onReturnPreview(record._id)}
+                                    className="text-[#44F3F0] hover:text-[#44F3F0] hover:bg-[var(--ohnix-hover-overlay)]"
+                                />
+                            </Tooltip>
+                        )}
+
                         <Tooltip title={t("orders.download_invoice")}>
                             <Button
                                 type="text"
@@ -226,6 +239,14 @@ const OrdersTable = ({
                                 loading={updatingOrderId === order._id}
                             />
                         </Popconfirm>
+                    )}
+                    {order.order_status === "completed" && (
+                        <Button
+                            icon={<UndoOutlined />}
+                            size="middle"
+                            disabled={!canEdit}
+                            onClick={() => onReturnPreview(order._id)}
+                        />
                     )}
                 </div>
             </Card>

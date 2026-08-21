@@ -8,6 +8,7 @@ import { formatCurrency } from "../../utils/currency.js";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
+import { idempotencyHeaders } from "../../utils/idempotency";
 
 const UPDATE_STATUS_ERROR_CODES = {
     invalid_purchase_status_transition: "purchases.invalid_status_transition",
@@ -187,9 +188,11 @@ export const usePurchase = () => {
     const updatePurchaseStatus = async (purchaseId, status) => {
         setUpdatingPurchaseId(purchaseId);
         try {
-            const response = await api.patch(`/purchases/${purchaseId}`, {
-                purchase_status: status,
-            });
+            const response = await api.patch(
+                `/purchases/${purchaseId}`,
+                { purchase_status: status },
+                idempotencyHeaders()
+            );
             if (response.data.success) {
                 toast.success(t("purchases.purchase_updated"));
                 await fetchPurchases();
@@ -222,9 +225,11 @@ export const usePurchase = () => {
     const processReturn = async (purchaseId, lines) => {
         setUpdatingPurchaseId(purchaseId);
         try {
-            const response = await api.post(`/purchases/${purchaseId}/returns`, {
-                lines,
-            });
+            const response = await api.post(
+                `/purchases/${purchaseId}/returns`,
+                { lines },
+                idempotencyHeaders()
+            );
             if (response.data.success) {
                 const result = response.data.data;
                 message.success(

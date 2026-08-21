@@ -38,6 +38,12 @@ enum OrderStatus {
   processing
   completed
   cancelled
+  // Reached only as a side effect of order.service.js#processReturn once
+  // every OrderDetail line on the order has nothing left pending - never a
+  // client-settable transition target. Distinct from "cancelled": a
+  // cancelled order was voided outright, a returned order was a real
+  // completed sale the customer later brought some or all of back.
+  returned
 }
 
 enum PurchaseStatus {
@@ -80,6 +86,7 @@ enum StockMovementSourceType {
   purchase_return
   order
   order_cancellation
+  order_return
   adjustment
 }
 
@@ -304,9 +311,24 @@ model Subscription {
   endsAt            DateTime?          @map("ends_at")
   trialEndsAt       DateTime?          @map("trial_ends_at")
   // When true, the user asked to cancel but keeps `status: active` and full
-  // plan access until `endsAt` - subscriptionRenewalScheduler's existing
-  // expiry job downgrades to starter then, same as a natural non-renewal.
+  // plan access until `endsAt` - subscriptionRenewalScheduler's expiry job
+  // then blocks access (status: "paused") the same as any other lapsed,
+  // non-renewed period. Correction to what this comment used to claim:
+  // `plan` is NEVER auto-changed to starter anywhere in this codebase - the
+  // scheduler deliberately leaves it untouched so reactivating resumes the
+  // same plan (see setMyStatus). scheduledPlan below is the one exception,
+  // and only because it's set on purpose.
   cancelAtPeriodEnd Boolean            @default(false) @map("cancel_at_period_end")
+  // Set by the self-service "bajar de plan" flow (never by an upgrade) -
+  // the customer keeps full access to their current (higher) plan through
+  // `endsAt`, no proration, no immediate charge (this system has no stored
+  // payment method to auto-bill anyway - every renewal is a manual
+  // checkout). Once `endsAt` lapses, blockLapsedSubscriptions applies this
+  // to `plan` and clears it, so the next time they pay, it's for the lower
+  // plan they actually asked for instead of silently re-billing the higher
+  // one. Mutually exclusive with a full cancellation in intent, not in
+  // storage - see downgradeMySubscription/undoMyDowngrade.
+  scheduledPlan     PlanType?          @map("scheduled_plan")
   // Account-wide low-stock alert threshold (Escala+ feature, gated the same
   // way as Product.lowStockThreshold below) - null means "no override, fall
   // back to the platform-wide SystemSetting.lowStockDefaultThreshold". This
@@ -637,6 +659,14 @@ model OrderDetail {
   taxTreatmentApplied ProductTaxTreatment @default(taxed) @map("tax_treatment_applied")
   taxRateApplied      Decimal             @default(0) @map("tax_rate_applied") @db.Decimal(5, 2)
   taxAmount           Decimal             @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  // Running totals across every partial return event for this line - same
+  // pattern as PurchaseDetail (see its schema comment): StockMovement
+  // (sourceType "order_return", sourceId = this order's id) is the
+  // append-only ledger, these are the fast-read cache. "Fully returned" is
+  // derived as returnedQuantity === quantity, not stored.
+  returnDate       DateTime? @map("return_date")
+  returnedQuantity Int       @default(0) @map("returned_quantity")
+  refundAmount     Decimal   @default(0) @map("refund_amount") @db.Decimal(12, 2)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
@@ -838,4 +868,28 @@ model TeamActivityLog {
 
   @@index([teamId, createdAt])
   @@map("team_activity_logs")
+}
+
+// Backs Backend/middleware/idempotency.middleware.js: lets a client-supplied
+// `Idempotency-Key` header make a retried mutation (network timeout, a
+// double-click that slips in before the button disables, an automatic axios
+// retry) replay the first response instead of re-running the operation a
+// second time. The `[accountId, scope, key]` unique constraint is what
+// actually enforces "only one attempt wins" - two concurrent requests with
+// the same key race on the INSERT, and the loser reads back the winner's
+// row instead of proceeding. No automatic cleanup exists yet; this table
+// grows unboundedly until a pruning job is added.
+model IdempotencyKey {
+  id             String   @id @default(cuid())
+  accountId      String   @map("account_id")
+  scope          String
+  key            String
+  status         String   @default("processing")
+  responseStatus Int?     @map("response_status")
+  responseBody   Json?    @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([accountId, scope, key])
+  @@map("idempotency_keys")
 }

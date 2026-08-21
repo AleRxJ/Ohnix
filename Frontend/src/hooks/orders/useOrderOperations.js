@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { toast } from "react-hot-toast";
+import { message } from "antd";
 import { api } from "../../api/api";
 import { calculateOrderTotals } from "../../utils/orderHelpers";
+import { formatCurrency } from "../../utils/currency";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
+import { idempotencyHeaders } from "../../utils/idempotency";
 
 const UPDATE_STATUS_ERROR_CODES = {
     invalid_order_status_transition: "orders.invalid_status_transition",
@@ -15,6 +18,7 @@ export const useOrderOperations = (refreshOrders) => {
     const { isOpen: isTutorialActive, notifyAction, createdRefs } = useInventoryTour();
     const [orderDetails, setOrderDetails] = useState([]);
     const [detailsLoading, setDetailsLoading] = useState(false);
+    const [returnPreviewData, setReturnPreviewData] = useState(null);
     // Which order's status Select is mid-request - the status PATCH gave no
     // visual feedback at all while in flight (no spinner, nothing disabled),
     // so a slow request looked like the click didn't register.
@@ -42,9 +46,11 @@ export const useOrderOperations = (refreshOrders) => {
     const updateOrderStatus = async (orderId, newStatus) => {
         setUpdatingOrderId(orderId);
         try {
-            await api.patch(`/orders/${orderId}/status`, {
-                order_status: newStatus,
-            });
+            await api.patch(
+                `/orders/${orderId}/status`,
+                { order_status: newStatus },
+                idempotencyHeaders()
+            );
             toast.success(t("orders.order_updated"));
             await refreshOrders();
             // Only the tutorial's OWN practice order counts - completing any
@@ -112,7 +118,7 @@ export const useOrderOperations = (refreshOrders) => {
                 ...(isTutorialActive && { is_tutorial_data: true }),
             };
 
-            const response = await api.post("/orders", orderData);
+            const response = await api.post("/orders", orderData, idempotencyHeaders());
             toast.success(t("orders.order_created"));
             // Awaited (not fire-and-forget) specifically so that when the
             // tour is active, the new row already exists in the DOM by the
@@ -164,13 +170,70 @@ export const useOrderOperations = (refreshOrders) => {
         }
     };
 
+    const fetchReturnPreview = async (orderId) => {
+        try {
+            const response = await api.get(`/orders/${orderId}/return-preview`);
+            if (response.data.success) {
+                setReturnPreviewData(response.data.data);
+                return response.data.data;
+            }
+            toast.error(
+                response.data.message || t("orders.failed_fetch_return_preview")
+            );
+        } catch (error) {
+            toast.error(t("orders.error_fetching_return_preview"));
+            console.error("Error fetching return preview:", error);
+        }
+    };
+
+    // Process a granular return: `lines` is [{ order_detail_id, quantity }],
+    // chosen by the user in the return form - not auto-computed by the server.
+    const processReturn = async (orderId, lines) => {
+        setUpdatingOrderId(orderId);
+        try {
+            const response = await api.post(
+                `/orders/${orderId}/returns`,
+                { lines },
+                idempotencyHeaders()
+            );
+            if (response.data.success) {
+                const result = response.data.data;
+                message.success(
+                    t(
+                        result.order_fully_returned
+                            ? "orders.return_success_toast"
+                            : "orders.return_partial_success_toast",
+                        { amount: formatCurrency(result.total_refund_amount) }
+                    )
+                );
+                await refreshOrders();
+                return { success: true, result };
+            }
+            toast.error(response.data.message || t("orders.failed_process_return"));
+            return { success: false };
+        } catch (error) {
+            toast.error(
+                describeStockErrors(error) ||
+                    resolveApiErrorMessage(error, t, {}, "orders.error_processing_return")
+            );
+            console.error("Error processing return:", error);
+            return { success: false };
+        } finally {
+            setUpdatingOrderId(null);
+        }
+    };
+
     return {
         orderDetails,
         detailsLoading,
+        returnPreviewData,
         updateOrderStatus,
         updatingOrderId,
         generateInvoice,
         createOrder,
         fetchOrderDetails,
+        fetchReturnPreview,
+        processReturn,
+        setReturnPreviewData,
     };
 };
