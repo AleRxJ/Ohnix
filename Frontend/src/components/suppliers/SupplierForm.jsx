@@ -24,6 +24,7 @@ import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
+import FieldPresenceHighlighter from "../team/FieldPresenceHighlighter";
 import PhotoDropZone from "../common/PhotoDropZone";
 
 const { Option } = Select;
@@ -51,7 +52,7 @@ const SupplierForm = ({
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
     const { team } = useTeam();
-    const { viewers, lock, acquireLock, releaseLock } = useResourcePresence({
+    const { viewers, lock, acquireLock, releaseLock, fieldPresenceHandlers } = useResourcePresence({
         resourceType: "supplier",
         resourceId: editingSupplier?._id,
         active: visible && Boolean(team) && Boolean(editingSupplier?._id),
@@ -101,11 +102,15 @@ const SupplierForm = ({
             }}
         >
             {team && editingSupplier?._id && (
-                <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+                <>
+                    <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+                    <FieldPresenceHighlighter viewers={viewers} currentUserId={user?.id} />
+                </>
             )}
             <Form
                 form={form}
                 layout="vertical"
+                {...fieldPresenceHandlers}
                 onFinish={onSubmit}
                 autoComplete="off"
                 className="space-y-5"

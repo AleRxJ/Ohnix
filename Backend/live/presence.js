@@ -17,6 +17,13 @@ export const getPresenceList = async (io, room) => {
                 userId: user.id,
                 username: user.username,
                 avatar: user.avatar,
+                // Which form field this viewer currently has focused, if
+                // any - see socketServer.js's "presence:field" handler. Lets
+                // the UI show not just "who's here" but "who's touching
+                // what", so a save conflict is visible before it happens
+                // instead of only after (see optimisticConcurrency.js on
+                // the backend for the after-the-fact guard).
+                field: s.data.focusedField || null,
             });
         }
     }

@@ -633,6 +633,17 @@ body {
   background: rgba(41, 216, 213, 0.08) !important;
 }
 
+/* Table.Summary renders into a <tfoot>, which module-dark-table's
+   .ant-table-tbody rules above don't reach - antd paints its own opaque
+   background directly on those <td> cells, so without this the summary row
+   in return-preview-table (and any other module-dark-table with a
+   Table.Summary) shows through as a plain white bar. */
+.module-dark-table .ant-table-summary > tr > td {
+  background: var(--ohnix-line-1) !important;
+  color: var(--ohnix-text-primary) !important;
+  border-top: 1px solid var(--ohnix-line-3) !important;
+}
+
 .module-dark-table .ant-pagination-item a,
 .module-dark-table .ant-pagination-total-text,
 .module-dark-table .ant-pagination-prev .ant-pagination-item-link,
@@ -1948,5 +1959,34 @@ textarea.ant-input[disabled] {
 .csv-dropzone.ant-upload-drag-hover .csv-dropzone-inner {
   border-color: rgba(41, 216, 213, 0.6) !important;
   background: var(--ohnix-hover-overlay) !important;
+}
+
+/* Field-level presence (see components/team/FieldPresenceHighlighter.jsx /
+   hooks/useResourcePresence.js): tags the Form.Item another connected user
+   currently has focused so a save conflict is visible while it's happening,
+   not just after (--ohnix-presence-color is set inline, per-user). */
+[data-ohnix-presence-field] {
+  position: relative !important;
+  outline: 1.5px solid var(--ohnix-presence-color, #f59e0b);
+  outline-offset: 3px;
+  border-radius: 10px;
+  transition: outline-color 0.15s ease;
+}
+[data-ohnix-presence-field]::before {
+  content: attr(data-ohnix-presence-field);
+  position: absolute;
+  top: -9px;
+  left: 0;
+  background: var(--ohnix-presence-color, #f59e0b);
+  color: #021314;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 

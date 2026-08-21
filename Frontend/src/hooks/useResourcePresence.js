@@ -17,6 +17,7 @@ export const useResourcePresence = ({ resourceType, resourceId, canEdit = true, 
     // isMine would only ever see the value from the render that first
     // mounted the effect (acquireLock flips it well after that).
     const isMineRef = useRef(false);
+    const blurTimerRef = useRef(null);
 
     const shouldTrack = active && Boolean(team) && Boolean(resourceType) && Boolean(resourceId);
 
@@ -97,5 +98,44 @@ export const useResourcePresence = ({ resourceType, resourceId, canEdit = true, 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [resourceType, resourceId]);
 
-    return { viewers, lock, isMine, acquireLock, releaseLock };
+    // Field-level presence: tells everyone else in the room which field this
+    // tab currently has focused (see live/socketServer.js's "presence:field"
+    // handler) - each viewer in `viewers` comes back with a `.field` to
+    // render against. Purely cosmetic, so failures (no socket yet) just
+    // no-op instead of surfacing anywhere.
+    const setFocusedField = useCallback(
+        (field) => {
+            if (!shouldTrack) return;
+            const socket = getSocket();
+            socket?.emit("presence:field", { resourceType, resourceId, field: field || null });
+        },
+        [shouldTrack, resourceType, resourceId, getSocket]
+    );
+
+    // Spread onto a form's wrapping element to track focus without touching
+    // every individual field - relies on antd Form.Item defaulting each
+    // control's DOM id to its field name (true as long as the <Form> itself
+    // has no `name` prop, which none of the edit forms set).
+    const fieldPresenceHandlers = shouldTrack
+        ? {
+              onFocusCapture: (e) => {
+                  const id = e.target?.id;
+                  if (!id) return;
+                  clearTimeout(blurTimerRef.current);
+                  setFocusedField(id);
+              },
+              onBlurCapture: () => {
+                  // Debounced: focus moving to another field in the same
+                  // form fires blur-then-focus back to back, and antd
+                  // controls (Select's hidden search input, etc.) can blur
+                  // one element and refocus another within the same click.
+                  clearTimeout(blurTimerRef.current);
+                  blurTimerRef.current = setTimeout(() => setFocusedField(null), 200);
+              },
+          }
+        : {};
+
+    useEffect(() => () => clearTimeout(blurTimerRef.current), []);
+
+    return { viewers, lock, isMine, acquireLock, releaseLock, fieldPresenceHandlers };
 };

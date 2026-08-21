@@ -12,6 +12,7 @@ import useSubscription from "../../hooks/useSubscription";
 import { useTeam } from "../../context/TeamContext";
 import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
+import FieldPresenceHighlighter from "../team/FieldPresenceHighlighter";
 import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 const { Option } = Select;
@@ -52,7 +53,7 @@ const ProductModal = ({
     // Live presence + soft-lock (team plans only, and only once there's a
     // real record to collide on - a brand-new product being created hasn't
     // got an id yet). See hooks/useResourcePresence.js.
-    const { viewers, lock, acquireLock, releaseLock } = useResourcePresence({
+    const { viewers, lock, acquireLock, releaseLock, fieldPresenceHandlers } = useResourcePresence({
         resourceType: "product",
         resourceId: editingProduct?._id,
         active: visible && Boolean(team) && Boolean(editingProduct?._id),
@@ -112,9 +113,13 @@ const ProductModal = ({
                 layout="vertical"
                 initialValues={{ stock: 0 }}
                 className="product-modal-form"
+                {...fieldPresenceHandlers}
             >
                 {team && editingProduct?._id && (
-                    <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+                    <>
+                        <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+                        <FieldPresenceHighlighter viewers={viewers} currentUserId={user?.id} />
+                    </>
                 )}
                 <Row gutter={20} className="space-y-4 lg:space-y-0">
                     <Col xs={24} lg={14}>

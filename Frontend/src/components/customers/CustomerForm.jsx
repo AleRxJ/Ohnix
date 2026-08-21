@@ -43,6 +43,7 @@ const CustomerForm = ({
     fileList,
     setFileList,
     editingCustomer,
+    fieldPresenceHandlers = {},
 }) => {
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
@@ -85,6 +86,7 @@ const CustomerForm = ({
                 form={form}
                 layout="vertical"
                 onFinish={onSubmit}
+                {...fieldPresenceHandlers}
                 scrollToFirstError
                 className="space-y-5"
             >

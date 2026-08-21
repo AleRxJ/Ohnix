@@ -83,6 +83,12 @@ export const useSupplierForm = (onSuccess) => {
 
         let success;
         if (editMode && selectedSupplier) {
+            // Lets the backend reject this save if someone else edited the
+            // same supplier after this form opened, instead of silently
+            // overwriting their changes.
+            if (selectedSupplier.updatedAt) {
+                formData.append("expected_updated_at", selectedSupplier.updatedAt);
+            }
             success = await updateFn(selectedSupplier._id, formData);
         } else {
             success = await createFn(formData);

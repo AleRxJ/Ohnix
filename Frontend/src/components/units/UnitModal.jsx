@@ -8,6 +8,7 @@ import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
+import FieldPresenceHighlighter from "../team/FieldPresenceHighlighter";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 
 const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }) => {
@@ -19,7 +20,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }
     const { team } = useTeam();
     const { isOpen: isTutorialActive, effectiveSteps, stepIndex } = useInventoryTour();
     const [isTourCreateStep, setIsTourCreateStep] = useState(false);
-    const { viewers, lock, acquireLock, releaseLock } = useResourcePresence({
+    const { viewers, lock, acquireLock, releaseLock, fieldPresenceHandlers } = useResourcePresence({
         resourceType: "unit",
         resourceId: editingUnit?._id,
         active: visible && Boolean(team) && Boolean(editingUnit?._id),
@@ -142,7 +143,10 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }
             )}
 
             {editingUnit && team && (
-                <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+                <>
+                    <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+                    <FieldPresenceHighlighter viewers={viewers} currentUserId={user?.id} />
+                </>
             )}
 
             {!isTourCreateStep && (
@@ -239,6 +243,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }
                                         t={t}
                                         locked={isTourCreateStep}
                                         submitting={submitting}
+                                        fieldPresenceHandlers={fieldPresenceHandlers}
                                     />
                                 </div>
                             ),
@@ -251,7 +256,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }
     );
 };
 
-const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t, locked, submitting }) => {
+const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t, locked, submitting, fieldPresenceHandlers = {} }) => {
     const FORM_RULES = getFormRules(t);
 
     return (
@@ -261,6 +266,7 @@ const CustomUnitForm = ({ form, onSubmit, onCancel, editingUnit, t, locked, subm
             onFinish={onSubmit}
             className="space-y-6"
             size="large"
+            {...fieldPresenceHandlers}
         >
             <Form.Item
                 name="unit_name"

@@ -7,6 +7,7 @@ import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
+import FieldPresenceHighlighter from "../team/FieldPresenceHighlighter";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 
 const CategoryModal = ({
@@ -23,7 +24,7 @@ const CategoryModal = ({
     const { team } = useTeam();
     const { isOpen: isTutorialActive, effectiveSteps, stepIndex } = useInventoryTour();
     const [isTourCreateStep, setIsTourCreateStep] = useState(false);
-    const { viewers, lock, acquireLock, releaseLock } = useResourcePresence({
+    const { viewers, lock, acquireLock, releaseLock, fieldPresenceHandlers } = useResourcePresence({
         resourceType: "category",
         resourceId: editingCategory?._id,
         active: visible && Boolean(team) && Boolean(editingCategory?._id),
@@ -100,7 +101,10 @@ const CategoryModal = ({
             }}
         >
             {team && editingCategory?._id && (
-                <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+                <>
+                    <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+                    <FieldPresenceHighlighter viewers={viewers} currentUserId={user?.id} />
+                </>
             )}
             <Form
                 form={form}
@@ -108,6 +112,7 @@ const CategoryModal = ({
                 onFinish={handleSubmit}
                 className="space-y-6"
                 size="large"
+                {...fieldPresenceHandlers}
             >
                 <Form.Item
                     name="category_name"

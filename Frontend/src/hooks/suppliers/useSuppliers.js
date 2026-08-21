@@ -10,6 +10,10 @@ const DELETE_SUPPLIER_ERROR_CODES = {
     supplier_has_purchases: "suppliers.delete_conflict_purchases",
 };
 
+const SAVE_SUPPLIER_ERROR_CODES = {
+    stale_edit_conflict: "common.stale_edit_conflict",
+};
+
 export const useSuppliers = (isAdmin = false) => {
     const { t } = useI18n();
     const { isOpen: isTutorialActive, notifyAction } = useInventoryTour();
@@ -91,7 +95,14 @@ export const useSuppliers = (isAdmin = false) => {
             fetchSuppliers();
             return true;
         } catch (error) {
-            toast.error(error.response?.data?.message || t("suppliers.update_failed"));
+            toast.error(
+                resolveApiErrorMessage(
+                    error,
+                    t,
+                    SAVE_SUPPLIER_ERROR_CODES,
+                    "suppliers.update_failed"
+                )
+            );
             return false;
         }
     };

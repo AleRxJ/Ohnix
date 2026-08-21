@@ -19,6 +19,10 @@ const DELETE_CUSTOMER_ERROR_CODES = {
     customer_has_orders: "customers.delete_conflict_orders",
 };
 
+const SAVE_CUSTOMER_ERROR_CODES = {
+    stale_edit_conflict: "common.stale_edit_conflict",
+};
+
 const Customers = () => {
     const { t } = useI18n();
     const { hasPermission } = useTeam();
@@ -119,7 +123,14 @@ const Customers = () => {
                 handleCancel();
             }
         } catch (error) {
-            toast.error(error.response?.data?.message || t("customers.operation_failed"));
+            toast.error(
+                resolveApiErrorMessage(
+                    error,
+                    t,
+                    SAVE_CUSTOMER_ERROR_CODES,
+                    "customers.operation_failed"
+                )
+            );
         } finally {
             updateState({ loading: false });
         }
@@ -144,6 +155,13 @@ const Customers = () => {
 
         if (!editing.customer && isTutorialActive) {
             formData.append("is_tutorial_data", "true");
+        }
+
+        // Lets the backend reject this save if someone else edited the same
+        // customer after this form opened, instead of silently overwriting
+        // their changes.
+        if (editing.customer?.updatedAt) {
+            formData.append("expected_updated_at", editing.customer.updatedAt);
         }
 
         return formData;

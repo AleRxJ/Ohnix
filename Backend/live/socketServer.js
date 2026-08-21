@@ -79,6 +79,7 @@ export const initSocketServer = (httpServer) => {
         const { user } = socket.data;
         socket.data.rooms = new Set();
         socket.data.locks = new Set();
+        socket.data.focusedField = null;
         socket.join(accountRoom(user.accountId));
 
         const resourceRoom = ({ resourceType, resourceId }) =>
@@ -96,6 +97,9 @@ export const initSocketServer = (httpServer) => {
             const room = resourceRoom({ resourceType, resourceId });
             socket.join(room);
             socket.data.rooms.add(room);
+            // Starting fresh in this room - a field focused on whatever
+            // resource this socket had open before shouldn't leak in here.
+            socket.data.focusedField = null;
 
             const [viewers, lock] = await Promise.all([
                 broadcastPresence(io, room),
@@ -110,6 +114,21 @@ export const initSocketServer = (httpServer) => {
             const room = resourceRoom({ resourceType, resourceId });
             socket.leave(room);
             socket.data.rooms.delete(room);
+            socket.data.focusedField = null;
+            await broadcastPresence(io, room);
+        });
+
+        // Field-level presence: which form field this socket currently has
+        // focused within the resource it's already presence:join'd to (not
+        // itself a join - purely cosmetic, so no permission re-check needed
+        // beyond already being in the room). `field: null` clears it on
+        // blur. Capped length guards against a client sending garbage.
+        socket.on("presence:field", async ({ resourceType, resourceId, field } = {}) => {
+            if (!isValidResourceRef({ resourceType, resourceId })) return;
+            const room = resourceRoom({ resourceType, resourceId });
+            if (!socket.data.rooms.has(room)) return;
+            socket.data.focusedField =
+                typeof field === "string" && field ? field.slice(0, 80) : null;
             await broadcastPresence(io, room);
         });
 

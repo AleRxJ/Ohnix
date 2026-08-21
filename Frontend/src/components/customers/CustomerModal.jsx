@@ -7,6 +7,7 @@ import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
+import FieldPresenceHighlighter from "../team/FieldPresenceHighlighter";
 
 const CustomerModal = ({
     visible,
@@ -21,7 +22,7 @@ const CustomerModal = ({
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
     const { team } = useTeam();
-    const { viewers, lock, acquireLock, releaseLock } = useResourcePresence({
+    const { viewers, lock, acquireLock, releaseLock, fieldPresenceHandlers } = useResourcePresence({
         resourceType: "customer",
         resourceId: editingCustomer?._id,
         active: visible && Boolean(team) && Boolean(editingCustomer?._id),
@@ -69,7 +70,10 @@ const CustomerModal = ({
             }}
         >
             {team && editingCustomer?._id && (
-                <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+                <>
+                    <PresenceLockBar viewers={viewers} lock={lock} currentUserId={user?.id} />
+                    <FieldPresenceHighlighter viewers={viewers} currentUserId={user?.id} />
+                </>
             )}
             <CustomerForm
                 form={form}
@@ -79,6 +83,7 @@ const CustomerModal = ({
                 fileList={fileList}
                 setFileList={setFileList}
                 editingCustomer={editingCustomer}
+                fieldPresenceHandlers={fieldPresenceHandlers}
             />
         </Modal>
     );
