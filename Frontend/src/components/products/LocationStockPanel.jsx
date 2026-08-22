@@ -255,6 +255,20 @@ const LocationStockPanel = ({ product }) => {
     const hasFullOwnScope = pointsOfSale.length > 0 && pointsOfSale.every((pos) => pos.inOwnScope);
     const requestFromOptions = hasFullOwnScope ? pointsOfSale : pointsOfSale.filter((pos) => !pos.inOwnScope);
 
+    // Which of this transfer's two ends the CURRENT viewer actually has -
+    // approve/ship only make sense (and only succeed server-side, see
+    // stockTransfer.controller.js's assertSourceAccess/assertDestinationAccess)
+    // for someone with access to that specific end, not just "any
+    // authenticated team member". Without this, a destination-only viewer
+    // (the common case for "solicitar traslado") saw an "Aprobar" button
+    // that could only ever 403 - confusing at best, and actionable only for
+    // someone who happens to also have the source in scope, which reads as
+    // "the requester approved their own request" even though the real rule
+    // is about scope, not identity.
+    const ownScopeIds = new Set(pointsOfSale.filter((pos) => pos.inOwnScope).map((pos) => pos.id));
+    const hasSourceAccess = (tr) => ownScopeIds.has(tr.from_point_of_sale?._id);
+    const hasDestinationAccess = (tr) => ownScopeIds.has(tr.to_point_of_sale?._id);
+
     if (!can("multiLocation")) return null;
     // Only hide for genuinely having one location once a load has actually
     // succeeded and confirmed it - see the `status` state's comment above
@@ -451,7 +465,7 @@ const LocationStockPanel = ({ product }) => {
                                                 />
 
                                                 <div className="flex gap-2 flex-wrap justify-end">
-                                                    {tr.status === "requested" && (
+                                                    {tr.status === "requested" && hasSourceAccess(tr) && (
                                                         <Button
                                                             size="small"
                                                             icon={<CheckOutlined />}
@@ -468,7 +482,7 @@ const LocationStockPanel = ({ product }) => {
                                                             {t("products.transfer_approve")}
                                                         </Button>
                                                     )}
-                                                    {tr.status === "approved" && (
+                                                    {tr.status === "approved" && hasSourceAccess(tr) && (
                                                         <Button
                                                             size="small"
                                                             icon={<CarOutlined />}
@@ -485,7 +499,7 @@ const LocationStockPanel = ({ product }) => {
                                                             {t("products.transfer_ship")}
                                                         </Button>
                                                     )}
-                                                    {tr.status === "in_transit" && (
+                                                    {tr.status === "in_transit" && hasDestinationAccess(tr) && (
                                                         <Button
                                                             size="small"
                                                             icon={<InboxOutlined />}
@@ -495,7 +509,8 @@ const LocationStockPanel = ({ product }) => {
                                                             {t("products.transfer_receive")}
                                                         </Button>
                                                     )}
-                                                    {["requested", "approved", "in_transit"].includes(tr.status) && (
+                                                    {["requested", "approved", "in_transit"].includes(tr.status) &&
+                                                        (hasSourceAccess(tr) || hasDestinationAccess(tr)) && (
                                                         <Popconfirm
                                                             title={t("products.transfer_cancel_confirm_title")}
                                                             description={t("products.transfer_cancel_confirm_content")}
