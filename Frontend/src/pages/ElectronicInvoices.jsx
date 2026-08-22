@@ -35,6 +35,7 @@ import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
 import { useCurrency } from "../context/CurrencyContext";
 import useI18n from "../hooks/useI18n";
+import useCountUp from "../hooks/useCountUp";
 
 const STATUS_COLORS = {
     accepted: "var(--ohnix-accent-2)",
@@ -59,35 +60,6 @@ const CREDIT_NOTE_CONCEPTS = [
     { key: "price_adjustment", code: "4" },
     { key: "other", code: "5" },
 ];
-
-const useCountUp = (target, duration = 900) => {
-    const [value, setValue] = useState(0);
-    useEffect(() => {
-        const from = 0;
-        const to = Number(target) || 0;
-        if (from === to) {
-            setValue(to);
-            return undefined;
-        }
-        let cancelled = false;
-        let startTs = null;
-        let frame = 0;
-        const step = (ts) => {
-            if (cancelled) return;
-            if (startTs === null) startTs = ts;
-            const progress = Math.min((ts - startTs) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            setValue(Math.round(from + (to - from) * eased));
-            if (progress < 1) frame = requestAnimationFrame(step);
-        };
-        frame = requestAnimationFrame(step);
-        return () => {
-            cancelled = true;
-            if (frame) cancelAnimationFrame(frame);
-        };
-    }, [target, duration]);
-    return value;
-};
 
 const MetricCard = ({ label, value, icon, color, hint }) => {
     const animated = useCountUp(value);

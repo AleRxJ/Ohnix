@@ -12,7 +12,7 @@ const findSupplierByAnyId = async (id) =>
         where: {
             OR: [{ id }, { legacyMongoId: id }],
         },
-        select: { id: true, createdById: true },
+        select: { id: true, createdById: true, pointOfSaleId: true },
     });
 
 const findProductByAnyId = async (id) =>
@@ -64,6 +64,11 @@ class PurchaseService {
 
         if (userRole !== "admin" && supplier.createdById !== userId) {
             throw new ApiError(403, "You don't have permission to use this supplier");
+        }
+        // See order.service.js#createOrder's matching check - suppliers are
+        // scoped to the location they were created at too.
+        if (supplier.pointOfSaleId !== pointOfSaleId) {
+            throw new ApiError(403, "Este proveedor pertenece a otro punto de venta.");
         }
 
         const productIds = details.map((d) => d.product_id?.toString()).filter(Boolean);

@@ -1,11 +1,26 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Table, Tag, Modal, Form, Input, Popconfirm } from "antd";
-import { PlusOutlined, ShopOutlined, EditOutlined, StopOutlined, LockOutlined } from "@ant-design/icons";
+import { Button, Modal, Form, Input, Popconfirm, Spin } from "antd";
+import {
+    PlusOutlined,
+    ShopOutlined,
+    HomeOutlined,
+    ClusterOutlined,
+    EditOutlined,
+    StopOutlined,
+    LockOutlined,
+} from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import useSubscription from "../../hooks/useSubscription";
+import { useDataInvalidation } from "../../hooks/useDataInvalidation";
 import { pointOfSaleService } from "../../services/pointOfSaleService";
+
+const LOCATION_TYPE_ICON = {
+    point_of_sale: ShopOutlined,
+    warehouse: HomeOutlined,
+    distribution_center: ClusterOutlined,
+};
 
 const darkModalStyles = {
     mask: { backgroundColor: "rgba(0,0,0,0.55)" },
@@ -34,7 +49,11 @@ const LockedPointsOfSale = () => {
             </div>
             <h2 className="mb-2 text-xl font-bold text-[var(--ohnix-text-primary)]">{t("pointOfSale.locked_title")}</h2>
             <p className="mb-6 text-sm text-[var(--ohnix-text-muted)]">{t("pointOfSale.locked_description")}</p>
-            <Button type="primary" size="large" onClick={() => navigate("/billing")}>
+            <Button
+                size="large"
+                onClick={() => navigate("/billing")}
+                className="h-11 px-8 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200 hover:shadow-[0_0_26px_rgba(41,216,213,0.28)]"
+            >
                 {t("pointOfSale.locked_cta")}
             </Button>
         </div>
@@ -51,7 +70,6 @@ const PointsOfSaleTab = () => {
     const [submitting, setSubmitting] = useState(false);
 
     const load = useCallback(async () => {
-        setLoading(true);
         try {
             const res = await pointOfSaleService.list();
             setPointsOfSale(res?.data || []);
@@ -65,6 +83,11 @@ const PointsOfSaleTab = () => {
     useEffect(() => {
         load();
     }, [load]);
+
+    // Another tab/team member creating, renaming, or deactivating a
+    // location - see pointOfSale.service.js's emitAccountEvent("pointOfSale",
+    // ...) calls on every mutation.
+    useDataInvalidation("pointOfSale", load);
 
     if (!can("multiLocation")) {
         return <LockedPointsOfSale />;
@@ -114,84 +137,87 @@ const PointsOfSaleTab = () => {
         }
     };
 
-    const columns = [
-        {
-            title: t("pointOfSale.col_name"),
-            key: "name",
-            render: (_, record) => (
-                <div className="flex items-center gap-2">
-                    <ShopOutlined className="text-[#44F3F0]" />
-                    <span className="font-medium text-[var(--ohnix-text-primary)]">{record.name}</span>
-                    {record.isDefault && (
-                        <Tag className="border-[#29D8D5]/40 bg-[#29D8D5]/10 text-[#44F3F0] text-[10px]">
-                            {t("pointOfSale.default_badge")}
-                        </Tag>
-                    )}
-                </div>
-            ),
-        },
-        {
-            title: t("pointOfSale.col_status"),
-            key: "status",
-            render: (_, record) =>
-                record.isActive ? (
-                    <Tag className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
-                        {t("pointOfSale.status_active")}
-                    </Tag>
-                ) : (
-                    <Tag className="border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-muted)]">
-                        {t("pointOfSale.status_inactive")}
-                    </Tag>
-                ),
-        },
-        {
-            title: t("team.col_actions"),
-            key: "actions",
-            render: (_, record) => (
-                <div className="flex gap-2">
-                    <Button size="small" icon={<EditOutlined />} onClick={() => openRename(record)}>
-                        {t("pointOfSale.rename")}
-                    </Button>
-                    {record.isActive && !record.isDefault && (
-                        <Popconfirm
-                            title={t("pointOfSale.deactivate_confirm_title")}
-                            description={t("pointOfSale.deactivate_confirm_content")}
-                            okText={t("common.yes")}
-                            cancelText={t("common.no")}
-                            onConfirm={() => handleDeactivate(record)}
-                        >
-                            <Button size="small" danger icon={<StopOutlined />}>
-                                {t("pointOfSale.deactivate")}
-                            </Button>
-                        </Popconfirm>
-                    )}
-                </div>
-            ),
-        },
-    ];
-
     return (
         <div>
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="m-0 text-sm text-[var(--ohnix-text-muted)]">{t("pointOfSale.subtitle")}</p>
                 <Button
-                    type="primary"
                     icon={<PlusOutlined />}
                     onClick={openCreate}
-                    className="hover:shadow-[0_0_26px_rgba(41,216,213,0.18)]"
+                    className="h-10 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200 hover:shadow-[0_0_26px_rgba(41,216,213,0.28)]"
                 >
                     {t("pointOfSale.create_cta")}
                 </Button>
             </div>
 
-            <Table
-                className="module-dark-table"
-                rowKey="id"
-                columns={columns}
-                dataSource={pointsOfSale}
-                loading={loading}
-                pagination={false}
-            />
+            {loading ? (
+                <div className="flex justify-center py-12">
+                    <Spin size="large" />
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {pointsOfSale.map((record, idx) => {
+                        const Icon = LOCATION_TYPE_ICON[record.locationType] || ShopOutlined;
+                        return (
+                            <div
+                                key={record.id}
+                                className={`hover-lift animate-fade-up stagger-${Math.min(idx + 1, 4)} rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-4 py-4 flex flex-col gap-3`}
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#29D8D5]/30 bg-[linear-gradient(135deg,rgba(41,216,213,0.18),rgba(68,243,240,0.06))] shadow-[0_0_18px_rgba(41,216,213,0.12)]">
+                                            <Icon className="text-lg text-[#44F3F0]" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="m-0 font-semibold text-[var(--ohnix-text-primary)] truncate">{record.name}</p>
+                                            {record.isDefault && (
+                                                <span className="text-[10px] font-semibold uppercase tracking-wide text-[#44F3F0]">
+                                                    {t("pointOfSale.default_badge")}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {record.isActive ? (
+                                        <span className="status-pill" style={{ color: "#22c55e", background: "#22c55e18", border: "1px solid #22c55e33" }}>
+                                            <span className="status-dot" style={{ background: "#22c55e" }} />
+                                            {t("pointOfSale.status_active")}
+                                        </span>
+                                    ) : (
+                                        <span className="status-pill" style={{ color: "#8b98a0", background: "#8b98a018", border: "1px solid #8b98a033" }}>
+                                            <span className="status-dot" style={{ background: "#8b98a0" }} />
+                                            {t("pointOfSale.status_inactive")}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-2 pt-2 mt-auto border-t border-[var(--ohnix-line-3)]">
+                                    <Button
+                                        size="small"
+                                        icon={<EditOutlined />}
+                                        onClick={() => openRename(record)}
+                                        className="h-8 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                                    >
+                                        {t("pointOfSale.rename")}
+                                    </Button>
+                                    {record.isActive && !record.isDefault && (
+                                        <Popconfirm
+                                            title={t("pointOfSale.deactivate_confirm_title")}
+                                            description={t("pointOfSale.deactivate_confirm_content")}
+                                            okText={t("common.yes")}
+                                            cancelText={t("common.no")}
+                                            onConfirm={() => handleDeactivate(record)}
+                                        >
+                                            <Button size="small" danger icon={<StopOutlined />} className="h-8 rounded-md">
+                                                {t("pointOfSale.deactivate")}
+                                            </Button>
+                                        </Popconfirm>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             <Modal
                 title={null}
@@ -201,8 +227,14 @@ const PointsOfSaleTab = () => {
                 confirmLoading={submitting}
                 okText={modal?.mode === "create" ? t("pointOfSale.create_cta") : t("pointOfSale.rename")}
                 cancelText={t("common.cancel")}
-                okButtonProps={{ className: "h-10 px-6 rounded-md font-medium" }}
-                cancelButtonProps={{ className: "h-10 px-6 rounded-md" }}
+                okButtonProps={{
+                    className:
+                        "h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200",
+                }}
+                cancelButtonProps={{
+                    className:
+                        "h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200",
+                }}
                 destroyOnClose
                 styles={darkModalStyles}
             >

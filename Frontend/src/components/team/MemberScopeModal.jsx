@@ -48,8 +48,15 @@ const MemberScopeModal = ({ open, onCancel, onSubmit, submitting, member, points
             confirmLoading={submitting}
             okText={t("common.save")}
             cancelText={t("common.cancel")}
-            okButtonProps={{ className: "h-10 px-6 rounded-md font-medium", disabled: !scopeAll && selectedIds.length === 0 }}
-            cancelButtonProps={{ className: "h-10 px-6 rounded-md" }}
+            okButtonProps={{
+                className:
+                    "h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200",
+                disabled: !scopeAll && selectedIds.length === 0,
+            }}
+            cancelButtonProps={{
+                className:
+                    "h-10 px-6 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200",
+            }}
             destroyOnClose
             styles={darkModalStyles}
         >

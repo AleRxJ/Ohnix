@@ -1,9 +1,24 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { Typography, Spin, Tag, Button, Popconfirm } from "antd";
-import { SwapOutlined, SendOutlined, CheckOutlined, CarOutlined, InboxOutlined, CloseOutlined } from "@ant-design/icons";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Typography, Spin, Button, Popconfirm, Steps } from "antd";
+import {
+    SwapOutlined,
+    SendOutlined,
+    CheckOutlined,
+    CarOutlined,
+    InboxOutlined,
+    CloseOutlined,
+    ShopOutlined,
+    HomeOutlined,
+    ClusterOutlined,
+    ArrowRightOutlined,
+    ExclamationCircleOutlined,
+    ThunderboltOutlined,
+} from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import useSubscription from "../../hooks/useSubscription";
+import useCountUp from "../../hooks/useCountUp";
+import { useDataInvalidation } from "../../hooks/useDataInvalidation";
 import { api } from "../../api/api";
 import { pointOfSaleService } from "../../services/pointOfSaleService";
 import { stockTransferService } from "../../services/stockTransferService";
@@ -13,12 +28,68 @@ import ReceiveTransferModal from "./ReceiveTransferModal";
 
 const { Text } = Typography;
 
-const STATUS_TAG = {
-    requested: { color: "default", key: "transfer_status_requested" },
-    approved: { color: "blue", key: "transfer_status_approved" },
-    in_transit: { color: "gold", key: "transfer_status_in_transit" },
-    received: { color: "green", key: "transfer_status_received" },
-    cancelled: { color: "red", key: "transfer_status_cancelled" },
+// Same palette used for the pill+dot pattern ElectronicInvoices.jsx
+// established (STATUS_COLORS/StatusPill, index.css's .status-pill), but
+// re-declared locally with real hex values instead of `var(--...)`: that
+// file's version concatenates the color with an alpha suffix
+// (`${color}18`), which only produces valid CSS when color is a hex
+// literal - passing it a CSS custom property string breaks the alpha trick
+// silently. Not fixing that file (out of scope here), just not repeating it.
+const TRANSFER_STATUS_COLORS = {
+    requested: "#8b98a0",
+    approved: "#7c6af7",
+    in_transit: "#f59e0b",
+    received: "#44f3f0",
+    cancelled: "#fb7185",
+};
+
+const STATUS_KEY = {
+    requested: "transfer_status_requested",
+    approved: "transfer_status_approved",
+    in_transit: "transfer_status_in_transit",
+    received: "transfer_status_received",
+    cancelled: "transfer_status_cancelled",
+};
+
+const STEP_ORDER = ["requested", "approved", "in_transit", "received"];
+
+// Where the visual stepper's "current" pointer sits for a transfer. Reusing
+// the *At timestamps (set at each transition, see stockTransfer.service.js)
+// instead of trusting status alone: a cancelled transfer keeps its status
+// as "cancelled" forever, but the timestamps still say how far it got
+// before that happened, which is what the frozen stepper should show. A
+// received transfer intentionally returns one past the last index so every
+// step renders as finished (checkmarks) rather than the last one looking
+// "still in progress".
+const stepIndexForTransfer = (tr) => {
+    if (tr.status === "received") return STEP_ORDER.length;
+    if (tr.sent_at) return 2;
+    if (tr.approved_at) return 1;
+    return 0;
+};
+
+const LOCATION_TYPE_ICON = {
+    point_of_sale: ShopOutlined,
+    warehouse: HomeOutlined,
+    distribution_center: ClusterOutlined,
+};
+
+const TransferStatusPill = ({ status, t }) => {
+    const color = TRANSFER_STATUS_COLORS[status] || TRANSFER_STATUS_COLORS.requested;
+    return (
+        <span
+            className="status-pill"
+            style={{ color, background: `${color}18`, border: `1px solid ${color}33` }}
+        >
+            <span className="status-dot" style={{ background: color }} />
+            {t(`products.${STATUS_KEY[status] || STATUS_KEY.requested}`)}
+        </span>
+    );
+};
+
+const AnimatedStat = ({ value, className }) => {
+    const animated = useCountUp(value ?? 0, 700);
+    return <span className={`tabular-nums ${className || ""}`}>{animated}</span>;
 };
 
 // Per-location breakdown (available / in transit / total, matching the
@@ -50,6 +121,12 @@ const LocationStockPanel = ({ product }) => {
     const [requestOpen, setRequestOpen] = useState(false);
     const [receiveFor, setReceiveFor] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
+    // Which location cards to rim in accent light for one animation cycle
+    // (see .location-card--updated in index.css) because a LIVE event (or
+    // this tab's own action) just changed their totals - purely cosmetic,
+    // computed by diffing this load's totals against the previous one.
+    const [justUpdated, setJustUpdated] = useState(() => new Set());
+    const prevTotalsRef = useRef(null);
 
     const loadAll = useCallback(async () => {
         if (!product?._id) return;
@@ -61,9 +138,26 @@ const LocationStockPanel = ({ product }) => {
                 stockTransferService.list({ productId: product._id }),
             ]);
             setPointsOfSale((posRes?.data || []).filter((pos) => pos.isActive));
-            setSummary(stockRes?.data?.data || null);
+            const nextSummary = stockRes?.data?.data || null;
+            setSummary(nextSummary);
             setTransfers(transfersRes?.data || []);
             setStatus("loaded");
+
+            const prevTotals = prevTotalsRef.current;
+            const nextTotals = new Map(
+                (nextSummary?.locations || []).map((row) => [row.point_of_sale_id, row.total])
+            );
+            if (prevTotals) {
+                const changed = new Set();
+                nextTotals.forEach((total, id) => {
+                    if (prevTotals.get(id) !== total) changed.add(id);
+                });
+                if (changed.size > 0) {
+                    setJustUpdated(changed);
+                    setTimeout(() => setJustUpdated(new Set()), 1100);
+                }
+            }
+            prevTotalsRef.current = nextTotals;
         } catch (err) {
             toast.error(err?.response?.data?.message || t("common.error"));
             setStatus("error");
@@ -73,6 +167,12 @@ const LocationStockPanel = ({ product }) => {
     useEffect(() => {
         loadAll();
     }, [loadAll]);
+
+    // Someone else (another tab, another team member) moving this same
+    // product between locations is exactly what this panel exists to show -
+    // see Backend/services/stockTransfer.service.js's emitPosEvent calls on
+    // every transition, and productLocationStock changes via "product".
+    useDataInvalidation(["stockTransfer", "product"], loadAll);
 
     // payload is already shaped for the API (from_point_of_sale_id,
     // to_point_of_sale_id, quantity, reason) - see TransferStockModal's
@@ -128,26 +228,84 @@ const LocationStockPanel = ({ product }) => {
         setReceiveFor(null);
     };
 
+    // pointsOfSale (from GET /points-of-sale) is every active location the
+    // account has, regardless of the caller's own scope - see
+    // pointOfSale.controller.js's 2026-08-21 revision. summary.locations
+    // (from getLocationStockSummary) is the scope-filtered subset the
+    // caller can actually see stock for. The two are used for different
+    // things below: the account-wide list is what makes "solicitar
+    // traslado" possible even for a single-location member (they can name
+    // a source they can't manage), while the scoped list is what "traslado
+    // rápido" and "request's destination" are limited to, since both of
+    // those require the actor to actually have that location in scope.
+    const visiblePointsOfSale = (summary?.locations || []).map((row) => ({
+        id: row.point_of_sale_id,
+        name: row.point_of_sale_name,
+    }));
+
+    // "Solicitar traslado" asks someone ELSE to send stock - a location
+    // already in the requester's own scope isn't a valid source, they'd use
+    // "Traslado rápido" for that instead (see TransferStockModal, which
+    // requires both ends in scope). inOwnScope comes straight from the
+    // backend's hasPosAccess check (pointOfSale.controller.js), not
+    // re-derived here. For a full-scope actor (owner/admin/posScopeAll)
+    // every location is "in their own scope" by definition, so filtering
+    // them out would leave zero options - that's the one case where the
+    // exclusion doesn't apply and the full list is shown instead.
+    const hasFullOwnScope = pointsOfSale.length > 0 && pointsOfSale.every((pos) => pos.inOwnScope);
+    const requestFromOptions = hasFullOwnScope ? pointsOfSale : pointsOfSale.filter((pos) => !pos.inOwnScope);
+
     if (!can("multiLocation")) return null;
     // Only hide for genuinely having one location once a load has actually
     // succeeded and confirmed it - see the `status` state's comment above
     // for why this can't just be "!loading".
     if (status === "loaded" && pointsOfSale.length <= 1) return null;
 
+    const locations = summary?.locations || [];
+    const grandTotal = summary?.totals?.total || 0;
+
     return (
-        <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
-            <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)] flex items-center justify-between">
+        <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)] overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)] flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-2">
-                    <SwapOutlined className="text-[#29D8D5]" />
-                    <Text className="text-sm font-bold text-[var(--ohnix-text-primary)]">{t("products.location_stock_title")}</Text>
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-[#29D8D5]/20 to-[#44F3F0]/5 border border-[var(--ohnix-line-4)]">
+                        <SwapOutlined className="text-[#44F3F0]" />
+                    </div>
+                    <Text className="text-sm font-bold text-[var(--ohnix-text-primary)]">
+                        {t("products.location_stock_title")}
+                    </Text>
+                    {status === "loaded" && (
+                        <span className="status-pill" style={{ color: "#44f3f0", background: "#44f3f018", border: "1px solid #44f3f033" }}>
+                            <span className="status-dot" style={{ background: "#44f3f0" }} />
+                            {t("products.live_badge")}
+                        </span>
+                    )}
                 </div>
                 <div className="flex gap-2">
-                    <Button size="small" icon={<SendOutlined />} onClick={() => setRequestOpen(true)}>
+                    <Button
+                        size="small"
+                        icon={<SendOutlined />}
+                        onClick={() => setRequestOpen(true)}
+                        className="h-8 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                    >
                         {t("products.request_transfer")}
                     </Button>
-                    <Button size="small" type="primary" icon={<SwapOutlined />} onClick={() => setQuickOpen(true)}>
-                        {t("products.transfer_stock")}
-                    </Button>
+                    {/* Quick transfer needs both ends in scope (symmetric
+                        rule, see stockTransfer.controller.js) - with 0 or 1
+                        visible locations there's no valid from/to pair the
+                        actor could actually submit, so the button would only
+                        ever lead to a 403. "Solicitar traslado" stays
+                        available either way: it only needs the destination. */}
+                    {visiblePointsOfSale.length > 1 && (
+                        <Button
+                            size="small"
+                            icon={<ThunderboltOutlined />}
+                            onClick={() => setQuickOpen(true)}
+                            className="h-8 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
+                        >
+                            {t("products.transfer_stock")}
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -165,40 +323,75 @@ const LocationStockPanel = ({ product }) => {
                     </div>
                 ) : (
                     <>
-                        <Text className="text-xs text-[var(--ohnix-text-dim)] block mb-3">{t("products.location_stock_hint")}</Text>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="text-left text-[var(--ohnix-text-dim)] text-xs uppercase tracking-wide">
-                                        <th className="pb-2 font-semibold">{t("products.location_column")}</th>
-                                        <th className="pb-2 font-semibold text-right">{t("products.location_available")}</th>
-                                        <th className="pb-2 font-semibold text-right">{t("products.location_in_transit")}</th>
-                                        <th className="pb-2 font-semibold text-right">{t("products.location_total")}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {(summary?.locations || []).map((row) => (
-                                        <tr key={row.point_of_sale_id} className="border-t border-[var(--ohnix-line-3)]">
-                                            <td className="py-2 text-[var(--ohnix-text-primary)]">{row.point_of_sale_name}</td>
-                                            <td className="py-2 text-right text-[var(--ohnix-text-primary)] tabular-nums">{row.available}</td>
-                                            <td className="py-2 text-right text-[var(--ohnix-text-dim)] tabular-nums">
-                                                {row.in_transit > 0 ? row.in_transit : "—"}
-                                            </td>
-                                            <td className="py-2 text-right font-semibold text-[#44F3F0] tabular-nums">{row.total}</td>
-                                        </tr>
-                                    ))}
-                                    {summary?.totals && (
-                                        <tr className="border-t border-[var(--ohnix-line-4)]">
-                                            <td className="py-2 font-bold text-[var(--ohnix-text-primary)]">{t("products.location_grand_total")}</td>
-                                            <td className="py-2 text-right font-bold text-[var(--ohnix-text-primary)] tabular-nums">{summary.totals.available}</td>
-                                            <td className="py-2 text-right font-bold text-[var(--ohnix-text-dim)] tabular-nums">
-                                                {summary.totals.inTransit > 0 ? summary.totals.inTransit : "—"}
-                                            </td>
-                                            <td className="py-2 text-right font-bold text-[#44F3F0] tabular-nums">{summary.totals.total}</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                        <Text className="text-xs text-[var(--ohnix-text-dim)] block mb-4">{t("products.location_stock_hint")}</Text>
+
+                        {/* Hero: the consolidated total, the one number that
+                            matters across every location at a glance -
+                            distinct from the per-location cards below so it
+                            never gets lost in the grid. */}
+                        <div className="animate-fade-up mb-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] bg-gradient-to-br from-[#29D8D5]/10 to-transparent px-5 py-4 flex items-center justify-between flex-wrap gap-4">
+                            <div>
+                                <Text className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ohnix-text-dim)] block">
+                                    {t("products.location_grand_total")}
+                                </Text>
+                                <AnimatedStat value={grandTotal} className="text-3xl font-bold text-[#44F3F0]" />
+                            </div>
+                            <div className="flex gap-6">
+                                <div className="text-right">
+                                    <Text className="text-[11px] text-[var(--ohnix-text-dim)] block">{t("products.location_available")}</Text>
+                                    <AnimatedStat value={summary?.totals?.available} className="text-lg font-semibold text-[var(--ohnix-text-primary)]" />
+                                </div>
+                                <div className="text-right">
+                                    <Text className="text-[11px] text-[var(--ohnix-text-dim)] block">{t("products.location_in_transit")}</Text>
+                                    <AnimatedStat value={summary?.totals?.inTransit} className="text-lg font-semibold text-[var(--ohnix-text-primary)]" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {locations.map((row, idx) => {
+                                const Icon = LOCATION_TYPE_ICON[row.location_type] || ShopOutlined;
+                                const pct = grandTotal > 0 ? Math.round((row.total / grandTotal) * 100) : 0;
+                                const isUpdated = justUpdated.has(row.point_of_sale_id);
+                                return (
+                                    <div
+                                        key={row.point_of_sale_id}
+                                        className={`hover-lift animate-fade-up stagger-${Math.min(idx + 1, 4)} rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-4 py-3 ${isUpdated ? "location-card--updated" : ""}`}
+                                    >
+                                        <div className="flex items-center justify-between gap-2 mb-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)] flex-shrink-0">
+                                                    <Icon className="text-[#44F3F0] text-xs" />
+                                                </div>
+                                                <Text className="text-sm font-semibold text-[var(--ohnix-text-primary)] truncate">
+                                                    {row.point_of_sale_name}
+                                                </Text>
+                                            </div>
+                                            {row.is_default && (
+                                                <span className="text-[10px] font-semibold uppercase tracking-wide text-[#44F3F0] bg-[#44f3f018] border border-[#44f3f033] rounded-full px-2 py-0.5 flex-shrink-0">
+                                                    {t("pointOfSale.default_badge")}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-end justify-between mb-2">
+                                            <div>
+                                                <AnimatedStat value={row.available} className="text-xl font-bold text-[var(--ohnix-text-primary)]" />
+                                                <Text className="text-[11px] text-[var(--ohnix-text-dim)] block">{t("products.location_available")}</Text>
+                                            </div>
+                                            {row.in_transit > 0 && (
+                                                <Text className="text-xs font-medium text-[var(--ohnix-status-amber)]">
+                                                    +{row.in_transit} {t("products.location_in_transit").toLowerCase()}
+                                                </Text>
+                                            )}
+                                        </div>
+
+                                        <div className="location-stock-bar-track">
+                                            <div className="location-stock-bar-fill" style={{ width: `${pct}%` }} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         <div className="mt-5 pt-4 border-t border-[var(--ohnix-line-3)]">
@@ -208,32 +401,56 @@ const LocationStockPanel = ({ product }) => {
                             {transfers.length === 0 ? (
                                 <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.no_pending_transfers")}</Text>
                             ) : (
-                                <div className="space-y-2">
-                                    {transfers.map((tr) => {
-                                        const statusMeta = STATUS_TAG[tr.status] || STATUS_TAG.requested;
+                                <div className="space-y-3">
+                                    {transfers.map((tr, idx) => {
+                                        const cancelled = tr.status === "cancelled";
                                         return (
                                             <div
                                                 key={tr._id}
-                                                className="flex flex-col gap-2 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                                                className={`animate-fade-up stagger-${Math.min(idx + 1, 4)} rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-4 py-3`}
                                             >
-                                                <div className="min-w-0">
+                                                <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
                                                     <div className="flex items-center gap-2 flex-wrap">
-                                                        <Tag color={statusMeta.color} className="!m-0">{t(`products.${statusMeta.key}`)}</Tag>
-                                                        <Text className="text-sm text-[var(--ohnix-text-primary)]">
-                                                            {t("products.transfer_from_to", {
-                                                                from: tr.from_point_of_sale?.name || "—",
-                                                                to: tr.to_point_of_sale?.name || "—",
-                                                            })}
-                                                        </Text>
-                                                        <Text className="text-sm font-semibold text-[#44F3F0]">{tr.quantity_sent}</Text>
+                                                        <span className="px-2 py-0.5 rounded-md bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] text-sm font-medium">
+                                                            {tr.from_point_of_sale?.name || "—"}
+                                                        </span>
+                                                        <ArrowRightOutlined className="text-[var(--ohnix-text-dim)]" />
+                                                        <span className="px-2 py-0.5 rounded-md bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] text-sm font-medium">
+                                                            {tr.to_point_of_sale?.name || "—"}
+                                                        </span>
+                                                        <span className="text-sm font-bold text-[#44F3F0] ml-1">
+                                                            {tr.quantity_sent}
+                                                        </span>
+                                                        {tr.is_quick_transfer && (
+                                                            <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--ohnix-text-dim)] bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)] rounded-full px-2 py-0.5 flex items-center gap-1">
+                                                                <ThunderboltOutlined /> {t("products.quick_transfer_badge")}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                    {tr.discrepancy > 0 && (
-                                                        <Text className="text-xs text-red-400 block mt-0.5">
-                                                            {t("products.transfer_discrepancy_label")}: {tr.discrepancy}
-                                                        </Text>
-                                                    )}
+                                                    <TransferStatusPill status={tr.status} t={t} />
                                                 </div>
-                                                <div className="flex gap-2 flex-shrink-0">
+
+                                                {tr.discrepancy > 0 && (
+                                                    <Text className="text-xs text-[var(--ohnix-status-rose)] flex items-center gap-1 mb-2">
+                                                        <ExclamationCircleOutlined />
+                                                        {t("products.transfer_discrepancy_label")}: {tr.discrepancy}
+                                                    </Text>
+                                                )}
+                                                {cancelled && tr.cancel_reason && (
+                                                    <Text className="text-xs text-[var(--ohnix-text-muted)] block mb-2">
+                                                        {t("products.transfer_cancel_reason_label")}: {tr.cancel_reason}
+                                                    </Text>
+                                                )}
+
+                                                <Steps
+                                                    size="small"
+                                                    current={stepIndexForTransfer(tr)}
+                                                    status={cancelled ? "error" : undefined}
+                                                    className={`transfer-steps mb-3 ${cancelled ? "transfer-steps--cancelled" : ""}`}
+                                                    items={STEP_ORDER.map((key) => ({ title: t(`products.${STATUS_KEY[key]}`) }))}
+                                                />
+
+                                                <div className="flex gap-2 flex-wrap justify-end">
                                                     {tr.status === "requested" && (
                                                         <Button
                                                             size="small"
@@ -246,6 +463,7 @@ const LocationStockPanel = ({ product }) => {
                                                                     "products.transfer_approved"
                                                                 )
                                                             }
+                                                            className="h-8 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium"
                                                         >
                                                             {t("products.transfer_approve")}
                                                         </Button>
@@ -262,6 +480,7 @@ const LocationStockPanel = ({ product }) => {
                                                                     "products.transfer_shipped"
                                                                 )
                                                             }
+                                                            className="h-8 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium"
                                                         >
                                                             {t("products.transfer_ship")}
                                                         </Button>
@@ -269,9 +488,9 @@ const LocationStockPanel = ({ product }) => {
                                                     {tr.status === "in_transit" && (
                                                         <Button
                                                             size="small"
-                                                            type="primary"
                                                             icon={<InboxOutlined />}
                                                             onClick={() => setReceiveFor(tr)}
+                                                            className="h-8 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium"
                                                         >
                                                             {t("products.transfer_receive")}
                                                         </Button>
@@ -290,7 +509,13 @@ const LocationStockPanel = ({ product }) => {
                                                                 )
                                                             }
                                                         >
-                                                            <Button size="small" danger icon={<CloseOutlined />} loading={actionLoading}>
+                                                            <Button
+                                                                size="small"
+                                                                danger
+                                                                icon={<CloseOutlined />}
+                                                                loading={actionLoading}
+                                                                className="h-8 rounded-md"
+                                                            >
                                                                 {t("products.transfer_cancel")}
                                                             </Button>
                                                         </Popconfirm>
@@ -309,7 +534,7 @@ const LocationStockPanel = ({ product }) => {
             <TransferStockModal
                 visible={quickOpen}
                 product={product}
-                pointsOfSale={pointsOfSale}
+                pointsOfSale={visiblePointsOfSale}
                 locationStock={(summary?.locations || []).map((row) => ({ point_of_sale_id: row.point_of_sale_id, stock: row.available }))}
                 loading={actionLoading}
                 onSubmit={handleQuickTransfer}
@@ -319,7 +544,8 @@ const LocationStockPanel = ({ product }) => {
             <RequestTransferModal
                 visible={requestOpen}
                 product={product}
-                pointsOfSale={pointsOfSale}
+                fromOptions={requestFromOptions}
+                toOptions={visiblePointsOfSale}
                 loading={actionLoading}
                 onSubmit={handleRequest}
                 onCancel={() => setRequestOpen(false)}

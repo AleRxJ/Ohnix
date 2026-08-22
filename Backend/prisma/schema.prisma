@@ -449,13 +449,21 @@ model Supplier {
   photo          String
   isTutorialData Boolean  @default(false) @map("is_tutorial_data")
   createdById    String   @map("created_by")
+  // Which location this supplier was created at - see Order.pointOfSaleId
+  // for the pattern. Assigned once, at creation (resolveOrAssertPointOfSaleId),
+  // same as orders/purchases; a restricted-scope member at another location
+  // never sees this supplier, even to buy from it (2026-08-21 scope
+  // decision: "por creación", not a shared directory).
+  pointOfSaleId  String   @map("point_of_sale_id")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  createdBy User       @relation(fields: [createdById], references: [id])
-  purchases Purchase[]
+  createdBy   User        @relation(fields: [createdById], references: [id])
+  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
+  purchases   Purchase[]
 
   @@index([createdById])
+  @@index([pointOfSaleId])
   @@map("suppliers")
 }
 
@@ -479,13 +487,17 @@ model Customer {
   countryCode                String?  @map("country_code")
   isTutorialData             Boolean  @default(false) @map("is_tutorial_data")
   createdById                String   @map("created_by")
+  // See Supplier.pointOfSaleId - same "assigned at creation" rule.
+  pointOfSaleId              String   @map("point_of_sale_id")
   createdAt                  DateTime @default(now()) @map("created_at")
   updatedAt                  DateTime @updatedAt @map("updated_at")
 
-  createdBy User    @relation(fields: [createdById], references: [id])
-  orders    Order[]
+  createdBy   User        @relation(fields: [createdById], references: [id])
+  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
+  orders      Order[]
 
   @@index([createdById])
+  @@index([pointOfSaleId])
   @@map("customers")
 }
 
@@ -1050,6 +1062,8 @@ model PointOfSale {
   locationStock  ProductLocationStock[]
   transfersOut   StockTransfer[]         @relation("StockTransferFrom")
   transfersIn    StockTransfer[]         @relation("StockTransferTo")
+  customers      Customer[]
+  suppliers      Supplier[]
 
   @@index([accountId, isActive])
   @@map("points_of_sale")

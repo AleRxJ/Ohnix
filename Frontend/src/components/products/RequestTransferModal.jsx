@@ -16,7 +16,15 @@ const fieldLabel = (text) => (
 // here on purpose - approval/shipping is where availability actually gets
 // checked, since by the time someone ships it the source's stock may have
 // changed from what it was when this was requested.
-const RequestTransferModal = ({ visible, product, pointsOfSale, loading, onSubmit, onCancel }) => {
+//
+// fromOptions/toOptions are deliberately different lists, not one shared
+// `pointsOfSale` - requesting only needs the destination in the actor's own
+// scope (see stockTransfer.controller.js#createTransferRequest), so "from"
+// can legitimately be any location the account has, including ones the
+// requester can't see the stock of (they're asking, not claiming to know
+// what's available), while "to" has to be somewhere they're actually
+// allowed to receive at.
+const RequestTransferModal = ({ visible, product, fromOptions, toOptions, loading, onSubmit, onCancel }) => {
     const { t } = useI18n();
     const [form] = Form.useForm();
     const fromId = Form.useWatch("fromPointOfSaleId", form);
@@ -85,7 +93,7 @@ const RequestTransferModal = ({ visible, product, pointsOfSale, loading, onSubmi
                     <Select
                         size="large"
                         className="w-full"
-                        options={(pointsOfSale || []).map((pos) => ({ value: pos.id, label: pos.name }))}
+                        options={(fromOptions || []).map((pos) => ({ value: pos.id, label: pos.name }))}
                     />
                 </Form.Item>
 
@@ -106,7 +114,7 @@ const RequestTransferModal = ({ visible, product, pointsOfSale, loading, onSubmi
                     <Select
                         size="large"
                         className="w-full"
-                        options={(pointsOfSale || [])
+                        options={(toOptions || [])
                             .filter((pos) => pos.id !== fromId)
                             .map((pos) => ({ value: pos.id, label: pos.name }))}
                     />

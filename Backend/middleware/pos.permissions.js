@@ -99,6 +99,27 @@ export const resolveOrAssertPointOfSaleId = async (req) => {
         return requested;
     }
 
+    // No explicit pointOfSaleId - every current frontend form. Guessing is
+    // only safe when there's exactly one possibility from *this actor's*
+    // point of view, not the account's total: a restricted-scope member
+    // pinned to a single location has an unambiguous answer even on an
+    // Escala account with several locations (the account-wide count below
+    // would otherwise force them to specify one, which no client sends
+    // yet). A full-scope actor (owner, posScopeAll, admin) falls through to
+    // the account-wide count, since "all of them" has no single answer to
+    // pick from either.
+    if (req.user.role !== "admin" && !req.user.posScopeAll) {
+        const scopeIds = req.user.posScopeIds || [];
+        if (scopeIds.length === 1) {
+            await assertPointOfSaleExists(req.user.prismaId, scopeIds[0]);
+            return scopeIds[0];
+        }
+        if (scopeIds.length > 1) {
+            throw new ApiError(400, "pointOfSaleId es obligatorio: tienes acceso a más de un punto de venta.");
+        }
+        throw new ApiError(403, "No tienes acceso a ningún punto de venta.");
+    }
+
     const activeCount = await prisma.pointOfSale.count({
         where: { accountId: req.user.prismaId, isActive: true },
     });

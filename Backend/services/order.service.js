@@ -25,6 +25,7 @@ const findCustomerByAnyId = async (id) =>
         select: {
             id: true,
             createdById: true,
+            pointOfSaleId: true,
         },
     });
 
@@ -137,6 +138,14 @@ class OrderService {
 
         if (userRole !== "admin" && customer.createdById !== userId) {
             throw new ApiError(403, "You don't have permission to use this customer");
+        }
+        // Customers are scoped to the location they were created at (see
+        // Customer.pointOfSaleId's 2026-08-21 scoping decision) - an order
+        // placed at one PDV referencing a customer that belongs to another
+        // is invalid regardless of whether the actor happens to have scope
+        // over both, same as a product/supplier can't cross accounts.
+        if (customer.pointOfSaleId !== pointOfSaleId) {
+            throw new ApiError(403, "Este cliente pertenece a otro punto de venta.");
         }
 
         for (const item of orderItems) {

@@ -1046,6 +1046,10 @@
     "location_in_transit": "En tránsito",
     "location_total": "Total",
     "location_grand_total": "Total consolidado",
+    "location_type_point_of_sale": "Punto de venta",
+    "location_type_warehouse": "Bodega",
+    "location_type_distribution_center": "Centro de distribución",
+    "live_badge": "En vivo",
     "transfer_status_requested": "Solicitado",
     "transfer_status_approved": "Aprobado",
     "transfer_status_in_transit": "En tránsito",
@@ -1074,7 +1078,9 @@
     "transfer_discrepancy_label": "Diferencia",
     "transfer_cancel_confirm_title": "¿Cancelar este traslado?",
     "transfer_cancel_confirm_content": "Si ya estaba en tránsito, las unidades vuelven al punto de origen.",
-    "transfer_from_to": "{{from}} → {{to}}"
+    "transfer_from_to": "{{from}} → {{to}}",
+    "quick_transfer_badge": "Traslado rápido",
+    "transfer_cancel_reason_label": "Motivo de cancelación"
   },
   "inventory_tour": {
     "trigger_button": "¿Cómo funciona Ohnix?",

@@ -4,8 +4,9 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
 import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
-import { emitAccountEvent } from "../live/dataEvents.js";
+import { emitPosEvent } from "../live/dataEvents.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
+import { hasPosAccess, resolveOrAssertPointOfSaleId } from "../middleware/pos.permissions.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -28,6 +29,9 @@ const mapSupplier = (supplier, currentUser) => ({
               email: supplier.createdBy.email,
           }
         : null,
+    point_of_sale: supplier.pointOfSale
+        ? { _id: supplier.pointOfSale.id, name: supplier.pointOfSale.name }
+        : { _id: supplier.pointOfSaleId },
     canEdit: currentUser
         ? currentUser.role === "admin" || supplier.createdById === currentUser.prismaId
         : false,
@@ -48,6 +52,9 @@ const findSupplierByAnyId = async (id) =>
                     username: true,
                     email: true,
                 },
+            },
+            pointOfSale: {
+                select: { id: true, name: true },
             },
         },
     });
@@ -87,6 +94,8 @@ const createSupplier = asyncHandler(async (req, res, next) => {
             );
         }
 
+        const pointOfSaleId = await resolveOrAssertPointOfSaleId(req);
+
         let photoUrl = "default-supplier.png";
         if (req.file) {
             const photo = await uploadFile(req.file, {
@@ -112,6 +121,7 @@ const createSupplier = asyncHandler(async (req, res, next) => {
                 photo: photoUrl,
                 isTutorialData: is_tutorial_data === true || is_tutorial_data === "true",
                 createdById: req.user.prismaId,
+                pointOfSaleId,
             },
             include: {
                 createdBy: {
@@ -122,10 +132,13 @@ const createSupplier = asyncHandler(async (req, res, next) => {
                         email: true,
                     },
                 },
+                pointOfSale: {
+                    select: { id: true, name: true },
+                },
             },
         });
 
-        emitAccountEvent(req.user.prismaId, "supplier", "created");
+        emitPosEvent(req.user.prismaId, pointOfSaleId, "supplier", "created");
         return res
             .status(201)
             .json(
@@ -136,6 +149,7 @@ const createSupplier = asyncHandler(async (req, res, next) => {
                 )
             );
     } catch (error) {
+        if (error instanceof ApiError) return next(error);
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
     }
@@ -143,8 +157,14 @@ const createSupplier = asyncHandler(async (req, res, next) => {
 
 const getSuppliers = asyncHandler(async (req, res, next) => {
     try {
+        const where = { createdById: req.user.prismaId };
+        // See customer.controller.js#getUserCustomers - same rule.
+        if (req.user.role !== "admin" && !req.user.posScopeAll) {
+            where.pointOfSaleId = { in: req.user.posScopeIds || [] };
+        }
+
         const suppliers = await prisma.supplier.findMany({
-            where: { createdById: req.user.prismaId },
+            where,
             orderBy: { createdAt: "desc" },
             include: {
                 createdBy: {
@@ -154,6 +174,9 @@ const getSuppliers = asyncHandler(async (req, res, next) => {
                         username: true,
                         email: true,
                     },
+                },
+                pointOfSale: {
+                    select: { id: true, name: true },
                 },
             },
         });
@@ -185,6 +208,9 @@ const getAllSuppliers = asyncHandler(async (req, res, next) => {
                         username: true,
                         email: true,
                     },
+                },
+                pointOfSale: {
+                    select: { id: true, name: true },
                 },
             },
         });
@@ -221,6 +247,9 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
             return next(
                 new ApiError(403, "You don't have permission to update this supplier")
             );
+        }
+        if (req.user.role !== "admin" && !hasPosAccess(req.user, existingSupplier.pointOfSaleId)) {
+            return next(new ApiError(403, "No tienes acceso a este punto de venta."));
         }
 
         let photoUrl = existingSupplier.photo;
@@ -273,6 +302,9 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
                         email: true,
                     },
                 },
+                pointOfSale: {
+                    select: { id: true, name: true },
+                },
             },
             conflictMessage: "This supplier was changed by someone else. Reload to see the latest version.",
         });
@@ -285,7 +317,7 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
             deleteFile(existingSupplier.photo);
         }
 
-        emitAccountEvent(existingSupplier.createdById, "supplier", "updated");
+        emitPosEvent(existingSupplier.createdById, existingSupplier.pointOfSaleId, "supplier", "updated");
         return res
             .status(200)
             .json(
@@ -320,11 +352,14 @@ const deleteSupplier = asyncHandler(async (req, res, next) => {
                 new ApiError(403, "You don't have permission to delete this supplier")
             );
         }
+        if (req.user.role !== "admin" && !hasPosAccess(req.user, existingSupplier.pointOfSaleId)) {
+            return next(new ApiError(403, "No tienes acceso a este punto de venta."));
+        }
 
         await prisma.supplier.delete({ where: { id: existingSupplier.id } });
         deleteFile(existingSupplier.photo);
 
-        emitAccountEvent(existingSupplier.createdById, "supplier", "deleted");
+        emitPosEvent(existingSupplier.createdById, existingSupplier.pointOfSaleId, "supplier", "deleted");
         return res
             .status(200)
             .json(new ApiResponse(200, {}, "Supplier deleted successfully"));

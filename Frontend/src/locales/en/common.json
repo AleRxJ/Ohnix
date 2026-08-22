@@ -1046,6 +1046,10 @@
     "location_in_transit": "In transit",
     "location_total": "Total",
     "location_grand_total": "Grand total",
+    "location_type_point_of_sale": "Point of sale",
+    "location_type_warehouse": "Warehouse",
+    "location_type_distribution_center": "Distribution center",
+    "live_badge": "Live",
     "transfer_status_requested": "Requested",
     "transfer_status_approved": "Approved",
     "transfer_status_in_transit": "In transit",
@@ -1074,7 +1078,9 @@
     "transfer_discrepancy_label": "Discrepancy",
     "transfer_cancel_confirm_title": "Cancel this transfer?",
     "transfer_cancel_confirm_content": "If it was already in transit, the units go back to the source location.",
-    "transfer_from_to": "{{from}} → {{to}}"
+    "transfer_from_to": "{{from}} → {{to}}",
+    "quick_transfer_badge": "Quick transfer",
+    "transfer_cancel_reason_label": "Cancellation reason"
   },
   "inventory_tour": {
     "trigger_button": "How does Ohnix work?",

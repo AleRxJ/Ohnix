@@ -1998,3 +1998,83 @@ textarea.ant-input[disabled] {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
+/* Multi-location inventory (LocationStockPanel, PointsOfSaleTab) - same
+   "premium status" language the Electronic Invoices screen already
+   established (status-dot/status-pill, index.css ~1044) extended to the
+   stock-transfer lifecycle, plus a dark-theme override for antd Steps
+   (same override shape as .reset-password-steps above) used as the
+   traslado request→approve→ship→receive stepper. */
+.transfer-steps .ant-steps-item-title {
+  color: var(--ohnix-text-soft) !important;
+  font-size: 11px !important;
+}
+.transfer-steps .ant-steps-item-finish .ant-steps-item-title,
+.transfer-steps .ant-steps-item-process .ant-steps-item-title {
+  color: var(--ohnix-text-primary) !important;
+}
+.transfer-steps .ant-steps-item-wait .ant-steps-item-icon {
+  background: transparent !important;
+  border-color: var(--ohnix-line-6) !important;
+}
+.transfer-steps .ant-steps-item-wait .ant-steps-item-icon .ant-steps-icon {
+  color: var(--ohnix-text-muted) !important;
+}
+.transfer-steps .ant-steps-item-finish .ant-steps-item-icon,
+.transfer-steps .ant-steps-item-process .ant-steps-item-icon {
+  background: linear-gradient(135deg, #29d8d5, #44f3f0) !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 14px rgba(41, 216, 213, 0.4);
+}
+.transfer-steps .ant-steps-item-finish .ant-steps-item-icon .ant-steps-icon,
+.transfer-steps .ant-steps-item-process .ant-steps-item-icon .ant-steps-icon {
+  color: #021314 !important;
+}
+.transfer-steps .ant-steps-item-tail::after {
+  background-color: var(--ohnix-line-4) !important;
+}
+.transfer-steps .ant-steps-item-finish .ant-steps-item-tail::after {
+  background: linear-gradient(90deg, #29d8d5, var(--ohnix-line-4)) !important;
+}
+.transfer-steps.transfer-steps--cancelled .ant-steps-item-icon {
+  background: transparent !important;
+  border-color: var(--ohnix-status-rose) !important;
+  box-shadow: none;
+}
+.transfer-steps.transfer-steps--cancelled .ant-steps-item-icon .ant-steps-icon {
+  color: var(--ohnix-status-rose) !important;
+}
+.transfer-steps.transfer-steps--cancelled .ant-steps-item-title {
+  color: var(--ohnix-text-dim) !important;
+  text-decoration: line-through;
+}
+
+/* Per-location stock card - a thin accent-filled bar shows this location's
+   share of the account's consolidated total (see LocationStockPanel), so
+   the whole grid reads as one comparative picture instead of N isolated
+   numbers. The bar itself is just a styled empty div with an inline
+   `width` set from JS - these two classes only own the chrome around it. */
+.location-stock-bar-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ohnix-line-2);
+  overflow: hidden;
+  position: relative;
+}
+.location-stock-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #29d8d5, #44f3f0);
+  transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Briefly rims a location card in accent light when a LIVE event (see
+   useDataInvalidation) just changed its numbers - applied for one
+   animation cycle then removed, so a stale glow never lingers. */
+@keyframes locationCardPing {
+  0% { box-shadow: 0 0 0 0 rgba(41, 216, 213, 0.5); }
+  100% { box-shadow: 0 0 0 10px rgba(41, 216, 213, 0); }
+}
+.location-card--updated {
+  animation: locationCardPing 1.1s ease-out;
+}
+

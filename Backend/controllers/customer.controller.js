@@ -4,8 +4,9 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
 import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
-import { emitAccountEvent } from "../live/dataEvents.js";
+import { emitPosEvent } from "../live/dataEvents.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
+import { hasPosAccess, resolveOrAssertPointOfSaleId } from "../middleware/pos.permissions.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -30,6 +31,9 @@ const mapCustomer = (customer) => ({
         _id: toExternalId(customer.createdBy),
         username: customer.createdBy.username,
     },
+    point_of_sale: customer.pointOfSale
+        ? { _id: customer.pointOfSale.id, name: customer.pointOfSale.name }
+        : { _id: customer.pointOfSaleId },
     createdAt: customer.createdAt,
     updatedAt: customer.updatedAt,
 });
@@ -42,6 +46,9 @@ const findCustomerByAnyId = async (id) =>
         include: {
             createdBy: {
                 select: { id: true, legacyMongoId: true, username: true },
+            },
+            pointOfSale: {
+                select: { id: true, name: true },
             },
         },
     });
@@ -97,6 +104,8 @@ const createCustomer = asyncHandler(async (req, res, next) => {
             );
         }
 
+        const pointOfSaleId = await resolveOrAssertPointOfSaleId(req);
+
         let photoUrl = "default-customer.png";
         if (req.file) {
             const photo = await uploadFile(req.file, {
@@ -121,20 +130,25 @@ const createCustomer = asyncHandler(async (req, res, next) => {
                 photo: photoUrl,
                 isTutorialData: is_tutorial_data === true || is_tutorial_data === "true",
                 createdById: req.user.prismaId,
+                pointOfSaleId,
                 ...fiscalCustomerData(req.body),
             },
             include: {
                 createdBy: {
                     select: { id: true, legacyMongoId: true, username: true },
                 },
+                pointOfSale: {
+                    select: { id: true, name: true },
+                },
             },
         });
 
-        emitAccountEvent(req.user.prismaId, "customer", "created");
+        emitPosEvent(req.user.prismaId, pointOfSaleId, "customer", "created");
         return res
             .status(201)
             .json(new ApiResponse(201, mapCustomer(customer), "Customer created successfully"));
     } catch (error) {
+        if (error instanceof ApiError) return next(error);
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
     }
@@ -147,6 +161,9 @@ const getAllCustomers = asyncHandler(async (_req, res, next) => {
             include: {
                 createdBy: {
                     select: { id: true, legacyMongoId: true, username: true },
+                },
+                pointOfSale: {
+                    select: { id: true, name: true },
                 },
             },
         });
@@ -168,12 +185,24 @@ const getAllCustomers = asyncHandler(async (_req, res, next) => {
 
 const getUserCustomers = asyncHandler(async (req, res, next) => {
     try {
+        const where = { createdById: req.user.prismaId };
+        // Restricted-scope actors (see pos.permissions.js) only ever see
+        // customers created at their own location(s) - same rule as
+        // getAllOrders. Full-scope (owner, posScopeAll, or the platform
+        // "admin" role) needs no extra filter, same reasoning.
+        if (req.user.role !== "admin" && !req.user.posScopeAll) {
+            where.pointOfSaleId = { in: req.user.posScopeIds || [] };
+        }
+
         const customers = await prisma.customer.findMany({
-            where: { createdById: req.user.prismaId },
+            where,
             orderBy: { createdAt: "desc" },
             include: {
                 createdBy: {
                     select: { id: true, legacyMongoId: true, username: true },
+                },
+                pointOfSale: {
+                    select: { id: true, name: true },
                 },
             },
         });
@@ -211,6 +240,9 @@ const updateCustomer = asyncHandler(async (req, res, next) => {
             return next(
                 new ApiError(403, "You don't have permission to update this customer")
             );
+        }
+        if (req.user.role !== "admin" && !hasPosAccess(req.user, existingCustomer.pointOfSaleId)) {
+            return next(new ApiError(403, "No tienes acceso a este punto de venta."));
         }
 
         if (req.file) {
@@ -255,6 +287,9 @@ const updateCustomer = asyncHandler(async (req, res, next) => {
                 createdBy: {
                     select: { id: true, legacyMongoId: true, username: true },
                 },
+                pointOfSale: {
+                    select: { id: true, name: true },
+                },
             },
             conflictMessage: "This customer was changed by someone else. Reload to see the latest version.",
         });
@@ -267,7 +302,7 @@ const updateCustomer = asyncHandler(async (req, res, next) => {
             deleteFile(existingCustomer.photo);
         }
 
-        emitAccountEvent(existingCustomer.createdById, "customer", "updated");
+        emitPosEvent(existingCustomer.createdById, existingCustomer.pointOfSaleId, "customer", "updated");
         return res
             .status(200)
             .json(new ApiResponse(200, mapCustomer(customer), "Customer updated successfully"));
@@ -296,11 +331,14 @@ const deleteCustomer = asyncHandler(async (req, res, next) => {
                 new ApiError(403, "You don't have permission to delete this customer")
             );
         }
+        if (req.user.role !== "admin" && !hasPosAccess(req.user, existingCustomer.pointOfSaleId)) {
+            return next(new ApiError(403, "No tienes acceso a este punto de venta."));
+        }
 
         await prisma.customer.delete({ where: { id: existingCustomer.id } });
         deleteFile(existingCustomer.photo);
 
-        emitAccountEvent(existingCustomer.createdById, "customer", "deleted");
+        emitPosEvent(existingCustomer.createdById, existingCustomer.pointOfSaleId, "customer", "deleted");
         return res
             .status(200)
             .json(new ApiResponse(200, {}, "Customer deleted successfully"));
