@@ -49,15 +49,6 @@ const Customers = () => {
 
     const [form] = Form.useForm();
 
-    // Initialize component
-    useEffect(() => {
-        fetchCustomers();
-    }, []);
-
-    // Another connected user (or this same one, another tab) creating,
-    // editing, or deleting a customer.
-    useDataInvalidation("customer", fetchCustomers);
-
     // Utility functions
     const updateState = (updates) => {
         setState((prev) => ({ ...prev, ...updates }));
@@ -70,22 +61,6 @@ const Customers = () => {
         const retail = data.filter((c) => c.type === "retail").length;
         return { total, regular, wholesale, retail };
     }, []);
-
-    const getFilteredCustomers = useCallback(() => {
-        const { customers, searchText } = state;
-        if (!searchText) return customers;
-
-        return customers.filter((customer) => {
-            const searchLower = searchText.toLowerCase();
-            return (
-                customer.name.toLowerCase().includes(searchLower) ||
-                customer.email.toLowerCase().includes(searchLower) ||
-                customer.phone.includes(searchText) ||
-                (customer.store_name &&
-                    customer.store_name.toLowerCase().includes(searchLower))
-            );
-        });
-    }, [state.customers, state.searchText]);
 
     // API functions
     const fetchCustomers = async () => {
@@ -105,6 +80,31 @@ const Customers = () => {
             updateState({ loading: false });
         }
     };
+
+    // Initialize component
+    useEffect(() => {
+        fetchCustomers();
+    }, []);
+
+    // Another connected user (or this same one, another tab) creating,
+    // editing, or deleting a customer.
+    useDataInvalidation("customer", fetchCustomers);
+
+    const getFilteredCustomers = useCallback(() => {
+        const { customers, searchText } = state;
+        if (!searchText) return customers;
+
+        return customers.filter((customer) => {
+            const searchLower = searchText.toLowerCase();
+            return (
+                customer.name.toLowerCase().includes(searchLower) ||
+                customer.email.toLowerCase().includes(searchLower) ||
+                customer.phone.includes(searchText) ||
+                (customer.store_name &&
+                    customer.store_name.toLowerCase().includes(searchLower))
+            );
+        });
+    }, [state.customers, state.searchText]);
 
     const handleSubmit = async (values) => {
         updateState({ loading: true });
