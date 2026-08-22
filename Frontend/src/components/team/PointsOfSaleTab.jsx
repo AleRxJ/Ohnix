@@ -190,12 +190,11 @@ const PointsOfSaleTab = () => {
                                     )}
                                 </div>
 
-                                <div className="flex gap-2 pt-2 mt-auto border-t border-[var(--ohnix-line-3)]">
+                                <div className="flex gap-2 pt-3 mt-auto border-t border-[var(--ohnix-line-3)]">
                                     <Button
-                                        size="small"
                                         icon={<EditOutlined />}
                                         onClick={() => openRename(record)}
-                                        className="h-8 rounded-md bg-[var(--ohnix-line-1)] border-[var(--ohnix-line-4)] text-[var(--ohnix-text-primary)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-colors duration-200"
+                                        className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[#44F3F0] hover:border-[#44F3F0] hover:bg-[rgba(41,216,213,0.06)] transition-all duration-200"
                                     >
                                         {t("pointOfSale.rename")}
                                     </Button>
@@ -207,7 +206,10 @@ const PointsOfSaleTab = () => {
                                             cancelText={t("common.no")}
                                             onConfirm={() => handleDeactivate(record)}
                                         >
-                                            <Button size="small" danger icon={<StopOutlined />} className="h-8 rounded-md">
+                                            <Button
+                                                icon={<StopOutlined />}
+                                                className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg bg-[rgba(251,113,133,0.06)] border border-[rgba(251,113,133,0.25)] text-[var(--ohnix-status-rose)] hover:bg-[rgba(251,113,133,0.14)] hover:border-[var(--ohnix-status-rose)] transition-all duration-200"
+                                            >
                                                 {t("pointOfSale.deactivate")}
                                             </Button>
                                         </Popconfirm>

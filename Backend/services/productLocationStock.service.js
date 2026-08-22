@@ -65,6 +65,37 @@ export const getLocationStock = async (productId, pointOfSaleId) => {
     return row?.stock ?? 0;
 };
 
+// The "stock" figure shown outside the location-breakdown UI (product
+// list/table, single-product responses) used to always be Product.stock -
+// the account-wide cache. Correct for a full-scope actor (owner, admin,
+// posScopeAll), but a restricted-scope member would see every other
+// location's stock folded into that one number, which is exactly the leak
+// the 2026-08-21 scoping pass was supposed to close for everything except
+// the shared catalog itself (name/price/category stay account-wide on
+// purpose - see that conversation - only the quantity is scoped). Returns
+// `null` for a full-scope actor as a signal to the caller "use
+// product.stock as-is", so the common case (most accounts still have one
+// location) never pays for the extra aggregation query.
+export const scopedStockForProducts = async (user, productIds) => {
+    if (user.role === "admin" || user.posScopeAll) return null;
+    if (!productIds.length) return new Map();
+
+    const scopeIds = user.posScopeIds || [];
+    if (!scopeIds.length) return new Map(productIds.map((id) => [id, 0]));
+
+    const rows = await prisma.productLocationStock.groupBy({
+        by: ["productId"],
+        where: { productId: { in: productIds }, pointOfSaleId: { in: scopeIds } },
+        _sum: { stock: true },
+    });
+
+    const map = new Map(rows.map((row) => [row.productId, row._sum.stock || 0]));
+    for (const id of productIds) {
+        if (!map.has(id)) map.set(id, 0);
+    }
+    return map;
+};
+
 // Full per-location breakdown for one product - available (this table),
 // inTransit (computed live from StockTransfer, never stored - see that
 // model's comment for why a separate counter would risk drifting from the

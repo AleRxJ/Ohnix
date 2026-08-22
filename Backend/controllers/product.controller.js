@@ -10,6 +10,7 @@ import {
     claimLocationStock,
     creditLocationStock,
     getLocationStockSummary,
+    scopedStockForProducts,
 } from "../services/productLocationStock.service.js";
 import { quickTransfer } from "../services/stockTransfer.service.js";
 import { mapStockTransfer } from "./stockTransfer.controller.js";
@@ -63,7 +64,13 @@ const resolveLowStockThreshold = async (userId, role, rawValue) => {
     return rawValue === null || rawValue === "" ? null : Number(rawValue);
 };
 
-const mapProduct = (product) => ({
+// scopedStock overrides product.stock (the account-wide cache) with a
+// restricted-scope viewer's own-location total - see
+// productLocationStock.service.js#scopedStockForProducts. undefined means
+// "no override" (full-scope actor, or a call site that doesn't apply
+// scoping at all, e.g. right after creating a product whose stock is
+// always 0 either way).
+const mapProduct = (product, scopedStock) => ({
     _id: toExternalId(product),
     product_name: product.productName,
     product_code: product.productCode,
@@ -81,7 +88,7 @@ const mapProduct = (product) => ({
         : null,
     buying_price: Number(product.buyingPrice),
     selling_price: Number(product.sellingPrice),
-    stock: product.stock,
+    stock: scopedStock !== undefined ? scopedStock : product.stock,
     product_image: product.productImage,
     unit_measure_code: product.unitMeasureCode,
     standard_code: product.standardCode,
@@ -371,9 +378,23 @@ const getAllProducts = asyncHandler(async (req, res, next) => {
             },
         });
 
+        // The catalog itself (this query) stays account-wide on purpose -
+        // see mapProduct's comment - only the displayed quantity narrows to
+        // the viewer's own location(s).
+        const scopedStock = await scopedStockForProducts(
+            req.user,
+            products.map((p) => p.id)
+        );
+
         return res
             .status(200)
-            .json(new ApiResponse(200, products.map(mapProduct), "Products fetched successfully"));
+            .json(
+                new ApiResponse(
+                    200,
+                    products.map((p) => mapProduct(p, scopedStock?.get(p.id))),
+                    "Products fetched successfully"
+                )
+            );
     } catch (error) {
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
@@ -548,9 +569,10 @@ const updateProduct = asyncHandler(async (req, res, next) => {
         }
 
         emitAccountEvent(existingProduct.createdById, "product", "updated");
+        const scopedStock = await scopedStockForProducts(req.user, [product.id]);
         return res
             .status(200)
-            .json(new ApiResponse(200, mapProduct(product), "Product updated successfully"));
+            .json(new ApiResponse(200, mapProduct(product, scopedStock?.get(product.id)), "Product updated successfully"));
     } catch (error) {
         if (error instanceof ApiError) return next(error);
         if (error.code === "P2002") {
@@ -747,9 +769,10 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
         });
 
         emitPosEvent(existingProduct.createdById, pointOfSaleId, "product", "stock-changed");
+        const scopedStock = await scopedStockForProducts(req.user, [result.id]);
         return res
             .status(200)
-            .json(new ApiResponse(200, mapProduct(result), "Stock adjusted successfully"));
+            .json(new ApiResponse(200, mapProduct(result, scopedStock?.get(result.id)), "Stock adjusted successfully"));
     } catch (error) {
         if (error instanceof ApiError) return next(error);
         console.error(error);
