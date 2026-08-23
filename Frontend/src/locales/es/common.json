@@ -2008,8 +2008,8 @@
         },
         "third": {
           "context": "Multi-sucursal",
-          "title": "Equipo alineado desde el día uno",
-          "description": "Productos, proveedores y pedidos en un panel con permisos claros para todo el equipo."
+          "title": "Traslados de inventario con trazabilidad total",
+          "description": "Cada punto de venta ve y vende su propio stock. Cuando falta mercancía en una sede, se solicita un traslado a otra y queda registrado quién lo pidió, aprobó, envió y recibió — sin hojas de cálculo ni WhatsApp."
         }
       }
     },
@@ -2113,6 +2113,7 @@
             "unlimited": "Todo en Negocio",
             "team": "Equipos colaborativos (hasta 10 usuarios)",
             "presence": "Indicador en tiempo real de quién ve o edita cada registro",
+            "locations": "Hasta 5 puntos de venta con traslados de inventario entre ubicaciones",
             "limits": "2,000 productos · 1,000 clientes · 400 proveedores",
             "reports": "Reportes avanzados + exportación Excel",
             "pdf": "PDF completamente personalizable",
@@ -2132,6 +2133,7 @@
           "features": {
             "unlimited": "Todo ilimitado (productos, pedidos, usuarios)",
             "team": "Equipos colaborativos ilimitados",
+            "locations": "Puntos de venta ilimitados con traslados de inventario entre ubicaciones",
             "api": "API sin restricciones de rate limit",
             "integrations": "Integraciones personalizadas (ERP, e-commerce, contabilidad)",
             "manager": "Account manager dedicado",
@@ -2202,6 +2204,16 @@
             "one": "Fórmulas personalizadas",
             "two": "Simulaciones",
             "three": "Exportar resultados"
+          }
+        },
+        "locations": {
+          "label": "LOCATIONS",
+          "title": "Multi-Ubicación y Traslados",
+          "description": "Administra varias sedes bajo una sola cuenta: cada punto de venta ve su propio stock, y puedes solicitar o trasladar inventario entre ubicaciones con trazabilidad completa — quién lo pidió, quién lo aprobó, quién lo envió y quién lo recibió. Disponible desde el plan Escala.",
+          "highlights": {
+            "one": "Stock por ubicación",
+            "two": "Traslados con historial completo",
+            "three": "Alcance por miembro del equipo"
           }
         }
       }

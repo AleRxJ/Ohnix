@@ -253,6 +253,7 @@ const LandingPage = () => {
                 t("landing.pricing.plans.scale.features.unlimited"),
                 t("landing.pricing.plans.scale.features.team"),
                 t("landing.pricing.plans.scale.features.presence"),
+                t("landing.pricing.plans.scale.features.locations"),
                 t("landing.pricing.plans.scale.features.limits"),
                 t("landing.pricing.plans.scale.features.reports"),
                 t("landing.pricing.plans.scale.features.pdf"),
@@ -273,6 +274,7 @@ const LandingPage = () => {
             features: [
                 t("landing.pricing.plans.enterprise.features.unlimited"),
                 t("landing.pricing.plans.enterprise.features.team"),
+                t("landing.pricing.plans.enterprise.features.locations"),
                 t("landing.pricing.plans.enterprise.features.api"),
                 t("landing.pricing.plans.enterprise.features.integrations"),
                 t("landing.pricing.plans.enterprise.features.manager"),

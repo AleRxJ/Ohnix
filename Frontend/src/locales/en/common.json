@@ -2014,8 +2014,8 @@
         },
         "third": {
           "context": "Multi-branch",
-          "title": "One team, aligned from day one",
-          "description": "Products, suppliers, and orders in one panel with clear permissions for the whole team."
+          "title": "Inventory transfers with full traceability",
+          "description": "Each point of sale sees and sells its own stock. When one location runs short, a transfer is requested from another — and it's all on record: who asked, who approved, who shipped it, and who received it. No spreadsheets, no WhatsApp."
         }
       }
     },
@@ -2119,6 +2119,7 @@
             "unlimited": "Everything in Business",
             "team": "Team collaboration (up to 10 users)",
             "presence": "Real-time indicator of who's viewing or editing each record",
+            "locations": "Up to 5 points of sale with inventory transfers between locations",
             "limits": "2,000 products · 1,000 customers · 400 suppliers",
             "reports": "Advanced report filters + Excel export",
             "pdf": "Fully customizable PDF templates",
@@ -2138,6 +2139,7 @@
           "features": {
             "unlimited": "Unlimited products, orders, and users",
             "team": "Unlimited team collaboration",
+            "locations": "Unlimited points of sale with inventory transfers between locations",
             "api": "Unrestricted API access",
             "integrations": "Custom integrations (ERP, e-commerce, accounting)",
             "manager": "Dedicated account manager",
@@ -2208,6 +2210,16 @@
             "one": "Custom formulas",
             "two": "Simulations",
             "three": "Export results"
+          }
+        },
+        "locations": {
+          "label": "LOCATIONS",
+          "title": "Multi-Location & Transfers",
+          "description": "Run several branches under one account: each point of sale sees its own stock, and you can request or move inventory between locations with full traceability — who requested it, who approved it, who shipped it, and who received it. Available from the Scale plan.",
+          "highlights": {
+            "one": "Stock per location",
+            "two": "Transfers with a full history",
+            "three": "Per-member location scope"
           }
         }
       }
