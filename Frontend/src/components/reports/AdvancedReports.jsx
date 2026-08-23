@@ -258,6 +258,19 @@ const AdvancedReports = () => {
                             <StatCard title={t("reports.advanced.vat_collected")} value={vatData.summary.taxCollected} formatter={formatCurrency} valueStyle={{ color: "#52c41a" }} />
                         </Col>
                     </Row>
+                    <Row gutter={[16, 16]} className="mb-4">
+                        <Col xs={12} sm={8}>
+                            <StatCard title={t("reports.advanced.vat_credited")} value={vatData.summary.taxCredited} formatter={formatCurrency} valueStyle={{ color: "#f97316" }} />
+                        </Col>
+                        <Col xs={24} sm={16}>
+                            <StatCard
+                                title={vatData.summary.netVat >= 0 ? t("reports.advanced.vat_net_payable") : t("reports.advanced.vat_net_credit_balance")}
+                                value={Math.abs(vatData.summary.netVat)}
+                                formatter={formatCurrency}
+                                valueStyle={{ color: vatData.summary.netVat >= 0 ? "#f5222d" : "#52c41a", fontWeight: 700 }}
+                            />
+                        </Col>
+                    </Row>
                     {vatData.byPeriod.length > 0 && (
                         <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.vat_by_period")}>
                             <ResponsiveContainer width="100%" height={280}>
@@ -271,9 +284,14 @@ const AdvancedReports = () => {
                             </ResponsiveContainer>
                         </Card>
                     )}
-                    <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("reports.advanced.vat_by_rate")}>
+                    <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.vat_by_rate")}>
                         <Table columns={vatColumns} dataSource={vatData.byRate} rowKey="rate" loading={loading} pagination={false} className="module-dark-table" scroll={{ x: 400 }} />
                     </Card>
+                    {vatData.byRatePurchases?.length > 0 && (
+                        <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("reports.advanced.vat_credited_by_rate")}>
+                            <Table columns={vatColumns} dataSource={vatData.byRatePurchases} rowKey="rate" loading={loading} pagination={false} className="module-dark-table" scroll={{ x: 400 }} />
+                        </Card>
+                    )}
                 </>
             ),
         },

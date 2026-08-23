@@ -27,8 +27,25 @@ const findProductByAnyId = async (id) =>
             productName: true,
             productCode: true,
             stock: true,
+            taxTreatment: true,
+            taxRate: true,
         },
     });
+
+// IVA descontable (input VAT credit, ET art. 485-490) - same shape as
+// order.service.js#computeItemTax, mirrored here rather than imported since
+// the two services don't otherwise share a dependency. A company that
+// doesn't collect VAT on sales ("not_responsible") can't credit it on
+// purchases either - the same companyVatResponsible gate applies both ways.
+const computePurchaseItemTax = (product, quantity, unitcost, companyCollectsVat) => {
+    const treatment = companyCollectsVat ? product.taxTreatment : "excluded";
+    if (treatment !== "taxed") {
+        return { treatment, rate: 0, amount: 0 };
+    }
+    const rate = Number(product.taxRate) || 0;
+    const lineTotal = quantity * unitcost;
+    return { treatment, rate, amount: Number(((lineTotal * rate) / 100).toFixed(2)) };
+};
 
 const findPurchaseByAnyId = async (id) =>
     prisma.purchase.findFirst({
@@ -118,6 +135,15 @@ class PurchaseService {
 
         const shouldAddStock = initialStatus === "completed";
 
+        // Same lookup order.service.js#createOrder does for the sales side -
+        // whether this purchase's IVA can be credited depends on the
+        // company's VAT responsibility, not on anything about the supplier.
+        const owner = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { company: { select: { vatResponsible: true } } },
+        });
+        const companyCollectsVat = owner?.company?.vatResponsible !== "not_responsible";
+
         try {
             const purchase = await prisma.$transaction(async (tx) => {
                 const createdPurchase = await tx.purchase.create({
@@ -138,6 +164,13 @@ class PurchaseService {
                         throw new ApiError(400, "One or more products not found");
                     }
 
+                    const itemTax = computePurchaseItemTax(
+                        mappedProduct,
+                        Number(detail.quantity),
+                        Number(detail.unitcost),
+                        companyCollectsVat
+                    );
+
                     await tx.purchaseDetail.create({
                         data: {
                             purchaseId: createdPurchase.id,
@@ -145,6 +178,9 @@ class PurchaseService {
                             quantity: Number(detail.quantity),
                             unitcost: Number(detail.unitcost),
                             total: Number(detail.quantity) * Number(detail.unitcost),
+                            taxTreatmentApplied: itemTax.treatment,
+                            taxRateApplied: itemTax.rate,
+                            taxAmount: itemTax.amount,
                         },
                     });
 

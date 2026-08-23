@@ -60,6 +60,12 @@ enum ElectronicInvoiceStatus {
   rejected
   error
   cancelled
+  // Reached only via the itcycle-api-dian provider: the document was built,
+  // signed, and delivered to the customer, but DIAN itself was unreachable
+  // when it was sent - see electronicInvoicing.service.js#mapItcycleResponse
+  // and itcycle-api-dian's own docs/dian/sandbox-tests.md#contingencia. Not
+  // reachable via Factus/Alanube, which don't distinguish this case.
+  contingency
 }
 
 enum TeamMemberStatus {
@@ -160,27 +166,32 @@ model User {
   subscription      Subscription?
   company           Company?      @relation(fields: [companyId], references: [id])
 
-  categoriesCreated       Category[]           @relation("CategoryCreatedBy")
-  categoriesUpdated       Category[]           @relation("CategoryUpdatedBy")
-  unitsCreated            Unit[]               @relation("UnitCreatedBy")
-  unitsUpdated            Unit[]               @relation("UnitUpdatedBy")
-  productsCreated         Product[]            @relation("ProductCreatedBy")
-  productsUpdated         Product[]            @relation("ProductUpdatedBy")
-  customers               Customer[]
-  suppliers               Supplier[]
-  purchasesCreated        Purchase[]           @relation("PurchaseCreatedBy")
-  purchasesUpdated        Purchase[]           @relation("PurchaseUpdatedBy")
-  ordersCreated           Order[]              @relation("OrderCreatedBy")
-  ordersUpdated           Order[]              @relation("OrderUpdatedBy")
-  planUpgradeRequests     PlanUpgradeRequest[]
-  apiKeys                 ApiKey[]
-  stockMovementsCreated   StockMovement[]      @relation("StockMovementCreatedBy")
+  categoriesCreated         Category[]           @relation("CategoryCreatedBy")
+  categoriesUpdated         Category[]           @relation("CategoryUpdatedBy")
+  unitsCreated              Unit[]               @relation("UnitCreatedBy")
+  unitsUpdated              Unit[]               @relation("UnitUpdatedBy")
+  productsCreated           Product[]            @relation("ProductCreatedBy")
+  productsUpdated           Product[]            @relation("ProductUpdatedBy")
+  customers                 Customer[]
+  suppliers                 Supplier[]
+  purchasesCreated          Purchase[]           @relation("PurchaseCreatedBy")
+  purchasesUpdated          Purchase[]           @relation("PurchaseUpdatedBy")
+  ordersCreated             Order[]              @relation("OrderCreatedBy")
+  ordersUpdated             Order[]              @relation("OrderUpdatedBy")
+  planUpgradeRequests       PlanUpgradeRequest[]
+  apiKeys                   ApiKey[]
+  stockMovementsCreated     StockMovement[]      @relation("StockMovementCreatedBy")
+  cashAccountsCreated       CashAccount[]
+  cashMovementsCreated      CashMovement[]
+  orderPaymentsRecorded     OrderPayment[]
+  purchasePaymentsRecorded  PurchasePayment[]
+  bankStatementEntriesAdded BankStatementEntry[]
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
   // (starter/growth without a Team row) still need exactly one default
   // location - see PointOfSale below.
-  pointsOfSaleOwned       PointOfSale[]        @relation("PointOfSaleAccount")
-  stockTransfersRequested StockTransfer[]      @relation("StockTransferRequestedBy")
+  pointsOfSaleOwned         PointOfSale[]        @relation("PointOfSaleAccount")
+  stockTransfersRequested   StockTransfer[]      @relation("StockTransferRequestedBy")
 
   // Teams: a user is either a team owner (ownedTeam), a member of exactly one
   // active team at a time (via TeamMember, enforced in team.service.js - not
@@ -243,6 +254,16 @@ model Company {
   // Null means "not started yet, seed from resolution.minNumber".
   alanubeNextInvoiceNumber         Int?              @map("alanube_next_invoice_number")
   alanubeNextCreditNoteNumber      Int?              @map("alanube_next_credit_note_number")
+  // itcycle-api-dian ("software propio", see itcycleDian.service.js): the
+  // company's id in that system's own database (created via its admin
+  // provisioning API, not shared with Ohnix's own Company.id) and the API
+  // key it issued for that company, encrypted at rest (secretEncryption.js)
+  // - the raw key only ever exists in memory for the duration of a single
+  // request, never as a plain column. Unlike Factus/Alanube (one shared
+  // Ohnix-wide credential), itcycle-api-dian issues one key per company by
+  // design, so each company needs its own here.
+  itcycleCompanyId                 String?           @map("itcycle_company_id")
+  itcycleApiKeyCiphertext          String?           @map("itcycle_api_key_ciphertext") @db.Text
   // Order PDF branding (Negocio+): logo + legal data replace the generic
   // template. pdfFooterText is the Escala+ "personalizable" extra.
   logoUrl                          String?           @map("logo_url") @db.Text
@@ -731,11 +752,12 @@ model Purchase {
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  supplier        Supplier         @relation(fields: [supplierId], references: [id])
-  pointOfSale     PointOfSale      @relation(fields: [pointOfSaleId], references: [id])
-  createdBy       User             @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
-  updatedBy       User?            @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
+  supplier        Supplier          @relation(fields: [supplierId], references: [id])
+  pointOfSale     PointOfSale       @relation(fields: [pointOfSaleId], references: [id])
+  createdBy       User              @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
+  updatedBy       User?             @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
   purchaseDetails PurchaseDetail[]
+  payments        PurchasePayment[]
 
   @@index([createdById])
   @@index([supplierId])
@@ -744,24 +766,36 @@ model Purchase {
 }
 
 model PurchaseDetail {
-  id               String    @id @default(cuid())
-  legacyMongoId    String?   @unique @map("legacy_mongo_id")
-  purchaseId       String    @map("purchase_id")
-  productId        String    @map("product_id")
-  quantity         Int
-  unitcost         Decimal   @db.Decimal(12, 2)
-  total            Decimal   @db.Decimal(12, 2)
+  id                  String              @id @default(cuid())
+  legacyMongoId       String?             @unique @map("legacy_mongo_id")
+  purchaseId          String              @map("purchase_id")
+  productId           String              @map("product_id")
+  quantity            Int
+  unitcost            Decimal             @db.Decimal(12, 2)
+  total               Decimal             @db.Decimal(12, 2)
+  // IVA descontable (input VAT credit, ET art. 485-490): same frozen-at-
+  // creation pattern as OrderDetail's matching columns
+  // (order.service.js#computeOrderTotals) - resolved once, at purchase
+  // creation, against both the product's tax classification and the
+  // company's VAT responsibility at that moment (purchase.service.js#
+  // computePurchaseItemTax), so a later product/company change never
+  // rewrites the tax already recorded for a purchase already made.
+  // `total` above stays tax-exclusive (quantity * unitcost, unchanged) -
+  // taxAmount is tracked separately, same convention as OrderDetail.
+  taxTreatmentApplied ProductTaxTreatment @default(taxed) @map("tax_treatment_applied")
+  taxRateApplied      Decimal             @default(0) @map("tax_rate_applied") @db.Decimal(5, 2)
+  taxAmount           Decimal             @default(0) @map("tax_amount") @db.Decimal(12, 2)
   // Running totals across every partial return event for this line, not a
   // single fixed value - mirrors Product.stock as a fast-read cache in front
   // of the StockMovement ledger (sourceType "purchase_return", sourceId =
   // this purchase's id) that is the actual append-only source of truth.
   // "Fully returned" is derived as returnedQuantity === quantity rather than
   // stored, since a line can be returned across more than one event.
-  returnDate       DateTime? @map("return_date")
-  returnedQuantity Int       @default(0) @map("returned_quantity")
-  refundAmount     Decimal   @default(0) @map("refund_amount") @db.Decimal(12, 2)
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  returnDate          DateTime?           @map("return_date")
+  returnedQuantity    Int                 @default(0) @map("returned_quantity")
+  refundAmount        Decimal             @default(0) @map("refund_amount") @db.Decimal(12, 2)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
 
   purchase Purchase @relation(fields: [purchaseId], references: [id])
   product  Product  @relation(fields: [productId], references: [id])
@@ -800,6 +834,7 @@ model Order {
   updatedBy         User?              @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
   orderDetails      OrderDetail[]
   electronicInvoice ElectronicInvoice?
+  payments          OrderPayment[]
 
   @@index([createdById])
   @@index([customerId])
@@ -1072,9 +1107,160 @@ model PointOfSale {
   transfersIn    StockTransfer[]         @relation("StockTransferTo")
   customers      Customer[]
   suppliers      Supplier[]
+  cashAccounts   CashAccount[]
 
   @@index([accountId, isActive])
   @@map("points_of_sale")
+}
+
+enum CashAccountType {
+  cash
+  bank
+}
+
+// A cash drawer (one per Point of Sale, typically) or a bank account
+// (usually company-wide, so pointOfSaleId is nullable - enforced at the
+// service layer, not the DB, same as several other conditional-requirement
+// fields in this schema, e.g. RESTOCK_CONCEPT_CODES items).
+model CashAccount {
+  id            String          @id @default(cuid())
+  name          String
+  accountType   CashAccountType @default(cash) @map("account_type")
+  pointOfSaleId String?         @map("point_of_sale_id")
+  bankName      String?         @map("bank_name")
+  accountNumber String?         @map("account_number")
+  // Fast-read cache kept in sync with the CashMovement ledger the same way
+  // Product.stock is a cache in front of StockMovement - always equals the
+  // running sum of this account's CashMovement.delta, never written
+  // directly except by cashMovement.service.js#recordCashMovement.
+  balance       Decimal         @default(0) @db.Decimal(14, 2)
+  isActive      Boolean         @default(true) @map("is_active")
+  createdById   String          @map("created_by")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  pointOfSale      PointOfSale?         @relation(fields: [pointOfSaleId], references: [id])
+  createdBy        User                 @relation(fields: [createdById], references: [id])
+  movements        CashMovement[]
+  orderPayments    OrderPayment[]
+  purchasePayments PurchasePayment[]
+  statementEntries BankStatementEntry[]
+
+  @@index([pointOfSaleId])
+  @@index([createdById])
+  @@map("cash_accounts")
+}
+
+enum CashMovementSourceType {
+  order_payment
+  purchase_payment
+  manual_deposit
+  manual_withdrawal
+  // Not wired up to an actual transfer flow yet (see the fiscal audit's
+  // Fase 3 backlog) - kept in the enum now so a future transfer feature
+  // doesn't need a migration just to record its own movements, same
+  // reasoning StockMovementSourceType's transfer_out/transfer_in already
+  // followed.
+  transfer_out
+  transfer_in
+  adjustment
+}
+
+// Append-only ledger - literal mirror of StockMovement, money instead of
+// stock. Single write path: cashMovement.service.js#recordCashMovement,
+// always called from inside the same transaction that changes
+// CashAccount.balance so the two can never drift apart.
+model CashMovement {
+  id            String                 @id @default(cuid())
+  cashAccountId String                 @map("cash_account_id")
+  delta         Decimal                @db.Decimal(14, 2)
+  balanceAfter  Decimal                @map("balance_after") @db.Decimal(14, 2)
+  sourceType    CashMovementSourceType @map("source_type")
+  sourceId      String?                @map("source_id")
+  reason        String?                @db.Text
+  // Set once a BankStatementEntry references this movement - see
+  // bankReconciliation.service.js#matchEntry. Null = not reconciled yet.
+  reconciledAt  DateTime?              @map("reconciled_at")
+  createdById   String                 @map("created_by")
+  createdAt     DateTime               @default(now()) @map("created_at")
+
+  cashAccount    CashAccount         @relation(fields: [cashAccountId], references: [id])
+  createdBy      User                @relation(fields: [createdById], references: [id])
+  statementEntry BankStatementEntry?
+
+  @@index([cashAccountId, createdAt])
+  @@index([sourceType, sourceId])
+  @@map("cash_movements")
+}
+
+// Cartera (accounts receivable): order.total - SUM(OrderPayment.amount) for
+// that order is the pending balance - derived at read time in the cartera
+// report, not stored, same principle as Product.stock being the only
+// stored balance while a sale's own remaining-to-ship quantity is derived.
+model OrderPayment {
+  id            String   @id @default(cuid())
+  orderId       String   @map("order_id")
+  amount        Decimal  @db.Decimal(14, 2)
+  cashAccountId String   @map("cash_account_id")
+  // Free-text, same looseness as Supplier.type/Customer.type elsewhere in
+  // this schema - "cash"/"transfer"/"card"/whatever the business uses.
+  method        String?
+  reference     String?
+  paidAt        DateTime @default(now()) @map("paid_at")
+  createdById   String   @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  order       Order       @relation(fields: [orderId], references: [id])
+  cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
+  createdBy   User        @relation(fields: [createdById], references: [id])
+
+  @@index([orderId])
+  @@index([cashAccountId, createdAt])
+  @@map("order_payments")
+}
+
+// Cartera (accounts payable) - mirrors OrderPayment exactly; money leaves
+// cashAccount instead of entering it (see purchasePayment.service.js).
+model PurchasePayment {
+  id            String   @id @default(cuid())
+  purchaseId    String   @map("purchase_id")
+  amount        Decimal  @db.Decimal(14, 2)
+  cashAccountId String   @map("cash_account_id")
+  method        String?
+  reference     String?
+  paidAt        DateTime @default(now()) @map("paid_at")
+  createdById   String   @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  purchase    Purchase    @relation(fields: [purchaseId], references: [id])
+  cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
+  createdBy   User        @relation(fields: [createdById], references: [id])
+
+  @@index([purchaseId])
+  @@index([cashAccountId, createdAt])
+  @@map("purchase_payments")
+}
+
+// Bank reconciliation, deliberately simple: one row per statement line,
+// entered or bulk-loaded via the API (no bank-file-format parser in this
+// scope - see the fiscal audit's Fase 3 backlog). Matching an entry to an
+// already-existing CashMovement is the entire reconciliation act.
+model BankStatementEntry {
+  id                String   @id @default(cuid())
+  cashAccountId     String   @map("cash_account_id")
+  entryDate         DateTime @map("entry_date")
+  description       String?
+  amount            Decimal  @db.Decimal(14, 2)
+  matchedMovementId String?  @unique @map("matched_movement_id")
+  createdById       String   @map("created_by")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  cashAccount     CashAccount   @relation(fields: [cashAccountId], references: [id])
+  matchedMovement CashMovement? @relation(fields: [matchedMovementId], references: [id])
+  createdBy       User          @relation(fields: [createdById], references: [id])
+
+  @@index([cashAccountId, entryDate])
+  @@map("bank_statement_entries")
 }
 
 model TeamInvitation {

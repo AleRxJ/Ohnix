@@ -1,6 +1,6 @@
-import React from "react";
-import { Modal, Form, Input, Select, Switch, Upload, Button, ColorPicker, DatePicker, Tag, Divider } from "antd";
-import { UploadOutlined, ShopOutlined } from "@ant-design/icons";
+import React, { useState } from "react";
+import { Modal, Form, Input, Select, Switch, Upload, Button, ColorPicker, DatePicker, Tag, Divider, Steps } from "antd";
+import { UploadOutlined, ShopOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
 
@@ -56,7 +56,226 @@ const ResolutionFields = ({ basePath, t }) => (
     </div>
 );
 
-const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingCompany, onUploadLogo, onRegisterAlanube }) => {
+// Reads a File as a base64 string (no data: prefix) - used for the
+// itcycle-api-dian certificate upload, which posts JSON with p12Base64
+// rather than multipart form data (see itcycleDian.service.js#uploadItcycleCertificate).
+const readFileAsBase64 = (file) =>
+    new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(`${reader.result || ""}`.split(",").pop());
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+
+// Field names owned by each wizard step - used both to render only the
+// active step and to scope form.validateFields() to it before advancing, so
+// an error on a later step never blocks moving through earlier ones.
+const ITCYCLE_STEP_FIELDS = [
+    ["taxIdentification", "taxIdentificationDv"],
+    ["itcycleEnvironment", "itcycleSoftwareId", "itcycleSoftwarePin", "itcycleTechnicalKey"],
+    [
+        "itcycleAddressStreet",
+        "itcycleAddressCityCode",
+        "itcycleAddressCityName",
+        "itcycleAddressDepartmentCode",
+        "itcycleAddressDepartmentName",
+        "itcycleAddressPostalZone",
+    ],
+    [
+        "itcycleNumberingPrefix",
+        "itcycleNumberingResolutionNumber",
+        "itcycleNumberingStartNumber",
+        "itcycleNumberingEndNumber",
+        "itcycleNumberingStartDate",
+        "itcycleNumberingEndDate",
+    ],
+    ["itcycleCertificateIdentifier", "itcycleCertificateFile", "itcycleCertificatePassword"],
+];
+
+// Same fields CompanyFormModal already collected for itcycle provisioning
+// (registerCompanyWithItcycle in electronicInvoicing.service.js), just
+// presented as a guided wizard instead of one long flat list - no field
+// name, validation rule, or submit payload changes.
+const ItcycleProvisioningWizard = ({ form, t, editingCompany, onRegisterItcycle }) => {
+    const [currentStep, setCurrentStep] = useState(0);
+    const isLastStep = currentStep === ITCYCLE_STEP_FIELDS.length - 1;
+
+    const stepLabels = [
+        t("admin.itcycle_step_identification"),
+        t("admin.itcycle_step_dian_config"),
+        t("admin.itcycle_step_address"),
+        t("admin.itcycle_step_numbering"),
+        t("admin.itcycle_step_certificate"),
+    ];
+
+    const goNext = async () => {
+        try {
+            await form.validateFields(ITCYCLE_STEP_FIELDS[currentStep]);
+            setCurrentStep((s) => Math.min(s + 1, ITCYCLE_STEP_FIELDS.length - 1));
+        } catch {
+            // validateFields already surfaces the field-level errors inline - nothing extra to show here.
+        }
+    };
+    const goBack = () => setCurrentStep((s) => Math.max(s - 1, 0));
+
+    return (
+        <div>
+            <Steps
+                size="small"
+                current={currentStep}
+                onChange={setCurrentStep}
+                className="mb-5"
+                items={stepLabels.map((label) => ({ title: label }))}
+            />
+
+            <div style={{ display: currentStep === 0 ? "block" : "none" }}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Form.Item name="taxIdentification" label={t("admin.alanube_nit")}>
+                        <Input size="large" className="auth-ohnix-input" placeholder="900123456" />
+                    </Form.Item>
+                    <Form.Item name="taxIdentificationDv" label={t("admin.alanube_nit_dv")}>
+                        <Input size="large" className="auth-ohnix-input" placeholder={t("admin.alanube_nit_dv_hint")} />
+                    </Form.Item>
+                </div>
+            </div>
+
+            <div style={{ display: currentStep === 1 ? "block" : "none" }}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Form.Item name="itcycleEnvironment" label={t("admin.itcycle_environment")} initialValue="SANDBOX">
+                        <Select
+                            size="large"
+                            options={[
+                                { value: "SANDBOX", label: t("admin.itcycle_environment_sandbox") },
+                                { value: "PRODUCTION", label: t("admin.itcycle_environment_production") },
+                            ]}
+                        />
+                    </Form.Item>
+                    <Form.Item name="itcycleSoftwareId" label={t("admin.itcycle_software_id")}>
+                        <Input size="large" className="auth-ohnix-input" />
+                    </Form.Item>
+                    <Form.Item name="itcycleSoftwarePin" label={t("admin.itcycle_software_pin")}>
+                        <Input.Password size="large" className="auth-ohnix-input" />
+                    </Form.Item>
+                    <Form.Item name="itcycleTechnicalKey" label={t("admin.itcycle_technical_key")}>
+                        <Input size="large" className="auth-ohnix-input" />
+                    </Form.Item>
+                </div>
+            </div>
+
+            <div style={{ display: currentStep === 2 ? "block" : "none" }}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Form.Item name="itcycleAddressStreet" label={t("admin.itcycle_address_street")} className="sm:col-span-2">
+                        <Input size="large" className="auth-ohnix-input" />
+                    </Form.Item>
+                    <Form.Item name="itcycleAddressCityCode" label={t("admin.itcycle_address_city_code")}>
+                        <Input size="large" className="auth-ohnix-input" placeholder="11001" />
+                    </Form.Item>
+                    <Form.Item name="itcycleAddressCityName" label={t("admin.itcycle_address_city_name")}>
+                        <Input size="large" className="auth-ohnix-input" placeholder="Bogota, D.C." />
+                    </Form.Item>
+                    <Form.Item name="itcycleAddressDepartmentCode" label={t("admin.itcycle_address_department_code")}>
+                        <Input size="large" className="auth-ohnix-input" placeholder="11" />
+                    </Form.Item>
+                    <Form.Item name="itcycleAddressDepartmentName" label={t("admin.itcycle_address_department_name")}>
+                        <Input size="large" className="auth-ohnix-input" placeholder="Bogota" />
+                    </Form.Item>
+                    <Form.Item name="itcycleAddressPostalZone" label={t("admin.itcycle_address_postal_zone")}>
+                        <Input size="large" className="auth-ohnix-input" placeholder="110111" />
+                    </Form.Item>
+                </div>
+            </div>
+
+            <div style={{ display: currentStep === 3 ? "block" : "none" }}>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Form.Item name="itcycleNumberingPrefix" label={t("admin.alanube_resolution_prefix")}>
+                        <Input size="large" className="auth-ohnix-input" />
+                    </Form.Item>
+                    <Form.Item name="itcycleNumberingResolutionNumber" label={t("admin.alanube_resolution_number")}>
+                        <Input size="large" className="auth-ohnix-input" />
+                    </Form.Item>
+                    <Form.Item name="itcycleNumberingStartNumber" label={t("admin.alanube_resolution_min")}>
+                        <Input size="large" type="number" className="auth-ohnix-input" />
+                    </Form.Item>
+                    <Form.Item name="itcycleNumberingEndNumber" label={t("admin.alanube_resolution_max")}>
+                        <Input size="large" type="number" className="auth-ohnix-input" />
+                    </Form.Item>
+                    <Form.Item
+                        name="itcycleNumberingStartDate"
+                        label={t("admin.alanube_resolution_start")}
+                        getValueProps={(value) => ({ value: value ? dayjs(value) : undefined })}
+                        normalize={(value) => (value ? value.format("YYYY-MM-DD") : null)}
+                    >
+                        <DatePicker size="large" className="auth-ohnix-input w-full" />
+                    </Form.Item>
+                    <Form.Item
+                        name="itcycleNumberingEndDate"
+                        label={t("admin.alanube_resolution_end")}
+                        getValueProps={(value) => ({ value: value ? dayjs(value) : undefined })}
+                        normalize={(value) => (value ? value.format("YYYY-MM-DD") : null)}
+                    >
+                        <DatePicker size="large" className="auth-ohnix-input w-full" />
+                    </Form.Item>
+                </div>
+            </div>
+
+            <div style={{ display: currentStep === 4 ? "block" : "none" }}>
+                <Form.Item name="itcycleCertificateIdentifier" label={t("admin.itcycle_certificate_identifier")}>
+                    <Input size="large" className="auth-ohnix-input" />
+                </Form.Item>
+                {/* itcycleCertificateFile's value is set imperatively via form.setFieldValue in
+                    beforeUpload below (it holds a base64 string, not a File - Upload has no
+                    matching value prop to bind through Form.Item, so this wrapper is for the
+                    label only). */}
+                <Form.Item name="itcycleCertificateFile" label={t("admin.itcycle_certificate_file")}>
+                    <Upload
+                        accept=".p12,.pfx"
+                        maxCount={1}
+                        beforeUpload={async (file) => {
+                            const base64 = await readFileAsBase64(file);
+                            form.setFieldValue("itcycleCertificateFile", base64);
+                            return false;
+                        }}
+                    >
+                        <Button icon={<UploadOutlined />}>{t("admin.itcycle_certificate_upload")}</Button>
+                    </Upload>
+                </Form.Item>
+                <Form.Item name="itcycleCertificatePassword" label={t("admin.itcycle_certificate_password")}>
+                    <Input.Password size="large" className="auth-ohnix-input" />
+                </Form.Item>
+
+                {editingCompany && (
+                    <div className="mb-1 flex flex-wrap items-center gap-3">
+                        <Tag color={editingCompany.itcycleCompanyId ? "cyan" : "default"}>
+                            {editingCompany.itcycleCompanyId
+                                ? t("admin.itcycle_registered_status", { id: editingCompany.itcycleCompanyId })
+                                : t("admin.itcycle_not_registered_status")}
+                        </Tag>
+                        <Button
+                            size="small"
+                            type="primary"
+                            onClick={() => onRegisterItcycle?.(editingCompany.id, form.getFieldsValue())}
+                        >
+                            {editingCompany.itcycleCompanyId ? t("admin.itcycle_reregister") : t("admin.itcycle_register")}
+                        </Button>
+                    </div>
+                )}
+            </div>
+
+            <div className="mt-4 flex justify-between border-t border-[var(--ohnix-line-4)] pt-4">
+                <Button icon={<LeftOutlined />} disabled={currentStep === 0} onClick={goBack}>
+                    {t("admin.itcycle_step_back")}
+                </Button>
+                {!isLastStep && (
+                    <Button type="primary" onClick={goNext}>
+                        {t("admin.itcycle_step_next")} <RightOutlined />
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingCompany, onUploadLogo, onRegisterAlanube, onRegisterItcycle }) => {
     const { t } = useI18n();
     const selectedCountry = Form.useWatch("countryCode", form);
     const selectedProvider = Form.useWatch("electronicInvoicingProvider", form) || "alanube";
@@ -208,6 +427,7 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                                 options={[
                                     { value: "alanube", label: "Alanube" },
                                     { value: "factus", label: "Factus" },
+                                    { value: "itcycle", label: "ITCycle (software propio)" },
                                 ]}
                             />
                         </Form.Item>
@@ -254,6 +474,13 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                                     </Form.Item>
                                 </div>
                             </>
+                        ) : selectedProvider === "itcycle" ? (
+                            <ItcycleProvisioningWizard
+                                form={form}
+                                t={t}
+                                editingCompany={editingCompany}
+                                onRegisterItcycle={onRegisterItcycle}
+                            />
                         ) : (
                             <>
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

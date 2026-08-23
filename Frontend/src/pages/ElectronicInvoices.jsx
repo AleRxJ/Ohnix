@@ -45,13 +45,22 @@ const STATUS_COLORS = {
     error: "var(--ohnix-status-rose)",
     cancelled: "var(--ohnix-text-dim)",
     draft: "var(--ohnix-status-amber)",
+    // itcycle-only: DIAN was unreachable, but the document was already built,
+    // signed, and delivered to the customer - legally distinct from "error"
+    // (nothing to deliver) or "rejected" (DIAN said no). Amber/warning, not
+    // rose, on purpose - this isn't a failure state from the customer's side.
+    contingency: "var(--ohnix-status-amber)",
 };
 
 const STATUS_ALL = "all";
-const STATUS_FILTERS = [STATUS_ALL, "draft", "issuing", "submitted", "accepted", "rejected", "error", "cancelled"];
+const STATUS_FILTERS = [STATUS_ALL, "draft", "issuing", "submitted", "accepted", "rejected", "error", "cancelled", "contingency"];
 const ATTENTION_STATUSES = new Set(["error", "rejected"]);
 const RETRYABLE_STATUSES = new Set(["error", "rejected"]);
-const SYNCABLE_STATUSES = new Set(["issuing", "submitted"]);
+// "contingency" belongs here, not in RETRYABLE_STATUSES: the backend routes
+// "sync" to a real retry-send for this status (see
+// electronicInvoicing.service.js#syncElectronicInvoiceStatus) - "retry"
+// (re-issue) can never resolve a document that's already past issuance.
+const SYNCABLE_STATUSES = new Set(["issuing", "submitted", "contingency"]);
 
 const CREDIT_NOTE_CONCEPTS = [
     { key: "partial_return", code: "1" },
@@ -579,6 +588,15 @@ const InvoiceDetailDrawer = ({
                                 </div>
                             ))
                         )}
+                    </div>
+                )}
+
+                {invoice.status === "contingency" && (
+                    <div className="rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-sm text-amber-100">
+                        <div className="mb-1 flex items-center gap-2 font-semibold">
+                            <WarningOutlined /> {t("electronic_invoices.status.contingency")}
+                        </div>
+                        <div>{t("electronic_invoices.contingency_hint")}</div>
                     </div>
                 )}
 

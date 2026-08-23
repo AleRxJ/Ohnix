@@ -30,6 +30,10 @@ export const MODULE_KEYS = [
     // backfill: an existing role with no row for it reads as "none" via
     // getModuleAccessLevel below, which is the correct default-deny.
     "pointsOfSale",
+    // Cash accounts, payments (cartera), and bank reconciliation - handles
+    // money movement directly, so it's grantable like any other operational
+    // module but deny-by-default (see DEFAULT_MEMBER_ROLE_PERMISSIONS).
+    "finance",
 ];
 
 // Modules the UI never shows as an independent toggle - their level always
@@ -62,6 +66,7 @@ export const DEFAULT_MEMBER_ROLE_PERMISSIONS = {
     reports: "none",
     billing: "none",
     pointsOfSale: "none",
+    finance: "none",
 };
 
 export const OWNER_ROLE_PERMISSIONS = MODULE_KEYS.reduce(
@@ -111,6 +116,7 @@ const MODULE_LABELS_ES = {
     reports: "reportes",
     billing: "facturación",
     pointsOfSale: "puntos de venta",
+    finance: "finanzas",
 };
 
 export const requireModulePermission = (moduleKey, minLevel = "view") =>

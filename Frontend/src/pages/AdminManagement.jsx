@@ -99,6 +99,83 @@ const AdminManagement = () => {
         }
     };
 
+    // Assembles the flat form values CompanyFormModal collects into the
+    // nested shape registerCompanyWithItcycle (Backend/services/
+    // electronicInvoicing.service.js) and itcycle-api-dian's own admin API
+    // expect - see docs/dian/sandbox-tests.md in itcycle-api-dian for the
+    // underlying dianConfiguration/numberingResolutions/certificate shapes.
+    const handleRegisterCompanyItcycle = async (companyId, formValues) => {
+        try {
+            setCompanySubmitting(true);
+            const payload = {
+                dianConfiguration: {
+                    environment: formValues.itcycleEnvironment || "SANDBOX",
+                    softwareId: formValues.itcycleSoftwareId,
+                    softwarePin: formValues.itcycleSoftwarePin,
+                    technicalKey: formValues.itcycleTechnicalKey,
+                    supplierProfile: {
+                        name: formValues.legalName || formValues.name,
+                        identification: { number: formValues.taxIdentification, type: "31", dv: formValues.taxIdentificationDv },
+                        personType: "1",
+                        fiscalResponsibilities: ["O-13"],
+                        taxInfo: {
+                            registrationName: formValues.legalName || formValues.name,
+                            companyId: { number: formValues.taxIdentification, type: "31", dv: formValues.taxIdentificationDv },
+                            taxLevelCode: "O-13",
+                            taxScheme: { code: "01" },
+                            address: {
+                                street: formValues.itcycleAddressStreet,
+                                cityCode: formValues.itcycleAddressCityCode,
+                                cityName: formValues.itcycleAddressCityName,
+                                departmentCode: formValues.itcycleAddressDepartmentCode,
+                                departmentName: formValues.itcycleAddressDepartmentName,
+                                countryCode: "CO",
+                                postalZone: formValues.itcycleAddressPostalZone,
+                            },
+                        },
+                        address: {
+                            street: formValues.itcycleAddressStreet,
+                            cityCode: formValues.itcycleAddressCityCode,
+                            cityName: formValues.itcycleAddressCityName,
+                            departmentCode: formValues.itcycleAddressDepartmentCode,
+                            departmentName: formValues.itcycleAddressDepartmentName,
+                            countryCode: "CO",
+                            postalZone: formValues.itcycleAddressPostalZone,
+                        },
+                        email: formValues.contactEmail || undefined,
+                    },
+                },
+                numberingResolutions: [{
+                    documentType: "01",
+                    prefix: formValues.itcycleNumberingPrefix,
+                    resolutionNumber: formValues.itcycleNumberingResolutionNumber,
+                    startNumber: Number(formValues.itcycleNumberingStartNumber),
+                    endNumber: Number(formValues.itcycleNumberingEndNumber),
+                    startDate: formValues.itcycleNumberingStartDate,
+                    endDate: formValues.itcycleNumberingEndDate,
+                }],
+                certificate: formValues.itcycleCertificateFile ? {
+                    provider: "firmapass",
+                    certificateIdentifier: formValues.itcycleCertificateIdentifier || `${companyId}-cert`,
+                    p12Base64: formValues.itcycleCertificateFile,
+                    password: formValues.itcycleCertificatePassword,
+                    expiresAt: formValues.itcycleNumberingEndDate,
+                } : undefined,
+            };
+
+            const response = await adminService.registerCompanyWithItcycle(companyId, payload);
+            toast.success(t("admin.itcycle_registered"));
+            setEditingCompany((prev) =>
+                prev && prev.id === companyId ? { ...prev, ...response?.data } : prev
+            );
+            await fetchData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setCompanySubmitting(false);
+        }
+    };
+
     const handleRegisterCompanyAlanube = async (companyId) => {
         try {
             setCompanySubmitting(true);
@@ -265,6 +342,7 @@ const AdminManagement = () => {
                 editingCompany={editingCompany}
                 onUploadLogo={handleUploadCompanyLogo}
                 onRegisterAlanube={handleRegisterCompanyAlanube}
+                onRegisterItcycle={handleRegisterCompanyItcycle}
             />
 
             <UserFormModal

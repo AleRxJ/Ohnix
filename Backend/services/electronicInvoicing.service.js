@@ -16,6 +16,20 @@ import {
     AlanubeError,
     isAlanubeConfigured,
 } from "./alanube.service.js";
+import {
+    provisionItcycleCompany,
+    setItcycleDianConfiguration,
+    createItcycleNumberingResolution,
+    uploadItcycleCertificate,
+    createItcycleApiKey,
+    createItcycleInvoice,
+    createItcycleCreditNote,
+    getItcycleInvoiceStatus,
+    retryItcycleInvoiceSend,
+    ItcycleDianError,
+    isItcycleConfigured,
+} from "./itcycleDian.service.js";
+import { encryptSecret, decryptSecret } from "../utils/secretEncryption.js";
 import { computeNitCheckDigit } from "../utils/nit.util.js";
 import { normalizeCountryCode } from "./companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
@@ -41,12 +55,20 @@ const ensureElectronicInvoicingPlan = async (userId) => {
 
 const FACTUS_PROVIDER = "factus";
 const ALANUBE_PROVIDER = "alanube";
+// itcycle-api-dian: iTCycle's own "software propio" DIAN engine (see
+// itcycleDian.service.js) - unlike Factus/Alanube, this is a proveedor
+// tecnológico Ohnix's own company built and operates, not a third party.
+const ITCYCLE_PROVIDER = "itcycle";
 // Sandbox test-set id published in Alanube's onboarding guide - swap for the
 // real DIAN-issued id once habilitación is completed in production.
 const ALANUBE_SANDBOX_TEST_SET_ID = "a70562e0-631e-4ceb-aa65-36887b57dc17";
 const TERMINAL_STATUSES = ["accepted", "cancelled"];
 
-const providerFor = (company) => (company?.electronicInvoicingProvider === FACTUS_PROVIDER ? FACTUS_PROVIDER : ALANUBE_PROVIDER);
+const providerFor = (company) => {
+    if (company?.electronicInvoicingProvider === FACTUS_PROVIDER) return FACTUS_PROVIDER;
+    if (company?.electronicInvoicingProvider === ITCYCLE_PROVIDER) return ITCYCLE_PROVIDER;
+    return ALANUBE_PROVIDER;
+};
 
 // DIAN's standard correction-concept catalog for credit notes. Verify these
 // codes against the Factus sandbox response/docs before relying on them in
@@ -437,6 +459,275 @@ const mapAlanubeCreditNoteResponse = (raw) => {
 };
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// itcycle-api-dian mapping. The supplier (emisor) profile is NOT built here -
+// it lives entirely in itcycle-api-dian's own DianConfiguration, set once at
+// provisioning time (registerCompanyWithItcycle below) - only the customer,
+// line items, and totals are built per-request, matching the UBL-oriented
+// InvoiceInput shape dian-kit expects (see itcycle-api-dian's
+// dian-engine/packages/sdk-node/src/types.ts), not Factus/Alanube's flatter
+// payload shape.
+//
+// KNOWN GAP: dian-kit's Address requires cityName/departmentCode/
+// departmentName/postalZone, none of which Ohnix's Customer model stores
+// today (only municipalityCode + free-text address) - departmentCode is
+// derived from the DIVIPOLA prefix of municipalityCode, everything else
+// falls back to a placeholder. Confirm against a real DIAN sandbox response
+// before relying on this in production - same caveat this file already
+// carries for the Alanube mapping above.
+const buildItcyclePartyAddress = (municipalityCode, streetAddress) => {
+    const code = text(municipalityCode) || "11001";
+    const departmentCode = code.slice(0, 2) || "11";
+    return {
+        street: streetAddress || "N/A",
+        cityCode: code,
+        cityName: code,
+        departmentCode,
+        departmentName: departmentCode,
+        countryCode: "CO",
+        postalZone: "000000",
+    };
+};
+
+const buildItcycleCustomerParty = (customer) => {
+    const address = buildItcyclePartyAddress(customer.municipalityCode, customer.address);
+    return {
+        name: customer.name,
+        identification: { number: customer.identification, type: customer.identificationDocumentCode },
+        personType: customer.legalOrganizationCode,
+        // Ohnix doesn't collect a separate DIAN fiscal-responsibility code for
+        // customers - "R-99-PN" ("no aplica") is the same default dian-kit's
+        // own basic-invoice.ts example uses for a generic buyer.
+        fiscalResponsibilities: ["R-99-PN"],
+        taxInfo: {
+            registrationName: customer.name,
+            companyId: { number: customer.identification, type: customer.identificationDocumentCode },
+            taxLevelCode: "R-99-PN",
+            taxScheme: { code: customer.tributeCode || "01" },
+            address,
+        },
+        address,
+        email: customer.email || undefined,
+    };
+};
+
+const buildItcycleLines = (orderDetails) => orderDetails.map((item, index) => {
+    const quantity = toNumber(item.quantity);
+    const price = toNumber(item.unitcost);
+    const lineExtensionAmount = toNumber(quantity * price);
+    const taxAmount = toNumber(item.taxAmount);
+    return {
+        id: `${index + 1}`,
+        quantity,
+        unitCode: item.product.unitMeasureCode,
+        description: item.product.productName,
+        price,
+        lineExtensionAmount,
+        taxTotals: item.taxTreatmentApplied === "excluded" ? [] : [{
+            taxAmount,
+            subtotals: [{
+                taxableAmount: lineExtensionAmount,
+                taxAmount,
+                percent: toNumber(item.taxRateApplied),
+                taxScheme: { code: item.product.taxCode },
+            }],
+        }],
+    };
+});
+
+const buildItcycleTotals = (order, lines) => {
+    const lineExtensionAmount = toNumber(lines.reduce((sum, l) => sum + l.lineExtensionAmount, 0));
+    const taxTotal = toNumber(lines.reduce((sum, l) => sum + (l.taxTotals[0]?.taxAmount || 0), 0));
+    return {
+        taxTotals: taxTotal > 0 ? [{
+            taxAmount: taxTotal,
+            subtotals: [{ taxableAmount: lineExtensionAmount, taxAmount: taxTotal, percent: 19, taxScheme: { code: "01" } }],
+        }] : [],
+        legalMonetaryTotal: {
+            lineExtensionAmount,
+            taxExclusiveAmount: lineExtensionAmount,
+            taxInclusiveAmount: toNumber(lineExtensionAmount + taxTotal),
+            allowanceTotalAmount: 0,
+            chargeTotalAmount: 0,
+            prepaidAmount: 0,
+            payableAmount: toNumber(order.total),
+        },
+    };
+};
+
+// Same customer/product checks fiscalErrorsForOrder does, minus
+// company.factusNumberingRangeId (Factus-specific - itcycle-api-dian's
+// numbering lives entirely in its own database, already validated there by
+// loadDianConfig at issuance time). company.itcycleCompanyId/
+// itcycleApiKeyCiphertext are checked by the caller before this ever runs.
+const itcycleFiscalErrors = (order) => {
+    const errors = [];
+    const company = order.createdBy?.company;
+    const customer = order.customer;
+    if (!company?.electronicInvoicingEnabled) errors.push("company.electronicInvoicingEnabled must be enabled");
+    if (!company?.vatResponsible || company.vatResponsible === "unset") {
+        errors.push("company.vatResponsible must be set to responsible or not_responsible before issuing a DIAN document (ET art. 437)");
+    }
+    for (const field of ["identificationDocumentCode", "identification", "legalOrganizationCode", "tributeCode", "municipalityCode"]) {
+        if (!text(customer?.[field])) errors.push(`customer.${field} is required`);
+    }
+    if (!order.orderDetails?.length) errors.push("order must have at least one item");
+    for (const item of order.orderDetails || []) {
+        const label = item.product?.productCode || item.productId;
+        if (!text(item.product?.unitMeasureCode)) errors.push(`product ${label}: unitMeasureCode is required`);
+        if (!text(item.product?.standardCode)) errors.push(`product ${label}: standardCode is required`);
+        if (item.taxTreatmentApplied !== "excluded" && !text(item.product?.taxCode)) {
+            errors.push(`product ${label}: taxCode is required`);
+        }
+    }
+    return errors;
+};
+
+const buildItcyclePayload = (order) => {
+    const errors = itcycleFiscalErrors(order);
+    if (errors.length) throw new ApiError(422, "Fiscal data is incomplete for itcycle-api-dian", errors);
+
+    const lines = buildItcycleLines(order.orderDetails);
+    const { taxTotals, legalMonetaryTotal } = buildItcycleTotals(order, lines);
+    const now = new Date();
+
+    return {
+        issueDate: now.toISOString(),
+        issueTime: now.toISOString(),
+        customer: buildItcycleCustomerParty(order.customer),
+        lines,
+        taxTotals,
+        legalMonetaryTotal,
+        // "10" = Contado, "30" = Transferencia - same values Alanube's
+        // buildAlanubePayments already sends for company.factusPaymentMethodCode.
+        paymentMeans: { paymentForm: "1", paymentMethod: order.createdBy.company.factusPaymentMethodCode || "10" },
+    };
+};
+
+// itcycle-api-dian's own Invoice.status values (see its Invoice model):
+// PENDING/PROCESSING/SENT are all still in flight from Ohnix's point of view.
+const normalizeItcycleStatus = (status) => {
+    const value = text(status).toUpperCase();
+    if (value === "ACCEPTED") return "accepted";
+    if (value === "REJECTED") return "rejected";
+    if (value === "ERROR") return "error";
+    if (value === "CONTINGENCY") return "contingency";
+    return "submitted";
+};
+
+const mapItcycleResponse = (raw) => ({
+    externalId: text(raw?.id) || null,
+    invoiceNumber: text(raw?.invoiceNumber) || null,
+    cufe: text(raw?.cufe) || null,
+    // itcycle-api-dian doesn't generate qrUrl/pdfUrl/xmlUrl (it stores the
+    // signed XML internally, see its DocumentXmlStore) - null here is
+    // accurate, not a missing mapping, same as any other provider gap.
+    qrUrl: null,
+    pdfUrl: null,
+    xmlUrl: null,
+    status: normalizeItcycleStatus(raw?.status),
+    rawResponse: raw,
+});
+
+const buildItcycleCreditNotePayload = (order, { conceptCode, observation, items }) => {
+    const productsByOrderDetailId = new Map((order.orderDetails || []).map((detail) => [detail.id, detail]));
+    const sourceDetails = Array.isArray(items) && items.length
+        ? items.map(({ orderDetailId, quantity }) => {
+            const detail = productsByOrderDetailId.get(orderDetailId);
+            return detail ? { ...detail, quantity: quantity || detail.quantity } : null;
+        }).filter(Boolean)
+        : order.orderDetails;
+
+    const lines = buildItcycleLines(sourceDetails);
+    const { taxTotals, legalMonetaryTotal } = buildItcycleTotals(order, lines);
+    const now = new Date();
+
+    return {
+        document: {
+            issueDate: now.toISOString(),
+            issueTime: now.toISOString(),
+            customer: buildItcycleCustomerParty(order.customer),
+            lines,
+            taxTotals,
+            legalMonetaryTotal,
+            paymentMeans: { paymentForm: "1", paymentMethod: order.createdBy.company.factusPaymentMethodCode || "10" },
+            notes: observation ? [observation] : undefined,
+        },
+        discrepancyResponse: {
+            // DIAN correction-concept catalog (CREDIT_NOTE_CONCEPT_CODES above)
+            // matches itcycle-api-dian's own discrepancyResponse.responseCode 1:1
+            // - both ultimately encode the same DIAN Anexo Tecnico codes.
+            responseCode: conceptCode,
+            description: observation || "Nota credito Ohnix",
+        },
+    };
+};
+
+const mapItcycleCreditNoteResponse = (raw) => ({
+    externalId: text(raw?.id) || null,
+    creditNoteNumber: text(raw?.noteNumber) || null,
+    cufe: text(raw?.cufe) || null,
+    pdfUrl: null,
+    xmlUrl: null,
+    status: normalizeItcycleStatus(raw?.status),
+    rawResponse: raw,
+});
+
+/**
+ * Provisions a new Company end-to-end in itcycle-api-dian (create company ->
+ * DIAN configuration -> numbering resolution(s) -> certificate -> API key),
+ * then stores only the itcycle-side companyId and the encrypted API key on
+ * Ohnix's own Company row. The certificate .p12/password and the raw API key
+ * are forwarded once and never persisted in Ohnix - see secretEncryption.js
+ * and itcycle-api-dian's own EncryptedFileCertificateSecretStore.
+ */
+export const registerCompanyWithItcycle = async ({ companyId, requesterRole, dianConfiguration, numberingResolutions, certificate }) => {
+    if (requesterRole !== "admin") throw new ApiError(403, "Only admins can provision a company with itcycle-api-dian");
+    if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) throw new ApiError(404, "Company not found");
+    if (!text(company.taxIdentification)) {
+        throw new ApiError(422, "company.taxIdentification (NIT) is required before provisioning with itcycle-api-dian");
+    }
+
+    const dv = text(company.taxIdentificationDv) || computeNitCheckDigit(company.taxIdentification);
+
+    let itcycleCompany;
+    try {
+        itcycleCompany = await provisionItcycleCompany({
+            name: company.legalName || company.name,
+            nit: company.taxIdentification,
+            dv,
+            personType: "1",
+        });
+        await setItcycleDianConfiguration({ companyId: itcycleCompany.id, ...dianConfiguration });
+        for (const resolution of numberingResolutions || []) {
+            await createItcycleNumberingResolution({ companyId: itcycleCompany.id, ...resolution });
+        }
+        if (certificate) {
+            await uploadItcycleCertificate({ companyId: itcycleCompany.id, ...certificate });
+        }
+        const rawApiKey = await createItcycleApiKey({ companyId: itcycleCompany.id, label: `Ohnix - ${company.name}` });
+        if (!rawApiKey) throw new Error("itcycle-api-dian did not return an API key");
+
+        const updated = await prisma.company.update({
+            where: { id: companyId },
+            data: {
+                taxIdentificationDv: dv,
+                itcycleCompanyId: itcycleCompany.id,
+                itcycleApiKeyCiphertext: encryptSecret(rawApiKey),
+            },
+        });
+
+        return { companyId: updated.id, itcycleCompanyId: updated.itcycleCompanyId };
+    } catch (error) {
+        const providerPayload = error instanceof ItcycleDianError ? error.payload : null;
+        throw new ApiError(502, error.message || "Failed to provision company with itcycle-api-dian", providerPayload ? [providerPayload] : undefined);
+    }
+};
+// ---------------------------------------------------------------------------
+
 const getOrderWithRelations = (orderId) => prisma.order.findFirst({
     where: { OR: [{ id: orderId }, { legacyMongoId: orderId }] },
     include: {
@@ -544,6 +835,15 @@ export const issueElectronicInvoiceForOrder = async ({ orderId, requesterUserId,
         const payload = buildFactusPayload(order);
         claim = await claimInvoice({ order, payload, provider });
         submit = () => createFactusInvoice({ payload }).then(mapFactusResponse);
+    } else if (provider === ITCYCLE_PROVIDER) {
+        if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian integration is not configured for this environment");
+        if (!text(company.itcycleCompanyId) || !text(company.itcycleApiKeyCiphertext)) {
+            throw new ApiError(422, "This company has not been provisioned with itcycle-api-dian yet");
+        }
+        const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
+        const invoice = buildItcyclePayload(order);
+        claim = await claimInvoice({ order, payload: invoice, provider });
+        submit = () => createItcycleInvoice({ apiKey, internalReference: order.invoiceNo, invoice }).then(mapItcycleResponse);
     } else {
         if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");
         const resolution = company.alanubeInvoiceResolution;
@@ -565,7 +865,7 @@ export const issueElectronicInvoiceForOrder = async ({ orderId, requesterUserId,
         });
         return { reused: false, trigger, countryCode: "CO", invoice: serialize(invoice) };
     } catch (error) {
-        const providerPayload = error instanceof FactusError || error instanceof AlanubeError ? error.payload : null;
+        const providerPayload = error instanceof FactusError || error instanceof AlanubeError || error instanceof ItcycleDianError ? error.payload : null;
         const invoice = await prisma.$transaction(async (tx) => {
             const updated = await tx.electronicInvoice.update({ where: { id: claim.invoice.id }, data: { status: "error", rawResponse: providerPayload, errorMessage: error.message || `Unknown ${provider} error` } });
             await tx.electronicInvoiceEvent.create({ data: { electronicInvoiceId: updated.id, eventType: "provider_error", status: "error", payload: providerPayload } });
@@ -582,7 +882,9 @@ export const syncElectronicInvoiceStatus = async ({ orderId, requesterUserId, re
 
     const invoice = order.electronicInvoice;
     if (!invoice) throw new ApiError(404, "This order has no electronic invoice to sync");
-    if (!["issuing", "submitted"].includes(invoice.status)) {
+    // "contingency" is itcycle-only (see the branch below) - included here so
+    // the sync/retry-send button in the UI can actually resolve it.
+    if (!["issuing", "submitted", "contingency"].includes(invoice.status)) {
         throw new ApiError(409, `Electronic invoice status "${invoice.status}" cannot be synced`);
     }
     const provider = invoice.provider;
@@ -593,6 +895,21 @@ export const syncElectronicInvoiceStatus = async ({ orderId, requesterUserId, re
             if (!invoice.invoiceNumber) throw new ApiError(409, "This invoice does not have a provider invoice number yet");
             if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
             mapped = mapFactusResponse(await getFactusInvoiceStatus({ invoiceNumber: invoice.invoiceNumber }));
+        } else if (provider === ITCYCLE_PROVIDER) {
+            if (!invoice.externalId) throw new ApiError(409, "This invoice does not have a provider id yet");
+            if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian integration is not configured for this environment");
+            const company = order.createdBy.company;
+            if (!text(company.itcycleApiKeyCiphertext)) throw new ApiError(422, "This company has not been provisioned with itcycle-api-dian yet");
+            const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
+            // GET only ever returns the last stored status - it never
+            // re-attempts a send, so it can never resolve a CONTINGENCY
+            // document (see itcycleDian.service.js#retryItcycleInvoiceSend).
+            // "Sync" therefore means two different things depending on
+            // status: for CONTINGENCY it's a real retry; otherwise it's a
+            // status poll, same as Factus/Alanube above.
+            mapped = invoice.status === "contingency"
+                ? mapItcycleResponse(await retryItcycleInvoiceSend({ apiKey, id: invoice.externalId }))
+                : mapItcycleResponse(await getItcycleInvoiceStatus({ apiKey, id: invoice.externalId }));
         } else {
             if (!invoice.externalId) throw new ApiError(409, "This invoice does not have a provider id yet");
             if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");
@@ -612,7 +929,7 @@ export const syncElectronicInvoiceStatus = async ({ orderId, requesterUserId, re
         });
         return { invoice: serialize(updated) };
     } catch (error) {
-        const providerPayload = error instanceof FactusError || error instanceof AlanubeError ? error.payload : null;
+        const providerPayload = error instanceof FactusError || error instanceof AlanubeError || error instanceof ItcycleDianError ? error.payload : null;
         await prisma.electronicInvoiceEvent.create({
             data: {
                 electronicInvoiceId: invoice.id,
@@ -841,6 +1158,21 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
         }
         payload = buildCreditNotePayload(order, invoice, company, { conceptCode, observation, items });
         submit = () => createFactusCreditNote({ payload }).then(mapFactusCreditNoteResponse);
+    } else if (provider === ITCYCLE_PROVIDER) {
+        if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian integration is not configured for this environment");
+        if (!text(company.itcycleApiKeyCiphertext)) throw new ApiError(422, "This company has not been provisioned with itcycle-api-dian yet");
+        if (!invoice.externalId) throw new ApiError(409, "This invoice does not have an itcycle-api-dian invoice id yet");
+        const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
+        const creditNoteReferenceCode = `${invoice.referenceCode}-CN-${Date.now().toString(36).toUpperCase()}`;
+        const itcyclePayload = buildItcycleCreditNotePayload(order, { conceptCode, observation, items });
+        payload = { referenceCode: creditNoteReferenceCode, ...itcyclePayload };
+        submit = () => createItcycleCreditNote({
+            apiKey,
+            internalReference: creditNoteReferenceCode,
+            invoiceId: invoice.externalId,
+            document: itcyclePayload.document,
+            discrepancyResponse: itcyclePayload.discrepancyResponse,
+        }).then(mapItcycleCreditNoteResponse);
     } else {
         if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");
         const resolution = company.alanubeCreditNoteResolution || company.alanubeInvoiceResolution;
@@ -856,7 +1188,7 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
         data: {
             invoiceId: invoice.id,
             correctionConceptCode: conceptCode,
-            referenceCode: payload.reference_code || `${invoice.referenceCode}-CN-${payload.number}`,
+            referenceCode: payload.reference_code || payload.referenceCode || `${invoice.referenceCode}-CN-${payload.number}`,
             status: "issuing",
             observation: payload.observation || observation,
             rawRequest: payload,
@@ -903,7 +1235,7 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
 
         return { creditNote: serializeCreditNote(updated), stock_restock: stockRestock };
     } catch (error) {
-        const providerPayload = error instanceof FactusError || error instanceof AlanubeError ? error.payload : null;
+        const providerPayload = error instanceof FactusError || error instanceof AlanubeError || error instanceof ItcycleDianError ? error.payload : null;
         const updated = await prisma.$transaction(async (tx) => {
             const updatedNote = await tx.electronicCreditNote.update({
                 where: { id: draft.id },

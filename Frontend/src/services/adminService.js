@@ -30,6 +30,11 @@ export const adminService = {
         return response.data;
     },
 
+    async registerCompanyWithItcycle(companyId, payload) {
+        const response = await api.post(`/companies/admin/${companyId}/itcycle/register`, payload);
+        return response.data;
+    },
+
     async listUsers() {
         const response = await api.get("/users/admin/users");
         return response.data;
