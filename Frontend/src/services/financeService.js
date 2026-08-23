@@ -1,0 +1,91 @@
+import { api } from "../api/api";
+
+// Mirrors Backend/routes/finance.routes.js one to one. Shared across three
+// screens (Finance page, OrderDetailsDrawer, PurchaseDetails) - unlike
+// orders/purchases (inline `api` calls per hook), this is a real service
+// module because there's no single "owning" hook for it, same reasoning as
+// companyService.js/teamService.js.
+export const financeService = {
+    async listCashAccounts({ includeInactive = false } = {}) {
+        const response = await api.get("/finance/cash-accounts", {
+            params: includeInactive ? { include_inactive: "true" } : undefined,
+        });
+        return response.data;
+    },
+
+    async createCashAccount(payload) {
+        const response = await api.post("/finance/cash-accounts", payload);
+        return response.data;
+    },
+
+    async updateCashAccount(id, payload) {
+        const response = await api.patch(`/finance/cash-accounts/${id}`, payload);
+        return response.data;
+    },
+
+    async deactivateCashAccount(id) {
+        const response = await api.post(`/finance/cash-accounts/${id}/deactivate`);
+        return response.data;
+    },
+
+    async listCashAccountMovements(id) {
+        const response = await api.get(`/finance/cash-accounts/${id}/movements`);
+        return response.data;
+    },
+
+    async listOrderPayments(orderId) {
+        const response = await api.get(`/finance/orders/${orderId}/payments`);
+        return response.data;
+    },
+
+    async registerOrderPayment(orderId, payload) {
+        const response = await api.post(`/finance/orders/${orderId}/payments`, payload);
+        return response.data;
+    },
+
+    async listPurchasePayments(purchaseId) {
+        const response = await api.get(`/finance/purchases/${purchaseId}/payments`);
+        return response.data;
+    },
+
+    async registerPurchasePayment(purchaseId, payload) {
+        const response = await api.post(`/finance/purchases/${purchaseId}/payments`, payload);
+        return response.data;
+    },
+
+    async createStatementEntries(cashAccountId, entries) {
+        const response = await api.post("/finance/reconciliation/statement-entries", {
+            cash_account_id: cashAccountId,
+            entries,
+        });
+        return response.data;
+    },
+
+    async listUnmatchedEntries(cashAccountId) {
+        const response = await api.get("/finance/reconciliation/unmatched-entries", {
+            params: { cash_account_id: cashAccountId },
+        });
+        return response.data;
+    },
+
+    async listUnmatchedMovements(cashAccountId) {
+        const response = await api.get("/finance/reconciliation/unmatched-movements", {
+            params: { cash_account_id: cashAccountId },
+        });
+        return response.data;
+    },
+
+    async matchEntry({ cashAccountId, entryId, movementId }) {
+        const response = await api.post("/finance/reconciliation/match", {
+            cash_account_id: cashAccountId,
+            entry_id: entryId,
+            movement_id: movementId,
+        });
+        return response.data;
+    },
+
+    async getCarteraReport(params) {
+        const response = await api.get("/reports/cartera", { params });
+        return response.data;
+    },
+};

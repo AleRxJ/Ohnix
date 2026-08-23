@@ -34,6 +34,11 @@ export const MODULE_KEYS = [
     // money movement directly, so it's grantable like any other operational
     // module but deny-by-default (see DEFAULT_MEMBER_ROLE_PERMISSIONS).
     "finance",
+    // Read-only chart of accounts / journal entries / period closing (Fase 4,
+    // contabilidad automática) - the postings themselves are automatic (see
+    // accountingPosting.service.js), this module only gates who can look at
+    // the ledger and who can close a period.
+    "accounting",
 ];
 
 // Modules the UI never shows as an independent toggle - their level always
@@ -67,6 +72,7 @@ export const DEFAULT_MEMBER_ROLE_PERMISSIONS = {
     billing: "none",
     pointsOfSale: "none",
     finance: "none",
+    accounting: "none",
 };
 
 export const OWNER_ROLE_PERMISSIONS = MODULE_KEYS.reduce(
@@ -117,6 +123,7 @@ const MODULE_LABELS_ES = {
     billing: "facturación",
     pointsOfSale: "puntos de venta",
     finance: "finanzas",
+    accounting: "contabilidad",
 };
 
 export const requireModulePermission = (moduleKey, minLevel = "view") =>

@@ -51,6 +51,12 @@ const mapPurchaseDetail = (detail) => ({
     quantity: detail.quantity,
     unitcost: Number(detail.unitcost),
     total: Number(detail.total),
+    // Tax-exclusive `total` stays as-is for the existing items table/summary
+    // (unchanged rendering) - tax_amount is exposed separately so callers
+    // that need what's actually owed to the supplier (cartera pending
+    // balance - see purchasePayment.service.js#getPurchasePendingBalance,
+    // whose backend derivation already includes it) can add it in.
+    tax_amount: Number(detail.taxAmount),
     return_date: detail.returnDate,
     returned_quantity: detail.returnedQuantity,
     pending_quantity: detail.quantity - detail.returnedQuantity,

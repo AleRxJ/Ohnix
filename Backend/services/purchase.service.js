@@ -4,6 +4,7 @@ import { recordStockMovement } from "./stockMovement.service.js";
 import { claimLocationStock, creditLocationStock } from "./productLocationStock.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
+import { postPurchaseJournalEntry, postPurchaseReturnJournalEntry } from "./accountingPosting.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -158,6 +159,9 @@ class PurchaseService {
                     },
                 });
 
+                let purchaseTotal = 0;
+                let purchaseTaxAmount = 0;
+
                 for (const detail of details) {
                     const mappedProduct = await findProductByAnyId(detail.product_id);
                     if (!mappedProduct) {
@@ -202,6 +206,18 @@ class PurchaseService {
                             createdById: userId,
                         });
                     }
+
+                    purchaseTotal += Number(detail.quantity) * Number(detail.unitcost);
+                    purchaseTaxAmount += itemTax.amount;
+                }
+
+                if (shouldAddStock) {
+                    await postPurchaseJournalEntry(tx, {
+                        accountId: userId,
+                        createdById: userId,
+                        purchase: createdPurchase,
+                        totals: { total: purchaseTotal, taxAmount: purchaseTaxAmount },
+                    });
                 }
 
                 return createdPurchase;
@@ -288,6 +304,8 @@ class PurchaseService {
                     select: {
                         productId: true,
                         quantity: true,
+                        total: true,
+                        taxAmount: true,
                         product: { select: { createdById: true } },
                     },
                 });
@@ -310,6 +328,17 @@ class PurchaseService {
                         createdById: userId,
                     });
                 }
+
+                const purchaseTotal = purchaseDetails.reduce((sum, d) => sum + Number(d.total), 0);
+                const purchaseTaxAmount = purchaseDetails.reduce((sum, d) => sum + Number(d.taxAmount), 0);
+                const updatedPurchaseRow = await tx.purchase.findUniqueOrThrow({ where: { id: purchase.id } });
+                await postPurchaseJournalEntry(tx, {
+                    accountId: purchase.createdById,
+                    createdById: userId,
+                    purchase: updatedPurchaseRow,
+                    totals: { total: purchaseTotal, taxAmount: purchaseTaxAmount },
+                });
+                return updatedPurchaseRow;
             }
 
             // Status/updatedById were already written atomically by the
@@ -449,6 +478,7 @@ class PurchaseService {
 
         const { results, purchaseFullyReturned } = await prisma.$transaction(async (tx) => {
             const results = [];
+            const journalLines = [];
 
             for (const line of lines) {
                 const detail = detailById.get(line.purchase_detail_id);
@@ -525,6 +555,14 @@ class PurchaseService {
                     pending_quantity: detail.quantity - updatedDetail.returnedQuantity,
                     fully_returned: updatedDetail.returnedQuantity === detail.quantity,
                 });
+
+                // Pushed only after the claim above succeeds - a mid-loop
+                // throw rolls back the whole tx before anything gets posted.
+                journalLines.push({
+                    quantity,
+                    unitcost: detail.unitcost,
+                    taxRateApplied: detail.taxRateApplied,
+                });
             }
 
             const allDetails = await tx.purchaseDetail.findMany({
@@ -541,6 +579,15 @@ class PurchaseService {
                     data: { purchaseStatus: "returned", updatedById: userId },
                 });
             }
+
+            await postPurchaseReturnJournalEntry(tx, {
+                accountId: purchase.createdById,
+                createdById: userId,
+                sourceId: purchase.id,
+                entryDate: new Date(),
+                description: "Devolución de compra",
+                lines: journalLines,
+            });
 
             return { results, purchaseFullyReturned };
         });

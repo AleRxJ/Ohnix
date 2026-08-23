@@ -128,6 +128,8 @@ import pointOfSaleRouter from "./routes/pointOfSale.routes.js";
 import stockTransferRouter from "./routes/stockTransfer.routes.js";
 import tutorialDataRouter from "./routes/tutorialData.routes.js";
 import systemSettingsRouter from "./routes/systemSettings.routes.js";
+import financeRouter from "./routes/finance.routes.js";
+import accountingRouter from "./routes/accounting.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -152,6 +154,8 @@ app.use("/api/v1", pointOfSaleRouter);
 app.use("/api/v1/stock-transfers", stockTransferRouter);
 app.use("/api/v1/tutorial-data", tutorialDataRouter);
 app.use("/api/v1/system-settings", systemSettingsRouter);
+app.use("/api/v1/finance", financeRouter);
+app.use("/api/v1/accounting", accountingRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________

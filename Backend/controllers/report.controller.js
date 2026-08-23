@@ -1024,6 +1024,142 @@ const getVatReport = asyncHandler(async (req, res, next) => {
     }
 });
 
+// Cartera (accounts receivable/payable): per-document pending balance
+// (order.total / SUM(PurchaseDetail.total+taxAmount) minus payments already
+// registered - see orderPayment.service.js/purchasePayment.service.js for
+// the same derivation used at write time) plus a per-customer/per-supplier
+// rollup and days-overdue, counted from orderDate/purchaseDate since neither
+// model has a separate due-date field yet.
+const getCarteraReport = asyncHandler(async (req, res, next) => {
+    const { start_date, end_date } = req.query;
+    const userId = req.user.prismaId;
+    const isAdmin = req.user.role === "admin";
+    const dateFilter = buildDateFilter(start_date, end_date);
+    const now = new Date();
+
+    try {
+        const [orders, purchases] = await Promise.all([
+            prisma.order.findMany({
+                where: {
+                    ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
+                    orderStatus: { not: "cancelled" },
+                    ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
+                },
+                select: {
+                    id: true,
+                    legacyMongoId: true,
+                    invoiceNo: true,
+                    orderDate: true,
+                    total: true,
+                    customer: { select: { id: true, legacyMongoId: true, name: true } },
+                },
+            }),
+            prisma.purchase.findMany({
+                where: {
+                    ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
+                    ...(Object.keys(dateFilter).length ? { purchaseDate: dateFilter } : {}),
+                },
+                select: {
+                    id: true,
+                    legacyMongoId: true,
+                    purchaseNo: true,
+                    purchaseDate: true,
+                    supplier: { select: { id: true, legacyMongoId: true, name: true } },
+                    purchaseDetails: { select: { total: true, taxAmount: true } },
+                },
+            }),
+        ]);
+
+        const orderIds = orders.map((o) => o.id);
+        const purchaseIds = purchases.map((p) => p.id);
+
+        const [orderPaidRows, purchasePaidRows] = await Promise.all([
+            orderIds.length
+                ? prisma.orderPayment.groupBy({ by: ["orderId"], where: { orderId: { in: orderIds } }, _sum: { amount: true } })
+                : [],
+            purchaseIds.length
+                ? prisma.purchasePayment.groupBy({ by: ["purchaseId"], where: { purchaseId: { in: purchaseIds } }, _sum: { amount: true } })
+                : [],
+        ]);
+
+        const orderPaidMap = new Map(orderPaidRows.map((r) => [r.orderId, Number(r._sum.amount || 0)]));
+        const purchasePaidMap = new Map(purchasePaidRows.map((r) => [r.purchaseId, Number(r._sum.amount || 0)]));
+        const daysOverdue = (date) => Math.max(0, Math.floor((now - new Date(date)) / 86400000));
+
+        const receivablesDocuments = orders
+            .map((order) => {
+                const paid = orderPaidMap.get(order.id) || 0;
+                const total = Number(order.total);
+                return {
+                    _id: toExternalId(order),
+                    invoice_no: order.invoiceNo,
+                    document_date: order.orderDate,
+                    customer: order.customer ? { _id: toExternalId(order.customer), name: order.customer.name } : null,
+                    total: round2(total),
+                    paid: round2(paid),
+                    pending: round2(total - paid),
+                    days_overdue: daysOverdue(order.orderDate),
+                };
+            })
+            .filter((row) => row.pending > 0.001);
+
+        const payablesDocuments = purchases
+            .map((purchase) => {
+                const total = purchase.purchaseDetails.reduce((acc, d) => acc + Number(d.total) + Number(d.taxAmount), 0);
+                const paid = purchasePaidMap.get(purchase.id) || 0;
+                return {
+                    _id: toExternalId(purchase),
+                    purchase_no: purchase.purchaseNo,
+                    document_date: purchase.purchaseDate,
+                    supplier: purchase.supplier ? { _id: toExternalId(purchase.supplier), name: purchase.supplier.name } : null,
+                    total: round2(total),
+                    paid: round2(paid),
+                    pending: round2(total - paid),
+                    days_overdue: daysOverdue(purchase.purchaseDate),
+                };
+            })
+            .filter((row) => row.pending > 0.001);
+
+        const groupByParty = (documents, partyKey) => {
+            const map = new Map();
+            for (const doc of documents) {
+                const party = doc[partyKey];
+                const key = party?._id || "unknown";
+                const current = map.get(key) || { _id: key, name: party?.name || "—", total: 0, paid: 0, pending: 0, documentCount: 0 };
+                current.total += doc.total;
+                current.paid += doc.paid;
+                current.pending += doc.pending;
+                current.documentCount += 1;
+                map.set(key, current);
+            }
+            return [...map.values()]
+                .map((e) => ({ ...e, total: round2(e.total), paid: round2(e.paid), pending: round2(e.pending) }))
+                .sort((a, b) => b.pending - a.pending);
+        };
+
+        const sumPending = (docs) => round2(docs.reduce((acc, d) => acc + d.pending, 0));
+
+        const report = {
+            receivables: {
+                summary: { totalPending: sumPending(receivablesDocuments), documentCount: receivablesDocuments.length },
+                byCustomer: groupByParty(receivablesDocuments, "customer"),
+                byDocument: [...receivablesDocuments].sort((a, b) => b.days_overdue - a.days_overdue),
+            },
+            payables: {
+                summary: { totalPending: sumPending(payablesDocuments), documentCount: payablesDocuments.length },
+                bySupplier: groupByParty(payablesDocuments, "supplier"),
+                byDocument: [...payablesDocuments].sort((a, b) => b.days_overdue - a.days_overdue),
+            },
+        };
+
+        return res.status(200).json(new ApiResponse(200, report, "Cartera report fetched successfully"));
+    } catch (error) {
+        console.error("Cartera report error:", error);
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
+});
+
 export {
     getDashboardMetrics,
     getStockReport,
@@ -1036,6 +1172,7 @@ export {
     getSalesByTeamReport,
     getPeriodComparisonReport,
     getVatReport,
+    getCarteraReport,
     exportReportPdf,
     authorizeCsvExport,
     authorizeExcelExport,

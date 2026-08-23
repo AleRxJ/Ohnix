@@ -20,12 +20,14 @@ import PurchaseTable from "./PurchaseTable";
 import PurchaseForm from "./PurchaseForm";
 import PurchaseDetails from "./PurchaseDetails";
 import ReturnPreview from "./ReturnPreview";
+import RegisterPaymentModal from "../finance/RegisterPaymentModal";
 import { generatePurchaseNo } from "../../utils/purchaseUtils";
 import { Form } from "antd";
 import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { useDataInvalidation } from "../../hooks/useDataInvalidation";
+import { financeService } from "../../services/financeService";
 
 const { Title } = Typography;
 
@@ -44,24 +46,52 @@ const PurchaseList = ({
     onFetchReturnPreview,
     purchaseDetails,
     returnPreviewData,
+    purchasePayments,
+    paymentsLoading,
+    registeringPayment,
+    onFetchPurchasePayments,
+    onRegisterPurchasePayment,
 }) => {
     const [searchText, setSearchText] = useState("");
     const [modalVisible, setModalVisible] = useState(false);
     const [detailModalVisible, setDetailModalVisible] = useState(false);
     const [returnPreviewModalVisible, setReturnPreviewModalVisible] =
         useState(false);
+    const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+    const [cashAccounts, setCashAccounts] = useState([]);
     const [selectedPurchase, setSelectedPurchase] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [form] = Form.useForm();
+    const [paymentForm] = Form.useForm();
     const { t } = useI18n();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("purchases", "edit");
+    const canRegisterPayment = hasPermission("finance", "edit");
     const { isOpen: isTutorialActive, effectiveSteps, stepIndex, createdRefs } = useInventoryTour();
 
     const handleViewDetails = async (purchase) => {
         setSelectedPurchase(purchase);
         await onFetchPurchaseDetails(purchase._id);
+        onFetchPurchasePayments(purchase._id);
         setDetailModalVisible(true);
+    };
+
+    const openPaymentModal = async () => {
+        if (cashAccounts.length === 0) {
+            try {
+                const res = await financeService.listCashAccounts();
+                setCashAccounts(res?.data || []);
+            } catch {
+                // RegisterPaymentModal shows the "no accounts" hint either way
+            }
+        }
+        paymentForm.resetFields();
+        setPaymentModalVisible(true);
+    };
+
+    const handleRegisterPayment = async (values) => {
+        const success = await onRegisterPurchasePayment(selectedPurchase._id, values);
+        if (success) setPaymentModalVisible(false);
     };
 
     const handleReturnPreview = async (purchaseId) => {
@@ -215,7 +245,27 @@ const PurchaseList = ({
                 onCancel={() => setDetailModalVisible(false)}
                 purchase={selectedPurchase}
                 details={purchaseDetails}
+                purchasePayments={purchasePayments}
+                paymentsLoading={paymentsLoading}
+                onRegisterPayment={openPaymentModal}
+                canRegisterPayment={canRegisterPayment}
             />
+
+            {selectedPurchase && (
+                <RegisterPaymentModal
+                    visible={paymentModalVisible}
+                    onCancel={() => setPaymentModalVisible(false)}
+                    onSubmit={handleRegisterPayment}
+                    submitting={registeringPayment}
+                    form={paymentForm}
+                    pendingBalance={Math.max(
+                        0,
+                        purchaseDetails.reduce((sum, d) => sum + (d.total || 0) + (d.tax_amount || 0), 0) -
+                            purchasePayments.reduce((sum, p) => sum + p.amount, 0)
+                    )}
+                    cashAccounts={cashAccounts}
+                />
+            )}
 
             <ReturnPreview
                 visible={returnPreviewModalVisible}

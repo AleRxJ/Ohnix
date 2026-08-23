@@ -11,6 +11,7 @@ import {
     getSalesByTeamReport,
     getPeriodComparisonReport,
     getVatReport,
+    getCarteraReport,
     exportReportPdf,
     authorizeCsvExport,
     authorizeExcelExport,
@@ -53,6 +54,7 @@ router.route("/top-customers").get(requireModulePermission("reports", "view"), e
 router.route("/sales-by-team").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getSalesByTeamReport);
 router.route("/period-comparison").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getPeriodComparisonReport);
 router.route("/vat").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getVatReport);
+router.route("/cartera").get(requireModulePermission("reports", "view"), enforcePlanFeature("advancedReports"), getCarteraReport);
 
 // PDF export - the app's default JSON body limit (16kb, app.js) is too small
 // for a full report table (hundreds of rows), so this route gets its own

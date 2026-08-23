@@ -39,6 +39,7 @@ const AdvancedReports = () => {
     const [teamData, setTeamData] = useState(null);
     const [comparisonData, setComparisonData] = useState(null);
     const [vatData, setVatData] = useState(null);
+    const [carteraData, setCarteraData] = useState(null);
     const { user } = useContext(AuthContext);
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -52,18 +53,20 @@ const AdvancedReports = () => {
         try {
             setLoading(true);
             const params = dateParams();
-            const [margin, customers, team, comparison, vat] = await Promise.all([
+            const [margin, customers, team, comparison, vat, cartera] = await Promise.all([
                 api.get("/reports/profit-margin", { params }),
                 api.get("/reports/top-customers", { params }),
                 api.get("/reports/sales-by-team", { params }),
                 api.get("/reports/period-comparison", { params }),
                 api.get("/reports/vat", { params }),
+                api.get("/reports/cartera", { params }),
             ]);
             setMarginData(margin.data.data);
             setCustomersData(customers.data.data);
             setTeamData(team.data.data);
             setComparisonData(comparison.data.data);
             setVatData(vat.data.data);
+            setCarteraData(cartera.data.data);
         } catch (error) {
             toast.error(error.response?.data?.message || t("reports.advanced.failed"));
         } finally {
@@ -108,6 +111,28 @@ const AdvancedReports = () => {
         { title: t("reports.advanced.vat_base_column"), dataIndex: "base", key: "base", render: (v) => formatCurrency(v), width: 130 },
         { title: t("reports.advanced.vat_tax_column"), dataIndex: "taxAmount", key: "taxAmount", render: (v) => formatCurrency(v), width: 130 },
         { title: t("reports.advanced.vat_lines_column"), dataIndex: "lineCount", key: "lineCount", width: 90, responsive: ["sm"] },
+    ];
+
+    const carteraPartyColumns = (nameKey, nameTitle) => [
+        { title: nameTitle, dataIndex: "name", key: "name", ellipsis: true },
+        { title: t("reports.advanced.cartera_documents_column"), dataIndex: "documentCount", key: "documentCount", width: 100 },
+        { title: t("reports.advanced.cartera_total_column"), dataIndex: "total", key: "total", render: (v) => formatCurrency(v), width: 120 },
+        { title: t("reports.advanced.cartera_paid_column"), dataIndex: "paid", key: "paid", render: (v) => formatCurrency(v), width: 120, responsive: ["sm"] },
+        { title: t("reports.advanced.cartera_pending_column"), dataIndex: "pending", key: "pending", render: (v) => <span className="font-semibold text-[#f5222d]">{formatCurrency(v)}</span>, width: 130 },
+    ];
+
+    const carteraDocumentColumns = (docKey, docTitle, partyKey, partyTitle) => [
+        { title: docTitle, dataIndex: docKey, key: docKey, width: 120 },
+        { title: partyTitle, dataIndex: partyKey, key: partyKey, render: (v) => v?.name || t("common.na"), ellipsis: true },
+        { title: t("common.total"), dataIndex: "total", key: "total", render: (v) => formatCurrency(v), width: 120, responsive: ["sm"] },
+        { title: t("finance.pending_balance_label"), dataIndex: "pending", key: "pending", render: (v) => <span className="font-semibold text-[#f5222d]">{formatCurrency(v)}</span>, width: 130 },
+        {
+            title: t("reports.advanced.cartera_days_overdue_column"),
+            dataIndex: "days_overdue",
+            key: "days_overdue",
+            width: 110,
+            render: (v) => <span className={v > 30 ? "text-red-500 font-semibold" : v > 0 ? "text-amber-500" : ""}>{v}</span>,
+        },
     ];
 
     const filterBar = (
@@ -292,6 +317,72 @@ const AdvancedReports = () => {
                             <Table columns={vatColumns} dataSource={vatData.byRatePurchases} rowKey="rate" loading={loading} pagination={false} className="module-dark-table" scroll={{ x: 400 }} />
                         </Card>
                     )}
+                </>
+            ),
+        },
+        {
+            key: "cartera",
+            label: t("reports.advanced.cartera_tab"),
+            children: carteraData && (
+                <>
+                    <Row gutter={[16, 16]} className="mb-4">
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.cartera_receivables_total")} value={carteraData.receivables.summary.totalPending} formatter={formatCurrency} valueStyle={{ color: "#f5222d" }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.cartera_receivables_count")} value={carteraData.receivables.summary.documentCount} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.cartera_payables_total")} value={carteraData.payables.summary.totalPending} formatter={formatCurrency} valueStyle={{ color: "#f59e0b" }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.cartera_payables_count")} value={carteraData.payables.summary.documentCount} />
+                        </Col>
+                    </Row>
+                    <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.cartera_by_customer")}>
+                        <Table
+                            columns={carteraPartyColumns("customer", t("reports.advanced.cartera_customer_column"))}
+                            dataSource={carteraData.receivables.byCustomer}
+                            rowKey="_id"
+                            loading={loading}
+                            pagination={{ pageSize: 10 }}
+                            className="module-dark-table"
+                            scroll={{ x: 500 }}
+                        />
+                    </Card>
+                    <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.cartera_by_document_receivable")}>
+                        <Table
+                            columns={carteraDocumentColumns("invoice_no", t("reports.advanced.cartera_document_column"), "customer", t("reports.advanced.cartera_customer_column"))}
+                            dataSource={carteraData.receivables.byDocument}
+                            rowKey="_id"
+                            loading={loading}
+                            pagination={{ pageSize: 10 }}
+                            className="module-dark-table"
+                            scroll={{ x: 550 }}
+                        />
+                    </Card>
+                    <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.cartera_by_supplier")}>
+                        <Table
+                            columns={carteraPartyColumns("supplier", t("reports.advanced.cartera_supplier_column"))}
+                            dataSource={carteraData.payables.bySupplier}
+                            rowKey="_id"
+                            loading={loading}
+                            pagination={{ pageSize: 10 }}
+                            className="module-dark-table"
+                            scroll={{ x: 500 }}
+                        />
+                    </Card>
+                    <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("reports.advanced.cartera_by_document_payable")}>
+                        <Table
+                            columns={carteraDocumentColumns("purchase_no", t("reports.advanced.cartera_document_column"), "supplier", t("reports.advanced.cartera_supplier_column"))}
+                            dataSource={carteraData.payables.byDocument}
+                            rowKey="_id"
+                            loading={loading}
+                            pagination={{ pageSize: 10 }}
+                            className="module-dark-table"
+                            scroll={{ x: 550 }}
+                        />
+                    </Card>
                 </>
             ),
         },

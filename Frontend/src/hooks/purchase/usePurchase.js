@@ -5,6 +5,7 @@ import { api } from "../../api/api.js";
 import { calculateStats } from "../../utils/purchaseUtils.js";
 import AuthContext from "../../context/AuthContext.jsx";
 import { formatCurrency } from "../../utils/currency.js";
+import { financeService } from "../../services/financeService.js";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
@@ -28,6 +29,9 @@ export const usePurchase = () => {
     const [loading, setLoading] = useState(false);
     const [purchaseDetails, setPurchaseDetails] = useState([]);
     const [returnPreviewData, setReturnPreviewData] = useState(null);
+    const [purchasePayments, setPurchasePayments] = useState([]);
+    const [paymentsLoading, setPaymentsLoading] = useState(false);
+    const [registeringPayment, setRegisteringPayment] = useState(false);
     // Which purchase's status action is mid-request - same gap as orders had
     // (see useOrderOperations.js): no feedback at all while the PATCH is in
     // flight made a slow request look like the click did nothing.
@@ -114,6 +118,35 @@ export const usePurchase = () => {
         } catch (error) {
             toast.error(t("purchases.error_fetching_purchase_details"));
             console.error("Error:", error);
+        }
+    };
+
+    const fetchPurchasePayments = async (purchaseId) => {
+        setPaymentsLoading(true);
+        try {
+            const res = await financeService.listPurchasePayments(purchaseId);
+            setPurchasePayments(res?.data || []);
+        } catch (error) {
+            toast.error(t("finance.failed"));
+            console.error("Error:", error);
+        } finally {
+            setPaymentsLoading(false);
+        }
+    };
+
+    const registerPurchasePayment = async (purchaseId, values) => {
+        setRegisteringPayment(true);
+        try {
+            await financeService.registerPurchasePayment(purchaseId, values);
+            toast.success(t("finance.payment_registered"));
+            await Promise.all([fetchPurchasePayments(purchaseId), fetchPurchases()]);
+            return true;
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("finance.failed"));
+            console.error("Error:", error);
+            return false;
+        } finally {
+            setRegisteringPayment(false);
         }
     };
 
@@ -303,6 +336,11 @@ export const usePurchase = () => {
         createPurchase,
         updatePurchaseStatus,
         processReturn,
+        purchasePayments,
+        paymentsLoading,
+        registeringPayment,
+        fetchPurchasePayments,
+        registerPurchasePayment,
 
         // Setters
         setPurchaseDetails,

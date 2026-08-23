@@ -8,6 +8,7 @@ import { recordStockMovement } from "./stockMovement.service.js";
 import { claimLocationStock, creditLocationStock, getLocationStock } from "./productLocationStock.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
+import { postOrderSaleJournalEntry, postOrderReturnJournalEntry } from "./accountingPosting.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -45,6 +46,13 @@ const findProductByAnyId = async (id) =>
             taxCode: true,
             taxTreatment: true,
             lowStockThreshold: true,
+            // Read live at sale-completion time for the automatic COGS
+            // journal line (accountingPosting.service.js) - not frozen per
+            // OrderDetail like unitcost/tax fields are, since this codebase
+            // has no historical cost-layer concept anywhere (no FIFO/
+            // weighted-average), same simplification the Fase 4 plan
+            // documents explicitly.
+            buyingPrice: true,
         },
     });
 
@@ -330,6 +338,14 @@ class OrderService {
                 }
             }
 
+            if (shouldDeductStock) {
+                const cogs = resolvedItems.reduce(
+                    (sum, item) => sum + item.quantity * Number(item.product.buyingPrice),
+                    0
+                );
+                await postOrderSaleJournalEntry(tx, { accountId: userId, createdById: userId, order: createdOrder, cogs });
+            }
+
             return createdOrder;
         });
 
@@ -456,9 +472,10 @@ class OrderService {
                     id: true,
                     quantity: true,
                     unitcost: true,
+                    taxRateApplied: true,
                     returnedQuantity: true,
                     productId: true,
-                    product: { select: { createdById: true } },
+                    product: { select: { createdById: true, buyingPrice: true } },
                 },
             });
 
@@ -478,6 +495,8 @@ class OrderService {
                         "This order was already updated by another request. Please refresh and try again."
                     );
                 }
+
+                const journalLines = [];
 
                 for (const detail of details) {
                     // Only restock/credit whatever is still outstanding on
@@ -523,6 +542,28 @@ class OrderService {
                             "This order was updated by another request. Please refresh and try again."
                         );
                     }
+
+                    // Pushed only after the claim above succeeds - a mid-loop
+                    // throw rolls back the whole tx, so nothing here ever gets
+                    // posted for a line that wasn't actually claimed.
+                    journalLines.push({
+                        quantity: pending,
+                        unitcost: detail.unitcost,
+                        taxRateApplied: detail.taxRateApplied,
+                        buyingPrice: detail.product.buyingPrice,
+                    });
+                }
+
+                if (journalLines.length > 0) {
+                    await postOrderReturnJournalEntry(tx, {
+                        accountId: order.createdById,
+                        createdById: userId,
+                        sourceType: "order_cancellation",
+                        sourceId: order.id,
+                        entryDate: new Date(),
+                        description: `Cancelación de pedido`,
+                        lines: journalLines,
+                    });
                 }
 
                 return tx.order.findUniqueOrThrow({ where: { id: order.id } });
@@ -550,6 +591,7 @@ class OrderService {
                             productCode: true,
                             stock: true,
                             createdById: true,
+                            buyingPrice: true,
                         },
                     },
                 },
@@ -647,7 +689,20 @@ class OrderService {
                     });
                 }
 
-                return tx.order.findUniqueOrThrow({ where: { id: order.id } });
+                const updatedOrder = await tx.order.findUniqueOrThrow({ where: { id: order.id } });
+
+                const cogs = details.reduce(
+                    (sum, detail) => sum + detail.quantity * Number(detail.product.buyingPrice),
+                    0
+                );
+                await postOrderSaleJournalEntry(tx, {
+                    accountId: order.createdById,
+                    createdById: userId,
+                    order: updatedOrder,
+                    cogs,
+                });
+
+                return updatedOrder;
             });
 
             if (!updated.isTutorialData) {
@@ -763,6 +818,7 @@ class OrderService {
                         legacyMongoId: true,
                         productName: true,
                         createdById: true,
+                        buyingPrice: true,
                     },
                 },
             },
@@ -800,6 +856,7 @@ class OrderService {
 
         const { results, orderFullyReturned } = await prisma.$transaction(async (tx) => {
             const results = [];
+            const journalLines = [];
 
             for (const line of lines) {
                 const detail = detailById.get(line.order_detail_id);
@@ -860,6 +917,16 @@ class OrderService {
                     pending_quantity: detail.quantity - updatedDetail.returnedQuantity,
                     fully_returned: updatedDetail.returnedQuantity === detail.quantity,
                 });
+
+                // Pushed only after the claim above succeeds, same reasoning
+                // as the cancellation branch: a mid-loop throw rolls back the
+                // whole tx before anything gets posted.
+                journalLines.push({
+                    quantity,
+                    unitcost: detail.unitcost,
+                    taxRateApplied: detail.taxRateApplied,
+                    buyingPrice: detail.product.buyingPrice,
+                });
             }
 
             const allDetails = await tx.orderDetail.findMany({
@@ -876,6 +943,16 @@ class OrderService {
                     data: { orderStatus: "returned", updatedById: userId },
                 });
             }
+
+            await postOrderReturnJournalEntry(tx, {
+                accountId: order.createdById,
+                createdById: userId,
+                sourceType: "order_return",
+                sourceId: order.id,
+                entryDate: new Date(),
+                description: `Devolución de pedido`,
+                lines: journalLines,
+            });
 
             return { results, orderFullyReturned };
         });

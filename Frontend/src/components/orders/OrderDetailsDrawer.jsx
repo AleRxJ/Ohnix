@@ -6,6 +6,7 @@ import {
     ShoppingCartOutlined,
     UserOutlined,
     CalendarOutlined,
+    WalletOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { getStatusColor } from "../../utils/orderHelpers";
@@ -24,6 +25,10 @@ const OrderDetailsDrawer = ({
     orderDetails,
     detailsLoading,
     onGenerateInvoice,
+    orderPayments = [],
+    paymentsLoading = false,
+    onRegisterPayment,
+    canRegisterPayment = false,
 }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -41,6 +46,36 @@ const OrderDetailsDrawer = ({
     if (!selectedOrder) return null;
 
     const isCancelled = selectedOrder.order_status === "cancelled";
+    const paidAmount = orderPayments.reduce((sum, p) => sum + p.amount, 0);
+    const pendingBalance = Math.max(0, selectedOrder.total - paidAmount);
+
+    const paymentColumns = [
+        {
+            title: t("finance.col_date"),
+            dataIndex: "paid_at",
+            key: "paid_at",
+            render: (v) => dayjs(v).format("DD/MM/YYYY HH:mm"),
+        },
+        {
+            title: t("finance.col_amount"),
+            dataIndex: "amount",
+            key: "amount",
+            align: "right",
+            render: (v) => <span className="font-medium text-[#44F3F0]">{formatCurrency(v)}</span>,
+        },
+        {
+            title: t("finance.cash_account_label"),
+            dataIndex: "cash_account",
+            key: "cash_account",
+            render: (v) => v?.name || t("common.na"),
+        },
+        {
+            title: t("finance.method_label"),
+            dataIndex: "method",
+            key: "method",
+            render: (v) => v || t("common.na"),
+        },
+    ];
 
     const columns = [
         {
@@ -237,6 +272,48 @@ const OrderDetailsDrawer = ({
                             </span>
                         </div>
                     </div>
+                </div>
+
+                <Divider style={{ margin: "24px 0" }} />
+
+                <div>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-medium text-[var(--ohnix-text-muted)] uppercase tracking-wide m-0">
+                            {t("finance.payments_section_title")}
+                        </h3>
+                        {!isCancelled && pendingBalance > 0 && canRegisterPayment && (
+                            <Button size="small" icon={<WalletOutlined />} onClick={onRegisterPayment}>
+                                {t("finance.register_payment")}
+                            </Button>
+                        )}
+                    </div>
+                    <div className="rounded-2xl p-4 border border-[var(--ohnix-line-4)] space-y-3 bg-[var(--ohnix-line-1)] mb-4">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-[var(--ohnix-text-muted)]">{t("finance.paid_amount_label")}</span>
+                            <span className="text-sm font-medium text-[var(--ohnix-text-primary)]">{formatCurrency(paidAmount)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm text-[var(--ohnix-text-muted)]">{t("finance.pending_balance_label")}</span>
+                            <span className={`text-sm font-semibold ${pendingBalance > 0 ? "text-[#44F3F0]" : "text-green-500"}`}>
+                                {pendingBalance > 0 ? formatCurrency(pendingBalance) : t("finance.fully_paid")}
+                            </span>
+                        </div>
+                    </div>
+                    {paymentsLoading ? (
+                        <div className="text-center py-6">
+                            <Spin />
+                        </div>
+                    ) : orderPayments.length > 0 ? (
+                        <Table
+                            dataSource={orderPayments}
+                            columns={paymentColumns}
+                            pagination={false}
+                            rowKey="_id"
+                            size="small"
+                        />
+                    ) : (
+                        <div className="text-sm text-[var(--ohnix-text-muted)] py-2">{t("finance.no_payments")}</div>
+                    )}
                 </div>
 
                 <Divider style={{ margin: "24px 0" }} />

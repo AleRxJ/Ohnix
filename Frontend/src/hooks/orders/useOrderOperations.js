@@ -4,6 +4,7 @@ import { message } from "antd";
 import { api } from "../../api/api";
 import { calculateOrderTotals } from "../../utils/orderHelpers";
 import { formatCurrency } from "../../utils/currency";
+import { financeService } from "../../services/financeService";
 import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
@@ -18,6 +19,9 @@ export const useOrderOperations = (refreshOrders) => {
     const { isOpen: isTutorialActive, notifyAction, createdRefs } = useInventoryTour();
     const [orderDetails, setOrderDetails] = useState([]);
     const [detailsLoading, setDetailsLoading] = useState(false);
+    const [orderPayments, setOrderPayments] = useState([]);
+    const [paymentsLoading, setPaymentsLoading] = useState(false);
+    const [registeringPayment, setRegisteringPayment] = useState(false);
     const [returnPreviewData, setReturnPreviewData] = useState(null);
     // Which order's status Select is mid-request - the status PATCH gave no
     // visual feedback at all while in flight (no spinner, nothing disabled),
@@ -174,6 +178,35 @@ export const useOrderOperations = (refreshOrders) => {
         }
     };
 
+    const fetchOrderPayments = async (orderId) => {
+        setPaymentsLoading(true);
+        try {
+            const res = await financeService.listOrderPayments(orderId);
+            setOrderPayments(res?.data || []);
+        } catch (error) {
+            toast.error(t("finance.failed"));
+            console.error("Error fetching order payments:", error);
+        } finally {
+            setPaymentsLoading(false);
+        }
+    };
+
+    const registerOrderPayment = async (orderId, values) => {
+        setRegisteringPayment(true);
+        try {
+            await financeService.registerOrderPayment(orderId, values);
+            toast.success(t("finance.payment_registered"));
+            await Promise.all([fetchOrderPayments(orderId), refreshOrders()]);
+            return true;
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("finance.failed"));
+            console.error("Error registering order payment:", error);
+            return false;
+        } finally {
+            setRegisteringPayment(false);
+        }
+    };
+
     const fetchReturnPreview = async (orderId) => {
         setReturnPreviewLoadingId(orderId);
         try {
@@ -243,5 +276,10 @@ export const useOrderOperations = (refreshOrders) => {
         fetchReturnPreview,
         processReturn,
         setReturnPreviewData,
+        orderPayments,
+        paymentsLoading,
+        registeringPayment,
+        fetchOrderPayments,
+        registerOrderPayment,
     };
 };

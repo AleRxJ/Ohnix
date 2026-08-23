@@ -15,6 +15,9 @@ const Purchase = () => {
         stats,
         updatingPurchaseId,
         returnPreviewLoadingId,
+        purchasePayments,
+        paymentsLoading,
+        registeringPayment,
 
         // Actions
         createPurchase,
@@ -22,6 +25,8 @@ const Purchase = () => {
         processReturn,
         fetchPurchaseDetails,
         fetchReturnPreview,
+        fetchPurchasePayments,
+        registerPurchasePayment,
     } = usePurchase();
 
     return (
@@ -40,6 +45,11 @@ const Purchase = () => {
             onFetchReturnPreview={fetchReturnPreview}
             purchaseDetails={purchaseDetails}
             returnPreviewData={returnPreviewData}
+            purchasePayments={purchasePayments}
+            paymentsLoading={paymentsLoading}
+            registeringPayment={registeringPayment}
+            onFetchPurchasePayments={fetchPurchasePayments}
+            onRegisterPurchasePayment={registerPurchasePayment}
         />
     );
 };

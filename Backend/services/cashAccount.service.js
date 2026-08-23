@@ -1,6 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { assertPointOfSaleExists } from "../middleware/pos.permissions.js";
+import { getChartAccountMap } from "./chartOfAccounts.service.js";
 
 // CashAccount is the caja/bank counterpart to PointOfSale/Product: a "cash"
 // account belongs to exactly one location (the physical drawer), a "bank"
@@ -50,6 +51,14 @@ export const createCashAccount = async ({ accountId, actorId, name, accountType,
         throw new ApiError(400, "Una cuenta de caja debe estar asociada a un punto de venta.");
     }
 
+    // Which PUC ledger account this cash account posts to by default (Fase
+    // 4, contabilidad automática) - 1105 Caja / 1110 Bancos. Resolved here
+    // rather than left null, so a brand-new account never needs the lazy
+    // backfill path (chartOfAccounts.service.js#resolveCashAccountChartAccount)
+    // that only exists for accounts created before this feature shipped.
+    const coa = await getChartAccountMap(prisma, accountId);
+    const chartAccountId = coa.get(accountType === "bank" ? "1110" : "1105").id;
+
     const cashAccount = await prisma.cashAccount.create({
         data: {
             name: trimmedName,
@@ -58,6 +67,7 @@ export const createCashAccount = async ({ accountId, actorId, name, accountType,
             bankName: accountType === "bank" ? bankName?.trim() || null : null,
             accountNumber: accountType === "bank" ? accountNumber?.trim() || null : null,
             createdById: accountId,
+            chartAccountId,
         },
         include: { pointOfSale: { select: { id: true, name: true } } },
     });

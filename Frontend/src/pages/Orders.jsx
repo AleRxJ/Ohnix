@@ -9,9 +9,11 @@ import OrdersTable from "../components/orders/OrdersTable";
 import CreateOrderModal from "../components/orders/CreateOrderModal";
 import OrderDetailsDrawer from "../components/orders/OrderDetailsDrawer";
 import OrderReturnPreview from "../components/orders/OrderReturnPreview";
+import RegisterPaymentModal from "../components/finance/RegisterPaymentModal";
 
 import { useOrders } from "../hooks/orders/useOrders";
 import { useOrderOperations } from "../hooks/orders/useOrderOperations";
+import { financeService } from "../services/financeService";
 import useI18n from "../hooks/useI18n";
 import { useTeam } from "../context/TeamContext";
 import { useInventoryTour } from "../context/InventoryTourContext";
@@ -21,13 +23,17 @@ const Orders = () => {
     const { t } = useI18n();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("orders", "edit");
+    const canRegisterPayment = hasPermission("finance", "edit");
     const { isOpen: isTutorialActive, effectiveSteps, stepIndex, createdRefs } = useInventoryTour();
     const [createModalVisible, setCreateModalVisible] = useState(false);
     const [detailsDrawerVisible, setDetailsDrawerVisible] = useState(false);
     const [returnPreviewVisible, setReturnPreviewVisible] = useState(false);
+    const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+    const [cashAccounts, setCashAccounts] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [createForm] = Form.useForm();
+    const [paymentForm] = Form.useForm();
 
     const {
         orders,
@@ -53,6 +59,11 @@ const Orders = () => {
         fetchOrderDetails,
         fetchReturnPreview,
         processReturn,
+        orderPayments,
+        paymentsLoading,
+        registeringPayment,
+        fetchOrderPayments,
+        registerOrderPayment,
     } = useOrderOperations(() =>
         fetchOrders(pagination.current, pagination.pageSize)
     );
@@ -86,6 +97,25 @@ const Orders = () => {
         setSelectedOrder(order);
         setDetailsDrawerVisible(true);
         fetchOrderDetails(order._id);
+        fetchOrderPayments(order._id);
+    };
+
+    const openPaymentModal = async () => {
+        if (cashAccounts.length === 0) {
+            try {
+                const res = await financeService.listCashAccounts();
+                setCashAccounts(res?.data || []);
+            } catch {
+                // RegisterPaymentModal shows the "no accounts" hint either way
+            }
+        }
+        paymentForm.resetFields();
+        setPaymentModalVisible(true);
+    };
+
+    const handleRegisterPayment = async (values) => {
+        const success = await registerOrderPayment(selectedOrder._id, values);
+        if (success) setPaymentModalVisible(false);
     };
 
     const handleReturnPreview = async (orderId) => {
@@ -212,7 +242,23 @@ const Orders = () => {
                 orderDetails={orderDetails}
                 detailsLoading={detailsLoading}
                 onGenerateInvoice={generateInvoice}
+                orderPayments={orderPayments}
+                paymentsLoading={paymentsLoading}
+                onRegisterPayment={openPaymentModal}
+                canRegisterPayment={canRegisterPayment}
             />
+
+            {selectedOrder && (
+                <RegisterPaymentModal
+                    visible={paymentModalVisible}
+                    onCancel={() => setPaymentModalVisible(false)}
+                    onSubmit={handleRegisterPayment}
+                    submitting={registeringPayment}
+                    form={paymentForm}
+                    pendingBalance={Math.max(0, selectedOrder.total - orderPayments.reduce((sum, p) => sum + p.amount, 0))}
+                    cashAccounts={cashAccounts}
+                />
+            )}
 
             <OrderReturnPreview
                 visible={returnPreviewVisible}

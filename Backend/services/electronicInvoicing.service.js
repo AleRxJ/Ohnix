@@ -34,6 +34,7 @@ import { computeNitCheckDigit } from "../utils/nit.util.js";
 import { normalizeCountryCode } from "./companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { recordStockMovement } from "./stockMovement.service.js";
+import { postOrderReturnJournalEntry } from "./accountingPosting.service.js";
 import { creditLocationStock } from "./productLocationStock.service.js";
 
 const toExternalId = (entity) => entity?.legacyMongoId || entity?.id;
@@ -1003,6 +1004,7 @@ const applyCreditNoteRestock = async ({ order, items, creditNoteId, userId }) =>
 
     const { lines, orderFullyReturned } = await prisma.$transaction(async (tx) => {
         const lines = [];
+        const journalLines = [];
 
         for (const { orderDetailId, quantity } of items) {
             const detail = detailById.get(orderDetailId);
@@ -1048,6 +1050,14 @@ const applyCreditNoteRestock = async ({ order, items, creditNoteId, userId }) =>
             }
 
             lines.push({ order_detail_id: orderDetailId, returned_now: qty, refund_now: refundNow });
+            // Pushed only after the claim above succeeds, same reasoning as
+            // order.service.js's return/cancellation branches.
+            journalLines.push({
+                quantity: qty,
+                unitcost: detail.unitcost,
+                taxRateApplied: detail.taxRateApplied,
+                buyingPrice: detail.product.buyingPrice,
+            });
         }
 
         const allDetails = await tx.orderDetail.findMany({
@@ -1062,6 +1072,22 @@ const applyCreditNoteRestock = async ({ order, items, creditNoteId, userId }) =>
                 data: { orderStatus: "returned", updatedById: userId },
             });
         }
+
+        // Posted inside this same tx, alongside the stock restock above -
+        // both commit or both roll back together, keeping stock and the
+        // ledger in sync with each other even if this local effect fails
+        // (the outer try/catch around this whole function already tolerates
+        // that without invalidating the DIAN document itself - see this
+        // function's own header comment, unchanged by this).
+        await postOrderReturnJournalEntry(tx, {
+            accountId: order.createdById,
+            createdById: userId,
+            sourceType: "credit_note_restock",
+            sourceId: creditNoteId,
+            entryDate: new Date(),
+            description: "Nota crédito con devolución de mercancía",
+            lines: journalLines,
+        });
 
         return { lines, orderFullyReturned };
     });

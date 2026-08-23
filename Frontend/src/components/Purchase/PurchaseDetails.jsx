@@ -8,7 +8,10 @@ import {
     Typography,
     Card,
     Space,
+    Button,
+    Spin,
 } from "antd";
+import { WalletOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { getStatusColor } from "../../utils/purchaseUtils";
 import { getStatusIconPurchase } from "../../data";
@@ -21,7 +24,16 @@ import PresenceLockBar from "../team/PresenceLockBar";
 
 const { Text, Title } = Typography;
 
-const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
+const PurchaseDetails = ({
+    visible,
+    onCancel,
+    purchase,
+    details,
+    purchasePayments = [],
+    paymentsLoading = false,
+    onRegisterPayment,
+    canRegisterPayment = false,
+}) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
     const { user } = useContext(AuthContext);
@@ -228,6 +240,78 @@ const PurchaseDetails = ({ visible, onCancel, purchase, details }) => {
                     );
                 }}
             />
+
+            {purchase && (
+                <>
+                    <Divider orientation="left" className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                        {t("finance.payments_section_title")}
+                    </Divider>
+                    {(() => {
+                        const total = details.reduce((sum, d) => sum + (d.total || 0) + (d.tax_amount || 0), 0);
+                        const paidAmount = purchasePayments.reduce((sum, p) => sum + p.amount, 0);
+                        const pendingBalance = Math.max(0, total - paidAmount);
+                        const paymentColumns = [
+                            {
+                                title: t("finance.col_date"),
+                                dataIndex: "paid_at",
+                                key: "paid_at",
+                                render: (v) => dayjs(v).format("DD/MM/YYYY HH:mm"),
+                            },
+                            {
+                                title: t("finance.col_amount"),
+                                dataIndex: "amount",
+                                key: "amount",
+                                align: "right",
+                                render: (v) => <span className="font-medium text-[#44F3F0]">{formatCurrency(v)}</span>,
+                            },
+                            {
+                                title: t("finance.cash_account_label"),
+                                dataIndex: "cash_account",
+                                key: "cash_account",
+                                render: (v) => v?.name || t("common.na"),
+                            },
+                            {
+                                title: t("finance.method_label"),
+                                dataIndex: "method",
+                                key: "method",
+                                render: (v) => v || t("common.na"),
+                            },
+                        ];
+                        return (
+                            <>
+                                <div className="flex items-center justify-end mb-3">
+                                    {pendingBalance > 0 && canRegisterPayment && (
+                                        <Button size="small" icon={<WalletOutlined />} onClick={onRegisterPayment}>
+                                            {t("finance.register_payment")}
+                                        </Button>
+                                    )}
+                                </div>
+                                <div className="rounded-2xl p-4 border border-[var(--ohnix-line-4)] space-y-3 bg-[var(--ohnix-line-1)] mb-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-[var(--ohnix-text-muted)]">{t("finance.paid_amount_label")}</span>
+                                        <span className="text-sm font-medium text-[var(--ohnix-text-primary)]">{formatCurrency(paidAmount)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-[var(--ohnix-text-muted)]">{t("finance.pending_balance_label")}</span>
+                                        <span className={`text-sm font-semibold ${pendingBalance > 0 ? "text-[#44F3F0]" : "text-green-500"}`}>
+                                            {pendingBalance > 0 ? formatCurrency(pendingBalance) : t("finance.fully_paid")}
+                                        </span>
+                                    </div>
+                                </div>
+                                {paymentsLoading ? (
+                                    <div className="text-center py-6">
+                                        <Spin />
+                                    </div>
+                                ) : purchasePayments.length > 0 ? (
+                                    <Table dataSource={purchasePayments} columns={paymentColumns} pagination={false} rowKey="_id" size="small" />
+                                ) : (
+                                    <div className="text-sm text-[var(--ohnix-text-muted)] py-2">{t("finance.no_payments")}</div>
+                                )}
+                            </>
+                        );
+                    })()}
+                </>
+            )}
 
         </Modal>
     );

@@ -186,6 +186,10 @@ model User {
   orderPaymentsRecorded     OrderPayment[]
   purchasePaymentsRecorded  PurchasePayment[]
   bankStatementEntriesAdded BankStatementEntry[]
+  chartAccountsCreated      ChartAccount[]
+  accountingPeriodsCreated  AccountingPeriod[]   @relation("AccountingPeriodCreatedBy")
+  accountingPeriodsClosed   AccountingPeriod[]   @relation("AccountingPeriodClosedBy")
+  journalEntriesCreated     JournalEntry[]
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
   // (starter/growth without a Team row) still need exactly one default
@@ -1123,23 +1127,31 @@ enum CashAccountType {
 // service layer, not the DB, same as several other conditional-requirement
 // fields in this schema, e.g. RESTOCK_CONCEPT_CODES items).
 model CashAccount {
-  id            String          @id @default(cuid())
-  name          String
-  accountType   CashAccountType @default(cash) @map("account_type")
-  pointOfSaleId String?         @map("point_of_sale_id")
-  bankName      String?         @map("bank_name")
-  accountNumber String?         @map("account_number")
+  id             String          @id @default(cuid())
+  name           String
+  accountType    CashAccountType @default(cash) @map("account_type")
+  pointOfSaleId  String?         @map("point_of_sale_id")
+  bankName       String?         @map("bank_name")
+  accountNumber  String?         @map("account_number")
   // Fast-read cache kept in sync with the CashMovement ledger the same way
   // Product.stock is a cache in front of StockMovement - always equals the
   // running sum of this account's CashMovement.delta, never written
   // directly except by cashMovement.service.js#recordCashMovement.
-  balance       Decimal         @default(0) @db.Decimal(14, 2)
-  isActive      Boolean         @default(true) @map("is_active")
-  createdById   String          @map("created_by")
-  createdAt     DateTime        @default(now()) @map("created_at")
-  updatedAt     DateTime        @updatedAt @map("updated_at")
+  balance        Decimal         @default(0) @db.Decimal(14, 2)
+  isActive       Boolean         @default(true) @map("is_active")
+  // Which PUC ledger account order/purchase payments through this cash
+  // account post to (1105 Caja / 1110 Bancos, by default - see
+  // chartOfAccounts.service.js#ensureDefaultChartOfAccounts). Nullable so
+  // existing rows created before Fase 4 don't need a backfill migration -
+  // resolved and persisted lazily on first payment instead (see
+  // chartOfAccounts.service.js#resolveCashAccountChartAccount).
+  chartAccountId String?         @map("chart_account_id")
+  createdById    String          @map("created_by")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
 
   pointOfSale      PointOfSale?         @relation(fields: [pointOfSaleId], references: [id])
+  chartAccount     ChartAccount?        @relation(fields: [chartAccountId], references: [id])
   createdBy        User                 @relation(fields: [createdById], references: [id])
   movements        CashMovement[]
   orderPayments    OrderPayment[]
@@ -1261,6 +1273,143 @@ model BankStatementEntry {
 
   @@index([cashAccountId, entryDate])
   @@map("bank_statement_entries")
+}
+
+// Fase 4 (contabilidad automática) - Plan Único de Cuentas (PUC) colombiano,
+// una fila por cuenta contable. Named ChartAccount, not Account - "account"
+// already means "tenant" everywhere else in this schema (see PointOfSale's
+// comment on accountId). Only ever deactivated (isActive), never deleted -
+// a JournalEntryLine referencing this row must stay resolvable forever, same
+// reasoning as CashAccount/PointOfSale.
+enum AccountingAccountType {
+  asset
+  liability
+  equity
+  revenue
+  expense
+  cost
+}
+
+model ChartAccount {
+  id          String                @id @default(cuid())
+  code        String
+  name        String
+  accountType AccountingAccountType @map("account_type")
+  // Self-relation for PUC's hierarchy (clase/grupo/cuenta/subcuenta) - not
+  // populated by the default seed (chartOfAccounts.service.js), reserved for
+  // an account added by hand later.
+  parentId    String?               @map("parent_id")
+  isActive    Boolean               @default(true) @map("is_active")
+  createdById String                @map("created_by")
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+
+  parent            ChartAccount?      @relation("ChartAccountHierarchy", fields: [parentId], references: [id])
+  children          ChartAccount[]     @relation("ChartAccountHierarchy")
+  createdBy         User               @relation(fields: [createdById], references: [id])
+  cashAccounts      CashAccount[]
+  journalEntryLines JournalEntryLine[]
+
+  @@unique([createdById, code])
+  @@index([createdById])
+  @@index([parentId])
+  @@map("chart_accounts")
+}
+
+enum AccountingPeriodStatus {
+  open
+  closed
+}
+
+// One row per (tenant, calendar month), created lazily the first time a
+// journal entry needs to post into it (journalEntry.service.js#getOrCreateAccountingPeriod)
+// - same "created on first use" idiom as PointOfSale's default location.
+// Closing a period blocks new entries dated into it - see
+// accountingPeriod.service.js#closeAccountingPeriod for why only past
+// months (never the current one) can be closed.
+model AccountingPeriod {
+  id          String                 @id @default(cuid())
+  createdById String                 @map("created_by")
+  year        Int
+  month       Int
+  status      AccountingPeriodStatus @default(open)
+  closedAt    DateTime?              @map("closed_at")
+  closedById  String?                @map("closed_by")
+  createdAt   DateTime               @default(now()) @map("created_at")
+  updatedAt   DateTime               @updatedAt @map("updated_at")
+
+  createdBy      User           @relation("AccountingPeriodCreatedBy", fields: [createdById], references: [id])
+  closedBy       User?          @relation("AccountingPeriodClosedBy", fields: [closedById], references: [id])
+  journalEntries JournalEntry[]
+
+  @@unique([createdById, year, month])
+  @@index([createdById, status])
+  @@map("accounting_periods")
+}
+
+enum JournalSourceType {
+  order_sale
+  purchase
+  order_payment
+  purchase_payment
+  // Fase 4b (reversas) - same granularity as StockMovementSourceType's
+  // matching values for these exact same events, rather than one generic
+  // "reversal" value, so the ledger records why each reversal happened.
+  order_cancellation
+  order_return
+  purchase_return
+  credit_note_restock
+}
+
+// Append-only double-entry ledger header - mirrors StockMovement/CashMovement's
+// "single write path" idiom (journalEntry.service.js#recordJournalEntry), but
+// with N lines per entry instead of one delta, since a journal entry only
+// means something as a balanced set (debits === credits, enforced at the
+// service layer - see recordJournalEntry). Tenant scope is inherited via
+// periodId -> AccountingPeriod.createdById (like CashMovement inherits via
+// cashAccountId), not a redundant column here.
+model JournalEntry {
+  id          String            @id @default(cuid())
+  periodId    String            @map("period_id")
+  entryDate   DateTime          @map("entry_date")
+  description String?           @db.Text
+  sourceType  JournalSourceType @map("source_type")
+  sourceId    String?           @map("source_id")
+  createdById String            @map("created_by")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  period    AccountingPeriod   @relation(fields: [periodId], references: [id])
+  createdBy User               @relation(fields: [createdById], references: [id])
+  lines     JournalEntryLine[]
+
+  @@index([periodId])
+  @@index([sourceType, sourceId])
+  @@index([entryDate])
+  @@map("journal_entries")
+}
+
+// One debit or credit line of a JournalEntry - never both (enforced by a
+// hand-added CHECK constraint in this model's migration, see
+// migration.sql). No running balance field here on purpose (unlike
+// CashAccount.balance/Product.stock) - nothing needs a fast-read per-account
+// balance yet since there are no financial statements until Fase 5; a
+// balance is derived at report time by summing debit - credit per
+// chartAccountId.
+model JournalEntryLine {
+  id             String   @id @default(cuid())
+  journalEntryId String   @map("journal_entry_id")
+  chartAccountId String   @map("chart_account_id")
+  debit          Decimal  @default(0) @db.Decimal(14, 2)
+  credit         Decimal  @default(0) @db.Decimal(14, 2)
+  description    String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  chartAccount ChartAccount @relation(fields: [chartAccountId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([chartAccountId])
+  @@map("journal_entry_lines")
 }
 
 model TeamInvitation {
