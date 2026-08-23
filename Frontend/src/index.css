@@ -1219,6 +1219,21 @@ textarea.ant-input[disabled] {
 }
 .ant-modal-body::-webkit-scrollbar-track { background: transparent; }
 
+/* Same thin themed scrollbar, for a scrollable div that isn't a drawer or
+   modal body itself (e.g. a capped-height list nested inside one, like
+   ProductDetailsDrawer's movement history preview) - those two rules above
+   only match their own specific containers. */
+.ohnix-scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ohnix-scrollbar-thumb) transparent;
+}
+.ohnix-scrollbar-thin::-webkit-scrollbar { width: 6px; }
+.ohnix-scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--ohnix-scrollbar-thumb);
+  border-radius: 999px;
+}
+.ohnix-scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+
 /* Unit Modal Tabs */
 .unit-modal-tabs .ant-tabs {
   color: var(--ohnix-text-primary);

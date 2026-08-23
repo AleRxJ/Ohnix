@@ -168,6 +168,27 @@ export const receiveTransfer = async ({ transfer, actorId, quantityReceived, not
             });
         }
 
+        // The shortfall itself, as its own zero-delta ledger entry - the
+        // transfer_out/transfer_in pair above already IS the complete
+        // balance change (source -quantitySent, destination
+        // +quantityReceived), so this doesn't move any stock. Without it,
+        // "1 unit never arrived" only ever showed up in the StockTransfer's
+        // own discrepancy field, invisible to anyone just scanning this
+        // product's movement history at either location.
+        if (quantityReceived < transfer.quantitySent) {
+            await recordStockMovement(tx, {
+                productId: transfer.productId,
+                accountId: transfer.accountId,
+                pointOfSaleId: transfer.toPointOfSaleId,
+                delta: 0,
+                balanceAfter: row?.stock ?? 0,
+                sourceType: "transfer_discrepancy",
+                sourceId: transfer.id,
+                reason: `Diferencia en traslado: se enviaron ${transfer.quantitySent}, llegaron ${quantityReceived} (faltante: ${transfer.quantitySent - quantityReceived}).`,
+                createdById: actorId,
+            });
+        }
+
         return tx.stockTransfer.update({
             where: { id: transfer.id },
             data: {

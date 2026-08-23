@@ -1038,6 +1038,8 @@
     "movement_adjustment": "Manual adjustment",
     "movement_transfer_out": "Transfer sent",
     "movement_transfer_in": "Transfer received",
+    "movement_transfer_discrepancy": "Transfer discrepancy",
+    "view_all_movements": "View all",
     "select_point_of_sale_label": "Point of sale",
     "location_stock_title": "Stock by point of sale",
     "location_stock_hint": "This product is the same across every location; stock is split between them.",

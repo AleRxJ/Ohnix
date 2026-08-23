@@ -102,6 +102,14 @@ enum StockMovementSourceType {
   // traceable to each other in the ledger.
   transfer_out
   transfer_in
+  // A zero-delta audit entry - the transfer_out/transfer_in pair above
+  // already fully accounts for the real balance change (source lost
+  // quantitySent, destination gained quantityReceived); this doesn't
+  // change either location's stock, it just makes the shortfall itself
+  // show up in the product's movement history instead of being visible
+  // only on the StockTransfer record's own discrepancy field. See
+  // stockTransfer.service.js#receiveTransfer.
+  transfer_discrepancy
 }
 
 // Whether a company is a "responsable" or "no responsable" of VAT under
