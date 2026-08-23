@@ -642,7 +642,10 @@
     "status_inactive": "Inactivo",
     "limit_used": "{{used}} de {{limit}} puntos de venta",
     "limit_unlimited": "{{used}} puntos de venta · ilimitado",
-    "limit_reached": "Alcanzaste el límite de puntos de venta de tu plan."
+    "limit_reached": "Alcanzaste el límite de puntos de venta de tu plan.",
+    "field_label": "Punto de venta",
+    "field_placeholder": "Elige un punto de venta",
+    "field_required": "Elige el punto de venta"
   },
   "admin": {
     "title": "Administracion de plataforma",

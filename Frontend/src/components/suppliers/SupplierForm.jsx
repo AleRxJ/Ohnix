@@ -26,6 +26,7 @@ import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
 import FieldPresenceHighlighter from "../team/FieldPresenceHighlighter";
 import PhotoDropZone from "../common/PhotoDropZone";
+import PointOfSaleField from "../common/PointOfSaleField";
 
 const { Option } = Select;
 
@@ -414,6 +415,8 @@ const SupplierForm = ({
                         </Card>
                     </Col>
                 </Row>
+
+                {!editMode && <PointOfSaleField />}
 
                 <Form.Item className="mb-0">
                     <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-[var(--ohnix-line-4)]">

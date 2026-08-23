@@ -642,7 +642,10 @@
     "status_inactive": "Inactive",
     "limit_used": "{{used}} of {{limit}} points of sale",
     "limit_unlimited": "{{used}} points of sale · unlimited",
-    "limit_reached": "You reached your plan's points of sale limit."
+    "limit_reached": "You reached your plan's points of sale limit.",
+    "field_label": "Point of sale",
+    "field_placeholder": "Choose a point of sale",
+    "field_required": "Choose the point of sale"
   },
   "admin": {
     "title": "Platform administration",
