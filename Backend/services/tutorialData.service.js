@@ -41,7 +41,6 @@ export const purgeTutorialData = async (accountId) => {
 
     const orderIds = orders.map((o) => o.id);
     const purchaseIds = purchases.map((p) => p.id);
-    const productIds = products.map((p) => p.id);
 
     await prisma.$transaction(async (tx) => {
         // A tutorial order should never have reached DIAN (see
@@ -60,9 +59,6 @@ export const purgeTutorialData = async (accountId) => {
             }
         }
 
-        if (productIds.length > 0) {
-            await tx.stockMovement.deleteMany({ where: { productId: { in: productIds } } });
-        }
         if (orderIds.length > 0) {
             await tx.orderDetail.deleteMany({ where: { orderId: { in: orderIds } } });
         }
@@ -75,19 +71,42 @@ export const purgeTutorialData = async (accountId) => {
         if (purchaseIds.length > 0) {
             await tx.purchase.deleteMany({ where: { id: { in: purchaseIds } } });
         }
-        if (productIds.length > 0) {
-            await tx.product.deleteMany({ where: { id: { in: productIds } } });
-        }
     });
 
-    // Category/Unit/Supplier/Customer might have been reused for real
-    // records created outside the tour after the fact - attempt each
+    // Category/Unit/Supplier/Customer/Product might have been reused for
+    // real records created outside the tour after the fact - attempt each
     // individually and skip (rather than fail the whole cleanup) if it's
     // still referenced by something.
+    //
+    // Products get the extra step of clearing their own stock ledger
+    // (stockTransfer/productLocationStock/stockMovement - the latter two
+    // added by the multi-location stock feature after this purge already
+    // existed, each with its own RESTRICT-by-default FK back to Product)
+    // bundled into the SAME per-product transaction as the delete itself:
+    // if a real (non-tutorial) purchase or order still references this
+    // product, the final `tx.product.delete` throws and the whole
+    // transaction rolls back, leaving that product's real stock history
+    // untouched rather than wiping it out ahead of a delete that was never
+    // going to succeed.
     let categoriesDeleted = 0;
     let unitsDeleted = 0;
     let suppliersDeleted = 0;
     let customersDeleted = 0;
+    let productsDeleted = 0;
+
+    for (const { id } of products) {
+        try {
+            await prisma.$transaction(async (tx) => {
+                await tx.stockTransfer.deleteMany({ where: { productId: id } });
+                await tx.productLocationStock.deleteMany({ where: { productId: id } });
+                await tx.stockMovement.deleteMany({ where: { productId: id } });
+                await tx.product.delete({ where: { id } });
+            });
+            productsDeleted += 1;
+        } catch {
+            // still in use - leave it (and its stock history) alone
+        }
+    }
 
     for (const { id } of categories) {
         try {
@@ -125,7 +144,7 @@ export const purgeTutorialData = async (accountId) => {
     return {
         orders: orderIds.length,
         purchases: purchaseIds.length,
-        products: productIds.length,
+        products: productsDeleted,
         categories: categoriesDeleted,
         units: unitsDeleted,
         suppliers: suppliersDeleted,
