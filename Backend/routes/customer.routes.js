@@ -5,10 +5,11 @@ import {
     getUserCustomers,
     updateCustomer,
     deleteCustomer,
+    reassignCustomerPointOfSale,
 } from "../controllers/customer.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
-import { enforceEntityLimit } from "../middleware/pricing.middleware.js";
+import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
 
@@ -29,5 +30,9 @@ router
     .route("/:id")
     .patch(requireModulePermission("customers", "edit"), upload.single("photo"), updateCustomer)
     .delete(requireModulePermission("customers", "edit"), deleteCustomer);
+
+router
+    .route("/:id/point-of-sale")
+    .patch(requireModulePermission("customers", "edit"), enforcePlanFeature("multiLocation"), reassignCustomerPointOfSale);
 
 export default router;

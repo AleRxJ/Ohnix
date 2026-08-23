@@ -1219,6 +1219,21 @@ textarea.ant-input[disabled] {
 }
 .ant-modal-body::-webkit-scrollbar-track { background: transparent; }
 
+/* Same thin themed scrollbar, for a scrollable div that isn't a drawer or
+   modal body itself (e.g. a capped-height list nested inside one, like
+   ProductDetailsDrawer's movement history preview) - those two rules above
+   only match their own specific containers. */
+.ohnix-scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ohnix-scrollbar-thumb) transparent;
+}
+.ohnix-scrollbar-thin::-webkit-scrollbar { width: 6px; }
+.ohnix-scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--ohnix-scrollbar-thumb);
+  border-radius: 999px;
+}
+.ohnix-scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+
 /* Unit Modal Tabs */
 .unit-modal-tabs .ant-tabs {
   color: var(--ohnix-text-primary);
@@ -1967,6 +1982,18 @@ textarea.ant-input[disabled] {
 .csv-dropzone.ant-upload-drag-hover .csv-dropzone-inner {
   border-color: rgba(41, 216, 213, 0.6) !important;
   background: var(--ohnix-hover-overlay) !important;
+}
+
+/* antd's plain (non-drag) Upload wraps children in .ant-upload-select,
+   which ships display:inline-block with no width (upload/style/index.js).
+   A width:100% child (PhotoDropZone) inside an auto-sized inline-block
+   parent collapses to the child's intrinsic content width instead of
+   filling the row, so the product photo dropzone rendered as a narrow
+   vertical sliver instead of a full-width box. Force block layout so it
+   actually fills its container. */
+.product-image-upload .ant-upload.ant-upload-select {
+  display: block;
+  width: 100%;
 }
 
 /* Field-level presence (see components/team/FieldPresenceHighlighter.jsx /

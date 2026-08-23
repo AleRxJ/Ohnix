@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
-import { registerCompanyWithAlanube } from "../services/electronicInvoicing.service.js";
+import { registerCompanyWithAlanube, registerCompanyWithItcycle } from "../services/electronicInvoicing.service.js";
 
 // Deliberately distinct from companyCountry.service.js#normalizeCountryCode:
 // that one just normalizes an already-stored value for fiscal checks, while
@@ -82,7 +82,7 @@ const normalizeAlanubeConfig = (body) => {
     const config = {};
     if (body.electronicInvoicingProvider !== undefined) {
         const provider = `${body.electronicInvoicingProvider || ""}`.trim().toLowerCase();
-        config.electronicInvoicingProvider = provider === "factus" ? "factus" : "alanube";
+        config.electronicInvoicingProvider = ["factus", "itcycle"].includes(provider) ? provider : "alanube";
     }
     if (body.taxIdentification !== undefined) {
         config.taxIdentification = `${body.taxIdentification || ""}`.trim() || null;
@@ -303,6 +303,23 @@ export const registerCompanyWithAlanubeAdmin = asyncHandler(async (req, res) => 
     return res
         .status(200)
         .json(new ApiResponse(200, data, "Company registered with Alanube successfully"));
+});
+
+export const registerCompanyWithItcycleAdmin = asyncHandler(async (req, res) => {
+    const { companyId } = req.params;
+    const { dianConfiguration, numberingResolutions, certificate } = req.body || {};
+
+    const data = await registerCompanyWithItcycle({
+        companyId,
+        requesterRole: req.user.role,
+        dianConfiguration,
+        numberingResolutions,
+        certificate,
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, data, "Company provisioned with itcycle-api-dian successfully"));
 });
 
 export const updateCompanyLogoAdmin = asyncHandler(async (req, res, next) => {

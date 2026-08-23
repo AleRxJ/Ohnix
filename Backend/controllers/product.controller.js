@@ -19,6 +19,7 @@ import { getColombiaTaxSettings } from "../utils/systemSettings.js";
 import { emitAccountEvent, emitPosEvent } from "../live/dataEvents.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
 import { resolveOrAssertPointOfSaleId, assertPosAccess } from "../middleware/pos.permissions.js";
+import { normalizeProductImage } from "../utils/productImage.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -89,7 +90,7 @@ const mapProduct = (product, scopedStock) => ({
     buying_price: Number(product.buyingPrice),
     selling_price: Number(product.sellingPrice),
     stock: scopedStock !== undefined ? scopedStock : product.stock,
-    product_image: product.productImage,
+    product_image: normalizeProductImage(product.productImage),
     unit_measure_code: product.unitMeasureCode,
     standard_code: product.standardCode,
     tax_code: product.taxCode,

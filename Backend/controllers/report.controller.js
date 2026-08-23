@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import { streamReportPdf } from "../utils/reportPdf.js";
 import { getLowStockDefaultThreshold } from "../utils/systemSettings.js";
+import { normalizeProductImage } from "../utils/productImage.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -401,8 +402,7 @@ const getTopProducts = asyncHandler(async (req, res, next) => {
                     _id: toExternalId(detail.product),
                     product_name: detail.product?.productName || "Unknown",
                     product_code: detail.product?.productCode || "N/A",
-                    product_image:
-                        detail.product?.productImage || "default-product.png",
+                    product_image: normalizeProductImage(detail.product?.productImage),
                     quantity_sold: 0,
                     total_sales: 0,
                 };
@@ -870,27 +870,62 @@ const getVatReport = asyncHandler(async (req, res, next) => {
     const dateFilter = buildDateFilter(start_date, end_date);
 
     try {
-        const orderDetails = await prisma.orderDetail.findMany({
-            where: {
-                order: {
-                    ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
-                    orderStatus: { not: "cancelled" },
-                    ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
+        // IVA descontable (purchases, ET art. 485-490) alongside IVA generado
+        // (sales) below - same frozen-at-creation columns, populated by
+        // purchase.service.js#computePurchaseItemTax. Not filtered by
+        // purchaseStatus: a partial return already reverses its own stock via
+        // a separate flow, and this report intentionally reports what was
+        // actually paid to the supplier per line, same as the sales side
+        // only excluding fully "cancelled" orders and nothing else.
+        const [orderDetails, purchaseDetails] = await Promise.all([
+            prisma.orderDetail.findMany({
+                where: {
+                    order: {
+                        ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
+                        orderStatus: { not: "cancelled" },
+                        ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
+                    },
                 },
-            },
-            select: {
-                total: true,
-                taxTreatmentApplied: true,
-                taxRateApplied: true,
-                taxAmount: true,
-                order: { select: { orderDate: true } },
-            },
-        });
+                select: {
+                    total: true,
+                    taxTreatmentApplied: true,
+                    taxRateApplied: true,
+                    taxAmount: true,
+                    order: { select: { orderDate: true } },
+                },
+            }),
+            prisma.purchaseDetail.findMany({
+                where: {
+                    purchase: {
+                        ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
+                        ...(Object.keys(dateFilter).length ? { purchaseDate: dateFilter } : {}),
+                    },
+                },
+                select: {
+                    total: true,
+                    taxTreatmentApplied: true,
+                    taxRateApplied: true,
+                    taxAmount: true,
+                    purchase: { select: { purchaseDate: true } },
+                },
+            }),
+        ]);
 
         const byTreatmentMap = new Map();
         const byRateMap = new Map();
         const byPeriodMap = new Map();
-        const summary = { taxedBase: 0, excludedBase: 0, exemptBase: 0, taxCollected: 0, lineCount: orderDetails.length };
+        const byTreatmentPurchasesMap = new Map();
+        const byRatePurchasesMap = new Map();
+        const byPeriodPurchasesMap = new Map();
+        const summary = {
+            taxedBase: 0,
+            excludedBase: 0,
+            exemptBase: 0,
+            taxCollected: 0,
+            taxCredited: 0,
+            lineCount: orderDetails.length,
+            purchaseLineCount: purchaseDetails.length,
+        };
 
         for (const detail of orderDetails) {
             const base = Number(detail.total);
@@ -924,6 +959,35 @@ const getVatReport = asyncHandler(async (req, res, next) => {
             byPeriodMap.set(periodKey, periodEntry);
         }
 
+        for (const detail of purchaseDetails) {
+            const base = Number(detail.total);
+            const taxAmount = Number(detail.taxAmount);
+            const rate = Number(detail.taxRateApplied);
+            const treatment = detail.taxTreatmentApplied;
+
+            summary.taxCredited += taxAmount;
+
+            const treatmentEntry = byTreatmentPurchasesMap.get(treatment) || { treatment, base: 0, taxAmount: 0, lineCount: 0 };
+            treatmentEntry.base += base;
+            treatmentEntry.taxAmount += taxAmount;
+            treatmentEntry.lineCount += 1;
+            byTreatmentPurchasesMap.set(treatment, treatmentEntry);
+
+            if (treatment === "taxed") {
+                const rateEntry = byRatePurchasesMap.get(rate) || { rate, base: 0, taxAmount: 0, lineCount: 0 };
+                rateEntry.base += base;
+                rateEntry.taxAmount += taxAmount;
+                rateEntry.lineCount += 1;
+                byRatePurchasesMap.set(rate, rateEntry);
+            }
+
+            const periodKey = detail.purchase.purchaseDate.toISOString().slice(0, 7); // YYYY-MM
+            const periodEntry = byPeriodPurchasesMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+            periodEntry.base += base;
+            periodEntry.taxAmount += taxAmount;
+            byPeriodPurchasesMap.set(periodKey, periodEntry);
+        }
+
         const report = {
             summary: {
                 ...summary,
@@ -931,12 +995,23 @@ const getVatReport = asyncHandler(async (req, res, next) => {
                 excludedBase: round2(summary.excludedBase),
                 exemptBase: round2(summary.exemptBase),
                 taxCollected: round2(summary.taxCollected),
+                taxCredited: round2(summary.taxCredited),
+                // Positive = owed to the DIAN this period; negative = credit
+                // balance carried forward (ET art. 815 - saldo a favor).
+                netVat: round2(summary.taxCollected - summary.taxCredited),
             },
             byTreatment: [...byTreatmentMap.values()].map((e) => ({ ...e, base: round2(e.base), taxAmount: round2(e.taxAmount) })),
             byRate: [...byRateMap.values()]
                 .sort((a, b) => a.rate - b.rate)
                 .map((e) => ({ ...e, base: round2(e.base), taxAmount: round2(e.taxAmount) })),
             byPeriod: [...byPeriodMap.values()]
+                .sort((a, b) => a.period.localeCompare(b.period))
+                .map((e) => ({ ...e, base: round2(e.base), taxAmount: round2(e.taxAmount) })),
+            byTreatmentPurchases: [...byTreatmentPurchasesMap.values()].map((e) => ({ ...e, base: round2(e.base), taxAmount: round2(e.taxAmount) })),
+            byRatePurchases: [...byRatePurchasesMap.values()]
+                .sort((a, b) => a.rate - b.rate)
+                .map((e) => ({ ...e, base: round2(e.base), taxAmount: round2(e.taxAmount) })),
+            byPeriodPurchases: [...byPeriodPurchasesMap.values()]
                 .sort((a, b) => a.period.localeCompare(b.period))
                 .map((e) => ({ ...e, base: round2(e.base), taxAmount: round2(e.taxAmount) })),
         };

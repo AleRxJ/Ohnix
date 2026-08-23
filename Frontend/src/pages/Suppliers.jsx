@@ -13,6 +13,8 @@ import { useAuth } from "../hooks/useAuth";
 import useI18n from "../hooks/useI18n";
 import { filterSuppliers } from "../utils/supplierUtils";
 import { useTeam } from "../context/TeamContext";
+import { usePointOfSaleScope } from "../hooks/usePointOfSaleScope";
+import MoveToPointOfSaleModal from "../components/common/MoveToPointOfSaleModal";
 
 const Suppliers = () => {
     const { t } = useI18n();
@@ -22,11 +24,14 @@ const Suppliers = () => {
     const [viewModalVisible, setViewModalVisible] = useState(false);
     const [selectedSupplier, setSelectedSupplier] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const [moving, setMoving] = useState({ supplier: null, loading: false });
 
     // Get admin status from auth context
     const { isAdmin } = useAuth();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("suppliers", "edit");
+    const { pointsOfSale, isFullScope, hasMultipleLocations } = usePointOfSaleScope();
+    const canMove = canEdit && isFullScope && hasMultipleLocations;
 
     // Custom hooks
     const {
@@ -36,6 +41,7 @@ const Suppliers = () => {
         createSupplier,
         updateSupplier,
         deleteSupplier,
+        moveSupplier,
     } = useSuppliers(isAdmin);
 
     const {
@@ -91,6 +97,24 @@ const Suppliers = () => {
         setSelectedSupplier(null);
     };
 
+    const handleMove = (supplier) => {
+        setMoving({ supplier, loading: false });
+    };
+
+    const handleMoveCancel = () => {
+        setMoving({ supplier: null, loading: false });
+    };
+
+    const handleMoveSubmit = async (pointOfSaleId) => {
+        setMoving((prev) => ({ ...prev, loading: true }));
+        const success = await moveSupplier(moving.supplier._id, pointOfSaleId);
+        if (success) {
+            handleMoveCancel();
+        } else {
+            setMoving((prev) => ({ ...prev, loading: false }));
+        }
+    };
+
     return (
         <div className="p-4 sm:p-6 space-y-6 text-[var(--ohnix-text-primary)]">
             {/* Page Header */}
@@ -135,6 +159,8 @@ const Suppliers = () => {
                 onView={handleView}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                onMove={handleMove}
+                canMove={canMove}
                 isAdmin={isAdmin}
             />
 
@@ -158,6 +184,15 @@ const Suppliers = () => {
                 onCancel={closeViewModal}
                 supplier={selectedSupplier}
                 onEdit={handleEdit}
+            />
+
+            <MoveToPointOfSaleModal
+                visible={Boolean(moving.supplier)}
+                record={moving.supplier}
+                pointsOfSale={pointsOfSale}
+                loading={moving.loading}
+                onSubmit={handleMoveSubmit}
+                onCancel={handleMoveCancel}
             />
         </div>
     );

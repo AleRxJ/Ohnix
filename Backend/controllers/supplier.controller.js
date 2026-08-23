@@ -6,7 +6,12 @@ import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
-import { hasPosAccess, resolveOrAssertPointOfSaleId } from "../middleware/pos.permissions.js";
+import {
+    hasPosAccess,
+    resolveOrAssertPointOfSaleId,
+    assertFullPosScope,
+    assertPointOfSaleExists,
+} from "../middleware/pos.permissions.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -380,6 +385,55 @@ const deleteSupplier = asyncHandler(async (req, res, next) => {
     }
 });
 
+// See customer.controller.js#reassignCustomerPointOfSale - same rule,
+// same reasoning (full pos scope required, existing purchases untouched).
+const reassignSupplierPointOfSale = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+    const { point_of_sale_id } = req.body || {};
+
+    if (!point_of_sale_id) {
+        return next(new ApiError(400, "point_of_sale_id es obligatorio"));
+    }
+
+    try {
+        assertFullPosScope(req.user);
+
+        const existingSupplier = await findSupplierByAnyId(id);
+        if (!existingSupplier) {
+            return next(new ApiError(404, "Supplier not found"));
+        }
+        if (req.user.role !== "admin" && existingSupplier.createdById !== req.user.prismaId) {
+            return next(new ApiError(403, "You don't have permission to update this supplier"));
+        }
+
+        await assertPointOfSaleExists(existingSupplier.createdById, point_of_sale_id);
+
+        const previousPointOfSaleId = existingSupplier.pointOfSaleId;
+        const supplier = await prisma.supplier.update({
+            where: { id: existingSupplier.id },
+            data: { pointOfSaleId: point_of_sale_id },
+            include: {
+                createdBy: {
+                    select: { id: true, legacyMongoId: true, username: true, email: true },
+                },
+                pointOfSale: {
+                    select: { id: true, name: true },
+                },
+            },
+        });
+
+        emitPosEvent(existingSupplier.createdById, previousPointOfSaleId, "supplier", "updated");
+        emitPosEvent(existingSupplier.createdById, point_of_sale_id, "supplier", "updated");
+        return res
+            .status(200)
+            .json(new ApiResponse(200, mapSupplier(supplier, req.user), "Supplier moved successfully"));
+    } catch (error) {
+        if (error instanceof ApiError) return next(error);
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
+});
+
 export {
     createSupplier,
     getSuppliers as getUserSuppliers,
@@ -387,4 +441,5 @@ export {
     getAllSuppliers,
     updateSupplier,
     deleteSupplier,
+    reassignSupplierPointOfSale,
 };

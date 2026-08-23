@@ -621,6 +621,7 @@
     "locked_title": "Puntos de venta disponibles desde el plan Escala",
     "locked_description": "Actualiza a Escala para administrar varias ubicaciones, repartir inventario entre ellas y asignar a cada persona del equipo el punto de venta que le corresponde.",
     "locked_cta": "Ver planes",
+    "locked_create_hint": "Actualiza a Escala para crear otro punto de venta.",
     "create_cta": "Nuevo punto de venta",
     "create_modal_title": "Nuevo punto de venta",
     "name_label": "Nombre",
@@ -642,7 +643,19 @@
     "status_inactive": "Inactivo",
     "limit_used": "{{used}} de {{limit}} puntos de venta",
     "limit_unlimited": "{{used}} puntos de venta · ilimitado",
-    "limit_reached": "Alcanzaste el límite de puntos de venta de tu plan."
+    "limit_reached": "Alcanzaste el límite de puntos de venta de tu plan.",
+    "field_label": "Punto de venta",
+    "field_placeholder": "Elige un punto de venta",
+    "field_required": "Elige el punto de venta",
+    "move_action": "Mover de punto de venta",
+    "move_modal_title": "Mover a otro punto de venta",
+    "move_current_label": "Punto de venta actual",
+    "move_select_label": "Nuevo punto de venta",
+    "move_select_placeholder": "Elige el punto de venta destino",
+    "move_cta": "Mover",
+    "moved_success": "Movido correctamente",
+    "move_failed": "No se pudo mover",
+    "move_not_allowed": "Solo alguien con acceso a todos los puntos de venta puede mover registros entre ubicaciones"
   },
   "admin": {
     "title": "Administracion de plataforma",
@@ -734,6 +747,37 @@
     "alanube_resolution_end": "Vigente hasta",
     "alanube_resolution_technical_key": "Clave técnica",
     "alanube_registered": "Empresa registrada en Alanube correctamente",
+    "itcycle_registered_status": "Aprovisionada en ITCycle ({{id}})",
+    "itcycle_not_registered_status": "Aún no aprovisionada en ITCycle",
+    "itcycle_register": "Aprovisionar con ITCycle",
+    "itcycle_reregister": "Volver a aprovisionar",
+    "itcycle_registered": "Empresa aprovisionada en itcycle-api-dian correctamente",
+    "itcycle_environment": "Ambiente DIAN",
+    "itcycle_environment_sandbox": "Habilitación (pruebas)",
+    "itcycle_environment_production": "Producción",
+    "itcycle_software_id": "Software ID",
+    "itcycle_software_pin": "Software PIN",
+    "itcycle_technical_key": "Clave técnica",
+    "itcycle_address": "Dirección del emisor (DIAN)",
+    "itcycle_address_street": "Dirección",
+    "itcycle_address_city_code": "Código DIVIPOLA (ciudad)",
+    "itcycle_address_city_name": "Ciudad",
+    "itcycle_address_department_code": "Código DIVIPOLA (departamento)",
+    "itcycle_address_department_name": "Departamento",
+    "itcycle_address_postal_zone": "Código postal",
+    "itcycle_numbering": "Numeración de facturas",
+    "itcycle_certificate": "Certificado digital",
+    "itcycle_certificate_identifier": "Identificador del certificado",
+    "itcycle_certificate_file": "Archivo .p12",
+    "itcycle_certificate_upload": "Subir certificado",
+    "itcycle_certificate_password": "Contraseña del certificado",
+    "itcycle_step_identification": "Identificación",
+    "itcycle_step_dian_config": "Configuración DIAN",
+    "itcycle_step_address": "Dirección del emisor",
+    "itcycle_step_numbering": "Numeración",
+    "itcycle_step_certificate": "Certificado",
+    "itcycle_step_back": "Atrás",
+    "itcycle_step_next": "Siguiente",
     "assign_company_title": "Asignar empresa a {{username}}",
     "assign_company_default_user": "usuario",
     "assign_company_save": "Guardar asignación",
@@ -1025,6 +1069,8 @@
     "movement_adjustment": "Ajuste manual",
     "movement_transfer_out": "Transferencia enviada",
     "movement_transfer_in": "Transferencia recibida",
+    "movement_transfer_discrepancy": "Diferencia en traslado",
+    "view_all_movements": "Ver todo",
     "select_point_of_sale_label": "Punto de venta",
     "location_stock_title": "Stock por punto de venta",
     "location_stock_hint": "Este producto es el mismo en todas tus sedes; el stock se reparte entre ellas.",
@@ -1080,7 +1126,28 @@
     "transfer_cancel_confirm_content": "Si ya estaba en tránsito, las unidades vuelven al punto de origen.",
     "transfer_from_to": "{{from}} → {{to}}",
     "quick_transfer_badge": "Traslado rápido",
-    "transfer_cancel_reason_label": "Motivo de cancelación"
+    "transfer_view_detail": "Ver detalle",
+    "transfer_detail_title": "Detalle del traslado",
+    "transfer_timeline_title": "Historial",
+    "transfer_timeline_by": "Por {{name}}",
+    "transfer_timeline_unknown_actor": "Usuario desconocido",
+    "transfer_requested_by_on": "Solicitado por {{name}} · {{date}}",
+    "transfer_cancel_reason_label": "Motivo de cancelación",
+    "print_transfer_cta": "Imprimir"
+  },
+  "printTransfer": {
+    "document_title": "Comprobante de Traslado",
+    "reference_label": "Referencia",
+    "event_column": "Evento",
+    "actor_column": "Realizado por",
+    "date_column": "Fecha",
+    "delivered_by": "Entregado por",
+    "received_by": "Recibido por",
+    "name_label": "Nombre",
+    "id_label": "Identificación",
+    "date_label": "Fecha",
+    "printed_on": "Impreso el {{date}}",
+    "popup_blocked": "Tu navegador bloqueó la ventana de impresión. Permite las ventanas emergentes e inténtalo de nuevo."
   },
   "inventory_tour": {
     "trigger_button": "¿Cómo funciona Ohnix?",
@@ -1569,13 +1636,17 @@
       "avg_order_value": "Valor promedio de pedido",
       "vs_previous_period": "vs. periodo anterior",
       "vat_tab": "IVA",
-      "vat_disclaimer": "Este reporte es una ayuda contable interna calculada a partir de tus ventas: no sustituye tu declaración de IVA ante la DIAN ni reemplaza el criterio de tu contador.",
+      "vat_disclaimer": "Este reporte es una ayuda contable interna calculada a partir de tus ventas y compras: no sustituye tu declaración de IVA ante la DIAN ni reemplaza el criterio de tu contador.",
       "vat_taxed_base": "Base gravada",
       "vat_excluded_base": "Base excluida",
       "vat_exempt_base": "Base exenta",
       "vat_collected": "IVA generado",
+      "vat_credited": "IVA descontable",
+      "vat_net_payable": "IVA neto a pagar",
+      "vat_net_credit_balance": "Saldo a favor de IVA",
       "vat_by_period": "IVA generado por periodo",
-      "vat_by_rate": "Desglose por tarifa",
+      "vat_by_rate": "IVA generado por tarifa",
+      "vat_credited_by_rate": "IVA descontable por tarifa",
       "vat_rate_column": "Tarifa",
       "vat_base_column": "Base",
       "vat_tax_column": "IVA",
@@ -1973,8 +2044,8 @@
         },
         "third": {
           "context": "Multi-sucursal",
-          "title": "Equipo alineado desde el día uno",
-          "description": "Productos, proveedores y pedidos en un panel con permisos claros para todo el equipo."
+          "title": "Traslados de inventario con trazabilidad total",
+          "description": "Cada punto de venta ve y vende su propio stock. Cuando falta mercancía en una sede, se solicita un traslado a otra y queda registrado quién lo pidió, aprobó, envió y recibió — sin hojas de cálculo ni WhatsApp."
         }
       }
     },
@@ -2078,6 +2149,7 @@
             "unlimited": "Todo en Negocio",
             "team": "Equipos colaborativos (hasta 10 usuarios)",
             "presence": "Indicador en tiempo real de quién ve o edita cada registro",
+            "locations": "Hasta 5 puntos de venta con traslados de inventario entre ubicaciones",
             "limits": "2,000 productos · 1,000 clientes · 400 proveedores",
             "reports": "Reportes avanzados + exportación Excel",
             "pdf": "PDF completamente personalizable",
@@ -2097,6 +2169,7 @@
           "features": {
             "unlimited": "Todo ilimitado (productos, pedidos, usuarios)",
             "team": "Equipos colaborativos ilimitados",
+            "locations": "Puntos de venta ilimitados con traslados de inventario entre ubicaciones",
             "api": "API sin restricciones de rate limit",
             "integrations": "Integraciones personalizadas (ERP, e-commerce, contabilidad)",
             "manager": "Account manager dedicado",
@@ -2167,6 +2240,16 @@
             "one": "Fórmulas personalizadas",
             "two": "Simulaciones",
             "three": "Exportar resultados"
+          }
+        },
+        "locations": {
+          "label": "LOCATIONS",
+          "title": "Multi-Ubicación y Traslados",
+          "description": "Administra varias sedes bajo una sola cuenta: cada punto de venta ve su propio stock, y puedes solicitar o trasladar inventario entre ubicaciones con trazabilidad completa — quién lo pidió, quién lo aprobó, quién lo envió y quién lo recibió. Disponible desde el plan Escala.",
+          "highlights": {
+            "one": "Stock por ubicación",
+            "two": "Traslados con historial completo",
+            "three": "Alcance por miembro del equipo"
           }
         }
       }
@@ -2286,8 +2369,10 @@
       "rejected": "Rechazado",
       "error": "Con error",
       "cancelled": "Cancelado",
-      "draft": "Borrador"
+      "draft": "Borrador",
+      "contingency": "Contingencia DIAN"
     },
+    "contingency_hint": "La DIAN no respondió al momento del envío. El documento ya fue generado, firmado y entregado a tu cliente — es válido. Sincroniza para reintentar la validación ante la DIAN.",
     "table": {
       "document": "Documento",
       "buyer": "Adquirente",

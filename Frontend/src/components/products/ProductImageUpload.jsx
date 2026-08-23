@@ -23,7 +23,7 @@ const ProductImageUpload = ({ imageUrl, onChange }) => {
                 beforeUpload={() => false}
                 onChange={onChange}
                 showUploadList={false}
-                className="block w-full"
+                className="product-image-upload block w-full"
             >
                 <PhotoDropZone
                     imageUrl={imageUrl}

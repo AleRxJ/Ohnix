@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Drawer, Image, Typography, Divider, Tag, Spin, Button } from "antd";
+import { Drawer, Image, Typography, Divider, Spin, Button } from "antd";
 import toast from "react-hot-toast";
 import {
     TagOutlined,
@@ -12,26 +12,14 @@ import {
     CloseCircleOutlined,
     PercentageOutlined,
     HistoryOutlined,
-    ArrowUpOutlined,
-    ArrowDownOutlined,
 } from "@ant-design/icons";
 import { useCurrency } from "../../context/CurrencyContext";
 import useI18n from "../../hooks/useI18n";
-import { DEFAULT_LOW_STOCK_THRESHOLD } from "../../utils/productUtils";
+import { DEFAULT_LOW_STOCK_THRESHOLD, PRODUCT_IMAGE_FALLBACK } from "../../utils/productUtils";
 import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 import LocationStockPanel from "./LocationStockPanel";
-
-const SOURCE_LABEL_KEYS = {
-    purchase: "products.movement_purchase",
-    purchase_return: "products.movement_purchase_return",
-    order: "products.movement_order",
-    order_cancellation: "products.movement_order_cancellation",
-    order_return: "products.movement_order_return",
-    credit_note_restock: "products.movement_credit_note_restock",
-    adjustment: "products.movement_adjustment",
-    transfer_out: "products.movement_transfer_out",
-    transfer_in: "products.movement_transfer_in",
-};
+import MovementRow from "./MovementRow";
+import MovementHistoryModal from "./MovementHistoryModal";
 
 const { Text, Title } = Typography;
 
@@ -47,6 +35,7 @@ const ProductDetailsDrawer = ({
     const { formatCurrency } = useCurrency();
     const { t, currentLanguage } = useI18n();
     const [movements, setMovements] = useState([]);
+    const [historyModalOpen, setHistoryModalOpen] = useState(false);
     // "idle" | "loading" | "error" | "loaded" - tracked separately from
     // `movements` itself so a failed fetch can't render as "no movements
     // yet" (they used to be the same empty array either way - see
@@ -174,7 +163,7 @@ const ProductDetailsDrawer = ({
                                     src={product.product_image}
                                     alt={product.product_name}
                                     className="w-full h-full object-cover"
-                                    fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6U"
+                                    fallback={PRODUCT_IMAGE_FALLBACK}
                                     preview={{
                                         mask: <div className="text-[var(--ohnix-text-primary)] text-xs font-medium">{t("products.preview")}</div>,
                                     }}
@@ -238,11 +227,16 @@ const ProductDetailsDrawer = ({
                 </div>
 
                 <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
-                    <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)]">
+                    <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)] flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                             <HistoryOutlined className="text-[#29D8D5]" />
                             <Text className="text-sm font-bold text-[var(--ohnix-text-primary)]">{t("products.movement_history")}</Text>
                         </div>
+                        {movementsStatus === "loaded" && movements.length > 0 && (
+                            <Button size="small" onClick={() => setHistoryModalOpen(true)}>
+                                {t("products.view_all_movements")}
+                            </Button>
+                        )}
                     </div>
                     <div className="p-5">
                         {movementsStatus === "loading" ? (
@@ -269,59 +263,9 @@ const ProductDetailsDrawer = ({
                                 </Text>
                             </div>
                         ) : (
-                            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                                {movements.map((m) => (
-                                    <div
-                                        key={m._id}
-                                        className="flex items-start justify-between gap-3 pb-3 border-b border-[var(--ohnix-line-3)] last:border-0 last:pb-0"
-                                    >
-                                        <div className="flex items-start gap-2 min-w-0">
-                                            {m.delta > 0 ? (
-                                                <ArrowUpOutlined className="text-[#44F3F0] mt-0.5" />
-                                            ) : (
-                                                <ArrowDownOutlined className="text-red-400 mt-0.5" />
-                                            )}
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <Tag color={m.delta > 0 ? "cyan" : "red"} className="!m-0">
-                                                        {t(SOURCE_LABEL_KEYS[m.source_type] || m.source_type)}
-                                                    </Tag>
-                                                    <Text className="text-xs text-[var(--ohnix-text-dim)]">
-                                                        {new Date(m.createdAt).toLocaleString(currentLanguage, {
-                                                            year: "numeric",
-                                                            month: "short",
-                                                            day: "numeric",
-                                                            hour: "2-digit",
-                                                            minute: "2-digit",
-                                                        })}
-                                                    </Text>
-                                                </div>
-                                                {m.reason && (
-                                                    <Text className="text-xs text-[var(--ohnix-text-muted)] block mt-1">
-                                                        {m.reason}
-                                                    </Text>
-                                                )}
-                                                {m.created_by?.username && (
-                                                    <Text className="text-xs text-[var(--ohnix-text-dim)] block mt-0.5">
-                                                        {m.created_by.username}
-                                                    </Text>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="text-right flex-shrink-0">
-                                            <Text
-                                                className={`text-sm font-bold block ${
-                                                    m.delta > 0 ? "text-[#44F3F0]" : "text-red-400"
-                                                }`}
-                                            >
-                                                {m.delta > 0 ? "+" : ""}
-                                                {m.delta}
-                                            </Text>
-                                            <Text className="text-xs text-[var(--ohnix-text-dim)]">
-                                                {t("products.balance")}: {m.balance_after}
-                                            </Text>
-                                        </div>
-                                    </div>
+                            <div className="space-y-3 max-h-80 overflow-y-auto pr-1 ohnix-scrollbar-thin">
+                                {movements.slice(0, 5).map((m) => (
+                                    <MovementRow key={m._id} movement={m} currentLanguage={currentLanguage} />
                                 ))}
                             </div>
                         )}
@@ -449,6 +393,14 @@ const ProductDetailsDrawer = ({
                     </div>
                 </div>
             </div>
+
+            <MovementHistoryModal
+                visible={historyModalOpen}
+                movements={movements}
+                productName={product.product_name}
+                currentLanguage={currentLanguage}
+                onCancel={() => setHistoryModalOpen(false)}
+            />
         </Drawer>
     );
 };

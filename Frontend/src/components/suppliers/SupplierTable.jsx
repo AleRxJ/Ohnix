@@ -6,6 +6,7 @@ import {
     EyeOutlined,
     MoreOutlined,
     UserOutlined,
+    SwapOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
@@ -16,6 +17,8 @@ const SupplierTable = ({
     onView,
     onEdit,
     onDelete,
+    onMove,
+    canMove = false,
     isAdmin = false,
 }) => {
     const { t } = useI18n();
@@ -113,6 +116,16 @@ const SupplierTable = ({
                                   icon: <EditOutlined />,
                                   onClick: () => onEdit(record),
                               },
+                              ...(canMove
+                                  ? [
+                                        {
+                                            key: "move",
+                                            label: t("pointOfSale.move_action"),
+                                            icon: <SwapOutlined />,
+                                            onClick: () => onMove(record),
+                                        },
+                                    ]
+                                  : []),
                               {
                                   key: "delete",
                                   label: t("common.delete"),

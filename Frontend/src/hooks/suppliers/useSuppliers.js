@@ -107,6 +107,18 @@ export const useSuppliers = (isAdmin = false) => {
         }
     };
 
+    const moveSupplier = async (id, pointOfSaleId) => {
+        try {
+            await api.patch(`/suppliers/${id}/point-of-sale`, { point_of_sale_id: pointOfSaleId });
+            toast.success(t("pointOfSale.moved_success"));
+            fetchSuppliers();
+            return true;
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("pointOfSale.move_failed"));
+            return false;
+        }
+    };
+
     const deleteSupplier = async (id) => {
         try {
             await api.delete(`/suppliers/${id}`);
@@ -140,5 +152,6 @@ export const useSuppliers = (isAdmin = false) => {
         createSupplier,
         updateSupplier,
         deleteSupplier,
+        moveSupplier,
     };
 };

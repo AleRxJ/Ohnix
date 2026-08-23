@@ -22,6 +22,7 @@ import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import PhotoDropZone from "../common/PhotoDropZone";
+import PointOfSaleField from "../common/PointOfSaleField";
 import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 const { Option } = Select;
@@ -379,6 +380,8 @@ const CustomerForm = ({
                         </Card>
                     </Col>
                 </Row>
+
+                {!editingCustomer && <PointOfSaleField />}
 
                 {usesColombianEInvoicing && (
                     <Card

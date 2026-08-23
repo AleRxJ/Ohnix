@@ -621,6 +621,7 @@
     "locked_title": "Points of sale available on the Escala plan",
     "locked_description": "Upgrade to Escala to manage multiple locations, split inventory between them, and assign each team member the point of sale they belong to.",
     "locked_cta": "View plans",
+    "locked_create_hint": "Upgrade to Scale to create another point of sale.",
     "create_cta": "New point of sale",
     "create_modal_title": "New point of sale",
     "name_label": "Name",
@@ -642,7 +643,19 @@
     "status_inactive": "Inactive",
     "limit_used": "{{used}} of {{limit}} points of sale",
     "limit_unlimited": "{{used}} points of sale · unlimited",
-    "limit_reached": "You reached your plan's points of sale limit."
+    "limit_reached": "You reached your plan's points of sale limit.",
+    "field_label": "Point of sale",
+    "field_placeholder": "Choose a point of sale",
+    "field_required": "Choose the point of sale",
+    "move_action": "Move to another location",
+    "move_modal_title": "Move to another point of sale",
+    "move_current_label": "Current point of sale",
+    "move_select_label": "New point of sale",
+    "move_select_placeholder": "Choose the destination point of sale",
+    "move_cta": "Move",
+    "moved_success": "Moved successfully",
+    "move_failed": "Couldn't move it",
+    "move_not_allowed": "Only someone with access to every point of sale can move records between locations"
   },
   "admin": {
     "title": "Platform administration",
@@ -734,6 +747,37 @@
     "alanube_resolution_end": "Valid until",
     "alanube_resolution_technical_key": "Technical key",
     "alanube_registered": "Company registered with Alanube successfully",
+    "itcycle_registered_status": "Provisioned in ITCycle ({{id}})",
+    "itcycle_not_registered_status": "Not provisioned in ITCycle yet",
+    "itcycle_register": "Provision with ITCycle",
+    "itcycle_reregister": "Re-provision",
+    "itcycle_registered": "Company provisioned in itcycle-api-dian successfully",
+    "itcycle_environment": "DIAN environment",
+    "itcycle_environment_sandbox": "Habilitación (sandbox)",
+    "itcycle_environment_production": "Production",
+    "itcycle_software_id": "Software ID",
+    "itcycle_software_pin": "Software PIN",
+    "itcycle_technical_key": "Technical key",
+    "itcycle_address": "Supplier address (DIAN)",
+    "itcycle_address_street": "Address",
+    "itcycle_address_city_code": "DIVIPOLA code (city)",
+    "itcycle_address_city_name": "City",
+    "itcycle_address_department_code": "DIVIPOLA code (department)",
+    "itcycle_address_department_name": "Department",
+    "itcycle_address_postal_zone": "Postal code",
+    "itcycle_numbering": "Invoice numbering",
+    "itcycle_certificate": "Digital certificate",
+    "itcycle_certificate_identifier": "Certificate identifier",
+    "itcycle_certificate_file": ".p12 file",
+    "itcycle_certificate_upload": "Upload certificate",
+    "itcycle_certificate_password": "Certificate password",
+    "itcycle_step_identification": "Identification",
+    "itcycle_step_dian_config": "DIAN configuration",
+    "itcycle_step_address": "Supplier address",
+    "itcycle_step_numbering": "Numbering",
+    "itcycle_step_certificate": "Certificate",
+    "itcycle_step_back": "Back",
+    "itcycle_step_next": "Next",
     "assign_company_title": "Assign company to {{username}}",
     "assign_company_default_user": "user",
     "assign_company_save": "Save assignment",
@@ -1025,6 +1069,8 @@
     "movement_adjustment": "Manual adjustment",
     "movement_transfer_out": "Transfer sent",
     "movement_transfer_in": "Transfer received",
+    "movement_transfer_discrepancy": "Transfer discrepancy",
+    "view_all_movements": "View all",
     "select_point_of_sale_label": "Point of sale",
     "location_stock_title": "Stock by point of sale",
     "location_stock_hint": "This product is the same across every location; stock is split between them.",
@@ -1080,7 +1126,28 @@
     "transfer_cancel_confirm_content": "If it was already in transit, the units go back to the source location.",
     "transfer_from_to": "{{from}} → {{to}}",
     "quick_transfer_badge": "Quick transfer",
-    "transfer_cancel_reason_label": "Cancellation reason"
+    "transfer_view_detail": "View detail",
+    "transfer_detail_title": "Transfer detail",
+    "transfer_timeline_title": "Timeline",
+    "transfer_timeline_by": "By {{name}}",
+    "transfer_timeline_unknown_actor": "Unknown user",
+    "transfer_requested_by_on": "Requested by {{name}} · {{date}}",
+    "transfer_cancel_reason_label": "Cancellation reason",
+    "print_transfer_cta": "Print"
+  },
+  "printTransfer": {
+    "document_title": "Transfer Receipt",
+    "reference_label": "Reference",
+    "event_column": "Event",
+    "actor_column": "Done by",
+    "date_column": "Date",
+    "delivered_by": "Delivered by",
+    "received_by": "Received by",
+    "name_label": "Name",
+    "id_label": "ID",
+    "date_label": "Date",
+    "printed_on": "Printed on {{date}}",
+    "popup_blocked": "Your browser blocked the print window. Allow pop-ups and try again."
   },
   "inventory_tour": {
     "trigger_button": "How does Ohnix work?",
@@ -1568,13 +1635,17 @@
       "avg_order_value": "Average order value",
       "vs_previous_period": "vs. previous period",
       "vat_tab": "VAT",
-      "vat_disclaimer": "This report is an internal bookkeeping aid computed from your sales: it does not replace your VAT filing with the DIAN or your accountant's judgment.",
+      "vat_disclaimer": "This report is an internal bookkeeping aid computed from your sales and purchases: it does not replace your VAT filing with the DIAN or your accountant's judgment.",
       "vat_taxed_base": "Taxed base",
       "vat_excluded_base": "Excluded base",
       "vat_exempt_base": "Exempt base",
       "vat_collected": "VAT collected",
+      "vat_credited": "VAT credited (input)",
+      "vat_net_payable": "Net VAT payable",
+      "vat_net_credit_balance": "VAT credit balance",
       "vat_by_period": "VAT collected by period",
-      "vat_by_rate": "Breakdown by rate",
+      "vat_by_rate": "VAT collected by rate",
+      "vat_credited_by_rate": "VAT credited by rate",
       "vat_rate_column": "Rate",
       "vat_base_column": "Base",
       "vat_tax_column": "VAT",
@@ -1979,8 +2050,8 @@
         },
         "third": {
           "context": "Multi-branch",
-          "title": "One team, aligned from day one",
-          "description": "Products, suppliers, and orders in one panel with clear permissions for the whole team."
+          "title": "Inventory transfers with full traceability",
+          "description": "Each point of sale sees and sells its own stock. When one location runs short, a transfer is requested from another — and it's all on record: who asked, who approved, who shipped it, and who received it. No spreadsheets, no WhatsApp."
         }
       }
     },
@@ -2084,6 +2155,7 @@
             "unlimited": "Everything in Business",
             "team": "Team collaboration (up to 10 users)",
             "presence": "Real-time indicator of who's viewing or editing each record",
+            "locations": "Up to 5 points of sale with inventory transfers between locations",
             "limits": "2,000 products · 1,000 customers · 400 suppliers",
             "reports": "Advanced report filters + Excel export",
             "pdf": "Fully customizable PDF templates",
@@ -2103,6 +2175,7 @@
           "features": {
             "unlimited": "Unlimited products, orders, and users",
             "team": "Unlimited team collaboration",
+            "locations": "Unlimited points of sale with inventory transfers between locations",
             "api": "Unrestricted API access",
             "integrations": "Custom integrations (ERP, e-commerce, accounting)",
             "manager": "Dedicated account manager",
@@ -2173,6 +2246,16 @@
             "one": "Custom formulas",
             "two": "Simulations",
             "three": "Export results"
+          }
+        },
+        "locations": {
+          "label": "LOCATIONS",
+          "title": "Multi-Location & Transfers",
+          "description": "Run several branches under one account: each point of sale sees its own stock, and you can request or move inventory between locations with full traceability — who requested it, who approved it, who shipped it, and who received it. Available from the Scale plan.",
+          "highlights": {
+            "one": "Stock per location",
+            "two": "Transfers with a full history",
+            "three": "Per-member location scope"
           }
         }
       }
@@ -2292,8 +2375,10 @@
       "rejected": "Rejected",
       "error": "Error",
       "cancelled": "Cancelled",
-      "draft": "Draft"
+      "draft": "Draft",
+      "contingency": "DIAN contingency"
     },
+    "contingency_hint": "DIAN was unreachable at send time. The document was already generated, signed, and delivered to your customer — it's valid. Sync to retry validation with DIAN.",
     "table": {
       "document": "Document",
       "buyer": "Buyer",

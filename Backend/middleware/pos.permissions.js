@@ -45,13 +45,28 @@ export const assertPosAccess = (user, pointOfSaleId, message = "No tienes acceso
 // validated every id in posScopeIds belongs to the account when it was
 // assigned), but it's cheap enough to apply uniformly rather than trust
 // that invariant never drifts.
-const assertPointOfSaleExists = async (accountId, pointOfSaleId) => {
+export const assertPointOfSaleExists = async (accountId, pointOfSaleId) => {
     const pos = await prisma.pointOfSale.findFirst({
         where: { id: pointOfSaleId, accountId, isActive: true },
         select: { id: true },
     });
     if (!pos) {
         throw new ApiError(404, "Punto de venta no encontrado.");
+    }
+};
+
+// Gate for actions that touch a location's *ownership* of a record rather
+// than just operating within it (e.g. reassigning a customer/supplier from
+// one point of sale to another - see customer.controller.js#reassignCustomerPointOfSale).
+// Deliberately stricter than hasPosAccess("both ends"): moving a record's
+// home location is an administrative correction, not a routine operation
+// like a stock transfer, so it's reserved for whoever can see the account's
+// entire location picture (owner, a member explicitly granted posScopeAll,
+// or the platform admin role) - not merely someone who happens to have both
+// the old and new location in their own scope.
+export const assertFullPosScope = (user, message = "Solo alguien con acceso a todos los puntos de venta puede hacer esto.") => {
+    if (user.role !== "admin" && !user.posScopeAll) {
+        throw new ApiError(403, message);
     }
 };
 

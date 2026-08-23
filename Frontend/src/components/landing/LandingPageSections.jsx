@@ -1226,6 +1226,27 @@ export const FeatureHubSection = ({ heading }) => {
                 </svg>
             ),
         },
+        {
+            title: t("landing.hub.features.locations.title"),
+            label: t("landing.hub.features.locations.label"),
+            description: t("landing.hub.features.locations.description"),
+            highlights: [
+                t("landing.hub.features.locations.highlights.one"),
+                t("landing.hub.features.locations.highlights.two"),
+                t("landing.hub.features.locations.highlights.three"),
+            ],
+            accent: "#3B82F6",
+            icon: (
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                    <rect x="3" y="14" width="9" height="10" rx="1.5" />
+                    <path d="M4 14l1.5-5h6L13 14" />
+                    <rect x="20" y="10" width="9" height="14" rx="1.5" />
+                    <path d="M21 10l1.5-5h6L30 10" />
+                    <path d="M14 19h4" />
+                    <path d="M16.5 16.5L19 19l-2.5 2.5" />
+                </svg>
+            ),
+        },
     ];
 
     return (

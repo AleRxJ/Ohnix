@@ -6,7 +6,12 @@ import { prisma } from "../db/prisma.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
-import { hasPosAccess, resolveOrAssertPointOfSaleId } from "../middleware/pos.permissions.js";
+import {
+    hasPosAccess,
+    resolveOrAssertPointOfSaleId,
+    assertFullPosScope,
+    assertPointOfSaleExists,
+} from "../middleware/pos.permissions.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -359,10 +364,69 @@ const deleteCustomer = asyncHandler(async (req, res, next) => {
     }
 });
 
+// Moves an existing customer's home location - unlike updateCustomer
+// (which deliberately never touches pointOfSaleId), this is the one place
+// that's allowed to. Reserved for a full-scope actor (see
+// pos.permissions.js#assertFullPosScope's comment on why this is stricter
+// than the "both ends in scope" rule stock transfers use) - reassigning
+// isn't a routine operation like moving stock, it's a correction to who a
+// record belongs to, so it's kept out of reach of a location-restricted
+// editor even if they happen to manage both the old and new location.
+// Existing orders tied to this customer are untouched - they're a
+// point-in-time fact about where a sale happened, not something that needs
+// to follow the customer's current location.
+const reassignCustomerPointOfSale = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+    const { point_of_sale_id } = req.body || {};
+
+    if (!point_of_sale_id) {
+        return next(new ApiError(400, "point_of_sale_id es obligatorio"));
+    }
+
+    try {
+        assertFullPosScope(req.user);
+
+        const existingCustomer = await findCustomerByAnyId(id);
+        if (!existingCustomer) {
+            return next(new ApiError(404, "Customer not found"));
+        }
+        if (req.user.role !== "admin" && existingCustomer.createdById !== req.user.prismaId) {
+            return next(new ApiError(403, "You don't have permission to update this customer"));
+        }
+
+        await assertPointOfSaleExists(existingCustomer.createdById, point_of_sale_id);
+
+        const previousPointOfSaleId = existingCustomer.pointOfSaleId;
+        const customer = await prisma.customer.update({
+            where: { id: existingCustomer.id },
+            data: { pointOfSaleId: point_of_sale_id },
+            include: {
+                createdBy: {
+                    select: { id: true, legacyMongoId: true, username: true },
+                },
+                pointOfSale: {
+                    select: { id: true, name: true },
+                },
+            },
+        });
+
+        emitPosEvent(existingCustomer.createdById, previousPointOfSaleId, "customer", "updated");
+        emitPosEvent(existingCustomer.createdById, point_of_sale_id, "customer", "updated");
+        return res
+            .status(200)
+            .json(new ApiResponse(200, mapCustomer(customer), "Customer moved successfully"));
+    } catch (error) {
+        if (error instanceof ApiError) return next(error);
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
+});
+
 export {
     createCustomer,
     getAllCustomers,
     getUserCustomers,
     updateCustomer,
     deleteCustomer,
+    reassignCustomerPointOfSale,
 };
