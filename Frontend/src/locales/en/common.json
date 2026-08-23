@@ -1264,6 +1264,7 @@
     "keep_practice_button": "I'll keep it",
     "cleanup_success": "Done - your practice data is gone. Your real inventory was never touched.",
     "cleanup_failed": "We couldn't auto-delete the practice data, but no worries - you can remove those records by hand whenever you like.",
+    "leftover_data_purged": "We found practice data from an earlier run and cleared it before starting, so you won't get duplicates.",
     "dismiss_confirm_title": "What should we do with your practice data?",
     "dismiss_confirm_desc": "You already created some practice records. If you leave them and pick the tour back up later, you could end up with duplicates. Delete them now, or leave them as they are?",
     "finish_title": "You did it! 🎉",

@@ -1,5 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import AuthContext from "./AuthContext";
+import useI18n from "../hooks/useI18n";
+import { tutorialDataService } from "../services/tutorialDataService";
 import { INVENTORY_TOUR_STEPS } from "../components/inventoryTour/inventoryTourSteps";
 
 const InventoryTourContext = createContext(null);
@@ -25,6 +28,7 @@ const createdRefsKeyFor = (userId) => `ohnix.app_tour.created_refs.${userId || "
 //    request is still slow).
 export const InventoryTourProvider = ({ children }) => {
     const { user } = useContext(AuthContext);
+    const { t } = useI18n();
     const userId = user?.id || user?._id || null;
 
     const [isOpen, setIsOpen] = useState(false);
@@ -79,6 +83,29 @@ export const InventoryTourProvider = ({ children }) => {
         localStorage.setItem(createdRefsKeyFor(userIdRef.current), JSON.stringify(createdRefs));
     }, [isOpen, createdRefs]);
 
+    // A fresh start (as opposed to resuming a saved step) re-creates every
+    // practice record from scratch with the same fixed values every time
+    // ("Practice category", "practica@ohnix.app", ...) - if an earlier run
+    // was finished-and-kept (or abandoned without the "delete my practice
+    // data" choice), those rows are still sitting in the DB and the very
+    // first create-category step would collide with them (unique name/
+    // email/phone checks in category/unit/customer/supplier controllers).
+    // Purging silently here, before the user reaches an actual create step,
+    // avoids that collision instead of only reacting to it after the fact.
+    const purgeLeftoverTutorialData = useCallback(async () => {
+        try {
+            const { data } = await tutorialDataService.purge();
+            const totalDeleted = Object.values(data || {}).reduce((sum, n) => sum + (n || 0), 0);
+            if (totalDeleted > 0) {
+                toast(t("inventory_tour.leftover_data_purged"), { icon: "🧹" });
+            }
+        } catch {
+            // Best-effort - if this fails, the create-step's own duplicate
+            // error is still there as a fallback, just without the
+            // friendlier heads-up.
+        }
+    }, [t]);
+
     // Every step is now always walked through (no more "skip create-category
     // because the account already has one") - the tour is explicitly a
     // practice flow, so it always creates its own practice category/unit/
@@ -87,7 +114,8 @@ export const InventoryTourProvider = ({ children }) => {
     // confusing ("no me dejó crear una categoría" / an unrecognized category
     // showing up pre-filled on the product step). That also means there's no
     // per-account state left to fetch before the steps list is known, so
-    // start() is fully synchronous now.
+    // start() itself stays synchronous - the purge above runs in the
+    // background instead of blocking the tour from opening.
     const start = useCallback(() => {
         setIsOpen(true);
         const effective = INVENTORY_TOUR_STEPS;
@@ -110,8 +138,9 @@ export const InventoryTourProvider = ({ children }) => {
             // a previous, already-finished/abandoned practice session.
             setCreatedRefs({});
             localStorage.removeItem(createdRefsKeyFor(userIdRef.current));
+            purgeLeftoverTutorialData();
         }
-    }, []);
+    }, [purgeLeftoverTutorialData]);
 
     const close = useCallback(() => {
         setIsOpen(false);
