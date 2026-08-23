@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Modal, Form, Input, Popconfirm, Spin } from "antd";
+import { Button, Modal, Form, Input, Popconfirm, Spin, Tooltip } from "antd";
 import {
     PlusOutlined,
     ShopOutlined,
@@ -62,7 +62,7 @@ const LockedPointsOfSale = () => {
 
 const PointsOfSaleTab = () => {
     const { t } = useI18n();
-    const { can } = useSubscription();
+    const { can, loading: planLoading } = useSubscription();
     const [pointsOfSale, setPointsOfSale] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null); // { mode: "create" | "rename", record? }
@@ -89,7 +89,25 @@ const PointsOfSaleTab = () => {
     // ...) calls on every mutation.
     useDataInvalidation("pointOfSale", load);
 
-    if (!can("multiLocation")) {
+    const hasFeature = can("multiLocation");
+    // A downgraded account may already have created more than one location
+    // before losing this feature - a plan change never deletes or hides
+    // existing data (same principle MembersTab already follows for team
+    // seats over a downgraded limit), so someone in that situation still
+    // needs to see/rename/deactivate what they already have. Only an
+    // account with nothing to manage yet (<= 1 location) gets the upsell
+    // screen. Waits for both loads before deciding, same reasoning as
+    // LocationStockPanel's `status` state - deciding on a still-loading
+    // `pointsOfSale` would flash the locked screen before the real data
+    // arrives.
+    if (planLoading || loading) {
+        return (
+            <div className="flex justify-center py-12">
+                <Spin size="large" />
+            </div>
+        );
+    }
+    if (!hasFeature && pointsOfSale.length <= 1) {
         return <LockedPointsOfSale />;
     }
 
@@ -141,13 +159,18 @@ const PointsOfSaleTab = () => {
         <div>
             <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="m-0 text-sm text-[var(--ohnix-text-muted)]">{t("pointOfSale.subtitle")}</p>
-                <Button
-                    icon={<PlusOutlined />}
-                    onClick={openCreate}
-                    className="h-10 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200 hover:shadow-[0_0_26px_rgba(41,216,213,0.28)]"
-                >
-                    {t("pointOfSale.create_cta")}
-                </Button>
+                <Tooltip title={hasFeature ? "" : t("pointOfSale.locked_create_hint")}>
+                    <span>
+                        <Button
+                            icon={<PlusOutlined />}
+                            onClick={openCreate}
+                            disabled={!hasFeature}
+                            className="h-10 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200 hover:shadow-[0_0_26px_rgba(41,216,213,0.28)]"
+                        >
+                            {t("pointOfSale.create_cta")}
+                        </Button>
+                    </span>
+                </Tooltip>
             </div>
 
             {loading ? (

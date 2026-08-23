@@ -8,6 +8,8 @@ import { useTeam } from "../context/TeamContext";
 import { useInventoryTour } from "../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../utils/apiError";
 import { useDataInvalidation } from "../hooks/useDataInvalidation";
+import { usePointOfSaleScope } from "../hooks/usePointOfSaleScope";
+import MoveToPointOfSaleModal from "../components/common/MoveToPointOfSaleModal";
 import {
     CustomerStats,
     CustomerTable,
@@ -47,7 +49,11 @@ const Customers = () => {
         customer: null,
     });
 
+    const [moving, setMoving] = useState({ customer: null, loading: false });
+
     const [form] = Form.useForm();
+    const { pointsOfSale, isFullScope, hasMultipleLocations } = usePointOfSaleScope();
+    const canMove = canEdit && isFullScope && hasMultipleLocations;
 
     // Utility functions
     const updateState = (updates) => {
@@ -220,6 +226,29 @@ const Customers = () => {
         updateState({ viewModalVisible: true });
     };
 
+    const handleMove = (customer) => {
+        setMoving({ customer, loading: false });
+    };
+
+    const handleMoveCancel = () => {
+        setMoving({ customer: null, loading: false });
+    };
+
+    const handleMoveSubmit = async (pointOfSaleId) => {
+        setMoving((prev) => ({ ...prev, loading: true }));
+        try {
+            await api.patch(`/customers/${moving.customer._id}/point-of-sale`, {
+                point_of_sale_id: pointOfSaleId,
+            });
+            toast.success(t("pointOfSale.moved_success"));
+            handleMoveCancel();
+            await fetchCustomers();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("pointOfSale.move_failed"));
+            setMoving((prev) => ({ ...prev, loading: false }));
+        }
+    };
+
     const handleCancel = () => {
         updateState({ modalVisible: false });
         setEditing({ customer: null, fileList: [] });
@@ -317,6 +346,8 @@ const Customers = () => {
                     onEdit={handleEdit}
                     onView={handleView}
                     onDelete={handleDelete}
+                    onMove={handleMove}
+                    canMove={canMove}
                 />
             </Card>
 
@@ -326,6 +357,15 @@ const Customers = () => {
                 onCancel={handleViewCancel}
                 customer={viewing.customer}
                 onEdit={handleEdit}
+            />
+
+            <MoveToPointOfSaleModal
+                visible={Boolean(moving.customer)}
+                record={moving.customer}
+                pointsOfSale={pointsOfSale}
+                loading={moving.loading}
+                onSubmit={handleMoveSubmit}
+                onCancel={handleMoveCancel}
             />
 
             <CustomerModal

@@ -9,6 +9,7 @@ import {
     PhoneOutlined,
     HomeOutlined,
     ShopOutlined,
+    SwapOutlined,
 } from "@ant-design/icons";
 import { Typography } from "antd";
 import useI18n from "../../hooks/useI18n";
@@ -16,7 +17,7 @@ import { useTeam } from "../../context/TeamContext";
 
 const { Text } = Typography;
 
-const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
+const CustomerTable = ({ customers, loading, onEdit, onView, onDelete, onMove, canMove = false }) => {
     const { t } = useI18n();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("customers", "edit");
@@ -61,6 +62,15 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                                 className="text-[#29D8D5]"
                                 disabled={!canEdit}
                             />
+                            {canMove && (
+                                <Button
+                                    type="text"
+                                    icon={<SwapOutlined />}
+                                    size="small"
+                                    onClick={() => onMove(customer)}
+                                    className="text-[#7c6af7]"
+                                />
+                            )}
                             <Popconfirm
                                 title={t("customers.delete_customer")}
                                 description={t("customers.delete_customer_confirm")}
@@ -220,6 +230,17 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete }) => {
                             disabled={!canEdit}
                         />
                     </Tooltip>
+                    {canMove && (
+                        <Tooltip title={t("pointOfSale.move_action")}>
+                            <Button
+                                type="text"
+                                icon={<SwapOutlined />}
+                                size="small"
+                                onClick={() => onMove(record)}
+                                className="text-[#7c6af7] hover:text-[#7c6af7] hover:bg-[var(--ohnix-hover-overlay)]"
+                            />
+                        </Tooltip>
+                    )}
                     <Popconfirm
                         title={t("customers.delete_customer")}
                         description={t("customers.delete_customer_confirm")}

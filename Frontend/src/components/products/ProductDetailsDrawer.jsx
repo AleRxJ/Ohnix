@@ -17,7 +17,7 @@ import {
 } from "@ant-design/icons";
 import { useCurrency } from "../../context/CurrencyContext";
 import useI18n from "../../hooks/useI18n";
-import { DEFAULT_LOW_STOCK_THRESHOLD } from "../../utils/productUtils";
+import { DEFAULT_LOW_STOCK_THRESHOLD, PRODUCT_IMAGE_FALLBACK } from "../../utils/productUtils";
 import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 import LocationStockPanel from "./LocationStockPanel";
 
@@ -174,7 +174,7 @@ const ProductDetailsDrawer = ({
                                     src={product.product_image}
                                     alt={product.product_name}
                                     className="w-full h-full object-cover"
-                                    fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6U"
+                                    fallback={PRODUCT_IMAGE_FALLBACK}
                                     preview={{
                                         mask: <div className="text-[var(--ohnix-text-primary)] text-xs font-medium">{t("products.preview")}</div>,
                                     }}

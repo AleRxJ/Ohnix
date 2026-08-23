@@ -6,6 +6,17 @@ import * as stockTransferService from "../services/stockTransfer.service.js";
 
 const toExternalId = (entity) => entity?.legacyMongoId || entity?.id;
 
+// approvedBy/sentBy/receivedBy/cancelledBy are attached by
+// stockTransfer.service.js#attachActorUsers (listTransfers/getTransferById)
+// as {id, username} - falls back to {_id: <the raw column>} when a caller
+// returns the transfer without going through that (quickTransfer's
+// immediate response, see its own comment), same tolerant pattern
+// requested_by already uses below.
+const mapActor = (resolved, rawId) => {
+    if (resolved) return { _id: resolved.id, username: resolved.username };
+    return rawId ? { _id: rawId } : null;
+};
+
 // Shared with product.controller.js's "Traslado rápido" endpoint (which
 // creates a StockTransfer under the hood too, see
 // stockTransfer.service.js#quickTransfer) so both return the exact same
@@ -33,9 +44,13 @@ export const mapStockTransfer = (t) => ({
     cancel_reason: t.cancelReason,
     requested_by: t.requestedBy ? { _id: t.requestedBy.id, username: t.requestedBy.username } : { _id: t.requestedById },
     requested_at: t.requestedAt,
+    approved_by: mapActor(t.approvedBy, t.approvedById),
     approved_at: t.approvedAt,
+    sent_by: mapActor(t.sentBy, t.sentById),
     sent_at: t.sentAt,
+    received_by: mapActor(t.receivedBy, t.receivedById),
     received_at: t.receivedAt,
+    cancelled_by: mapActor(t.cancelledBy, t.cancelledById),
     cancelled_at: t.cancelledAt,
 });
 

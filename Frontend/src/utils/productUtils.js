@@ -5,6 +5,14 @@ import { formatCurrency } from "./currency";
 // (SystemSetting.lowStockDefaultThreshold, see systemSettings.js).
 export const DEFAULT_LOW_STOCK_THRESHOLD = 10;
 
+// Placeholder shown by <Image fallback> when a product has no image or its
+// image fails to load. Drawn as a boxed package (not a generic photo/
+// mountain icon) so it actually reads as "product" at a glance. Must stay a
+// complete, valid data URI - a truncated one renders as a broken-image icon
+// instead of a placeholder.
+export const PRODUCT_IMAGE_FALLBACK =
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23101826'/%3E%3Cg stroke='%2329D8D5' stroke-width='4' fill='none' stroke-linejoin='round' stroke-linecap='round' opacity='0.75'%3E%3Cpath d='M50 18 L83 36 L83 64 L50 82 L17 64 L17 36 Z'/%3E%3Cpath d='M17 36 L50 54 L83 36'/%3E%3Cpath d='M50 54 L50 82'/%3E%3C/g%3E%3C/svg%3E";
+
 export const formatPrice = (price, currencyCode) => {
     return formatCurrency(price, currencyCode);
 };

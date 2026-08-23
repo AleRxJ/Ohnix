@@ -13,6 +13,7 @@ import {
     ArrowRightOutlined,
     ExclamationCircleOutlined,
     ThunderboltOutlined,
+    EyeOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
@@ -25,6 +26,7 @@ import { stockTransferService } from "../../services/stockTransferService";
 import TransferStockModal from "./TransferStockModal";
 import RequestTransferModal from "./RequestTransferModal";
 import ReceiveTransferModal from "./ReceiveTransferModal";
+import TransferDetailModal from "./TransferDetailModal";
 
 const { Text } = Typography;
 
@@ -92,6 +94,15 @@ const AnimatedStat = ({ value, className }) => {
     return <span className={`tabular-nums ${className || ""}`}>{animated}</span>;
 };
 
+const formatTransferDate = (value, language) =>
+    new Date(value).toLocaleString(language, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+
 // Per-location breakdown (available / in transit / total, matching the
 // 2026-08-21 multi-location inventory spec's example table) plus the
 // transfer workflow for this one product - both live here rather than in
@@ -100,11 +111,12 @@ const AnimatedStat = ({ value, className }) => {
 // only one location: with a single point of sale there's nothing to break
 // down or move between.
 const LocationStockPanel = ({ product }) => {
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const { can } = useSubscription();
     const [pointsOfSale, setPointsOfSale] = useState([]);
     const [summary, setSummary] = useState(null);
     const [transfers, setTransfers] = useState([]);
+    const [detailFor, setDetailFor] = useState(null);
     // Tracked separately from pointsOfSale/loading on purpose: a failed
     // fetch used to leave pointsOfSale at its initial empty array, which
     // the render check below read as "this account only has one location"
@@ -441,8 +453,24 @@ const LocationStockPanel = ({ product }) => {
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <TransferStatusPill status={tr.status} t={t} />
+                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <TransferStatusPill status={tr.status} t={t} />
+                                                        <Button
+                                                            type="text"
+                                                            size="small"
+                                                            icon={<EyeOutlined />}
+                                                            onClick={() => setDetailFor(tr)}
+                                                            className="text-[var(--ohnix-text-dim)] hover:text-[#44F3F0]"
+                                                        />
+                                                    </div>
                                                 </div>
+
+                                                <Text className="text-xs text-[var(--ohnix-text-dim)] block mb-2">
+                                                    {t("products.transfer_requested_by_on", {
+                                                        name: tr.requested_by?.username || "—",
+                                                        date: formatTransferDate(tr.requested_at, currentLanguage),
+                                                    })}
+                                                </Text>
 
                                                 {tr.discrepancy > 0 && (
                                                     <Text className="text-xs text-[var(--ohnix-status-rose)] flex items-center gap-1 mb-2">
@@ -572,6 +600,13 @@ const LocationStockPanel = ({ product }) => {
                 loading={actionLoading}
                 onSubmit={handleReceive}
                 onCancel={() => setReceiveFor(null)}
+            />
+
+            <TransferDetailModal
+                visible={Boolean(detailFor)}
+                transfer={detailFor}
+                product={product}
+                onCancel={() => setDetailFor(null)}
             />
         </div>
     );

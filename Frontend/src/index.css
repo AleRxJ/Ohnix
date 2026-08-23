@@ -1969,6 +1969,18 @@ textarea.ant-input[disabled] {
   background: var(--ohnix-hover-overlay) !important;
 }
 
+/* antd's plain (non-drag) Upload wraps children in .ant-upload-select,
+   which ships display:inline-block with no width (upload/style/index.js).
+   A width:100% child (PhotoDropZone) inside an auto-sized inline-block
+   parent collapses to the child's intrinsic content width instead of
+   filling the row, so the product photo dropzone rendered as a narrow
+   vertical sliver instead of a full-width box. Force block layout so it
+   actually fills its container. */
+.product-image-upload .ant-upload.ant-upload-select {
+  display: block;
+  width: 100%;
+}
+
 /* Field-level presence (see components/team/FieldPresenceHighlighter.jsx /
    hooks/useResourcePresence.js): tags the Form.Item another connected user
    currently has focused so a save conflict is visible while it's happening,

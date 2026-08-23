@@ -621,6 +621,7 @@
     "locked_title": "Points of sale available on the Escala plan",
     "locked_description": "Upgrade to Escala to manage multiple locations, split inventory between them, and assign each team member the point of sale they belong to.",
     "locked_cta": "View plans",
+    "locked_create_hint": "Upgrade to Scale to create another point of sale.",
     "create_cta": "New point of sale",
     "create_modal_title": "New point of sale",
     "name_label": "Name",
@@ -645,7 +646,16 @@
     "limit_reached": "You reached your plan's points of sale limit.",
     "field_label": "Point of sale",
     "field_placeholder": "Choose a point of sale",
-    "field_required": "Choose the point of sale"
+    "field_required": "Choose the point of sale",
+    "move_action": "Move to another location",
+    "move_modal_title": "Move to another point of sale",
+    "move_current_label": "Current point of sale",
+    "move_select_label": "New point of sale",
+    "move_select_placeholder": "Choose the destination point of sale",
+    "move_cta": "Move",
+    "moved_success": "Moved successfully",
+    "move_failed": "Couldn't move it",
+    "move_not_allowed": "Only someone with access to every point of sale can move records between locations"
   },
   "admin": {
     "title": "Platform administration",
@@ -1083,7 +1093,28 @@
     "transfer_cancel_confirm_content": "If it was already in transit, the units go back to the source location.",
     "transfer_from_to": "{{from}} → {{to}}",
     "quick_transfer_badge": "Quick transfer",
-    "transfer_cancel_reason_label": "Cancellation reason"
+    "transfer_view_detail": "View detail",
+    "transfer_detail_title": "Transfer detail",
+    "transfer_timeline_title": "Timeline",
+    "transfer_timeline_by": "By {{name}}",
+    "transfer_timeline_unknown_actor": "Unknown user",
+    "transfer_requested_by_on": "Requested by {{name}} · {{date}}",
+    "transfer_cancel_reason_label": "Cancellation reason",
+    "print_transfer_cta": "Print"
+  },
+  "printTransfer": {
+    "document_title": "Transfer Receipt",
+    "reference_label": "Reference",
+    "event_column": "Event",
+    "actor_column": "Done by",
+    "date_column": "Date",
+    "delivered_by": "Delivered by",
+    "received_by": "Received by",
+    "name_label": "Name",
+    "id_label": "ID",
+    "date_label": "Date",
+    "printed_on": "Printed on {{date}}",
+    "popup_blocked": "Your browser blocked the print window. Allow pop-ups and try again."
   },
   "inventory_tour": {
     "trigger_button": "How does Ohnix work?",

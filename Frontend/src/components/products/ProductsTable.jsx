@@ -20,7 +20,7 @@ import {
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { useTeam } from "../../context/TeamContext";
-import { DEFAULT_LOW_STOCK_THRESHOLD } from "../../utils/productUtils";
+import { DEFAULT_LOW_STOCK_THRESHOLD, PRODUCT_IMAGE_FALLBACK } from "../../utils/productUtils";
 
 const { Text } = Typography;
 
@@ -56,7 +56,7 @@ const ProductsTable = ({
                         width={60}
                         height={60}
                         style={{ objectFit: "cover" }}
-                        fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6U"
+                        fallback={PRODUCT_IMAGE_FALLBACK}
                     />
                 </div>
 
@@ -178,7 +178,7 @@ const ProductsTable = ({
                     width={50}
                     height={50}
                     style={{ objectFit: "cover" }}
-                    fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6U"
+                    fallback={PRODUCT_IMAGE_FALLBACK}
                 />
             ),
         },

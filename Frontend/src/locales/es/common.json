@@ -621,6 +621,7 @@
     "locked_title": "Puntos de venta disponibles desde el plan Escala",
     "locked_description": "Actualiza a Escala para administrar varias ubicaciones, repartir inventario entre ellas y asignar a cada persona del equipo el punto de venta que le corresponde.",
     "locked_cta": "Ver planes",
+    "locked_create_hint": "Actualiza a Escala para crear otro punto de venta.",
     "create_cta": "Nuevo punto de venta",
     "create_modal_title": "Nuevo punto de venta",
     "name_label": "Nombre",
@@ -645,7 +646,16 @@
     "limit_reached": "Alcanzaste el límite de puntos de venta de tu plan.",
     "field_label": "Punto de venta",
     "field_placeholder": "Elige un punto de venta",
-    "field_required": "Elige el punto de venta"
+    "field_required": "Elige el punto de venta",
+    "move_action": "Mover de punto de venta",
+    "move_modal_title": "Mover a otro punto de venta",
+    "move_current_label": "Punto de venta actual",
+    "move_select_label": "Nuevo punto de venta",
+    "move_select_placeholder": "Elige el punto de venta destino",
+    "move_cta": "Mover",
+    "moved_success": "Movido correctamente",
+    "move_failed": "No se pudo mover",
+    "move_not_allowed": "Solo alguien con acceso a todos los puntos de venta puede mover registros entre ubicaciones"
   },
   "admin": {
     "title": "Administracion de plataforma",
@@ -1083,7 +1093,28 @@
     "transfer_cancel_confirm_content": "Si ya estaba en tránsito, las unidades vuelven al punto de origen.",
     "transfer_from_to": "{{from}} → {{to}}",
     "quick_transfer_badge": "Traslado rápido",
-    "transfer_cancel_reason_label": "Motivo de cancelación"
+    "transfer_view_detail": "Ver detalle",
+    "transfer_detail_title": "Detalle del traslado",
+    "transfer_timeline_title": "Historial",
+    "transfer_timeline_by": "Por {{name}}",
+    "transfer_timeline_unknown_actor": "Usuario desconocido",
+    "transfer_requested_by_on": "Solicitado por {{name}} · {{date}}",
+    "transfer_cancel_reason_label": "Motivo de cancelación",
+    "print_transfer_cta": "Imprimir"
+  },
+  "printTransfer": {
+    "document_title": "Comprobante de Traslado",
+    "reference_label": "Referencia",
+    "event_column": "Evento",
+    "actor_column": "Realizado por",
+    "date_column": "Fecha",
+    "delivered_by": "Entregado por",
+    "received_by": "Recibido por",
+    "name_label": "Nombre",
+    "id_label": "Identificación",
+    "date_label": "Fecha",
+    "printed_on": "Impreso el {{date}}",
+    "popup_blocked": "Tu navegador bloqueó la ventana de impresión. Permite las ventanas emergentes e inténtalo de nuevo."
   },
   "inventory_tour": {
     "trigger_button": "¿Cómo funciona Ohnix?",

@@ -313,18 +313,54 @@ export const quickTransfer = async ({ accountId, actorId, productId, fromPointOf
     return prisma.stockTransfer.findUniqueOrThrow({ where: { id: transferId } });
 };
 
+// approvedById/sentById/receivedById/cancelledById are plain scalar columns,
+// not Prisma relations (only requestedBy has one) - adding real relations
+// for four rarely-read columns would mean four new FK constraints for what
+// is otherwise a read-only "who did this" display. Batch-resolving them
+// here instead, the same way a manual join would, keeps this out of the
+// schema entirely.
+const attachActorUsers = async (transfers) => {
+    const idSet = new Set();
+    for (const t of transfers) {
+        if (t.approvedById) idSet.add(t.approvedById);
+        if (t.sentById) idSet.add(t.sentById);
+        if (t.receivedById) idSet.add(t.receivedById);
+        if (t.cancelledById) idSet.add(t.cancelledById);
+    }
+
+    const byId = idSet.size
+        ? new Map(
+              (
+                  await prisma.user.findMany({
+                      where: { id: { in: [...idSet] } },
+                      select: { id: true, username: true },
+                  })
+              ).map((u) => [u.id, u])
+          )
+        : new Map();
+
+    return transfers.map((t) => ({
+        ...t,
+        approvedBy: t.approvedById ? byId.get(t.approvedById) || null : null,
+        sentBy: t.sentById ? byId.get(t.sentById) || null : null,
+        receivedBy: t.receivedById ? byId.get(t.receivedById) || null : null,
+        cancelledBy: t.cancelledById ? byId.get(t.cancelledById) || null : null,
+    }));
+};
+
 export const getTransferById = async (accountId, id) => {
     const transfer = await prisma.stockTransfer.findFirst({ where: { id, accountId } });
     if (!transfer) throw new ApiError(404, "Traslado no encontrado.");
-    return transfer;
+    const [withActors] = await attachActorUsers([transfer]);
+    return withActors;
 };
 
 // Restricted-scope actors only see transfers touching a location they can
 // see - same "hasPosAccess on at least one end" rule the create/action
 // endpoints enforce (pos.permissions.js), applied here as a query filter
 // instead of a per-record check.
-export const listTransfers = async ({ accountId, posScopeAll, posScopeIds, status, productId }) =>
-    prisma.stockTransfer.findMany({
+export const listTransfers = async ({ accountId, posScopeAll, posScopeIds, status, productId }) => {
+    const transfers = await prisma.stockTransfer.findMany({
         where: {
             accountId,
             ...(status ? { status } : {}),
@@ -347,3 +383,5 @@ export const listTransfers = async ({ accountId, posScopeAll, posScopeIds, statu
         orderBy: { requestedAt: "desc" },
         take: 200,
     });
+    return attachActorUsers(transfers);
+};

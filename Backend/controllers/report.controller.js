@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import { streamReportPdf } from "../utils/reportPdf.js";
 import { getLowStockDefaultThreshold } from "../utils/systemSettings.js";
+import { normalizeProductImage } from "../utils/productImage.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -401,8 +402,7 @@ const getTopProducts = asyncHandler(async (req, res, next) => {
                     _id: toExternalId(detail.product),
                     product_name: detail.product?.productName || "Unknown",
                     product_code: detail.product?.productCode || "N/A",
-                    product_image:
-                        detail.product?.productImage || "default-product.png",
+                    product_image: normalizeProductImage(detail.product?.productImage),
                     quantity_sold: 0,
                     total_sales: 0,
                 };
