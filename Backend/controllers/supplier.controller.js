@@ -26,6 +26,13 @@ const mapSupplier = (supplier, currentUser) => ({
     bank_name: supplier.bankName,
     account_holder: supplier.accountHolder,
     account_number: supplier.accountNumber,
+    identification_document_code: supplier.identificationDocumentCode,
+    identification: supplier.identification,
+    legal_organization_code: supplier.legalOrganizationCode,
+    tribute_code: supplier.tributeCode,
+    municipality_code: supplier.municipalityCode,
+    country_code: supplier.countryCode,
+    not_obligated_to_invoice: supplier.notObligatedToInvoice,
     photo: supplier.photo,
     owner: supplier.createdBy
         ? {
@@ -64,6 +71,25 @@ const findSupplierByAnyId = async (id) =>
         },
     });
 
+const fiscalSupplierData = (body) => {
+    const fields = {
+        identification_document_code: "identificationDocumentCode",
+        identification: "identification",
+        legal_organization_code: "legalOrganizationCode",
+        tribute_code: "tributeCode",
+        municipality_code: "municipalityCode",
+        country_code: "countryCode",
+    };
+    return Object.fromEntries(
+        Object.entries(fields)
+            .filter(([input]) => body[input] !== undefined)
+            .map(([input, field]) => [
+                field,
+                `${body[input] || ""}`.trim().toUpperCase() || null,
+            ])
+    );
+};
+
 const createSupplier = asyncHandler(async (req, res, next) => {
     const {
         name,
@@ -75,6 +101,7 @@ const createSupplier = asyncHandler(async (req, res, next) => {
         bank_name,
         account_holder,
         account_number,
+        not_obligated_to_invoice,
         is_tutorial_data,
     } = req.body;
 
@@ -124,9 +151,11 @@ const createSupplier = asyncHandler(async (req, res, next) => {
                 accountHolder: account_holder?.trim() || null,
                 accountNumber: account_number?.trim() || null,
                 photo: photoUrl,
+                notObligatedToInvoice: not_obligated_to_invoice === true || not_obligated_to_invoice === "true",
                 isTutorialData: is_tutorial_data === true || is_tutorial_data === "true",
                 createdById: req.user.prismaId,
                 pointOfSaleId,
+                ...fiscalSupplierData(req.body),
             },
             include: {
                 createdBy: {
@@ -296,6 +325,10 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
                 ...(req.body.account_number !== undefined && {
                     accountNumber: req.body.account_number?.trim() || null,
                 }),
+                ...(req.body.not_obligated_to_invoice !== undefined && {
+                    notObligatedToInvoice: req.body.not_obligated_to_invoice === true || req.body.not_obligated_to_invoice === "true",
+                }),
+                ...fiscalSupplierData(req.body),
                 photo: photoUrl,
             },
             include: {

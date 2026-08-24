@@ -270,3 +270,34 @@ export const retryItcycleCreditNoteSend = async ({ apiKey, id }) => {
         authHeader: companyAuthHeader(apiKey),
     });
 };
+
+// Documento Soporte (DIAN type "05") - self-issued for a purchase from a
+// supplier not obligated to invoice. Body field is "document", not
+// "invoice" - matches itcycle-api-dian's own CreateSupportDocumentBodySchema.
+export const createItcycleSupportDocument = async ({ apiKey, internalReference, document, send }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "POST",
+        path: "/api/v1/documents/support-documents",
+        body: { internalReference, document, send },
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
+export const getItcycleSupportDocumentStatus = async ({ apiKey, id }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "GET",
+        path: `/api/v1/documents/support-documents/${id}`,
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
+export const retryItcycleSupportDocumentSend = async ({ apiKey, id }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "POST",
+        path: `/api/v1/documents/support-documents/${id}/retry-send`,
+        authHeader: companyAuthHeader(apiKey),
+    });
+};

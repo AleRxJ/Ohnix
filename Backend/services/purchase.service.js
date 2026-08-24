@@ -5,8 +5,27 @@ import { claimLocationStock, creditLocationStock } from "./productLocationStock.
 import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
 import { postPurchaseJournalEntry, postPurchaseReturnJournalEntry } from "./accountingPosting.service.js";
+import { issueSupportDocumentForPurchase } from "./purchaseSupportDocument.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
+
+// Fire-and-forget, same pattern as order.service.js's
+// triggerElectronicInvoicingIfCompleted - failure here must never fail the
+// purchase-completion request itself (stock/accounting already committed).
+const triggerSupportDocumentIfCompleted = ({ purchaseId, userId, userRole, trigger }) => {
+    issueSupportDocumentForPurchase({
+        purchaseId,
+        requesterUserId: userId,
+        requesterRole: userRole,
+        trigger,
+    }).catch((error) => {
+        console.warn("[support-document] async issuance skipped/failed", {
+            purchaseId,
+            trigger,
+            message: error?.message || error,
+        });
+    });
+};
 
 const findSupplierByAnyId = async (id) =>
     prisma.supplier.findFirst({
@@ -348,6 +367,15 @@ class PurchaseService {
 
         emitPosEvent(purchase.createdById, purchase.pointOfSaleId, "purchase", "updated");
         if (newStatus === "completed") emitPosEvent(purchase.createdById, purchase.pointOfSaleId, "product", "stock-changed");
+
+        if (newStatus === "completed" && !updatedPurchase.isTutorialData) {
+            triggerSupportDocumentIfCompleted({
+                purchaseId: updatedPurchase.id,
+                userId,
+                userRole,
+                trigger: "purchase_status_completed",
+            });
+        }
 
         return {
             purchase: {

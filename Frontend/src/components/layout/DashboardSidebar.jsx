@@ -73,7 +73,14 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                         theme={isLite ? "light" : "dark"}
                         selectedKeys={[currentPage]}
                         mode="inline"
-                        items={getMenuItems(t, user?.role, ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO", showTeam, hasPermission).map((item) => ({
+                        items={getMenuItems(
+                            t,
+                            user?.role,
+                            ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO",
+                            showTeam,
+                            hasPermission,
+                            ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle"
+                        ).map((item) => ({
                             ...item,
                         }))}
                         className="border-r-0"

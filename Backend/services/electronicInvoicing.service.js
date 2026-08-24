@@ -511,7 +511,7 @@ const mapAlanubeCreditNoteResponse = (raw) => {
 // falls back to a placeholder. Confirm against a real DIAN sandbox response
 // before relying on this in production - same caveat this file already
 // carries for the Alanube mapping above.
-const buildItcyclePartyAddress = (municipalityCode, streetAddress) => {
+export const buildItcyclePartyAddress = (municipalityCode, streetAddress) => {
     const code = text(municipalityCode) || "11001";
     const departmentCode = code.slice(0, 2) || "11";
     return {
@@ -525,7 +525,11 @@ const buildItcyclePartyAddress = (municipalityCode, streetAddress) => {
     };
 };
 
-const buildItcycleCustomerParty = (customer) => {
+// Named "CustomerParty" for the sales-side call sites - reused unchanged for
+// Documento Soporte, where it's fed a Supplier (see purchaseSupportDocument.
+// service.js), since it only reads generic name/identification/address
+// fields, not anything Order/Customer-specific.
+export const buildItcycleCustomerParty = (customer) => {
     const address = buildItcyclePartyAddress(customer.municipalityCode, customer.address);
     return {
         name: customer.name,
@@ -547,7 +551,11 @@ const buildItcycleCustomerParty = (customer) => {
     };
 };
 
-const buildItcycleLines = (orderDetails) => orderDetails.map((item, index) => {
+// Consumes generic {quantity, unitcost, taxTreatmentApplied, taxRateApplied,
+// taxAmount, product:{unitMeasureCode, productName, taxCode}} rows - reused
+// unchanged for PurchaseDetail (see purchaseSupportDocument.service.js),
+// which carries the exact same field set/names as OrderDetail.
+export const buildItcycleLines = (orderDetails) => orderDetails.map((item, index) => {
     const quantity = toNumber(item.quantity);
     const price = toNumber(item.unitcost);
     const lineExtensionAmount = toNumber(quantity * price);
@@ -582,7 +590,7 @@ const buildItcycleLines = (orderDetails) => orderDetails.map((item, index) => {
 // order.total anyway). `percent` was also hardcoded to 19 regardless of the
 // lines' actual rate(s) - now the effective blended rate, correct for 0%/5%/
 // 19%/exempt lines alike.
-const buildItcycleTotals = (lines) => {
+export const buildItcycleTotals = (lines) => {
     const lineExtensionAmount = toNumber(lines.reduce((sum, l) => sum + l.lineExtensionAmount, 0));
     const taxTotal = toNumber(lines.reduce((sum, l) => sum + (l.taxTotals[0]?.taxAmount || 0), 0));
     const taxInclusiveAmount = toNumber(lineExtensionAmount + taxTotal);
@@ -655,7 +663,7 @@ const buildItcyclePayload = (order) => {
 
 // itcycle-api-dian's own Invoice.status values (see its Invoice model):
 // PENDING/PROCESSING/SENT are all still in flight from Ohnix's point of view.
-const normalizeItcycleStatus = (status) => {
+export const normalizeItcycleStatus = (status) => {
     const value = text(status).toUpperCase();
     if (value === "ACCEPTED") return "accepted";
     if (value === "REJECTED") return "rejected";
@@ -778,6 +786,34 @@ export const registerCompanyWithItcycle = async ({ companyId, requesterRole, dia
     } catch (error) {
         const providerPayload = error instanceof ItcycleDianError ? error.payload : null;
         throw new ApiError(502, error.message || "Failed to provision company with itcycle-api-dian", providerPayload ? [providerPayload] : undefined);
+    }
+};
+
+/**
+ * Registers ONE additional itcycle-api-dian numbering resolution (e.g.
+ * documentType "05" for Documento Soporte) for an already-provisioned
+ * company, without going through registerCompanyWithItcycle's full
+ * orchestration. Deliberately separate: createNumberingResolution on
+ * itcycle-api-dian's side is NOT idempotent (unlike createCompany/
+ * setDianConfiguration), so re-running the full wizard would silently
+ * create a duplicate "01" resolution every time - this action only ever
+ * adds the one resolution the caller asks for.
+ */
+export const addItcycleNumberingResolutionForCompany = async ({ companyId, requesterRole, documentType, prefix, resolutionNumber, startNumber, endNumber, startDate, endDate }) => {
+    if (requesterRole !== "admin") throw new ApiError(403, "Only admins can manage itcycle-api-dian numbering resolutions");
+    if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) throw new ApiError(404, "Company not found");
+    if (!text(company.itcycleCompanyId)) {
+        throw new ApiError(422, "Company must be provisioned with itcycle-api-dian before adding a numbering resolution");
+    }
+
+    try {
+        return await createItcycleNumberingResolution({ companyId: company.itcycleCompanyId, documentType, prefix, resolutionNumber, startNumber, endNumber, startDate, endDate });
+    } catch (error) {
+        const providerPayload = error instanceof ItcycleDianError ? error.payload : null;
+        throw new ApiError(502, error.message || "Failed to add numbering resolution with itcycle-api-dian", providerPayload ? [providerPayload] : undefined);
     }
 };
 // ---------------------------------------------------------------------------

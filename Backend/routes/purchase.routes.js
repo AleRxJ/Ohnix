@@ -7,6 +7,11 @@ import {
     getReturnPreview,
     processReturn,
 } from "../controllers/purchase.controller.js";
+import {
+    getPurchaseSupportDocument,
+    issuePurchaseSupportDocument,
+    syncPurchaseSupportDocument,
+} from "../controllers/purchaseSupportDocument.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import {
@@ -42,5 +47,12 @@ router.route("/:id/return-preview").get(requireModulePermission("purchases", "vi
 // an accidental duplicate call (retry, double-click) looks exactly like a
 // second real return - `idempotent` is what tells them apart.
 router.route("/:id/returns").post(requireModulePermission("purchases", "edit"), idempotent("purchase.return"), processReturn);
+
+// Documento Soporte (DIAN type "05", itcycle-api-dian only) - see
+// purchaseSupportDocument.service.js. Auto-issued on purchase completion;
+// these endpoints are for viewing status and manually retrying/syncing.
+router.route("/:id/support-document").get(requireModulePermission("purchases", "view"), getPurchaseSupportDocument);
+router.route("/:id/support-document/issue").post(requireModulePermission("purchases", "edit"), issuePurchaseSupportDocument);
+router.route("/:id/support-document/sync").post(requireModulePermission("purchases", "edit"), syncPurchaseSupportDocument);
 
 export default router;

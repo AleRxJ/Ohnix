@@ -288,9 +288,10 @@ model Company {
   createdAt                        DateTime          @default(now()) @map("created_at")
   updatedAt                        DateTime          @updatedAt @map("updated_at")
 
-  users              User[]
-  electronicInvoices ElectronicInvoice[]
-  apiKeys            ApiKey[]
+  users                    User[]
+  electronicInvoices       ElectronicInvoice[]
+  purchaseSupportDocuments PurchaseSupportDocument[]
+  apiKeys                  ApiKey[]
 
   @@map("companies")
 }
@@ -480,6 +481,20 @@ model Supplier {
   accountHolder  String?  @map("account_holder")
   accountNumber  String?  @map("account_number")
   photo          String
+  // Same DIAN fields/names as Customer's own block below, so
+  // electronicInvoicing.service.js's buildItcycleCustomerParty/
+  // buildItcyclePartyAddress work against a Supplier row unchanged.
+  identificationDocumentCode String? @map("identification_document_code")
+  identification             String? @map("identification")
+  legalOrganizationCode      String? @map("legal_organization_code")
+  tributeCode                String? @map("tribute_code")
+  municipalityCode           String? @map("municipality_code")
+  countryCode                String? @map("country_code")
+  // Precondition for auto-issuing a Documento Soporte on purchase completion
+  // (purchaseSupportDocument.service.js) - mirrors how order.orderStatus
+  // "completed" gates sales invoicing. Only suppliers legally NOT required
+  // to issue their own invoice need this document.
+  notObligatedToInvoice Boolean @default(false) @map("not_obligated_to_invoice")
   isTutorialData Boolean  @default(false) @map("is_tutorial_data")
   createdById    String   @map("created_by")
   // Which location this supplier was created at - see Order.pointOfSaleId
@@ -756,12 +771,13 @@ model Purchase {
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  supplier        Supplier          @relation(fields: [supplierId], references: [id])
-  pointOfSale     PointOfSale       @relation(fields: [pointOfSaleId], references: [id])
-  createdBy       User              @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
-  updatedBy       User?             @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
-  purchaseDetails PurchaseDetail[]
-  payments        PurchasePayment[]
+  supplier               Supplier                 @relation(fields: [supplierId], references: [id])
+  pointOfSale            PointOfSale              @relation(fields: [pointOfSaleId], references: [id])
+  createdBy              User                     @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
+  updatedBy              User?                    @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
+  purchaseDetails        PurchaseDetail[]
+  payments               PurchasePayment[]
+  purchaseSupportDocument PurchaseSupportDocument?
 
   @@index([createdById])
   @@index([supplierId])
@@ -953,6 +969,56 @@ model ElectronicCreditNote {
 
   @@index([invoiceId, createdAt])
   @@map("electronic_credit_notes")
+}
+
+/// A Documento Soporte (DIAN type "05") self-issued for a Purchase from a
+/// Supplier not obligated to invoice - the purchase-side mirror of
+/// ElectronicInvoice. itcycle-api-dian only (no Factus/Alanube equivalent),
+/// hence no `provider` branching like ElectronicInvoice has. No qrUrl -
+/// itcycle-api-dian never populates one for any document type. Field is
+/// `documentNumber`, not `invoiceNumber` - matches itcycle-api-dian's own
+/// SupportDocument.documentNumber field name.
+model PurchaseSupportDocument {
+  id             String                  @id @default(cuid())
+  purchaseId     String                  @unique @map("purchase_id")
+  companyId      String                  @map("company_id")
+  countryCode    String                  @map("country_code")
+  provider       String                  @default("itcycle")
+  status         ElectronicInvoiceStatus @default(draft)
+  externalId     String?                 @unique @map("external_id")
+  referenceCode  String                  @unique @map("reference_code")
+  documentNumber String?                 @map("document_number")
+  cufe           String?
+  pdfUrl         String?                 @map("pdf_url") @db.Text
+  xmlUrl         String?                 @map("xml_url") @db.Text
+  rawRequest     Json?                   @map("raw_request")
+  rawResponse    Json?                   @map("raw_response")
+  fiscalSnapshot Json?                   @map("fiscal_snapshot")
+  errorMessage   String?                 @map("error_message") @db.Text
+  issuedAt       DateTime?               @map("issued_at")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+
+  purchase Purchase                       @relation(fields: [purchaseId], references: [id])
+  company  Company                        @relation(fields: [companyId], references: [id])
+  events   PurchaseSupportDocumentEvent[]
+
+  @@index([companyId, createdAt])
+  @@map("purchase_support_documents")
+}
+
+model PurchaseSupportDocumentEvent {
+  id                        String                   @id @default(cuid())
+  purchaseSupportDocumentId String                   @map("purchase_support_document_id")
+  eventType                 String                   @map("event_type")
+  status                    ElectronicInvoiceStatus?
+  payload                   Json?
+  createdAt                 DateTime                 @default(now()) @map("created_at")
+
+  purchaseSupportDocument PurchaseSupportDocument @relation(fields: [purchaseSupportDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseSupportDocumentId, createdAt])
+  @@map("purchase_support_document_events")
 }
 
 // ─── Teams (collaborative accounts, Business plan and up) ──────────────────

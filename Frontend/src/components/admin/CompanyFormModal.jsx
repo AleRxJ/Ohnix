@@ -344,6 +344,7 @@ const ItcycleProvisioningWizard = ({
     t,
     editingCompany,
     onRegisterItcycle,
+    onAddItcycleNumberingResolution,
     onSetFirmaPassLoginKey,
     onUploadFirmaPassRut,
     onUploadFirmaPassArchivo,
@@ -441,6 +442,15 @@ const ItcycleProvisioningWizard = ({
 
             <div style={{ display: currentStep === 3 ? "block" : "none" }}>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <Form.Item name="itcycleNumberingDocumentType" label={t("admin.itcycle_numbering_document_type")} initialValue="01">
+                        <Select
+                            size="large"
+                            options={[
+                                { value: "01", label: t("admin.itcycle_numbering_document_type_invoice") },
+                                { value: "05", label: t("admin.itcycle_numbering_document_type_support_document") },
+                            ]}
+                        />
+                    </Form.Item>
                     <Form.Item name="itcycleNumberingPrefix" label={t("admin.alanube_resolution_prefix")}>
                         <Input size="large" className="auth-ohnix-input" />
                     </Form.Item>
@@ -470,6 +480,33 @@ const ItcycleProvisioningWizard = ({
                         <DatePicker size="large" className="auth-ohnix-input w-full" />
                     </Form.Item>
                 </div>
+
+                {/* Sends just this step's 7 fields to itcycle-api-dian directly
+                    (not through the full register/reregister flow below, which
+                    is NOT idempotent server-side and would duplicate the "01"
+                    resolution on every reregister) - lets an admin add "01" then
+                    switch documentType and add "05" without re-provisioning. */}
+                {editingCompany && (
+                    <div className="mt-2 flex items-center gap-3">
+                        <Button
+                            size="small"
+                            onClick={() =>
+                                onAddItcycleNumberingResolution?.(editingCompany.id, {
+                                    documentType: form.getFieldValue("itcycleNumberingDocumentType") || "01",
+                                    prefix: form.getFieldValue("itcycleNumberingPrefix"),
+                                    resolutionNumber: form.getFieldValue("itcycleNumberingResolutionNumber"),
+                                    startNumber: form.getFieldValue("itcycleNumberingStartNumber"),
+                                    endNumber: form.getFieldValue("itcycleNumberingEndNumber"),
+                                    startDate: form.getFieldValue("itcycleNumberingStartDate"),
+                                    endDate: form.getFieldValue("itcycleNumberingEndDate"),
+                                })
+                            }
+                        >
+                            {t("admin.itcycle_numbering_add_resolution")}
+                        </Button>
+                        <span className="text-xs text-[var(--ohnix-text-dim)]">{t("admin.itcycle_numbering_add_resolution_hint")}</span>
+                    </div>
+                )}
             </div>
 
             <div style={{ display: currentStep === 4 ? "block" : "none" }}>
@@ -566,6 +603,7 @@ const CompanyFormModal = ({
     onUploadLogo,
     onRegisterAlanube,
     onRegisterItcycle,
+    onAddItcycleNumberingResolution,
     onSetFirmaPassLoginKey,
     onUploadFirmaPassRut,
     onUploadFirmaPassArchivo,
@@ -776,6 +814,7 @@ const CompanyFormModal = ({
                                 t={t}
                                 editingCompany={editingCompany}
                                 onRegisterItcycle={onRegisterItcycle}
+                                onAddItcycleNumberingResolution={onAddItcycleNumberingResolution}
                                 onSetFirmaPassLoginKey={onSetFirmaPassLoginKey}
                                 onUploadFirmaPassRut={onUploadFirmaPassRut}
                                 onUploadFirmaPassArchivo={onUploadFirmaPassArchivo}

@@ -9,6 +9,7 @@ import {
     Col,
     Select,
     Card,
+    Checkbox,
 } from "antd";
 import {
     UserOutlined,
@@ -18,6 +19,7 @@ import {
     BankOutlined,
     UploadOutlined,
     EnvironmentOutlined,
+    IdcardOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
@@ -27,6 +29,7 @@ import PresenceLockBar from "../team/PresenceLockBar";
 import FieldPresenceHighlighter from "../team/FieldPresenceHighlighter";
 import PhotoDropZone from "../common/PhotoDropZone";
 import PointOfSaleField from "../common/PointOfSaleField";
+import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 const { Option } = Select;
 
@@ -53,6 +56,14 @@ const SupplierForm = ({
     const { t } = useI18n();
     const { user } = useContext(AuthContext);
     const { team } = useTeam();
+    // Documento Soporte (DIAN type "05") is itcycle-api-dian only, unlike
+    // sales invoicing which spans Factus/Alanube/itcycle - so this card is
+    // gated stricter than CustomerForm's equivalent usesColombianEInvoicing.
+    const usesColombianSupportDocuments =
+        ELECTRONIC_INVOICING_ENABLED
+        && user?.company?.countryCode === "CO"
+        && user?.company?.electronicInvoicingEnabled
+        && user?.company?.electronicInvoicingProvider === "itcycle";
     const { viewers, lock, acquireLock, releaseLock, fieldPresenceHandlers } = useResourcePresence({
         resourceType: "supplier",
         resourceId: editingSupplier?._id,
@@ -415,6 +426,61 @@ const SupplierForm = ({
                         </Card>
                     </Col>
                 </Row>
+
+                {usesColombianSupportDocuments && (
+                    <Card
+                        title={
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center text-[var(--ohnix-text-primary)]">
+                                    <IdcardOutlined className="mr-3 text-[#44F3F0] text-lg" />
+                                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">{t("suppliers.dian_data")}</span>
+                                </div>
+                                <span className="text-xs text-[#44F3F0] bg-[#29D8D5]/10 px-3 py-1 rounded-full border border-[#29D8D5]/20">
+                                    {t("suppliers.dian_badge")}
+                                </span>
+                            </div>
+                        }
+                        className="shadow-sm border-0 module-shell"
+                        headStyle={{ borderBottom: "1px solid var(--ohnix-line-3)", background: "transparent" }}
+                    >
+                        <p className="text-sm text-[var(--ohnix-text-muted)] mb-4">
+                            {t("suppliers.dian_hint")}
+                        </p>
+                        <Row gutter={[24, 16]}>
+                            <Col xs={24} sm={8}>
+                                <Form.Item name="identification_document_code" label={t("suppliers.dian_document_type")} rules={[{ required: true, message: t("suppliers.dian_document_type_required") }]}>
+                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "13", label: t("customers.dian_doc_cc") }, { value: "31", label: t("customers.dian_doc_nit") }, { value: "22", label: t("customers.dian_doc_ce") }, { value: "41", label: t("customers.dian_doc_passport") }]} />
+                                </Form.Item>
+                            </Col>
+                            <Col xs={24} sm={8}>
+                                <Form.Item name="identification" label={t("suppliers.dian_identification")} rules={[{ required: true, message: t("suppliers.dian_identification_required") }]}>
+                                    <Input size="large" className="auth-ohnix-input" />
+                                </Form.Item>
+                            </Col>
+                            <Col xs={24} sm={8}>
+                                <Form.Item name="municipality_code" label={t("customers.dian_municipality_code")} rules={[{ required: true, message: t("customers.dian_municipality_code_required") }]}>
+                                    <Input size="large" placeholder={t("customers.dian_municipality_code_placeholder")} className="auth-ohnix-input" />
+                                </Form.Item>
+                            </Col>
+                            <Col xs={24} sm={12}>
+                                <Form.Item name="legal_organization_code" label={t("customers.dian_organization")} rules={[{ required: true, message: t("customers.dian_organization_required") }]}>
+                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "1", label: t("customers.dian_org_legal") }, { value: "2", label: t("customers.dian_org_natural") }]} />
+                                </Form.Item>
+                            </Col>
+                            <Col xs={24} sm={12}>
+                                <Form.Item name="tribute_code" label={t("customers.dian_tax_liability")} rules={[{ required: true, message: t("customers.dian_tax_liability_required") }]}>
+                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "ZZ", label: t("customers.dian_tax_not_liable") }, { value: "01", label: t("customers.dian_tax_vat") }]} />
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                        <Form.Item name="not_obligated_to_invoice" valuePropName="checked" className="mb-0">
+                            <Checkbox>{t("suppliers.not_obligated_to_invoice")}</Checkbox>
+                        </Form.Item>
+                        <p className="text-xs text-[var(--ohnix-text-dim)] mt-1">
+                            {t("suppliers.not_obligated_to_invoice_hint")}
+                        </p>
+                    </Card>
+                )}
 
                 {!editMode && <PointOfSaleField />}
 

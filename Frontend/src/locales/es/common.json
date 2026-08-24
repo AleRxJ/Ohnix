@@ -15,6 +15,7 @@
     "products": "Productos",
     "orders": "Pedidos",
     "electronic_invoices_nav": "Documentos electrónicos",
+    "purchase_support_documents_nav": "Documentos soporte",
     "purchases": "Compras",
     "customers": "Clientes",
     "suppliers": "Proveedores",
@@ -954,6 +955,12 @@
     "itcycle_firmapass_estado_pe": "En espera de FirmaPass",
     "itcycle_firmapass_estado_unknown": "Estado: {{estado}}",
     "itcycle_firmapass_refresh_status": "Refrescar estado",
+    "itcycle_numbering_document_type": "Tipo de documento",
+    "itcycle_numbering_document_type_invoice": "Factura (01)",
+    "itcycle_numbering_document_type_support_document": "Documento Soporte (05)",
+    "itcycle_numbering_add_resolution": "Agregar resolución",
+    "itcycle_numbering_add_resolution_hint": "Envía solo esta resolución a itcycle-api-dian, sin volver a aprovisionar la empresa completa — úsalo para agregar la resolución \"05\" después de la \"01\".",
+    "itcycle_numbering_add_resolution_success": "Resolución de numeración agregada correctamente",
     "assign_company_title": "Asignar empresa a {{username}}",
     "assign_company_default_user": "usuario",
     "assign_company_save": "Guardar asignación",
@@ -1660,7 +1667,16 @@
     "creation_failed": "Error al crear",
     "update_failed": "Error al actualizar",
     "failed_delete_supplier": "No se pudo eliminar el proveedor",
-    "delete_conflict_purchases": "Este proveedor no se puede eliminar porque todavía tiene compras asociadas. Reasigna o elimina esas compras primero."
+    "delete_conflict_purchases": "Este proveedor no se puede eliminar porque todavía tiene compras asociadas. Reasigna o elimina esas compras primero.",
+    "dian_data": "Datos DIAN",
+    "dian_badge": "Documento Soporte CO",
+    "dian_hint": "Estos datos se usan únicamente al emitir un Documento Soporte para las compras a este proveedor.",
+    "dian_document_type": "Tipo de documento",
+    "dian_document_type_required": "El tipo de documento es obligatorio",
+    "dian_identification": "Número de identificación",
+    "dian_identification_required": "La identificación es obligatoria",
+    "not_obligated_to_invoice": "No obligado a facturar",
+    "not_obligated_to_invoice_hint": "Marca esta casilla si el proveedor no está legalmente obligado a expedir factura electrónica — Ohnix generará un Documento Soporte automáticamente al completar cada compra a este proveedor."
   },
   "categories": {
     "category": "Categoría",
@@ -2630,6 +2646,84 @@
       "stock_restock_applied": "El inventario se repuso automáticamente.",
       "stock_restock_failed": "La nota de crédito se emitió correctamente, pero no se pudo actualizar el inventario automáticamente. Ajústalo manualmente.",
       "error": "No se pudo emitir la nota crédito"
+    }
+  },
+  "purchase_support_documents": {
+    "title": "Documentos soporte",
+    "subtitle_base": "El pulso de tus Documentos Soporte, en un solo lugar.",
+    "subtitle_accepted": "{{count}} aceptados",
+    "subtitle_attention": "{{count}} por revisar",
+    "sync_action": "Sincronizar",
+    "syncing": "Sincronizando",
+    "search_placeholder": "Busca por referencia, número o CUFE",
+    "search_button": "Buscar",
+    "list_load_error": "No fue posible sincronizar los documentos",
+    "empty_state": "Aún no hay Documentos Soporte",
+    "loading_documents": "Cargando documentos…",
+    "cufe_not_available": "Aún no disponible",
+    "cufe_copy_error": "No se pudo copiar el CUFE",
+    "cufe_copied": "CUFE copiado",
+    "retry_action": "Reintentar emisión",
+    "retry_success": "El documento se reintentó correctamente",
+    "retry_error": "No se pudo reintentar la emisión",
+    "sync_success": "Estado sincronizado con itcycle-api-dian",
+    "sync_error_action": "No se pudo sincronizar el estado",
+    "metrics": {
+      "documents": "Documentos",
+      "documents_hint": "Total emitidos en el sistema",
+      "accepted": "Aceptados DIAN",
+      "accepted_hint": "Validados por la DIAN",
+      "attention": "Requieren atención",
+      "attention_hint": "Errores o rechazos a revisar"
+    },
+    "stats": {
+      "acceptance_rate": "Tasa de aceptación",
+      "last_sync": "Última sincronización"
+    },
+    "filters": {
+      "all": "Todos"
+    },
+    "status": {
+      "accepted": "Aceptado",
+      "submitted": "Enviado",
+      "issuing": "Emitiendo",
+      "rejected": "Rechazado",
+      "error": "Con error",
+      "cancelled": "Cancelado",
+      "draft": "Borrador",
+      "contingency": "Contingencia DIAN"
+    },
+    "contingency_hint": "La DIAN no respondió al momento del envío. El documento ya fue generado y firmado — es válido. Sincroniza para reintentar la validación ante la DIAN.",
+    "table": {
+      "document": "Documento",
+      "supplier": "Proveedor",
+      "status": "Estado DIAN",
+      "cufe": "CUFE",
+      "issued": "Emitido",
+      "pending": "Pendiente",
+      "purchase_prefix": "Compra ·",
+      "documents_total": "{{count}} documento(s)"
+    },
+    "support": {
+      "download_pdf": "Descargar PDF",
+      "view_xml": "Ver XML",
+      "not_available": "{{kind}} no disponible"
+    },
+    "drawer": {
+      "title": "Detalle del documento",
+      "supplier": "Proveedor",
+      "purchase": "Compra Ohnix",
+      "issued_at": "Fecha de emisión",
+      "pending": "Pendiente",
+      "error_detail": "Detalle del error"
+    },
+    "timeline": {
+      "issuance_claimed": "Documento en preparación",
+      "provider_response": "Respuesta del proveedor",
+      "provider_error": "Error al emitir",
+      "manual_sync": "Estado sincronizado manualmente",
+      "manual_sync_error": "Error al sincronizar",
+      "empty": "Documento en preparación"
     }
   }
 }

@@ -44,6 +44,13 @@ export const useSupplierForm = (onSuccess) => {
             bank_name: supplier.bank_name,
             account_holder: supplier.account_holder,
             account_number: supplier.account_number,
+            identification_document_code: supplier.identification_document_code,
+            identification: supplier.identification,
+            legal_organization_code: supplier.legal_organization_code,
+            tribute_code: supplier.tribute_code,
+            municipality_code: supplier.municipality_code,
+            country_code: supplier.country_code,
+            not_obligated_to_invoice: supplier.not_obligated_to_invoice,
         });
         if (supplier.photo && supplier.photo !== "default-supplier.png") {
             setFileList([

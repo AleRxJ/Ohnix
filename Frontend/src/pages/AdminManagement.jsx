@@ -176,6 +176,15 @@ const AdminManagement = () => {
         }
     };
 
+    const handleAddItcycleNumberingResolution = async (companyId, resolution) => {
+        try {
+            await adminService.addItcycleNumberingResolution(companyId, resolution);
+            toast.success(t("admin.itcycle_numbering_add_resolution_success"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        }
+    };
+
     const handleRegisterCompanyAlanube = async (companyId) => {
         try {
             setCompanySubmitting(true);
@@ -404,6 +413,7 @@ const AdminManagement = () => {
                 onUploadLogo={handleUploadCompanyLogo}
                 onRegisterAlanube={handleRegisterCompanyAlanube}
                 onRegisterItcycle={handleRegisterCompanyItcycle}
+                onAddItcycleNumberingResolution={handleAddItcycleNumberingResolution}
                 onSetFirmaPassLoginKey={handleSetFirmaPassLoginKey}
                 onUploadFirmaPassRut={handleUploadFirmaPassRut}
                 onUploadFirmaPassArchivo={handleUploadFirmaPassArchivo}

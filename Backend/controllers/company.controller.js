@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
-import { registerCompanyWithAlanube, registerCompanyWithItcycle } from "../services/electronicInvoicing.service.js";
+import { registerCompanyWithAlanube, registerCompanyWithItcycle, addItcycleNumberingResolutionForCompany } from "../services/electronicInvoicing.service.js";
 import {
     setCompanyFirmaPassLoginKey,
     uploadCompanyFirmaPassRut,
@@ -327,6 +327,27 @@ export const registerCompanyWithItcycleAdmin = asyncHandler(async (req, res) => 
     return res
         .status(200)
         .json(new ApiResponse(200, data, "Company provisioned with itcycle-api-dian successfully"));
+});
+
+export const addItcycleNumberingResolutionAdmin = asyncHandler(async (req, res) => {
+    const { companyId } = req.params;
+    const { documentType, prefix, resolutionNumber, startNumber, endNumber, startDate, endDate } = req.body || {};
+
+    const data = await addItcycleNumberingResolutionForCompany({
+        companyId,
+        requesterRole: req.user.role,
+        documentType,
+        prefix,
+        resolutionNumber,
+        startNumber,
+        endNumber,
+        startDate,
+        endDate,
+    });
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, data, "Numbering resolution added successfully"));
 });
 
 export const setCompanyFirmaPassLoginKeyAdmin = asyncHandler(async (req, res) => {

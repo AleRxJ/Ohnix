@@ -57,6 +57,7 @@ const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
 const EpaycoResponseRedirect = lazy(() => import("./pages/EpaycoResponseRedirect"));
 const ElectronicInvoices = lazy(() => import("./pages/ElectronicInvoices"));
+const PurchaseSupportDocuments = lazy(() => import("./pages/PurchaseSupportDocuments"));
 const Team = lazy(() => import("./pages/Team"));
 const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
 
@@ -72,6 +73,22 @@ const ColombiaInvoiceRoute = ({ children }) => {
     if (!ELECTRONIC_INVOICING_ENABLED) return <Navigate to="/dashboard" replace />;
     if (loading || teamLoading) return <RouteLoadingFallback />;
     return user?.company?.countryCode === "CO" && hasPermission("orders", "view")
+        ? children
+        : <Navigate to="/dashboard" replace />;
+};
+
+// Documento Soporte is itcycle-api-dian only (no Factus/Alanube equivalent),
+// unlike sales invoicing which spans all 3 providers - same gate as
+// ColombiaInvoiceRoute plus electronicInvoicingProvider === "itcycle", and
+// "purchases" permission instead of "orders".
+const SupportDocumentRoute = ({ children }) => {
+    const { user, loading } = useContext(AuthContext);
+    const { hasPermission, loading: teamLoading } = useTeam();
+    if (!ELECTRONIC_INVOICING_ENABLED) return <Navigate to="/dashboard" replace />;
+    if (loading || teamLoading) return <RouteLoadingFallback />;
+    return user?.company?.countryCode === "CO"
+        && user?.company?.electronicInvoicingProvider === "itcycle"
+        && hasPermission("purchases", "view")
         ? children
         : <Navigate to="/dashboard" replace />;
 };
@@ -220,6 +237,7 @@ function App() {
                                 <Route path="products" element={<RequireProductsAccess><Products /></RequireProductsAccess>} />
                                 <Route path="orders" element={<RequireOrdersAccess><Orders /></RequireOrdersAccess>} />
                                 <Route path="electronic-invoices" element={<ColombiaInvoiceRoute><ElectronicInvoices /></ColombiaInvoiceRoute>} />
+                                <Route path="purchase-support-documents" element={<SupportDocumentRoute><PurchaseSupportDocuments /></SupportDocumentRoute>} />
                                 <Route path="purchases" element={<RequirePurchasesAccess><Purchase /></RequirePurchasesAccess>} />
                                 <Route path="customers" element={<RequireCustomersAccess><Customers /></RequireCustomersAccess>} />
                                 <Route path="suppliers" element={<RequireSuppliersAccess><Suppliers /></RequireSuppliersAccess>} />

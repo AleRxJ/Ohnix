@@ -77,7 +77,14 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
                                     theme={isLite ? "light" : "dark"}
                                     selectedKeys={[currentPage]}
                                     mode="inline"
-                                    items={getMenuItems(t, user?.role, ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO", showTeam, hasPermission)}
+                                    items={getMenuItems(
+                                        t,
+                                        user?.role,
+                                        ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO",
+                                        showTeam,
+                                        hasPermission,
+                                        ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle"
+                                    )}
                                     onClick={onClose}
                                     className="border-r-0"
                                     style={{

@@ -35,6 +35,11 @@ export const adminService = {
         return response.data;
     },
 
+    async addItcycleNumberingResolution(companyId, payload) {
+        const response = await api.post(`/companies/admin/${companyId}/itcycle/numbering-resolutions`, payload);
+        return response.data;
+    },
+
     async setCompanyFirmaPassLoginKey(companyId, loginKey) {
         const response = await api.put(`/companies/admin/${companyId}/itcycle/firmapass/login-key`, { loginKey });
         return response.data;
