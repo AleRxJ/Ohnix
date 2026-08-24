@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import * as chartOfAccountsService from "../services/chartOfAccounts.service.js";
 import * as journalEntryService from "../services/journalEntry.service.js";
 import * as accountingPeriodService from "../services/accountingPeriod.service.js";
+import * as financialStatementsService from "../services/financialStatements.service.js";
 
 const mapChartAccount = (a) => ({
     _id: a.id,
@@ -64,6 +65,25 @@ export const getJournalEntry = asyncHandler(async (req, res) => {
 export const listAccountingPeriods = asyncHandler(async (req, res) => {
     const periods = await accountingPeriodService.listAccountingPeriods(req.user.prismaId);
     return res.status(200).json(new ApiResponse(200, periods.map(mapPeriod), "Accounting periods fetched successfully"));
+});
+
+export const getIncomeStatement = asyncHandler(async (req, res) => {
+    const { from, to } = req.query;
+    const statement = await financialStatementsService.getIncomeStatement({
+        accountId: req.user.prismaId,
+        startDate: from ? new Date(from) : undefined,
+        endDate: to ? new Date(to) : undefined,
+    });
+    return res.status(200).json(new ApiResponse(200, statement, "Income statement fetched successfully"));
+});
+
+export const getBalanceSheet = asyncHandler(async (req, res) => {
+    const { as_of } = req.query;
+    const statement = await financialStatementsService.getBalanceSheet({
+        accountId: req.user.prismaId,
+        asOfDate: as_of ? new Date(as_of) : new Date(),
+    });
+    return res.status(200).json(new ApiResponse(200, statement, "Balance sheet fetched successfully"));
 });
 
 export const closeAccountingPeriod = asyncHandler(async (req, res, next) => {

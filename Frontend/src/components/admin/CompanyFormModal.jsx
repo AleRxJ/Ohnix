@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Modal, Form, Input, Select, Switch, Upload, Button, ColorPicker, DatePicker, Tag, Divider, Steps } from "antd";
-import { UploadOutlined, ShopOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
+import { Modal, Form, Input, Select, Switch, Upload, Button, ColorPicker, DatePicker, Tag, Divider, Steps, Segmented, Space } from "antd";
+import { UploadOutlined, ShopOutlined, LeftOutlined, RightOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
 
@@ -92,12 +92,266 @@ const ITCYCLE_STEP_FIELDS = [
     ["itcycleCertificateIdentifier", "itcycleCertificateFile", "itcycleCertificatePassword"],
 ];
 
+// Drives FirmaPass's issuance flow (login key -> rut -> archivos -> confirmar
+// -> status) as independent, separately-triggered actions rather than form
+// fields bundled into the wizard's one-shot final submit - these calls happen
+// at different times, often hours apart, against a validationUuid the admin
+// creates by hand in FirmaPass's own portal (no API exists to create it - see
+// itcycleDian.service.js's FirmaPass section). loginKeySaved is session-local
+// only: itcycle-api-dian never exposes whether a login key was already saved
+// in a previous session, so it must be re-entered here each time the modal
+// is reopened before rut/archivos/confirmar can be called.
+const FirmaPassAutomatedSection = ({
+    companyId,
+    t,
+    onSetFirmaPassLoginKey,
+    onUploadFirmaPassRut,
+    onUploadFirmaPassArchivo,
+    onConfirmFirmaPassValidation,
+    onGetFirmaPassStatus,
+}) => {
+    const [loginKey, setLoginKey] = useState("");
+    const [loginKeySaved, setLoginKeySaved] = useState(false);
+    const [savingKey, setSavingKey] = useState(false);
+
+    const [validationUuid, setValidationUuid] = useState("");
+
+    const [rutFile, setRutFile] = useState(null);
+    const [representanteLegalId, setRepresentanteLegalId] = useState("");
+    const [uploadingRut, setUploadingRut] = useState(false);
+    const [rutResult, setRutResult] = useState(null);
+
+    const [archivoType, setArchivoType] = useState("");
+    const [archivoFile, setArchivoFile] = useState(null);
+    const [uploadingArchivo, setUploadingArchivo] = useState(false);
+    const [archivoResult, setArchivoResult] = useState(null);
+
+    const [confirming, setConfirming] = useState(false);
+    const [confirmResult, setConfirmResult] = useState(null);
+
+    const [loadingStatus, setLoadingStatus] = useState(false);
+    const [statusResult, setStatusResult] = useState(null);
+
+    const canDriveValidation = loginKeySaved && validationUuid.trim().length > 0;
+
+    const handleSaveLoginKey = async () => {
+        setSavingKey(true);
+        try {
+            await onSetFirmaPassLoginKey?.(companyId, loginKey);
+            setLoginKeySaved(true);
+        } finally {
+            setSavingKey(false);
+        }
+    };
+
+    const handleUploadRut = async () => {
+        setUploadingRut(true);
+        try {
+            const result = await onUploadFirmaPassRut?.(companyId, validationUuid.trim(), {
+                rutBase64: rutFile,
+                identificacionRepresentanteLegal: representanteLegalId || undefined,
+            });
+            setRutResult(result?.data || null);
+        } finally {
+            setUploadingRut(false);
+        }
+    };
+
+    const handleUploadArchivo = async () => {
+        setUploadingArchivo(true);
+        try {
+            const result = await onUploadFirmaPassArchivo?.(companyId, validationUuid.trim(), {
+                type: archivoType,
+                fileBase64: archivoFile,
+            });
+            setArchivoResult(result || null);
+        } finally {
+            setUploadingArchivo(false);
+        }
+    };
+
+    const handleConfirm = async () => {
+        setConfirming(true);
+        try {
+            const result = await onConfirmFirmaPassValidation?.(companyId, validationUuid.trim());
+            setConfirmResult(result || null);
+        } finally {
+            setConfirming(false);
+        }
+    };
+
+    const handleRefreshStatus = async () => {
+        setLoadingStatus(true);
+        try {
+            const result = await onGetFirmaPassStatus?.(companyId);
+            setStatusResult(result || null);
+        } finally {
+            setLoadingStatus(false);
+        }
+    };
+
+    const progress = archivoResult || rutResult;
+
+    return (
+        <Space direction="vertical" size="middle" className="w-full">
+            <div>
+                <div className="mb-2 text-sm font-medium text-[var(--ohnix-text-primary)]">
+                    {t("admin.itcycle_firmapass_login_key")}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Input.Password
+                        size="large"
+                        className="auth-ohnix-input flex-1"
+                        style={{ minWidth: 220 }}
+                        value={loginKey}
+                        onChange={(e) => setLoginKey(e.target.value)}
+                    />
+                    <Button type="primary" loading={savingKey} onClick={handleSaveLoginKey} disabled={!loginKey}>
+                        {t("admin.itcycle_firmapass_login_key_save")}
+                    </Button>
+                    {loginKeySaved && <Tag color="green">{t("admin.itcycle_firmapass_login_key_saved")}</Tag>}
+                </div>
+                <p className="mt-1 text-xs text-[var(--ohnix-text-dim)]">{t("admin.itcycle_firmapass_login_key_hint")}</p>
+            </div>
+
+            <div>
+                <div className="mb-2 text-sm font-medium text-[var(--ohnix-text-primary)]">
+                    {t("admin.itcycle_firmapass_validation_uuid")}
+                </div>
+                <Input
+                    size="large"
+                    className="auth-ohnix-input"
+                    value={validationUuid}
+                    onChange={(e) => setValidationUuid(e.target.value)}
+                />
+                <p className="mt-1 text-xs text-[var(--ohnix-text-dim)]">{t("admin.itcycle_firmapass_validation_uuid_hint")}</p>
+            </div>
+
+            <div>
+                <div className="mb-2 text-sm font-medium text-[var(--ohnix-text-primary)]">
+                    {t("admin.itcycle_firmapass_rut_file")}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Upload
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        maxCount={1}
+                        beforeUpload={async (file) => {
+                            setRutFile(await readFileAsBase64(file));
+                            return false;
+                        }}
+                    >
+                        <Button icon={<UploadOutlined />}>{t("admin.itcycle_firmapass_rut_file")}</Button>
+                    </Upload>
+                    <Input
+                        size="large"
+                        className="auth-ohnix-input"
+                        style={{ maxWidth: 220 }}
+                        placeholder={t("admin.itcycle_firmapass_representante_legal_id")}
+                        value={representanteLegalId}
+                        onChange={(e) => setRepresentanteLegalId(e.target.value)}
+                    />
+                    <Button loading={uploadingRut} disabled={!canDriveValidation || !rutFile} onClick={handleUploadRut}>
+                        {t("admin.itcycle_firmapass_rut_upload")}
+                    </Button>
+                </div>
+            </div>
+
+            <div>
+                <div className="mb-2 text-sm font-medium text-[var(--ohnix-text-primary)]">
+                    {t("admin.itcycle_firmapass_archivo_file")}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Input
+                        size="large"
+                        className="auth-ohnix-input"
+                        style={{ maxWidth: 180 }}
+                        placeholder={t("admin.itcycle_firmapass_archivo_type")}
+                        value={archivoType}
+                        onChange={(e) => setArchivoType(e.target.value)}
+                    />
+                    <Upload
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        maxCount={1}
+                        beforeUpload={async (file) => {
+                            setArchivoFile(await readFileAsBase64(file));
+                            return false;
+                        }}
+                    >
+                        <Button icon={<UploadOutlined />}>{t("admin.itcycle_firmapass_archivo_file")}</Button>
+                    </Upload>
+                    <Button
+                        loading={uploadingArchivo}
+                        disabled={!canDriveValidation || !archivoType || !archivoFile}
+                        onClick={handleUploadArchivo}
+                    >
+                        {t("admin.itcycle_firmapass_archivo_upload")}
+                    </Button>
+                </div>
+            </div>
+
+            {progress && (
+                <div className="flex flex-wrap items-center gap-2">
+                    {(progress.uploaded_documents || []).map((doc) => (
+                        <Tag color="green" key={`uploaded-${doc}`}>{doc}</Tag>
+                    ))}
+                    {(progress.pending_documents || []).map((doc) => (
+                        <Tag color="orange" key={`pending-${doc}`}>{doc}</Tag>
+                    ))}
+                </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+                <Button type="primary" loading={confirming} disabled={!canDriveValidation} onClick={handleConfirm}>
+                    {t("admin.itcycle_firmapass_confirm")}
+                </Button>
+                {confirmResult && (
+                    <Tag color="blue">
+                        {confirmResult.certificateIdentifier} —{" "}
+                        {confirmResult.estado === "pe"
+                            ? t("admin.itcycle_firmapass_estado_pe")
+                            : t("admin.itcycle_firmapass_estado_unknown", { estado: confirmResult.estado })}
+                    </Tag>
+                )}
+            </div>
+
+            <div>
+                <Button icon={<ReloadOutlined />} loading={loadingStatus} onClick={handleRefreshStatus}>
+                    {t("admin.itcycle_firmapass_refresh_status")}
+                </Button>
+                {statusResult && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Tag color={statusResult.loginKeySet ? "green" : "default"}>
+                            {t("admin.itcycle_firmapass_login_key_saved")}: {statusResult.loginKeySet ? "✓" : "—"}
+                        </Tag>
+                        {(statusResult.certificates || []).map((cert) => (
+                            <Tag color={cert.status === "ACTIVE" ? "green" : "orange"} key={cert.id}>
+                                {cert.certificateIdentifier} — {cert.status}
+                            </Tag>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </Space>
+    );
+};
+
 // Same fields CompanyFormModal already collected for itcycle provisioning
 // (registerCompanyWithItcycle in electronicInvoicing.service.js), just
 // presented as a guided wizard instead of one long flat list - no field
 // name, validation rule, or submit payload changes.
-const ItcycleProvisioningWizard = ({ form, t, editingCompany, onRegisterItcycle }) => {
+const ItcycleProvisioningWizard = ({
+    form,
+    t,
+    editingCompany,
+    onRegisterItcycle,
+    onSetFirmaPassLoginKey,
+    onUploadFirmaPassRut,
+    onUploadFirmaPassArchivo,
+    onConfirmFirmaPassValidation,
+    onGetFirmaPassStatus,
+}) => {
     const [currentStep, setCurrentStep] = useState(0);
+    const [certMode, setCertMode] = useState("manual");
     const isLastStep = currentStep === ITCYCLE_STEP_FIELDS.length - 1;
 
     const stepLabels = [
@@ -219,29 +473,56 @@ const ItcycleProvisioningWizard = ({ form, t, editingCompany, onRegisterItcycle 
             </div>
 
             <div style={{ display: currentStep === 4 ? "block" : "none" }}>
-                <Form.Item name="itcycleCertificateIdentifier" label={t("admin.itcycle_certificate_identifier")}>
-                    <Input size="large" className="auth-ohnix-input" />
+                <Form.Item label={t("admin.itcycle_firmapass_title")}>
+                    <Segmented
+                        value={certMode}
+                        onChange={setCertMode}
+                        options={[
+                            { label: t("admin.itcycle_firmapass_mode_manual"), value: "manual" },
+                            { label: t("admin.itcycle_firmapass_mode_auto"), value: "firmapass" },
+                        ]}
+                    />
                 </Form.Item>
-                {/* itcycleCertificateFile's value is set imperatively via form.setFieldValue in
-                    beforeUpload below (it holds a base64 string, not a File - Upload has no
-                    matching value prop to bind through Form.Item, so this wrapper is for the
-                    label only). */}
-                <Form.Item name="itcycleCertificateFile" label={t("admin.itcycle_certificate_file")}>
-                    <Upload
-                        accept=".p12,.pfx"
-                        maxCount={1}
-                        beforeUpload={async (file) => {
-                            const base64 = await readFileAsBase64(file);
-                            form.setFieldValue("itcycleCertificateFile", base64);
-                            return false;
-                        }}
-                    >
-                        <Button icon={<UploadOutlined />}>{t("admin.itcycle_certificate_upload")}</Button>
-                    </Upload>
-                </Form.Item>
-                <Form.Item name="itcycleCertificatePassword" label={t("admin.itcycle_certificate_password")}>
-                    <Input.Password size="large" className="auth-ohnix-input" />
-                </Form.Item>
+
+                {certMode === "manual" ? (
+                    <>
+                        <Form.Item name="itcycleCertificateIdentifier" label={t("admin.itcycle_certificate_identifier")}>
+                            <Input size="large" className="auth-ohnix-input" />
+                        </Form.Item>
+                        {/* itcycleCertificateFile's value is set imperatively via form.setFieldValue in
+                            beforeUpload below (it holds a base64 string, not a File - Upload has no
+                            matching value prop to bind through Form.Item, so this wrapper is for the
+                            label only). */}
+                        <Form.Item name="itcycleCertificateFile" label={t("admin.itcycle_certificate_file")}>
+                            <Upload
+                                accept=".p12,.pfx"
+                                maxCount={1}
+                                beforeUpload={async (file) => {
+                                    const base64 = await readFileAsBase64(file);
+                                    form.setFieldValue("itcycleCertificateFile", base64);
+                                    return false;
+                                }}
+                            >
+                                <Button icon={<UploadOutlined />}>{t("admin.itcycle_certificate_upload")}</Button>
+                            </Upload>
+                        </Form.Item>
+                        <Form.Item name="itcycleCertificatePassword" label={t("admin.itcycle_certificate_password")}>
+                            <Input.Password size="large" className="auth-ohnix-input" />
+                        </Form.Item>
+                    </>
+                ) : (
+                    editingCompany && (
+                        <FirmaPassAutomatedSection
+                            companyId={editingCompany.id}
+                            t={t}
+                            onSetFirmaPassLoginKey={onSetFirmaPassLoginKey}
+                            onUploadFirmaPassRut={onUploadFirmaPassRut}
+                            onUploadFirmaPassArchivo={onUploadFirmaPassArchivo}
+                            onConfirmFirmaPassValidation={onConfirmFirmaPassValidation}
+                            onGetFirmaPassStatus={onGetFirmaPassStatus}
+                        />
+                    )
+                )}
 
                 {editingCompany && (
                     <div className="mb-1 flex flex-wrap items-center gap-3">
@@ -275,7 +556,22 @@ const ItcycleProvisioningWizard = ({ form, t, editingCompany, onRegisterItcycle 
     );
 };
 
-const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingCompany, onUploadLogo, onRegisterAlanube, onRegisterItcycle }) => {
+const CompanyFormModal = ({
+    open,
+    onCancel,
+    onSubmit,
+    submitting,
+    form,
+    editingCompany,
+    onUploadLogo,
+    onRegisterAlanube,
+    onRegisterItcycle,
+    onSetFirmaPassLoginKey,
+    onUploadFirmaPassRut,
+    onUploadFirmaPassArchivo,
+    onConfirmFirmaPassValidation,
+    onGetFirmaPassStatus,
+}) => {
     const { t } = useI18n();
     const selectedCountry = Form.useWatch("countryCode", form);
     const selectedProvider = Form.useWatch("electronicInvoicingProvider", form) || "alanube";
@@ -480,6 +776,11 @@ const CompanyFormModal = ({ open, onCancel, onSubmit, submitting, form, editingC
                                 t={t}
                                 editingCompany={editingCompany}
                                 onRegisterItcycle={onRegisterItcycle}
+                                onSetFirmaPassLoginKey={onSetFirmaPassLoginKey}
+                                onUploadFirmaPassRut={onUploadFirmaPassRut}
+                                onUploadFirmaPassArchivo={onUploadFirmaPassArchivo}
+                                onConfirmFirmaPassValidation={onConfirmFirmaPassValidation}
+                                onGetFirmaPassStatus={onGetFirmaPassStatus}
                             />
                         ) : (
                             <>

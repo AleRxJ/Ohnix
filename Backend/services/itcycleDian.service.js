@@ -154,6 +154,67 @@ export const createItcycleApiKey = async ({ companyId, label }) => {
 };
 
 // ---------------------------------------------------------------------------
+// FirmaPass digital-certificate issuance (admin-only, see
+// itcycle-api-dian's src/modules/firmapass/firmaPassIssuance.service.ts).
+// Creating the identity validation itself is not automatable (no such
+// endpoint exists in FirmaPass's own API) - these calls only automate from
+// an already-existing validationUuid onward: rut -> archivos -> confirmar.
+// confirmar's response is a one-time snapshot (estado is always "pe" right
+// after it) - getItcycleFirmaPassStatus below is the only way to later learn
+// the certificate actually went ACTIVE, once itcycle-api-dian's own polling
+// job finishes issuance (minutes to hours later, outside Ohnix's control).
+// ---------------------------------------------------------------------------
+
+export const setItcycleFirmaPassLoginKey = async ({ companyId, loginKey }) => {
+    requireAdminConfigured();
+    return request({
+        method: "PUT",
+        path: `/api/v1/admin/companies/${companyId}/firmapass/login-key`,
+        body: { loginKey },
+        authHeader: adminAuthHeader(),
+    });
+};
+
+export const uploadItcycleFirmaPassRut = async ({ companyId, validationUuid, rutBase64, identificacionRepresentanteLegal }) => {
+    requireAdminConfigured();
+    return request({
+        method: "POST",
+        path: `/api/v1/admin/companies/${companyId}/firmapass/validations/${validationUuid}/rut`,
+        body: { rutBase64, identificacionRepresentanteLegal },
+        authHeader: adminAuthHeader(),
+    });
+};
+
+export const uploadItcycleFirmaPassArchivo = async ({ companyId, validationUuid, type, fileBase64 }) => {
+    requireAdminConfigured();
+    return request({
+        method: "POST",
+        path: `/api/v1/admin/companies/${companyId}/firmapass/validations/${validationUuid}/archivos`,
+        body: { type, fileBase64 },
+        authHeader: adminAuthHeader(),
+    });
+};
+
+export const confirmItcycleFirmaPassValidation = async ({ companyId, validationUuid }) => {
+    requireAdminConfigured();
+    return request({
+        method: "POST",
+        path: `/api/v1/admin/companies/${companyId}/firmapass/validations/${validationUuid}/confirmar`,
+        body: {},
+        authHeader: adminAuthHeader(),
+    });
+};
+
+export const getItcycleFirmaPassStatus = async ({ companyId }) => {
+    requireAdminConfigured();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/firmapass/status`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
+// ---------------------------------------------------------------------------
 // Documents (per-company API key - see Company.itcycleApiKeyCiphertext).
 // ---------------------------------------------------------------------------
 

@@ -10,6 +10,8 @@ import {
     Input,
     InputNumber,
     Modal,
+    Row,
+    Col,
     Select,
     Table,
     Tooltip,
@@ -34,6 +36,7 @@ import { api } from "../api/api";
 import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
 import { useCurrency } from "../context/CurrencyContext";
+import { getCurrencyInputProps } from "../utils/currency";
 import useI18n from "../hooks/useI18n";
 import useCountUp from "../hooks/useCountUp";
 
@@ -210,7 +213,8 @@ const RESTOCK_CONCEPT_KEYS = ["partial_return", "cancellation"];
 
 const CreditNoteModal = ({ open, onCancel, onSubmit, submitting, orderId }) => {
     const { t } = useI18n();
-    const { formatCurrency } = useCurrency();
+    const { formatCurrency, currency } = useCurrency();
+    const currencyInputProps = getCurrencyInputProps(currency.code);
     const [form] = Form.useForm();
     const concept = Form.useWatch("concept", form);
     const [lines, setLines] = useState([]);
@@ -338,6 +342,8 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting, orderId }) => {
                 onFinish={(values) => {
                     const conceptEntry = CREDIT_NOTE_CONCEPTS.find((c) => c.key === values.concept);
                     let items;
+                    let amount;
+                    let taxRate;
                     if (needsItems) {
                         items = Object.entries(quantities)
                             .filter(([, quantity]) => quantity > 0)
@@ -346,8 +352,11 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting, orderId }) => {
                             message.error(t("electronic_invoices.credit_note.items_required"));
                             return;
                         }
+                    } else {
+                        amount = values.amount;
+                        taxRate = values.tax_rate || 0;
                     }
-                    onSubmit({ conceptCode: conceptEntry?.code, observation: values.observation, items });
+                    onSubmit({ conceptCode: conceptEntry?.code, observation: values.observation, items, amount, taxRate });
                 }}
             >
                 <Form.Item
@@ -367,7 +376,7 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting, orderId }) => {
                     <Input.TextArea rows={3} placeholder={t("electronic_invoices.credit_note.observation_placeholder")} />
                 </Form.Item>
 
-                {needsItems && (
+                {needsItems ? (
                     <div className="mb-4">
                         <Alert
                             message={t("electronic_invoices.credit_note.items_title")}
@@ -387,6 +396,34 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting, orderId }) => {
                             className="module-dark-table"
                         />
                     </div>
+                ) : (
+                    <Row gutter={12}>
+                        <Col xs={16}>
+                            <Form.Item
+                                name="amount"
+                                label={t("electronic_invoices.credit_note.amount_label")}
+                                rules={[
+                                    { required: true, message: t("validation.required_field") },
+                                    { type: "number", min: 0.01, message: t("electronic_invoices.credit_note.amount_required") },
+                                ]}
+                            >
+                                <InputNumber
+                                    placeholder={t("electronic_invoices.credit_note.amount_placeholder")}
+                                    prefix={currency.symbol}
+                                    style={{ width: "100%" }}
+                                    precision={2}
+                                    size="large"
+                                    formatter={currencyInputProps.formatter}
+                                    parser={currencyInputProps.parser}
+                                />
+                            </Form.Item>
+                        </Col>
+                        <Col xs={8}>
+                            <Form.Item name="tax_rate" label={t("electronic_invoices.credit_note.tax_rate_label")} initialValue={0}>
+                                <InputNumber min={0} max={100} precision={2} size="large" className="w-full" addonAfter="%" />
+                            </Form.Item>
+                        </Col>
+                    </Row>
                 )}
 
                 <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 mt-2 border-t border-[var(--ohnix-line-4)]">
@@ -703,11 +740,11 @@ const ElectronicInvoices = () => {
         }
     };
 
-    const handleCreateCreditNote = async ({ conceptCode, observation, items }) => {
+    const handleCreateCreditNote = async ({ conceptCode, observation, items, amount, taxRate }) => {
         if (!selected?.orderId) return;
         setCreditNoteSubmitting(true);
         try {
-            const { data } = await electronicInvoiceService.createCreditNote(selected.orderId, { conceptCode, observation, items });
+            const { data } = await electronicInvoiceService.createCreditNote(selected.orderId, { conceptCode, observation, items, amount, taxRate });
             message.success(t("electronic_invoices.credit_note.success"));
             if (data?.stock_restock?.applied) {
                 message.success(t("electronic_invoices.credit_note.stock_restock_applied"));

@@ -54,7 +54,7 @@ export const syncOrderElectronicInvoice = asyncHandler(async (req, res) => {
 
 export const issueOrderCreditNote = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { concept_code, observation, items } = req.body;
+    const { concept_code, observation, items, amount, tax_rate } = req.body;
 
     const data = await issueCreditNoteForInvoice({
         orderId: id,
@@ -63,6 +63,8 @@ export const issueOrderCreditNote = asyncHandler(async (req, res) => {
         conceptCode: concept_code,
         observation,
         items,
+        amount,
+        taxRate: tax_rate,
     });
 
     return res

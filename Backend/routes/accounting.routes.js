@@ -7,6 +7,8 @@ import {
     getJournalEntry,
     listAccountingPeriods,
     closeAccountingPeriod,
+    getIncomeStatement,
+    getBalanceSheet,
 } from "../controllers/accounting.controller.js";
 
 const router = Router();
@@ -17,6 +19,9 @@ router.route("/chart-of-accounts").get(requireModulePermission("accounting", "vi
 
 router.route("/journal-entries").get(requireModulePermission("accounting", "view"), listJournalEntries);
 router.route("/journal-entries/:id").get(requireModulePermission("accounting", "view"), getJournalEntry);
+
+router.route("/reports/income-statement").get(requireModulePermission("accounting", "view"), getIncomeStatement);
+router.route("/reports/balance-sheet").get(requireModulePermission("accounting", "view"), getBalanceSheet);
 
 router.route("/periods").get(requireModulePermission("accounting", "view"), listAccountingPeriods);
 // Closing a period is a business-consequential action (blocks all further

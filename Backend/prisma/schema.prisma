@@ -1359,6 +1359,11 @@ enum JournalSourceType {
   order_return
   purchase_return
   credit_note_restock
+  // Fase 4d - discount/price_adjustment/other credit notes: no stock/
+  // OrderDetail effect (the customer keeps the goods), a purely financial
+  // Clientes/Ingresos/IVA generado adjustment - see
+  // postFinancialCreditNoteJournalEntry.
+  credit_note_financial
 }
 
 // Append-only double-entry ledger header - mirrors StockMovement/CashMovement's

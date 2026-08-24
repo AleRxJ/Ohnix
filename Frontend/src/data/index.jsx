@@ -16,6 +16,7 @@ import {
     UsergroupAddOutlined,
     CrownOutlined,
     WalletOutlined,
+    BookOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 
@@ -160,6 +161,12 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             moduleKey: "finance",
             icon: <WalletOutlined />,
             label: <Link to="/finance">{t("common.finance_nav")}</Link>,
+        },
+        {
+            key: "accounting",
+            moduleKey: "accounting",
+            icon: <BookOutlined />,
+            label: <Link to="/accounting">{t("common.accounting_nav")}</Link>,
         },
         {
             key: "billing",

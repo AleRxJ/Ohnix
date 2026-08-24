@@ -30,11 +30,13 @@ export const electronicInvoiceService = {
         return response.data;
     },
 
-    async createCreditNote(orderId, { conceptCode, observation, items }) {
+    async createCreditNote(orderId, { conceptCode, observation, items, amount, taxRate }) {
         const response = await api.post(`/orders/${orderId}/electronic-invoice/credit-notes`, {
             concept_code: conceptCode,
             observation,
             items,
+            amount,
+            tax_rate: taxRate,
         });
         return response.data;
     },

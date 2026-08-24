@@ -50,6 +50,7 @@ const Category = lazy(() => import("./pages/Category"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Billing = lazy(() => import("./pages/Billing"));
 const Finance = lazy(() => import("./pages/Finance"));
+const Accounting = lazy(() => import("./pages/Accounting"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
@@ -109,6 +110,7 @@ const RequireCustomersAccess = requireModuleAccess("customers");
 const RequireSuppliersAccess = requireModuleAccess("suppliers");
 const RequireCategoriesAccess = requireModuleAccess("categories");
 const RequireFinanceAccess = requireModuleAccess("finance");
+const RequireAccountingAccess = requireModuleAccess("accounting");
 
 // AntdConfigProvider pulls in the whole "vendor-antd" chunk (see
 // vite.config.js) - the marketing pages below (LandingPage, Precios, Demo,
@@ -224,6 +226,7 @@ function App() {
                                 <Route path="categories" element={<RequireCategoriesAccess><Category /></RequireCategoriesAccess>} />
                                 <Route path="reports/*" element={<RequireReportsAccess><Reports /></RequireReportsAccess>} />
                                 <Route path="finance" element={<RequireFinanceAccess><Finance /></RequireFinanceAccess>} />
+                                <Route path="accounting" element={<RequireAccountingAccess><Accounting /></RequireAccountingAccess>} />
                                 <Route path="team" element={<Team />} />
                                 <Route path="billing" element={<RequireBillingAccess><Billing /></RequireBillingAccess>} />
                                 <Route path="billing/payment-success" element={<RequireBillingAccess><PaymentSuccess /></RequireBillingAccess>} />

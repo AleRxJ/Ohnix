@@ -113,6 +113,34 @@ const taxesForItem = (item) => {
     return [{ code: item.product.taxCode, rate }];
 };
 
+// A financial-only credit note (discount/price_adjustment/other) has no
+// specific OrderDetail behind it - the customer keeps the goods, there's
+// just a monetary amount and an optional applicable tax rate. Rather than
+// writing separate item-building logic per provider, this fabricates one
+// object matching the exact shape taxesForItem/buildAlanubeItems/
+// buildItcycleLines already consume (an OrderDetail joined with its
+// product), so all three keep working completely unchanged.
+const buildFinancialCreditNoteDetail = ({ amount, taxRate, description }) => {
+    const rate = Number(taxRate) || 0;
+    const value = Number(amount) || 0;
+    const taxAmount = rate > 0 ? Number(((value * rate) / 100).toFixed(2)) : 0;
+    return {
+        quantity: 1,
+        unitcost: value,
+        total: value,
+        taxTreatmentApplied: rate > 0 ? "taxed" : "excluded",
+        taxRateApplied: rate,
+        taxAmount,
+        product: {
+            productCode: "AJUSTE",
+            productName: description || "Ajuste financiero",
+            unitMeasureCode: "94",
+            standardCode: "999",
+            taxCode: "01",
+        },
+    };
+};
+
 // The official Factus V2 collection sends numbering_range_id as a bare JSON
 // number for bills/credit notes created against legacy numeric ranges (e.g.
 // 389), but some other document types (payrolls) show ULID-style string IDs
@@ -411,14 +439,21 @@ const mapAlanubeResponse = (raw) => {
     };
 };
 
-const buildAlanubeCreditNotePayload = (order, invoice, company, { conceptCode, observation, items }, number) => {
+const buildAlanubeCreditNotePayload = (order, invoice, company, { conceptCode, observation, items, amount, taxRate }, number) => {
     const productsByOrderDetailId = new Map((order.orderDetails || []).map((detail) => [detail.id, detail]));
+    // Restock concepts: the caller-picked lines. Financial-only concepts
+    // (no items): a single synthetic line from amount/taxRate - NOT the
+    // whole order, which is what this used to silently fall back to (a real
+    // bug: a "discount" credit note issued via Alanube with no items ended
+    // up crediting the entire order).
     const sourceDetails = Array.isArray(items) && items.length
         ? items.map(({ orderDetailId, quantity }) => {
             const detail = productsByOrderDetailId.get(orderDetailId);
             return detail ? { ...detail, quantity: quantity || detail.quantity } : null;
         }).filter(Boolean)
-        : order.orderDetails;
+        : amount != null
+            ? [buildFinancialCreditNoteDetail({ amount, taxRate, description: observation })]
+            : [];
 
     const lineItems = buildAlanubeItems(sourceDetails);
     const resolution = company.alanubeCreditNoteResolution || company.alanubeInvoiceResolution;
@@ -536,22 +571,35 @@ const buildItcycleLines = (orderDetails) => orderDetails.map((item, index) => {
     };
 });
 
-const buildItcycleTotals = (order, lines) => {
+// Was `buildItcycleTotals(order, lines)`, using order.total for
+// payableAmount - correct for a full invoice (every line IS the order) but
+// wrong for a credit note built from a subset of lines (or a single
+// synthetic financial-only line), where it silently reported the whole
+// order's total instead of the credit note's own. taxInclusiveAmount below
+// is already derived purely from `lines`, so payableAmount now just reuses
+// that instead of taking a second, inconsistent value from `order` - self-
+// consistent for both callers (a full invoice's lines already sum to
+// order.total anyway). `percent` was also hardcoded to 19 regardless of the
+// lines' actual rate(s) - now the effective blended rate, correct for 0%/5%/
+// 19%/exempt lines alike.
+const buildItcycleTotals = (lines) => {
     const lineExtensionAmount = toNumber(lines.reduce((sum, l) => sum + l.lineExtensionAmount, 0));
     const taxTotal = toNumber(lines.reduce((sum, l) => sum + (l.taxTotals[0]?.taxAmount || 0), 0));
+    const taxInclusiveAmount = toNumber(lineExtensionAmount + taxTotal);
+    const effectiveRate = taxTotal > 0 && lineExtensionAmount > 0 ? toNumber((taxTotal / lineExtensionAmount) * 100) : 0;
     return {
         taxTotals: taxTotal > 0 ? [{
             taxAmount: taxTotal,
-            subtotals: [{ taxableAmount: lineExtensionAmount, taxAmount: taxTotal, percent: 19, taxScheme: { code: "01" } }],
+            subtotals: [{ taxableAmount: lineExtensionAmount, taxAmount: taxTotal, percent: effectiveRate, taxScheme: { code: "01" } }],
         }] : [],
         legalMonetaryTotal: {
             lineExtensionAmount,
             taxExclusiveAmount: lineExtensionAmount,
-            taxInclusiveAmount: toNumber(lineExtensionAmount + taxTotal),
+            taxInclusiveAmount,
             allowanceTotalAmount: 0,
             chargeTotalAmount: 0,
             prepaidAmount: 0,
-            payableAmount: toNumber(order.total),
+            payableAmount: taxInclusiveAmount,
         },
     };
 };
@@ -589,7 +637,7 @@ const buildItcyclePayload = (order) => {
     if (errors.length) throw new ApiError(422, "Fiscal data is incomplete for itcycle-api-dian", errors);
 
     const lines = buildItcycleLines(order.orderDetails);
-    const { taxTotals, legalMonetaryTotal } = buildItcycleTotals(order, lines);
+    const { taxTotals, legalMonetaryTotal } = buildItcycleTotals(lines);
     const now = new Date();
 
     return {
@@ -630,17 +678,22 @@ const mapItcycleResponse = (raw) => ({
     rawResponse: raw,
 });
 
-const buildItcycleCreditNotePayload = (order, { conceptCode, observation, items }) => {
+const buildItcycleCreditNotePayload = (order, { conceptCode, observation, items, amount, taxRate }) => {
     const productsByOrderDetailId = new Map((order.orderDetails || []).map((detail) => [detail.id, detail]));
+    // Same fallback fix as buildAlanubeCreditNotePayload - a financial-only
+    // concept with no items now produces a single synthetic line instead of
+    // silently crediting the whole order.
     const sourceDetails = Array.isArray(items) && items.length
         ? items.map(({ orderDetailId, quantity }) => {
             const detail = productsByOrderDetailId.get(orderDetailId);
             return detail ? { ...detail, quantity: quantity || detail.quantity } : null;
         }).filter(Boolean)
-        : order.orderDetails;
+        : amount != null
+            ? [buildFinancialCreditNoteDetail({ amount, taxRate, description: observation })]
+            : [];
 
     const lines = buildItcycleLines(sourceDetails);
-    const { taxTotals, legalMonetaryTotal } = buildItcycleTotals(order, lines);
+    const { taxTotals, legalMonetaryTotal } = buildItcycleTotals(lines);
     const now = new Date();
 
     return {
@@ -943,7 +996,7 @@ export const syncElectronicInvoiceStatus = async ({ orderId, requesterUserId, re
     }
 };
 
-const buildCreditNotePayload = (order, invoice, company, { conceptCode, observation, items }) => {
+const buildCreditNotePayload = (order, invoice, company, { conceptCode, observation, items, amount, taxRate }) => {
     const referenceCode = `${invoice.referenceCode}-CN-${Date.now().toString(36).toUpperCase()}`;
     const productsByOrderDetailId = new Map(
         (order.orderDetails || []).map((detail) => [detail.id, detail])
@@ -970,22 +1023,31 @@ const buildCreditNotePayload = (order, invoice, company, { conceptCode, observat
         observation: observation || `Nota credito Ohnix ${referenceCode}`,
     };
 
-    if (Array.isArray(items) && items.length) {
-        payload.items = items
-            .map(({ orderDetailId, quantity }) => {
-                const detail = productsByOrderDetailId.get(orderDetailId);
-                if (!detail) return null;
-                return {
-                    code_reference: detail.product.productCode || detail.productId,
-                    name: detail.product.productName,
-                    quantity: Number(quantity || detail.quantity).toFixed(2),
-                    price: money(detail.unitcost),
-                    unit_measure_code: detail.product.unitMeasureCode,
-                    standard_code: detail.product.standardCode,
-                    taxes: taxesForItem(detail),
-                };
-            })
-            .filter(Boolean);
+    // Restock concepts build from the caller-picked lines, same as before.
+    // Financial-only concepts (no items) now send a single synthetic line
+    // from amount/taxRate instead of leaving payload.items unset entirely -
+    // Factus's real API requirement for at least one credit-note item was
+    // never actually confirmed either way, so a real line is the safer path
+    // regardless.
+    const sourceDetails = Array.isArray(items) && items.length
+        ? items.map(({ orderDetailId, quantity }) => {
+            const detail = productsByOrderDetailId.get(orderDetailId);
+            return detail ? { ...detail, quantity: quantity || detail.quantity } : null;
+        }).filter(Boolean)
+        : amount != null
+            ? [buildFinancialCreditNoteDetail({ amount, taxRate, description: observation })]
+            : [];
+
+    if (sourceDetails.length) {
+        payload.items = sourceDetails.map((detail) => ({
+            code_reference: detail.product.productCode || detail.productId,
+            name: detail.product.productName,
+            quantity: Number(detail.quantity).toFixed(2),
+            price: money(detail.unitcost),
+            unit_measure_code: detail.product.unitMeasureCode,
+            standard_code: detail.product.standardCode,
+            taxes: taxesForItem(detail),
+        }));
     }
 
     return payload;
@@ -1100,7 +1162,31 @@ const applyCreditNoteRestock = async ({ order, items, creditNoteId, userId }) =>
     };
 };
 
-export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requesterRole, conceptCode, observation, items }) => {
+// Financial-only credit note (discount/price_adjustment/other) - no stock or
+// OrderDetail effect at all (the customer keeps the goods), just the
+// accounting side: reuses postOrderReturnJournalEntry (Fase 4b) unchanged,
+// passing no buyingPrice so its Inventarios/Costo de ventas lines net to
+// zero and get dropped by recordJournalEntry, leaving only Cr Clientes /
+// Dr Ingresos / Dr IVA generado - exactly what a pure financial adjustment
+// should post. Same "own transaction, own try/catch at the caller" pattern
+// as applyCreditNoteRestock, for the same reason: the DIAN document is
+// already real by the time this runs.
+const postFinancialCreditNoteJournalEntry = async ({ order, amount, taxRate, creditNoteId, userId }) => {
+    await prisma.$transaction((tx) =>
+        postOrderReturnJournalEntry(tx, {
+            accountId: order.createdById,
+            createdById: userId,
+            sourceType: "credit_note_financial",
+            sourceId: creditNoteId,
+            entryDate: new Date(),
+            description: "Nota crédito financiera",
+            lines: [{ quantity: 1, unitcost: amount, taxRateApplied: taxRate || 0 }],
+        })
+    );
+    return { applied: true };
+};
+
+export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requesterRole, conceptCode, observation, items, amount, taxRate }) => {
     if (!text(conceptCode)) throw new ApiError(400, "conceptCode is required to issue a credit note");
 
     const order = await getOrderWithRelations(orderId);
@@ -1115,10 +1201,11 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
 
     // Validated before anything is sent to the provider - a doomed-to-fail
     // restock should never let a real DIAN document go out first. Only
-    // concepts that mean goods are physically coming back require this; for
-    // "discount"/"price_adjustment"/"other", items stays exactly as
-    // optional/unvalidated as it already was (still just shapes the
-    // provider payload via buildCreditNotePayload/buildAlanubeCreditNotePayload).
+    // concepts that mean goods are physically coming back require items;
+    // the other three (discount/price_adjustment/other) instead require a
+    // monetary amount - there's no OrderDetail behind them, so a flat amount
+    // (+ optional applicable tax rate) is the only way to know what the
+    // note is worth (see buildFinancialCreditNoteDetail).
     if (RESTOCK_CONCEPT_CODES.includes(conceptCode)) {
         if (!Array.isArray(items) || items.length === 0) {
             throw new ApiError(
@@ -1167,6 +1254,14 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
                 insufficientItems
             );
         }
+    } else if (!(Number(amount) > 0)) {
+        throw new ApiError(
+            400,
+            "A positive amount is required for this credit note concept",
+            [],
+            "",
+            "credit_note_amount_required"
+        );
     }
 
     const company = order.createdBy.company;
@@ -1182,7 +1277,7 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
             // share company.factusNumberingRangeId.
             throw new ApiError(422, "company.factusCreditNoteNumberingRangeId is required to issue credit notes");
         }
-        payload = buildCreditNotePayload(order, invoice, company, { conceptCode, observation, items });
+        payload = buildCreditNotePayload(order, invoice, company, { conceptCode, observation, items, amount, taxRate });
         submit = () => createFactusCreditNote({ payload }).then(mapFactusCreditNoteResponse);
     } else if (provider === ITCYCLE_PROVIDER) {
         if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian integration is not configured for this environment");
@@ -1190,7 +1285,7 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
         if (!invoice.externalId) throw new ApiError(409, "This invoice does not have an itcycle-api-dian invoice id yet");
         const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
         const creditNoteReferenceCode = `${invoice.referenceCode}-CN-${Date.now().toString(36).toUpperCase()}`;
-        const itcyclePayload = buildItcycleCreditNotePayload(order, { conceptCode, observation, items });
+        const itcyclePayload = buildItcycleCreditNotePayload(order, { conceptCode, observation, items, amount, taxRate });
         payload = { referenceCode: creditNoteReferenceCode, ...itcyclePayload };
         submit = () => createItcycleCreditNote({
             apiKey,
@@ -1206,7 +1301,7 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
         const number = await prisma.$transaction((tx) =>
             claimAlanubeNumber(tx, { companyId: company.id, counterField: "alanubeNextCreditNoteNumber", resolution })
         );
-        payload = buildAlanubeCreditNotePayload(order, invoice, company, { conceptCode, observation, items }, number);
+        payload = buildAlanubeCreditNotePayload(order, invoice, company, { conceptCode, observation, items, amount, taxRate }, number);
         submit = () => createAlanubeCreditNote({ payload }).then(mapAlanubeCreditNoteResponse);
     }
 
@@ -1256,6 +1351,26 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
                     message: restockError?.message || restockError,
                 });
                 stockRestock = { applied: false, reason: restockError?.message || "unknown_error" };
+            }
+        } else if (mapped.status === "accepted") {
+            // Financial-only concept (discount/price_adjustment/other) - no
+            // stock effect, just the accounting side. Same tolerance as
+            // above: the DIAN document is already real at this point, a
+            // posting failure must not fail this response.
+            try {
+                await postFinancialCreditNoteJournalEntry({
+                    order,
+                    amount,
+                    taxRate,
+                    creditNoteId: updated.id,
+                    userId: requesterUserId,
+                });
+            } catch (postingError) {
+                console.error("[credit-note] financial journal posting failed after successful issuance:", {
+                    creditNoteId: updated.id,
+                    orderId: order.id,
+                    message: postingError?.message || postingError,
+                });
             }
         }
 

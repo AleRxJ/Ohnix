@@ -192,6 +192,67 @@ const AdminManagement = () => {
         }
     };
 
+    // FirmaPass provisioning (see FirmaPassAutomatedSection in
+    // CompanyFormModal.jsx): 4 independently-triggered actions plus a status
+    // read, each a thin adminService call - unlike handleRegisterCompanyItcycle
+    // above these don't bundle into one wizard submit, they fire as the admin
+    // works through FirmaPass's own multi-step issuance flow.
+    const handleSetFirmaPassLoginKey = async (companyId, loginKey) => {
+        try {
+            await adminService.setCompanyFirmaPassLoginKey(companyId, loginKey);
+            toast.success(t("admin.itcycle_firmapass_login_key_save_success"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+            throw error;
+        }
+    };
+
+    const handleUploadFirmaPassRut = async (companyId, validationUuid, payload) => {
+        try {
+            // itcycle-api-dian relays FirmaPass's own rut response verbatim -
+            // {message, data:{uuid, estado, pending_documents, uploaded_documents}}
+            // - unwrap only Ohnix's own ApiResponse envelope, not FirmaPass's.
+            const response = await adminService.uploadCompanyFirmaPassRut(companyId, validationUuid, payload);
+            return response?.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+            throw error;
+        }
+    };
+
+    const handleUploadFirmaPassArchivo = async (companyId, validationUuid, payload) => {
+        try {
+            // Unlike rut, FirmaPass's archivo response has no nested "data" key -
+            // {message, file, uploaded_documents, pending_documents} comes back flat.
+            const response = await adminService.uploadCompanyFirmaPassArchivo(companyId, validationUuid, payload);
+            return response?.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+            throw error;
+        }
+    };
+
+    const handleConfirmFirmaPassValidation = async (companyId, validationUuid) => {
+        try {
+            const response = await adminService.confirmCompanyFirmaPassValidation(companyId, validationUuid);
+            toast.success(t("admin.itcycle_firmapass_confirm_success"));
+            return response?.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+            throw error;
+        }
+    };
+
+    const handleGetFirmaPassStatus = async (companyId) => {
+        try {
+            const response = await adminService.getCompanyFirmaPassStatus(companyId);
+            return response?.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+            throw error;
+        }
+    };
+
     const handleSubmitCompany = async (values) => {
         try {
             setCompanySubmitting(true);
@@ -343,6 +404,11 @@ const AdminManagement = () => {
                 onUploadLogo={handleUploadCompanyLogo}
                 onRegisterAlanube={handleRegisterCompanyAlanube}
                 onRegisterItcycle={handleRegisterCompanyItcycle}
+                onSetFirmaPassLoginKey={handleSetFirmaPassLoginKey}
+                onUploadFirmaPassRut={handleUploadFirmaPassRut}
+                onUploadFirmaPassArchivo={handleUploadFirmaPassArchivo}
+                onConfirmFirmaPassValidation={handleConfirmFirmaPassValidation}
+                onGetFirmaPassStatus={handleGetFirmaPassStatus}
             />
 
             <UserFormModal

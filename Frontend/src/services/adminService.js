@@ -35,6 +35,39 @@ export const adminService = {
         return response.data;
     },
 
+    async setCompanyFirmaPassLoginKey(companyId, loginKey) {
+        const response = await api.put(`/companies/admin/${companyId}/itcycle/firmapass/login-key`, { loginKey });
+        return response.data;
+    },
+
+    async uploadCompanyFirmaPassRut(companyId, validationUuid, payload) {
+        const response = await api.post(
+            `/companies/admin/${companyId}/itcycle/firmapass/validations/${validationUuid}/rut`,
+            payload
+        );
+        return response.data;
+    },
+
+    async uploadCompanyFirmaPassArchivo(companyId, validationUuid, payload) {
+        const response = await api.post(
+            `/companies/admin/${companyId}/itcycle/firmapass/validations/${validationUuid}/archivos`,
+            payload
+        );
+        return response.data;
+    },
+
+    async confirmCompanyFirmaPassValidation(companyId, validationUuid) {
+        const response = await api.post(
+            `/companies/admin/${companyId}/itcycle/firmapass/validations/${validationUuid}/confirmar`
+        );
+        return response.data;
+    },
+
+    async getCompanyFirmaPassStatus(companyId) {
+        const response = await api.get(`/companies/admin/${companyId}/itcycle/firmapass/status`);
+        return response.data;
+    },
+
     async listUsers() {
         const response = await api.get("/users/admin/users");
         return response.data;

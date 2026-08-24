@@ -4,6 +4,13 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
 import { registerCompanyWithAlanube, registerCompanyWithItcycle } from "../services/electronicInvoicing.service.js";
+import {
+    setCompanyFirmaPassLoginKey,
+    uploadCompanyFirmaPassRut,
+    uploadCompanyFirmaPassArchivo,
+    confirmCompanyFirmaPassValidation,
+    getCompanyFirmaPassStatus,
+} from "../services/firmaPassProvisioning.service.js";
 
 // Deliberately distinct from companyCountry.service.js#normalizeCountryCode:
 // that one just normalizes an already-stored value for fiscal checks, while
@@ -320,6 +327,45 @@ export const registerCompanyWithItcycleAdmin = asyncHandler(async (req, res) => 
     return res
         .status(200)
         .json(new ApiResponse(200, data, "Company provisioned with itcycle-api-dian successfully"));
+});
+
+export const setCompanyFirmaPassLoginKeyAdmin = asyncHandler(async (req, res) => {
+    const { companyId } = req.params;
+    const { loginKey } = req.body || {};
+    const data = await setCompanyFirmaPassLoginKey({ companyId, requesterRole: req.user.role, loginKey });
+    return res.status(200).json(new ApiResponse(200, data, "FirmaPass login key updated"));
+});
+
+export const uploadCompanyFirmaPassRutAdmin = asyncHandler(async (req, res) => {
+    const { companyId, validationUuid } = req.params;
+    const { rutBase64, identificacionRepresentanteLegal } = req.body || {};
+    const data = await uploadCompanyFirmaPassRut({
+        companyId,
+        requesterRole: req.user.role,
+        validationUuid,
+        rutBase64,
+        identificacionRepresentanteLegal,
+    });
+    return res.status(200).json(new ApiResponse(200, data, "RUT uploaded to FirmaPass"));
+});
+
+export const uploadCompanyFirmaPassArchivoAdmin = asyncHandler(async (req, res) => {
+    const { companyId, validationUuid } = req.params;
+    const { type, fileBase64 } = req.body || {};
+    const data = await uploadCompanyFirmaPassArchivo({ companyId, requesterRole: req.user.role, validationUuid, type, fileBase64 });
+    return res.status(200).json(new ApiResponse(200, data, "Document uploaded to FirmaPass"));
+});
+
+export const confirmCompanyFirmaPassValidationAdmin = asyncHandler(async (req, res) => {
+    const { companyId, validationUuid } = req.params;
+    const data = await confirmCompanyFirmaPassValidation({ companyId, requesterRole: req.user.role, validationUuid });
+    return res.status(200).json(new ApiResponse(200, data, "FirmaPass validation confirmed"));
+});
+
+export const getCompanyFirmaPassStatusAdmin = asyncHandler(async (req, res) => {
+    const { companyId } = req.params;
+    const data = await getCompanyFirmaPassStatus({ companyId, requesterRole: req.user.role });
+    return res.status(200).json(new ApiResponse(200, data, "FirmaPass status retrieved"));
 });
 
 export const updateCompanyLogoAdmin = asyncHandler(async (req, res, next) => {
