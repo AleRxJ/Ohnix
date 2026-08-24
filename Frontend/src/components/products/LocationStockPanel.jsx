@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Typography, Spin, Button, Popconfirm, Steps } from "antd";
+import { Typography, Spin, Button, Popconfirm, Steps, Tooltip } from "antd";
 import {
     SwapOutlined,
     SendOutlined,
@@ -389,9 +389,11 @@ const LocationStockPanel = ({ product }) => {
                                                 <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)] flex-shrink-0">
                                                     <Icon className="text-[#44F3F0] text-xs" />
                                                 </div>
-                                                <Text className="text-sm font-semibold text-[var(--ohnix-text-primary)] truncate">
-                                                    {row.point_of_sale_name}
-                                                </Text>
+                                                <Tooltip title={row.point_of_sale_name}>
+                                                    <Text className="text-sm font-semibold text-[var(--ohnix-text-primary)] truncate">
+                                                        {row.point_of_sale_name}
+                                                    </Text>
+                                                </Tooltip>
                                             </div>
                                             {row.is_default && (
                                                 <span className="text-[10px] font-semibold uppercase tracking-wide text-[#44F3F0] bg-[#44f3f018] border border-[#44f3f033] rounded-full px-2 py-0.5 flex-shrink-0">

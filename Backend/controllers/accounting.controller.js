@@ -86,6 +86,18 @@ export const getBalanceSheet = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, statement, "Balance sheet fetched successfully"));
 });
 
+export const getAccountingStatus = asyncHandler(async (req, res) => {
+    const accountId = req.user.prismaId;
+    const [hasJournalEntries, hasBackfilledEntries] = await Promise.all([
+        journalEntryService.hasAnyJournalEntry({ accountId }),
+        journalEntryService.hasBackfilledJournalEntry({ accountId }),
+    ]);
+    return res.status(200).json(new ApiResponse(200, {
+        has_journal_entries: hasJournalEntries,
+        has_backfilled_entries: hasBackfilledEntries,
+    }, "Accounting status fetched successfully"));
+});
+
 export const closeAccountingPeriod = asyncHandler(async (req, res, next) => {
     if (!req.params.id) return next(new ApiError(400, "id es obligatorio"));
 

@@ -9,6 +9,7 @@ import {
     closeAccountingPeriod,
     getIncomeStatement,
     getBalanceSheet,
+    getAccountingStatus,
 } from "../controllers/accounting.controller.js";
 
 const router = Router();
@@ -16,6 +17,7 @@ const router = Router();
 router.use(verifyJWT);
 
 router.route("/chart-of-accounts").get(requireModulePermission("accounting", "view"), listChartOfAccounts);
+router.route("/status").get(requireModulePermission("accounting", "view"), getAccountingStatus);
 
 router.route("/journal-entries").get(requireModulePermission("accounting", "view"), listJournalEntries);
 router.route("/journal-entries/:id").get(requireModulePermission("accounting", "view"), getJournalEntry);

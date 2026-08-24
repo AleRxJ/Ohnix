@@ -3,6 +3,11 @@ import { api } from "../api/api";
 // Mirrors Backend/routes/accounting.routes.js one to one - all read-only
 // except closeAccountingPeriod (gated "admin" server-side).
 export const accountingService = {
+    async getStatus() {
+        const response = await api.get("/accounting/status");
+        return response.data;
+    },
+
     async listChartOfAccounts() {
         const response = await api.get("/accounting/chart-of-accounts");
         return response.data;

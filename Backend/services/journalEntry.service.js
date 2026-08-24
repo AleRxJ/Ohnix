@@ -108,6 +108,28 @@ export const listJournalEntries = async ({ accountId, startDate, endDate, source
         take: 200,
     });
 
+// Cheap existence checks for the Accounting page's onboarding banner (see
+// accounting.controller.js#getAccountingStatus) - never call
+// ensureDefaultChartOfAccounts from here, this must stay pure read-only.
+export const hasAnyJournalEntry = async ({ accountId }) => {
+    const entry = await prisma.journalEntry.findFirst({
+        where: { period: { createdById: accountId } },
+        select: { id: true },
+    });
+    return Boolean(entry);
+};
+
+// "[Histórico] " prefix is written by scripts/backfillAccountingHistory.js -
+// its presence is the only signal (short of a schema change) that a company
+// has backfilled history mixed into its ledger.
+export const hasBackfilledJournalEntry = async ({ accountId }) => {
+    const entry = await prisma.journalEntry.findFirst({
+        where: { period: { createdById: accountId }, description: { startsWith: "[Histórico] " } },
+        select: { id: true },
+    });
+    return Boolean(entry);
+};
+
 export const getJournalEntryById = async ({ accountId, id }) => {
     const entry = await prisma.journalEntry.findFirst({
         where: { id, period: { createdById: accountId } },

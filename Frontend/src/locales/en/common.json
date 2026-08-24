@@ -560,6 +560,10 @@
   "accounting": {
     "page_title": "Accounting",
     "page_subtitle": "Browse the chart of accounts, the journal, and manage accounting periods.",
+    "onboarding_new_title": "Your accounting is ready",
+    "onboarding_new_body": "The chart of accounts was created automatically. Nothing else to do — every sale and purchase you complete will post itself to the journal, and the Balance Sheet and Income Statement will update as you go.",
+    "onboarding_backfilled_title": "Your accounting history is now complete",
+    "onboarding_backfilled_body": "We automatically generated journal entries for your sales and purchases from before this module existed, so the journal and reports reflect your whole business, not just from now on. Those entries are marked \"[Histórico]\".",
     "tab_chart_of_accounts": "Chart of accounts",
     "tab_journal": "Journal",
     "tab_periods": "Periods",

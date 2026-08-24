@@ -560,6 +560,10 @@
   "accounting": {
     "page_title": "Contabilidad",
     "page_subtitle": "Consulta el plan de cuentas, el libro diario y administra los periodos contables.",
+    "onboarding_new_title": "Tu contabilidad ya está lista",
+    "onboarding_new_body": "El plan de cuentas se creó automáticamente. No necesitas hacer nada más: cada venta y compra que completes se registrará sola en el libro diario, y el Balance y el Estado de Resultados se irán actualizando a medida que operes.",
+    "onboarding_backfilled_title": "Se completó tu historial contable",
+    "onboarding_backfilled_body": "Generamos automáticamente los asientos de tus ventas y compras anteriores a la activación de este módulo, para que el libro diario y los reportes reflejen la operación completa de tu negocio, no solo lo de ahora en adelante. Esos asientos aparecen marcados como \"[Histórico]\".",
     "tab_chart_of_accounts": "Plan de cuentas",
     "tab_journal": "Libro diario",
     "tab_periods": "Periodos",
