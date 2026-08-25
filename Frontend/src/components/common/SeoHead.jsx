@@ -5,6 +5,7 @@ const DEFAULT_IMAGE = `${SITE_URL}/Ohnix_FullLogo.png`;
 
 const upsertMeta = (selector, attributes) => {
     let element = document.head.querySelector(selector);
+
     if (!element) {
         element = document.createElement("meta");
         document.head.appendChild(element);
@@ -19,6 +20,7 @@ const upsertMeta = (selector, attributes) => {
 
 const upsertLink = (selector, attributes) => {
     let element = document.head.querySelector(selector);
+
     if (!element) {
         element = document.createElement("link");
         document.head.appendChild(element);
@@ -47,6 +49,7 @@ const setStructuredData = (payload) => {
 
 const clearStructuredData = () => {
     const script = document.getElementById("ohnix-structured-data");
+
     if (script) {
         script.remove();
     }
@@ -63,11 +66,21 @@ const SeoHead = ({
 }) => {
     useEffect(() => {
         const canonicalUrl = `${SITE_URL}${canonicalPath}`;
-        const robotsValue = noIndex ? "noindex, nofollow" : "index, follow";
+        const imageUrl = image.startsWith("http")
+            ? image
+            : `${SITE_URL}${image}`;
 
-        document.title = title;
+        const robotsValue = noIndex
+            ? "noindex, nofollow"
+            : "index, follow";
+
+        // HTML language
         document.documentElement.lang = lang;
 
+        // Title
+        document.title = title;
+
+        // Basic SEO
         upsertMeta('meta[name="description"]', {
             name: "description",
             content: description,
@@ -78,6 +91,7 @@ const SeoHead = ({
             content: robotsValue,
         });
 
+        // Open Graph
         upsertMeta('meta[property="og:type"]', {
             property: "og:type",
             content: "website",
@@ -100,9 +114,10 @@ const SeoHead = ({
 
         upsertMeta('meta[property="og:image"]', {
             property: "og:image",
-            content: image,
+            content: imageUrl,
         });
 
+        // Twitter / X
         upsertMeta('meta[name="twitter:card"]', {
             name: "twitter:card",
             content: "summary_large_image",
@@ -120,32 +135,30 @@ const SeoHead = ({
 
         upsertMeta('meta[name="twitter:image"]', {
             name: "twitter:image",
-            content: image,
+            content: imageUrl,
         });
 
+        // Canonical
         upsertLink('link[rel="canonical"]', {
             rel: "canonical",
             href: canonicalUrl,
         });
 
-        upsertLink('link[rel="alternate"][hreflang="es"]', {
-            rel: "alternate",
-            hreflang: "es",
-            href: canonicalUrl,
-        });
-
-        upsertLink('link[rel="alternate"][hreflang="en"]', {
-            rel: "alternate",
-            hreflang: "en",
-            href: canonicalUrl,
-        });
-
+        // Structured Data
         if (structuredData) {
             setStructuredData(structuredData);
         } else {
             clearStructuredData();
         }
-    }, [title, description, canonicalPath, image, lang, noIndex, structuredData]);
+    }, [
+        title,
+        description,
+        canonicalPath,
+        image,
+        lang,
+        noIndex,
+        structuredData,
+    ]);
 
     return null;
 };
