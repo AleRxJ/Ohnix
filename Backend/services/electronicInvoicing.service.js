@@ -43,7 +43,7 @@ const toExternalId = (entity) => entity?.legacyMongoId || entity?.id;
 // emission), unlike the other plan-gated features - so this is checked
 // directly here rather than only at the route layer, and applies even to
 // admins issuing on a user's behalf, since the cost is the same either way.
-const ensureElectronicInvoicingPlan = async (userId) => {
+export const ensureElectronicInvoicingPlan = async (userId) => {
     const subscription = await ensureUserSubscription(userId);
     const effectivePlan = getEffectivePlan(subscription);
     if (!getPlanFeatures(effectivePlan).electronicInvoicing) {
@@ -743,12 +743,14 @@ const mapItcycleCreditNoteResponse = (raw) => ({
  * are forwarded once and never persisted in Ohnix - see secretEncryption.js
  * and itcycle-api-dian's own EncryptedFileCertificateSecretStore.
  */
-export const registerCompanyWithItcycle = async ({ companyId, requesterRole, dianConfiguration, numberingResolutions, certificate }) => {
-    if (requesterRole !== "admin") throw new ApiError(403, "Only admins can provision a company with itcycle-api-dian");
+export const registerCompanyWithItcycle = async ({ companyId, dianConfiguration, numberingResolutions, certificate }) => {
     if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
 
     const company = await prisma.company.findUnique({ where: { id: companyId } });
     if (!company) throw new ApiError(404, "Company not found");
+    if (normalizeCountryCode(company.countryCode) !== "CO") {
+        throw new ApiError(422, "Electronic invoicing with DIAN requires a company configured in Colombia");
+    }
     if (!text(company.taxIdentification)) {
         throw new ApiError(422, "company.taxIdentification (NIT) is required before provisioning with itcycle-api-dian");
     }
@@ -779,6 +781,14 @@ export const registerCompanyWithItcycle = async ({ companyId, requesterRole, dia
                 taxIdentificationDv: dv,
                 itcycleCompanyId: itcycleCompany.id,
                 itcycleApiKeyCiphertext: encryptSecret(rawApiKey),
+                electronicInvoicingProvider: ITCYCLE_PROVIDER,
+                // Provisioning the DIAN tenant and being able to issue are
+                // different milestones. A FirmaPass certificate is issued
+                // asynchronously, and a sandbox setup can deliberately be
+                // created without one. Do not expose issuance until a
+                // usable certificate has been installed; self-service then
+                // activates it explicitly once FirmaPass reports ACTIVE.
+                electronicInvoicingEnabled: Boolean(certificate),
             },
         });
 
@@ -799,8 +809,7 @@ export const registerCompanyWithItcycle = async ({ companyId, requesterRole, dia
  * create a duplicate "01" resolution every time - this action only ever
  * adds the one resolution the caller asks for.
  */
-export const addItcycleNumberingResolutionForCompany = async ({ companyId, requesterRole, documentType, prefix, resolutionNumber, startNumber, endNumber, startDate, endDate }) => {
-    if (requesterRole !== "admin") throw new ApiError(403, "Only admins can manage itcycle-api-dian numbering resolutions");
+export const addItcycleNumberingResolutionForCompany = async ({ companyId, documentType, prefix, resolutionNumber, startNumber, endNumber, startDate, endDate }) => {
     if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
 
     const company = await prisma.company.findUnique({ where: { id: companyId } });

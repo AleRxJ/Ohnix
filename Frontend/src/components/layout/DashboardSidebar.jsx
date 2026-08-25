@@ -17,7 +17,7 @@ const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 
 const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     const { user, logout } = useContext(AuthContext);
-    const { team, hasPermission, loading: teamLoading } = useTeam();
+    const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
     const { plan } = useSubscription();
     const { t } = useI18n();
     const { isLite } = useTheme();
@@ -79,7 +79,8 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                             ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO",
                             showTeam,
                             hasPermission,
-                            ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle"
+                            ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
+                            !isTeamMember
                         ).map((item) => ({
                             ...item,
                         }))}

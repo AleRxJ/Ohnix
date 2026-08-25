@@ -7,12 +7,13 @@ import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { teamService } from "../../services/teamService";
 import { companyService } from "../../services/companyService";
+import ElectronicInvoicingSettings from "./ElectronicInvoicingSettings";
 
 const { Text, Title } = Typography;
 
 const SettingsTab = () => {
     const { t } = useI18n();
-    const { user } = useContext(AuthContext);
+    const { user, refreshUser } = useContext(AuthContext);
     const { team, isOwner, refreshTeam } = useTeam();
     const [name, setName] = useState(team?.name || "");
     const [savingName, setSavingName] = useState(false);
@@ -310,6 +311,20 @@ const SettingsTab = () => {
                     </Button>
                 </div>
             </Card>
+
+            <ElectronicInvoicingSettings
+                company={company}
+                onCompanyChanged={(updatedCompany) => {
+                    setCompany(updatedCompany);
+                    refreshUser?.();
+                    setCompanyForm((prev) => ({
+                        ...prev,
+                        name: updatedCompany?.name || prev.name,
+                        legalName: updatedCompany?.legalName || prev.legalName,
+                        contactEmail: updatedCompany?.contactEmail || prev.contactEmail,
+                    }));
+                }}
+            />
 
             <Card className="rounded-2xl border border-amber-500/20 bg-amber-500/5 text-[var(--ohnix-text-primary)]">
                 <Title level={5} className="text-[var(--ohnix-text-primary)] m-0 mb-1">

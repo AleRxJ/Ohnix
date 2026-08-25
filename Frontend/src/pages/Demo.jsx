@@ -18,13 +18,13 @@ const Demo = () => {
                 "@type": "ListItem",
                 position: 1,
                 name: "Inicio",
-                item: "https://www.ohnix.co/",
+                item: "https://ohnix.co/",
             },
             {
                 "@type": "ListItem",
                 position: 2,
                 name: "Demo",
-                item: "https://www.ohnix.co/demo",
+                item: "https://ohnix.co/demo",
             },
         ],
     };

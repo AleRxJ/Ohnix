@@ -306,7 +306,7 @@ const LandingPage = () => {
         "@type": "Organization",
         name: "Ohnix",
         url: "https://www.ohnix.co",
-        logo: "https://www.ohnix.co/Ohnix_FullLogo.png",
+        logo: "https://ohnix.co/Ohnix_FullLogo.png",
         contactPoint: {
             "@type": "ContactPoint",
             contactType: "sales",

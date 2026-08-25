@@ -32,6 +32,7 @@ const PAGE_TITLE_KEYS = {
     suppliers: "common.suppliers",
     categories: "common.categories",
     "electronic-invoices": "common.electronic_invoices_nav",
+    "fiscal-setup": "common.settings",
     reports: "common.reports",
     team: "common.team_nav",
     billing: "common.billing",

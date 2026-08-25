@@ -43,13 +43,13 @@ const OhnixVsAlegra = () => {
                 "@type": "ListItem",
                 position: 1,
                 name: "Inicio",
-                item: "https://www.ohnix.co/",
+                item: "https://ohnix.co/",
             },
             {
                 "@type": "ListItem",
                 position: 2,
                 name: "Comparativa Ohnix vs Alegra",
-                item: "https://www.ohnix.co/comparativa/ohnix-vs-alegra",
+                item: "https://ohnix.co/comparativa/ohnix-vs-alegra",
             },
         ],
     };

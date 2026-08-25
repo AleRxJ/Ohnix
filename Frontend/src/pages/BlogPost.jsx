@@ -36,7 +36,7 @@ const BlogPost = () => {
             name: "Ohnix",
             logo: {
                 "@type": "ImageObject",
-                url: "https://www.ohnix.co/Ohnix_FullLogo.png",
+                url: "https://ohnix.co/Ohnix_FullLogo.png",
             },
         },
         mainEntityOfPage: `https://www.ohnix.co${canonicalPath}`,

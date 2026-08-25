@@ -214,6 +214,18 @@ export const getItcycleFirmaPassStatus = async ({ companyId }) => {
     });
 };
 
+// Read-only readiness projection from itcycle-api-dian. This is deliberately
+// separate from FirmaPass status: a valid manual certificate is equally
+// capable of signing, and all document types need their own resolution.
+export const getItcycleDianReadiness = async ({ companyId }) => {
+    requireAdminConfigured();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/dian-readiness`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
 // ---------------------------------------------------------------------------
 // Documents (per-company API key - see Company.itcycleApiKeyCiphertext).
 // ---------------------------------------------------------------------------

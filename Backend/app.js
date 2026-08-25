@@ -100,7 +100,10 @@ app.post(
 // feature, reintroduce this route plus FACTUS_WEBHOOK_SECRET and the
 // corresponding service/controller functions (removed on 2026-08-04).
 
-app.use(express.json({ limit: "16kb" }));
+// Provisioning may include a customer-owned .p12/.pfx certificate encoded
+// in base64. 16kb made that normal onboarding step fail before its route was
+// reached; 2mb remains deliberately bounded for every JSON endpoint.
+app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(cookieParser());

@@ -14,7 +14,7 @@ const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 
 const MobileMenu = ({ collapsed, currentPage, onClose }) => {
     const { user } = React.useContext(AuthContext);
-    const { team, hasPermission, loading: teamLoading } = useTeam();
+    const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
     const { plan } = useSubscription();
     const { t } = useI18n();
     const { isLite } = useTheme();
@@ -83,7 +83,8 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
                                         ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO",
                                         showTeam,
                                         hasPermission,
-                                        ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle"
+                                        ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
+                                        !isTeamMember
                                     )}
                                     onClick={onClose}
                                     className="border-r-0"

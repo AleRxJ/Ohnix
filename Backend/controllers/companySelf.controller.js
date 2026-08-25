@@ -5,6 +5,19 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
 import { ensureUserSubscription, getEffectivePlan } from "../middleware/pricing.middleware.js";
 import { computeNitCheckDigit } from "../utils/nit.util.js";
+import {
+    addItcycleNumberingResolutionForCompany,
+    ensureElectronicInvoicingPlan,
+    registerCompanyWithItcycle,
+} from "../services/electronicInvoicing.service.js";
+import {
+    confirmCompanyFirmaPassValidation,
+    getCompanyFirmaPassStatus,
+    getCompanyDianReadiness,
+    setCompanyFirmaPassLoginKey,
+    uploadCompanyFirmaPassArchivo,
+    uploadCompanyFirmaPassRut,
+} from "../services/firmaPassProvisioning.service.js";
 
 // Same ISO-2 validator company.controller.js's admin endpoints use - kept as
 // its own copy rather than a shared import since that file is entirely
@@ -43,9 +56,126 @@ const SELF_SELECT = {
     // already has it top of mind, so it doesn't have to be asked for twice.
     taxIdentification: true,
     taxIdentificationDv: true,
+    electronicInvoicingEnabled: true,
+    electronicInvoicingProvider: true,
+    itcycleCompanyId: true,
+    vatResponsible: true,
+    vatResponsibleEffectiveFrom: true,
 };
 
 const isValidHexColor = (value) => /^#[0-9A-Fa-f]{6}$/.test(value || "");
+const VAT_RESPONSIBILITIES = ["unset", "responsible", "not_responsible"];
+
+// Never accept a company id from a self-service request. A company owner can
+// only configure the company linked to their authenticated account.
+const getOwnedCompanyOrThrow = async (userId) => {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { companyId: true },
+    });
+    if (!user?.companyId) {
+        throw new ApiError(422, "Configura primero los datos de tu empresa antes de activar facturaciÃ³n electrÃ³nica.");
+    }
+    const company = await prisma.company.findUnique({ where: { id: user.companyId}, select: SELF_SELECT });
+    if (!company) throw new ApiError(404, "Empresa no encontrada.");
+    return company;
+};
+
+export const getMyItcycleStatus = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const readiness = company.itcycleCompanyId
+        ? await getCompanyDianReadiness({ companyId: company.id })
+        : null;
+    return res.status(200).json(
+        new ApiResponse(200, {
+            provisioned: Boolean(company.itcycleCompanyId),
+            itcycleCompanyId: company.itcycleCompanyId,
+            electronicInvoicingEnabled: company.electronicInvoicingEnabled,
+            electronicInvoicingProvider: company.electronicInvoicingProvider,
+            readiness,
+        }, "Estado de facturaciÃ³n electrÃ³nica obtenido correctamente")
+    );
+});
+
+export const activateMyItcycleElectronicInvoicing = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    if (!company.itcycleCompanyId) {
+        throw new ApiError(422, "Configura primero tu empresa en itcycle-api-dian.");
+    }
+
+    const readiness = await getCompanyDianReadiness({ companyId: company.id });
+    if (!readiness?.canIssueInvoices) {
+        throw new ApiError(422, "Tu empresa todavía no está lista para emitir. Completa: " + (readiness?.missing || []).join(", "));
+    }
+
+    const updated = await prisma.company.update({
+        where: { id: company.id },
+        data: { electronicInvoicingProvider: "itcycle", electronicInvoicingEnabled: true },
+        select: SELF_SELECT,
+    });
+    return res.status(200).json(new ApiResponse(200, updated, "Facturación electrónica activada correctamente"));
+});
+
+export const registerMyCompanyWithItcycle = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    if (company.itcycleCompanyId) {
+        throw new ApiError(409, "Tu empresa ya estÃ¡ configurada para facturar. Agrega una resoluciÃ³n por separado si la necesitas.");
+    }
+    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    const { dianConfiguration, numberingResolutions, certificate } = req.body || {};
+    const data = await registerCompanyWithItcycle({
+        companyId: company.id,
+        dianConfiguration,
+        numberingResolutions,
+        certificate,
+    });
+    return res.status(200).json(new ApiResponse(200, data, "Empresa configurada para facturaciÃ³n electrÃ³nica"));
+});
+
+export const addMyItcycleNumberingResolution = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    const data = await addItcycleNumberingResolutionForCompany({ companyId: company.id, ...(req.body || {}) });
+    return res.status(201).json(new ApiResponse(201, data, "ResoluciÃ³n agregada correctamente"));
+});
+
+export const setMyFirmaPassLoginKey = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    const data = await setCompanyFirmaPassLoginKey({ companyId: company.id, loginKey: req.body?.loginKey });
+    return res.status(200).json(new ApiResponse(200, data, "Llave de FirmaPass actualizada"));
+});
+
+export const uploadMyFirmaPassRut = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    const data = await uploadCompanyFirmaPassRut({ companyId: company.id, validationUuid: req.params.validationUuid, ...(req.body || {}) });
+    return res.status(200).json(new ApiResponse(200, data, "RUT enviado a FirmaPass"));
+});
+
+export const uploadMyFirmaPassArchivo = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    const data = await uploadCompanyFirmaPassArchivo({ companyId: company.id, validationUuid: req.params.validationUuid, ...(req.body || {}) });
+    return res.status(200).json(new ApiResponse(200, data, "Documento enviado a FirmaPass"));
+});
+
+export const confirmMyFirmaPassValidation = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    const data = await confirmCompanyFirmaPassValidation({ companyId: company.id, validationUuid: req.params.validationUuid });
+    return res.status(200).json(new ApiResponse(200, data, "ValidaciÃ³n de FirmaPass confirmada"));
+});
+
+export const getMyFirmaPassStatus = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    if (!company.itcycleCompanyId) {
+        return res.status(200).json(new ApiResponse(200, { provisioned: false, certificates: [] }, "FirmaPass aÃºn no estÃ¡ disponible"));
+    }
+    const data = await getCompanyFirmaPassStatus({ companyId: company.id });
+    return res.status(200).json(new ApiResponse(200, { provisioned: true, ...data }, "Estado de FirmaPass obtenido correctamente"));
+});
 
 export const getMyCompany = asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({
@@ -79,7 +209,7 @@ export const getMyCompany = asyncHandler(async (req, res) => {
 });
 
 export const updateMyCompany = asyncHandler(async (req, res, next) => {
-    const { name, legalName, contactEmail, phone, pdfFooterText, pdfAccentColor, taxIdentification, countryCode } =
+    const { name, legalName, contactEmail, phone, pdfFooterText, pdfAccentColor, taxIdentification, countryCode, vatResponsible } =
         req.body || {};
 
     const subscription = await ensureUserSubscription(req.user.prismaId);
@@ -103,6 +233,11 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "countryCode debe ser un código ISO-2 válido, ej. CO"));
     }
 
+    const normalizedVatResponsible = vatResponsible !== undefined ? `${vatResponsible || ""}`.trim() : undefined;
+    if (normalizedVatResponsible !== undefined && !VAT_RESPONSIBILITIES.includes(normalizedVatResponsible)) {
+        return next(new ApiError(400, "vatResponsible debe ser responsible, not_responsible o unset."));
+    }
+
     const trimmedTaxId = taxIdentification !== undefined ? `${taxIdentification || ""}`.replace(/[^0-9]/g, "") : undefined;
     if (taxIdentification !== undefined && taxIdentification && !trimmedTaxId) {
         return next(new ApiError(400, "El NIT/tax ID debe contener al menos un dígito."));
@@ -113,7 +248,9 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         select: {
             companyId: true,
             username: true,
-            company: trimmedTaxId && !hasExplicitCountry ? { select: { countryCode: true } } : undefined,
+            company: (trimmedTaxId && !hasExplicitCountry) || normalizedVatResponsible !== undefined
+                ? { select: { countryCode: true, vatResponsible: true } }
+                : undefined,
         },
     });
 
@@ -133,6 +270,14 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         ...(pdfFooterText !== undefined ? { pdfFooterText: pdfFooterText?.trim() || null } : {}),
         ...(pdfAccentColor !== undefined ? { pdfAccentColor: trimmedAccentColor || null } : {}),
         ...(countryCode !== undefined ? { countryCode: hasExplicitCountry ? normalizedCountryCode : null } : {}),
+        ...(normalizedVatResponsible !== undefined
+            ? {
+                  vatResponsible: normalizedVatResponsible,
+                  ...(normalizedVatResponsible !== user?.company?.vatResponsible
+                      ? { vatResponsibleEffectiveFrom: normalizedVatResponsible === "unset" ? null : new Date() }
+                      : {}),
+              }
+            : {}),
         // For any other country this just stores the raw identifier with no
         // computed digit, same as company.controller.js's admin path leaves
         // it to be set explicitly there.

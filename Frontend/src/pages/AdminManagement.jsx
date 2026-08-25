@@ -412,13 +412,6 @@ const AdminManagement = () => {
                 editingCompany={editingCompany}
                 onUploadLogo={handleUploadCompanyLogo}
                 onRegisterAlanube={handleRegisterCompanyAlanube}
-                onRegisterItcycle={handleRegisterCompanyItcycle}
-                onAddItcycleNumberingResolution={handleAddItcycleNumberingResolution}
-                onSetFirmaPassLoginKey={handleSetFirmaPassLoginKey}
-                onUploadFirmaPassRut={handleUploadFirmaPassRut}
-                onUploadFirmaPassArchivo={handleUploadFirmaPassArchivo}
-                onConfirmFirmaPassValidation={handleConfirmFirmaPassValidation}
-                onGetFirmaPassStatus={handleGetFirmaPassStatus}
             />
 
             <UserFormModal

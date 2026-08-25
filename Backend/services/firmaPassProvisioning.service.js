@@ -6,6 +6,7 @@ import {
     uploadItcycleFirmaPassArchivo,
     confirmItcycleFirmaPassValidation,
     getItcycleFirmaPassStatus,
+    getItcycleDianReadiness,
     ItcycleDianError,
     isItcycleConfigured,
 } from "./itcycleDian.service.js";
@@ -19,8 +20,7 @@ import {
 // of Alanube/Factus/itcycle invoicing orchestration) since this is a distinct,
 // narrower concern - identity-validation bookkeeping, not invoicing.
 
-const requireItcycleProvisionedCompany = async ({ companyId, requesterRole }) => {
-    if (requesterRole !== "admin") throw new ApiError(403, "Only admins can manage FirmaPass provisioning");
+const requireItcycleProvisionedCompany = async ({ companyId }) => {
     if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
 
     const company = await prisma.company.findUnique({ where: { id: companyId } });
@@ -36,8 +36,8 @@ const rethrowAsApiError = (error) => {
     throw new ApiError(502, error.message || "FirmaPass provisioning request failed", providerPayload ? [providerPayload] : undefined);
 };
 
-export const setCompanyFirmaPassLoginKey = async ({ companyId, requesterRole, loginKey }) => {
-    const company = await requireItcycleProvisionedCompany({ companyId, requesterRole });
+export const setCompanyFirmaPassLoginKey = async ({ companyId, loginKey }) => {
+    const company = await requireItcycleProvisionedCompany({ companyId });
     try {
         await setItcycleFirmaPassLoginKey({ companyId: company.itcycleCompanyId, loginKey });
         return { companyId };
@@ -46,8 +46,8 @@ export const setCompanyFirmaPassLoginKey = async ({ companyId, requesterRole, lo
     }
 };
 
-export const uploadCompanyFirmaPassRut = async ({ companyId, requesterRole, validationUuid, rutBase64, identificacionRepresentanteLegal }) => {
-    const company = await requireItcycleProvisionedCompany({ companyId, requesterRole });
+export const uploadCompanyFirmaPassRut = async ({ companyId, validationUuid, rutBase64, identificacionRepresentanteLegal }) => {
+    const company = await requireItcycleProvisionedCompany({ companyId });
     try {
         return await uploadItcycleFirmaPassRut({
             companyId: company.itcycleCompanyId,
@@ -60,8 +60,8 @@ export const uploadCompanyFirmaPassRut = async ({ companyId, requesterRole, vali
     }
 };
 
-export const uploadCompanyFirmaPassArchivo = async ({ companyId, requesterRole, validationUuid, type, fileBase64 }) => {
-    const company = await requireItcycleProvisionedCompany({ companyId, requesterRole });
+export const uploadCompanyFirmaPassArchivo = async ({ companyId, validationUuid, type, fileBase64 }) => {
+    const company = await requireItcycleProvisionedCompany({ companyId });
     try {
         return await uploadItcycleFirmaPassArchivo({ companyId: company.itcycleCompanyId, validationUuid, type, fileBase64 });
     } catch (error) {
@@ -69,8 +69,8 @@ export const uploadCompanyFirmaPassArchivo = async ({ companyId, requesterRole, 
     }
 };
 
-export const confirmCompanyFirmaPassValidation = async ({ companyId, requesterRole, validationUuid }) => {
-    const company = await requireItcycleProvisionedCompany({ companyId, requesterRole });
+export const confirmCompanyFirmaPassValidation = async ({ companyId, validationUuid }) => {
+    const company = await requireItcycleProvisionedCompany({ companyId });
     try {
         return await confirmItcycleFirmaPassValidation({ companyId: company.itcycleCompanyId, validationUuid });
     } catch (error) {
@@ -78,10 +78,19 @@ export const confirmCompanyFirmaPassValidation = async ({ companyId, requesterRo
     }
 };
 
-export const getCompanyFirmaPassStatus = async ({ companyId, requesterRole }) => {
-    const company = await requireItcycleProvisionedCompany({ companyId, requesterRole });
+export const getCompanyFirmaPassStatus = async ({ companyId }) => {
+    const company = await requireItcycleProvisionedCompany({ companyId });
     try {
         return await getItcycleFirmaPassStatus({ companyId: company.itcycleCompanyId });
+    } catch (error) {
+        rethrowAsApiError(error);
+    }
+};
+
+export const getCompanyDianReadiness = async ({ companyId }) => {
+    const company = await requireItcycleProvisionedCompany({ companyId });
+    try {
+        return await getItcycleDianReadiness({ companyId: company.itcycleCompanyId });
     } catch (error) {
         rethrowAsApiError(error);
     }

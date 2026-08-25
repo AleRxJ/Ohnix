@@ -44,6 +44,7 @@ const companyFiscalSelect = {
     alanubeTestSetId: true,
     alanubeInvoiceResolution: true,
     alanubeCreditNoteResolution: true,
+    itcycleCompanyId: true,
 };
 
 // vatResponsibleEffectiveFrom records when the company's current VAT status
@@ -79,9 +80,11 @@ const normalizeFactusConfig = (body) => {
             config[field] = `${body[input]}`.trim();
         }
     }
-    if (typeof body.electronicInvoicingEnabled === "boolean") {
-        config.electronicInvoicingEnabled = body.electronicInvoicingEnabled;
-    }
+    // The issuing flag is intentionally not configurable from the Ohnix
+    // platform-admin company form. For itcycle-api-dian it is set only by
+    // the company owner's activation endpoint after an active certificate
+    // has been confirmed. Keeping it out of this generic updater prevents
+    // support staff from accidentally enabling a non-signable company.
     return config;
 };
 
@@ -89,7 +92,13 @@ const normalizeAlanubeConfig = (body) => {
     const config = {};
     if (body.electronicInvoicingProvider !== undefined) {
         const provider = `${body.electronicInvoicingProvider || ""}`.trim().toLowerCase();
-        config.electronicInvoicingProvider = ["factus", "itcycle"].includes(provider) ? provider : "alanube";
+        // ITCycle is self-service: a platform administrator may inspect its
+        // status but cannot assign it or move a customer away from it through
+        // the generic company editor. Legacy Factus/Alanube administration
+        // remains available for companies that already use those providers.
+        if (["factus", "alanube"].includes(provider)) {
+            config.electronicInvoicingProvider = provider;
+        }
     }
     if (body.taxIdentification !== undefined) {
         config.taxIdentification = `${body.taxIdentification || ""}`.trim() || null;

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Modal, Form, Input, Select, Switch, Upload, Button, ColorPicker, DatePicker, Tag, Divider, Steps, Segmented, Space } from "antd";
+import { Alert, Modal, Form, Input, Select, Switch, Upload, Button, ColorPicker, DatePicker, Tag, Divider, Steps, Segmented, Space } from "antd";
 import { UploadOutlined, ShopOutlined, LeftOutlined, RightOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
@@ -751,9 +751,11 @@ const CompanyFormModal = ({
                             {t("admin.dian_section_title")}
                         </div>
                         <p className="relative mb-4 text-xs text-[var(--ohnix-text-muted)]">{t("admin.dian_section_hint")}</p>
-                        <Form.Item name="electronicInvoicingEnabled" valuePropName="checked" initialValue={false}>
-                            <Switch checkedChildren={t("admin.dian_toggle_active")} unCheckedChildren={t("admin.dian_toggle_inactive")} />
-                        </Form.Item>
+                        {selectedProvider !== "itcycle" && (
+                            <Form.Item name="electronicInvoicingEnabled" valuePropName="checked" initialValue={false}>
+                                <Switch checkedChildren={t("admin.dian_toggle_active")} unCheckedChildren={t("admin.dian_toggle_inactive")} />
+                            </Form.Item>
+                        )}
 
                         <Form.Item name="electronicInvoicingProvider" label={t("admin.dian_provider")} initialValue="alanube">
                             <Select
@@ -809,17 +811,13 @@ const CompanyFormModal = ({
                                 </div>
                             </>
                         ) : selectedProvider === "itcycle" ? (
-                            <ItcycleProvisioningWizard
-                                form={form}
-                                t={t}
-                                editingCompany={editingCompany}
-                                onRegisterItcycle={onRegisterItcycle}
-                                onAddItcycleNumberingResolution={onAddItcycleNumberingResolution}
-                                onSetFirmaPassLoginKey={onSetFirmaPassLoginKey}
-                                onUploadFirmaPassRut={onUploadFirmaPassRut}
-                                onUploadFirmaPassArchivo={onUploadFirmaPassArchivo}
-                                onConfirmFirmaPassValidation={onConfirmFirmaPassValidation}
-                                onGetFirmaPassStatus={onGetFirmaPassStatus}
+                            <Alert
+                                type={editingCompany?.itcycleCompanyId ? "success" : "info"}
+                                showIcon
+                                message={editingCompany?.itcycleCompanyId ? "Empresa configurada en itcycle-api-dian" : "ConfiguraciÃ³n pendiente"}
+                                description={editingCompany?.itcycleCompanyId
+                                    ? `ID de itcycle: ${editingCompany.itcycleCompanyId}. La empresa gestiona y activa su configuración desde Configuración DIAN.`
+                                    : "La empresa debe completar su configuración desde Configuración DIAN. El administrador de Ohnix solo puede consultar el estado."}
                             />
                         ) : (
                             <>

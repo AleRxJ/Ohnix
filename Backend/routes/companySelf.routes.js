@@ -2,7 +2,21 @@ import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { blockTeamMembers } from "../middleware/teamGuard.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
-import { getMyCompany, updateMyCompany, updateMyCompanyLogo } from "../controllers/companySelf.controller.js";
+import { idempotent } from "../middleware/idempotency.middleware.js";
+import {
+    addMyItcycleNumberingResolution,
+    activateMyItcycleElectronicInvoicing,
+    confirmMyFirmaPassValidation,
+    getMyCompany,
+    getMyFirmaPassStatus,
+    getMyItcycleStatus,
+    registerMyCompanyWithItcycle,
+    setMyFirmaPassLoginKey,
+    updateMyCompany,
+    updateMyCompanyLogo,
+    uploadMyFirmaPassArchivo,
+    uploadMyFirmaPassRut,
+} from "../controllers/companySelf.controller.js";
 
 const router = Router();
 
@@ -15,5 +29,14 @@ router.use(verifyJWT, blockTeamMembers);
 
 router.route("/me").get(getMyCompany).patch(updateMyCompany);
 router.route("/me/logo").patch(upload.single("logo"), updateMyCompanyLogo);
+router.route("/me/itcycle/status").get(getMyItcycleStatus);
+router.route("/me/itcycle/register").post(idempotent("company.itcycle.register"), registerMyCompanyWithItcycle);
+router.route("/me/itcycle/activate").post(idempotent("company.itcycle.activate"), activateMyItcycleElectronicInvoicing);
+router.route("/me/itcycle/numbering-resolutions").post(addMyItcycleNumberingResolution);
+router.route("/me/itcycle/firmapass/login-key").put(setMyFirmaPassLoginKey);
+router.route("/me/itcycle/firmapass/validations/:validationUuid/rut").post(uploadMyFirmaPassRut);
+router.route("/me/itcycle/firmapass/validations/:validationUuid/archivos").post(uploadMyFirmaPassArchivo);
+router.route("/me/itcycle/firmapass/validations/:validationUuid/confirmar").post(confirmMyFirmaPassValidation);
+router.route("/me/itcycle/firmapass/status").get(getMyFirmaPassStatus);
 
 export default router;

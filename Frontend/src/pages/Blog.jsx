@@ -18,7 +18,7 @@ const Blog = () => {
         "@type": "CollectionPage",
         name: "Blog Ohnix",
         description,
-        url: "https://www.ohnix.co/blog",
+        url: "https://ohnix.co/blog",
     };
 
     return (

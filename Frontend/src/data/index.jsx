@@ -17,6 +17,7 @@ import {
     CrownOutlined,
     WalletOutlined,
     BookOutlined,
+    SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 
@@ -95,7 +96,7 @@ export const steps = [
 // ever hides items for someone acting on someone else's account. Defaults
 // to "always visible" so callers that don't pass it (or aren't inside a
 // team) see the full menu, same as before this existed.
-export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false) => {
+export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false, showFiscalSetup = false) => {
     const items = [
         {
             key: "dashboard",
@@ -150,6 +151,11 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             moduleKey: "purchases",
             icon: <FileTextOutlined />,
             label: <Link to="/purchase-support-documents">{t("common.purchase_support_documents_nav")}</Link>,
+        }] : []),
+        ...(showFiscalSetup ? [{
+            key: "fiscal-setup",
+            icon: <SafetyCertificateOutlined />,
+            label: <Link to="/fiscal-setup">Configuración DIAN</Link>,
         }] : []),
         {
             key: "reports",

@@ -58,6 +58,7 @@ const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
 const EpaycoResponseRedirect = lazy(() => import("./pages/EpaycoResponseRedirect"));
 const ElectronicInvoices = lazy(() => import("./pages/ElectronicInvoices"));
 const PurchaseSupportDocuments = lazy(() => import("./pages/PurchaseSupportDocuments"));
+const FiscalSetup = lazy(() => import("./pages/FiscalSetup"));
 const Team = lazy(() => import("./pages/Team"));
 const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
 
@@ -104,6 +105,16 @@ const RequireBillingAccess = ({ children }) => {
     return isOwner || hasPermission("billing", "view")
         ? children
         : <Navigate to="/dashboard" replace />;
+};
+
+// Fiscal configuration is account-wide: it belongs to the business owner,
+// not to a team role. Solo customers are owners too, so this deliberately
+// does not require a Team to exist.
+const RequireFiscalSetupAccess = ({ children }) => {
+    const { loading: authLoading } = useContext(AuthContext);
+    const { isTeamMember, loading: teamLoading } = useTeam();
+    if (authLoading || teamLoading) return <RouteLoadingFallback />;
+    return isTeamMember ? <Navigate to="/dashboard" replace /> : children;
 };
 
 // Same reasoning as RequireBillingAccess, generalized: every module nav
@@ -245,6 +256,7 @@ function App() {
                                 <Route path="reports/*" element={<RequireReportsAccess><Reports /></RequireReportsAccess>} />
                                 <Route path="finance" element={<RequireFinanceAccess><Finance /></RequireFinanceAccess>} />
                                 <Route path="accounting" element={<RequireAccountingAccess><Accounting /></RequireAccountingAccess>} />
+                                <Route path="fiscal-setup" element={<RequireFiscalSetupAccess><FiscalSetup /></RequireFiscalSetupAccess>} />
                                 <Route path="team" element={<Team />} />
                                 <Route path="billing" element={<RequireBillingAccess><Billing /></RequireBillingAccess>} />
                                 <Route path="billing/payment-success" element={<RequireBillingAccess><PaymentSuccess /></RequireBillingAccess>} />
