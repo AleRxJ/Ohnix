@@ -129,12 +129,23 @@ const Precios = () => {
 
     const productSchemaImage = "https://ohnix.co/Ohnix_FullLogo.png";
     const offerValidFrom = "2026-01-01";
+    const worldwideRegion = {
+        "@type": "DefinedRegion",
+        addressCountry: "001",
+    };
+    const sellerOrganization = {
+        "@type": "Organization",
+        name: "Ohnix",
+        url: "https://ohnix.co",
+    };
     const offerShippingDetails = {
         "@type": "OfferShippingDetails",
         doesNotShip: true,
+        shippingDestination: worldwideRegion,
     };
     const merchantReturnPolicy = {
         "@type": "MerchantReturnPolicy",
+        applicableCountry: "001",
         returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
     };
 
@@ -174,6 +185,7 @@ const Precios = () => {
                     validFrom: offerValidFrom,
                     priceValidUntil: "2026-12-31",
                     availability: "https://schema.org/InStock",
+                    seller: sellerOrganization,
                     shippingDetails: offerShippingDetails,
                     hasMerchantReturnPolicy: merchantReturnPolicy,
                 },
