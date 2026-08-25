@@ -155,6 +155,11 @@ app.use("/api/v1/electronic-invoices", electronicInvoiceRouter);
 app.use("/api/v1/purchase-support-documents", purchaseSupportDocumentRouter);
 app.use("/api/v1/api-keys", apiKeyRouter);
 app.use("/api/v1/public", publicApiRouter);
+// Mounted before teamRouter/pointOfSaleRouter: both apply router.use(verifyJWT)
+// with no path restriction while mounted at the bare "/api/v1" prefix, so any
+// router registered after them under that same prefix inherits their auth
+// check for every path - this must stay ahead of them or /contact 401s.
+app.use("/api/v1", contactRouter);
 app.use("/api/v1", teamRouter);
 app.use("/api/v1", pointOfSaleRouter);
 app.use("/api/v1/stock-transfers", stockTransferRouter);
@@ -162,7 +167,6 @@ app.use("/api/v1/tutorial-data", tutorialDataRouter);
 app.use("/api/v1/system-settings", systemSettingsRouter);
 app.use("/api/v1/finance", financeRouter);
 app.use("/api/v1/accounting", accountingRouter);
-app.use("/api/v1", contactRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________
