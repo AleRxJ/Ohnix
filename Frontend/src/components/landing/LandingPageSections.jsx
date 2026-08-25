@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import useI18n from "../../hooks/useI18n";
 import { api } from "../../api/api";
+import { trackContactFormConversion } from "../../utils/googleAds";
 import {
     ArrowRightOutlined,
     ApiOutlined,
@@ -1635,6 +1636,7 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
         try {
             await api.post("/contact", formData);
             setSubmitted(true);
+            trackContactFormConversion();
             setFormData({ name: "", email: "", phone: "", message: "", company: "" });
             setTimeout(() => setSubmitted(false), 3000);
         } catch (error) {
@@ -1646,7 +1648,7 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
     };
 
     return (
-        <ContentSection className={sectionShell}>
+        <ContentSection id="contact" className={sectionShell}>
             <div ref={ref} className="space-y-12">
                 <SectionHeading
                     eyebrow={heading?.eyebrow || t("landing.contact.eyebrow")}
