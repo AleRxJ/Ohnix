@@ -17,4 +17,4 @@ Disallow: /signup
 Disallow: /email-verify
 Disallow: /reset-password
 
-Sitemap: https://ohnix.co/sitemap.xml
+Sitemap: https://www.ohnix.co/sitemap.xml

@@ -58,25 +58,7 @@ const distDir = join(rootDir, "dist");
 const PORT = 4173;
 const HOST = `http://localhost:${PORT}`;
 
-const BLOG_SLUGS = [
-    "como-pasar-de-excel-a-software-inventario",
-    "kpis-inventario-para-pymes",
-    "como-evitar-quiebres-de-stock",
-    "inventario-y-ventas-sincronizados",
-    "errores-comunes-implementar-software-inventario",
-    "checklist-elegir-software-inventario",
-];
-
-const ROUTES = [
-    "/",
-    "/precios",
-    "/demo",
-    "/software-inventario-pymes",
-    "/comparativa/ohnix-vs-alegra",
-    "/colaboracion-en-equipo",
-    "/blog",
-    ...BLOG_SLUGS.map((slug) => `/blog/${slug}`),
-];
+import { MARKETING_ROUTES as ROUTES } from "./seo-routes.js";
 
 const waitForServer = async (url, attempts = 60) => {
     for (let i = 0; i < attempts; i += 1) {
