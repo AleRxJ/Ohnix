@@ -1,81 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
   <url>
-    <loc>https://www.ohnix.co/</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
+    <loc>https://ohnix.co/</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/demo</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://ohnix.co/software-inventario-pymes</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/precios</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <loc>https://ohnix.co/precios</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/software-inventario-pymes</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <loc>https://ohnix.co/demo</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/comparativa/ohnix-vs-alegra</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://ohnix.co/colaboracion-en-equipo</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/colaboracion-en-equipo</loc>
-    <lastmod>2026-08-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <loc>https://ohnix.co/comparativa/ohnix-vs-alegra</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/blog</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://ohnix.co/blog</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/blog/como-pasar-de-excel-a-software-inventario</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://ohnix.co/blog/como-pasar-de-excel-a-software-inventario</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/blog/kpis-inventario-para-pymes</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://ohnix.co/blog/kpis-inventario-para-pymes</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/blog/como-evitar-quiebres-de-stock</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://ohnix.co/blog/como-evitar-quiebres-de-stock</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/blog/inventario-y-ventas-sincronizados</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://ohnix.co/blog/inventario-y-ventas-sincronizados</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/blog/errores-comunes-implementar-software-inventario</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://ohnix.co/blog/errores-comunes-implementar-software-inventario</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
   <url>
-    <loc>https://www.ohnix.co/blog/checklist-elegir-software-inventario</loc>
-    <lastmod>2026-08-06</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <loc>https://ohnix.co/blog/checklist-elegir-software-inventario</loc>
+    <lastmod>2026-08-24</lastmod>
   </url>
+
 </urlset>
