@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import useI18n from "../../hooks/useI18n";
+import { api } from "../../api/api";
 import {
     ArrowRightOutlined,
     ApiOutlined,
@@ -1617,9 +1618,10 @@ export const WhatsAppSupportButton = ({
 export const ContactFormSection = ({ heading, primaryCta, contact }) => {
     const { t } = useI18n();
     const [ref, visible] = useScrollReveal();
-    const [formData, setFormData] = useState({ name: "", email: "", message: "", company: "" });
+    const [formData, setFormData] = useState({ name: "", email: "", phone: "", message: "", company: "" });
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -1629,14 +1631,15 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setErrorMessage("");
         try {
-            // Simular envío del formulario (integrar con API real)
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            await api.post("/contact", formData);
             setSubmitted(true);
-            setFormData({ name: "", email: "", message: "", company: "" });
+            setFormData({ name: "", email: "", phone: "", message: "", company: "" });
             setTimeout(() => setSubmitted(false), 3000);
         } catch (error) {
             console.error("Error sending form:", error);
+            setErrorMessage(error?.response?.data?.message || t("landing.contact_form.error"));
         } finally {
             setLoading(false);
         }
@@ -1680,6 +1683,17 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 />
                             </div>
                             <div>
+                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.phone_label")}</label>
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    value={formData.phone}
+                                    onChange={handleInputChange}
+                                    placeholder={t("landing.contact_form.phone_placeholder")}
+                                    className="w-full px-4 py-3 rounded-lg bg-white/[0.05] border border-white/10 text-white placeholder-[#6B7280] focus:border-[#29D8D5] focus:outline-none transition-colors"
+                                />
+                            </div>
+                            <div>
                                 <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.company_label")}</label>
                                 <input
                                     type="text"
@@ -1710,6 +1724,7 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 {loading ? t("landing.contact_form.submitting") : t("landing.contact_form.submit")}
                             </button>
                             {submitted && <div className="text-[#29D8D5] text-sm text-center">{t("landing.contact_form.success")}</div>}
+                            {errorMessage && <div className="text-red-400 text-sm text-center">{errorMessage}</div>}
                         </form>
                     </div>
 
