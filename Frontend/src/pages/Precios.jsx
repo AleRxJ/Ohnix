@@ -127,6 +127,17 @@ const Precios = () => {
           }, {})
         : { starter: 19, growth: 49, scale: 99 };
 
+    const productSchemaImage = "https://ohnix.co/Ohnix_FullLogo.png";
+    const offerValidFrom = "2026-01-01";
+    const offerShippingDetails = {
+        "@type": "OfferShippingDetails",
+        doesNotShip: true,
+    };
+    const merchantReturnPolicy = {
+        "@type": "MerchantReturnPolicy",
+        returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+    };
+
     const structuredData = [
         {
             "@context": "https://schema.org",
@@ -153,14 +164,18 @@ const Precios = () => {
                 "@type": "Product",
                 name: `Ohnix ${plan.name}`,
                 description: plan.description,
+                image: productSchemaImage,
                 brand: { "@type": "Brand", name: "Ohnix" },
                 offers: {
                     "@type": "Offer",
                     url: "https://ohnix.co/precios",
                     priceCurrency: offerCurrency,
                     price: String(offerAmountByPlanKey[plan.key]),
+                    validFrom: offerValidFrom,
                     priceValidUntil: "2026-12-31",
                     availability: "https://schema.org/InStock",
+                    shippingDetails: offerShippingDetails,
+                    hasMerchantReturnPolicy: merchantReturnPolicy,
                 },
             })),
     ];
