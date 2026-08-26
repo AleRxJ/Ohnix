@@ -1,7 +1,20 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, DatePicker, Form, Input, Select, Steps, Tag, Typography } from "antd";
-import { CheckCircleOutlined, FileProtectOutlined, PlusOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, DatePicker, Form, Input, Select, Typography } from "antd";
+import {
+    ArrowLeftOutlined,
+    ArrowRightOutlined,
+    BankOutlined,
+    CheckCircleOutlined,
+    EnvironmentOutlined,
+    FileProtectOutlined,
+    IdcardOutlined,
+    KeyOutlined,
+    MailOutlined,
+    PlusOutlined,
+    RocketOutlined,
+    SafetyCertificateOutlined,
+} from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
@@ -227,26 +240,45 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
 
     const field = (name, label, options = {}) => (
         <Form.Item name={name} label={label} rules={options.required ? [{ required: true, message: t("fiscal_setup.field_required") }] : []}>
-            {options.select ? <Select size="large" options={options.select} /> : <Input size="large" type={options.type} className="auth-ohnix-input" />}
+            {options.select
+                ? <Select size="large" options={options.select} />
+                : <Input size="large" type={options.type} prefix={options.icon} className="auth-ohnix-input" />}
         </Form.Item>
     );
 
     const hasSupportDocumentResolution = (status?.readiness?.resolutions || []).some((r) => r.documentType === "05" && r.isCurrent);
 
+    const STEP_META = [
+        { icon: <BankOutlined />, title: t("fiscal_setup.step_company"), caption: t("fiscal_setup.step_company_caption") },
+        { icon: <SafetyCertificateOutlined />, title: t("fiscal_setup.step_software"), caption: t("fiscal_setup.step_software_caption") },
+        { icon: <EnvironmentOutlined />, title: t("fiscal_setup.step_address"), caption: t("fiscal_setup.step_address_caption") },
+        { icon: <FileProtectOutlined />, title: t("fiscal_setup.step_resolution"), caption: t("fiscal_setup.step_resolution_caption") },
+    ];
+
     return (
         <Card loading={loading} className="overflow-hidden rounded-3xl border border-cyan-400/20 bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]">
-            <div className="-m-6 mb-6 bg-gradient-to-r from-cyan-500/15 via-indigo-500/10 to-transparent p-6">
-                <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="relative -m-6 mb-6 overflow-hidden bg-[linear-gradient(120deg,rgba(41,216,213,0.18),rgba(124,106,247,0.1)_45%,transparent_75%)] p-6">
+                <div className="pointer-events-none absolute -right-14 -top-16 h-40 w-40 rounded-full border border-[#29D8D5]/25" />
+                <div className="pointer-events-none absolute -right-2 -top-6 h-24 w-24 rounded-full border border-[#7C6AF7]/20" />
+                <div className="relative flex flex-wrap items-start justify-between gap-4">
                     <div className="flex gap-4">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400/15 text-xl text-cyan-300"><SafetyCertificateOutlined /></div>
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#29D8D5]/40 bg-gradient-to-br from-[#29D8D5]/25 to-[#7C6AF7]/15 text-xl text-[#44F3F0] shadow-[0_0_24px_rgba(41,216,213,0.28)] animate-glow-pulse">
+                            <SafetyCertificateOutlined />
+                        </div>
                         <div>
                             <Title level={4} className="m-0 text-[var(--ohnix-text-primary)]">{t("fiscal_setup.title")}</Title>
                             <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("fiscal_setup.subtitle")}</Text>
                         </div>
                     </div>
-                    <Tag color={status?.provisioned ? "success" : "processing"} icon={status?.provisioned ? <CheckCircleOutlined /> : undefined}>
+                    <span
+                        className="status-pill"
+                        style={status?.provisioned
+                            ? { color: "#44F3F0", background: "rgba(68,243,240,0.14)", border: "1px solid rgba(68,243,240,0.35)" }
+                            : { color: "#FFCF70", background: "rgba(245,158,11,0.14)", border: "1px solid rgba(245,158,11,0.35)" }}
+                    >
+                        <span className={`status-dot ${status?.provisioned ? "status-dot--accepted" : "status-dot--draft"}`} />
                         {status?.provisioned ? t("fiscal_setup.status_ready") : t("fiscal_setup.status_pending")}
-                    </Tag>
+                    </span>
                 </div>
             </div>
 
@@ -266,32 +298,76 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                 </>
             ) : (
                 <>
-                    <Steps
-                        current={step}
-                        responsive
-                        className="mb-8"
-                        items={[
-                            t("fiscal_setup.step_company"),
-                            t("fiscal_setup.step_software"),
-                            t("fiscal_setup.step_address"),
-                            t("fiscal_setup.step_resolution"),
-                        ].map((title) => ({ title }))}
-                    />
+                    <div className="mb-8">
+                        <div className="hidden items-start sm:flex">
+                            {STEP_META.map((meta, index) => (
+                                <div key={meta.title} className="flex flex-1 items-start last:flex-none">
+                                    <div className="flex w-24 flex-col items-center gap-2 text-center">
+                                        <div
+                                            className={`flex h-11 w-11 items-center justify-center rounded-2xl border text-lg transition-all duration-300 ${
+                                                index < step
+                                                    ? "border-[#29D8D5]/50 bg-[#29D8D5]/15 text-[#44F3F0] shadow-[0_0_16px_rgba(41,216,213,0.3)]"
+                                                    : index === step
+                                                        ? "scale-110 border-transparent bg-gradient-to-br from-[#29D8D5] to-[#44F3F0] text-[#021314] shadow-[0_0_26px_rgba(41,216,213,0.5)]"
+                                                        : "border-[var(--ohnix-line-5)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-muted)]"
+                                            }`}
+                                        >
+                                            {index < step ? <CheckCircleOutlined /> : meta.icon}
+                                        </div>
+                                        <div className={`text-[11px] font-bold uppercase tracking-wide leading-tight ${index <= step ? "text-[var(--ohnix-text-primary)]" : "text-[var(--ohnix-text-muted)]"}`}>
+                                            {meta.title}
+                                        </div>
+                                    </div>
+                                    {index < STEP_META.length - 1 && (
+                                        <div className="relative top-[22px] mx-1 h-[2px] flex-1 overflow-hidden rounded-full bg-[var(--ohnix-line-4)]">
+                                            <div
+                                                className="h-full rounded-full bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] transition-all duration-500"
+                                                style={{ width: index < step ? "100%" : "0%" }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        <div className="sm:hidden">
+                            <div className="mb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wide text-[var(--ohnix-text-muted)]">
+                                <span>{t("fiscal_setup.step_progress", { current: step + 1, total: STEP_META.length })}</span>
+                                <span className="text-[#44F3F0]">{Math.round(((step + 1) / STEP_META.length) * 100)}%</span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-[var(--ohnix-line-3)]">
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] transition-all duration-500"
+                                    style={{ width: `${((step + 1) / STEP_META.length) * 100}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div key={step} className="mb-5 flex items-start gap-3 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 animate-fade-up">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#29D8D5]/30 bg-[#29D8D5]/10 text-lg text-[#44F3F0]">
+                            {STEP_META[step].icon}
+                        </div>
+                        <div>
+                            <div className="text-sm font-bold text-[var(--ohnix-text-primary)]">{STEP_META[step].title}</div>
+                            <div className="text-xs text-[var(--ohnix-text-muted)]">{STEP_META[step].caption}</div>
+                        </div>
+                    </div>
+
                     <Form form={form} layout="vertical">
                         {step === 0 && <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 animate-fade-up">
-                            {field("taxIdentification", t("fiscal_setup.nit"), { required: true })}
-                            {field("legalName", t("fiscal_setup.legal_name"), { required: true })}
-                            {field("email", t("fiscal_setup.billing_email"), { type: "email" })}
+                            {field("taxIdentification", t("fiscal_setup.nit"), { required: true, icon: <IdcardOutlined className="text-[var(--ohnix-text-dim)]" /> })}
+                            {field("legalName", t("fiscal_setup.legal_name"), { required: true, icon: <BankOutlined className="text-[var(--ohnix-text-dim)]" /> })}
+                            {field("email", t("fiscal_setup.billing_email"), { type: "email", icon: <MailOutlined className="text-[var(--ohnix-text-dim)]" /> })}
                             {field("vatResponsible", t("fiscal_setup.vat_responsibility"), { required: true, select: [{ value: "responsible", label: t("fiscal_setup.vat_responsible") }, { value: "not_responsible", label: t("fiscal_setup.vat_not_responsible") }] })}
                         </div>}
                         {step === 1 && <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 animate-fade-up">
                             {field("environment", t("fiscal_setup.environment"), { required: true, select: [{ value: "SANDBOX", label: t("fiscal_setup.environment_sandbox") }, { value: "PRODUCTION", label: t("fiscal_setup.environment_production") }] })}
-                            {field("softwareId", t("fiscal_setup.software_id"), { required: true })}
-                            {field("softwarePin", t("fiscal_setup.software_pin"), { required: true, type: "password" })}
-                            {field("technicalKey", t("fiscal_setup.technical_key"), { required: true, type: "password" })}
+                            {field("softwareId", t("fiscal_setup.software_id"), { required: true, icon: <IdcardOutlined className="text-[var(--ohnix-text-dim)]" /> })}
+                            {field("softwarePin", t("fiscal_setup.software_pin"), { required: true, type: "password", icon: <KeyOutlined className="text-[var(--ohnix-text-dim)]" /> })}
+                            {field("technicalKey", t("fiscal_setup.technical_key"), { required: true, type: "password", icon: <KeyOutlined className="text-[var(--ohnix-text-dim)]" /> })}
                         </div>}
                         {step === 2 && <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 animate-fade-up">
-                            {field("street", t("fiscal_setup.address"), { required: true })}
+                            {field("street", t("fiscal_setup.address"), { required: true, icon: <EnvironmentOutlined className="text-[var(--ohnix-text-dim)]" /> })}
                             <Form.Item
                                 name="departmentCode"
                                 label={t("fiscal_setup.department")}
@@ -337,10 +413,10 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                         </div>}
                     </Form>
                     <div className="mt-6 flex justify-between border-t border-[var(--ohnix-line-4)] pt-5">
-                        <Button onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0}>{t("fiscal_setup.back")}</Button>
+                        <Button icon={<ArrowLeftOutlined />} onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0}>{t("fiscal_setup.back")}</Button>
                         {step < 3
-                            ? <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" onClick={next}>{t("fiscal_setup.continue")}</Button>
-                            : <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" loading={saving} onClick={submit}>{t("fiscal_setup.submit")}</Button>}
+                            ? <Button type="primary" iconPosition="end" icon={<ArrowRightOutlined />} className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" onClick={next}>{t("fiscal_setup.continue")}</Button>
+                            : <Button type="primary" icon={<RocketOutlined />} className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" loading={saving} onClick={submit}>{t("fiscal_setup.submit")}</Button>}
                     </div>
                 </>
             )}

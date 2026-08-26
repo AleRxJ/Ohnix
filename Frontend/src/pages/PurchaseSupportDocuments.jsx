@@ -18,6 +18,12 @@ import { purchaseSupportDocumentService } from "../services/purchaseSupportDocum
 import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
 import useI18n from "../hooks/useI18n";
+import { resolveApiErrorMessage } from "../utils/apiError";
+
+// Same reasoning as ElectronicInvoices.jsx's PLAN_GATE_CODE_MESSAGES -
+// purchaseSupportDocument.service.js's own ensureElectronicInvoicingPlan
+// copy throws the same English-by-design, code-tagged error.
+const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
 import useCountUp from "../hooks/useCountUp";
 
 // Purchase-side mirror of ElectronicInvoices.jsx, for Documento Soporte (DIAN
@@ -342,7 +348,7 @@ const PurchaseSupportDocuments = () => {
             message.success(t("purchase_support_documents.retry_success"));
             await refreshSelected(documentId);
         } catch (error) {
-            message.error(error.response?.data?.message || t("purchase_support_documents.retry_error"));
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "purchase_support_documents.retry_error"));
         } finally {
             setRetryingId(null);
         }
@@ -355,7 +361,7 @@ const PurchaseSupportDocuments = () => {
             message.success(t("purchase_support_documents.sync_success"));
             await refreshSelected(documentId);
         } catch (error) {
-            message.error(error.response?.data?.message || t("purchase_support_documents.sync_error_action"));
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "purchase_support_documents.sync_error_action"));
         } finally {
             setSyncingId(null);
         }

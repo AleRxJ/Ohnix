@@ -39,6 +39,14 @@ import { useCurrency } from "../context/CurrencyContext";
 import { getCurrencyInputProps } from "../utils/currency";
 import useI18n from "../hooks/useI18n";
 import useCountUp from "../hooks/useCountUp";
+import { resolveApiErrorMessage } from "../utils/apiError";
+
+// ensureElectronicInvoicingPlan (Backend/services/electronicInvoicing.service.js)
+// throws an English dev-facing message by design - see the same constant in
+// ElectronicInvoicingSettings.jsx/FirmaPassSelfService.jsx. A plan that
+// lapses or gets downgraded after invoices already exist can still hit this
+// gate here (retry/sync/credit-note), so it needs the same translation.
+const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
 
 const STATUS_COLORS = {
     accepted: "var(--ohnix-accent-2)",
@@ -721,7 +729,7 @@ const ElectronicInvoices = () => {
             message.success(t("electronic_invoices.retry_success"));
             await refreshSelected(invoiceId);
         } catch (error) {
-            message.error(error.response?.data?.message || t("electronic_invoices.retry_error"));
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "electronic_invoices.retry_error"));
         } finally {
             setRetryingId(null);
         }
@@ -734,7 +742,7 @@ const ElectronicInvoices = () => {
             message.success(t("electronic_invoices.sync_success"));
             await refreshSelected(invoiceId);
         } catch (error) {
-            message.error(error.response?.data?.message || t("electronic_invoices.sync_error_action"));
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "electronic_invoices.sync_error_action"));
         } finally {
             setSyncingId(null);
         }
@@ -758,7 +766,7 @@ const ElectronicInvoices = () => {
             setCreditNoteModalOpen(false);
             await loadCreditNotes(selected.orderId);
         } catch (error) {
-            message.error(error.response?.data?.message || t("electronic_invoices.credit_note.error"));
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "electronic_invoices.credit_note.error"));
         } finally {
             setCreditNoteSubmitting(false);
         }

@@ -2324,7 +2324,7 @@
         "starter": {
           "name": "Emprendedor",
           "subtitle": "Para negocios que formalizan su inventario",
-          "price": "$19",
+          "price": "$38.000",
           "billing": "/mes",
           "description": "Control completo de stock, pedidos y compras desde el primer día. Sin complejidad.",
           "features": {
@@ -2340,7 +2340,7 @@
         "growth": {
           "name": "Negocio",
           "subtitle": "Para operaciones activas con más volumen",
-          "price": "$49",
+          "price": "$99.000",
           "billing": "/mes",
           "description": "Reportes completos, exportaciones y automatizaciones para negocios establecidos.",
           "features": {
@@ -2360,7 +2360,7 @@
         "scale": {
           "name": "Escala",
           "subtitle": "Para empresas en crecimiento con equipo",
-          "price": "$99",
+          "price": "$200.000",
           "billing": "/mes",
           "description": "API, reportes avanzados y personalización completa para equipos en crecimiento.",
           "features": {
@@ -2764,6 +2764,11 @@
     "step_software": "Software DIAN",
     "step_address": "Dirección",
     "step_resolution": "Resolución",
+    "step_company_caption": "Datos fiscales básicos de tu empresa ante la DIAN.",
+    "step_software_caption": "Credenciales del software autorizado para facturar.",
+    "step_address_caption": "Ubicación fiscal registrada en el RUT.",
+    "step_resolution_caption": "Numeración autorizada por la DIAN para tus documentos.",
+    "step_progress": "Paso {{current}} de {{total}}",
     "nit": "NIT",
     "legal_name": "Razón social",
     "billing_email": "Correo de facturación",

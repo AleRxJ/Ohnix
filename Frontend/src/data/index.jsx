@@ -111,11 +111,23 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: <Link to="/products">{t("common.products")}</Link>,
         },
         {
+            key: "categories",
+            moduleKey: "categories",
+            icon: <AppstoreOutlined />,
+            label: <Link to="/categories">{t("common.categories")}</Link>,
+        },
+        {
             key: "orders",
             moduleKey: "orders",
             icon: <ShoppingCartOutlined />,
             label: <Link to="/orders">{t("common.orders")}</Link>,
         },
+        ...(showElectronicInvoicing ? [{
+            key: "electronic-invoices",
+            moduleKey: "orders",
+            icon: <FileTextOutlined />,
+            label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
+        }] : []),
         {
             key: "customers",
             moduleKey: "customers",
@@ -128,30 +140,18 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <ShoppingOutlined />,
             label: <Link to="/purchases">{t("common.purchases")}</Link>,
         },
-        {
-            key: "suppliers",
-            moduleKey: "suppliers",
-            icon: <UserSwitchOutlined />,
-            label: <Link to="/suppliers">{t("common.suppliers")}</Link>,
-        },
-        {
-            key: "categories",
-            moduleKey: "categories",
-            icon: <AppstoreOutlined />,
-            label: <Link to="/categories">{t("common.categories")}</Link>,
-        },
-        ...(showElectronicInvoicing ? [{
-            key: "electronic-invoices",
-            moduleKey: "orders",
-            icon: <FileTextOutlined />,
-            label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
-        }] : []),
         ...(showSupportDocuments ? [{
             key: "purchase-support-documents",
             moduleKey: "purchases",
             icon: <FileTextOutlined />,
             label: <Link to="/purchase-support-documents">{t("common.purchase_support_documents_nav")}</Link>,
         }] : []),
+        {
+            key: "suppliers",
+            moduleKey: "suppliers",
+            icon: <UserSwitchOutlined />,
+            label: <Link to="/suppliers">{t("common.suppliers")}</Link>,
+        },
         ...(showFiscalSetup ? [{
             key: "fiscal-setup",
             icon: <SafetyCertificateOutlined />,
@@ -163,11 +163,6 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <BarChartOutlined />,
             label: <Link to="/reports">{t("common.reports")}</Link>,
         },
-        ...(showTeam ? [{
-            key: "team",
-            icon: <UsergroupAddOutlined />,
-            label: <Link to="/team">{t("common.team_nav")}</Link>,
-        }] : []),
         {
             key: "finance",
             moduleKey: "finance",
@@ -180,6 +175,11 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <BookOutlined />,
             label: <Link to="/accounting">{t("common.accounting_nav")}</Link>,
         },
+        ...(showTeam ? [{
+            key: "team",
+            icon: <UsergroupAddOutlined />,
+            label: <Link to="/team">{t("common.team_nav")}</Link>,
+        }] : []),
         {
             key: "billing",
             moduleKey: "billing",

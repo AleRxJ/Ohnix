@@ -2330,7 +2330,7 @@
         "starter": {
           "name": "Starter",
           "subtitle": "For businesses formalizing their inventory",
-          "price": "$19",
+          "price": "$38.000",
           "billing": "/month",
           "description": "Full stock, order, and purchase control from day one. No complexity.",
           "features": {
@@ -2346,7 +2346,7 @@
         "growth": {
           "name": "Business",
           "subtitle": "For active operations with higher throughput",
-          "price": "$49",
+          "price": "$99.000",
           "billing": "/month",
           "description": "Full analytics, exports, and automations for established businesses.",
           "features": {
@@ -2366,7 +2366,7 @@
         "scale": {
           "name": "Scale",
           "subtitle": "For growing companies with a team",
-          "price": "$99",
+          "price": "$200.000",
           "billing": "/month",
           "description": "API access, advanced reports, and full customization for growing teams.",
           "features": {
@@ -2770,6 +2770,11 @@
     "step_software": "DIAN software",
     "step_address": "Address",
     "step_resolution": "Resolution",
+    "step_company_caption": "Your company's basic tax details for DIAN.",
+    "step_software_caption": "Credentials for your authorized invoicing software.",
+    "step_address_caption": "The fiscal address on file with your RUT.",
+    "step_resolution_caption": "DIAN-authorized numbering for your documents.",
+    "step_progress": "Step {{current}} of {{total}}",
     "nit": "Tax ID (NIT)",
     "legal_name": "Legal name",
     "billing_email": "Billing email",

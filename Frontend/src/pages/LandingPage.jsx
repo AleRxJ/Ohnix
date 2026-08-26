@@ -38,9 +38,13 @@ const LandingPage = () => {
 
     // "$" alone is ambiguous between USD and COP - PricingSection renders
     // planPrice() as a currencyBadge pill next to the amount when set.
+    // `fallback` is itself now a COP reference price (see locales/*/common.json)
+    // shown while market pricing resolves or if it fails, so it gets the same
+    // "COP" badge as a resolved COP price - not `null`, which used to read as
+    // an unqualified (and easily misread as USD) dollar amount.
     const planPrice = (planKey, fallback) => {
         const priceInfo = priceByPlanKey[planKey];
-        if (!priceInfo) return { price: fallback, currencyBadge: null };
+        if (!priceInfo) return { price: fallback, currencyBadge: "COP" };
         return { price: priceInfo.label, currencyBadge: priceInfo.currency === "COP" ? "COP" : null };
     };
 

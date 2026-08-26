@@ -24,9 +24,13 @@ const Precios = () => {
     // small pill next to the amount (same treatment as the landing page's
     // pricing teaser) instead of concatenated into the same giant string,
     // which used to force "$ 38.000 COP" to wrap mid-price inside the card.
+    // `fallback` is itself now a COP reference price (see locales/*/common.json)
+    // shown while market pricing resolves or if it fails, so it gets the same
+    // "COP" badge as a resolved COP price - not `null`, which used to read as
+    // an unqualified (and easily misread as USD) dollar amount.
     const planPrice = (planKey, fallback) => {
         const priceInfo = priceByPlanKey[planKey];
-        if (!priceInfo) return { price: fallback, currencyBadge: null };
+        if (!priceInfo) return { price: fallback, currencyBadge: "COP" };
         return { price: priceInfo.label, currencyBadge: priceInfo.currency === "COP" ? "COP" : null };
     };
 
@@ -113,11 +117,12 @@ const Precios = () => {
         "Conoce los planes de Ohnix para controlar inventario, compras y ventas en pymes con claridad operativa y escalabilidad.";
 
     // Schema.org Offer.price needs a bare number in the market's real
-    // currency, not the display string ("$19", "$59.900 COP"). Sourced from
-    // the same resolved market pricing as the on-page cards (falls back to
-    // the existing USD reference numbers if detection/fetch hasn't
-    // resolved yet) so structured data never disagrees with what's shown.
-    const offerCurrency = marketPricing?.currency?.toUpperCase() || "USD";
+    // currency, not the display string ("$38.000", "$59.900 COP"). Sourced
+    // from the same resolved market pricing as the on-page cards (falls
+    // back to the same COP reference numbers as the cards if detection/
+    // fetch hasn't resolved yet - see planPrice() above) so structured data
+    // never disagrees with what's shown.
+    const offerCurrency = marketPricing?.currency?.toUpperCase() || "COP";
     const offerAmountByPlanKey = marketPricing?.plans
         ? marketPricing.plans.reduce((acc, plan) => {
               if (plan.amount !== null && plan.amount !== undefined) {
@@ -125,7 +130,7 @@ const Precios = () => {
               }
               return acc;
           }, {})
-        : { starter: 19, growth: 49, scale: 99 };
+        : { starter: 38000, growth: 99000, scale: 200000 };
 
     const productSchemaImage = "https://ohnix.co/Ohnix_FullLogo.png";
     const offerValidFrom = "2026-01-01";
