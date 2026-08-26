@@ -30,37 +30,43 @@ export const sendMetaConversionEvent = async ({
     eventSourceUrl,
     testEventCode,
 }) => {
-    if (!META_PIXEL_ID || !META_CAPI_ACCESS_TOKEN) return;
-
-    const userData = {};
-    if (email) userData.em = [sha256(email)];
-    if (phone) userData.ph = [sha256(phone.replace(/\D/g, ""))];
-    if (clientIp) userData.client_ip_address = clientIp;
-    if (userAgent) userData.client_user_agent = userAgent;
-
-    const body = {
-        data: [
-            {
-                event_name: eventName,
-                event_time: Math.floor(Date.now() / 1000),
-                action_source: "website",
-                event_source_url: eventSourceUrl,
-                user_data: userData,
-            },
-        ],
-    };
-    if (testEventCode) body.test_event_code = testEventCode;
-
-    const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${META_PIXEL_ID}/events?access_token=${META_CAPI_ACCESS_TOKEN}`;
+    if (!META_PIXEL_ID || !META_CAPI_ACCESS_TOKEN) {
+        console.warn("Meta Conversions API skipped: META_PIXEL_ID/META_CAPI_ACCESS_TOKEN not configured.");
+        return;
+    }
 
     try {
+        const userData = {};
+        if (email) userData.em = [sha256(email)];
+        if (phone) userData.ph = [sha256(phone.replace(/\D/g, ""))];
+        if (clientIp) userData.client_ip_address = clientIp;
+        if (userAgent) userData.client_user_agent = userAgent;
+
+        const body = {
+            data: [
+                {
+                    event_name: eventName,
+                    event_time: Math.floor(Date.now() / 1000),
+                    action_source: "website",
+                    event_source_url: eventSourceUrl,
+                    user_data: userData,
+                },
+            ],
+        };
+        if (testEventCode) body.test_event_code = testEventCode;
+
+        const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${META_PIXEL_ID}/events?access_token=${META_CAPI_ACCESS_TOKEN}`;
+
         const response = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
         });
+        const responseBody = await response.text();
         if (!response.ok) {
-            console.error("Meta Conversions API error:", response.status, await response.text());
+            console.error("Meta Conversions API error:", response.status, responseBody);
+        } else {
+            console.log(`Meta Conversions API: sent "${eventName}" event ->`, responseBody);
         }
     } catch (error) {
         console.error("Meta Conversions API request failed:", error.message);
