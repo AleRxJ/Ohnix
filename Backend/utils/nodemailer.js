@@ -49,7 +49,7 @@ const withTimeout = async (promiseFactory, timeoutMs) => {
     }
 };
 
-const sendMail = async ({ from, to, bcc, subject, html, text }) => {
+const sendMail = async ({ from, to, bcc, replyTo, subject, html, text }) => {
     const response = await withTimeout(
         (signal) =>
             fetch(BREVO_API_URL, {
@@ -69,6 +69,7 @@ const sendMail = async ({ from, to, bcc, subject, html, text }) => {
                     // don't need to pass a redundant "to".
                     to: toRecipientArray(to) || toRecipientArray(process.env.SENDER_EMAIL),
                     bcc: toRecipientArray(bcc),
+                    replyTo: replyTo ? { email: extractEmailAddress(replyTo) || replyTo } : undefined,
                     subject,
                     htmlContent: html,
                     textContent: text,

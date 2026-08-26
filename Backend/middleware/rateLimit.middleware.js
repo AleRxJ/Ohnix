@@ -57,3 +57,7 @@ export const invitationAcceptRateLimiter = makeLimiter(15, 10);
 // loop stops being free.
 export const reportExportRateLimiter = makeLimiter(15, 20);
 export const bulkUploadRateLimiter = makeLimiter(60, 10);
+
+// Landing page contact form: public and unauthenticated, so the abuse vector
+// is spamming the sales inbox / burning email-provider quota.
+export const contactFormRateLimiter = makeLimiter(60, 5);

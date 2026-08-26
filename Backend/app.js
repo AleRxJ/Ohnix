@@ -134,6 +134,7 @@ import tutorialDataRouter from "./routes/tutorialData.routes.js";
 import systemSettingsRouter from "./routes/systemSettings.routes.js";
 import financeRouter from "./routes/finance.routes.js";
 import accountingRouter from "./routes/accounting.routes.js";
+import contactRouter from "./routes/contact.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -154,6 +155,11 @@ app.use("/api/v1/electronic-invoices", electronicInvoiceRouter);
 app.use("/api/v1/purchase-support-documents", purchaseSupportDocumentRouter);
 app.use("/api/v1/api-keys", apiKeyRouter);
 app.use("/api/v1/public", publicApiRouter);
+// Mounted before teamRouter/pointOfSaleRouter: both apply router.use(verifyJWT)
+// with no path restriction while mounted at the bare "/api/v1" prefix, so any
+// router registered after them under that same prefix inherits their auth
+// check for every path - this must stay ahead of them or /contact 401s.
+app.use("/api/v1", contactRouter);
 app.use("/api/v1", teamRouter);
 app.use("/api/v1", pointOfSaleRouter);
 app.use("/api/v1/stock-transfers", stockTransferRouter);
