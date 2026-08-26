@@ -5,8 +5,10 @@ import "./i18n/config.js";
 import App from "./App.jsx";
 import AppErrorBoundary from "./components/error/AppErrorBoundary.jsx";
 import { loadGoogleAdsTag } from "./utils/googleAds.js";
+import { loadMetaPixel } from "./utils/metaPixel.js";
 
 loadGoogleAdsTag();
+loadMetaPixel();
 
 // A production deploy deletes the old build's hashed chunk files (e.g.
 // Login-B-Fjz8gK.js) - a tab that's had the app open since before that

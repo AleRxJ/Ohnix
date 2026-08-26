@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import useI18n from "../../hooks/useI18n";
 import { api } from "../../api/api";
 import { trackContactFormConversion } from "../../utils/googleAds";
+import { trackContactFormLead } from "../../utils/metaPixel";
 import {
     ArrowRightOutlined,
     ApiOutlined,
@@ -1637,6 +1638,7 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
             await api.post("/contact", formData);
             setSubmitted(true);
             trackContactFormConversion();
+            trackContactFormLead();
             setFormData({ name: "", email: "", phone: "", message: "", company: "" });
             setTimeout(() => setSubmitted(false), 3000);
         } catch (error) {
