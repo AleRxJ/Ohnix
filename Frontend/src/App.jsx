@@ -119,7 +119,15 @@ const RequireFiscalSetupAccess = ({ children }) => {
     const { isTeamMember, loading: teamLoading } = useTeam();
     if (!ELECTRONIC_INVOICING_ENABLED) return <Navigate to="/dashboard" replace />;
     if (authLoading || teamLoading) return <RouteLoadingFallback />;
-    return !isTeamMember && user?.company?.countryCode === "CO"
+    // Unlike ColombiaInvoiceRoute/SupportDocumentRoute (which gate an action
+    // on an ALREADY-Colombian company), this page's whole purpose is often to
+    // set the company's country for the first time - registerUser never
+    // creates a Company row, so a brand-new owner has no company yet at all.
+    // Requiring countryCode === "CO" up front would permanently lock that
+    // owner out of the one page that lets them set it. Only a company that
+    // already exists with a DIFFERENT country blocks entry.
+    const companyIsColombianOrUnset = !user?.company || user.company.countryCode === "CO";
+    return !isTeamMember && companyIsColombianOrUnset
         ? children
         : <Navigate to="/dashboard" replace />;
 };
