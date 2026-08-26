@@ -155,7 +155,7 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
         ...(showFiscalSetup ? [{
             key: "fiscal-setup",
             icon: <SafetyCertificateOutlined />,
-            label: <Link to="/fiscal-setup">Configuración DIAN</Link>,
+            label: <Link to="/fiscal-setup">{t("common.fiscal_setup_nav")}</Link>,
         }] : []),
         {
             key: "reports",

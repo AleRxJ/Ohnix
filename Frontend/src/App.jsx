@@ -109,12 +109,19 @@ const RequireBillingAccess = ({ children }) => {
 
 // Fiscal configuration is account-wide: it belongs to the business owner,
 // not to a team role. Solo customers are owners too, so this deliberately
-// does not require a Team to exist.
+// does not require a Team to exist. Same ELECTRONIC_INVOICING_ENABLED +
+// countryCode "CO" gate every other DIAN surface in this app already uses
+// (ColombiaInvoiceRoute, SupportDocumentRoute) - itcycle-api-dian is a
+// Colombia-only concept, and the whole DIAN surface stays dark platform-wide
+// until that flag flips, this route is no exception.
 const RequireFiscalSetupAccess = ({ children }) => {
-    const { loading: authLoading } = useContext(AuthContext);
+    const { user, loading: authLoading } = useContext(AuthContext);
     const { isTeamMember, loading: teamLoading } = useTeam();
+    if (!ELECTRONIC_INVOICING_ENABLED) return <Navigate to="/dashboard" replace />;
     if (authLoading || teamLoading) return <RouteLoadingFallback />;
-    return isTeamMember ? <Navigate to="/dashboard" replace /> : children;
+    return !isTeamMember && user?.company?.countryCode === "CO"
+        ? children
+        : <Navigate to="/dashboard" replace />;
 };
 
 // Same reasoning as RequireBillingAccess, generalized: every module nav

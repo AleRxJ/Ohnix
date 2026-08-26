@@ -30,44 +30,10 @@ export const adminService = {
         return response.data;
     },
 
-    async registerCompanyWithItcycle(companyId, payload) {
-        const response = await api.post(`/companies/admin/${companyId}/itcycle/register`, payload);
-        return response.data;
-    },
-
-    async addItcycleNumberingResolution(companyId, payload) {
-        const response = await api.post(`/companies/admin/${companyId}/itcycle/numbering-resolutions`, payload);
-        return response.data;
-    },
-
-    async setCompanyFirmaPassLoginKey(companyId, loginKey) {
-        const response = await api.put(`/companies/admin/${companyId}/itcycle/firmapass/login-key`, { loginKey });
-        return response.data;
-    },
-
-    async uploadCompanyFirmaPassRut(companyId, validationUuid, payload) {
-        const response = await api.post(
-            `/companies/admin/${companyId}/itcycle/firmapass/validations/${validationUuid}/rut`,
-            payload
-        );
-        return response.data;
-    },
-
-    async uploadCompanyFirmaPassArchivo(companyId, validationUuid, payload) {
-        const response = await api.post(
-            `/companies/admin/${companyId}/itcycle/firmapass/validations/${validationUuid}/archivos`,
-            payload
-        );
-        return response.data;
-    },
-
-    async confirmCompanyFirmaPassValidation(companyId, validationUuid) {
-        const response = await api.post(
-            `/companies/admin/${companyId}/itcycle/firmapass/validations/${validationUuid}/confirmar`
-        );
-        return response.data;
-    },
-
+    // itcycle-api-dian registration/numbering/FirmaPass steps are self-service
+    // now (see Frontend/src/services/companyService.js's /company/me/itcycle/*
+    // calls) - Backend/routes/company.routes.js only keeps this one read-only
+    // status endpoint for Ohnix admin support visibility, the rest were removed.
     async getCompanyFirmaPassStatus(companyId) {
         const response = await api.get(`/companies/admin/${companyId}/itcycle/firmapass/status`);
         return response.data;

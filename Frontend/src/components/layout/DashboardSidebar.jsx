@@ -80,7 +80,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                             showTeam,
                             hasPermission,
                             ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
-                            !isTeamMember
+                            ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && !isTeamMember
                         ).map((item) => ({
                             ...item,
                         }))}

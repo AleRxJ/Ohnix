@@ -84,7 +84,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
                                         showTeam,
                                         hasPermission,
                                         ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
-                                        !isTeamMember
+                                        ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && !isTeamMember
                                     )}
                                     onClick={onClose}
                                     className="border-r-0"
