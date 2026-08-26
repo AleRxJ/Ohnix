@@ -35,8 +35,10 @@ export const companyService = {
         return response.data;
     },
 
-    async addMyItcycleNumberingResolution(payload) {
-        const response = await api.post("/company/me/itcycle/numbering-resolutions", payload);
+    async addMyItcycleNumberingResolution(payload, idempotencyKey) {
+        const response = await api.post("/company/me/itcycle/numbering-resolutions", payload, {
+            headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        });
         return response.data;
     },
 

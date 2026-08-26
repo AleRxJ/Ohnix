@@ -74,7 +74,7 @@ const getOwnedCompanyOrThrow = async (userId) => {
         select: { companyId: true },
     });
     if (!user?.companyId) {
-        throw new ApiError(422, "Configura primero los datos de tu empresa antes de activar facturaciÃ³n electrÃ³nica.");
+        throw new ApiError(422, "Configura primero los datos de tu empresa antes de activar facturación electrónica.");
     }
     const company = await prisma.company.findUnique({ where: { id: user.companyId}, select: SELF_SELECT });
     if (!company) throw new ApiError(404, "Empresa no encontrada.");
@@ -83,9 +83,24 @@ const getOwnedCompanyOrThrow = async (userId) => {
 
 export const getMyItcycleStatus = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
-    const readiness = company.itcycleCompanyId
-        ? await getCompanyDianReadiness({ companyId: company.id })
-        : null;
+
+    // A transient itcycle-api-dian failure (Render free-tier cold start,
+    // a deploy in progress, a brief network blip) must never make an
+    // ALREADY-registered company look unregistered again - that would send
+    // a real customer back to the initial registration wizard, which then
+    // rejects them with 409 "ya está configurada" if they try to resubmit.
+    // Only the readiness projection itself is unknown here, never the
+    // registration fact (which is Ohnix's own stored itcycleCompanyId).
+    let readiness = null;
+    let readinessError = null;
+    if (company.itcycleCompanyId) {
+        try {
+            readiness = await getCompanyDianReadiness({ companyId: company.id });
+        } catch (error) {
+            readinessError = error.message || "No fue posible verificar el estado ante itcycle-api-dian.";
+        }
+    }
+
     return res.status(200).json(
         new ApiResponse(200, {
             provisioned: Boolean(company.itcycleCompanyId),
@@ -93,7 +108,8 @@ export const getMyItcycleStatus = asyncHandler(async (req, res) => {
             electronicInvoicingEnabled: company.electronicInvoicingEnabled,
             electronicInvoicingProvider: company.electronicInvoicingProvider,
             readiness,
-        }, "Estado de facturaciÃ³n electrÃ³nica obtenido correctamente")
+            readinessError,
+        }, "Estado de facturación electrónica obtenido correctamente")
     );
 });
 
@@ -106,7 +122,12 @@ export const activateMyItcycleElectronicInvoicing = asyncHandler(async (req, res
 
     const readiness = await getCompanyDianReadiness({ companyId: company.id });
     if (!readiness?.canIssueInvoices) {
-        throw new ApiError(422, "Tu empresa todavía no está lista para emitir. Completa: " + (readiness?.missing || []).join(", "));
+        // `missing` codes (e.g. "invoice_resolution_01") are itcycle-api-dian's
+        // internal vocabulary, meaningless to a business owner - pass them via
+        // `errors` (same structured-list pattern as insufficient-stock errors)
+        // so the frontend translates each one, instead of baking raw codes
+        // into `message` where they'd leak straight into a toast.
+        throw new ApiError(422, "Tu empresa todavía no está lista para emitir.", readiness?.missing || []);
     }
 
     const updated = await prisma.company.update({
@@ -120,7 +141,7 @@ export const activateMyItcycleElectronicInvoicing = asyncHandler(async (req, res
 export const registerMyCompanyWithItcycle = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     if (company.itcycleCompanyId) {
-        throw new ApiError(409, "Tu empresa ya estÃ¡ configurada para facturar. Agrega una resoluciÃ³n por separado si la necesitas.");
+        throw new ApiError(409, "Tu empresa ya está configurada para facturar. Agrega una resolución por separado si la necesitas.");
     }
     await ensureElectronicInvoicingPlan(req.user.prismaId);
     const { dianConfiguration, numberingResolutions, certificate } = req.body || {};
@@ -130,14 +151,14 @@ export const registerMyCompanyWithItcycle = asyncHandler(async (req, res) => {
         numberingResolutions,
         certificate,
     });
-    return res.status(200).json(new ApiResponse(200, data, "Empresa configurada para facturaciÃ³n electrÃ³nica"));
+    return res.status(200).json(new ApiResponse(200, data, "Empresa configurada para facturación electrónica"));
 });
 
 export const addMyItcycleNumberingResolution = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     await ensureElectronicInvoicingPlan(req.user.prismaId);
     const data = await addItcycleNumberingResolutionForCompany({ companyId: company.id, ...(req.body || {}) });
-    return res.status(201).json(new ApiResponse(201, data, "ResoluciÃ³n agregada correctamente"));
+    return res.status(201).json(new ApiResponse(201, data, "Resolución agregada correctamente"));
 });
 
 export const setMyFirmaPassLoginKey = asyncHandler(async (req, res) => {
@@ -165,16 +186,25 @@ export const confirmMyFirmaPassValidation = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     await ensureElectronicInvoicingPlan(req.user.prismaId);
     const data = await confirmCompanyFirmaPassValidation({ companyId: company.id, validationUuid: req.params.validationUuid });
-    return res.status(200).json(new ApiResponse(200, data, "ValidaciÃ³n de FirmaPass confirmada"));
+    return res.status(200).json(new ApiResponse(200, data, "Validación de FirmaPass confirmada"));
 });
 
 export const getMyFirmaPassStatus = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     if (!company.itcycleCompanyId) {
-        return res.status(200).json(new ApiResponse(200, { provisioned: false, certificates: [] }, "FirmaPass aÃºn no estÃ¡ disponible"));
+        return res.status(200).json(new ApiResponse(200, { provisioned: false, certificates: [] }, "FirmaPass aún no está disponible"));
     }
-    const data = await getCompanyFirmaPassStatus({ companyId: company.id });
-    return res.status(200).json(new ApiResponse(200, { provisioned: true, ...data }, "Estado de FirmaPass obtenido correctamente"));
+    // Same reasoning as getMyItcycleStatus - a transient itcycle-api-dian
+    // failure must not throw the whole request away, it just means the
+    // FirmaPass certificate list is momentarily unknown.
+    try {
+        const data = await getCompanyFirmaPassStatus({ companyId: company.id });
+        return res.status(200).json(new ApiResponse(200, { provisioned: true, ...data }, "Estado de FirmaPass obtenido correctamente"));
+    } catch (error) {
+        return res.status(200).json(
+            new ApiResponse(200, { provisioned: true, certificates: [], statusError: error.message || "No fue posible verificar el estado ante itcycle-api-dian." }, "Estado de FirmaPass obtenido parcialmente")
+        );
+    }
 });
 
 export const getMyCompany = asyncHandler(async (req, res) => {

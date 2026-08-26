@@ -49,7 +49,13 @@ export const ensureElectronicInvoicingPlan = async (userId) => {
     if (!getPlanFeatures(effectivePlan).electronicInvoicing) {
         throw new ApiError(
             403,
-            "Electronic invoicing is available starting on the Negocio plan. Upgrade to issue DIAN invoices."
+            "Electronic invoicing is available starting on the Negocio plan. Upgrade to issue DIAN invoices.",
+            [],
+            "",
+            // `message` here is the English dev-facing fallback (logs, Postman) -
+            // the self-service fiscal-setup UI is entirely in Spanish, so it
+            // translates this via `code` instead of showing it raw.
+            "electronic_invoicing_plan_required"
         );
     }
 };

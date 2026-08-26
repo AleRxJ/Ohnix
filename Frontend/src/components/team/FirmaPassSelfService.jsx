@@ -1,12 +1,15 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Input, Space, Tag, Typography, Upload } from "antd";
-import { CheckCircleOutlined, ReloadOutlined, UploadOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, ReloadOutlined, SafetyCertificateOutlined, UploadOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
+import { resolveApiErrorMessage } from "../../utils/apiError";
 
 const { Text } = Typography;
+// Same reasoning as ElectronicInvoicingSettings.jsx's PLAN_GATE_CODE_MESSAGES.
+const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
 
 // The company buys its own digital certificate directly from FirmaPass, with
 // its own payment method - Ohnix never resells or fronts this purchase (see
@@ -38,6 +41,11 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
     const [documentBase64, setDocumentBase64] = useState(null);
     const [status, setStatus] = useState(null);
     const [busy, setBusy] = useState("");
+    // Same reasoning as ElectronicInvoicingSettings.jsx's registerIdempotencyKey -
+    // a stable key per mount so a genuine retry (not a second, deliberate
+    // activation attempt) replays the cached result instead of re-running
+    // activateMyItcycleElectronicInvoicing from scratch.
+    const [activateIdempotencyKey] = useState(() => crypto.randomUUID());
 
     const refresh = async (silent = false) => {
         try {
@@ -50,17 +58,32 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
 
     useEffect(() => { refresh(true); }, []);
 
-    const run = async (key, action, successMessage) => {
+    const run = async (key, action, successMessage, errorFormatter) => {
         try {
             setBusy(key);
             await action();
             await refresh(true);
             if (successMessage) toast.success(successMessage);
         } catch (error) {
-            toast.error(error?.response?.data?.message || t("fiscal_setup.firmapass_step_error"));
+            toast.error(errorFormatter?.(error) || resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "fiscal_setup.firmapass_step_error"));
         } finally {
             setBusy("");
         }
+    };
+
+    // getDianReadiness's `missing` codes ride in the ApiError `errors` array
+    // (see Backend/controllers/companySelf.controller.js) - translate the
+    // closed, stable set of 3 possible codes instead of showing them raw.
+    const describeMissingReadiness = (error) => {
+        const codes = error?.response?.data?.errors;
+        if (!Array.isArray(codes) || codes.length === 0) return null;
+        const labels = {
+            dian_configuration: t("fiscal_setup.missing_dian_configuration"),
+            invoice_resolution_01: t("fiscal_setup.missing_invoice_resolution_01"),
+            active_certificate: t("fiscal_setup.missing_active_certificate"),
+        };
+        const known = codes.map((code) => labels[code]).filter(Boolean);
+        return known.length > 0 ? t("fiscal_setup.firmapass_activate_missing", { items: known.join(", ") }) : null;
     };
 
     const activeCertificate = (status?.certificates || []).some((certificate) => certificate.status === "ACTIVE");
@@ -69,9 +92,14 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
     return (
         <Card className="mt-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)]">
             <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <h3 className="m-0 text-base font-semibold text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_title")}</h3>
-                    <p className="mb-0 mt-1 text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.firmapass_hint")}</p>
+                <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[#29D8D5]/30 bg-[#29D8D5]/10">
+                        <SafetyCertificateOutlined className="text-lg text-[#44F3F0]" />
+                    </div>
+                    <div>
+                        <h3 className="m-0 text-base font-semibold text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_title")}</h3>
+                        <p className="mb-0 mt-1 text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.firmapass_hint")}</p>
+                    </div>
                 </div>
                 <Tag color={activeCertificate ? "green" : "default"} icon={activeCertificate ? <CheckCircleOutlined /> : undefined}>
                     {activeCertificate ? t("fiscal_setup.firmapass_active") : t("fiscal_setup.firmapass_pending")}
@@ -89,11 +117,12 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
                         <Button
                             size="small"
                             type="primary"
+                            className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]"
                             loading={busy === "activate"}
                             onClick={() => run("activate", async () => {
-                                const response = await companyService.activateMyItcycleElectronicInvoicing(crypto.randomUUID());
+                                const response = await companyService.activateMyItcycleElectronicInvoicing(activateIdempotencyKey);
                                 onActivated?.(response?.data);
-                            }, t("fiscal_setup.firmapass_activate_success"))}
+                            }, t("fiscal_setup.firmapass_activate_success"), describeMissingReadiness)}
                         >
                             {t("fiscal_setup.firmapass_activate")}
                         </Button>
@@ -198,6 +227,7 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
                     <div className="flex flex-wrap gap-2">
                         <Button
                             type="primary"
+                            className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]"
                             loading={busy === "confirm"}
                             disabled={!canDriveValidation}
                             onClick={() => run("confirm", () => companyService.confirmMyFirmaPassValidation(validationUuid.trim()), t("fiscal_setup.firmapass_confirm_success"))}

@@ -63,8 +63,16 @@ export const idempotent = (scope) =>
 
         const originalJson = res.json.bind(res);
         res.json = (body) => {
-            prisma.idempotencyKey
-                .update({
+            // Only a real 2xx result is worth locking to this key forever - it
+            // reflects a committed side effect that must never be repeated. An
+            // error response (4xx from a thrown ApiError - a validation or
+            // not-ready-yet precondition, or a 5xx) means nothing durable
+            // happened, so the key is released instead of cached: otherwise a
+            // stable key across retries (the whole point of reusing one) would
+            // replay a since-fixed failure forever instead of letting the
+            // corrected retry actually run.
+            const persist = res.statusCode < 400
+                ? prisma.idempotencyKey.update({
                     where: { id: record.id },
                     data: {
                         status: "completed",
@@ -72,7 +80,8 @@ export const idempotent = (scope) =>
                         responseBody: JSON.parse(JSON.stringify(body)),
                     },
                 })
-                .catch((err) => console.error("Failed to persist idempotency record:", err));
+                : prisma.idempotencyKey.delete({ where: { id: record.id } });
+            persist.catch((err) => console.error("Failed to persist idempotency record:", err));
             return originalJson(body);
         };
 
