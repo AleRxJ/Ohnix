@@ -261,40 +261,31 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
     const statusLabel = status?.provisioned ? t("fiscal_setup.status_ready") : t("fiscal_setup.status_pending");
 
     return (
-        <div className="relative">
-            <span
-                className="status-pill absolute -top-4 right-6 z-10 hidden shadow-[0_12px_32px_rgba(0,0,0,0.45)] backdrop-blur-md animate-float-glow sm:inline-flex sm:right-10"
-                style={{ color: statusTone.color, background: "rgba(6,10,10,0.82)", border: `1px solid ${statusTone.border}` }}
-            >
-                <span className={`status-dot ${statusTone.dot}`} />
-                {statusLabel}
-            </span>
-
-            <Card loading={loading} className="overflow-hidden rounded-3xl border border-cyan-400/20 bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]">
-                <div className="relative -m-6 mb-6 overflow-hidden bg-[linear-gradient(120deg,rgba(41,216,213,0.18),rgba(124,106,247,0.1)_45%,transparent_75%)] p-6">
-                    <div className="pointer-events-none absolute -right-14 -top-16 h-40 w-40 rounded-full border border-[#29D8D5]/25" />
-                    <div className="pointer-events-none absolute -right-2 -top-6 h-24 w-24 rounded-full border border-[#7C6AF7]/20" />
-                    <div className="relative flex flex-wrap items-start justify-between gap-4">
-                        <div className="flex gap-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#29D8D5]/40 bg-gradient-to-br from-[#29D8D5]/25 to-[#7C6AF7]/15 text-xl text-[#44F3F0] shadow-[0_0_24px_rgba(41,216,213,0.28)] animate-glow-pulse">
-                                <SafetyCertificateOutlined />
-                            </div>
-                            <div>
-                                <Title level={4} className="m-0 text-[var(--ohnix-text-primary)]">{t("fiscal_setup.title")}</Title>
-                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("fiscal_setup.subtitle")}</Text>
-                            </div>
+        <Card loading={loading} className="overflow-hidden rounded-3xl border border-cyan-400/20 bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]">
+            <div className="relative -m-6 mb-6 overflow-hidden bg-[linear-gradient(120deg,rgba(41,216,213,0.18),rgba(124,106,247,0.1)_45%,transparent_75%)] p-6">
+                <div className="pointer-events-none absolute -right-14 -top-16 h-40 w-40 rounded-full border border-[#29D8D5]/25" />
+                <div className="pointer-events-none absolute -right-2 -top-6 h-24 w-24 rounded-full border border-[#7C6AF7]/20" />
+                <div className="relative flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#29D8D5]/40 bg-gradient-to-br from-[#29D8D5]/25 to-[#7C6AF7]/15 text-xl text-[#44F3F0] shadow-[0_0_24px_rgba(41,216,213,0.28)] animate-glow-pulse">
+                            <SafetyCertificateOutlined />
                         </div>
-                        <span
-                            className="status-pill sm:hidden"
-                            style={{ color: statusTone.color, background: "rgba(6,10,10,0.4)", border: `1px solid ${statusTone.border}` }}
-                        >
-                            <span className={`status-dot ${statusTone.dot}`} />
-                            {statusLabel}
-                        </span>
+                        <div>
+                            <Title level={4} className="m-0 text-[var(--ohnix-text-primary)]">{t("fiscal_setup.title")}</Title>
+                            <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("fiscal_setup.subtitle")}</Text>
+                        </div>
                     </div>
+                    <span
+                        className="status-pill"
+                        style={{ color: statusTone.color, background: "rgba(6,10,10,0.4)", border: `1px solid ${statusTone.border}` }}
+                    >
+                        <span className={`status-dot ${statusTone.dot}`} />
+                        {statusLabel}
+                    </span>
                 </div>
+            </div>
 
-                {status?.provisioned ? (
+            {status?.provisioned ? (
                 <>
                     <Alert
                         type={status.electronicInvoicingEnabled ? "success" : "info"}
@@ -433,8 +424,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                     </div>
                 </>
             )}
-            </Card>
-        </div>
+        </Card>
     );
 };
 

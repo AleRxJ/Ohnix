@@ -23,6 +23,8 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     const { isLite } = useTheme();
     const navigate = useNavigate();
     const showTeam = Boolean(team) || TEAM_CAPABLE_PLANS.includes(plan);
+    const showFiscalSetup = ELECTRONIC_INVOICING_ENABLED && (!user?.company || user?.company?.countryCode === "CO") && !isTeamMember;
+    const needsFiscalSetup = showFiscalSetup && !user?.company?.electronicInvoicingEnabled;
 
     const handleLogoClick = () => {
         navigate("/dashboard");
@@ -80,7 +82,8 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                             showTeam,
                             hasPermission,
                             ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
-                            ELECTRONIC_INVOICING_ENABLED && (!user?.company || user?.company?.countryCode === "CO") && !isTeamMember
+                            showFiscalSetup,
+                            needsFiscalSetup
                         ).map((item) => ({
                             ...item,
                         }))}

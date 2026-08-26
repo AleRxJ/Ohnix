@@ -20,6 +20,8 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
     const { isLite } = useTheme();
     const panelRef = useRef(null);
     const showTeam = Boolean(team) || TEAM_CAPABLE_PLANS.includes(plan);
+    const showFiscalSetup = ELECTRONIC_INVOICING_ENABLED && (!user?.company || user?.company?.countryCode === "CO") && !isTeamMember;
+    const needsFiscalSetup = showFiscalSetup && !user?.company?.electronicInvoicingEnabled;
 
     useEffect(() => {
         const handlePointerDown = (event) => {
@@ -84,7 +86,8 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
                                         showTeam,
                                         hasPermission,
                                         ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
-                                        ELECTRONIC_INVOICING_ENABLED && (!user?.company || user?.company?.countryCode === "CO") && !isTeamMember
+                                        showFiscalSetup,
+                                        needsFiscalSetup
                                     )}
                                     onClick={onClose}
                                     className="border-r-0"

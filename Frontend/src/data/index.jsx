@@ -96,7 +96,7 @@ export const steps = [
 // ever hides items for someone acting on someone else's account. Defaults
 // to "always visible" so callers that don't pass it (or aren't inside a
 // team) see the full menu, same as before this existed.
-export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false, showFiscalSetup = false) => {
+export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false, showFiscalSetup = false, needsFiscalSetup = false) => {
     const items = [
         {
             key: "dashboard",
@@ -155,7 +155,17 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
         ...(showFiscalSetup ? [{
             key: "fiscal-setup",
             icon: <SafetyCertificateOutlined />,
-            label: <Link to="/fiscal-setup">{t("common.fiscal_setup_nav")}</Link>,
+            label: (
+                <Link to="/fiscal-setup" className="flex items-center justify-between gap-2">
+                    <span>{t("common.fiscal_setup_nav")}</span>
+                    {needsFiscalSetup && (
+                        <span className="relative flex h-2 w-2 shrink-0">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FFCF70] opacity-75" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FFCF70]" />
+                        </span>
+                    )}
+                </Link>
+            ),
         }] : []),
         {
             key: "reports",
