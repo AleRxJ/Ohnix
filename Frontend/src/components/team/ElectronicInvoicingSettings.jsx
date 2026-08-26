@@ -89,19 +89,19 @@ const SupportDocumentResolution = ({ onAdded }) => {
             </div>
             <Form form={form} layout="vertical" className="mt-4">
                 <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-                    <Form.Item name="prefix" label={t("fiscal_setup.prefix")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="prefix" label={t("fiscal_setup.prefix")} extra={t("fiscal_setup.prefix_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                         <Input size="large" className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} extra={t("fiscal_setup.resolution_number_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                         <Input size="large" className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} extra={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                         <Input size="large" type="number" className="auth-ohnix-input" />
                     </Form.Item>
                     <Form.Item name="endNumber" label={t("fiscal_setup.end_number")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                         <Input size="large" type="number" className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="startDate" label={t("fiscal_setup.start_date")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="startDate" label={t("fiscal_setup.start_date")} extra={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                         <DatePicker size="large" className="w-full" />
                     </Form.Item>
                     <Form.Item name="endDate" label={t("fiscal_setup.end_date")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
@@ -239,7 +239,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
     };
 
     const field = (name, label, options = {}) => (
-        <Form.Item name={name} label={label} rules={options.required ? [{ required: true, message: t("fiscal_setup.field_required") }] : []}>
+        <Form.Item name={name} label={label} extra={options.hint} rules={options.required ? [{ required: true, message: t("fiscal_setup.field_required") }] : []}>
             {options.select
                 ? <Select size="large" options={options.select} />
                 : <Input size="large" type={options.type} prefix={options.icon} className="auth-ohnix-input" />}
@@ -255,34 +255,46 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
         { icon: <FileProtectOutlined />, title: t("fiscal_setup.step_resolution"), caption: t("fiscal_setup.step_resolution_caption") },
     ];
 
-    return (
-        <Card loading={loading} className="overflow-hidden rounded-3xl border border-cyan-400/20 bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]">
-            <div className="relative -m-6 mb-6 overflow-hidden bg-[linear-gradient(120deg,rgba(41,216,213,0.18),rgba(124,106,247,0.1)_45%,transparent_75%)] p-6">
-                <div className="pointer-events-none absolute -right-14 -top-16 h-40 w-40 rounded-full border border-[#29D8D5]/25" />
-                <div className="pointer-events-none absolute -right-2 -top-6 h-24 w-24 rounded-full border border-[#7C6AF7]/20" />
-                <div className="relative flex flex-wrap items-start justify-between gap-4">
-                    <div className="flex gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#29D8D5]/40 bg-gradient-to-br from-[#29D8D5]/25 to-[#7C6AF7]/15 text-xl text-[#44F3F0] shadow-[0_0_24px_rgba(41,216,213,0.28)] animate-glow-pulse">
-                            <SafetyCertificateOutlined />
-                        </div>
-                        <div>
-                            <Title level={4} className="m-0 text-[var(--ohnix-text-primary)]">{t("fiscal_setup.title")}</Title>
-                            <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("fiscal_setup.subtitle")}</Text>
-                        </div>
-                    </div>
-                    <span
-                        className="status-pill"
-                        style={status?.provisioned
-                            ? { color: "#44F3F0", background: "rgba(68,243,240,0.14)", border: "1px solid rgba(68,243,240,0.35)" }
-                            : { color: "#FFCF70", background: "rgba(245,158,11,0.14)", border: "1px solid rgba(245,158,11,0.35)" }}
-                    >
-                        <span className={`status-dot ${status?.provisioned ? "status-dot--accepted" : "status-dot--draft"}`} />
-                        {status?.provisioned ? t("fiscal_setup.status_ready") : t("fiscal_setup.status_pending")}
-                    </span>
-                </div>
-            </div>
+    const statusTone = status?.provisioned
+        ? { color: "#44F3F0", border: "rgba(68,243,240,0.45)", dot: "status-dot--accepted" }
+        : { color: "#FFCF70", border: "rgba(245,158,11,0.45)", dot: "status-dot--draft" };
+    const statusLabel = status?.provisioned ? t("fiscal_setup.status_ready") : t("fiscal_setup.status_pending");
 
-            {status?.provisioned ? (
+    return (
+        <div className="relative">
+            <span
+                className="status-pill absolute -top-4 right-6 z-10 hidden shadow-[0_12px_32px_rgba(0,0,0,0.45)] backdrop-blur-md animate-float-glow sm:inline-flex sm:right-10"
+                style={{ color: statusTone.color, background: "rgba(6,10,10,0.82)", border: `1px solid ${statusTone.border}` }}
+            >
+                <span className={`status-dot ${statusTone.dot}`} />
+                {statusLabel}
+            </span>
+
+            <Card loading={loading} className="overflow-hidden rounded-3xl border border-cyan-400/20 bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]">
+                <div className="relative -m-6 mb-6 overflow-hidden bg-[linear-gradient(120deg,rgba(41,216,213,0.18),rgba(124,106,247,0.1)_45%,transparent_75%)] p-6">
+                    <div className="pointer-events-none absolute -right-14 -top-16 h-40 w-40 rounded-full border border-[#29D8D5]/25" />
+                    <div className="pointer-events-none absolute -right-2 -top-6 h-24 w-24 rounded-full border border-[#7C6AF7]/20" />
+                    <div className="relative flex flex-wrap items-start justify-between gap-4">
+                        <div className="flex gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#29D8D5]/40 bg-gradient-to-br from-[#29D8D5]/25 to-[#7C6AF7]/15 text-xl text-[#44F3F0] shadow-[0_0_24px_rgba(41,216,213,0.28)] animate-glow-pulse">
+                                <SafetyCertificateOutlined />
+                            </div>
+                            <div>
+                                <Title level={4} className="m-0 text-[var(--ohnix-text-primary)]">{t("fiscal_setup.title")}</Title>
+                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("fiscal_setup.subtitle")}</Text>
+                            </div>
+                        </div>
+                        <span
+                            className="status-pill sm:hidden"
+                            style={{ color: statusTone.color, background: "rgba(6,10,10,0.4)", border: `1px solid ${statusTone.border}` }}
+                        >
+                            <span className={`status-dot ${statusTone.dot}`} />
+                            {statusLabel}
+                        </span>
+                    </div>
+                </div>
+
+                {status?.provisioned ? (
                 <>
                     <Alert
                         type={status.electronicInvoicingEnabled ? "success" : "info"}
@@ -355,22 +367,23 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
 
                     <Form form={form} layout="vertical">
                         {step === 0 && <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 animate-fade-up">
-                            {field("taxIdentification", t("fiscal_setup.nit"), { required: true, icon: <IdcardOutlined className="text-[var(--ohnix-text-dim)]" /> })}
-                            {field("legalName", t("fiscal_setup.legal_name"), { required: true, icon: <BankOutlined className="text-[var(--ohnix-text-dim)]" /> })}
-                            {field("email", t("fiscal_setup.billing_email"), { type: "email", icon: <MailOutlined className="text-[var(--ohnix-text-dim)]" /> })}
-                            {field("vatResponsible", t("fiscal_setup.vat_responsibility"), { required: true, select: [{ value: "responsible", label: t("fiscal_setup.vat_responsible") }, { value: "not_responsible", label: t("fiscal_setup.vat_not_responsible") }] })}
+                            {field("taxIdentification", t("fiscal_setup.nit"), { required: true, icon: <IdcardOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.nit_hint") })}
+                            {field("legalName", t("fiscal_setup.legal_name"), { required: true, icon: <BankOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.legal_name_hint") })}
+                            {field("email", t("fiscal_setup.billing_email"), { type: "email", icon: <MailOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.billing_email_hint") })}
+                            {field("vatResponsible", t("fiscal_setup.vat_responsibility"), { required: true, hint: t("fiscal_setup.vat_responsibility_hint"), select: [{ value: "responsible", label: t("fiscal_setup.vat_responsible") }, { value: "not_responsible", label: t("fiscal_setup.vat_not_responsible") }] })}
                         </div>}
                         {step === 1 && <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 animate-fade-up">
-                            {field("environment", t("fiscal_setup.environment"), { required: true, select: [{ value: "SANDBOX", label: t("fiscal_setup.environment_sandbox") }, { value: "PRODUCTION", label: t("fiscal_setup.environment_production") }] })}
-                            {field("softwareId", t("fiscal_setup.software_id"), { required: true, icon: <IdcardOutlined className="text-[var(--ohnix-text-dim)]" /> })}
-                            {field("softwarePin", t("fiscal_setup.software_pin"), { required: true, type: "password", icon: <KeyOutlined className="text-[var(--ohnix-text-dim)]" /> })}
-                            {field("technicalKey", t("fiscal_setup.technical_key"), { required: true, type: "password", icon: <KeyOutlined className="text-[var(--ohnix-text-dim)]" /> })}
+                            {field("environment", t("fiscal_setup.environment"), { required: true, hint: t("fiscal_setup.environment_hint"), select: [{ value: "SANDBOX", label: t("fiscal_setup.environment_sandbox") }, { value: "PRODUCTION", label: t("fiscal_setup.environment_production") }] })}
+                            {field("softwareId", t("fiscal_setup.software_id"), { required: true, icon: <IdcardOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.software_id_hint") })}
+                            {field("softwarePin", t("fiscal_setup.software_pin"), { required: true, type: "password", icon: <KeyOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.software_pin_hint") })}
+                            {field("technicalKey", t("fiscal_setup.technical_key"), { required: true, type: "password", icon: <KeyOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.technical_key_hint") })}
                         </div>}
                         {step === 2 && <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 animate-fade-up">
-                            {field("street", t("fiscal_setup.address"), { required: true, icon: <EnvironmentOutlined className="text-[var(--ohnix-text-dim)]" /> })}
+                            {field("street", t("fiscal_setup.address"), { required: true, icon: <EnvironmentOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.address_hint") })}
                             <Form.Item
                                 name="departmentCode"
                                 label={t("fiscal_setup.department")}
+                                extra={t("fiscal_setup.department_hint")}
                                 rules={[{ required: true, message: t("fiscal_setup.field_required") }]}
                             >
                                 <Select
@@ -381,7 +394,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                                     onChange={() => form.validateFields(["cityCode"]).catch(() => {})}
                                 />
                             </Form.Item>
-                            {field("cityName", t("fiscal_setup.city_name"), { required: true })}
+                            {field("cityName", t("fiscal_setup.city_name"), { required: true, hint: t("fiscal_setup.city_name_hint") })}
                             <Form.Item
                                 name="cityCode"
                                 label={t("fiscal_setup.city_code")}
@@ -402,13 +415,13 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             >
                                 <Input size="large" className="auth-ohnix-input" placeholder="11001" />
                             </Form.Item>
-                            {field("postalZone", t("fiscal_setup.postal_code"), { required: true })}
+                            {field("postalZone", t("fiscal_setup.postal_code"), { required: true, hint: t("fiscal_setup.postal_code_hint") })}
                         </div>}
                         {step === 3 && <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 animate-fade-up">
-                            {field("documentType", t("fiscal_setup.document_type"), { required: true, select: [{ value: "01", label: t("fiscal_setup.document_type_invoice") }, { value: "05", label: t("fiscal_setup.document_type_support") }] })}
-                            {field("prefix", t("fiscal_setup.prefix"), { required: true })}{field("resolutionNumber", t("fiscal_setup.resolution_number"), { required: true })}
-                            {field("startNumber", t("fiscal_setup.start_number"), { required: true, type: "number" })}{field("endNumber", t("fiscal_setup.end_number"), { required: true, type: "number" })}
-                            <Form.Item name="startDate" label={t("fiscal_setup.start_date")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}><DatePicker size="large" className="w-full" /></Form.Item>
+                            {field("documentType", t("fiscal_setup.document_type"), { required: true, hint: t("fiscal_setup.document_type_hint"), select: [{ value: "01", label: t("fiscal_setup.document_type_invoice") }, { value: "05", label: t("fiscal_setup.document_type_support") }] })}
+                            {field("prefix", t("fiscal_setup.prefix"), { required: true, hint: t("fiscal_setup.prefix_hint") })}{field("resolutionNumber", t("fiscal_setup.resolution_number"), { required: true, hint: t("fiscal_setup.resolution_number_hint") })}
+                            {field("startNumber", t("fiscal_setup.start_number"), { required: true, type: "number", hint: t("fiscal_setup.number_range_hint") })}{field("endNumber", t("fiscal_setup.end_number"), { required: true, type: "number" })}
+                            <Form.Item name="startDate" label={t("fiscal_setup.start_date")} extra={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}><DatePicker size="large" className="w-full" /></Form.Item>
                             <Form.Item name="endDate" label={t("fiscal_setup.end_date")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}><DatePicker size="large" className="w-full" /></Form.Item>
                         </div>}
                     </Form>
@@ -420,7 +433,8 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                     </div>
                 </>
             )}
-        </Card>
+            </Card>
+        </div>
     );
 };
 
