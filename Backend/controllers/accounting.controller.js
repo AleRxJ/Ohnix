@@ -62,6 +62,30 @@ export const getJournalEntry = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, mapJournalEntry(entry), "Journal entry fetched successfully"));
 });
 
+export const getAccountLedger = asyncHandler(async (req, res) => {
+    const { from, to } = req.query;
+    const ledger = await journalEntryService.getAccountLedger({
+        accountId: req.user.prismaId,
+        chartAccountId: req.params.id,
+        startDate: from ? new Date(from) : undefined,
+        endDate: to ? new Date(to) : undefined,
+    });
+    return res.status(200).json(new ApiResponse(200, {
+        account: mapChartAccount({ id: ledger.account.id, code: ledger.account.code, name: ledger.account.name, accountType: ledger.account.account_type }),
+        opening_balance: ledger.opening_balance,
+        closing_balance: ledger.closing_balance,
+        movements: ledger.movements.map((m) => ({
+            entry_id: m.entry_id,
+            date: m.date,
+            description: m.description,
+            source_type: m.source_type,
+            debit: m.debit,
+            credit: m.credit,
+            running_balance: m.running_balance,
+        })),
+    }, "Account ledger fetched successfully"));
+});
+
 export const listAccountingPeriods = asyncHandler(async (req, res) => {
     const periods = await accountingPeriodService.listAccountingPeriods(req.user.prismaId);
     return res.status(200).json(new ApiResponse(200, periods.map(mapPeriod), "Accounting periods fetched successfully"));

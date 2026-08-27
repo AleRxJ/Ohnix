@@ -333,6 +333,68 @@ const ProductDetailsDrawer = ({
                     </div>
                 )}
 
+                {product.is_physical && (
+                    <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
+                        <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)]">
+                            <div className="flex items-center gap-2">
+                                <InboxOutlined className="text-[#29D8D5]" />
+                                <Text className="text-sm font-bold text-[var(--ohnix-text-primary)]">{t("products.physical_characteristics")}</Text>
+                            </div>
+                        </div>
+                        <div className="p-5 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.weight")}</Text>
+                                <Text className="text-sm text-[var(--ohnix-text-primary)]">
+                                    {product.weight_value != null ? `${product.weight_value} ${product.weight_unit}` : "—"}
+                                </Text>
+                            </div>
+                            <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                            <div className="flex items-center justify-between">
+                                <Text className="text-sm text-[var(--ohnix-text-muted)]">
+                                    {t("products.height")} × {t("products.width")} × {t("products.length")}
+                                </Text>
+                                <Text className="text-sm text-[var(--ohnix-text-primary)]">
+                                    {product.height_value != null
+                                        ? `${product.height_value} × ${product.width_value} × ${product.length_value} ${product.dimension_unit}`
+                                        : "—"}
+                                </Text>
+                            </div>
+                            <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                            <div className="flex items-center justify-between">
+                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.volumetric_weight")}</Text>
+                                <Text className="text-sm text-[var(--ohnix-text-primary)]">
+                                    {product.volumetric_weight != null ? `${product.volumetric_weight} ${product.weight_unit}` : "—"}
+                                </Text>
+                            </div>
+                            <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                            <div className="flex items-center justify-between">
+                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.packaging_type")}</Text>
+                                <Text className="text-sm text-[var(--ohnix-text-primary)]">
+                                    {t(`products.packaging_${product.packaging_type || "box"}`)}
+                                </Text>
+                            </div>
+                            {product.units_per_package > 1 && (
+                                <>
+                                    <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                                    <div className="flex items-center justify-between">
+                                        <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.units_per_package")}</Text>
+                                        <Text className="text-sm text-[var(--ohnix-text-primary)]">{product.units_per_package}</Text>
+                                    </div>
+                                </>
+                            )}
+                            {product.is_fragile && (
+                                <>
+                                    <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                                    <div className="flex items-center justify-between">
+                                        <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.is_fragile")}</Text>
+                                        <Text className="text-sm text-[#f59e0b]">{t("common.yes")}</Text>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
                     <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)]">
                         <div className="flex items-center gap-2">

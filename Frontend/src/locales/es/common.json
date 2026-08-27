@@ -566,8 +566,11 @@
     "onboarding_backfilled_title": "Se completó tu historial contable",
     "onboarding_backfilled_body": "Generamos automáticamente los asientos de tus ventas y compras anteriores a la activación de este módulo, para que el libro diario y los reportes reflejen la operación completa de tu negocio, no solo lo de ahora en adelante. Esos asientos aparecen marcados como \"[Histórico]\".",
     "tab_chart_of_accounts": "Plan de cuentas",
+    "tab_chart_of_accounts_caption": "Organiza tus cuentas contables por tipo (activo, pasivo, patrimonio, ingreso, costo, gasto). Ohnix lo creó automáticamente y lo usa para clasificar cada venta, compra y pago — no necesitas editarlo.",
     "tab_journal": "Libro diario",
+    "tab_journal_caption": "Cada venta, compra y pago genera aquí un asiento automático, dividido en Débito y Crédito — los dos lados siempre suman igual (partida doble). No necesitas escribir nada manualmente.",
     "tab_periods": "Periodos",
+    "tab_periods_caption": "Los periodos agrupan tu contabilidad por mes. Cerrar un periodo evita que se agreguen o modifiquen asientos de un mes que ya revisaste y diste por bueno — es opcional, no bloquea tu operación si no lo haces.",
     "tab_financial_statements": "Estados financieros",
     "income_statement_title": "Estado de Resultados",
     "balance_sheet_title": "Balance General",
@@ -587,6 +590,8 @@
     "section_liabilities": "Pasivos",
     "section_equity": "Patrimonio",
     "current_earnings_row": "Resultado del ejercicio",
+    "current_earnings_row_hint": "Calculado automáticamente: ingresos menos costos y gastos del periodo. No es una cuenta contable real, por eso no tiene código.",
+    "calculated_row_badge": "Calculado",
     "not_balanced_warning": "El balance no cuadra — esto no debería pasar nunca. Repórtalo.",
     "col_code": "Código",
     "col_name": "Nombre",
@@ -599,7 +604,9 @@
     "account_type_equity": "Patrimonio",
     "account_type_revenue": "Ingreso",
     "account_type_expense": "Gasto",
+    "account_type_expense_hint": "Gastos para operar el negocio, no ligados directamente a una venta (arriendo, nómina, servicios).",
     "account_type_cost": "Costo",
+    "account_type_cost_hint": "Lo que cuesta producir o comprar lo que vendes (costo de venta).",
     "no_chart_accounts": "Aún no se ha generado el plan de cuentas.",
     "col_date": "Fecha",
     "col_description": "Descripción",
@@ -614,6 +621,8 @@
     "source_order_return": "Devolución de pedido",
     "source_purchase_return": "Devolución de compra",
     "source_credit_note_restock": "Nota crédito (devolución)",
+    "source_credit_note_financial": "Nota crédito (financiera)",
+    "source_period_close": "Cierre de periodo",
     "source_type_filter_label": "Tipo de evento",
     "source_type_filter_placeholder": "Todos los tipos",
     "lines_col_account": "Cuenta",
@@ -626,8 +635,40 @@
     "status_closed": "Cerrado",
     "close_period": "Cerrar",
     "close_period_confirm_title": "¿Cerrar este periodo?",
-    "close_period_confirm_content": "No se podrán registrar nuevos asientos en este periodo.",
+    "close_period_confirm_content": "Se registrará un asiento de cierre que traslada el resultado del mes a \"Utilidades acumuladas\", y no se podrán registrar más asientos en este periodo. Ciérralo cuando ya revisaste que las cifras del mes están correctas.",
     "period_closed": "Periodo cerrado",
+    "tab_overview": "Resumen",
+    "tab_overview_caption": "Un vistazo rápido a tus cifras del mes y accesos directos a las herramientas relacionadas (cartera, IVA, conciliación bancaria) que viven en otros módulos.",
+    "overview_gross_profit": "Margen bruto (mes actual)",
+    "overview_total_assets": "Activos totales",
+    "overview_total_liabilities": "Pasivos totales",
+    "overview_net_vat_payable": "IVA neto por pagar",
+    "overview_net_vat_credit": "Saldo a favor de IVA",
+    "overview_related_tools_title": "Herramientas relacionadas",
+    "overview_link_cartera_title": "Cuentas por cobrar y por pagar",
+    "overview_link_cartera_desc": "Saldos pendientes por cliente y proveedor — se calculan en Reportes a partir de tus pedidos y compras, no aquí.",
+    "overview_link_vat_title": "Reporte de IVA",
+    "overview_link_vat_desc": "IVA generado y descontable por tarifa y periodo, listo para tu declaración bimestral — en Reportes.",
+    "overview_link_reconciliation_title": "Conciliación bancaria",
+    "overview_link_reconciliation_desc": "Cruza tus movimientos con el extracto bancario — se hace desde Finanzas, cuenta por cuenta.",
+    "ledger_view_button": "Ver movimientos",
+    "ledger_opening_balance": "Saldo inicial",
+    "ledger_closing_balance": "Saldo final",
+    "ledger_col_running_balance": "Saldo",
+    "ledger_empty": "Sin movimientos en este rango de fechas.",
+    "tab_taxes": "Impuestos y retenciones",
+    "tab_taxes_caption": "Configuración y reportes tributarios. El IVA ya se calcula y contabiliza automáticamente; retención en la fuente, ReteICA y la información para declaración de renta están en construcción.",
+    "taxes_vat_title": "IVA",
+    "taxes_vat_desc": "Cada venta y compra ya calcula el IVA según el tratamiento tributario del producto y lo contabiliza en las cuentas \"IVA generado\" y \"IVA descontable\". El detalle por tarifa y periodo, listo para tu declaración, está en el reporte de IVA.",
+    "taxes_vat_link": "Ver reporte de IVA",
+    "taxes_coming_soon_badge": "Próximamente",
+    "taxes_retefuente_title": "Retención en la fuente",
+    "taxes_retefuente_desc": "Calcular y registrar automáticamente la retención en la fuente sobre tus compras y pagos a proveedores (por concepto, tarifa y base mínima en UVT). Aún no está disponible: hoy Ohnix no retiene ni certifica retenciones.",
+    "taxes_reteica_title": "ReteICA",
+    "taxes_reteica_desc": "La tarifa de ReteICA depende del municipio y de tu actividad económica (CIIU), no es una sola tarifa nacional. Estamos diseñando cómo configurar esto por empresa antes de automatizarlo.",
+    "taxes_renta_title": "Declaración de renta",
+    "taxes_renta_desc": "Ohnix no presenta la declaración de renta ante la DIAN ni lo hará por ahora. La idea es exportar la información contable que ya tienes (ventas, costos, IVA, retenciones) en un formato listo para tu contador.",
+    "taxes_professional_review_notice": "La configuración tributaria (quién es agente retenedor, tarifas aplicables, responsabilidad de IVA) depende de la situación específica de tu empresa. Revísala con tu contador antes de darla por definitiva.",
     "failed": "Ocurrió un error. Intenta de nuevo."
   },
   "team": {
@@ -1200,6 +1241,28 @@
     "product_image": "Imagen del producto",
     "upload_image_hint": "Haz clic para subir la imagen del producto",
     "upload_image_size_hint": "PNG, JPG de hasta 5 MB",
+    "physical_characteristics": "Características físicas",
+    "is_physical_yes": "Físico",
+    "is_physical_no": "Digital",
+    "not_physical_hint": "Los productos digitales o servicios no requieren peso ni dimensiones.",
+    "weight": "Peso",
+    "weight_required": "Ingresa el peso del producto",
+    "height": "Alto",
+    "width": "Ancho",
+    "length": "Largo",
+    "dimensions_required": "Ingresa esta dimensión",
+    "dimension_unit": "Unidad de medida",
+    "volumetric_weight": "Peso volumétrico",
+    "units_per_package": "Unidades por paquete",
+    "packaging_type": "Tipo de empaque",
+    "packaging_box": "Caja",
+    "packaging_envelope": "Sobre",
+    "packaging_bag": "Bolsa",
+    "packaging_tube": "Tubo",
+    "packaging_pallet": "Estiba",
+    "is_fragile": "Frágil",
+    "dispatch_package": "Empaque de despacho (opcional)",
+    "dispatch_package_hint": "Solo si el paquete que despachas es distinto a la unidad de arriba. Si lo dejas vacío, se usa el peso y las dimensiones de la unidad.",
     "dian_classification": "Clasificación DIAN",
     "dian_unit": "Unidad DIAN",
     "dian_unit_required": "Ingresa la unidad DIAN",
@@ -2218,7 +2281,7 @@
         },
         "regenerate": {
           "title": "Revisa y mejora",
-          "description": "Usa panel y reportes para detectar tendencias, stock bajo y oportunidades de optimización."
+          "description": "Usa el panel y los reportes para revisar ventas, compras y stock bajo, y decidir tus próximos pasos."
         }
       }
     },
@@ -2336,8 +2399,8 @@
             "core": "Pedidos y compras con actualización de stock",
             "reports": "Dashboard básico + reporte de stock",
             "pdf": "PDF de pedidos estándar",
-            "alerts": "Alertas de stock bajo en app",
-            "support": "Soporte por correo (72h)"
+            "alerts": "Indicador de stock bajo en el panel (sin alertas automáticas)",
+            "support": "Soporte por correo y WhatsApp"
           },
           "cta": "Empezar prueba gratis"
         },
@@ -2357,7 +2420,7 @@
             "pdf": "PDF con logo de la empresa",
             "alerts": "Alertas automáticas de stock bajo por email",
             "invoicing": "Facturación electrónica DIAN (Colombia)",
-            "support": "Soporte prioritario (24h)"
+            "support": "Soporte prioritario por correo y WhatsApp"
           },
           "cta": "Elegir plan Negocio"
         },
@@ -2379,7 +2442,7 @@
             "accounting": "Contabilidad automática (asientos, plan de cuentas, cierres)",
             "alerts": "Alertas con umbral configurable por producto",
             "invoicing": "Facturación electrónica DIAN (Colombia)",
-            "support": "Soporte 12h · Onboarding asistido"
+            "support": "Soporte prioritario · Onboarding asistido"
           },
           "cta": "Elegir plan Escala"
         },
@@ -2397,7 +2460,7 @@
             "accounting": "Contabilidad automática (asientos, plan de cuentas, cierres)",
             "integrations": "Integraciones personalizadas (ERP, e-commerce, contabilidad)",
             "manager": "Account manager dedicado",
-            "sla": "SLA garantizado < 4 horas",
+            "sla": "SLA definido en el contrato",
             "onboarding": "Onboarding completo asistido"
           },
           "cta": "Contactar ventas"
@@ -2448,22 +2511,22 @@
         },
         "analytics": {
           "label": "ANALYTICS",
-          "title": "Insights Automáticos",
-          "description": "Análisis inteligente en tiempo real. Detecta tendencias, alertas de stock bajo y oportunidades de optimización sin necesidad de reportes manuales.",
+          "title": "Reportes en Tiempo Real",
+          "description": "Reportes de ventas, compras y productos más vendidos actualizados en tiempo real, más alertas de stock bajo. Sin hojas de cálculo manuales.",
           "highlights": {
             "one": "Análisis en tiempo real",
             "two": "Alertas automáticas",
             "three": "Tendencias de venta"
           }
         },
-        "calc": {
-          "label": "CALC",
-          "title": "Calculadora Ad Hoc",
-          "description": "Construye cálculos personalizados sobre tus datos reales. Simula escenarios, proyecta resultados y exporta en segundos sin salir de la plataforma.",
+        "accounting": {
+          "label": "CONTABILIDAD",
+          "title": "Contabilidad Automática",
+          "description": "Cada venta, compra y pago genera automáticamente su asiento contable en partida doble. Plan de cuentas, libro diario y estados financieros sin captura manual. Disponible desde el plan Escala.",
           "highlights": {
-            "one": "Fórmulas personalizadas",
-            "two": "Simulaciones",
-            "three": "Exportar resultados"
+            "one": "Asientos automáticos",
+            "two": "Libro diario y plan de cuentas",
+            "three": "Estados financieros"
           }
         },
         "locations": {

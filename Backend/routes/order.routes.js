@@ -8,6 +8,7 @@ import {
     updateOrderStatus,
     getOrderReturnPreview,
     processOrderReturn,
+    getOrderShippingPayload,
 } from "../controllers/order.controller.js";
 import {
     getOrderElectronicInvoice,
@@ -40,6 +41,7 @@ router.route("/:id/return-preview").get(requireModulePermission("orders", "view"
 // than once, `idempotent` is what distinguishes an accidental duplicate call
 // (retry, double-click) from a second real return.
 router.route("/:id/returns").post(requireModulePermission("orders", "edit"), idempotent("order.return"), processOrderReturn);
+router.route("/:id/shipping-payload").get(requireModulePermission("orders", "view"), getOrderShippingPayload);
 router.route("/:id/invoice").get(requireModulePermission("orders", "view"), generateInvoice);
 router.route("/:id/electronic-invoice").get(requireModulePermission("orders", "view"), getOrderElectronicInvoice);
 router.route("/:id/electronic-invoice/issue").post(requireModulePermission("orders", "edit"), issueOrderElectronicInvoice);

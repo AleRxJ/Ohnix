@@ -486,6 +486,24 @@ const processOrderReturn = asyncHandler(async (req, res, next) => {
     }
 });
 
+// Carrier-agnostic package/weight breakdown for this order - see
+// order.service.js#buildShippingPayload. Nothing consumes this yet (no
+// carrier is integrated), but the endpoint is exposed now so the
+// aggregation logic is exercised end-to-end before a real integration
+// creates any urgency around it.
+const getOrderShippingPayload = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+
+    try {
+        const payload = await orderService.buildShippingPayload(id, req.user.prismaId, req.user.role, req.user);
+        return res
+            .status(200)
+            .json(new ApiResponse(200, payload, "Shipping payload generated successfully"));
+    } catch (err) {
+        return next(err);
+    }
+});
+
 const generateInvoice = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
 
@@ -822,7 +840,7 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
             .font("Helvetica-Bold")
             .text("TOTAL A PAGAR", totalsX + 16, summaryY + 14, { characterSpacing: 0.8 });
         doc.fontSize(23)
-            .fillColor(tealBright)
+            .fillColor(inkTeal)
             .font("Helvetica-Bold")
             .text(`$${orderDetails.total.toFixed(2)}`, totalsX, summaryY + 27, {
                 width: totalsWidth - 16,
@@ -891,5 +909,6 @@ export {
     updateOrderStatus,
     getOrderReturnPreview,
     processOrderReturn,
+    getOrderShippingPayload,
     generateInvoice,
 };

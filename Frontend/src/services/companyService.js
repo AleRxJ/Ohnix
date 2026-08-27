@@ -23,6 +23,11 @@ export const companyService = {
         return response.data;
     },
 
+    async deleteMyCompanyLogo() {
+        const response = await api.delete("/company/me/logo");
+        return response.data;
+    },
+
     async getMyItcycleStatus() {
         const response = await api.get("/company/me/itcycle/status");
         return response.data;

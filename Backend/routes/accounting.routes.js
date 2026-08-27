@@ -4,6 +4,7 @@ import { requireModulePermission } from "../middleware/team.permissions.js";
 import { enforcePlanFeature } from "../middleware/pricing.middleware.js";
 import {
     listChartOfAccounts,
+    getAccountLedger,
     listJournalEntries,
     getJournalEntry,
     listAccountingPeriods,
@@ -23,6 +24,7 @@ router.use(verifyJWT);
 router.use(enforcePlanFeature("accounting"));
 
 router.route("/chart-of-accounts").get(requireModulePermission("accounting", "view"), listChartOfAccounts);
+router.route("/chart-of-accounts/:id/ledger").get(requireModulePermission("accounting", "view"), getAccountLedger);
 router.route("/status").get(requireModulePermission("accounting", "view"), getAccountingStatus);
 
 router.route("/journal-entries").get(requireModulePermission("accounting", "view"), listJournalEntries);

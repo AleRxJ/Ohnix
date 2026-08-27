@@ -128,6 +128,20 @@ const Products = () => {
             tax_rate: product.tax_rate,
             tax_treatment: product.tax_treatment,
             low_stock_threshold: product.low_stock_threshold,
+            is_physical: product.is_physical,
+            weight_value: product.weight_value,
+            weight_unit: product.weight_unit,
+            height_value: product.height_value,
+            width_value: product.width_value,
+            length_value: product.length_value,
+            dimension_unit: product.dimension_unit,
+            units_per_package: product.units_per_package,
+            packaging_type: product.packaging_type,
+            is_fragile: product.is_fragile,
+            package_weight_value: product.package_weight_value,
+            package_height_value: product.package_height_value,
+            package_width_value: product.package_width_value,
+            package_length_value: product.package_length_value,
         });
         setIsModalVisible(true);
     };

@@ -444,3 +444,31 @@ export const updateMyCompanyLogo = asyncHandler(async (req, res, next) => {
     const company = await prisma.company.findUnique({ where: { id: companyId }, select: SELF_SELECT });
     return res.status(200).json(new ApiResponse(200, company, "Logo actualizado correctamente"));
 });
+
+// Reset-to-default counterpart to updateMyCompanyLogo - no plan gate, since
+// removing a logo (falling back to the generic Ohnix template) must stay
+// available even to a company that downgraded below the plan that let it
+// upload one in the first place.
+export const deleteMyCompanyLogo = asyncHandler(async (req, res, next) => {
+    const user = await prisma.user.findUnique({
+        where: { id: req.user.prismaId },
+        select: { companyId: true },
+    });
+    if (!user?.companyId) {
+        return next(new ApiError(404, "Empresa no encontrada."));
+    }
+
+    const existing = await prisma.company.findUnique({
+        where: { id: user.companyId },
+        select: { logoUrl: true },
+    });
+    if (!existing?.logoUrl) {
+        return next(new ApiError(400, "Tu empresa no tiene un logo configurado."));
+    }
+
+    await prisma.company.update({ where: { id: user.companyId }, data: { logoUrl: null } });
+    deleteFile(existing.logoUrl);
+
+    const company = await prisma.company.findUnique({ where: { id: user.companyId }, select: SELF_SELECT });
+    return res.status(200).json(new ApiResponse(200, company, "Logo eliminado correctamente"));
+});

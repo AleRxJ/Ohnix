@@ -25,6 +25,216 @@ const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
 const TAX_TREATMENTS = ["taxed", "excluded", "exempt"];
 
+const WEIGHT_UNITS = ["g", "kg"];
+const DIMENSION_UNITS = ["cm", "m"];
+const PACKAGING_TYPES = ["box", "envelope", "bag", "tube", "pallet"];
+// Sanity ceilings, not real-world logistics limits - wide enough for
+// anything a small/medium seller ships, tight enough to catch a stray
+// extra zero (e.g. "50000" kg typed where "50" was meant).
+const MAX_WEIGHT_GRAMS = 1_000_000; // 1000 kg
+const MAX_DIMENSION_CM = 1000; // 10 m
+
+const toGrams = (value, unit) => (unit === "kg" ? value * 1000 : value);
+const toCm = (value, unit) => (unit === "m" ? value * 100 : value);
+const gramsToUnit = (grams, unit) => (unit === "kg" ? grams / 1000 : grams);
+const cmToUnit = (cm, unit) => (unit === "m" ? cm / 100 : cm);
+
+// Standard Colombian-carrier divisor (Servientrega, Coordinadora,
+// Interrápidísimo, TCC all use 5000 cm3/kg). A carrier that needs a
+// different divisor applies it in its own future adapter against the raw
+// dimensions - this stays the single, carrier-agnostic number stored on
+// the product itself.
+const computeVolumetricWeightGrams = (heightCm, widthCm, lengthCm) => {
+    if (heightCm == null || widthCm == null || lengthCm == null) return null;
+    return Number(((heightCm * widthCm * lengthCm) / 5).toFixed(2));
+};
+
+// Required-when-physical measurement: null/"" is an error (a physical
+// product can't have half its measurements missing), undefined means "not
+// being changed" and is left alone.
+const parseRequiredMeasurement = (raw, unit, converter, max, label) => {
+    if (raw === undefined) return undefined;
+    if (raw === null || raw === "") {
+        throw new ApiError(400, `${label} is required for a physical product`);
+    }
+    const numeric = Number(raw);
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+        throw new ApiError(400, `${label} must be a positive number`);
+    }
+    const canonical = converter(numeric, unit);
+    if (canonical > max) {
+        throw new ApiError(400, `${label} is above the allowed maximum`);
+    }
+    return canonical;
+};
+
+// Optional package-override measurement: null/"" explicitly clears the
+// override (falls back to inheriting the unit's own weight/dimensions).
+const parseOptionalMeasurement = (raw, unit, converter, max, label) => {
+    if (raw === undefined) return undefined;
+    if (raw === null || raw === "") return null;
+    const numeric = Number(raw);
+    if (!Number.isFinite(numeric) || numeric <= 0) {
+        throw new ApiError(400, `${label} must be a positive number`);
+    }
+    const canonical = converter(numeric, unit);
+    if (canonical > max) {
+        throw new ApiError(400, `${label} is above the allowed maximum`);
+    }
+    return canonical;
+};
+
+// Resolves the physical-characteristics slice of a product create/update
+// payload into Prisma-ready data, always normalized to grams/cm. Throws
+// ApiError on anything invalid - callers must catch it themselves since it
+// runs before the create/update's own try/catch (see createProduct/
+// updateProduct). `existingProduct` is null on create.
+const resolvePhysicalCharacteristics = (body, existingProduct) => {
+    const isCreate = !existingProduct;
+    const result = {};
+
+    const isPhysicalProvided = body.is_physical !== undefined;
+    const isPhysical = isPhysicalProvided
+        ? body.is_physical === true || body.is_physical === "true"
+        : existingProduct
+        ? existingProduct.isPhysical
+        : true;
+
+    if (isPhysicalProvided) result.isPhysical = isPhysical;
+
+    if (!isPhysical) {
+        // Not a physical product (digital good/service) - clear whatever
+        // physical data might already exist instead of leaving stale
+        // numbers that would silently confuse a future shipping quote.
+        if (isPhysicalProvided && existingProduct) {
+            Object.assign(result, {
+                weightValue: null,
+                heightValue: null,
+                widthValue: null,
+                lengthValue: null,
+                volumetricWeight: null,
+                packageWeightValue: null,
+                packageHeightValue: null,
+                packageWidthValue: null,
+                packageLengthValue: null,
+            });
+        }
+        return result;
+    }
+
+    if (body.weight_unit !== undefined) {
+        if (!WEIGHT_UNITS.includes(body.weight_unit)) {
+            throw new ApiError(400, `weight_unit must be one of: ${WEIGHT_UNITS.join(", ")}`);
+        }
+        result.weightUnit = body.weight_unit;
+    }
+    if (body.dimension_unit !== undefined) {
+        if (!DIMENSION_UNITS.includes(body.dimension_unit)) {
+            throw new ApiError(400, `dimension_unit must be one of: ${DIMENSION_UNITS.join(", ")}`);
+        }
+        result.dimensionUnit = body.dimension_unit;
+    }
+
+    const weightUnit = result.weightUnit || existingProduct?.weightUnit || "g";
+    const dimensionUnit = result.dimensionUnit || existingProduct?.dimensionUnit || "cm";
+
+    const weightValue = parseRequiredMeasurement(body.weight_value, weightUnit, toGrams, MAX_WEIGHT_GRAMS, "weight_value");
+    if (weightValue !== undefined) result.weightValue = weightValue;
+
+    const heightValue = parseRequiredMeasurement(body.height_value, dimensionUnit, toCm, MAX_DIMENSION_CM, "height_value");
+    if (heightValue !== undefined) result.heightValue = heightValue;
+
+    const widthValue = parseRequiredMeasurement(body.width_value, dimensionUnit, toCm, MAX_DIMENSION_CM, "width_value");
+    if (widthValue !== undefined) result.widthValue = widthValue;
+
+    const lengthValue = parseRequiredMeasurement(body.length_value, dimensionUnit, toCm, MAX_DIMENSION_CM, "length_value");
+    if (lengthValue !== undefined) result.lengthValue = lengthValue;
+
+    // Creating a physical product (or flipping an existing non-physical one
+    // back to physical) requires the full set up front - a half-filled
+    // physical profile is exactly what makes a shipping quote silently
+    // wrong later, so it's enforced now rather than left to whichever
+    // carrier integration eventually reads it.
+    const requiresFullSet = isCreate || (isPhysicalProvided && !existingProduct?.isPhysical);
+    if (
+        requiresFullSet &&
+        (result.weightValue === undefined ||
+            result.heightValue === undefined ||
+            result.widthValue === undefined ||
+            result.lengthValue === undefined)
+    ) {
+        throw new ApiError(
+            400,
+            "weight_value, height_value, width_value and length_value are required for a physical product"
+        );
+    }
+
+    const effectiveHeight = result.heightValue ?? (existingProduct ? Number(existingProduct.heightValue) : undefined) ?? undefined;
+    const effectiveWidth = result.widthValue ?? (existingProduct ? Number(existingProduct.widthValue) : undefined) ?? undefined;
+    const effectiveLength = result.lengthValue ?? (existingProduct ? Number(existingProduct.lengthValue) : undefined) ?? undefined;
+    if (effectiveHeight && effectiveWidth && effectiveLength) {
+        result.volumetricWeight = computeVolumetricWeightGrams(effectiveHeight, effectiveWidth, effectiveLength);
+    }
+
+    if (body.units_per_package !== undefined) {
+        const units = Number(body.units_per_package);
+        if (!Number.isInteger(units) || units < 1) {
+            throw new ApiError(400, "units_per_package must be a positive integer");
+        }
+        result.unitsPerPackage = units;
+    }
+
+    if (body.packaging_type !== undefined) {
+        if (!PACKAGING_TYPES.includes(body.packaging_type)) {
+            throw new ApiError(400, `packaging_type must be one of: ${PACKAGING_TYPES.join(", ")}`);
+        }
+        result.packagingType = body.packaging_type;
+    }
+
+    if (body.is_fragile !== undefined) {
+        result.isFragile = body.is_fragile === true || body.is_fragile === "true";
+    }
+
+    if (body.package_weight_value !== undefined) {
+        result.packageWeightValue = parseOptionalMeasurement(
+            body.package_weight_value,
+            weightUnit,
+            toGrams,
+            MAX_WEIGHT_GRAMS,
+            "package_weight_value"
+        );
+    }
+    if (body.package_height_value !== undefined) {
+        result.packageHeightValue = parseOptionalMeasurement(
+            body.package_height_value,
+            dimensionUnit,
+            toCm,
+            MAX_DIMENSION_CM,
+            "package_height_value"
+        );
+    }
+    if (body.package_width_value !== undefined) {
+        result.packageWidthValue = parseOptionalMeasurement(
+            body.package_width_value,
+            dimensionUnit,
+            toCm,
+            MAX_DIMENSION_CM,
+            "package_width_value"
+        );
+    }
+    if (body.package_length_value !== undefined) {
+        result.packageLengthValue = parseOptionalMeasurement(
+            body.package_length_value,
+            dimensionUnit,
+            toCm,
+            MAX_DIMENSION_CM,
+            "package_length_value"
+        );
+    }
+
+    return result;
+};
+
 // Product.taxRate defaults to 0 at the schema level so it stays neutral for
 // companies outside Colombia. When a CO company creates a product without an
 // explicit tax rate, default it to the DIAN general VAT rate here instead -
@@ -97,6 +307,25 @@ const mapProduct = (product, scopedStock) => ({
     tax_rate: product.taxRate === null ? null : Number(product.taxRate),
     tax_treatment: product.taxTreatment,
     low_stock_threshold: product.lowStockThreshold,
+    is_physical: product.isPhysical,
+    weight_value: product.weightValue === null ? null : Number(gramsToUnit(Number(product.weightValue), product.weightUnit)),
+    weight_unit: product.weightUnit,
+    height_value: product.heightValue === null ? null : Number(cmToUnit(Number(product.heightValue), product.dimensionUnit)),
+    width_value: product.widthValue === null ? null : Number(cmToUnit(Number(product.widthValue), product.dimensionUnit)),
+    length_value: product.lengthValue === null ? null : Number(cmToUnit(Number(product.lengthValue), product.dimensionUnit)),
+    dimension_unit: product.dimensionUnit,
+    volumetric_weight: product.volumetricWeight === null ? null : Number(gramsToUnit(Number(product.volumetricWeight), product.weightUnit)),
+    units_per_package: product.unitsPerPackage,
+    packaging_type: product.packagingType,
+    is_fragile: product.isFragile,
+    package_weight_value:
+        product.packageWeightValue === null ? null : Number(gramsToUnit(Number(product.packageWeightValue), product.weightUnit)),
+    package_height_value:
+        product.packageHeightValue === null ? null : Number(cmToUnit(Number(product.packageHeightValue), product.dimensionUnit)),
+    package_width_value:
+        product.packageWidthValue === null ? null : Number(cmToUnit(Number(product.packageWidthValue), product.dimensionUnit)),
+    package_length_value:
+        product.packageLengthValue === null ? null : Number(cmToUnit(Number(product.packageLengthValue), product.dimensionUnit)),
     is_tutorial_data: product.isTutorialData,
     created_by: product.createdBy
         ? {
@@ -236,6 +465,14 @@ const createProduct = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "Product name must be 50 characters or less"));
     }
 
+    let physicalData;
+    try {
+        physicalData = resolvePhysicalCharacteristics(req.body, null);
+    } catch (error) {
+        if (error instanceof ApiError) return next(error);
+        throw error;
+    }
+
     try {
         const [category, unit] = await Promise.all([
             resolveCategoryForUser(category_id, req.user),
@@ -282,6 +519,7 @@ const createProduct = asyncHandler(async (req, res, next) => {
                 ...(resolvedTaxRate !== undefined && { taxRate: resolvedTaxRate }),
                 ...(tax_treatment !== undefined && { taxTreatment: tax_treatment }),
                 ...(resolvedLowStockThreshold !== undefined && { lowStockThreshold: resolvedLowStockThreshold }),
+                ...physicalData,
             },
             include: {
                 category: {
@@ -304,6 +542,7 @@ const createProduct = asyncHandler(async (req, res, next) => {
             .status(201)
             .json(new ApiResponse(201, mapProduct(product), "Product created successfully"));
     } catch (error) {
+        if (error instanceof ApiError) return next(error);
         if (error.code === "P2002") {
             return next(new ApiError(409, "Product with this code already exists"));
         }
@@ -429,6 +668,14 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             );
         }
 
+        let physicalData;
+        try {
+            physicalData = resolvePhysicalCharacteristics(updateData, existingProduct);
+        } catch (error) {
+            if (error instanceof ApiError) return next(error);
+            throw error;
+        }
+
         let resolvedCategoryId;
         if (updateData.category_id !== undefined) {
             const category = await resolveCategoryForUser(updateData.category_id, req.user);
@@ -496,6 +743,7 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             ...(updateData.tax_rate !== undefined && { taxRate: Number(updateData.tax_rate) }),
             ...(updateData.tax_treatment !== undefined && { taxTreatment: updateData.tax_treatment }),
             ...(resolvedLowStockThreshold !== undefined && { lowStockThreshold: resolvedLowStockThreshold }),
+            ...physicalData,
             productImage,
             updatedById: req.user.prismaId,
         };

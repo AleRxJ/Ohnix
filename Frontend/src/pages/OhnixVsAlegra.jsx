@@ -4,16 +4,30 @@ import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
 import useI18n from "../hooks/useI18n";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
+import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
 
 const OhnixVsAlegra = () => {
     const navigate = useNavigate();
     const { currentLanguage } = useI18n();
 
+    // Accounting is live regardless of ELECTRONIC_INVOICING_ENABLED (it's a
+    // separate, already-shipped feature) - only the invoicing mentions below
+    // need to disappear when that flag is off, same rule applied across
+    // Precios.jsx/LandingPage.jsx.
     const comparisonRows = [
         {
             criteria: "Enfoque operativo",
-            ohnix: "Inventario, compras, pedidos y reportes en flujo unificado",
-            alegra: "Suite amplia con foco fuerte en facturacion y contabilidad",
+            ohnix: ELECTRONIC_INVOICING_ENABLED
+                ? "Inventario, compras, pedidos, facturacion electronica DIAN y contabilidad automatica en un solo flujo"
+                : "Inventario, compras, pedidos y contabilidad automatica en un solo flujo",
+            alegra: "Suite de facturacion y contabilidad con modulo de inventario adicional",
+        },
+        {
+            criteria: ELECTRONIC_INVOICING_ENABLED ? "Facturacion electronica y contabilidad" : "Contabilidad",
+            ohnix: ELECTRONIC_INVOICING_ENABLED
+                ? "Facturacion electronica DIAN con tecnologia propia, y contabilidad automatica (asientos, plan de cuentas, cierres) desde el plan Escala"
+                : "Contabilidad automatica (asientos, plan de cuentas, cierres) desde el plan Escala",
+            alegra: "Facturacion y contabilidad incluidas desde el plan base, con mayor profundidad contable especializada",
         },
         {
             criteria: "Implementacion inicial",
@@ -22,13 +36,17 @@ const OhnixVsAlegra = () => {
         },
         {
             criteria: "Visibilidad de movimientos",
-            ohnix: "Trazabilidad operativa para control de stock y reposicion",
+            ohnix: ELECTRONIC_INVOICING_ENABLED
+                ? "Trazabilidad operativa para control de stock y reposicion, conectada directamente con cada factura y asiento contable"
+                : "Trazabilidad operativa para control de stock y reposicion, conectada directamente con cada asiento contable",
             alegra: "Cobertura robusta con prioridad en procesos administrativos",
         },
         {
             criteria: "Ruta recomendada para pymes",
-            ohnix: "Equipos que necesitan control operativo diario con foco en inventario",
-            alegra: "Equipos que priorizan ecosistema contable y fiscal completo",
+            ohnix: ELECTRONIC_INVOICING_ENABLED
+                ? "Equipos que quieren inventario, facturacion DIAN y contabilidad en una sola herramienta, sin duplicar informacion entre sistemas"
+                : "Equipos que quieren inventario y contabilidad en una sola herramienta, sin duplicar informacion entre sistemas",
+            alegra: "Equipos que ya resolvieron su operacion aparte y buscan solo el modulo contable/fiscal especializado",
         },
     ];
 
@@ -95,7 +113,9 @@ const OhnixVsAlegra = () => {
                     <div className="mt-10 rounded-[24px] border border-white/10 bg-white/[0.03] p-6">
                         <h2 className="text-xl font-semibold text-white">Cuando elegir Ohnix</h2>
                         <p className="mt-3 text-sm leading-7 text-[#A9B3B8]">
-                            Si tu prioridad es tener control operativo diario sobre inventario, compras y pedidos, con una experiencia enfocada en trazabilidad y ejecucion rapida.
+                            {ELECTRONIC_INVOICING_ENABLED
+                                ? "Si tu prioridad es tener control operativo diario sobre inventario, compras y pedidos, y ademas quieres facturar electronicamente ante la DIAN y llevar tu contabilidad sin salir de la misma herramienta ni duplicar informacion entre sistemas."
+                                : "Si tu prioridad es tener control operativo diario sobre inventario, compras y pedidos, y ademas quieres llevar tu contabilidad sin salir de la misma herramienta ni duplicar informacion entre sistemas."}
                         </p>
                         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                             <button

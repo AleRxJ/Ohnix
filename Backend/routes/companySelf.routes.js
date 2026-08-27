@@ -7,6 +7,7 @@ import {
     addMyItcycleNumberingResolution,
     activateMyItcycleElectronicInvoicing,
     confirmMyFirmaPassValidation,
+    deleteMyCompanyLogo,
     getMyCompany,
     getMyFirmaPassStatus,
     getMyItcycleStatus,
@@ -28,7 +29,7 @@ const router = Router();
 router.use(verifyJWT, blockTeamMembers);
 
 router.route("/me").get(getMyCompany).patch(updateMyCompany);
-router.route("/me/logo").patch(upload.single("logo"), updateMyCompanyLogo);
+router.route("/me/logo").patch(upload.single("logo"), updateMyCompanyLogo).delete(deleteMyCompanyLogo);
 router.route("/me/itcycle/status").get(getMyItcycleStatus);
 router.route("/me/itcycle/register").post(idempotent("company.itcycle.register"), registerMyCompanyWithItcycle);
 router.route("/me/itcycle/activate").post(idempotent("company.itcycle.activate"), activateMyItcycleElectronicInvoicing);

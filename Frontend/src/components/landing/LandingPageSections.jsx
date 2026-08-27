@@ -1228,13 +1228,13 @@ export const FeatureHubSection = ({ heading }) => {
             ),
         },
         {
-            title: t("landing.hub.features.calc.title"),
-            label: t("landing.hub.features.calc.label"),
-            description: t("landing.hub.features.calc.description"),
+            title: t("landing.hub.features.accounting.title"),
+            label: t("landing.hub.features.accounting.label"),
+            description: t("landing.hub.features.accounting.description"),
             highlights: [
-                t("landing.hub.features.calc.highlights.one"),
-                t("landing.hub.features.calc.highlights.two"),
-                t("landing.hub.features.calc.highlights.three"),
+                t("landing.hub.features.accounting.highlights.one"),
+                t("landing.hub.features.accounting.highlights.two"),
+                t("landing.hub.features.accounting.highlights.three"),
             ],
             accent: "#F97316",
             icon: (

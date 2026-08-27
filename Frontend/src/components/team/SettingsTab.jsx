@@ -34,6 +34,7 @@ const SettingsTab = () => {
     const [companyLoading, setCompanyLoading] = useState(true);
     const [savingCompany, setSavingCompany] = useState(false);
     const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [removingLogo, setRemovingLogo] = useState(false);
 
     useEffect(() => {
         setName(team?.name || "");
@@ -150,6 +151,19 @@ const SettingsTab = () => {
         return false;
     };
 
+    const handleRemoveLogo = async () => {
+        setRemovingLogo(true);
+        try {
+            const res = await companyService.deleteMyCompanyLogo();
+            setCompany((prev) => ({ ...(prev || {}), ...(res?.data || {}), logoUrl: null }));
+            toast.success(t("team.company_logo_saved"));
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("common.error"));
+        } finally {
+            setRemovingLogo(false);
+        }
+    };
+
     const otherMembers = (members || []).filter((m) => !m.isOwner && m.userId !== user?.id);
 
     return (
@@ -239,11 +253,25 @@ const SettingsTab = () => {
                             />
                         )}
                         {companyMeta.canUploadLogo ? (
-                            <Upload accept="image/*" showUploadList={false} beforeUpload={handleUploadLogo}>
-                                <Button icon={<UploadOutlined />} loading={uploadingLogo}>
-                                    {t("team.upload_logo")}
-                                </Button>
-                            </Upload>
+                            <>
+                                <Upload accept="image/*" showUploadList={false} beforeUpload={handleUploadLogo}>
+                                    <Button icon={<UploadOutlined />} loading={uploadingLogo}>
+                                        {t("team.upload_logo")}
+                                    </Button>
+                                </Upload>
+                                {company?.logoUrl && (
+                                    <Popconfirm
+                                        title={t("common.delete")}
+                                        okText={t("common.yes")}
+                                        cancelText={t("common.no")}
+                                        onConfirm={handleRemoveLogo}
+                                    >
+                                        <Button danger loading={removingLogo}>
+                                            {t("common.delete")}
+                                        </Button>
+                                    </Popconfirm>
+                                )}
+                            </>
                         ) : (
                             <Tooltip title={t("team.company_branding_locked_logo")}>
                                 <span>
@@ -284,6 +312,7 @@ const SettingsTab = () => {
                         <ColorPicker
                             format="hex"
                             showText
+                            disabledAlpha
                             value={companyForm.pdfAccentColor || "#29D8D5"}
                             onChange={(_, hex) => setCompanyForm((prev) => ({ ...prev, pdfAccentColor: hex }))}
                         />

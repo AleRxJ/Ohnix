@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
-import { Modal, Form, Input, Select, InputNumber, Row, Col, Button, Tooltip } from "antd";
-import { AppstoreOutlined, ScanOutlined, LockOutlined } from "@ant-design/icons";
+import { Modal, Form, Input, Select, InputNumber, Row, Col, Button, Tooltip, Switch, Collapse } from "antd";
+import { AppstoreOutlined, ScanOutlined, LockOutlined, InboxOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import ProductImageUpload from "./ProductImageUpload";
 import BarcodeScannerModal from "./BarcodeScannerModal";
@@ -40,6 +40,25 @@ const ProductModal = ({
     const usesColombianEInvoicing =
         ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
     const taxTreatment = Form.useWatch("tax_treatment", form) || "taxed";
+    const isPhysical = Form.useWatch("is_physical", form);
+    const weightUnit = Form.useWatch("weight_unit", form) || "g";
+    const dimensionUnit = Form.useWatch("dimension_unit", form) || "cm";
+    const heightValue = Form.useWatch("height_value", form);
+    const widthValue = Form.useWatch("width_value", form);
+    const lengthValue = Form.useWatch("length_value", form);
+    // Purely a live preview while filling the form - the backend always
+    // recomputes and persists the authoritative value itself
+    // (product.controller.js#computeVolumetricWeightGrams), so this never
+    // needs to be sent as a field.
+    const volumetricWeightPreview = (() => {
+        const h = Number(heightValue);
+        const w = Number(widthValue);
+        const l = Number(lengthValue);
+        if (!h || !w || !l) return null;
+        const toCm = (v) => (dimensionUnit === "m" ? v * 100 : v);
+        const grams = (toCm(h) * toCm(w) * toCm(l)) / 5;
+        return weightUnit === "kg" ? grams / 1000 : grams;
+    })();
     const [scannerOpen, setScannerOpen] = useState(false);
     const codeFieldDisabled = !!editingProduct || isTourCreateStep;
 
@@ -111,7 +130,14 @@ const ProductModal = ({
             <Form
                 form={form}
                 layout="vertical"
-                initialValues={{ stock: 0 }}
+                initialValues={{
+                    stock: 0,
+                    is_physical: true,
+                    weight_unit: "g",
+                    dimension_unit: "cm",
+                    units_per_package: 1,
+                    packaging_type: "box",
+                }}
                 className="product-modal-form"
                 {...fieldPresenceHandlers}
             >
@@ -359,6 +385,182 @@ const ProductModal = ({
                                         </Form.Item>
                                     </Col>
                                 </Row>
+                            </div>
+
+                            <div className="module-shell p-4 reveal-card">
+                                <div className="flex items-center justify-between gap-3 mb-3 pb-2 border-b border-[var(--ohnix-line-3)]">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-4 bg-[#44F3F0] rounded-full"></div>
+                                        <h3 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">
+                                            {t("products.physical_characteristics")}
+                                        </h3>
+                                    </div>
+                                    <Form.Item name="is_physical" valuePropName="checked" noStyle initialValue={true}>
+                                        <Switch
+                                            checkedChildren={t("products.is_physical_yes")}
+                                            unCheckedChildren={t("products.is_physical_no")}
+                                        />
+                                    </Form.Item>
+                                </div>
+                                {isPhysical !== false ? (
+                                    <>
+                                        <Row gutter={12}>
+                                            <Col xs={16}>
+                                                <Form.Item
+                                                    name="weight_value"
+                                                    label={<span className="text-xs font-medium text-[var(--ohnix-text-muted)]">{t("products.weight")}</span>}
+                                                    rules={[{ required: true, message: t("products.weight_required") }]}
+                                                    className="mb-3"
+                                                >
+                                                    <InputNumber min={0.01} precision={2} size="large" className="w-full auth-ohnix-input" placeholder="0.00" />
+                                                </Form.Item>
+                                            </Col>
+                                            <Col xs={8}>
+                                                <Form.Item name="weight_unit" label={<span className="text-xs font-medium text-[var(--ohnix-text-muted)]">&nbsp;</span>} initialValue="g" className="mb-3">
+                                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "g", label: "g" }, { value: "kg", label: "kg" }]} />
+                                                </Form.Item>
+                                            </Col>
+                                        </Row>
+                                        <Row gutter={12}>
+                                            <Col xs={8}>
+                                                <Form.Item
+                                                    name="height_value"
+                                                    label={<span className="text-xs font-medium text-[var(--ohnix-text-muted)]">{t("products.height")}</span>}
+                                                    rules={[{ required: true, message: t("products.dimensions_required") }]}
+                                                    className="mb-3"
+                                                >
+                                                    <InputNumber min={0.01} precision={2} size="large" className="w-full auth-ohnix-input" placeholder="0.00" />
+                                                </Form.Item>
+                                            </Col>
+                                            <Col xs={8}>
+                                                <Form.Item
+                                                    name="width_value"
+                                                    label={<span className="text-xs font-medium text-[var(--ohnix-text-muted)]">{t("products.width")}</span>}
+                                                    rules={[{ required: true, message: t("products.dimensions_required") }]}
+                                                    className="mb-3"
+                                                >
+                                                    <InputNumber min={0.01} precision={2} size="large" className="w-full auth-ohnix-input" placeholder="0.00" />
+                                                </Form.Item>
+                                            </Col>
+                                            <Col xs={8}>
+                                                <Form.Item
+                                                    name="length_value"
+                                                    label={<span className="text-xs font-medium text-[var(--ohnix-text-muted)]">{t("products.length")}</span>}
+                                                    rules={[{ required: true, message: t("products.dimensions_required") }]}
+                                                    className="mb-3"
+                                                >
+                                                    <InputNumber min={0.01} precision={2} size="large" className="w-full auth-ohnix-input" placeholder="0.00" />
+                                                </Form.Item>
+                                            </Col>
+                                        </Row>
+                                        <Row gutter={12}>
+                                            <Col xs={24} sm={12}>
+                                                <Form.Item name="dimension_unit" label={<span className="text-xs font-medium text-[var(--ohnix-text-muted)]">{t("products.dimension_unit")}</span>} initialValue="cm" className="mb-3">
+                                                    <Select size="large" className="auth-ohnix-input" options={[{ value: "cm", label: "cm" }, { value: "m", label: "m" }]} />
+                                                </Form.Item>
+                                            </Col>
+                                            <Col xs={24} sm={12}>
+                                                <div className="flex flex-col justify-end h-full pb-3">
+                                                    <span className="text-xs font-medium text-[var(--ohnix-text-muted)] mb-1">{t("products.volumetric_weight")}</span>
+                                                    <span className="text-sm font-semibold text-[var(--ohnix-text-primary)]">
+                                                        {volumetricWeightPreview !== null
+                                                            ? `${volumetricWeightPreview.toFixed(2)} ${weightUnit}`
+                                                            : "—"}
+                                                    </span>
+                                                </div>
+                                            </Col>
+                                        </Row>
+                                        <Row gutter={12}>
+                                            <Col xs={24} sm={8}>
+                                                <Form.Item
+                                                    name="units_per_package"
+                                                    label={<span className="text-xs font-medium text-[var(--ohnix-text-muted)]">{t("products.units_per_package")}</span>}
+                                                    initialValue={1}
+                                                    className="mb-3"
+                                                >
+                                                    <InputNumber min={1} precision={0} size="large" className="w-full auth-ohnix-input" />
+                                                </Form.Item>
+                                            </Col>
+                                            <Col xs={24} sm={10}>
+                                                <Form.Item
+                                                    name="packaging_type"
+                                                    label={<span className="text-xs font-medium text-[var(--ohnix-text-muted)]">{t("products.packaging_type")}</span>}
+                                                    initialValue="box"
+                                                    className="mb-3"
+                                                >
+                                                    <Select
+                                                        size="large"
+                                                        className="auth-ohnix-input"
+                                                        options={[
+                                                            { value: "box", label: t("products.packaging_box") },
+                                                            { value: "envelope", label: t("products.packaging_envelope") },
+                                                            { value: "bag", label: t("products.packaging_bag") },
+                                                            { value: "tube", label: t("products.packaging_tube") },
+                                                            { value: "pallet", label: t("products.packaging_pallet") },
+                                                        ]}
+                                                    />
+                                                </Form.Item>
+                                            </Col>
+                                            <Col xs={24} sm={6}>
+                                                <Form.Item
+                                                    name="is_fragile"
+                                                    valuePropName="checked"
+                                                    label={<span className="text-xs font-medium text-[var(--ohnix-text-muted)]">{t("products.is_fragile")}</span>}
+                                                    className="mb-3"
+                                                >
+                                                    <Switch />
+                                                </Form.Item>
+                                            </Col>
+                                        </Row>
+                                        <Collapse
+                                            ghost
+                                            size="small"
+                                            className="physical-package-collapse"
+                                            items={[
+                                                {
+                                                    key: "package",
+                                                    label: (
+                                                        <span className="text-xs font-medium text-[var(--ohnix-text-muted)] inline-flex items-center gap-1.5">
+                                                            <InboxOutlined />
+                                                            {t("products.dispatch_package")}
+                                                        </span>
+                                                    ),
+                                                    children: (
+                                                        <>
+                                                            <p className="text-xs text-[var(--ohnix-text-dim)] mb-3">
+                                                                {t("products.dispatch_package_hint")}
+                                                            </p>
+                                                            <Row gutter={12}>
+                                                                <Col xs={12} sm={6}>
+                                                                    <Form.Item name="package_weight_value" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.weight")}</span>} className="mb-3">
+                                                                        <InputNumber min={0.01} precision={2} size="large" className="w-full auth-ohnix-input" placeholder="—" />
+                                                                    </Form.Item>
+                                                                </Col>
+                                                                <Col xs={12} sm={6}>
+                                                                    <Form.Item name="package_height_value" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.height")}</span>} className="mb-3">
+                                                                        <InputNumber min={0.01} precision={2} size="large" className="w-full auth-ohnix-input" placeholder="—" />
+                                                                    </Form.Item>
+                                                                </Col>
+                                                                <Col xs={12} sm={6}>
+                                                                    <Form.Item name="package_width_value" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.width")}</span>} className="mb-3">
+                                                                        <InputNumber min={0.01} precision={2} size="large" className="w-full auth-ohnix-input" placeholder="—" />
+                                                                    </Form.Item>
+                                                                </Col>
+                                                                <Col xs={12} sm={6}>
+                                                                    <Form.Item name="package_length_value" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.length")}</span>} className="mb-0">
+                                                                        <InputNumber min={0.01} precision={2} size="large" className="w-full auth-ohnix-input" placeholder="—" />
+                                                                    </Form.Item>
+                                                                </Col>
+                                                            </Row>
+                                                        </>
+                                                    ),
+                                                },
+                                            ]}
+                                        />
+                                    </>
+                                ) : (
+                                    <p className="text-xs text-[var(--ohnix-text-dim)] mb-0">{t("products.not_physical_hint")}</p>
+                                )}
                             </div>
 
                             <div className="module-shell p-4 reveal-card border border-[var(--ohnix-line-4)]">

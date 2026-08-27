@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Tabs, Spin } from "antd";
 import {
     UsergroupAddOutlined,
@@ -41,6 +42,8 @@ const Team = () => {
     const { user } = useContext(AuthContext);
     const { team, isOwner, loading: teamLoading } = useTeam();
     const { plan, loading: planLoading } = useSubscription();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = searchParams.get("tab") || "members";
 
     const [roles, setRoles] = useState([]);
     const [members, setMembers] = useState([]);
@@ -135,6 +138,8 @@ const Team = () => {
     ];
 
     const seatLimit = TEAM_SEAT_LIMITS[plan] ?? null;
+    const validTabKeys = items.map((item) => item.key);
+    const resolvedActiveTab = validTabKeys.includes(activeTab) ? activeTab : "members";
 
     return (
         <div className="p-4 sm:p-6">
@@ -168,7 +173,12 @@ const Team = () => {
             </div>
 
             <div className="mt-6">
-                <Tabs items={items} className="custom-tabs" />
+                <Tabs
+                    items={items}
+                    className="custom-tabs"
+                    activeKey={resolvedActiveTab}
+                    onChange={(key) => setSearchParams(key === "members" ? {} : { tab: key })}
+                />
             </div>
         </div>
     );

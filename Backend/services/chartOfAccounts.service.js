@@ -52,3 +52,17 @@ export const resolveCashAccountChartAccount = async (tx, accountId, cashAccount)
 };
 
 export const listChartAccounts = async (accountId) => ensureDefaultChartOfAccounts(prisma, accountId);
+
+const RETAINED_EARNINGS_ACCOUNT = { code: "3605", name: "Utilidades acumuladas", accountType: "equity" };
+
+// Lazily adds the retained-earnings account for tenants whose chart was
+// seeded before period-close existed (their 9 DEFAULT_ACCOUNTS won't include
+// it) - same "created on first use" idiom as ensureDefaultChartOfAccounts,
+// called only from accountingPeriod.service.js#closeAccountingPeriod right
+// before it needs somewhere to post that period's net result.
+export const ensureRetainedEarningsAccount = async (tx, accountId) => {
+    await ensureDefaultChartOfAccounts(tx, accountId);
+    const existing = await tx.chartAccount.findFirst({ where: { createdById: accountId, code: RETAINED_EARNINGS_ACCOUNT.code } });
+    if (existing) return existing;
+    return tx.chartAccount.create({ data: { ...RETAINED_EARNINGS_ACCOUNT, createdById: accountId } });
+};

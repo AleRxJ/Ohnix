@@ -566,8 +566,11 @@
     "onboarding_backfilled_title": "Your accounting history is now complete",
     "onboarding_backfilled_body": "We automatically generated journal entries for your sales and purchases from before this module existed, so the journal and reports reflect your whole business, not just from now on. Those entries are marked \"[Histórico]\".",
     "tab_chart_of_accounts": "Chart of accounts",
+    "tab_chart_of_accounts_caption": "Organizes your accounts by type (asset, liability, equity, revenue, cost, expense). Ohnix created it automatically and uses it to classify every sale, purchase, and payment - you don't need to edit it.",
     "tab_journal": "Journal",
+    "tab_journal_caption": "Every sale, purchase, and payment posts an automatic entry here, split into Debit and Credit - the two sides always add up to the same amount (double-entry). You never write anything here manually.",
     "tab_periods": "Periods",
+    "tab_periods_caption": "Periods group your accounting by month. Closing a period stops new entries from being added to or changed in a month you've already reviewed and signed off on - it's optional, it doesn't block your operation if you skip it.",
     "tab_financial_statements": "Financial statements",
     "income_statement_title": "Income Statement",
     "balance_sheet_title": "Balance Sheet",
@@ -587,6 +590,8 @@
     "section_liabilities": "Liabilities",
     "section_equity": "Equity",
     "current_earnings_row": "Current earnings",
+    "current_earnings_row_hint": "Calculated automatically: revenue minus costs and expenses for the period. Not a real ledger account, which is why it has no code.",
+    "calculated_row_badge": "Calculated",
     "not_balanced_warning": "The balance sheet doesn't balance - this should never happen. Please report it.",
     "col_code": "Code",
     "col_name": "Name",
@@ -599,7 +604,9 @@
     "account_type_equity": "Equity",
     "account_type_revenue": "Revenue",
     "account_type_expense": "Expense",
+    "account_type_expense_hint": "Costs of running the business, not tied directly to a sale (rent, payroll, utilities).",
     "account_type_cost": "Cost",
+    "account_type_cost_hint": "What it costs you to produce or buy what you sell (cost of goods sold).",
     "no_chart_accounts": "The chart of accounts hasn't been generated yet.",
     "col_date": "Date",
     "col_description": "Description",
@@ -614,6 +621,8 @@
     "source_order_return": "Order return",
     "source_purchase_return": "Purchase return",
     "source_credit_note_restock": "Credit note (return)",
+    "source_credit_note_financial": "Credit note (financial)",
+    "source_period_close": "Period close",
     "source_type_filter_label": "Event type",
     "source_type_filter_placeholder": "All types",
     "lines_col_account": "Account",
@@ -626,8 +635,40 @@
     "status_closed": "Closed",
     "close_period": "Close",
     "close_period_confirm_title": "Close this period?",
-    "close_period_confirm_content": "No new entries will be allowed to post into this period.",
+    "close_period_confirm_content": "A closing entry will move the month's result into \"Utilidades acumuladas\" (retained earnings), and no new entries will be allowed to post into this period. Close it once you've reviewed the month's numbers and confirmed they're correct.",
     "period_closed": "Period closed",
+    "tab_overview": "Overview",
+    "tab_overview_caption": "A quick look at this month's numbers, plus shortcuts to the related tools (receivables/payables, VAT, bank reconciliation) that live in other modules.",
+    "overview_gross_profit": "Gross profit (this month)",
+    "overview_total_assets": "Total assets",
+    "overview_total_liabilities": "Total liabilities",
+    "overview_net_vat_payable": "Net VAT payable",
+    "overview_net_vat_credit": "VAT credit balance",
+    "overview_related_tools_title": "Related tools",
+    "overview_link_cartera_title": "Receivables and payables",
+    "overview_link_cartera_desc": "Outstanding balances by customer and supplier — computed in Reports from your orders and purchases, not here.",
+    "overview_link_vat_title": "VAT report",
+    "overview_link_vat_desc": "VAT collected and credited by rate and period, ready for your bimonthly filing — in Reports.",
+    "overview_link_reconciliation_title": "Bank reconciliation",
+    "overview_link_reconciliation_desc": "Match your movements against the bank statement — done from Finance, one account at a time.",
+    "ledger_view_button": "View movements",
+    "ledger_opening_balance": "Opening balance",
+    "ledger_closing_balance": "Closing balance",
+    "ledger_col_running_balance": "Balance",
+    "ledger_empty": "No movements in this date range.",
+    "tab_taxes": "Taxes and withholdings",
+    "tab_taxes_caption": "Tax configuration and reports. VAT is already calculated and posted automatically; income-tax withholding, ReteICA, and information for the annual income tax return are under construction.",
+    "taxes_vat_title": "VAT",
+    "taxes_vat_desc": "Every sale and purchase already calculates VAT based on the product's tax treatment and posts it to the \"VAT generated\" and \"VAT deductible\" accounts. The breakdown by rate and period, ready for your filing, is in the VAT report.",
+    "taxes_vat_link": "View VAT report",
+    "taxes_coming_soon_badge": "Coming soon",
+    "taxes_retefuente_title": "Income tax withholding (Retefuente)",
+    "taxes_retefuente_desc": "Automatically calculating and recording income tax withholding on your purchases and supplier payments (by concept, rate, and minimum base in UVT). Not available yet — Ohnix doesn't withhold or issue withholding certificates today.",
+    "taxes_reteica_title": "ReteICA",
+    "taxes_reteica_desc": "The ReteICA rate depends on the municipality and your economic activity code (CIIU) — it isn't one national rate. We're designing how to configure this per company before automating it.",
+    "taxes_renta_title": "Annual income tax return",
+    "taxes_renta_desc": "Ohnix doesn't file the income tax return with DIAN, and won't for now. The goal is to export the accounting information you already have (sales, costs, VAT, withholdings) in a format ready for your accountant.",
+    "taxes_professional_review_notice": "Tax configuration (who's a withholding agent, applicable rates, VAT responsibility) depends on your company's specific situation. Review it with your accountant before treating it as final.",
     "failed": "Something went wrong. Please try again."
   },
   "team": {
@@ -1200,6 +1241,28 @@
     "product_image": "Product Image",
     "upload_image_hint": "Click to upload product image",
     "upload_image_size_hint": "PNG, JPG up to 5 MB",
+    "physical_characteristics": "Physical characteristics",
+    "is_physical_yes": "Physical",
+    "is_physical_no": "Digital",
+    "not_physical_hint": "Digital products or services don't need a weight or dimensions.",
+    "weight": "Weight",
+    "weight_required": "Enter the product's weight",
+    "height": "Height",
+    "width": "Width",
+    "length": "Length",
+    "dimensions_required": "Enter this dimension",
+    "dimension_unit": "Unit",
+    "volumetric_weight": "Volumetric weight",
+    "units_per_package": "Units per package",
+    "packaging_type": "Packaging type",
+    "packaging_box": "Box",
+    "packaging_envelope": "Envelope",
+    "packaging_bag": "Bag",
+    "packaging_tube": "Tube",
+    "packaging_pallet": "Pallet",
+    "is_fragile": "Fragile",
+    "dispatch_package": "Dispatch package (optional)",
+    "dispatch_package_hint": "Only if the package you actually ship differs from the unit above. Leave empty to use the unit's own weight and dimensions.",
     "dian_classification": "DIAN classification",
     "dian_unit": "DIAN unit",
     "dian_unit_required": "Enter the DIAN unit",
@@ -2224,7 +2287,7 @@
         },
         "regenerate": {
           "title": "Review & improve",
-          "description": "Use dashboards and reports to spot trends, low stock, and opportunities to optimize."
+          "description": "Use the dashboard and reports to review sales, purchases, and low stock, and decide your next move."
         }
       }
     },
@@ -2342,8 +2405,8 @@
             "core": "Orders and purchases with automatic stock updates",
             "reports": "Basic dashboard + stock report",
             "pdf": "Standard order PDF",
-            "alerts": "In-app low-stock alerts",
-            "support": "Email support (72h)"
+            "alerts": "Low-stock indicator in the dashboard (no automatic alerts)",
+            "support": "Email & WhatsApp support"
           },
           "cta": "Start free trial"
         },
@@ -2363,7 +2426,7 @@
             "pdf": "Order PDF with company logo",
             "alerts": "Automatic low-stock email alerts",
             "invoicing": "DIAN electronic invoicing (Colombia)",
-            "support": "Priority support (24h)"
+            "support": "Priority email & WhatsApp support"
           },
           "cta": "Choose Business"
         },
@@ -2385,7 +2448,7 @@
             "accounting": "Automated accounting (journal entries, chart of accounts, closes)",
             "alerts": "Per-product configurable stock thresholds",
             "invoicing": "DIAN electronic invoicing (Colombia)",
-            "support": "12h support · Assisted onboarding"
+            "support": "Priority support · Assisted onboarding"
           },
           "cta": "Choose Scale"
         },
@@ -2403,7 +2466,7 @@
             "accounting": "Automated accounting (journal entries, chart of accounts, closes)",
             "integrations": "Custom integrations (ERP, e-commerce, accounting)",
             "manager": "Dedicated account manager",
-            "sla": "Guaranteed SLA < 4 hours",
+            "sla": "SLA defined in your contract",
             "onboarding": "Fully assisted onboarding"
           },
           "cta": "Contact sales"
@@ -2454,22 +2517,22 @@
         },
         "analytics": {
           "label": "ANALYTICS",
-          "title": "Automatic Insights",
-          "description": "Real-time intelligent analysis. Detect trends, low-stock alerts, and optimization opportunities without manual reports.",
+          "title": "Real-Time Reports",
+          "description": "Real-time sales, purchase, and top-product reports, plus low-stock alerts. No manual spreadsheets.",
           "highlights": {
             "one": "Real-time analysis",
             "two": "Automatic alerts",
             "three": "Sales trends"
           }
         },
-        "calc": {
-          "label": "CALC",
-          "title": "Ad Hoc Calculator",
-          "description": "Build custom calculations on your real data. Simulate scenarios, project results, and export in seconds without leaving the platform.",
+        "accounting": {
+          "label": "ACCOUNTING",
+          "title": "Automated Accounting",
+          "description": "Every sale, purchase, and payment automatically generates its double-entry journal entry. Chart of accounts, general ledger, and financial statements — no manual bookkeeping. Available from the Scale plan.",
           "highlights": {
-            "one": "Custom formulas",
-            "two": "Simulations",
-            "three": "Export results"
+            "one": "Automatic journal entries",
+            "two": "Ledger & chart of accounts",
+            "three": "Financial statements"
           }
         },
         "locations": {

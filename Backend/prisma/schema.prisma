@@ -141,6 +141,31 @@ enum ProductTaxTreatment {
   exempt
 }
 
+// Physical characteristics feed shipping/logistics quoting (carrier
+// integrations aren't wired up yet, but every product already carries what
+// a quote needs). WeightUnit/DimensionUnit are display preferences only -
+// Product.weightValue/heightValue/widthValue/lengthValue are always
+// persisted in grams/cm regardless of which unit the seller typed the
+// number in, so nothing downstream (volumetric weight, order snapshots, a
+// future carrier adapter) ever has to convert units back and forth.
+enum WeightUnit {
+  g
+  kg
+}
+
+enum DimensionUnit {
+  cm
+  m
+}
+
+enum PackagingType {
+  box
+  envelope
+  bag
+  tube
+  pallet
+}
+
 model User {
   id                String        @id @default(cuid())
   legacyMongoId     String?       @unique @map("legacy_mongo_id")
@@ -578,6 +603,43 @@ model Product {
   // Per-product override for the low-stock alert threshold (Escala+ plan
   // feature). Null means "use the account-wide default threshold".
   lowStockThreshold Int?                @map("low_stock_threshold")
+  // Physical characteristics for shipping/logistics (see the WeightUnit
+  // enum comment for the storage-vs-display-unit split). isPhysical
+  // defaults true so every pre-existing product stays valid; a digital
+  // good/service is the only case that sets it false, which is also the
+  // only case where the rest of this block is allowed to be null.
+  isPhysical        Boolean             @default(true) @map("is_physical")
+  weightValue       Decimal?            @map("weight_value") @db.Decimal(10, 2)
+  weightUnit        WeightUnit          @default(g) @map("weight_unit")
+  heightValue       Decimal?            @map("height_value") @db.Decimal(10, 2)
+  widthValue        Decimal?            @map("width_value") @db.Decimal(10, 2)
+  lengthValue       Decimal?            @map("length_value") @db.Decimal(10, 2)
+  dimensionUnit     DimensionUnit       @default(cm) @map("dimension_unit")
+  // Derived from height/width/length by product.controller.js
+  // (computeVolumetricWeightGrams) every time any of the three changes -
+  // never a direct user input, so it can't drift from the dimensions it
+  // was computed from. Divisor (5000 cm3/kg) is the standard used by every
+  // major Colombian carrier (Servientrega, Coordinadora, Interrápidísimo,
+  // TCC); a carrier-specific divisor belongs in that carrier's future
+  // adapter, not here.
+  volumetricWeight  Decimal?            @map("volumetric_weight") @db.Decimal(10, 2)
+  // How many physical units make up one sellable/dispatched unit of this
+  // product - e.g. a "six-pack" SKU where unitsPerPackage = 6. Doesn't
+  // affect weight/dimensions (those already describe the dispatched
+  // package), it's informational for whoever packs the order.
+  unitsPerPackage   Int                 @default(1) @map("units_per_package")
+  packagingType     PackagingType       @default(box) @map("packaging_type")
+  isFragile         Boolean             @default(false) @map("is_fragile")
+  // Package-for-dispatch overrides. Null means "the dispatched package IS
+  // the unit itself" (weightValue/height/width/lengthValue above already
+  // describe it) - the common case of one unit = one box, which this way
+  // doesn't force every seller to fill in the same numbers twice. Only set
+  // when what actually ships differs from the bare unit (e.g. bundled with
+  // extra packaging material).
+  packageWeightValue Decimal?           @map("package_weight_value") @db.Decimal(10, 2)
+  packageHeightValue Decimal?           @map("package_height_value") @db.Decimal(10, 2)
+  packageWidthValue  Decimal?           @map("package_width_value") @db.Decimal(10, 2)
+  packageLengthValue Decimal?           @map("package_length_value") @db.Decimal(10, 2)
   isTutorialData    Boolean             @default(false) @map("is_tutorial_data")
   createdById       String              @map("created_by")
   updatedById       String?             @map("updated_by")
@@ -889,6 +951,14 @@ model OrderDetail {
   returnDate          DateTime?           @map("return_date")
   returnedQuantity    Int                 @default(0) @map("returned_quantity")
   refundAmount        Decimal             @default(0) @map("refund_amount") @db.Decimal(12, 2)
+  // Frozen at order creation (order.service.js#createOrder), same reasoning
+  // as taxRateApplied above: the per-unit weight/volumetric weight the
+  // product actually had when it was sold, in grams, so a later edit to the
+  // product's own physical characteristics never rewrites what a shipping
+  // payload for this already-placed order reports. Null when the product
+  // wasn't physical (or had no weight recorded) at sale time.
+  weightApplied           Decimal?        @map("weight_applied") @db.Decimal(10, 2)
+  volumetricWeightApplied Decimal?        @map("volumetric_weight_applied") @db.Decimal(10, 2)
   createdAt           DateTime            @default(now()) @map("created_at")
   updatedAt           DateTime            @updatedAt @map("updated_at")
 
@@ -1430,6 +1500,12 @@ enum JournalSourceType {
   // Clientes/Ingresos/IVA generado adjustment - see
   // postFinancialCreditNoteJournalEntry.
   credit_note_financial
+  // Fase 5 - period close: reverses that period's revenue/cost/expense
+  // activity into a retained-earnings equity account. Excluded from
+  // financialStatements.service.js's income-statement aggregation (so a
+  // closed period's own P&L still reads correctly) but included normally
+  // in the balance sheet's equity aggregation - see closeAccountingPeriod.
+  period_close
 }
 
 // Append-only double-entry ledger header - mirrors StockMovement/CashMovement's

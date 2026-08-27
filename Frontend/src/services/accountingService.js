@@ -13,6 +13,13 @@ export const accountingService = {
         return response.data;
     },
 
+    async getAccountLedger(id, { from, to } = {}) {
+        const response = await api.get(`/accounting/chart-of-accounts/${id}/ledger`, {
+            params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+        });
+        return response.data;
+    },
+
     async listJournalEntries({ from, to, sourceType } = {}) {
         const response = await api.get("/accounting/journal-entries", {
             params: {

@@ -1,4 +1,5 @@
 import { useContext } from "react";
+import { Link } from "react-router-dom";
 import { Drawer, Tag, Spin, Button, Table, Divider, Space } from "antd";
 import {
     FilePdfOutlined,
@@ -7,6 +8,8 @@ import {
     UserOutlined,
     CalendarOutlined,
     WalletOutlined,
+    SettingOutlined,
+    ArrowRightOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { getStatusColor } from "../../utils/orderHelpers";
@@ -33,7 +36,7 @@ const OrderDetailsDrawer = ({
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
     const { user } = useContext(AuthContext);
-    const { team } = useTeam();
+    const { team, isOwner } = useTeam();
     // View-only presence here (no lock) - order status changes happen inline
     // in OrdersTable's row select, not in this read-only details drawer, so
     // there's no single "edit form" moment to soft-lock against.
@@ -368,6 +371,16 @@ const OrderDetailsDrawer = ({
                         >
                             {t("orders.download_invoice_pdf")}
                         </Button>
+                        {isOwner && (
+                            <Link
+                                to="/team?tab=settings"
+                                className="mt-2 flex items-center justify-center gap-1.5 text-xs font-medium text-[var(--ohnix-text-muted)] underline decoration-dotted underline-offset-2 hover:text-[var(--ohnix-accent)]"
+                            >
+                                <SettingOutlined className="text-[13px]" />
+                                {t("team.company_branding_title")}
+                                <ArrowRightOutlined className="text-[10px]" />
+                            </Link>
+                        )}
                     </div>
                 )}
             </div>
