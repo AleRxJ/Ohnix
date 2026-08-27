@@ -199,3 +199,57 @@ export const getPeriodClosingPlan = async ({ accountId, startDate, endDate }) =>
 
     return { reversalLines, netIncome };
 };
+
+// Balance de comprobación: every account in the chart (active or not, even
+// with zero activity) with its opening balance, this period's debit/credit
+// movement, and closing balance. Unlike the income statement/balance sheet
+// (which each show one slice of the chart), this is the classic "does
+// everything still tie out" report - useful right before closing a period.
+export const getTrialBalance = async ({ accountId, startDate, endDate }) => {
+    const accounts = await prisma.chartAccount.findMany({ where: { createdById: accountId }, orderBy: { code: "asc" } });
+    if (accounts.length === 0) return [];
+
+    const priorRows = startDate
+        ? await prisma.journalEntryLine.groupBy({
+              by: ["chartAccountId"],
+              where: { chartAccount: { createdById: accountId }, journalEntry: { period: { createdById: accountId }, entryDate: { lt: startDate } } },
+              _sum: { debit: true, credit: true },
+          })
+        : [];
+    const priorById = new Map(priorRows.map((r) => [r.chartAccountId, r]));
+
+    const rangeRows = await prisma.journalEntryLine.groupBy({
+        by: ["chartAccountId"],
+        where: {
+            chartAccount: { createdById: accountId },
+            journalEntry: {
+                period: { createdById: accountId },
+                ...(startDate || endDate
+                    ? { entryDate: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } }
+                    : {}),
+            },
+        },
+        _sum: { debit: true, credit: true },
+    });
+    const rangeById = new Map(rangeRows.map((r) => [r.chartAccountId, r]));
+
+    return accounts.map((account) => {
+        const prior = priorById.get(account.id);
+        const range = rangeById.get(account.id);
+        const openingBalance = prior ? balanceForType(account.accountType, Number(prior._sum.debit || 0), Number(prior._sum.credit || 0)) : 0;
+        const debit = Number(range?._sum.debit || 0);
+        const credit = Number(range?._sum.credit || 0);
+
+        return {
+            id: account.id,
+            code: account.code,
+            name: account.name,
+            account_type: account.accountType,
+            is_active: account.isActive,
+            opening_balance: round2(openingBalance),
+            debit: round2(debit),
+            credit: round2(credit),
+            closing_balance: round2(openingBalance + balanceForType(account.accountType, debit, credit)),
+        };
+    });
+};

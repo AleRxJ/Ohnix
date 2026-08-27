@@ -201,6 +201,8 @@ model User {
   suppliers                 Supplier[]
   purchasesCreated          Purchase[]           @relation("PurchaseCreatedBy")
   purchasesUpdated          Purchase[]           @relation("PurchaseUpdatedBy")
+  quotationsCreated         PurchaseQuotation[]  @relation("QuotationCreatedBy")
+  quotationsUpdated         PurchaseQuotation[]  @relation("QuotationUpdatedBy")
   ordersCreated             Order[]              @relation("OrderCreatedBy")
   ordersUpdated             Order[]              @relation("OrderUpdatedBy")
   planUpgradeRequests       PlanUpgradeRequest[]
@@ -548,9 +550,10 @@ model Supplier {
   createdAt                  DateTime @default(now()) @map("created_at")
   updatedAt                  DateTime @updatedAt @map("updated_at")
 
-  createdBy   User        @relation(fields: [createdById], references: [id])
-  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
+  createdBy   User                @relation(fields: [createdById], references: [id])
+  pointOfSale PointOfSale         @relation(fields: [pointOfSaleId], references: [id])
   purchases   Purchase[]
+  quotations  PurchaseQuotation[]
 
   @@index([createdById])
   @@index([pointOfSaleId])
@@ -667,11 +670,12 @@ model Product {
   unit            Unit                   @relation(fields: [unitId], references: [id])
   createdBy       User                   @relation("ProductCreatedBy", fields: [createdById], references: [id])
   updatedBy       User?                  @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
-  orderDetails    OrderDetail[]
-  purchaseDetails PurchaseDetail[]
-  stockMovements  StockMovement[]
-  locationStock   ProductLocationStock[]
-  transfers       StockTransfer[]
+  orderDetails     OrderDetail[]
+  purchaseDetails  PurchaseDetail[]
+  quotationDetails PurchaseQuotationDetail[]
+  stockMovements   StockMovement[]
+  locationStock    ProductLocationStock[]
+  transfers        StockTransfer[]
 
   @@unique([productCode, createdById])
   @@index([createdById])
@@ -857,6 +861,10 @@ model Purchase {
   purchaseDetails         PurchaseDetail[]
   payments                PurchasePayment[]
   purchaseSupportDocument PurchaseSupportDocument?
+  // Back-relation for PurchaseQuotation.convertedPurchase - set only when
+  // this Purchase was created by approving a quotation, never on a purchase
+  // created directly.
+  sourceQuotation         PurchaseQuotation?
 
   @@index([createdById])
   @@index([supplierId])
@@ -902,6 +910,73 @@ model PurchaseDetail {
   @@index([purchaseId])
   @@index([productId])
   @@map("purchase_details")
+}
+
+enum QuotationStatus {
+  draft    // being edited, prices not yet locked in as final
+  received // supplier's quoted prices confirmed - ready to compare/decide
+  approved // converted into a real Purchase (terminal)
+  rejected // discarded (terminal)
+}
+
+// A supplier's price offer for a hypothetical purchase - deliberately NOT a
+// PurchaseStatus value. Even Purchase.pending is already a committed order
+// (numbered, counted in reports, only waiting on physical delivery - see
+// purchase.service.js#createPurchase's shouldAddStock check); a quotation is
+// the pre-commitment step where several competing supplier offers can exist
+// for the same need before one is chosen. No stock/tax/accounting side
+// effects happen here - those only happen once a quotation is converted into
+// a real Purchase (see purchase.service.js#createPurchase's
+// source_quotation_id handling).
+model PurchaseQuotation {
+  id                  String          @id @default(cuid())
+  quotationNo         String          @unique @map("quotation_no")
+  supplierId          String          @map("supplier_id")
+  // Same scoping as Purchase/Supplier - see purchase.service.js#createPurchase.
+  pointOfSaleId       String          @map("point_of_sale_id")
+  status              QuotationStatus @default(draft)
+  // Optional - only shown as a soft warning in the UI, never blocks
+  // conversion (a supplier may still honor an "expired" quote).
+  validUntil          DateTime?       @map("valid_until")
+  notes               String?
+  // Set together with status flipping to "approved", inside the same
+  // transaction that creates the resulting Purchase - see
+  // purchase.service.js#createPurchase.
+  convertedPurchaseId String?         @unique @map("converted_purchase_id")
+  createdById         String          @map("created_by")
+  updatedById         String?         @map("updated_by")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  supplier          Supplier                  @relation(fields: [supplierId], references: [id])
+  pointOfSale       PointOfSale               @relation(fields: [pointOfSaleId], references: [id])
+  createdBy         User                      @relation("QuotationCreatedBy", fields: [createdById], references: [id])
+  updatedBy         User?                     @relation("QuotationUpdatedBy", fields: [updatedById], references: [id])
+  convertedPurchase Purchase?                 @relation(fields: [convertedPurchaseId], references: [id])
+  details           PurchaseQuotationDetail[]
+
+  @@index([createdById])
+  @@index([supplierId])
+  @@index([pointOfSaleId])
+  @@map("purchase_quotations")
+}
+
+model PurchaseQuotationDetail {
+  id          String  @id @default(cuid())
+  quotationId String  @map("quotation_id")
+  productId   String  @map("product_id")
+  quantity    Int
+  // The quoted price - no tax fields here, unlike PurchaseDetail: tax
+  // treatment depends on live product/company state and is only meaningful
+  // (and computed fresh) once this converts into a real Purchase.
+  unitcost    Decimal @db.Decimal(12, 2)
+
+  quotation PurchaseQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product   Product           @relation(fields: [productId], references: [id])
+
+  @@index([quotationId])
+  @@index([productId])
+  @@map("purchase_quotation_details")
 }
 
 model Order {
@@ -1265,6 +1340,7 @@ model PointOfSale {
   customers      Customer[]
   suppliers      Supplier[]
   cashAccounts   CashAccount[]
+  quotations     PurchaseQuotation[]
 
   @@index([accountId, isActive])
   @@map("points_of_sale")

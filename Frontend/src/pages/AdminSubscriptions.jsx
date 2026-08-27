@@ -489,6 +489,7 @@ const AdminSubscriptions = () => {
                             loading={subLoading}
                             dataSource={subRows}
                             columns={subscriptionColumns}
+                            scroll={{ x: "max-content" }}
                             locale={{
                                 emptyText: (
                                     <Empty
@@ -606,6 +607,7 @@ const AdminSubscriptions = () => {
                             loading={payLoading}
                             dataSource={payRows}
                             columns={paymentColumns}
+                            scroll={{ x: "max-content" }}
                             locale={{
                                 emptyText: (
                                     <Empty

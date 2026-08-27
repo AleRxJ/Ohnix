@@ -13,6 +13,21 @@ export const accountingService = {
         return response.data;
     },
 
+    async createChartOfAccount({ code, name, accountType, parentId }) {
+        const response = await api.post("/accounting/chart-of-accounts", {
+            code,
+            name,
+            account_type: accountType,
+            ...(parentId ? { parent_id: parentId } : {}),
+        });
+        return response.data;
+    },
+
+    async setChartOfAccountActive(id, isActive) {
+        const response = await api.patch(`/accounting/chart-of-accounts/${id}/active`, { is_active: isActive });
+        return response.data;
+    },
+
     async getAccountLedger(id, { from, to } = {}) {
         const response = await api.get(`/accounting/chart-of-accounts/${id}/ledger`, {
             params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
@@ -56,6 +71,13 @@ export const accountingService = {
     async getBalanceSheet({ asOf } = {}) {
         const response = await api.get("/accounting/reports/balance-sheet", {
             params: asOf ? { as_of: asOf } : undefined,
+        });
+        return response.data;
+    },
+
+    async getTrialBalance({ from, to } = {}) {
+        const response = await api.get("/accounting/reports/trial-balance", {
+            params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
         });
         return response.data;
     },

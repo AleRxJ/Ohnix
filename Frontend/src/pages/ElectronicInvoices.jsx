@@ -38,6 +38,7 @@ import StatCard from "../components/dashboard/StatCard";
 import { useCurrency } from "../context/CurrencyContext";
 import { getCurrencyInputProps } from "../utils/currency";
 import useI18n from "../hooks/useI18n";
+import useIsMobile from "../hooks/useIsMobile";
 import useCountUp from "../hooks/useCountUp";
 import { resolveApiErrorMessage } from "../utils/apiError";
 
@@ -479,6 +480,7 @@ const InvoiceDetailDrawer = ({
     creditNotesLoading,
 }) => {
     const { t } = useI18n();
+    const isMobile = useIsMobile();
     if (!invoice) return null;
     const issuedAt = invoice.issuedAt ? new Date(invoice.issuedAt) : null;
     const events = Array.isArray(invoice.events) ? invoice.events : [];
@@ -487,7 +489,7 @@ const InvoiceDetailDrawer = ({
         <Drawer
             open={Boolean(invoice)}
             onClose={onClose}
-            width={typeof window !== "undefined" && window.innerWidth < 768 ? "100%" : 540}
+            width={isMobile ? "100%" : 540}
             className="dian-drawer"
             title={
                 <div className="flex items-center justify-between">

@@ -44,6 +44,25 @@ export const listChartOfAccounts = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, accounts.map(mapChartAccount), "Chart of accounts fetched successfully"));
 });
 
+export const createChartOfAccount = asyncHandler(async (req, res) => {
+    const { code, name, account_type, parent_id } = req.body || {};
+    const account = await chartOfAccountsService.createChartAccount(req.user.prismaId, {
+        code,
+        name,
+        accountType: account_type,
+        parentId: parent_id || undefined,
+    });
+    return res.status(201).json(new ApiResponse(201, mapChartAccount(account), "Chart account created successfully"));
+});
+
+export const setChartOfAccountActive = asyncHandler(async (req, res, next) => {
+    const { is_active } = req.body || {};
+    if (typeof is_active !== "boolean") return next(new ApiError(400, "is_active debe ser verdadero o falso."));
+
+    const account = await chartOfAccountsService.setChartAccountActive(req.user.prismaId, req.params.id, is_active);
+    return res.status(200).json(new ApiResponse(200, mapChartAccount(account), "Chart account updated successfully"));
+});
+
 export const listJournalEntries = asyncHandler(async (req, res) => {
     const { from, to, source_type, source_id, period_id } = req.query;
     const entries = await journalEntryService.listJournalEntries({
@@ -108,6 +127,16 @@ export const getBalanceSheet = asyncHandler(async (req, res) => {
         asOfDate: as_of ? new Date(as_of) : new Date(),
     });
     return res.status(200).json(new ApiResponse(200, statement, "Balance sheet fetched successfully"));
+});
+
+export const getTrialBalance = asyncHandler(async (req, res) => {
+    const { from, to } = req.query;
+    const rows = await financialStatementsService.getTrialBalance({
+        accountId: req.user.prismaId,
+        startDate: from ? new Date(from) : undefined,
+        endDate: to ? new Date(to) : undefined,
+    });
+    return res.status(200).json(new ApiResponse(200, rows, "Trial balance fetched successfully"));
 });
 
 export const getAccountingStatus = asyncHandler(async (req, res) => {

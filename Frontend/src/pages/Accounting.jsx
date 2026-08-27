@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber } from "antd";
-import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined } from "@ant-design/icons";
+import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal } from "antd";
+import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
@@ -171,21 +171,95 @@ const AccountLedgerDrawer = ({ account, onClose }) => {
     );
 };
 
+// Custom accounts are additive to the 9-account default seed - e.g. a
+// company's own class-5 expense accounts (never auto-posted to, see
+// accountingPosting.service.js's scope note) or a finer split of an
+// existing class. parentId is optional: the schema has always supported a
+// hierarchy (ChartAccount.parentId), this is just the first UI to use it.
+const NewAccountModal = ({ open, accounts, onClose, onCreated }) => {
+    const { t } = useI18n();
+    const [form] = Form.useForm();
+    const [saving, setSaving] = useState(false);
+
+    const handleSubmit = async (values) => {
+        setSaving(true);
+        try {
+            await accountingService.createChartOfAccount(values);
+            toast.success(t("accounting.new_account_created"));
+            form.resetFields();
+            onCreated();
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("accounting.failed"));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Modal
+            open={open}
+            onCancel={onClose}
+            title={t("accounting.new_account_title")}
+            okText={t("common.save")}
+            cancelText={t("common.cancel")}
+            onOk={() => form.submit()}
+            confirmLoading={saving}
+            destroyOnClose
+        >
+            <Form form={form} layout="vertical" onFinish={handleSubmit}>
+                <Form.Item name="code" label={t("accounting.col_code")} rules={[{ required: true, message: t("accounting.new_account_code_required") }]}>
+                    <Input placeholder="5105" />
+                </Form.Item>
+                <Form.Item name="name" label={t("accounting.col_name")} rules={[{ required: true, message: t("accounting.new_account_name_required") }]}>
+                    <Input placeholder="Arrendamientos" />
+                </Form.Item>
+                <Form.Item name="accountType" label={t("accounting.col_type")} rules={[{ required: true, message: t("accounting.new_account_type_required") }]}>
+                    <Select options={Object.entries(ACCOUNT_TYPE_LABEL_KEYS).map(([value, key]) => ({ value, label: t(key) }))} />
+                </Form.Item>
+                <Form.Item name="parentId" label={t("accounting.new_account_parent_label")} extra={t("accounting.new_account_parent_hint")}>
+                    <Select
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        options={accounts.map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))}
+                    />
+                </Form.Item>
+            </Form>
+        </Modal>
+    );
+};
+
 const ChartOfAccountsTab = () => {
     const { t } = useI18n();
     const isMobile = useIsMobile();
     const [accounts, setAccounts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [ledgerAccount, setLedgerAccount] = useState(null);
+    const [newAccountOpen, setNewAccountOpen] = useState(false);
 
-    useEffect(() => {
+    const load = () => {
+        setLoading(true);
         accountingService
             .listChartOfAccounts()
             .then((res) => setAccounts(res?.data || []))
             .catch(() => toast.error(t("accounting.failed")))
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    const toggleActive = async (account) => {
+        try {
+            await accountingService.setChartOfAccountActive(account._id, !account.is_active);
+            toast.success(account.is_active ? t("accounting.account_deactivated") : t("accounting.account_activated"));
+            load();
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("accounting.failed"));
+        }
+    };
 
     const columns = [
         { title: t("accounting.col_code"), dataIndex: "code", key: "code", width: 100 },
@@ -210,18 +284,35 @@ const ChartOfAccountsTab = () => {
         {
             title: "",
             key: "actions",
-            width: 160,
+            width: 260,
             render: (_, record) => (
-                <Button size="small" icon={<EyeOutlined />} onClick={() => setLedgerAccount(record)}>
-                    {t("accounting.ledger_view_button")}
-                </Button>
+                <div className="flex gap-2">
+                    <Button size="small" icon={<EyeOutlined />} onClick={() => setLedgerAccount(record)}>
+                        {t("accounting.ledger_view_button")}
+                    </Button>
+                    <Popconfirm
+                        title={record.is_active ? t("accounting.deactivate_account_confirm") : t("accounting.activate_account_confirm")}
+                        okText={t("common.yes")}
+                        cancelText={t("common.no")}
+                        onConfirm={() => toggleActive(record)}
+                    >
+                        <Button size="small" icon={record.is_active ? <StopOutlined /> : <CheckCircleOutlined />}>
+                            {record.is_active ? t("accounting.deactivate_account") : t("accounting.activate_account")}
+                        </Button>
+                    </Popconfirm>
+                </div>
             ),
         },
     ];
 
     return (
         <>
-            <p className="mb-4 text-sm text-[var(--ohnix-text-muted)]">{t("accounting.tab_chart_of_accounts_caption")}</p>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                <p className="text-sm text-[var(--ohnix-text-muted)] m-0">{t("accounting.tab_chart_of_accounts_caption")}</p>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewAccountOpen(true)} className="shrink-0">
+                    {t("accounting.new_account_button")}
+                </Button>
+            </div>
             {isMobile ? (
                 loading ? (
                     <div className="text-center py-8 text-[var(--ohnix-text-muted)]">{t("common.loading")}</div>
@@ -250,9 +341,19 @@ const ChartOfAccountsTab = () => {
                                             <Tag className="m-0 shrink-0">{t("accounting.status_inactive")}</Tag>
                                         )}
                                     </div>
-                                    <Button block size="small" icon={<EyeOutlined />} onClick={() => setLedgerAccount(acc)}>
-                                        {t("accounting.ledger_view_button")}
-                                    </Button>
+                                    <div className="flex gap-2">
+                                        <Button block size="small" icon={<EyeOutlined />} onClick={() => setLedgerAccount(acc)}>
+                                            {t("accounting.ledger_view_button")}
+                                        </Button>
+                                        <Popconfirm
+                                            title={acc.is_active ? t("accounting.deactivate_account_confirm") : t("accounting.activate_account_confirm")}
+                                            okText={t("common.yes")}
+                                            cancelText={t("common.no")}
+                                            onConfirm={() => toggleActive(acc)}
+                                        >
+                                            <Button block size="small" icon={acc.is_active ? <StopOutlined /> : <CheckCircleOutlined />} />
+                                        </Popconfirm>
+                                    </div>
                                 </Card>
                             );
                         })}
@@ -273,6 +374,15 @@ const ChartOfAccountsTab = () => {
                 </Card>
             )}
             <AccountLedgerDrawer account={ledgerAccount} onClose={() => setLedgerAccount(null)} />
+            <NewAccountModal
+                open={newAccountOpen}
+                accounts={accounts}
+                onClose={() => setNewAccountOpen(false)}
+                onCreated={() => {
+                    setNewAccountOpen(false);
+                    load();
+                }}
+            />
         </>
     );
 };
@@ -900,6 +1010,91 @@ const TaxesTab = () => {
     );
 };
 
+// Balance de comprobación: every account with its opening balance, this
+// period's debit/credit movement, and closing balance - the "does
+// everything still tie out" check, distinct from the Estados Financieros
+// tab which only shows one slice of the chart (revenue/cost/expense or
+// asset/liability/equity) at a time.
+const TrialBalanceTab = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const isMobile = useIsMobile();
+    const [dateRange, setDateRange] = useState([dayjs().startOf("month"), dayjs()]);
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    const fetchRows = async () => {
+        setLoading(true);
+        try {
+            const res = await accountingService.getTrialBalance({
+                from: dateRange[0].format("YYYY-MM-DD"),
+                to: dateRange[1].format("YYYY-MM-DD"),
+            });
+            setRows(res?.data || []);
+        } catch {
+            toast.error(t("accounting.failed"));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchRows();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const totals = rows.reduce(
+        (acc, r) => ({ debit: acc.debit + r.debit, credit: acc.credit + r.credit }),
+        { debit: 0, credit: 0 }
+    );
+
+    const columns = [
+        { title: t("accounting.col_code"), dataIndex: "code", key: "code", width: 100 },
+        { title: t("accounting.col_name"), dataIndex: "name", key: "name" },
+        { title: t("accounting.trial_balance_col_opening"), dataIndex: "opening_balance", key: "opening_balance", align: "right", render: (v) => formatCurrency(v) },
+        { title: t("accounting.lines_col_debit"), dataIndex: "debit", key: "debit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
+        { title: t("accounting.lines_col_credit"), dataIndex: "credit", key: "credit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
+        { title: t("accounting.trial_balance_col_closing"), dataIndex: "closing_balance", key: "closing_balance", align: "right", render: (v) => <strong>{formatCurrency(v)}</strong> },
+    ];
+
+    return (
+        <>
+            <p className="mb-4 text-sm text-[var(--ohnix-text-muted)]">{t("accounting.tab_trial_balance_caption")}</p>
+            <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <RangePicker value={dateRange} onChange={(dates) => dates && setDateRange(dates)} format="YYYY-MM-DD" allowClear={false} className="w-full sm:w-auto" />
+                    <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={fetchRows} loading={loading}>
+                        {t("reports.refresh_report")}
+                    </Button>
+                </div>
+            </Card>
+            <Card className="module-shell border border-[var(--ohnix-line-4)]">
+                <Table
+                    columns={columns}
+                    dataSource={rows}
+                    rowKey="id"
+                    loading={loading}
+                    pagination={false}
+                    className="module-dark-table"
+                    scroll={{ x: "max-content" }}
+                    size={isMobile ? "small" : "middle"}
+                    locale={{ emptyText: t("accounting.no_chart_accounts") }}
+                    summary={() =>
+                        rows.length > 0 && (
+                            <Table.Summary.Row>
+                                <Table.Summary.Cell index={0} colSpan={3}>{t("accounting.trial_balance_totals_row")}</Table.Summary.Cell>
+                                <Table.Summary.Cell index={1} align="right"><strong>{formatCurrency(totals.debit)}</strong></Table.Summary.Cell>
+                                <Table.Summary.Cell index={2} align="right"><strong>{formatCurrency(totals.credit)}</strong></Table.Summary.Cell>
+                                <Table.Summary.Cell index={3} />
+                            </Table.Summary.Row>
+                        )
+                    }
+                />
+            </Card>
+        </>
+    );
+};
+
 const Accounting = () => {
     const { t } = useI18n();
     const { can, loading: subscriptionLoading } = useSubscription();
@@ -919,6 +1114,7 @@ const Accounting = () => {
         { key: "overview", label: t("accounting.tab_overview"), children: <OverviewTab /> },
         { key: "chart", label: t("accounting.tab_chart_of_accounts"), children: <ChartOfAccountsTab /> },
         { key: "journal", label: t("accounting.tab_journal"), children: <JournalTab /> },
+        { key: "trial_balance", label: t("accounting.tab_trial_balance"), children: <TrialBalanceTab /> },
         { key: "periods", label: t("accounting.tab_periods"), children: <PeriodsTab /> },
         { key: "statements", label: t("accounting.tab_financial_statements"), children: <FinancialStatementsTab /> },
         { key: "taxes", label: t("accounting.tab_taxes"), children: <TaxesTab /> },
