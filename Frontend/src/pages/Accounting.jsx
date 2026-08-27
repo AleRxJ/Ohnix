@@ -221,17 +221,56 @@ const ChartOfAccountsTab = () => {
     return (
         <>
             <p className="mb-4 text-sm text-[var(--ohnix-text-muted)]">{t("accounting.tab_chart_of_accounts_caption")}</p>
-            <Card className="module-shell border border-[var(--ohnix-line-4)]">
-                <Table
-                    columns={columns}
-                    dataSource={accounts}
-                    rowKey="_id"
-                    loading={loading}
-                    pagination={false}
-                    className="module-dark-table"
-                    locale={{ emptyText: t("accounting.no_chart_accounts") }}
-                />
-            </Card>
+            {isMobile ? (
+                loading ? (
+                    <div className="text-center py-8 text-[var(--ohnix-text-muted)]">{t("common.loading")}</div>
+                ) : accounts.length === 0 ? (
+                    <EmptyState title={t("accounting.no_chart_accounts")} />
+                ) : (
+                    <div className="space-y-2">
+                        {accounts.map((acc) => {
+                            const hintKey = ACCOUNT_TYPE_HINT_KEYS[acc.account_type];
+                            return (
+                                <Card key={acc._id} size="small" className="module-shell overflow-hidden" bodyStyle={{ padding: 12 }}>
+                                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-[var(--ohnix-text-primary)] m-0 truncate">
+                                                {acc.code} · {acc.name}
+                                            </p>
+                                            <Tooltip title={hintKey ? t(hintKey) : null}>
+                                                <span className="text-xs text-[var(--ohnix-text-muted)]">
+                                                    {t(ACCOUNT_TYPE_LABEL_KEYS[acc.account_type] || acc.account_type)}
+                                                </span>
+                                            </Tooltip>
+                                        </div>
+                                        {acc.is_active ? (
+                                            <Tag color="green" className="m-0 shrink-0">{t("accounting.status_active")}</Tag>
+                                        ) : (
+                                            <Tag className="m-0 shrink-0">{t("accounting.status_inactive")}</Tag>
+                                        )}
+                                    </div>
+                                    <Button block size="small" icon={<EyeOutlined />} onClick={() => setLedgerAccount(acc)}>
+                                        {t("accounting.ledger_view_button")}
+                                    </Button>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                )
+            ) : (
+                <Card className="module-shell border border-[var(--ohnix-line-4)]">
+                    <Table
+                        columns={columns}
+                        dataSource={accounts}
+                        rowKey="_id"
+                        loading={loading}
+                        pagination={false}
+                        className="module-dark-table"
+                        scroll={{ x: "max-content" }}
+                        locale={{ emptyText: t("accounting.no_chart_accounts") }}
+                    />
+                </Card>
+            )}
             <AccountLedgerDrawer account={ledgerAccount} onClose={() => setLedgerAccount(null)} />
         </>
     );
@@ -240,6 +279,7 @@ const ChartOfAccountsTab = () => {
 const JournalTab = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
+    const isMobile = useIsMobile();
     const [dateRange, setDateRange] = useState([dayjs().subtract(30, "days"), dayjs()]);
     const [sourceType, setSourceType] = useState(undefined);
     const [entries, setEntries] = useState([]);
@@ -303,25 +343,67 @@ const JournalTab = () => {
                         onChange={setSourceType}
                         options={Object.entries(SOURCE_TYPE_LABEL_KEYS).map(([value, key]) => ({ value, label: t(key) }))}
                     />
-                    <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" icon={<CalendarOutlined />} onClick={fetchEntries} loading={loading}>
+                    <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={fetchEntries} loading={loading}>
                         {t("reports.refresh_report")}
                     </Button>
                 </div>
             </Card>
-            <Card className="module-shell border border-[var(--ohnix-line-4)]">
-                <Table
-                    columns={columns}
-                    dataSource={entries}
-                    rowKey="_id"
-                    loading={loading}
-                    pagination={{ pageSize: 15 }}
-                    className="module-dark-table"
-                    locale={{ emptyText: t("accounting.no_entries") }}
-                    expandable={{
-                        expandedRowRender: (entry) => <Table columns={linesColumns} dataSource={entry.lines} rowKey="_id" pagination={false} size="small" />,
-                    }}
-                />
-            </Card>
+            {isMobile ? (
+                loading ? (
+                    <div className="text-center py-8 text-[var(--ohnix-text-muted)]">{t("common.loading")}</div>
+                ) : entries.length === 0 ? (
+                    <EmptyState title={t("accounting.no_entries")} />
+                ) : (
+                    <Collapse
+                        expandIconPosition="end"
+                        expandIcon={({ isActive }) => <DownOutlined rotate={isActive ? 180 : 0} className="text-[var(--ohnix-text-muted)]" />}
+                        className="custom-tabs"
+                        items={entries.map((entry) => ({
+                            key: entry._id,
+                            label: (
+                                <div className="flex items-center justify-between gap-2 min-w-0 pr-2">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium text-[var(--ohnix-text-primary)] m-0 truncate">{entry.description}</p>
+                                        <p className="text-xs text-[var(--ohnix-text-muted)] m-0">{dayjs(entry.entry_date).format("DD/MM/YYYY")}</p>
+                                    </div>
+                                    <span className="text-sm font-semibold text-[#44F3F0] shrink-0">
+                                        {formatCurrency(entry.lines.reduce((sum, l) => sum + l.debit, 0))}
+                                    </span>
+                                </div>
+                            ),
+                            children: (
+                                <div className="space-y-2">
+                                    <Tag className="mb-1">{t(SOURCE_TYPE_LABEL_KEYS[entry.source_type] || entry.source_type)}</Tag>
+                                    {entry.lines.map((l) => (
+                                        <div key={l._id} className="flex items-center justify-between gap-2 text-xs py-1.5 border-b border-[var(--ohnix-line-3)] last:border-0">
+                                            <span className="text-[var(--ohnix-text-soft)] truncate">{l.chart_account.code} · {l.chart_account.name}</span>
+                                            <span className="text-[var(--ohnix-text-primary)] font-medium shrink-0">
+                                                {l.debit > 0 ? formatCurrency(l.debit) : `(${formatCurrency(l.credit)})`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ),
+                        }))}
+                    />
+                )
+            ) : (
+                <Card className="module-shell border border-[var(--ohnix-line-4)]">
+                    <Table
+                        columns={columns}
+                        dataSource={entries}
+                        rowKey="_id"
+                        loading={loading}
+                        pagination={{ pageSize: 15 }}
+                        className="module-dark-table"
+                        scroll={{ x: "max-content" }}
+                        locale={{ emptyText: t("accounting.no_entries") }}
+                        expandable={{
+                            expandedRowRender: (entry) => <Table columns={linesColumns} dataSource={entry.lines} rowKey="_id" pagination={false} size="small" scroll={{ x: "max-content" }} />,
+                        }}
+                    />
+                </Card>
+            )}
         </>
     );
 };
