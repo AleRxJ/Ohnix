@@ -3174,10 +3174,6 @@
     "missing_active_certificate": "un certificado digital activo",
     "plan_required": "La facturación electrónica está disponible desde el plan Negocio. Actualiza tu plan para continuar.",
     "firmapass_active_alert": "Facturación electrónica activa",
-    "firmapass_login_key": "Llave de acceso de FirmaPass",
-    "firmapass_login_key_placeholder": "Pega la llave entregada por FirmaPass",
-    "firmapass_save": "Guardar",
-    "firmapass_login_key_saved": "Llave de FirmaPass guardada.",
     "firmapass_validation_uuid": "UUID de validación",
     "firmapass_validation_uuid_placeholder": "El UUID creado en el portal de FirmaPass",
     "firmapass_rut": "RUT",
@@ -3193,9 +3189,6 @@
     "firmapass_confirm": "Confirmar solicitud",
     "firmapass_confirm_success": "Solicitud confirmada. FirmaPass terminará la emisión de forma asíncrona.",
     "firmapass_refresh": "Actualizar estado",
-    "firmapass_key_status": "Llave",
-    "firmapass_key_configured": "configurada",
-    "firmapass_key_pending": "pendiente",
     "firmapass_status_error": "No fue posible consultar FirmaPass.",
     "firmapass_step_error": "No fue posible completar el paso."
   }

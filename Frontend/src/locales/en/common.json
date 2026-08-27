@@ -3180,10 +3180,6 @@
     "missing_active_certificate": "an active digital certificate",
     "plan_required": "Electronic invoicing is available starting on the Negocio plan. Upgrade to continue.",
     "firmapass_active_alert": "Electronic invoicing active",
-    "firmapass_login_key": "FirmaPass login key",
-    "firmapass_login_key_placeholder": "Paste the key FirmaPass gave you",
-    "firmapass_save": "Save",
-    "firmapass_login_key_saved": "FirmaPass key saved.",
     "firmapass_validation_uuid": "Validation UUID",
     "firmapass_validation_uuid_placeholder": "The UUID created in FirmaPass's portal",
     "firmapass_rut": "RUT",
@@ -3199,9 +3195,6 @@
     "firmapass_confirm": "Confirm request",
     "firmapass_confirm_success": "Request confirmed. FirmaPass will finish issuance asynchronously.",
     "firmapass_refresh": "Refresh status",
-    "firmapass_key_status": "Key",
-    "firmapass_key_configured": "configured",
-    "firmapass_key_pending": "pending",
     "firmapass_status_error": "Could not check FirmaPass status.",
     "firmapass_step_error": "Could not complete this step."
   }

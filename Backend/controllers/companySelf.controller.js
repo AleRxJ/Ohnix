@@ -20,7 +20,6 @@ import {
     confirmCompanyFirmaPassValidation,
     getCompanyFirmaPassStatus,
     getCompanyDianReadiness,
-    setCompanyFirmaPassLoginKey,
     uploadCompanyFirmaPassArchivo,
     uploadCompanyFirmaPassRut,
 } from "../services/firmaPassProvisioning.service.js";
@@ -203,13 +202,6 @@ export const addMyItcycleNumberingResolution = asyncHandler(async (req, res) => 
     assertValidNumberingResolution(req.body || {});
     const data = await addItcycleNumberingResolutionForCompany({ companyId: company.id, ...(req.body || {}) });
     return res.status(201).json(new ApiResponse(201, data, "Resolución agregada correctamente"));
-});
-
-export const setMyFirmaPassLoginKey = asyncHandler(async (req, res) => {
-    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
-    await ensureElectronicInvoicingPlan(req.user.prismaId);
-    const data = await setCompanyFirmaPassLoginKey({ companyId: company.id, loginKey: req.body?.loginKey });
-    return res.status(200).json(new ApiResponse(200, data, "Llave de FirmaPass actualizada"));
 });
 
 export const uploadMyFirmaPassRut = asyncHandler(async (req, res) => {

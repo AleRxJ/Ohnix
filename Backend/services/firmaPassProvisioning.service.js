@@ -1,7 +1,9 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import {
-    setItcycleFirmaPassLoginKey,
+    listItcycleFirmaPassValidations,
+    getItcycleFirmaPassNuevaSolicitud,
+    getItcycleFirmaPassValidationDetail,
     uploadItcycleFirmaPassRut,
     uploadItcycleFirmaPassArchivo,
     confirmItcycleFirmaPassValidation,
@@ -36,11 +38,30 @@ const rethrowAsApiError = (error) => {
     throw new ApiError(502, error.message || "FirmaPass provisioning request failed", providerPayload ? [providerPayload] : undefined);
 };
 
-export const setCompanyFirmaPassLoginKey = async ({ companyId, loginKey }) => {
-    const company = await requireItcycleProvisionedCompany({ companyId });
+// Alliance-wide (not scoped to a company - see itcycleDian.service.js).
+// Ohnix-platform-admin-only: lets an admin browse validations auto-attached
+// to iTCycle's FirmaPass account (every client who bought a certificate with
+// the coupon) and match one to the right Ohnix company by its `nombre`
+// label, since FirmaPass exposes no email or other identifying field.
+export const listPendingFirmaPassValidations = async ({ perPage } = {}) => {
     try {
-        await setItcycleFirmaPassLoginKey({ companyId: company.itcycleCompanyId, loginKey });
-        return { companyId };
+        return await listItcycleFirmaPassValidations({ perPage });
+    } catch (error) {
+        rethrowAsApiError(error);
+    }
+};
+
+export const getNextPendingFirmaPassValidation = async () => {
+    try {
+        return await getItcycleFirmaPassNuevaSolicitud();
+    } catch (error) {
+        rethrowAsApiError(error);
+    }
+};
+
+export const getFirmaPassValidationDetail = async ({ validationUuid }) => {
+    try {
+        return await getItcycleFirmaPassValidationDetail({ validationUuid });
     } catch (error) {
         rethrowAsApiError(error);
     }

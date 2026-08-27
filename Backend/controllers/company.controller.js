@@ -5,7 +5,9 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
 import { registerCompanyWithAlanube, registerCompanyWithItcycle, addItcycleNumberingResolutionForCompany } from "../services/electronicInvoicing.service.js";
 import {
-    setCompanyFirmaPassLoginKey,
+    listPendingFirmaPassValidations,
+    getNextPendingFirmaPassValidation,
+    getFirmaPassValidationDetail,
     uploadCompanyFirmaPassRut,
     uploadCompanyFirmaPassArchivo,
     confirmCompanyFirmaPassValidation,
@@ -359,11 +361,33 @@ export const addItcycleNumberingResolutionAdmin = asyncHandler(async (req, res) 
         .json(new ApiResponse(201, data, "Numbering resolution added successfully"));
 });
 
-export const setCompanyFirmaPassLoginKeyAdmin = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-    const { loginKey } = req.body || {};
-    const data = await setCompanyFirmaPassLoginKey({ companyId, requesterRole: req.user.role, loginKey });
-    return res.status(200).json(new ApiResponse(200, data, "FirmaPass login key updated"));
+// Alliance-wide (not scoped to a companyId) - lets an Ohnix admin browse
+// validations auto-attached to iTCycle's own FirmaPass account (every
+// client who bought a certificate with the coupon) and match one to the
+// right Ohnix company by eye, since FirmaPass's response doesn't carry a
+// confirmed field for automatic matching. See
+// Backend/services/firmaPassProvisioning.service.js.
+export const listFirmaPassValidationsAdmin = asyncHandler(async (req, res) => {
+    const { perPage } = req.query || {};
+    const data = await listPendingFirmaPassValidations({
+        perPage: perPage ? Number(perPage) : undefined,
+    });
+    return res.status(200).json(new ApiResponse(200, data, "FirmaPass validations retrieved"));
+});
+
+export const getNextFirmaPassValidationAdmin = asyncHandler(async (req, res) => {
+    // itcycle-api-dian returns 204 (no body) when the queue is empty -
+    // `data` comes back null here, not an error; the response envelope
+    // still resolves 200 so the frontend can distinguish "nothing pending"
+    // from a real request failure.
+    const data = await getNextPendingFirmaPassValidation();
+    return res.status(200).json(new ApiResponse(200, data, "Next pending FirmaPass validation retrieved"));
+});
+
+export const getFirmaPassValidationDetailAdmin = asyncHandler(async (req, res) => {
+    const { validationUuid } = req.params;
+    const data = await getFirmaPassValidationDetail({ validationUuid });
+    return res.status(200).json(new ApiResponse(200, data, "FirmaPass validation detail retrieved"));
 });
 
 export const uploadCompanyFirmaPassRutAdmin = asyncHandler(async (req, res) => {

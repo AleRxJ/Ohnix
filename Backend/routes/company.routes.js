@@ -9,6 +9,9 @@ import {
     updateCompanyLogoAdmin,
     registerCompanyWithAlanubeAdmin,
     getCompanyFirmaPassStatusAdmin,
+    listFirmaPassValidationsAdmin,
+    getNextFirmaPassValidationAdmin,
+    getFirmaPassValidationDetailAdmin,
 } from "../controllers/company.controller.js";
 
 const router = Router();
@@ -20,5 +23,10 @@ router.route("/admin/:companyId").patch(updateCompanyAdmin);
 router.route("/admin/:companyId/logo").patch(upload.single("logo"), updateCompanyLogoAdmin);
 router.route("/admin/:companyId/alanube/register").post(registerCompanyWithAlanubeAdmin);
 router.route("/admin/:companyId/itcycle/firmapass/status").get(getCompanyFirmaPassStatusAdmin);
+// Alliance-wide FirmaPass discovery (not scoped to a companyId) - see
+// Backend/services/firmaPassProvisioning.service.js.
+router.route("/admin/itcycle/firmapass/validations").get(listFirmaPassValidationsAdmin);
+router.route("/admin/itcycle/firmapass/validations/nueva-solicitud").get(getNextFirmaPassValidationAdmin);
+router.route("/admin/itcycle/firmapass/validations/:validationUuid").get(getFirmaPassValidationDetailAdmin);
 
 export default router;

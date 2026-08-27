@@ -34,7 +34,6 @@ const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
 // or credentials.
 const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
     const { t } = useI18n();
-    const [loginKey, setLoginKey] = useState("");
     const [validationUuid, setValidationUuid] = useState("");
     const [representativeId, setRepresentativeId] = useState("");
     const [rutBase64, setRutBase64] = useState(null);
@@ -174,26 +173,6 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
                     />
 
                     <div>
-                        <label className="mb-1 block text-sm font-medium text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_login_key")}</label>
-                        <div className="flex flex-wrap gap-2">
-                            <Input.Password
-                                className="auth-ohnix-input flex-1"
-                                value={loginKey}
-                                onChange={(event) => setLoginKey(event.target.value)}
-                                placeholder={t("fiscal_setup.firmapass_login_key_placeholder")}
-                            />
-                            <Button
-                                type="primary"
-                                loading={busy === "key"}
-                                disabled={!loginKey.trim()}
-                                onClick={() => run("key", () => companyService.setMyFirmaPassLoginKey(loginKey.trim()), t("fiscal_setup.firmapass_login_key_saved"))}
-                            >
-                                {t("fiscal_setup.firmapass_save")}
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div>
                         <label className="mb-1 block text-sm font-medium text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_validation_uuid")}</label>
                         <Input
                             className="auth-ohnix-input"
@@ -265,11 +244,8 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
                         </Button>
                     </div>
 
-                    {status && <div className="flex flex-wrap gap-2">
-                        <Tag color={status.loginKeySet ? "green" : "default"}>
-                            {t("fiscal_setup.firmapass_key_status")}: {status.loginKeySet ? t("fiscal_setup.firmapass_key_configured") : t("fiscal_setup.firmapass_key_pending")}
-                        </Tag>
-                        {(status.certificates || []).map((certificate) => (
+                    {(status?.certificates || []).length > 0 && <div className="flex flex-wrap gap-2">
+                        {status.certificates.map((certificate) => (
                             <Tag key={certificate.id || certificate.certificateIdentifier} color={certificate.status === "ACTIVE" ? "green" : "orange"}>
                                 {certificate.certificateIdentifier || t("fiscal_setup.firmapass_title")}: {certificate.status}
                             </Tag>

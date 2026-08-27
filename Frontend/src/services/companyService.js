@@ -54,11 +54,6 @@ export const companyService = {
         return response.data;
     },
 
-    async setMyFirmaPassLoginKey(loginKey) {
-        const response = await api.put("/company/me/itcycle/firmapass/login-key", { loginKey });
-        return response.data;
-    },
-
     async uploadMyFirmaPassRut(validationUuid, payload) {
         const response = await api.post(`/company/me/itcycle/firmapass/validations/${validationUuid}/rut`, payload);
         return response.data;

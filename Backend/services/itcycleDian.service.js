@@ -175,20 +175,49 @@ export const createItcycleApiKey = async ({ companyId, label }) => {
 // FirmaPass digital-certificate issuance (admin-only, see
 // itcycle-api-dian's src/modules/firmapass/firmaPassIssuance.service.ts).
 // Creating the identity validation itself is not automatable (no such
-// endpoint exists in FirmaPass's own API) - these calls only automate from
-// an already-existing validationUuid onward: rut -> archivos -> confirmar.
-// confirmar's response is a one-time snapshot (estado is always "pe" right
-// after it) - getItcycleFirmaPassStatus below is the only way to later learn
-// the certificate actually went ACTIVE, once itcycle-api-dian's own polling
-// job finishes issuance (minutes to hours later, outside Ohnix's control).
+// endpoint exists in FirmaPass's own API) - a client's validation is created
+// the moment they buy a certificate on FirmaPass's own site with iTCycle's
+// coupon, auto-attached to iTCycle's own FirmaPass "alianza" account (ONE
+// shared login key on itcycle-api-dian's side, not a per-company one a
+// client would have to hand over - there's no login-key call here anymore).
+// These calls automate from an already-discovered validationUuid onward:
+// rut -> archivos -> confirmar. confirmar's response is a one-time snapshot
+// (estado is always "pe" right after it) - getItcycleFirmaPassStatus below
+// is the only way to later learn the certificate actually went ACTIVE, once
+// itcycle-api-dian's own polling job finishes issuance (minutes to hours
+// later, outside Ohnix's control).
 // ---------------------------------------------------------------------------
 
-export const setItcycleFirmaPassLoginKey = async ({ companyId, loginKey }) => {
+// Alliance-wide (not scoped to a companyId - matching a discovered
+// validation to an Ohnix company is a human/admin judgment call by its
+// `nombre` label, not an automated lookup - FirmaPass exposes no email or
+// other identifying field on a validation). Admin-only.
+export const listItcycleFirmaPassValidations = async ({ perPage } = {}) => {
+    requireAdminConfigured();
+    const query = new URLSearchParams();
+    if (perPage) query.set("perPage", String(perPage));
+    const qs = query.toString();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/firmapass/validations${qs ? `?${qs}` : ""}`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
+export const getItcycleFirmaPassNuevaSolicitud = async () => {
     requireAdminConfigured();
     return request({
-        method: "PUT",
-        path: `/api/v1/admin/companies/${companyId}/firmapass/login-key`,
-        body: { loginKey },
+        method: "GET",
+        path: "/api/v1/admin/firmapass/validations/nueva-solicitud",
+        authHeader: adminAuthHeader(),
+    });
+};
+
+export const getItcycleFirmaPassValidationDetail = async ({ validationUuid }) => {
+    requireAdminConfigured();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/firmapass/validations/${validationUuid}`,
         authHeader: adminAuthHeader(),
     });
 };
