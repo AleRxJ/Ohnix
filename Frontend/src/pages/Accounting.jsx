@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse } from "antd";
+import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber } from "antd";
 import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import dayjs from "dayjs";
@@ -10,6 +10,7 @@ import PlanGate from "../components/common/PlanGate";
 import EmptyState from "../components/common/EmptyState";
 import useIsMobile from "../hooks/useIsMobile";
 import { accountingService } from "../services/accountingService";
+import { companyService } from "../services/companyService";
 import { useCurrency } from "../context/CurrencyContext";
 import { useTeam } from "../context/TeamContext";
 import useI18n from "../hooks/useI18n";
@@ -489,6 +490,7 @@ const PeriodsTab = () => {
                     loading={loading}
                     pagination={false}
                     className="module-dark-table"
+                    scroll={{ x: "max-content" }}
                     locale={{ emptyText: t("accounting.no_periods") }}
                 />
             </Card>
@@ -601,12 +603,12 @@ const FinancialStatementsTab = () => {
                         <Row gutter={[16, 16]}>
                             <Col xs={24} md={12}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_revenue")}>
-                                    <Table columns={accountColumns} dataSource={income.revenue} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" />
+                                    <Table columns={accountColumns} dataSource={income.revenue} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} />
                                 </Card>
                             </Col>
                             <Col xs={24} md={12}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_costs")}>
-                                    <Table columns={accountColumns} dataSource={income.costs} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" />
+                                    <Table columns={accountColumns} dataSource={income.costs} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} />
                                 </Card>
                             </Col>
                         </Row>
@@ -643,12 +645,12 @@ const FinancialStatementsTab = () => {
                         <Row gutter={[16, 16]}>
                             <Col xs={24} md={8}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_assets")}>
-                                    <Table columns={accountColumns} dataSource={balance.assets} rowKey="code" pagination={false} loading={balanceLoading} size="small" className="module-dark-table" />
+                                    <Table columns={accountColumns} dataSource={balance.assets} rowKey="code" pagination={false} loading={balanceLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} />
                                 </Card>
                             </Col>
                             <Col xs={24} md={8}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_liabilities")}>
-                                    <Table columns={accountColumns} dataSource={balance.liabilities} rowKey="code" pagination={false} loading={balanceLoading} size="small" className="module-dark-table" />
+                                    <Table columns={accountColumns} dataSource={balance.liabilities} rowKey="code" pagination={false} loading={balanceLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} />
                                 </Card>
                             </Col>
                             <Col xs={24} md={8}>
@@ -661,6 +663,7 @@ const FinancialStatementsTab = () => {
                                         loading={balanceLoading}
                                         size="small"
                                         className="module-dark-table"
+                                        scroll={{ x: "max-content" }}
                                     />
                                 </Card>
                             </Col>
@@ -773,6 +776,112 @@ const ComingSoonTaxCard = ({ titleKey, descKey }) => {
     );
 };
 
+// Captures the facts a future retención en la fuente / ReteICA engine will
+// need (agente retenedor status, municipio, actividad CIIU, tarifa ICA) -
+// deliberately does NOT calculate or post anything itself yet, since no
+// automatic withholding logic exists server-side (see chartOfAccounts.
+// service.js's PUC seed, which still has no Retefuente/ReteICA accounts).
+// Saving this now just means the company doesn't have to re-enter it once
+// that engine ships, and gives their accountant something concrete to
+// review ahead of time.
+const WithholdingConfigCard = () => {
+    const { t } = useI18n();
+    const [form] = Form.useForm();
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const res = await companyService.getMyCompany();
+            const company = res?.data?.company || res?.data || null;
+            form.setFieldsValue({
+                isWithholdingAgent: company?.isWithholdingAgent || false,
+                icaMunicipalityCode: company?.icaMunicipalityCode || undefined,
+                icaActivityCode: company?.icaActivityCode || undefined,
+                icaRatePerThousand: company?.icaRatePerThousand ?? undefined,
+            });
+        } catch {
+            toast.error(t("accounting.failed"));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        load();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleSave = async (values) => {
+        setSaving(true);
+        try {
+            await companyService.updateMyCompany(values);
+            toast.success(t("accounting.taxes_config_saved"));
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("accounting.failed"));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Card
+            className="module-shell border border-[var(--ohnix-line-4)]"
+            title={t("accounting.taxes_withholding_config_title")}
+            extra={<Tag icon={<ClockCircleOutlined />} color="default">{t("accounting.taxes_coming_soon_badge")}</Tag>}
+            loading={loading}
+        >
+            <p className="text-sm text-[var(--ohnix-text-muted)] mb-4">{t("accounting.taxes_withholding_config_desc")}</p>
+            <Form form={form} layout="vertical" onFinish={handleSave} disabled={loading || saving}>
+                <Form.Item
+                    name="isWithholdingAgent"
+                    label={t("accounting.taxes_is_withholding_agent_label")}
+                    valuePropName="checked"
+                    extra={t("accounting.taxes_is_withholding_agent_hint")}
+                >
+                    <Switch />
+                </Form.Item>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[var(--ohnix-text-dim)] mb-2 mt-2">{t("accounting.taxes_reteica_title")}</p>
+                <Row gutter={16}>
+                    <Col xs={24} sm={8}>
+                        <Form.Item
+                            name="icaMunicipalityCode"
+                            label={t("accounting.taxes_ica_municipality_label")}
+                            extra={t("accounting.taxes_ica_municipality_hint")}
+                            rules={[{ pattern: /^\d{5}$/, message: t("accounting.taxes_ica_municipality_error") }]}
+                        >
+                            <Input placeholder="11001" maxLength={5} />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                        <Form.Item
+                            name="icaActivityCode"
+                            label={t("accounting.taxes_ica_activity_label")}
+                            extra={t("accounting.taxes_ica_activity_hint")}
+                            rules={[{ pattern: /^\d{4}$/, message: t("accounting.taxes_ica_activity_error") }]}
+                        >
+                            <Input placeholder="4711" maxLength={4} />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                        <Form.Item
+                            name="icaRatePerThousand"
+                            label={t("accounting.taxes_ica_rate_label")}
+                            extra={t("accounting.taxes_ica_rate_hint")}
+                        >
+                            <InputNumber className="w-full" min={0} max={50} step={0.1} placeholder="6.9" />
+                        </Form.Item>
+                    </Col>
+                </Row>
+                <Button type="primary" htmlType="submit" loading={saving}>
+                    {t("common.save")}
+                </Button>
+            </Form>
+        </Card>
+    );
+};
+
 const TaxesTab = () => {
     const { t } = useI18n();
     return (
@@ -784,17 +893,8 @@ const TaxesTab = () => {
                     <Button icon={<ArrowRightOutlined />}>{t("accounting.taxes_vat_link")}</Button>
                 </Link>
             </Card>
-            <Row gutter={[16, 16]}>
-                <Col xs={24} md={8}>
-                    <ComingSoonTaxCard titleKey="accounting.taxes_retefuente_title" descKey="accounting.taxes_retefuente_desc" />
-                </Col>
-                <Col xs={24} md={8}>
-                    <ComingSoonTaxCard titleKey="accounting.taxes_reteica_title" descKey="accounting.taxes_reteica_desc" />
-                </Col>
-                <Col xs={24} md={8}>
-                    <ComingSoonTaxCard titleKey="accounting.taxes_renta_title" descKey="accounting.taxes_renta_desc" />
-                </Col>
-            </Row>
+            <WithholdingConfigCard />
+            <ComingSoonTaxCard titleKey="accounting.taxes_renta_title" descKey="accounting.taxes_renta_desc" />
             <Alert type="warning" showIcon message={t("accounting.taxes_professional_review_notice")} />
         </div>
     );

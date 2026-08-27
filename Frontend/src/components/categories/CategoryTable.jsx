@@ -13,6 +13,7 @@ import {
 } from "../../utils/category_units/constants";
 import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
+import useIsMobile from "../../hooks/useIsMobile";
 
 const CategoryTable = ({
     categories,
@@ -26,6 +27,7 @@ const CategoryTable = ({
     const [hoveredRow, setHoveredRow] = useState(null);
     const { t } = useI18n();
     const { hasPermission } = useTeam();
+    const isMobile = useIsMobile();
     // Same reasoning as UnitTable.jsx: module-level grant, not per-record
     // "did I create this" - see the comment there.
     const canEditModule = isAdmin || hasPermission("categories", "edit");
@@ -167,7 +169,12 @@ const CategoryTable = ({
                         </div>
                     ),
                 }}
-                scroll={{ x: 768, ...TABLE_SCROLL_CONFIG }}
+                // Only 2 columns (name / actions), both of which flex to fit a
+                // phone-width viewport natively - forcing TABLE_SCROLL_CONFIG's
+                // x:600 here was making this table horizontally scrollable on
+                // every screen under 600px wide for no reason (nothing in it
+                // actually needs 600px).
+                scroll={isMobile ? undefined : { x: 768, ...TABLE_SCROLL_CONFIG }}
                 className="category-table module-dark-table"
                 rowClassName={() =>
                     "hover:bg-[var(--ohnix-hover-overlay)] transition-all duration-200 cursor-pointer bg-transparent"

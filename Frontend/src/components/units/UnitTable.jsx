@@ -13,6 +13,7 @@ import {
 } from "../../utils/category_units/constants";
 import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
+import useIsMobile from "../../hooks/useIsMobile";
 
 const UnitTable = ({
     units,
@@ -26,6 +27,7 @@ const UnitTable = ({
     const [hoveredRow, setHoveredRow] = useState(null);
     const { t } = useI18n();
     const { hasPermission } = useTeam();
+    const isMobile = useIsMobile();
     // Editing/deleting a unit is a module-level grant (Team > Roles), not a
     // "did I personally create this row" check - team resources are all
     // scoped under the same account, so a "created_by === me" comparison
@@ -173,7 +175,10 @@ const UnitTable = ({
                         </div>
                     ),
                 }}
-                scroll={{ x: 768, ...TABLE_SCROLL_CONFIG }}
+                // Only 2 columns (name / actions), both of which flex to fit a
+                // phone-width viewport natively - see CategoryTable.jsx for
+                // why this scroll.x was forcing unnecessary horizontal scroll.
+                scroll={isMobile ? undefined : { x: 768, ...TABLE_SCROLL_CONFIG }}
                 className="unit-table module-dark-table"
                 rowClassName={() =>
                     "hover:bg-[var(--ohnix-hover-overlay)] transition-all duration-200 cursor-pointer bg-transparent"

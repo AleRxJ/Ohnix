@@ -69,6 +69,15 @@ const SELF_SELECT = {
     itcycleCompanyId: true,
     vatResponsible: true,
     vatResponsibleEffectiveFrom: true,
+    // Tax configuration only - no calculation reads these yet (see the
+    // schema comment on Company.isWithholdingAgent). Exposed here so a
+    // company can record the fact - and have their accountant confirm it -
+    // ahead of the retención en la fuente / ReteICA engine existing.
+    isWithholdingAgent: true,
+    withholdingAgentEffectiveFrom: true,
+    icaMunicipalityCode: true,
+    icaActivityCode: true,
+    icaRatePerThousand: true,
 };
 
 const isValidHexColor = (value) => /^#[0-9A-Fa-f]{6}$/.test(value || "");
@@ -282,8 +291,21 @@ export const getMyCompany = asyncHandler(async (req, res) => {
 });
 
 export const updateMyCompany = asyncHandler(async (req, res, next) => {
-    const { name, legalName, contactEmail, phone, pdfFooterText, pdfAccentColor, taxIdentification, countryCode, vatResponsible } =
-        req.body || {};
+    const {
+        name,
+        legalName,
+        contactEmail,
+        phone,
+        pdfFooterText,
+        pdfAccentColor,
+        taxIdentification,
+        countryCode,
+        vatResponsible,
+        isWithholdingAgent,
+        icaMunicipalityCode,
+        icaActivityCode,
+        icaRatePerThousand,
+    } = req.body || {};
 
     const subscription = await ensureUserSubscription(req.user.prismaId);
     const effectivePlan = getEffectivePlan(subscription);
@@ -316,13 +338,34 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "El NIT debe tener entre 6 y 15 dígitos."));
     }
 
+    if (isWithholdingAgent !== undefined && typeof isWithholdingAgent !== "boolean") {
+        return next(new ApiError(400, "isWithholdingAgent debe ser verdadero o falso."));
+    }
+
+    const trimmedIcaMunicipalityCode = icaMunicipalityCode !== undefined ? `${icaMunicipalityCode || ""}`.replace(/[^0-9]/g, "") : undefined;
+    if (trimmedIcaMunicipalityCode && !/^\d{5}$/.test(trimmedIcaMunicipalityCode)) {
+        return next(new ApiError(400, "icaMunicipalityCode debe ser el código DANE de 5 dígitos del municipio."));
+    }
+
+    const trimmedIcaActivityCode = icaActivityCode !== undefined ? `${icaActivityCode || ""}`.replace(/[^0-9]/g, "") : undefined;
+    if (trimmedIcaActivityCode && !/^\d{4}$/.test(trimmedIcaActivityCode)) {
+        return next(new ApiError(400, "icaActivityCode debe ser el código CIIU de 4 dígitos de la actividad económica."));
+    }
+
+    const parsedIcaRate = icaRatePerThousand !== undefined && icaRatePerThousand !== null && icaRatePerThousand !== ""
+        ? Number(icaRatePerThousand)
+        : icaRatePerThousand;
+    if (icaRatePerThousand !== undefined && icaRatePerThousand !== null && icaRatePerThousand !== "" && (!Number.isFinite(parsedIcaRate) || parsedIcaRate < 0 || parsedIcaRate > 50)) {
+        return next(new ApiError(400, "icaRatePerThousand debe ser un número entre 0 y 50 (tarifa por mil)."));
+    }
+
     const user = await prisma.user.findUnique({
         where: { id: req.user.prismaId },
         select: {
             companyId: true,
             username: true,
-            company: (trimmedTaxId && !hasExplicitCountry) || normalizedVatResponsible !== undefined
-                ? { select: { countryCode: true, vatResponsible: true } }
+            company: (trimmedTaxId && !hasExplicitCountry) || normalizedVatResponsible !== undefined || isWithholdingAgent !== undefined
+                ? { select: { countryCode: true, vatResponsible: true, isWithholdingAgent: true } }
                 : undefined,
         },
     });
@@ -351,6 +394,17 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
                       : {}),
               }
             : {}),
+        ...(isWithholdingAgent !== undefined
+            ? {
+                  isWithholdingAgent,
+                  ...(isWithholdingAgent !== user?.company?.isWithholdingAgent
+                      ? { withholdingAgentEffectiveFrom: isWithholdingAgent ? new Date() : null }
+                      : {}),
+              }
+            : {}),
+        ...(icaMunicipalityCode !== undefined ? { icaMunicipalityCode: trimmedIcaMunicipalityCode || null } : {}),
+        ...(icaActivityCode !== undefined ? { icaActivityCode: trimmedIcaActivityCode || null } : {}),
+        ...(icaRatePerThousand !== undefined ? { icaRatePerThousand: parsedIcaRate === "" || parsedIcaRate === null ? null : parsedIcaRate } : {}),
         // For any other country this just stores the raw identifier with no
         // computed digit, same as company.controller.js's admin path leaves
         // it to be set explicitly there.
