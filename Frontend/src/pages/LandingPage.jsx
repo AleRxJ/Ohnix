@@ -311,7 +311,7 @@ const LandingPage = () => {
         "@context": "https://schema.org",
         "@type": "Organization",
         name: "Ohnix",
-        url: "https://www.ohnix.co",
+        url: "https://ohnix.co",
         logo: "https://ohnix.co/Ohnix_FullLogo.png",
         contactPoint: {
             "@type": "ContactPoint",
@@ -333,7 +333,7 @@ const LandingPage = () => {
             priceCurrency: "USD",
         },
         description: landingDescription,
-        url: "https://www.ohnix.co",
+        url: "https://ohnix.co",
     };
 
     return (

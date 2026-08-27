@@ -2,7 +2,7 @@ import transporter, { isMailConfigured } from "./nodemailer.js";
 
 // Same visual language as upgradeRequestNotifications.js's emails (dark card,
 // #29D8D5 accent) so team emails don't look like a different product.
-const frontendBase = () => `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
+const frontendBase = () => `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
 
 const wrapEmail = ({ eyebrow = "OHNIX", title, body, ctaLabel, ctaUrl, accent = "#29D8D5" }) => `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;background:#0b0b0b;border:1px solid ${accent};border-radius:12px;">

@@ -5,6 +5,7 @@ import { app } from "./app.js";
 import { initSocketServer } from "./live/socketServer.js";
 import lowStockScheduler from "./utils/lowStockScheduler.js";
 import renewalScheduler from "./utils/subscriptionRenewalScheduler.js";
+import webhookRetryScheduler from "./utils/webhookRetryScheduler.js";
 import { reconcileLegacyApprovedRequests, reconcileStuckPendingPayments } from "./utils/subscriptionReconcile.js";
 
 dotenv.config({
@@ -64,6 +65,8 @@ connectDB()
                 lowStockScheduler.start();
                 console.log("🔄 Starting subscription renewal scheduler...");
                 renewalScheduler.start();
+                console.log("🪝 Starting webhook retry scheduler...");
+                webhookRetryScheduler.start();
             }
         });
     })
@@ -76,6 +79,7 @@ process.on("SIGTERM", () => {
     console.log("🛑 SIGTERM received, stopping schedulers...");
     lowStockScheduler.stop();
     renewalScheduler.stop();
+    webhookRetryScheduler.stop();
     process.exit(0);
 });
 
@@ -83,5 +87,6 @@ process.on("SIGINT", () => {
     console.log("🛑 SIGINT received, stopping schedulers...");
     lowStockScheduler.stop();
     renewalScheduler.stop();
+    webhookRetryScheduler.stop();
     process.exit(0);
 });

@@ -255,7 +255,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
 
     // Sending Welcome Email
     const isWelcomeEN = `${normalizedPreferredLanguage || ""}`.toLowerCase().startsWith("en");
-    const welcomeFrontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
+    const welcomeFrontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
     const welcomeSubject = isWelcomeEN ? "Welcome to Ohnix" : "Bienvenido a Ohnix";
     const welcomeCta = isWelcomeEN ? "Go to Dashboard" : "Ir al Dashboard";
     const welcomeGreeting = isWelcomeEN

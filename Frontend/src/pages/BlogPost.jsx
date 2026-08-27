@@ -39,7 +39,7 @@ const BlogPost = () => {
                 url: "https://ohnix.co/Ohnix_FullLogo.png",
             },
         },
-        mainEntityOfPage: `https://www.ohnix.co${canonicalPath}`,
+        mainEntityOfPage: `https://ohnix.co${canonicalPath}`,
     };
 
     const faqStructuredData = post.faqs?.length

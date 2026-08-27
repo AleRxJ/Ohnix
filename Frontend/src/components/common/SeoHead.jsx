@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const SITE_URL = "https://www.ohnix.co";
+const SITE_URL = "https://ohnix.co";
 const DEFAULT_IMAGE = `${SITE_URL}/Ohnix_FullLogo.png`;
 
 const upsertMeta = (selector, attributes) => {

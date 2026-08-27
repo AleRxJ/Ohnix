@@ -251,8 +251,8 @@ Production env vars for the backend:
 
 ```env
 DATABASE_URL=<postgres-connection-string>
-FRONTEND_URL=https://www.ohnix.co
-ALLOWED_ORIGINS=https://www.ohnix.co,https://ohnix.co,https://*.vercel.app
+FRONTEND_URL=https://ohnix.co
+ALLOWED_ORIGINS=https://ohnix.co,https://www.ohnix.co,https://*.vercel.app
 NODE_ENV=production
 START_SCHEDULER=true
 ```

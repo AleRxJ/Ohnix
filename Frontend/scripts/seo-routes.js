@@ -1,7 +1,7 @@
 // Single source of truth for indexable marketing routes used by prerender,
 // sitemap generation, and robots.txt.
 
-export const SITE_URL = "https://www.ohnix.co";
+export const SITE_URL = "https://ohnix.co";
 
 export const BLOG_SLUGS = [
     "como-pasar-de-excel-a-software-inventario",

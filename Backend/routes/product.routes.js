@@ -19,6 +19,13 @@ import {
     reorderProductImages,
 } from "../controllers/productImage.controller.js";
 import { MAX_PRODUCT_IMAGES } from "../services/productImage.service.js";
+import {
+    getVariants,
+    postVariant,
+    patchVariant,
+    removeVariant,
+    postVariantAdjustStock,
+} from "../controllers/variant.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.middleware.js";
@@ -63,6 +70,20 @@ router
 router
     .route("/:id/images/:imageId/primary")
     .patch(requireModulePermission("products", "edit"), setPrimaryProductImage);
+
+// Variants sub-resource - same nesting convention as the images gallery
+// above.
+router
+    .route("/:id/variants")
+    .get(requireModulePermission("products", "view"), getVariants)
+    .post(requireModulePermission("products", "edit"), postVariant);
+router
+    .route("/:id/variants/:variantId")
+    .patch(requireModulePermission("products", "edit"), patchVariant)
+    .delete(requireModulePermission("products", "edit"), removeVariant);
+router
+    .route("/:id/variants/:variantId/adjust-stock")
+    .post(requireModulePermission("products", "edit"), idempotent("variant.adjust-stock"), postVariantAdjustStock);
 
 router
     .route("/:id/adjust-stock")

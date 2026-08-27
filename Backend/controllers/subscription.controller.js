@@ -2999,7 +2999,7 @@ export const handleEpaycoResponse = (req, res) => {
         `${data.x_extra1 || data.extra1 || ""}`.trim() ||
         `${req.query.requestId || ""}`.trim();
 
-    const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
+    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
 
     if (!requestId) {
         return res.redirect(`${frontendBase}/billing`);

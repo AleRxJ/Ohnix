@@ -26,6 +26,7 @@ import { useMarketPricing } from "../hooks/useMarketPricing";
 import SubscriptionPlanCard, { PLAN_COLORS } from "../components/profile/SubscriptionPlanCard";
 import PlanComparisonCard, { LIMIT_ROWS, formatLimit, getPlanPriceLabel } from "../components/profile/PlanComparisonCard";
 import ApiKeysPanel from "../components/billing/ApiKeysPanel";
+import IntegrationsPanel from "../components/billing/IntegrationsPanel";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -1010,6 +1011,7 @@ const Billing = () => {
                     />
 
                     <ApiKeysPanel />
+                    <IntegrationsPanel />
 
                     {latestActiveRequest ? (
                         <div className="mt-6 rounded-2xl border border-[#29D8D5]/20 bg-[#29D8D5]/8 p-4 sm:p-5">

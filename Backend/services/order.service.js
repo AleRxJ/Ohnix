@@ -6,6 +6,8 @@ import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../mi
 import { getLowStockDefaultThreshold } from "../utils/systemSettings.js";
 import { recordStockMovement } from "./stockMovement.service.js";
 import { claimLocationStock, creditLocationStock, getLocationStock } from "./productLocationStock.service.js";
+import { claimVariantStock, creditVariantStock } from "./variant.service.js";
+import { enqueueWebhookEvent } from "./webhookDispatch.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
 import { postOrderSaleJournalEntry, postOrderReturnJournalEntry } from "./accountingPosting.service.js";
@@ -138,7 +140,20 @@ const triggerElectronicInvoicingIfCompleted = ({ orderId, userId, userRole, trig
 
 class OrderService {
     async createOrder(orderData, userId, userRole, pointOfSaleId) {
-        const { customer_id, order_status, orderItems, is_tutorial_data, source_sales_quotation_id } = orderData;
+        const {
+            customer_id,
+            order_status,
+            orderItems,
+            is_tutorial_data,
+            source_sales_quotation_id,
+            // Set only by an inbound channel order (see
+            // integration.service.js#ingestInboundOrder) - every existing
+            // caller (POS, public API's plain product_id orders) leaves
+            // these undefined and gets exactly today's behavior.
+            channel,
+            external_order_id,
+            external_connection_id,
+        } = orderData;
 
         if (!customer_id || !Array.isArray(orderItems) || orderItems.length === 0) {
             throw new ApiError(400, "Invalid order data");
@@ -210,8 +225,22 @@ class OrderService {
             if (userRole !== "admin" && product.createdById !== userId) {
                 throw new ApiError(403, "You don't have permission to use one or more products");
             }
+
+            let variantId = null;
+            if (item.variant_id) {
+                const variant = await prisma.productVariant.findFirst({
+                    where: { id: item.variant_id, productId: product.id },
+                    select: { id: true },
+                });
+                if (!variant) {
+                    throw new ApiError(400, "One or more variants not found for their product");
+                }
+                variantId = variant.id;
+            }
+
             resolvedItems.push({
                 product,
+                variantId,
                 quantity: Number(item.quantity),
                 unitcost: Number(item.unitcost),
             });
@@ -277,6 +306,9 @@ class OrderService {
                     total,
                     invoiceNo,
                     isTutorialData: is_tutorial_data === true,
+                    channel: channel || "ohnix",
+                    externalOrderId: external_order_id ?? null,
+                    externalConnectionId: external_connection_id ?? null,
                     createdById: userId,
                     updatedById: userId,
                 },
@@ -298,6 +330,7 @@ class OrderService {
                     data: {
                         orderId: createdOrder.id,
                         productId: item.product.id,
+                        variantId: item.variantId,
                         quantity: item.quantity,
                         unitcost: item.unitcost,
                         total: item.quantity * item.unitcost,
@@ -353,6 +386,45 @@ class OrderService {
                         sourceId: createdOrder.id,
                         createdById: userId,
                     });
+
+                    // Parallel, best-effort bookkeeping decrement of the
+                    // variant's own stock cache (see ProductVariant's schema
+                    // comment) - guarded the same way the product-level
+                    // claim above is, inside the same transaction, so a
+                    // channel order can never oversell a variant even though
+                    // this number isn't what the POS-side availability check
+                    // reads.
+                    if (item.variantId) {
+                        const variantBalance = await claimVariantStock(tx, {
+                            variantId: item.variantId,
+                            quantity: item.quantity,
+                        });
+                        if (variantBalance === null) {
+                            throw new ApiError(
+                                422,
+                                "Insufficient stock for one or more product variants",
+                                [
+                                    {
+                                        product_id: toExternalId(item.product),
+                                        variant_id: item.variantId,
+                                        requested: item.quantity,
+                                        reason: "insufficient_stock",
+                                    },
+                                ]
+                            );
+                        }
+                        await recordStockMovement(tx, {
+                            productId: item.product.id,
+                            variantId: item.variantId,
+                            accountId: item.product.createdById,
+                            pointOfSaleId,
+                            delta: -item.quantity,
+                            balanceAfter: variantBalance,
+                            sourceType: "order",
+                            sourceId: createdOrder.id,
+                            createdById: userId,
+                        });
+                    }
                 }
             }
 
@@ -369,6 +441,12 @@ class OrderService {
 
         emitPosEvent(userId, pointOfSaleId, "order", "created");
         if (shouldDeductStock) emitPosEvent(userId, pointOfSaleId, "product", "stock-changed");
+        enqueueWebhookEvent(userId, "order.created", { order_id: toExternalId(order), invoice_no: order.invoiceNo }).catch(() => {});
+        if (shouldDeductStock) {
+            enqueueWebhookEvent(userId, "inventory.updated", {
+                product_ids: resolvedItems.map((item) => toExternalId(item.product)),
+            }).catch(() => {});
+        }
 
         // Check for low stock after deduction and alert (fire and forget)
         if (shouldDeductStock) {
@@ -493,6 +571,7 @@ class OrderService {
                     taxRateApplied: true,
                     returnedQuantity: true,
                     productId: true,
+                    variantId: true,
                     product: { select: { createdById: true, buyingPrice: true } },
                 },
             });
@@ -542,6 +621,21 @@ class OrderService {
                         createdById: userId,
                     });
 
+                    if (detail.variantId) {
+                        const variantBalance = await creditVariantStock(tx, { variantId: detail.variantId, quantity: pending });
+                        await recordStockMovement(tx, {
+                            productId: detail.productId,
+                            variantId: detail.variantId,
+                            accountId: detail.product.createdById,
+                            pointOfSaleId: order.pointOfSaleId,
+                            delta: pending,
+                            balanceAfter: variantBalance,
+                            sourceType: "order_cancellation",
+                            sourceId: order.id,
+                            createdById: userId,
+                        });
+                    }
+
                     // Same optimistic claim as processReturn: guards against a
                     // concurrent granular return on this same line changing
                     // returnedQuantity between the read above and this write.
@@ -589,6 +683,8 @@ class OrderService {
 
             emitPosEvent(order.createdById, order.pointOfSaleId, "order", "updated");
             emitPosEvent(order.createdById, order.pointOfSaleId, "product", "stock-changed");
+            enqueueWebhookEvent(order.createdById, "order.cancelled", { order_id: toExternalId(updated) }).catch(() => {});
+            enqueueWebhookEvent(order.createdById, "inventory.updated", { order_id: toExternalId(updated) }).catch(() => {});
 
             return {
                 _id: toExternalId(updated),
@@ -705,6 +801,24 @@ class OrderService {
                         sourceId: order.id,
                         createdById: userId,
                     });
+
+                    if (detail.variantId) {
+                        const variantBalance = await claimVariantStock(tx, { variantId: detail.variantId, quantity: detail.quantity });
+                        if (variantBalance === null) {
+                            throw new ApiError(422, "Insufficient stock for one or more product variants");
+                        }
+                        await recordStockMovement(tx, {
+                            productId: detail.product.id,
+                            variantId: detail.variantId,
+                            accountId: detail.product.createdById,
+                            pointOfSaleId: order.pointOfSaleId,
+                            delta: -detail.quantity,
+                            balanceAfter: variantBalance,
+                            sourceType: "order",
+                            sourceId: order.id,
+                            createdById: userId,
+                        });
+                    }
                 }
 
                 const updatedOrder = await tx.order.findUniqueOrThrow({ where: { id: order.id } });
@@ -734,6 +848,8 @@ class OrderService {
 
             emitPosEvent(order.createdById, order.pointOfSaleId, "order", "updated");
             emitPosEvent(order.createdById, order.pointOfSaleId, "product", "stock-changed");
+            enqueueWebhookEvent(order.createdById, "order.updated", { order_id: toExternalId(updated) }).catch(() => {});
+            enqueueWebhookEvent(order.createdById, "inventory.updated", { order_id: toExternalId(updated) }).catch(() => {});
 
             return {
                 _id: toExternalId(updated),
@@ -897,6 +1013,21 @@ class OrderService {
                     createdById: userId,
                 });
 
+                if (detail.variantId) {
+                    const variantBalance = await creditVariantStock(tx, { variantId: detail.variantId, quantity });
+                    await recordStockMovement(tx, {
+                        productId: detail.product.id,
+                        variantId: detail.variantId,
+                        accountId: detail.product.createdById,
+                        pointOfSaleId: order.pointOfSaleId,
+                        delta: quantity,
+                        balanceAfter: variantBalance,
+                        sourceType: "order_return",
+                        sourceId: order.id,
+                        createdById: userId,
+                    });
+                }
+
                 const refundNow = quantity * Number(detail.unitcost);
 
                 // Same claim idiom as purchase.service.js#processReturn: the
@@ -977,6 +1108,8 @@ class OrderService {
 
         emitPosEvent(order.createdById, order.pointOfSaleId, "order", "updated");
         emitPosEvent(order.createdById, order.pointOfSaleId, "product", "stock-changed");
+        enqueueWebhookEvent(order.createdById, "order.refunded", { order_id: toExternalId(order) }).catch(() => {});
+        enqueueWebhookEvent(order.createdById, "inventory.updated", { order_id: toExternalId(order) }).catch(() => {});
 
         return {
             order_id: toExternalId(order),

@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import errorHandler from "./middleware/error.middleware.js";
 import { handlePaymentWebhook, handleEpaycoConfirmation, handleEpaycoResponse } from "./controllers/subscription.controller.js";
+import { receiveConnectorWebhook } from "./controllers/connectorWebhook.controller.js";
 import { isOriginAllowed } from "./utils/allowedOrigins.js";
 import { getRedisHealth } from "./utils/redisClient.js";
 
@@ -91,6 +92,15 @@ app.post(
     handleEpaycoResponse
 );
 
+// Inbound webhooks FROM a connected e-commerce channel (Shopify order
+// events today) - raw body needed for HMAC verification, same reasoning as
+// the Stripe/ePayco routes above. See connectors/shopify.connector.js#verifyWebhookSignature.
+app.post(
+    "/api/v1/integrations/:provider/webhook/:connectionId",
+    express.raw({ type: "application/json", limit: "2mb" }),
+    receiveConnectorWebhook
+);
+
 // NOTE: There is no Factus webhook endpoint here (there used to be one).
 // The official Factus V2 Postman collection (source of truth for this
 // integration) has zero webhook/event-push endpoints, and every document
@@ -138,6 +148,9 @@ import systemSettingsRouter from "./routes/systemSettings.routes.js";
 import financeRouter from "./routes/finance.routes.js";
 import accountingRouter from "./routes/accounting.routes.js";
 import contactRouter from "./routes/contact.routes.js";
+import integrationRouter from "./routes/integration.routes.js";
+import webhookEndpointRouter from "./routes/webhookEndpoint.routes.js";
+import apiDocsRouter from "./routes/apiDocs.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -161,6 +174,12 @@ app.use("/api/v1/electronic-invoices", electronicInvoiceRouter);
 app.use("/api/v1/purchase-support-documents", purchaseSupportDocumentRouter);
 app.use("/api/v1/api-keys", apiKeyRouter);
 app.use("/api/v1/public", publicApiRouter);
+app.use("/api/v1/integrations", integrationRouter);
+app.use("/api/v1/webhooks", webhookEndpointRouter);
+// apiDocsRouter is intentionally unauthenticated (see its own comment) -
+// it MUST stay ahead of teamRouter/pointOfSaleRouter below for the same
+// reason contactRouter does.
+app.use("/api/v1/docs", apiDocsRouter);
 // Mounted before teamRouter/pointOfSaleRouter: both apply router.use(verifyJWT)
 // with no path restriction while mounted at the bare "/api/v1" prefix, so any
 // router registered after them under that same prefix inherits their auth

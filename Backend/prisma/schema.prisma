@@ -33,6 +33,46 @@ enum UpgradeRequestStatus {
   closed
 }
 
+enum ProductStatus {
+  draft
+  active
+  archived
+}
+
+enum IntegrationProvider {
+  shopify
+  custom_api
+}
+
+enum IntegrationStatus {
+  connected
+  error
+  disconnected
+}
+
+enum ExternalEntityType {
+  product
+  variant
+  order
+  customer
+}
+
+enum SyncLogDirection {
+  inbound
+  outbound
+}
+
+enum SyncLogStatus {
+  success
+  error
+}
+
+enum WebhookDeliveryStatus {
+  pending
+  success
+  failed
+}
+
 enum OrderStatus {
   pending
   processing
@@ -93,6 +133,11 @@ enum StockMovementSourceType {
   order
   order_cancellation
   order_return
+  // A connector (Shopify, a custom-API caller, etc.) pushing a stock
+  // correction into Ohnix from the external channel's own count - see
+  // connectors/base.connector.js. Distinct from "adjustment" so the ledger
+  // shows whether a human or an external system made the change.
+  channel_sync
   // Automatic restock triggered by issuing an electronic-invoice credit note
   // with a conceptCode that represents goods actually coming back
   // ("partial_return"/"cancellation" - see
@@ -191,40 +236,42 @@ model User {
   subscription      Subscription?
   company           Company?      @relation(fields: [companyId], references: [id])
 
-  categoriesCreated         Category[]           @relation("CategoryCreatedBy")
-  categoriesUpdated         Category[]           @relation("CategoryUpdatedBy")
-  unitsCreated              Unit[]               @relation("UnitCreatedBy")
-  unitsUpdated              Unit[]               @relation("UnitUpdatedBy")
-  productsCreated           Product[]            @relation("ProductCreatedBy")
-  productsUpdated           Product[]            @relation("ProductUpdatedBy")
+  categoriesCreated         Category[]              @relation("CategoryCreatedBy")
+  categoriesUpdated         Category[]              @relation("CategoryUpdatedBy")
+  unitsCreated              Unit[]                  @relation("UnitCreatedBy")
+  unitsUpdated              Unit[]                  @relation("UnitUpdatedBy")
+  productsCreated           Product[]               @relation("ProductCreatedBy")
+  productsUpdated           Product[]               @relation("ProductUpdatedBy")
   customers                 Customer[]
   suppliers                 Supplier[]
-  purchasesCreated          Purchase[]           @relation("PurchaseCreatedBy")
-  purchasesUpdated          Purchase[]           @relation("PurchaseUpdatedBy")
-  quotationsCreated         PurchaseQuotation[]  @relation("QuotationCreatedBy")
-  quotationsUpdated         PurchaseQuotation[]  @relation("QuotationUpdatedBy")
-  salesQuotationsCreated    SalesQuotation[]     @relation("SalesQuotationCreatedBy")
-  salesQuotationsUpdated    SalesQuotation[]     @relation("SalesQuotationUpdatedBy")
-  ordersCreated             Order[]              @relation("OrderCreatedBy")
-  ordersUpdated             Order[]              @relation("OrderUpdatedBy")
+  purchasesCreated          Purchase[]              @relation("PurchaseCreatedBy")
+  purchasesUpdated          Purchase[]              @relation("PurchaseUpdatedBy")
+  quotationsCreated         PurchaseQuotation[]     @relation("QuotationCreatedBy")
+  quotationsUpdated         PurchaseQuotation[]     @relation("QuotationUpdatedBy")
+  salesQuotationsCreated    SalesQuotation[]        @relation("SalesQuotationCreatedBy")
+  salesQuotationsUpdated    SalesQuotation[]        @relation("SalesQuotationUpdatedBy")
+  ordersCreated             Order[]                 @relation("OrderCreatedBy")
+  ordersUpdated             Order[]                 @relation("OrderUpdatedBy")
   planUpgradeRequests       PlanUpgradeRequest[]
   apiKeys                   ApiKey[]
-  stockMovementsCreated     StockMovement[]      @relation("StockMovementCreatedBy")
+  integrationConnections    IntegrationConnection[]
+  webhookEndpoints          WebhookEndpoint[]
+  stockMovementsCreated     StockMovement[]         @relation("StockMovementCreatedBy")
   cashAccountsCreated       CashAccount[]
   cashMovementsCreated      CashMovement[]
   orderPaymentsRecorded     OrderPayment[]
   purchasePaymentsRecorded  PurchasePayment[]
   bankStatementEntriesAdded BankStatementEntry[]
   chartAccountsCreated      ChartAccount[]
-  accountingPeriodsCreated  AccountingPeriod[]   @relation("AccountingPeriodCreatedBy")
-  accountingPeriodsClosed   AccountingPeriod[]   @relation("AccountingPeriodClosedBy")
+  accountingPeriodsCreated  AccountingPeriod[]      @relation("AccountingPeriodCreatedBy")
+  accountingPeriodsClosed   AccountingPeriod[]      @relation("AccountingPeriodClosedBy")
   journalEntriesCreated     JournalEntry[]
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
   // (starter/growth without a Team row) still need exactly one default
   // location - see PointOfSale below.
-  pointsOfSaleOwned         PointOfSale[]        @relation("PointOfSaleAccount")
-  stockTransfersRequested   StockTransfer[]      @relation("StockTransferRequestedBy")
+  pointsOfSaleOwned         PointOfSale[]           @relation("PointOfSaleAccount")
+  stockTransfersRequested   StockTransfer[]         @relation("StockTransferRequestedBy")
 
   // Teams: a user is either a team owner (ownedTeam), a member of exactly one
   // active team at a time (via TeamMember, enforced in team.service.js - not
@@ -351,6 +398,13 @@ model ApiKey {
   // apart); the full key is only ever shown once, at creation time.
   keyPrefix       String    @map("key_prefix")
   keyHash         String    @map("key_hash")
+  // Granular permissions (see middleware/apiScopes.middleware.js), e.g.
+  // ["products:read","orders:write"]. Every key created before scopes
+  // existed is backfilled to the full legacy set (see the
+  // add_ecommerce_integration_platform migration) so existing integrations
+  // keep working unchanged; new keys default to an empty array (no access
+  // to anything) until the owner explicitly picks scopes at creation time.
+  scopes          String[]  @default([])
   requestsToday   Int       @default(0) @map("requests_today")
   requestsResetAt DateTime  @default(now()) @map("requests_reset_at")
   lastUsedAt      DateTime? @map("last_used_at")
@@ -587,9 +641,9 @@ model Customer {
   createdAt                  DateTime @default(now()) @map("created_at")
   updatedAt                  DateTime @updatedAt @map("updated_at")
 
-  createdBy   User        @relation(fields: [createdById], references: [id])
-  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
-  orders      Order[]
+  createdBy       User             @relation(fields: [createdById], references: [id])
+  pointOfSale     PointOfSale      @relation(fields: [pointOfSaleId], references: [id])
+  orders          Order[]
   salesQuotations SalesQuotation[]
 
   @@index([createdById])
@@ -602,6 +656,20 @@ model Product {
   legacyMongoId      String?             @unique @map("legacy_mongo_id")
   productName        String              @map("product_name")
   productCode        String              @map("product_code")
+  // E-commerce-facing identifiers, independent of productCode (which
+  // predates any channel-integration concept and is free-form/not always
+  // unique in spirit). Both optional and nullable - most existing products
+  // have neither yet. sku is unique per account when set (multiple NULLs
+  // are allowed by Postgres's unique-index semantics).
+  sku                String?
+  barcode            String?
+  brand              String?
+  // draft/archived exist for the e-commerce publishing flow (see
+  // connectors/ - a product shouldn't be pushed to a channel until it's
+  // "active", and "archived" hides it from new publishes without deleting
+  // sale history). Every pre-existing product defaults to active so this
+  // is a no-op for the POS-only flows that predate it.
+  status             ProductStatus       @default(active)
   categoryId         String              @map("category_id")
   unitId             String              @map("unit_id")
   buyingPrice        Decimal             @map("buying_price") @db.Decimal(12, 2)
@@ -669,24 +737,73 @@ model Product {
   createdAt          DateTime            @default(now()) @map("created_at")
   updatedAt          DateTime            @updatedAt @map("updated_at")
 
-  category        Category               @relation(fields: [categoryId], references: [id])
-  unit            Unit                   @relation(fields: [unitId], references: [id])
-  createdBy       User                   @relation("ProductCreatedBy", fields: [createdById], references: [id])
-  updatedBy       User?                  @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
-  orderDetails     OrderDetail[]
-  purchaseDetails  PurchaseDetail[]
-  quotationDetails PurchaseQuotationDetail[]
+  category              Category                  @relation(fields: [categoryId], references: [id])
+  unit                  Unit                      @relation(fields: [unitId], references: [id])
+  createdBy             User                      @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy             User?                     @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+  orderDetails          OrderDetail[]
+  purchaseDetails       PurchaseDetail[]
+  quotationDetails      PurchaseQuotationDetail[]
   salesQuotationDetails SalesQuotationDetail[]
-  stockMovements   StockMovement[]
-  locationStock    ProductLocationStock[]
-  transfers        StockTransfer[]
-  images           ProductImage[]
+  stockMovements        StockMovement[]
+  locationStock         ProductLocationStock[]
+  transfers             StockTransfer[]
+  images                ProductImage[]
+  variants              ProductVariant[]
 
   @@unique([productCode, createdById])
+  @@unique([sku, createdById])
   @@index([createdById])
   @@index([categoryId])
   @@index([unitId])
   @@map("products")
+}
+
+// One sellable combination of a product's options (e.g. "Negra / M" for a
+// Camiseta with Color/Talla options) - see the e-commerce integration
+// design. Each variant carries its own optional price/weight overrides
+// (null = inherit the parent Product's) and its own stock cache.
+//
+// Deliberately account-wide, not yet split per PointOfSale the way
+// ProductLocationStock splits Product.stock - this is the same
+// "single-number cache first, multi-location later if it turns out to be
+// needed" simplification Product.stock itself started with. The actual
+// availability check for a real Ohnix POS sale still happens at the
+// (product, location) level via ProductLocationStock/claimLocationStock,
+// completely unchanged; a variant's own stock is a parallel, best-effort
+// bookkeeping figure kept for channel sync/traceability purposes (see
+// services/variant.service.js#claimVariantStock, called inside the same
+// transaction right after the product-level claim already succeeded).
+model ProductVariant {
+  id           String        @id @default(cuid())
+  productId    String        @map("product_id")
+  sku          String?
+  barcode      String?
+  // Human-readable label built from `options` (e.g. "Negra / M") - stored
+  // rather than derived so list/detail responses don't need to re-join
+  // option definitions just to render a variant's name.
+  optionsLabel String        @map("options_label")
+  // Free-form option map, e.g. {"Color":"Negra","Talla":"M"} - no separate
+  // ProductOption table in v1; a connector reads/writes this directly.
+  options      Json
+  sellingPrice Decimal?      @map("selling_price") @db.Decimal(12, 2)
+  buyingPrice  Decimal?      @map("buying_price") @db.Decimal(12, 2)
+  weightValue  Decimal?      @map("weight_value") @db.Decimal(10, 2)
+  stock        Int           @default(0)
+  status       ProductStatus @default(active)
+  position     Int           @default(0)
+  createdById  String        @map("created_by")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  images         ProductImage[]
+  stockMovements StockMovement[]
+  orderDetails   OrderDetail[]
+
+  @@unique([productId, sku])
+  @@index([productId])
+  @@map("product_variants")
 }
 
 // Gallery entry for a product - Product.productImage stays a synced cache
@@ -698,16 +815,23 @@ model Product {
 // MIN(position) query) so the API response is self-explanatory, but every
 // write goes through that one service so the two can't drift apart.
 model ProductImage {
-  id        String   @id @default(cuid())
-  productId String   @map("product_id")
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id        String          @id @default(cuid())
+  productId String          @map("product_id")
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // Null = a product-level gallery image (the pre-existing behavior).
+  // Set = this image belongs to one specific variant (e.g. the "Negra"
+  // photo for a Camiseta whose other images are shared across variants).
+  // Still counted toward the same product's MAX_PRODUCT_IMAGES ceiling.
+  variantId String?         @map("variant_id")
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
   url       String
-  position  Int      @default(0)
-  isPrimary Boolean  @default(false) @map("is_primary")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  position  Int             @default(0)
+  isPrimary Boolean         @default(false) @map("is_primary")
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
 
   @@index([productId, position])
+  @@index([variantId])
   @@map("product_images")
 }
 
@@ -822,6 +946,13 @@ model StockMovement {
   // a later phase); this column only attributes history, so it can seed
   // per-location balances later without re-deriving them from scratch.
   pointOfSaleId String                  @map("point_of_sale_id")
+  // Set only when this movement is also (or exclusively, for a channel-sync
+  // correction with no matching POS sale) tracking one variant's own stock
+  // cache - see ProductVariant's schema comment. delta/balanceAfter always
+  // describe whichever of Product.stock/ProductVariant.stock this specific
+  // row is about; a variant-level order line writes two rows (one product-
+  // scoped, one variant-scoped), not one row with both deltas mixed.
+  variantId     String?                 @map("variant_id")
   delta         Int
   balanceAfter  Int                     @map("balance_after")
   sourceType    StockMovementSourceType @map("source_type")
@@ -830,11 +961,13 @@ model StockMovement {
   createdById   String                  @map("created_by")
   createdAt     DateTime                @default(now()) @map("created_at")
 
-  product     Product     @relation(fields: [productId], references: [id])
-  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
-  createdBy   User        @relation("StockMovementCreatedBy", fields: [createdById], references: [id])
+  product     Product         @relation(fields: [productId], references: [id])
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  pointOfSale PointOfSale     @relation(fields: [pointOfSaleId], references: [id])
+  createdBy   User            @relation("StockMovementCreatedBy", fields: [createdById], references: [id])
 
   @@index([productId, createdAt])
+  @@index([variantId, createdAt])
   @@index([accountId, createdAt])
   @@index([sourceType, sourceId])
   @@index([pointOfSaleId, createdAt])
@@ -940,7 +1073,7 @@ model PurchaseDetail {
 }
 
 enum QuotationStatus {
-  draft    // being edited, prices not yet locked in as final
+  draft // being edited, prices not yet locked in as final
   received // supplier's quoted prices confirmed - ready to compare/decide
   approved // converted into a real Purchase (terminal)
   rejected // discarded (terminal)
@@ -966,33 +1099,33 @@ enum SalesQuotationDiscountType {
 // purchase orders, while sales quotes store selling prices and can later
 // become customer orders.
 model SalesQuotation {
-  id                 String             @id @default(cuid())
-  quotationNo        String             @unique @map("quotation_no")
-  publicToken        String?            @unique @map("public_token")
-  customerId         String             @map("customer_id")
-  pointOfSaleId      String             @map("point_of_sale_id")
-  status             SalesQuotationStatus @default(draft)
-  issuedAt           DateTime           @default(now()) @map("issued_at")
-  validUntil         DateTime?          @map("valid_until")
-  notes              String?
-  subtotal           Decimal            @db.Decimal(12, 2)
-  discountType       SalesQuotationDiscountType @default(percentage) @map("discount_type")
-  discountRate       Decimal            @default(0) @map("discount_rate") @db.Decimal(5, 2)
-  discount           Decimal            @default(0) @db.Decimal(12, 2)
-  tax                Decimal            @default(0) @db.Decimal(12, 2)
-  total              Decimal            @db.Decimal(12, 2)
-  createdById        String             @map("created_by")
-  updatedById        String?            @map("updated_by")
-  convertedOrderId   String?            @unique @map("converted_order_id")
-  createdAt          DateTime           @default(now()) @map("created_at")
-  updatedAt          DateTime           @updatedAt @map("updated_at")
+  id               String                     @id @default(cuid())
+  quotationNo      String                     @unique @map("quotation_no")
+  publicToken      String?                    @unique @map("public_token")
+  customerId       String                     @map("customer_id")
+  pointOfSaleId    String                     @map("point_of_sale_id")
+  status           SalesQuotationStatus       @default(draft)
+  issuedAt         DateTime                   @default(now()) @map("issued_at")
+  validUntil       DateTime?                  @map("valid_until")
+  notes            String?
+  subtotal         Decimal                    @db.Decimal(12, 2)
+  discountType     SalesQuotationDiscountType @default(percentage) @map("discount_type")
+  discountRate     Decimal                    @default(0) @map("discount_rate") @db.Decimal(5, 2)
+  discount         Decimal                    @default(0) @db.Decimal(12, 2)
+  tax              Decimal                    @default(0) @db.Decimal(12, 2)
+  total            Decimal                    @db.Decimal(12, 2)
+  createdById      String                     @map("created_by")
+  updatedById      String?                    @map("updated_by")
+  convertedOrderId String?                    @unique @map("converted_order_id")
+  createdAt        DateTime                   @default(now()) @map("created_at")
+  updatedAt        DateTime                   @updatedAt @map("updated_at")
 
-  customer      Customer       @relation(fields: [customerId], references: [id])
-  pointOfSale   PointOfSale    @relation(fields: [pointOfSaleId], references: [id])
-  createdBy     User           @relation("SalesQuotationCreatedBy", fields: [createdById], references: [id])
-  updatedBy     User?          @relation("SalesQuotationUpdatedBy", fields: [updatedById], references: [id])
-  convertedOrder Order?        @relation(fields: [convertedOrderId], references: [id])
-  details       SalesQuotationDetail[]
+  customer       Customer               @relation(fields: [customerId], references: [id])
+  pointOfSale    PointOfSale            @relation(fields: [pointOfSaleId], references: [id])
+  createdBy      User                   @relation("SalesQuotationCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User?                  @relation("SalesQuotationUpdatedBy", fields: [updatedById], references: [id])
+  convertedOrder Order?                 @relation(fields: [convertedOrderId], references: [id])
+  details        SalesQuotationDetail[]
 
   @@index([customerId])
   @@index([pointOfSaleId])
@@ -1002,16 +1135,16 @@ model SalesQuotation {
 }
 
 model SalesQuotationDetail {
-  id             String        @id @default(cuid())
-  quotationId    String        @map("quotation_id")
-  productId      String        @map("product_id")
-  quantity       Int
-  unitPrice      Decimal       @map("unit_price") @db.Decimal(12, 2)
-  discountRate   Decimal       @default(0) @map("discount_rate") @db.Decimal(5, 2)
-  discount       Decimal       @default(0) @db.Decimal(12, 2)
-  taxRate        Decimal       @default(0) @map("tax_rate") @db.Decimal(5, 2)
-  taxAmount      Decimal       @default(0) @map("tax_amount") @db.Decimal(12, 2)
-  lineTotal      Decimal       @map("line_total") @db.Decimal(12, 2)
+  id           String  @id @default(cuid())
+  quotationId  String  @map("quotation_id")
+  productId    String  @map("product_id")
+  quantity     Int
+  unitPrice    Decimal @map("unit_price") @db.Decimal(12, 2)
+  discountRate Decimal @default(0) @map("discount_rate") @db.Decimal(5, 2)
+  discount     Decimal @default(0) @db.Decimal(12, 2)
+  taxRate      Decimal @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  taxAmount    Decimal @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  lineTotal    Decimal @map("line_total") @db.Decimal(12, 2)
 
   quotation SalesQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
   product   Product        @relation(fields: [productId], references: [id])
@@ -1082,40 +1215,51 @@ model PurchaseQuotationDetail {
 }
 
 model Order {
-  id             String      @id @default(cuid())
-  legacyMongoId  String?     @unique @map("legacy_mongo_id")
-  customerId     String      @map("customer_id")
+  id                   String      @id @default(cuid())
+  legacyMongoId        String?     @unique @map("legacy_mongo_id")
+  customerId           String      @map("customer_id")
   // Which physical location this sale happened at - see PointOfSale.
   // Every account has at least one default PointOfSale (auto-created), so
   // this is never optional at the application level - see the
   // add-point-of-sale migration for how existing rows were backfilled
   // before this column became NOT NULL.
-  pointOfSaleId  String      @map("point_of_sale_id")
-  orderDate      DateTime    @default(now()) @map("order_date")
-  orderStatus    OrderStatus @default(pending) @map("order_status")
-  totalProducts  Int         @map("total_products")
-  subTotal       Decimal     @map("sub_total") @db.Decimal(12, 2)
-  gst            Decimal     @default(0) @db.Decimal(12, 2)
-  total          Decimal     @db.Decimal(12, 2)
-  invoiceNo      String      @unique @map("invoice_no")
-  isTutorialData Boolean     @default(false) @map("is_tutorial_data")
-  createdById    String      @map("created_by")
-  updatedById    String?     @map("updated_by")
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
+  pointOfSaleId        String      @map("point_of_sale_id")
+  orderDate            DateTime    @default(now()) @map("order_date")
+  orderStatus          OrderStatus @default(pending) @map("order_status")
+  totalProducts        Int         @map("total_products")
+  subTotal             Decimal     @map("sub_total") @db.Decimal(12, 2)
+  gst                  Decimal     @default(0) @db.Decimal(12, 2)
+  total                Decimal     @db.Decimal(12, 2)
+  invoiceNo            String      @unique @map("invoice_no")
+  isTutorialData       Boolean     @default(false) @map("is_tutorial_data")
+  // Where this order came from - "ohnix" (the POS/manual flow, the default
+  // for every pre-existing row) or a connector's provider name (e.g.
+  // "shopify") for an order ingested from an external channel. Free-form
+  // rather than an enum so a future connector never needs a migration just
+  // to identify itself here.
+  channel              String      @default("ohnix")
+  externalOrderId      String?     @map("external_order_id")
+  externalConnectionId String?     @map("external_connection_id")
+  createdById          String      @map("created_by")
+  updatedById          String?     @map("updated_by")
+  createdAt            DateTime    @default(now()) @map("created_at")
+  updatedAt            DateTime    @updatedAt @map("updated_at")
 
-  customer          Customer           @relation(fields: [customerId], references: [id])
-  pointOfSale       PointOfSale        @relation(fields: [pointOfSaleId], references: [id])
-  createdBy         User               @relation("OrderCreatedBy", fields: [createdById], references: [id])
-  updatedBy         User?              @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
-  orderDetails      OrderDetail[]
-  electronicInvoice ElectronicInvoice?
-  payments          OrderPayment[]
-  salesQuotation    SalesQuotation?
+  customer           Customer               @relation(fields: [customerId], references: [id])
+  pointOfSale        PointOfSale            @relation(fields: [pointOfSaleId], references: [id])
+  createdBy          User                   @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  updatedBy          User?                  @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
+  externalConnection IntegrationConnection? @relation(fields: [externalConnectionId], references: [id])
+  orderDetails       OrderDetail[]
+  electronicInvoice  ElectronicInvoice?
+  payments           OrderPayment[]
+  salesQuotation     SalesQuotation?
 
+  @@unique([externalConnectionId, externalOrderId])
   @@index([createdById])
   @@index([customerId])
   @@index([pointOfSaleId])
+  @@index([externalConnectionId])
   @@map("orders")
 }
 
@@ -1124,6 +1268,14 @@ model OrderDetail {
   legacyMongoId           String?             @unique @map("legacy_mongo_id")
   orderId                 String              @map("order_id")
   productId               String              @map("product_id")
+  // Which variant of productId this line sold, if the product has variants
+  // and the sale (POS or channel order) picked a specific one - null for
+  // every pre-existing row and for a variant-less product. Purely
+  // descriptive/traceability: order.service.js's tax/total computation
+  // stays keyed off productId exactly as before, this field is never read
+  // by that logic (see ProductVariant's schema comment on why variant stock
+  // is a parallel bookkeeping figure, not the source of truth).
+  variantId               String?             @map("variant_id")
   quantity                Int
   unitcost                Decimal             @db.Decimal(12, 2)
   total                   Decimal             @db.Decimal(12, 2)
@@ -1157,11 +1309,13 @@ model OrderDetail {
   createdAt               DateTime            @default(now()) @map("created_at")
   updatedAt               DateTime            @updatedAt @map("updated_at")
 
-  order   Order   @relation(fields: [orderId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  order   Order           @relation(fields: [orderId], references: [id])
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
 
   @@index([orderId])
   @@index([productId])
+  @@index([variantId])
   @@map("order_details")
 }
 
@@ -1432,18 +1586,18 @@ model PointOfSale {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  account        User                    @relation("PointOfSaleAccount", fields: [accountId], references: [id])
-  members        TeamMemberPointOfSale[]
-  orders         Order[]
-  purchases      Purchase[]
-  stockMovements StockMovement[]
-  locationStock  ProductLocationStock[]
-  transfersOut   StockTransfer[]         @relation("StockTransferFrom")
-  transfersIn    StockTransfer[]         @relation("StockTransferTo")
-  customers      Customer[]
-  suppliers      Supplier[]
-  cashAccounts   CashAccount[]
-  quotations     PurchaseQuotation[]
+  account         User                    @relation("PointOfSaleAccount", fields: [accountId], references: [id])
+  members         TeamMemberPointOfSale[]
+  orders          Order[]
+  purchases       Purchase[]
+  stockMovements  StockMovement[]
+  locationStock   ProductLocationStock[]
+  transfersOut    StockTransfer[]         @relation("StockTransferFrom")
+  transfersIn     StockTransfer[]         @relation("StockTransferTo")
+  customers       Customer[]
+  suppliers       Supplier[]
+  cashAccounts    CashAccount[]
+  quotations      PurchaseQuotation[]
   salesQuotations SalesQuotation[]
 
   @@index([accountId, isActive])
@@ -1816,4 +1970,136 @@ model IdempotencyKey {
 
   @@unique([accountId, scope, key])
   @@map("idempotency_keys")
+}
+
+// One connected external e-commerce channel/system for an account - the
+// core row of the connector architecture (see connectors/base.connector.js).
+// `config` holds non-secret provider settings (shop domain, which
+// PointOfSale to sync stock against, which events to push); the actual
+// secret (access token, webhook signing secret) lives encrypted in
+// credentialsEncrypted (see utils/crypto.js) and is never returned by any
+// API response - same "shown once, then only a masked hint" posture as
+// ApiKey.
+model IntegrationConnection {
+  id                   String              @id @default(cuid())
+  accountId            String              @map("account_id")
+  provider             IntegrationProvider
+  name                 String
+  status               IntegrationStatus   @default(disconnected)
+  config               Json                @default("{}")
+  credentialsEncrypted String?             @map("credentials_encrypted") @db.Text
+  lastSyncedAt         DateTime?           @map("last_synced_at")
+  lastError            String?             @map("last_error") @db.Text
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  account            User                @relation(fields: [accountId], references: [id])
+  externalReferences ExternalReference[]
+  syncLogs           SyncLog[]
+  orders             Order[]
+
+  @@index([accountId])
+  @@map("integration_connections")
+}
+
+// Generic Ohnix-entity <-> external-channel-id mapping - see the
+// e-commerce integration design's "never depend on SKU/name alone" rule.
+// entityType+entityId identify the Ohnix row (Product/ProductVariant/
+// Order/Customer) without a typed FK per entity, so adding a new syncable
+// entity type never requires a schema change here.
+model ExternalReference {
+  id           String             @id @default(cuid())
+  connectionId String             @map("connection_id")
+  entityType   ExternalEntityType @map("entity_type")
+  entityId     String             @map("entity_id")
+  externalId   String             @map("external_id")
+  externalUrl  String?            @map("external_url") @db.Text
+  // Connector-specific auxiliary ids that don't deserve their own column
+  // (e.g. Shopify's inventory_item_id, needed alongside the variant's own
+  // product/variant id to push inventory levels).
+  metadata     Json?
+  lastSyncedAt DateTime?          @map("last_synced_at")
+  lastError    String?            @map("last_error") @db.Text
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  connection IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, entityType, entityId])
+  @@unique([connectionId, entityType, externalId])
+  @@index([connectionId])
+  @@map("external_references")
+}
+
+// Audit trail for every push/pull a connector performs - what the admin
+// monitoring panel reads (see the e-commerce integration design's
+// "Panel de monitoreo" section). One row per attempt, success or failure.
+model SyncLog {
+  id              String           @id @default(cuid())
+  connectionId    String           @map("connection_id")
+  direction       SyncLogDirection
+  entityType      String           @map("entity_type")
+  action          String
+  entityId        String?          @map("entity_id")
+  externalId      String?          @map("external_id")
+  status          SyncLogStatus
+  requestPayload  Json?            @map("request_payload")
+  responsePayload Json?            @map("response_payload")
+  errorMessage    String?          @map("error_message") @db.Text
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  connection IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, createdAt])
+  @@map("sync_logs")
+}
+
+// An external system's subscription to Ohnix's own outbound webhooks (a
+// custom-API integration registering "notify me at this URL for these
+// events") - distinct from IntegrationConnection, which is Ohnix calling
+// OUT to a channel's own API. `secret` signs every delivery (see
+// utils/webhookSigning.js) so the receiver can verify a payload really
+// came from Ohnix.
+model WebhookEndpoint {
+  id        String   @id @default(cuid())
+  accountId String   @map("account_id")
+  url       String   @db.Text
+  secret    String
+  events    String[]
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  account    User              @relation(fields: [accountId], references: [id])
+  deliveries WebhookDelivery[]
+
+  @@index([accountId])
+  @@map("webhook_endpoints")
+}
+
+// One delivery attempt (and its retries) of one event to one
+// WebhookEndpoint. eventId is the idempotency key on the RECEIVING end
+// (sent as a header so the external system can dedupe a retried delivery);
+// (endpointId, eventId) is also unique here so Ohnix itself never enqueues
+// the same event twice for the same endpoint.
+model WebhookDelivery {
+  id             String                @id @default(cuid())
+  endpointId     String                @map("endpoint_id")
+  eventType      String                @map("event_type")
+  eventId        String                @map("event_id")
+  payload        Json
+  status         WebhookDeliveryStatus @default(pending)
+  attempts       Int                   @default(0)
+  responseStatus Int?                  @map("response_status")
+  lastError      String?               @map("last_error") @db.Text
+  nextAttemptAt  DateTime?             @map("next_attempt_at")
+  deliveredAt    DateTime?             @map("delivered_at")
+  createdAt      DateTime              @default(now()) @map("created_at")
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@unique([endpointId, eventId])
+  @@index([endpointId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@map("webhook_deliveries")
 }

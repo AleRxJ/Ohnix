@@ -17,6 +17,7 @@ import { mapStockTransfer } from "./stockTransfer.controller.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { getColombiaTaxSettings } from "../utils/systemSettings.js";
 import { emitAccountEvent, emitPosEvent } from "../live/dataEvents.js";
+import { enqueueWebhookEvent } from "../services/webhookDispatch.service.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
 import { resolveOrAssertPointOfSaleId, assertPosAccess } from "../middleware/pos.permissions.js";
 import { normalizeProductImage } from "../utils/productImage.js";
@@ -301,6 +302,10 @@ const mapProduct = (product, scopedStock) => ({
     buying_price: Number(product.buyingPrice),
     selling_price: Number(product.sellingPrice),
     stock: scopedStock !== undefined ? scopedStock : product.stock,
+    sku: product.sku,
+    barcode: product.barcode,
+    brand: product.brand,
+    status: product.status,
     product_image: normalizeProductImage(product.productImage),
     unit_measure_code: product.unitMeasureCode,
     standard_code: product.standardCode,
@@ -427,6 +432,10 @@ const createProduct = asyncHandler(async (req, res, next) => {
     const {
         product_name,
         product_code,
+        sku,
+        barcode,
+        brand,
+        status,
         category_id,
         unit_id,
         buying_price,
@@ -439,6 +448,11 @@ const createProduct = asyncHandler(async (req, res, next) => {
         low_stock_threshold,
         is_tutorial_data,
     } = req.body;
+
+    const PRODUCT_STATUSES = ["draft", "active", "archived"];
+    if (status !== undefined && !PRODUCT_STATUSES.includes(status)) {
+        return next(new ApiError(400, `status must be one of: ${PRODUCT_STATUSES.join(", ")}`));
+    }
 
     if (tax_treatment !== undefined && !TAX_TREATMENTS.includes(tax_treatment)) {
         return next(new ApiError(400, `tax_treatment must be one of: ${TAX_TREATMENTS.join(", ")}`));
@@ -518,6 +532,10 @@ const createProduct = asyncHandler(async (req, res, next) => {
             data: {
                 productName: String(product_name).trim(),
                 productCode: String(product_code).trim().toUpperCase(),
+                ...(sku !== undefined && { sku: String(sku).trim() || null }),
+                ...(barcode !== undefined && { barcode: String(barcode).trim() || null }),
+                ...(brand !== undefined && { brand: String(brand).trim() || null }),
+                ...(status !== undefined && { status }),
                 categoryId: category.id,
                 unitId: unit.id,
                 buyingPrice,
@@ -557,13 +575,17 @@ const createProduct = asyncHandler(async (req, res, next) => {
         product.images = req.file ? [await attachImage(prisma, product.id, productImageUrl)] : [];
 
         emitAccountEvent(req.user.prismaId, "product", "created");
+        enqueueWebhookEvent(req.user.prismaId, "product.created", { product_id: toExternalId(product) }).catch(() => {});
         return res
             .status(201)
             .json(new ApiResponse(201, mapProduct(product), "Product created successfully"));
     } catch (error) {
         if (error instanceof ApiError) return next(error);
         if (error.code === "P2002") {
-            return next(new ApiError(409, "Product with this code already exists"));
+            const target = error.meta?.target?.join?.(",") || "";
+            return next(
+                new ApiError(409, target.includes("sku") ? "Product with this SKU already exists" : "Product with this code already exists")
+            );
         }
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
@@ -672,6 +694,10 @@ const updateProduct = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, `tax_treatment must be one of: ${TAX_TREATMENTS.join(", ")}`));
     }
 
+    if (updateData.status !== undefined && !["draft", "active", "archived"].includes(updateData.status)) {
+        return next(new ApiError(400, "status must be one of: draft, active, archived"));
+    }
+
     try {
         const existingProduct = await findProductByAnyId(id);
 
@@ -742,6 +768,10 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             ...(updateData.product_code !== undefined && {
                 productCode: String(updateData.product_code).trim().toUpperCase(),
             }),
+            ...(updateData.sku !== undefined && { sku: updateData.sku ? String(updateData.sku).trim() : null }),
+            ...(updateData.barcode !== undefined && { barcode: updateData.barcode ? String(updateData.barcode).trim() : null }),
+            ...(updateData.brand !== undefined && { brand: updateData.brand ? String(updateData.brand).trim() : null }),
+            ...(updateData.status !== undefined && { status: updateData.status }),
             ...(resolvedCategoryId && { categoryId: resolvedCategoryId }),
             ...(resolvedUnitId && { unitId: resolvedUnitId }),
             ...(updateData.buying_price !== undefined && {
@@ -843,6 +873,7 @@ const updateProduct = asyncHandler(async (req, res, next) => {
         }
 
         emitAccountEvent(existingProduct.createdById, "product", "updated");
+        enqueueWebhookEvent(existingProduct.createdById, "product.updated", { product_id: toExternalId(product) }).catch(() => {});
         const scopedStock = await scopedStockForProducts(req.user, [product.id]);
         return res
             .status(200)
@@ -850,7 +881,10 @@ const updateProduct = asyncHandler(async (req, res, next) => {
     } catch (error) {
         if (error instanceof ApiError) return next(error);
         if (error.code === "P2002") {
-            return next(new ApiError(409, "Product with this code already exists"));
+            const target = error.meta?.target?.join?.(",") || "";
+            return next(
+                new ApiError(409, target.includes("sku") ? "Product with this SKU already exists" : "Product with this code already exists")
+            );
         }
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
@@ -1050,6 +1084,7 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
         });
 
         emitPosEvent(existingProduct.createdById, pointOfSaleId, "product", "stock-changed");
+        enqueueWebhookEvent(existingProduct.createdById, "inventory.updated", { product_id: toExternalId(result) }).catch(() => {});
         const scopedStock = await scopedStockForProducts(req.user, [result.id]);
         return res
             .status(200)
