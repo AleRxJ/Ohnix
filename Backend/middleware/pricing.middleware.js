@@ -113,6 +113,7 @@ export const PLAN_FEATURES = {
         // idea as teamRoles above (gated here AND by
         // PLAN_LIMITS.maxPointsOfSale, see pointOfSale.service.js).
         multiLocation:       false,
+        salesQuotations:     false,
     },
     // $49/mes — Negocio: full analytics + exports + DIAN e-invoicing
     // (electronicInvoicing costs real money per document via Alanube - never
@@ -139,6 +140,7 @@ export const PLAN_FEATURES = {
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       false,
+        salesQuotations:     true,
     },
     // $99/mes — Escala: API + advanced reports (profit margin, top
     // customers, sales-by-team-member, period comparison - see
@@ -163,6 +165,7 @@ export const PLAN_FEATURES = {
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       true,
+        salesQuotations:     true,
     },
     // Custom — Enterprise: everything
     enterprise: {
@@ -183,6 +186,7 @@ export const PLAN_FEATURES = {
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       true,
+        salesQuotations:     true,
     },
 };
 

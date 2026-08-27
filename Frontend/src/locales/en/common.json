@@ -2622,6 +2622,7 @@
             "pdf": "Order PDF with company logo",
             "alerts": "Automatic low-stock email alerts",
             "invoicing": "DIAN electronic invoicing (Colombia)",
+            "sales_quotations": "Customer quotations with sending and order conversion",
             "support": "Priority email & WhatsApp support"
           },
           "cta": "Choose Business"

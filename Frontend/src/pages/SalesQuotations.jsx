@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Card, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, Tooltip, Typography, Popconfirm } from "antd";
+import { Button, Card, Form, Input, InputNumber, Modal, Select, Space, Spin, Table, Tag, Tooltip, Typography, Popconfirm } from "antd";
 import { EyeOutlined, FileTextOutlined, PlusOutlined, PrinterOutlined, SendOutlined, ShareAltOutlined, TagsOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import { api } from "../api/api.js";
@@ -7,12 +7,16 @@ import useI18n from "../hooks/useI18n";
 import { useCurrency } from "../context/CurrencyContext";
 import { printSalesQuotation } from "../utils/printSalesQuotation.js";
 import PointOfSaleField from "../components/common/PointOfSaleField";
+import useSubscription from "../hooks/useSubscription";
+import PlanGate from "../components/common/PlanGate";
 
 const { Title, Text } = Typography;
 
 const SalesQuotations = () => {
     const { t, currentLanguage } = useI18n();
     const { formatCurrency, currency } = useCurrency();
+    const { can, loading: planLoading } = useSubscription();
+    const canUseSalesQuotations = can("salesQuotations");
     const [quotations, setQuotations] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [products, setProducts] = useState([]);
@@ -43,10 +47,23 @@ const SalesQuotations = () => {
     };
 
     useEffect(() => {
+        if (planLoading || !canUseSalesQuotations) {
+            if (!planLoading) setLoading(false);
+            return;
+        }
         loadData();
         // loadData is intentionally local to this page and only runs on mount.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        // canUseSalesQuotations changes only when the resolved plan changes.
+    }, [planLoading, canUseSalesQuotations]);
+
+    if (planLoading) {
+        return <div className="sales-quotations-page flex min-h-[320px] items-center justify-center"><Spin size="large" /></div>;
+    }
+
+    if (!canUseSalesQuotations) {
+        return <div className="sales-quotations-page p-4 sm:p-6 lg:p-8"><PlanGate featureKey="salesQuotations" /></div>;
+    }
 
     const visibleQuotations = useMemo(() => {
         const normalizedSearch = search.toLowerCase();

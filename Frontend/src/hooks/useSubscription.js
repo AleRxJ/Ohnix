@@ -23,6 +23,7 @@ export const PLAN_FEATURES = {
         teamLivePresence:    false,
         teamActivityLog:     false,
         multiLocation:       false,
+        salesQuotations:     false,
     },
     growth: {
         reportSales:         true,
@@ -42,6 +43,7 @@ export const PLAN_FEATURES = {
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       false,
+        salesQuotations:     true,
     },
     scale: {
         reportSales:         true,
@@ -61,6 +63,7 @@ export const PLAN_FEATURES = {
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       true,
+        salesQuotations:     true,
     },
     enterprise: {
         reportSales:         true,
@@ -80,6 +83,7 @@ export const PLAN_FEATURES = {
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       true,
+        salesQuotations:     true,
     },
 };
 
@@ -120,6 +124,7 @@ export const FEATURE_LABELS = [
     { key: "teamLivePresence",  es: "Presencia en vivo y bloqueo de registros", en: "Live presence & record locking" },
     { key: "teamActivityLog",   es: "Log de actividad del equipo",     en: "Team activity log"            },
     { key: "multiLocation",     es: "Múltiples puntos de venta",       en: "Multiple points of sale"      },
+    { key: "salesQuotations",   es: "Cotizaciones para clientes",       en: "Customer sales quotations"    },
 ].filter((feature) => ELECTRONIC_INVOICING_ENABLED || feature.key !== "electronicInvoicing");
 
 // The minimum plan that unlocks each feature (used for "upgrade to X" messages)
@@ -141,6 +146,7 @@ export const FEATURE_MINIMUM_PLAN = {
     teamLivePresence:    "growth",
     teamActivityLog:     "growth",
     multiLocation:       "scale",
+    salesQuotations:     "growth",
 };
 
 const useSubscription = () => {

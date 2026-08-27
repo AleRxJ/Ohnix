@@ -2616,6 +2616,7 @@
             "pdf": "PDF con logo de la empresa",
             "alerts": "Alertas automáticas de stock bajo por email",
             "invoicing": "Facturación electrónica DIAN (Colombia)",
+            "sales_quotations": "Cotizaciones para clientes con envío y conversión a pedido",
             "support": "Soporte prioritario por correo y WhatsApp"
           },
           "cta": "Elegir plan Negocio"
