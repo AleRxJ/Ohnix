@@ -48,7 +48,7 @@ const EditProfileForm = ({
                         onFinish={handleProfileUpdate}
                     >
                         <div className="space-y-5 lg:space-y-6">
-                            <div className="rounded-2xl p-5 border border-[var(--ohnix-line-4)] bg-[#050608]/70">
+                            <div className="rounded-2xl p-5 border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-3)]">
                                 <div className="flex items-center gap-2.5 mb-4">
                                     <div className="w-9 h-9 rounded-xl bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)] flex items-center justify-center">
                                         <UserOutlined className="text-[#44F3F0] text-base" />
@@ -68,7 +68,7 @@ const EditProfileForm = ({
                                 <UsernameFormItem />
                             </div>
 
-                            <div className="rounded-2xl p-5 border border-[var(--ohnix-line-4)] bg-[#050608]/70">
+                            <div className="rounded-2xl p-5 border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-3)]">
                                 <div className="flex items-center gap-2.5 mb-4">
                                     <div className="w-9 h-9 rounded-xl bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)] flex items-center justify-center">
                                         <MailOutlined className="text-[var(--ohnix-text-muted)] text-base" />

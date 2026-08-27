@@ -17,10 +17,12 @@ import useI18n from "../../hooks/useI18n";
 import LanguageSwitcher from "../LanguageSwitcher/LanguageSwitcher";
 import ThemeToggle from "../common/ThemeToggle";
 import { userService } from "../../services/userService";
+import { useTheme } from "../../context/ThemeContext";
 
 const DashboardHeader = ({ collapsed, setCollapsed }) => {
     const { user, logout } = useContext(AuthContext);
     const { t, currentLanguage, changeLanguage } = useI18n();
+    const { isLite } = useTheme();
     const navigate = useNavigate();
 
     // Handle logout
@@ -97,18 +99,24 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                     className="cursor-pointer md:hidden"
                     onClick={handleLogoClick}
                 >
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-1.5">
                         <img
-                            src="/Ohnix_Icon.svg"
+                            src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon.svg"}
                             alt="Ohnix icon"
-                            className="h-full w-auto p-2"
-                            style={{ maxHeight: "48px" }}
+                            className="h-14 w-14 object-contain"
                         />
+                        <span className="text-sm font-semibold tracking-[0.18em] text-[var(--ohnix-text-primary)]">
+                            OHNIX
+                        </span>
                     </div>
                 </div>
                 <div className="md:hidden">
                     <button
-                        className="text-lg px-2 py-1 rounded-md bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)] hover:bg-[var(--ohnix-hover-overlay-strong)] transition-colors border border-[var(--ohnix-line-5)]"
+                        type="button"
+                        aria-label={collapsed ? "Abrir menú" : "Cerrar menú"}
+                        aria-expanded={!collapsed}
+                        title={collapsed ? "Abrir menú" : "Cerrar menú"}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--ohnix-line-5)] bg-[var(--ohnix-surface-2)] text-lg text-[var(--ohnix-text-primary)] shadow-sm transition-colors hover:border-[#29D8D5]/60 hover:bg-[var(--ohnix-hover-overlay-strong)] focus:outline-none focus:ring-2 focus:ring-[#29D8D5]/60"
                         onClick={() => setCollapsed(!collapsed)}
                     >
                         {collapsed ? (
@@ -121,7 +129,11 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
 
                 <div className="hidden md:block">
                     <button
-                        className="text-lg px-2 py-1 rounded-md bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)] hover:bg-[var(--ohnix-hover-overlay-strong)] transition-colors border border-[var(--ohnix-line-5)]"
+                        type="button"
+                        aria-label={collapsed ? "Abrir menú" : "Cerrar menú"}
+                        aria-expanded={!collapsed}
+                        title={collapsed ? "Abrir menú" : "Cerrar menú"}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--ohnix-line-5)] bg-[var(--ohnix-surface-2)] text-lg text-[var(--ohnix-text-primary)] shadow-sm transition-colors hover:border-[#29D8D5]/60 hover:bg-[var(--ohnix-hover-overlay-strong)] focus:outline-none focus:ring-2 focus:ring-[#29D8D5]/60"
                         onClick={() => setCollapsed(!collapsed)}
                     >
                         {collapsed ? (

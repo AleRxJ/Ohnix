@@ -103,7 +103,7 @@ const PasswordChangeTab = ({
                                     onFinish={handlePasswordRequest}
                                 >
                                     <div className="space-y-5 sm:space-y-6">
-                                        <div className="bg-[#050608]/70 rounded-2xl p-4 sm:p-5 border border-[var(--ohnix-line-4)] w-full">
+                                        <div className="bg-[var(--ohnix-surface-3)] rounded-2xl p-4 sm:p-5 border border-[var(--ohnix-line-4)] w-full">
                                             <div className="flex items-center gap-2 mb-3 sm:mb-4">
                                                 <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)] flex items-center justify-center flex-shrink-0">
                                                     <LockOutlined className="text-[var(--ohnix-text-muted)] text-xs" />
@@ -164,7 +164,7 @@ const PasswordChangeTab = ({
 
                                         <div className="bg-amber-500/10 rounded-2xl p-3 sm:p-4 border border-amber-500/20 flex items-start gap-2 sm:gap-3">
                                             <SafetyCertificateOutlined className="text-amber-300 text-sm sm:text-base mt-0.5 flex-shrink-0" />
-                                            <Text className="text-xs sm:text-sm text-amber-50/90 leading-relaxed">
+                                            <Text className="text-xs sm:text-sm text-[var(--ohnix-alert-amber-text)] leading-relaxed">
                                                 {t("profile.email_verification_description")}
                                             </Text>
                                         </div>

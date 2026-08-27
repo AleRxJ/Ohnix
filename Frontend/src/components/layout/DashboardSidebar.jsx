@@ -54,7 +54,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                 borderRight: "1px solid var(--ohnix-line-4)",
             }}
         >
-            <SidebarLogo collapsed={collapsed} onClick={handleLogoClick} />
+            <SidebarLogo collapsed={collapsed} isLite={isLite} onClick={handleLogoClick} />
             <div className="mx-4 mb-4 h-px bg-[var(--ohnix-line-4)]"></div>
 
             <div className="ohnix-scrollbar-thin min-h-0 flex-1 touch-pan-y overscroll-contain overflow-y-auto px-3">
@@ -99,22 +99,22 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     );
 };
 
-const SidebarLogo = ({ collapsed, onClick }) => (
+const SidebarLogo = ({ collapsed, isLite, onClick }) => (
     <div
-        className="flex items-center justify-center px-4 py-6 cursor-pointer group transition-all duration-200"
+        className={`flex items-center justify-center py-6 cursor-pointer group transition-all duration-200 ${collapsed ? "px-0" : "px-4"}`}
         onClick={onClick}
     >
         {collapsed ? (
             <img
-                src="/Ohnix_Icon.svg"
+                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon.svg"}
                 alt="Ohnix icon"
-                className="h-10 w-auto transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
+                className="h-16 w-16 shrink-0 scale-125 object-contain transition-transform duration-200 group-hover:scale-[1.35] drop-shadow-lg"
             />
         ) : (
             <img
-                src="/Logo-lite.svg"
+                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon.svg"}
                 alt="Ohnix logo"
-                className="h-20 w-auto transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
+                className="h-28 w-28 object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
             />
         )}
     </div>
@@ -141,9 +141,9 @@ const SidebarUserProfile = ({ user, logout, t }) => {
     };
 
     return (
-    <div className="shrink-0 border-t border-[var(--ohnix-line-4)] bg-[var(--ohnix-bg)]/70 p-3">
-        <div className="bg-[var(--ohnix-hover-overlay)] backdrop-blur-sm rounded-xl p-3 border border-[var(--ohnix-line-5)] shadow-xl">
-            <div className="flex items-center gap-3 mb-3">
+    <div className="shrink-0 border-t border-[var(--ohnix-line-4)] bg-[var(--ohnix-bg)]/55 p-3">
+        <div className="rounded-xl border border-[var(--ohnix-line-5)] bg-[var(--ohnix-surface-2)]/90 p-3 shadow-[var(--ohnix-shadow-card)]">
+            <div className="mb-3 flex items-center gap-3">
                 <Avatar
                     src={getAvatarSrc()}
                     style={{
@@ -153,20 +153,21 @@ const SidebarUserProfile = ({ user, logout, t }) => {
                         boxShadow: "0 6px 14px rgba(41, 216, 213, 0.3)",
                     }}
                     icon={<UserOutlined />}
-                    size={40}
+                    size={42}
                 />
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--ohnix-text-primary)] truncate m-0">
+                    <p className="m-0 truncate text-sm font-semibold text-[var(--ohnix-text-primary)]">
                         {user?.username || "User"}
                     </p>
-                    <p className="text-xs text-[var(--ohnix-text-muted)] truncate m-0">
+                    <p className="m-0 mt-0.5 truncate text-xs text-[var(--ohnix-text-muted)]">
                         {user?.role || "Administrator"}
                     </p>
                 </div>
             </div>
             <button
+                type="button"
                 onClick={logout}
-                className="w-full bg-[var(--ohnix-hover-overlay)] hover:bg-[var(--ohnix-hover-overlay-strong)] text-[var(--ohnix-text-primary)] font-medium py-2 px-3 rounded-lg text-sm transition-all duration-150 flex items-center justify-center gap-2 border border-[var(--ohnix-line-5)] hover:border-[#29D8D5]/40 backdrop-blur-sm"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--ohnix-line-5)] bg-[var(--ohnix-hover-overlay)] px-3 py-2 text-sm font-medium text-[var(--ohnix-text-soft)] transition-all duration-150 hover:border-[#29D8D5]/50 hover:bg-[var(--ohnix-hover-overlay-strong)] hover:text-[var(--ohnix-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#29D8D5]/50"
             >
                 <LogoutOutlined className="text-base" />
                 <span>{t("common.logout")}</span>

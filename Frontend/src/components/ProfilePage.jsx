@@ -143,7 +143,7 @@ const ProfilePage = () => {
     };
 
     return (
-        <Content className="min-h-screen bg-[var(--ohnix-bg-alt)] text-[var(--ohnix-text-primary)] relative overflow-hidden">
+        <Content className="profile-page min-h-screen bg-[var(--ohnix-bg-alt)] text-[var(--ohnix-text-primary)] relative overflow-hidden">
             <div className="pointer-events-none absolute inset-0 opacity-80">
                 <div className="absolute -top-28 -left-24 h-72 w-72 rounded-full bg-[#29D8D5]/12 blur-3xl" />
                 <div className="absolute top-1/3 -right-24 h-80 w-80 rounded-full bg-[#44F3F0]/10 blur-3xl" />
