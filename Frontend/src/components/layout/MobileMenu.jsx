@@ -84,7 +84,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
                         <ThemeToggle />
                     </div>
                     <div className="min-h-0 flex-1 rounded-2xl overflow-hidden border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] shadow-inner">
-                        <div className="h-full min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-[#29D8D5]/70 scrollbar-track-white/10 hover:scrollbar-thumb-[#44F3F0]">
+                        <div className="h-full min-h-0 touch-pan-y overscroll-contain overflow-y-auto scrollbar-thin scrollbar-thumb-[#29D8D5]/70 scrollbar-track-white/10 hover:scrollbar-thumb-[#44F3F0]">
                             {teamLoading ? (
                                 <div className="space-y-3 p-3">
                                     {Array.from({ length: 6 }).map((_, i) => (
