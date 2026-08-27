@@ -42,18 +42,20 @@ const buildDetails = async (details, userId, userRole) => {
 
         const quantity = Number(detail.quantity);
         const unitPrice = Number(detail.unit_price ?? product.sellingPrice);
-        const discount = Number(detail.discount || 0);
+        const discountRate = Number(detail.discount_rate || 0);
         const taxRate = product.taxTreatment === "taxed" ? Number(product.taxRate || 0) : 0;
-        if (!Number.isInteger(quantity) || quantity < 1 || !Number.isFinite(unitPrice) || unitPrice < 0 || !Number.isFinite(discount) || discount < 0) {
+        if (!Number.isInteger(quantity) || quantity < 1 || !Number.isFinite(unitPrice) || unitPrice < 0 || !Number.isFinite(discountRate) || discountRate < 0 || discountRate > 100) {
             throw new ApiError(400, "Quantity, price, and discount must be valid non-negative values");
         }
 
+        const discount = roundMoney(quantity * unitPrice * discountRate / 100);
         const lineBase = Math.max(0, quantity * unitPrice - discount);
         const taxAmount = roundMoney(lineBase * taxRate / 100);
         return {
             productId: product.id,
             quantity,
             unitPrice: roundMoney(unitPrice),
+            discountRate: roundMoney(discountRate),
             discount: roundMoney(discount),
             taxRate: roundMoney(taxRate),
             taxAmount,
@@ -71,7 +73,7 @@ const buildDetails = async (details, userId, userRole) => {
 
 class SalesQuotationService {
     async createQuotation(data, userId, userRole, pointOfSaleId) {
-        const { customer_id, quotation_no, valid_until, notes, discount = 0, details } = data;
+        const { customer_id, quotation_no, valid_until, notes, discount_mode = "percentage", discount_rate = 0, discount_value = 0, details } = data;
         if (!customer_id || !quotation_no) throw new ApiError(400, "Customer and quotation number are required");
 
         const customer = await findCustomerByAnyId(customer_id);
@@ -83,9 +85,13 @@ class SalesQuotationService {
             throw new ApiError(403, "This customer belongs to another point of sale");
         }
 
-        const headerDiscount = Number(discount || 0);
-        if (!Number.isFinite(headerDiscount) || headerDiscount < 0) throw new ApiError(400, "Discount must be valid");
+        if (!["percentage", "fixed"].includes(discount_mode)) throw new ApiError(400, "Invalid discount type");
+        const headerDiscountRate = Number(discount_rate || 0);
+        const requestedDiscountValue = Number(discount_value || 0);
+        if (discount_mode === "percentage" && (!Number.isFinite(headerDiscountRate) || headerDiscountRate < 0 || headerDiscountRate > 100)) throw new ApiError(400, "Discount percentage must be between 0 and 100");
+        if (discount_mode === "fixed" && (!Number.isFinite(requestedDiscountValue) || requestedDiscountValue < 0)) throw new ApiError(400, "Fixed discount must be valid");
         const calculated = await buildDetails(details, userId, userRole);
+        const headerDiscount = discount_mode === "fixed" ? roundMoney(Math.min(requestedDiscountValue, calculated.subtotal)) : roundMoney(calculated.subtotal * headerDiscountRate / 100);
         const subtotalAfterDiscount = Math.max(0, calculated.subtotal - headerDiscount);
         const total = roundMoney(subtotalAfterDiscount + calculated.tax);
         const quotationNo = String(quotation_no).trim();
@@ -103,6 +109,8 @@ class SalesQuotationService {
                         validUntil: valid_until ? new Date(valid_until) : null,
                         notes: notes?.trim() || null,
                         subtotal: calculated.subtotal,
+                        discountType: discount_mode,
+                        discountRate: discount_mode === "percentage" ? roundMoney(headerDiscountRate) : 0,
                         discount: roundMoney(headerDiscount),
                         tax: calculated.tax,
                         total,

@@ -28,6 +28,11 @@ export const financeService = {
         return response.data;
     },
 
+    async registerManualExpense(payload) {
+        const response = await api.post("/finance/expenses", payload);
+        return response.data;
+    },
+
     async listCashAccountMovements(id) {
         const response = await api.get(`/finance/cash-accounts/${id}/movements`);
         return response.data;

@@ -51,6 +51,7 @@ const SOURCE_TYPE_LABEL_KEYS = {
     credit_note_restock: "accounting.source_credit_note_restock",
     credit_note_financial: "accounting.source_credit_note_financial",
     period_close: "accounting.source_period_close",
+    manual_expense: "accounting.source_manual_expense",
 };
 
 // Libro mayor for one account: opening balance + every movement in range

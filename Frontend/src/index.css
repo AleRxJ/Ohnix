@@ -1460,13 +1460,96 @@ textarea.ant-input[disabled] {
   color: var(--ohnix-text-primary) !important;
 }
 
+.sales-quotations-page .sales-quotations-header {
+  margin-bottom: 24px;
+}
+
+.sales-quotations-page .sales-quotations-header h1 {
+  margin: 0 0 6px;
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.sales-quotations-page .sales-quotations-header p {
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.sales-quotations-page .ant-card {
+  border-radius: 14px !important;
+  box-shadow: var(--ohnix-shadow-card) !important;
+}
+
+.sales-quotations-page .ant-card-body {
+  padding: 18px !important;
+}
+
 .sales-quotations-page .ant-table,
 .sales-quotations-page .ant-table-container,
 .sales-quotations-page .ant-table-tbody > tr > td,
-.sales-quotations-page .ant-table-thead > tr > th {
+.sales-quotations-page .ant-table-thead > tr > th,
+.sales-quotations-page .ant-table-placeholder > td,
+.sales-quotations-page .ant-table-cell {
   background: transparent !important;
   border-color: var(--ohnix-line-3) !important;
   color: var(--ohnix-text-soft) !important;
+}
+
+.sales-quotations-page .ant-table-placeholder,
+.sales-quotations-page .ant-table-placeholder:hover > td,
+.sales-quotations-page .ant-empty {
+  background: transparent !important;
+}
+
+.sales-quotations-page .ant-empty-description {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.sales-quotations-page .ant-empty-image {
+  opacity: 0.6;
+}
+
+.sales-quotations-page .ant-pagination,
+.sales-quotations-page .ant-pagination-item a,
+.sales-quotations-page .ant-pagination-total-text,
+.sales-quotations-page .ant-pagination-prev .ant-pagination-item-link,
+.sales-quotations-page .ant-pagination-next .ant-pagination-item-link {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.sales-quotations-page .ant-pagination-item {
+  background: transparent !important;
+  border-color: var(--ohnix-line-4) !important;
+}
+
+.sales-quotations-page .ant-pagination-item-active {
+  border-color: #29d8d5 !important;
+  background: rgba(41, 216, 213, 0.12) !important;
+}
+
+.sales-quotations-page .ant-btn-default,
+.sales-quotation-modal .ant-btn-default {
+  background: var(--ohnix-hover-overlay) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotations-page .ant-input,
+.sales-quotations-page .ant-input-affix-wrapper,
+.sales-quotation-modal .ant-input,
+.sales-quotation-modal .ant-input-affix-wrapper,
+.sales-quotation-modal .ant-input-number,
+.sales-quotation-modal .ant-select-selector {
+  background: var(--ohnix-surface-2) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotations-page .ant-input::placeholder,
+.sales-quotation-modal .ant-input::placeholder,
+.sales-quotation-modal textarea::placeholder {
+  color: var(--ohnix-text-dim) !important;
 }
 
 .sales-quotations-page .ant-table-thead > tr > th {
@@ -1493,6 +1576,16 @@ textarea.ant-input[disabled] {
   background: var(--ohnix-surface-2) !important;
   border-color: var(--ohnix-line-5) !important;
   color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-input-number-input {
+  background: var(--ohnix-surface-2) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-input-number-prefix,
+.sales-quotation-modal .ant-input-number-suffix {
+  color: var(--ohnix-text-muted) !important;
 }
 
 .quotations-module-tabs {

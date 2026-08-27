@@ -107,10 +107,10 @@ const QuotationList = ({
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                         <div className="mb-4 sm:mb-0">
                             <h1 className="truncate mb-1 text-4xl font-bold flex items-center gap-2 text-[var(--ohnix-text-primary)]">
-                                {t("quotations.quotations")}
+                                {t("quotations.purchase_title")}
                                 <TagsOutlined className="text-[#44F3F0] inline-block ml-2" />
                             </h1>
-                            <p className="text-[var(--ohnix-text-muted)] text-sm sm:text-base">{t("quotations.manage_quotations_description")}</p>
+                            <p className="text-[var(--ohnix-text-muted)] text-sm sm:text-base">{t("quotations.purchase_description")}</p>
                         </div>
                         <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
                             <span className="w-full sm:w-auto inline-block">
@@ -166,7 +166,7 @@ const QuotationList = ({
                     <div className="p-4 sm:p-6">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-1 h-6 bg-gradient-to-b from-[#29D8D5] to-[#44F3F0] rounded-full"></div>
-                            <Title level={4} className="!mb-0 !text-[var(--ohnix-text-primary)]">{t("quotations.quotations")}</Title>
+                            <Title level={4} className="!mb-0 !text-[var(--ohnix-text-primary)]">{t("quotations.purchase_title")}</Title>
                         </div>
                         <QuotationTable
                             quotations={quotations}

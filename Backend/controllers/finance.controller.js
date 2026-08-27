@@ -6,6 +6,7 @@ import * as cashMovementService from "../services/cashMovement.service.js";
 import * as orderPaymentService from "../services/orderPayment.service.js";
 import * as purchasePaymentService from "../services/purchasePayment.service.js";
 import * as reconciliationService from "../services/bankReconciliation.service.js";
+import * as manualExpenseService from "../services/manualExpense.service.js";
 
 const scope = (req) => ({
     accountId: req.user.prismaId,
@@ -108,6 +109,28 @@ export const listCashAccountMovements = asyncHandler(async (req, res) => {
     await cashAccountService.getCashAccountById({ ...scope(req), id: req.params.id });
     const movements = await cashMovementService.listCashMovements({ cashAccountId: req.params.id });
     return res.status(200).json(new ApiResponse(200, movements.map(mapCashMovement), "Cash movements fetched successfully"));
+});
+
+export const registerManualExpense = asyncHandler(async (req, res, next) => {
+    const { amount, expense_account_id, cash_account_id, description, expense_date } = req.body || {};
+    if (!expense_account_id || !cash_account_id) {
+        return next(new ApiError(400, "expense_account_id y cash_account_id son obligatorios"));
+    }
+
+    const result = await manualExpenseService.registerManualExpense({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        amount,
+        expenseAccountId: expense_account_id,
+        cashAccountId: cash_account_id,
+        description,
+        expenseDate: expense_date,
+    });
+    return res.status(201).json(new ApiResponse(201, {
+        journal_entry_id: result.entry.id,
+        cash_movement_id: result.movement.id,
+        balance_after: Number(result.movement.balanceAfter),
+    }, "Manual expense registered successfully"));
 });
 
 // --- Order payments (cartera - cuentas por cobrar) ---
