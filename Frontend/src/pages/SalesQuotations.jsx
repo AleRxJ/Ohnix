@@ -57,14 +57,6 @@ const SalesQuotations = () => {
         // canUseSalesQuotations changes only when the resolved plan changes.
     }, [planLoading, canUseSalesQuotations]);
 
-    if (planLoading) {
-        return <div className="sales-quotations-page flex min-h-[320px] items-center justify-center"><Spin size="large" /></div>;
-    }
-
-    if (!canUseSalesQuotations) {
-        return <div className="sales-quotations-page p-4 sm:p-6 lg:p-8"><PlanGate featureKey="salesQuotations" /></div>;
-    }
-
     const visibleQuotations = useMemo(() => {
         const normalizedSearch = search.toLowerCase();
         return quotations.filter((quotation) =>
@@ -72,6 +64,14 @@ const SalesQuotations = () => {
             (statusFilter === "all" || quotation.status === statusFilter)
         );
     }, [quotations, search, statusFilter]);
+
+    if (planLoading) {
+        return <div className="sales-quotations-page flex min-h-[320px] items-center justify-center"><Spin size="large" /></div>;
+    }
+
+    if (!canUseSalesQuotations) {
+        return <div className="sales-quotations-page p-4 sm:p-6 lg:p-8"><PlanGate featureKey="salesQuotations" /></div>;
+    }
 
     const stats = {
         total: quotations.length,
