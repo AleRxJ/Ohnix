@@ -43,9 +43,8 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
             trigger={null}
             theme={isLite ? "light" : "dark"}
             width={260}
-            className="hidden md:block no-print"
+            className="hidden md:block no-print flex flex-col overflow-hidden [&_.ant-layout-sider-children]:flex [&_.ant-layout-sider-children]:min-h-0 [&_.ant-layout-sider-children]:flex-col"
             style={{
-                overflowY: "auto",
                 height: "100vh",
                 position: "sticky",
                 top: 0,
@@ -142,7 +141,7 @@ const SidebarUserProfile = ({ user, logout, t }) => {
     };
 
     return (
-    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[var(--ohnix-bg)]/70 to-transparent">
+    <div className="shrink-0 border-t border-[var(--ohnix-line-4)] bg-[var(--ohnix-bg)]/70 p-3">
         <div className="bg-[var(--ohnix-hover-overlay)] backdrop-blur-sm rounded-xl p-3 border border-[var(--ohnix-line-5)] shadow-xl">
             <div className="flex items-center gap-3 mb-3">
                 <Avatar

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Form, Select } from "antd";
 import { ShopOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import useSubscription from "../../hooks/useSubscription";
 import { pointOfSaleService } from "../../services/pointOfSaleService";
 
 // Drops into any create form that goes through
@@ -23,6 +24,7 @@ import { pointOfSaleService } from "../../services/pointOfSaleService";
 // isn't something this field needs to support.
 const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false }) => {
     const { t } = useI18n();
+    const { can } = useSubscription();
     const [options, setOptions] = useState(null); // null = still loading
 
     useEffect(() => {
@@ -35,7 +37,7 @@ const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false }) => {
             .catch(() => setOptions([]));
     }, []);
 
-    if (!options || options.length <= 1) return null;
+    if (!can("multiLocation") || !options || options.length <= 1) return null;
 
     return (
         <Form.Item
