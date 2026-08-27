@@ -399,6 +399,7 @@ const DashboardLayout = () => {
                     collapsed={collapsed}
                     currentPage={currentPage}
                     onClose={() => setCollapsed(true)}
+                    isMobile={isMobile}
                 />
 
                 <Content className="mx-3 my-3 sm:mx-5 sm:my-5 lg:mx-7 lg:my-7">

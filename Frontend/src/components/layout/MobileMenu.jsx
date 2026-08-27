@@ -13,7 +13,7 @@ import useScrollLock from "../../hooks/useScrollLock";
 
 const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 
-const MobileMenu = ({ collapsed, currentPage, onClose }) => {
+const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
     const { user } = React.useContext(AuthContext);
     const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
     const { plan } = useSubscription();
@@ -51,7 +51,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
     // open, feeding into the resize-driven auto-close bug in
     // DashboardLayout.jsx (a background scroll on mobile can trigger the
     // browser chrome to hide/show and fire a resize event).
-    useScrollLock(!collapsed);
+    useScrollLock(isMobile && !collapsed);
 
     useEffect(() => {
         if (collapsed) return;
