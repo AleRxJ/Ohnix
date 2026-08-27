@@ -9,7 +9,6 @@ import {
     EnvironmentOutlined,
     FileProtectOutlined,
     IdcardOutlined,
-    KeyOutlined,
     MailOutlined,
     PlusOutlined,
     RocketOutlined,
@@ -20,7 +19,7 @@ import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
 import { COLOMBIA_DEPARTMENTS, findDepartmentName } from "../../constants/colombiaDivipola";
 import { resolveApiErrorMessage } from "../../utils/apiError";
-import { isValidNit, isValidSoftwareId, isValidTechnicalKey, isValidPrefix } from "../../utils/dianValidation";
+import { isValidNit, isValidPrefix } from "../../utils/dianValidation";
 import FirmaPassSelfService from "./FirmaPassSelfService";
 
 const validatorRule = (isValid, message) => ({
@@ -35,7 +34,6 @@ const { Text, Title } = Typography;
 const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
 const stepFields = [
     ["taxIdentification", "legalName", "vatResponsible"],
-    ["softwareId", "softwarePin", "technicalKey"],
     ["street", "departmentCode", "cityCode", "cityName", "postalZone"],
     ["prefix", "resolutionNumber", "startNumber", "endNumber", "startDate", "endDate"],
 ];
@@ -198,7 +196,6 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
             legalName: company?.legalName || company?.name || "",
             email: company?.contactEmail || "",
             vatResponsible: company?.vatResponsible === "unset" ? undefined : company?.vatResponsible,
-            environment: "SANDBOX",
             documentType: "01",
         });
         refresh();
@@ -243,32 +240,29 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
             });
             const entity = saved?.data;
             await companyService.registerMyCompanyWithItcycle({
-                dianConfiguration: {
-                    environment: value.environment,
-                    softwareId: value.softwareId,
-                    softwarePin: value.softwarePin,
-                    technicalKey: value.technicalKey,
-                    supplierProfile: {
-                        name: entity?.legalName || entity?.name,
-                        identification: { number: entity?.taxIdentification, type: "31", dv: entity?.taxIdentificationDv },
-                        personType: "1",
-                        // "R-99-PN" ("no aplica") is the same generic default
-                        // buildItcycleCustomerParty already uses for a buyer
-                        // with no special DIAN fiscal responsibility on file -
-                        // NOT "O-13" (Gran Contribuyente), a special DIAN
-                        // designation that doesn't apply to most small/medium
-                        // businesses, which is who actually self-registers here.
-                        fiscalResponsibilities: ["R-99-PN"],
-                        taxInfo: {
-                            registrationName: entity?.legalName || entity?.name,
-                            companyId: { number: entity?.taxIdentification, type: "31", dv: entity?.taxIdentificationDv },
-                            taxLevelCode: "R-99-PN",
-                            taxScheme: { code: "01" },
-                            address: { street: value.street, cityCode: value.cityCode, cityName: value.cityName, departmentCode: value.departmentCode, departmentName: findDepartmentName(value.departmentCode), countryCode: "CO", postalZone: value.postalZone },
-                        },
+                // environment/softwareId/softwarePin/technicalKey are iTCycle's
+                // own shared itcycle-api-dian habilitación (ITCYCLE_SOFTWARE_ID
+                // etc. in Backend config) - never collected from the client here.
+                supplierProfile: {
+                    name: entity?.legalName || entity?.name,
+                    identification: { number: entity?.taxIdentification, type: "31", dv: entity?.taxIdentificationDv },
+                    personType: "1",
+                    // "R-99-PN" ("no aplica") is the same generic default
+                    // buildItcycleCustomerParty already uses for a buyer
+                    // with no special DIAN fiscal responsibility on file -
+                    // NOT "O-13" (Gran Contribuyente), a special DIAN
+                    // designation that doesn't apply to most small/medium
+                    // businesses, which is who actually self-registers here.
+                    fiscalResponsibilities: ["R-99-PN"],
+                    taxInfo: {
+                        registrationName: entity?.legalName || entity?.name,
+                        companyId: { number: entity?.taxIdentification, type: "31", dv: entity?.taxIdentificationDv },
+                        taxLevelCode: "R-99-PN",
+                        taxScheme: { code: "01" },
                         address: { street: value.street, cityCode: value.cityCode, cityName: value.cityName, departmentCode: value.departmentCode, departmentName: findDepartmentName(value.departmentCode), countryCode: "CO", postalZone: value.postalZone },
-                        email: value.email || undefined,
                     },
+                    address: { street: value.street, cityCode: value.cityCode, cityName: value.cityName, departmentCode: value.departmentCode, departmentName: findDepartmentName(value.departmentCode), countryCode: "CO", postalZone: value.postalZone },
+                    email: value.email || undefined,
                 },
                 numberingResolutions: [{
                     documentType: value.documentType,
@@ -313,14 +307,13 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
 
     const STEP_META = [
         { icon: <BankOutlined />, title: t("fiscal_setup.step_company"), caption: t("fiscal_setup.step_company_caption") },
-        { icon: <SafetyCertificateOutlined />, title: t("fiscal_setup.step_software"), caption: t("fiscal_setup.step_software_caption") },
         { icon: <EnvironmentOutlined />, title: t("fiscal_setup.step_address"), caption: t("fiscal_setup.step_address_caption") },
         { icon: <FileProtectOutlined />, title: t("fiscal_setup.step_resolution"), caption: t("fiscal_setup.step_resolution_caption") },
     ];
 
     const statusTone = status?.provisioned
-        ? { color: "#44F3F0", border: "rgba(68,243,240,0.45)", dot: "status-dot--accepted" }
-        : { color: "#FFCF70", border: "rgba(245,158,11,0.45)", dot: "status-dot--draft" };
+        ? { color: "#44F3F0", background: "rgba(68,243,240,0.14)", border: "rgba(68,243,240,0.45)", dot: "status-dot--accepted" }
+        : { color: "#FFCF70", background: "rgba(245,158,11,0.14)", border: "rgba(245,158,11,0.45)", dot: "status-dot--draft" };
     const statusLabel = status?.provisioned ? t("fiscal_setup.status_ready") : t("fiscal_setup.status_pending");
 
     return (
@@ -340,7 +333,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                     </div>
                     <span
                         className="status-pill"
-                        style={{ color: statusTone.color, background: "rgba(6,10,10,0.4)", border: `1px solid ${statusTone.border}` }}
+                        style={{ color: statusTone.color, background: statusTone.background, border: `1px solid ${statusTone.border}` }}
                     >
                         <span className={`status-dot ${statusTone.dot}`} />
                         {statusLabel}
@@ -351,19 +344,21 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
             {status?.provisioned ? (
                 <>
                     <Alert
+                        className={`dark-alert ${status.electronicInvoicingEnabled ? "dark-alert-teal" : "dark-alert-purple"}`}
                         type={status.electronicInvoicingEnabled ? "success" : "info"}
                         showIcon
                         message={status.electronicInvoicingEnabled ? t("fiscal_setup.status_active") : t("fiscal_setup.status_dian_complete")}
                         description={status.electronicInvoicingEnabled ? t("fiscal_setup.status_active_hint") : t("fiscal_setup.status_pending_hint")}
                     />
                     {status.readinessError && (
-                        <Alert className="mt-3" type="warning" showIcon message={t("fiscal_setup.readiness_unavailable")} description={t("fiscal_setup.readiness_unavailable_hint")} />
+                        <Alert className="mt-3 dark-alert dark-alert-amber" type="warning" showIcon message={t("fiscal_setup.readiness_unavailable")} description={t("fiscal_setup.readiness_unavailable_hint")} />
                     )}
                     <FirmaPassSelfService electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)} onActivated={onCompanyChanged} />
                     {!hasSupportDocumentResolution && <SupportDocumentResolution onAdded={refresh} />}
                 </>
             ) : otherProviderActive ? (
                 <Alert
+                    className="dark-alert dark-alert-purple"
                     type="info"
                     showIcon
                     message="Tu empresa ya factura electrónicamente"
@@ -427,7 +422,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                     </div>
 
                     <Form form={form} layout="vertical">
-                        {/* All 4 steps stay mounted (toggled via `display`, not
+                        {/* All 3 steps stay mounted (toggled via `display`, not
                         conditional rendering) so form.validateFields() at final
                         submit can actually validate every field, not just the
                         currently visible step - see the comment in submit(). */}
@@ -459,33 +454,6 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             {field("vatResponsible", t("fiscal_setup.vat_responsibility"), { required: true, hint: t("fiscal_setup.vat_responsibility_hint"), select: [{ value: "responsible", label: t("fiscal_setup.vat_responsible") }, { value: "not_responsible", label: t("fiscal_setup.vat_not_responsible") }] })}
                         </div>
                         <div style={{ display: step === 1 ? undefined : "none" }} className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-                            {field("environment", t("fiscal_setup.environment"), { required: true, hint: t("fiscal_setup.environment_hint"), select: [{ value: "SANDBOX", label: t("fiscal_setup.environment_sandbox") }, { value: "PRODUCTION", label: t("fiscal_setup.environment_production") }] })}
-                            <Form.Item
-                                name="softwareId"
-                                label={t("fiscal_setup.software_id")}
-                                extra={t("fiscal_setup.software_id_hint")}
-                                rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidSoftwareId, t("fiscal_setup.software_id_invalid"))]}
-                            >
-                                <Input size="large" prefix={<IdcardOutlined className="text-[var(--ohnix-text-dim)]" />} className="auth-ohnix-input" placeholder="deb9167c-e2f6-4796-9b4d-d102472e2397" />
-                            </Form.Item>
-                            <Form.Item
-                                name="softwarePin"
-                                label={t("fiscal_setup.software_pin")}
-                                extra={t("fiscal_setup.software_pin_hint")}
-                                rules={[{ required: true, whitespace: true, message: t("fiscal_setup.software_pin_invalid") }]}
-                            >
-                                <Input size="large" type="password" prefix={<KeyOutlined className="text-[var(--ohnix-text-dim)]" />} className="auth-ohnix-input" />
-                            </Form.Item>
-                            <Form.Item
-                                name="technicalKey"
-                                label={t("fiscal_setup.technical_key")}
-                                extra={t("fiscal_setup.technical_key_hint")}
-                                rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidTechnicalKey, t("fiscal_setup.technical_key_invalid"))]}
-                            >
-                                <Input size="large" type="password" prefix={<KeyOutlined className="text-[var(--ohnix-text-dim)]" />} className="auth-ohnix-input" />
-                            </Form.Item>
-                        </div>
-                        <div style={{ display: step === 2 ? undefined : "none" }} className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                             {field("street", t("fiscal_setup.address"), { required: true, icon: <EnvironmentOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.address_hint") })}
                             <Form.Item
                                 name="departmentCode"
@@ -524,7 +492,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             </Form.Item>
                             {field("postalZone", t("fiscal_setup.postal_code"), { required: true, hint: t("fiscal_setup.postal_code_hint") })}
                         </div>
-                        <div style={{ display: step === 3 ? undefined : "none" }} className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                        <div style={{ display: step === 2 ? undefined : "none" }} className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                             {field("documentType", t("fiscal_setup.document_type"), { required: true, hint: t("fiscal_setup.document_type_hint"), select: [{ value: "01", label: t("fiscal_setup.document_type_invoice") }, { value: "05", label: t("fiscal_setup.document_type_support") }] })}
                             <Form.Item
                                 name="prefix"
@@ -579,7 +547,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                     </Form>
                     <div className="mt-6 flex justify-between border-t border-[var(--ohnix-line-4)] pt-5">
                         <Button icon={<ArrowLeftOutlined />} onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0}>{t("fiscal_setup.back")}</Button>
-                        {step < 3
+                        {step < 2
                             ? <Button type="primary" iconPosition="end" icon={<ArrowRightOutlined />} className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" onClick={next}>{t("fiscal_setup.continue")}</Button>
                             : <Button type="primary" icon={<RocketOutlined />} className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" loading={saving} onClick={submit}>{t("fiscal_setup.submit")}</Button>}
                     </div>

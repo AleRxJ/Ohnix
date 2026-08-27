@@ -274,6 +274,7 @@ const CompanyFormModal = ({
                             // and normalizeFactusConfig/normalizeAlanubeConfig in
                             // company.controller.js for why this stays read-only.
                             <Alert
+                                className={`dark-alert ${editingCompany?.itcycleCompanyId ? "dark-alert-teal" : "dark-alert-purple"}`}
                                 type={editingCompany?.itcycleCompanyId ? "success" : "info"}
                                 showIcon
                                 message={editingCompany?.itcycleCompanyId

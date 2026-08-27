@@ -206,7 +206,7 @@ const AdminSubscriptions = () => {
     if (!isAdmin) {
         return (
             <div className="p-6 sm:p-8">
-                <Alert type="warning" showIcon message="Solo un administrador puede ver esta página." />
+                <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message="Solo un administrador puede ver esta página." />
             </div>
         );
     }

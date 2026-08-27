@@ -1938,6 +1938,12 @@ textarea.ant-input[disabled] {
 .dark-alert .ant-alert-description {
   color: var(--ohnix-text-soft) !important;
 }
+.dark-alert .ant-alert-close-icon .anticon {
+  color: var(--ohnix-text-muted) !important;
+}
+.dark-alert .ant-alert-close-icon .anticon:hover {
+  color: var(--ohnix-text-primary) !important;
+}
 .dark-alert-teal.ant-alert {
   border: 1px solid rgba(41, 216, 213, 0.25) !important;
   background: rgba(41, 216, 213, 0.08) !important;
@@ -2565,6 +2571,32 @@ textarea.ant-input[disabled] {
   background: var(--ohnix-line-1);
   border-color: var(--ohnix-line-4);
   color: #44f3f0;
+}
+
+/* Coupon display in FirmaPassSelfService.jsx - replaces antd's default
+   Text code/copyable chip, which ships fixed light-grey chrome that never
+   reads against this app's dark theme and looks out of place on light. */
+.ohnix-coupon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  border: 1px dashed rgba(41, 216, 213, 0.4);
+  background: rgba(41, 216, 213, 0.1);
+  padding: 6px 8px 6px 14px;
+}
+.ohnix-coupon-chip code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #29d8d5;
+}
+.ohnix-coupon-chip .ohnix-coupon-copy {
+  color: var(--ohnix-text-muted) !important;
+}
+.ohnix-coupon-chip .ohnix-coupon-copy:hover {
+  color: #29d8d5 !important;
 }
 
 /* antd's Upload.Dragger ships its own light-theme chrome (white background,

@@ -43,7 +43,7 @@ const FiscalSetup = () => {
                 <>
                     {!company && (
                         <Alert
-                            className="mt-6"
+                            className="mt-6 dark-alert dark-alert-purple"
                             type="info"
                             showIcon
                             message={t("fiscal_setup.no_company_title")}

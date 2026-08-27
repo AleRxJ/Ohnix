@@ -44,6 +44,24 @@ export const isItcycleAdminConfigured = () => {
     return Boolean(config.baseUrl && config.adminApiKey);
 };
 
+// itcycle-api-dian's own habilitación is Ohnix/iTCycle's, registered ONCE
+// with DIAN - every client company shares this same softwareId/PIN/technical
+// key ("software propio" of iTCycle, not a separate habilitación per client).
+// Never accept these from client input; see ElectronicInvoicingSettings.jsx,
+// which only collects client-specific data (NIT, address, numbering
+// resolution, certificate).
+export const getItcycleSoftwareCredentials = () => ({
+    environment: `${process.env.ITCYCLE_ENVIRONMENT || "SANDBOX"}`.trim().toUpperCase(),
+    softwareId: `${process.env.ITCYCLE_SOFTWARE_ID || ""}`.trim(),
+    softwarePin: `${process.env.ITCYCLE_SOFTWARE_PIN || ""}`.trim(),
+    technicalKey: `${process.env.ITCYCLE_TECHNICAL_KEY || ""}`.trim(),
+});
+
+export const isItcycleSoftwareConfigured = () => {
+    const credentials = getItcycleSoftwareCredentials();
+    return Boolean(credentials.softwareId && credentials.softwarePin);
+};
+
 const toJsonOrNull = async (response) => {
     const contentType = response.headers.get("content-type") || "";
     if (!contentType.toLowerCase().includes("application/json")) {

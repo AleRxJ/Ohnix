@@ -688,7 +688,7 @@ const FinancialStatementsTab = () => {
                     type="info"
                     showIcon
                     icon={<InfoCircleOutlined />}
-                    className="mb-4"
+                    className="mb-4 dark-alert dark-alert-purple"
                 />
                 <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -740,7 +740,7 @@ const FinancialStatementsTab = () => {
                 {balance && (
                     <>
                         {!balance.balanced && (
-                            <Alert message={t("accounting.not_balanced_warning")} type="error" showIcon icon={<WarningOutlined />} className="mb-4" />
+                            <Alert message={t("accounting.not_balanced_warning")} type="error" showIcon icon={<WarningOutlined />} className="mb-4 dark-alert dark-alert-rose" />
                         )}
                         <Row gutter={[16, 16]} className="mb-4">
                             <Col xs={24} sm={8}>
@@ -1006,7 +1006,7 @@ const TaxesTab = () => {
             </Card>
             <WithholdingConfigCard />
             <ComingSoonTaxCard titleKey="accounting.taxes_renta_title" descKey="accounting.taxes_renta_desc" />
-            <Alert type="warning" showIcon message={t("accounting.taxes_professional_review_notice")} />
+            <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.taxes_professional_review_notice")} />
         </div>
     );
 };
@@ -1132,6 +1132,7 @@ const Accounting = () => {
                         <>
                             {status && !status.has_journal_entries && (
                                 <Alert
+                                    className="dark-alert dark-alert-purple"
                                     type="info"
                                     showIcon
                                     icon={<InfoCircleOutlined />}
@@ -1141,6 +1142,7 @@ const Accounting = () => {
                             )}
                             {status && status.has_journal_entries && status.has_backfilled_entries && (
                                 <Alert
+                                    className="dark-alert dark-alert-purple"
                                     type="info"
                                     showIcon
                                     closable

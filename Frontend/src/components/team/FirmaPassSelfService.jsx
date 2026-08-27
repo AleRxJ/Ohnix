@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Input, Space, Tag, Typography, Upload } from "antd";
-import { CheckCircleOutlined, ReloadOutlined, SafetyCertificateOutlined, UploadOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, CopyOutlined, ReloadOutlined, SafetyCertificateOutlined, UploadOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
@@ -87,6 +87,15 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
         return known.length > 0 ? t("fiscal_setup.firmapass_activate_missing", { items: known.join(", ") }) : null;
     };
 
+    const copyCoupon = async () => {
+        try {
+            await navigator.clipboard.writeText(FIRMAPASS_COUPON_CODE);
+            toast.success(t("fiscal_setup.firmapass_coupon_copied"));
+        } catch {
+            // Clipboard API can be unavailable (permissions, insecure context) - the code is still visible to select and copy by hand.
+        }
+    };
+
     const activeCertificate = (status?.certificates || []).some((certificate) => certificate.status === "ACTIVE");
     const validationUuidTrimmed = validationUuid.trim();
     const validationUuidInvalid = Boolean(validationUuidTrimmed) && !isValidUuid(validationUuidTrimmed);
@@ -111,7 +120,7 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
 
             {!electronicInvoicingEnabled && activeCertificate && (
                 <Alert
-                    className="mt-4"
+                    className="mt-4 dark-alert dark-alert-teal"
                     type="success"
                     showIcon
                     message={t("fiscal_setup.firmapass_ready_title")}
@@ -134,19 +143,31 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
             )}
 
             {electronicInvoicingEnabled ? (
-                <Alert className="mt-4" type="success" showIcon message={t("fiscal_setup.firmapass_active_alert")} />
+                <Alert className="mt-4 dark-alert dark-alert-teal" type="success" showIcon message={t("fiscal_setup.firmapass_active_alert")} />
             ) : (
                 <Space direction="vertical" size="middle" className="mt-4 w-full">
                     <Alert
+                        className="dark-alert dark-alert-purple"
                         type="info"
                         showIcon
                         message={t("fiscal_setup.firmapass_purchase_title")}
                         description={
                             <div>
-                                <p className="mb-2">{t("fiscal_setup.firmapass_purchase_hint")}</p>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span>{t("fiscal_setup.firmapass_coupon_label")}:</span>
-                                    <Text code copyable={{ text: FIRMAPASS_COUPON_CODE }}>{FIRMAPASS_COUPON_CODE}</Text>
+                                <p className="mb-3">{t("fiscal_setup.firmapass_purchase_hint")}</p>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ohnix-text-muted)]">
+                                        {t("fiscal_setup.firmapass_coupon_label")}
+                                    </span>
+                                    <span className="ohnix-coupon-chip">
+                                        <code>{FIRMAPASS_COUPON_CODE}</code>
+                                        <Button
+                                            type="text"
+                                            size="small"
+                                            className="ohnix-coupon-copy"
+                                            icon={<CopyOutlined />}
+                                            onClick={copyCoupon}
+                                        />
+                                    </span>
                                 </div>
                             </div>
                         }

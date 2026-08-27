@@ -323,12 +323,12 @@ export const registerCompanyWithAlanubeAdmin = asyncHandler(async (req, res) => 
 
 export const registerCompanyWithItcycleAdmin = asyncHandler(async (req, res) => {
     const { companyId } = req.params;
-    const { dianConfiguration, numberingResolutions, certificate } = req.body || {};
+    const { supplierProfile, numberingResolutions, certificate } = req.body || {};
 
     const data = await registerCompanyWithItcycle({
         companyId,
         requesterRole: req.user.role,
-        dianConfiguration,
+        supplierProfile,
         numberingResolutions,
         certificate,
     });

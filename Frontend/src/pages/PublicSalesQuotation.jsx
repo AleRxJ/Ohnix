@@ -45,7 +45,7 @@ const PublicSalesQuotation = () => {
     };
 
     if (loading) return <div className="public-sales-quotation-loading"><Spin size="large" /></div>;
-    if (error || !quotation) return <div className="public-sales-quotation-loading p-6"><Alert message={t("sales_quotations.public_unavailable")} type="error" /></div>;
+    if (error || !quotation) return <div className="public-sales-quotation-loading p-6"><Alert className="dark-alert dark-alert-rose" message={t("sales_quotations.public_unavailable")} type="error" showIcon /></div>;
 
     const columns = [
         { title: t("sales_quotations.product"), key: "product", render: (_, detail) => detail.product_id?.product_name || t("common.na") },

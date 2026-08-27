@@ -392,7 +392,7 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting, orderId }) => {
                             description={t("electronic_invoices.credit_note.items_hint")}
                             type="info"
                             showIcon
-                            className="mb-3"
+                            className="mb-3 dark-alert dark-alert-purple"
                         />
                         <Table
                             columns={itemsColumns}

@@ -204,7 +204,7 @@ const AdminManagement = () => {
     if (!isAdmin) {
         return (
             <div className="p-6 sm:p-8">
-                <Alert type="warning" showIcon message={t("admin.only_admin")} />
+                <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("admin.only_admin")} />
             </div>
         );
     }

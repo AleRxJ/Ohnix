@@ -7,8 +7,6 @@ import { ensureUserSubscription, getEffectivePlan } from "../middleware/pricing.
 import { computeNitCheckDigit } from "../utils/nit.util.js";
 import {
     isValidNit,
-    isValidSoftwareId,
-    isValidTechnicalKey,
     isValidPrefix,
     isValidNumberingRange,
     isValidDateRange,
@@ -82,23 +80,6 @@ const SELF_SELECT = {
 
 const isValidHexColor = (value) => /^#[0-9A-Fa-f]{6}$/.test(value || "");
 const VAT_RESPONSIBILITIES = ["unset", "responsible", "not_responsible"];
-
-// itcycle-api-dian's own admin API (SetDianConfigurationBodySchema) accepts
-// these as bare strings and only dian-kit's issuance-time schema would ever
-// reject a bad one - by then the resolution is already saved. Validating the
-// real DIAN shape here (see Backend/utils/dianValidation.util.js) catches a
-// typo'd credential at setup instead of at the first invoice attempt.
-const assertValidDianConfiguration = (dianConfiguration) => {
-    if (!isValidSoftwareId(dianConfiguration?.softwareId)) {
-        throw new ApiError(400, "El ID de software DIAN debe ser el UUID que la DIAN te entregó al habilitar tu software (ej. deb9167c-e2f6-4796-9b4d-d102472e2397).");
-    }
-    if (!`${dianConfiguration?.softwarePin || ""}`.trim()) {
-        throw new ApiError(400, "El PIN de software es obligatorio.");
-    }
-    if (dianConfiguration?.technicalKey !== undefined && dianConfiguration.technicalKey !== "" && !isValidTechnicalKey(dianConfiguration.technicalKey)) {
-        throw new ApiError(400, "La clave técnica debe ser el valor de 40 caracteres hexadecimales que la DIAN entrega junto con el ID de software.");
-    }
-};
 
 const assertValidNumberingResolution = (resolution) => {
     if (!isValidPrefix(resolution?.prefix)) {
@@ -205,12 +186,11 @@ export const registerMyCompanyWithItcycle = asyncHandler(async (req, res) => {
         );
     }
     await ensureElectronicInvoicingPlan(req.user.prismaId);
-    const { dianConfiguration, numberingResolutions, certificate } = req.body || {};
-    assertValidDianConfiguration(dianConfiguration);
+    const { supplierProfile, numberingResolutions, certificate } = req.body || {};
     for (const resolution of numberingResolutions || []) assertValidNumberingResolution(resolution);
     const data = await registerCompanyWithItcycle({
         companyId: company.id,
-        dianConfiguration,
+        supplierProfile,
         numberingResolutions,
         certificate,
     });

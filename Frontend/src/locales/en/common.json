@@ -3167,6 +3167,7 @@
     "firmapass_purchase_title": "Your company buys the certificate directly from FirmaPass",
     "firmapass_purchase_hint": "Ohnix doesn't sell or resell digital certificates. Create your identity validation request in FirmaPass's own portal, with your own payment method, and use this discount code negotiated for Ohnix customers. Once FirmaPass gives you your login key and the request's UUID, come back here to continue.",
     "firmapass_coupon_label": "Discount coupon",
+    "firmapass_coupon_copied": "Coupon copied to clipboard",
     "firmapass_active": "Certificate active",
     "firmapass_pending": "Pending",
     "firmapass_ready_title": "Your certificate is ready",
