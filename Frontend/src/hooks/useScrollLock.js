@@ -1,5 +1,8 @@
 import { useEffect } from "react";
 
+let activeLocks = 0;
+let previousBodyStyles = null;
+
 // Plain `document.body.style.overflow = "hidden"` (what both mobile menus
 // used before this) does NOT reliably block background scroll on iOS
 // Safari when the user drags directly on the page - overflow:hidden on body
@@ -11,31 +14,39 @@ import { useEffect } from "react";
 export default function useScrollLock(active) {
     useEffect(() => {
         if (!active) return;
-        const scrollY = window.scrollY;
         const body = document.body;
-        const prev = {
-            position: body.style.position,
-            top: body.style.top,
-            left: body.style.left,
-            right: body.style.right,
-            width: body.style.width,
-            overflow: body.style.overflow,
-        };
+        const scrollY = window.scrollY;
 
-        body.style.position = "fixed";
-        body.style.top = `-${scrollY}px`;
-        body.style.left = "0";
-        body.style.right = "0";
-        body.style.width = "100%";
-        body.style.overflow = "hidden";
+        if (activeLocks === 0) {
+            previousBodyStyles = {
+                position: body.style.position,
+                top: body.style.top,
+                left: body.style.left,
+                right: body.style.right,
+                width: body.style.width,
+                overflow: body.style.overflow,
+            };
+
+            body.style.position = "fixed";
+            body.style.top = `-${scrollY}px`;
+            body.style.left = "0";
+            body.style.right = "0";
+            body.style.width = "100%";
+            body.style.overflow = "hidden";
+        }
+        activeLocks += 1;
 
         return () => {
-            body.style.position = prev.position;
-            body.style.top = prev.top;
-            body.style.left = prev.left;
-            body.style.right = prev.right;
-            body.style.width = prev.width;
-            body.style.overflow = prev.overflow;
+            activeLocks = Math.max(0, activeLocks - 1);
+            if (activeLocks !== 0 || !previousBodyStyles) return;
+
+            body.style.position = previousBodyStyles.position;
+            body.style.top = previousBodyStyles.top;
+            body.style.left = previousBodyStyles.left;
+            body.style.right = previousBodyStyles.right;
+            body.style.width = previousBodyStyles.width;
+            body.style.overflow = previousBodyStyles.overflow;
+            previousBodyStyles = null;
             window.scrollTo(0, scrollY);
         };
     }, [active]);

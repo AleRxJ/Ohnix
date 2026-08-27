@@ -8,9 +8,25 @@ const CONTACT_FORM_EVENT = "Lead";
 
 let pixelLoaded = false;
 
-// Injects the base Meta Pixel snippet once. Safe to call multiple times.
+// Defer Facebook Pixel until production and only when actually configured.
+// Localhost/dev loads are noisy because browser extensions and ad blockers
+// commonly block connect.facebook.net, which is expected and should not crash the app.
 export const loadMetaPixel = () => {
-    if (!META_PIXEL_ID || pixelLoaded || typeof document === "undefined") return;
+    const isLocalhost =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+            window.location.hostname === "127.0.0.1");
+
+    if (
+        !META_PIXEL_ID ||
+        pixelLoaded ||
+        import.meta.env.DEV ||
+        isLocalhost ||
+        typeof document === "undefined"
+    ) {
+        return;
+    }
+
     pixelLoaded = true;
 
     window.fbq = window.fbq || function fbq() {
@@ -23,6 +39,13 @@ export const loadMetaPixel = () => {
     const script = document.createElement("script");
     script.async = true;
     script.src = "https://connect.facebook.net/en_US/fbevents.js";
+    script.onerror = () => {
+        window.fbq = function () {
+            return undefined;
+        };
+        window.fbq.queue = [];
+        window.fbq.loaded = false;
+    };
     document.head.appendChild(script);
 
     window.fbq("init", META_PIXEL_ID);

@@ -379,7 +379,7 @@ const DashboardLayout = () => {
     };
 
     return (
-        <Layout className="dashboard-app min-h-screen relative overflow-hidden">
+        <Layout className="dashboard-app min-h-screen relative overflow-x-hidden">
             <InventoryTour />
             <InventoryTourFab />
             <div className="pointer-events-none absolute inset-0 opacity-70 section-glow" />

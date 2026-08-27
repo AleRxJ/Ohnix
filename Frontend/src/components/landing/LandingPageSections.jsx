@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import useI18n from "../../hooks/useI18n";
+import useScrollLock from "../../hooks/useScrollLock";
 import { api } from "../../api/api";
 import { trackContactFormConversion } from "../../utils/googleAds";
 import { trackContactFormLead } from "../../utils/metaPixel";
@@ -351,10 +352,7 @@ export const PageOrbitalLayer = () => {
 
 export const VideoModal = ({ isOpen, onClose, src, title }) => {
     const { t } = useI18n();
-    useEffect(() => {
-        document.body.style.overflow = isOpen ? "hidden" : "";
-        return () => { document.body.style.overflow = ""; };
-    }, [isOpen]);
+    useScrollLock(isOpen);
 
     useEffect(() => {
         const onKey = (e) => { if (e.key === "Escape") onClose(); };
