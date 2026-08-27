@@ -6,8 +6,8 @@ import { ApiError } from "../utils/ApiError.js";
 // pointOfSale.service.js#ensureDefaultPointOfSale. Always called from inside
 // the same tx that's about to post into it.
 export const getOrCreateAccountingPeriod = async (tx, { accountId, entryDate }) => {
-    const year = entryDate.getFullYear();
-    const month = entryDate.getMonth() + 1;
+    const year = entryDate.getUTCFullYear();
+    const month = entryDate.getUTCMonth() + 1;
 
     const existing = await tx.accountingPeriod.findUnique({
         where: { createdById_year_month: { createdById: accountId, year, month } },
@@ -128,6 +128,61 @@ export const hasBackfilledJournalEntry = async ({ accountId }) => {
         select: { id: true },
     });
     return Boolean(entry);
+};
+
+// "Libro mayor" for a single account: opening balance (everything before
+// `startDate`) plus each line in range with a running balance, so the
+// Chart of Accounts tab can show where a total actually came from without
+// requiring a separate reconciliation step.
+export const getAccountLedger = async ({ accountId, chartAccountId, startDate, endDate }) => {
+    const account = await prisma.chartAccount.findFirst({ where: { id: chartAccountId, createdById: accountId } });
+    if (!account) throw new ApiError(404, "Cuenta contable no encontrada.");
+
+    const priorLines = startDate
+        ? await prisma.journalEntryLine.findMany({
+              where: {
+                  chartAccountId,
+                  journalEntry: { period: { createdById: accountId }, entryDate: { lt: startDate } },
+              },
+              select: { debit: true, credit: true },
+          })
+        : [];
+    const openingBalance = priorLines.reduce((sum, l) => sum + Number(l.debit) - Number(l.credit), 0);
+
+    const lines = await prisma.journalEntryLine.findMany({
+        where: {
+            chartAccountId,
+            journalEntry: {
+                period: { createdById: accountId },
+                ...(startDate || endDate
+                    ? { entryDate: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } }
+                    : {}),
+            },
+        },
+        include: { journalEntry: { select: { id: true, entryDate: true, description: true, sourceType: true } } },
+        orderBy: { journalEntry: { entryDate: "asc" } },
+    });
+
+    let running = openingBalance;
+    const movements = lines.map((l) => {
+        running += Number(l.debit) - Number(l.credit);
+        return {
+            entry_id: l.journalEntry.id,
+            date: l.journalEntry.entryDate,
+            description: l.journalEntry.description,
+            source_type: l.journalEntry.sourceType,
+            debit: Number(l.debit),
+            credit: Number(l.credit),
+            running_balance: running,
+        };
+    });
+
+    return {
+        account: { id: account.id, code: account.code, name: account.name, account_type: account.accountType },
+        opening_balance: openingBalance,
+        closing_balance: running,
+        movements,
+    };
 };
 
 export const getJournalEntryById = async ({ accountId, id }) => {

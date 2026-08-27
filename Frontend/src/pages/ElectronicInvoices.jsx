@@ -38,7 +38,16 @@ import StatCard from "../components/dashboard/StatCard";
 import { useCurrency } from "../context/CurrencyContext";
 import { getCurrencyInputProps } from "../utils/currency";
 import useI18n from "../hooks/useI18n";
+import useIsMobile from "../hooks/useIsMobile";
 import useCountUp from "../hooks/useCountUp";
+import { resolveApiErrorMessage } from "../utils/apiError";
+
+// ensureElectronicInvoicingPlan (Backend/services/electronicInvoicing.service.js)
+// throws an English dev-facing message by design - see the same constant in
+// ElectronicInvoicingSettings.jsx/FirmaPassSelfService.jsx. A plan that
+// lapses or gets downgraded after invoices already exist can still hit this
+// gate here (retry/sync/credit-note), so it needs the same translation.
+const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
 
 const STATUS_COLORS = {
     accepted: "var(--ohnix-accent-2)",
@@ -394,6 +403,7 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting, orderId }) => {
                             size="small"
                             locale={{ emptyText: loadingLines ? t("electronic_invoices.credit_note.loading_items") : t("common.no_data") }}
                             className="module-dark-table"
+                            scroll={{ x: "max-content" }}
                         />
                     </div>
                 ) : (
@@ -470,6 +480,7 @@ const InvoiceDetailDrawer = ({
     creditNotesLoading,
 }) => {
     const { t } = useI18n();
+    const isMobile = useIsMobile();
     if (!invoice) return null;
     const issuedAt = invoice.issuedAt ? new Date(invoice.issuedAt) : null;
     const events = Array.isArray(invoice.events) ? invoice.events : [];
@@ -478,7 +489,7 @@ const InvoiceDetailDrawer = ({
         <Drawer
             open={Boolean(invoice)}
             onClose={onClose}
-            width={typeof window !== "undefined" && window.innerWidth < 768 ? "100%" : 540}
+            width={isMobile ? "100%" : 540}
             className="dian-drawer"
             title={
                 <div className="flex items-center justify-between">
@@ -664,6 +675,11 @@ const ElectronicInvoices = () => {
     const [creditNoteModalOpen, setCreditNoteModalOpen] = useState(false);
     const [creditNoteSubmitting, setCreditNoteSubmitting] = useState(false);
     const { formatCurrency } = useCurrency();
+    // `items` is the full, unpaginated list (the desktop table below pages
+    // it client-side) - the mobile card list used to render every single
+    // document at once regardless of how many existed.
+    const MOBILE_PAGE_SIZE = 15;
+    const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_PAGE_SIZE);
 
     const load = useCallback(async () => {
         try {
@@ -686,6 +702,10 @@ const ElectronicInvoices = () => {
     useEffect(() => {
         load();
     }, [load]);
+
+    useEffect(() => {
+        setMobileVisibleCount(MOBILE_PAGE_SIZE);
+    }, [items]);
 
     const loadCreditNotes = useCallback(async (orderId) => {
         if (!orderId) {
@@ -721,7 +741,7 @@ const ElectronicInvoices = () => {
             message.success(t("electronic_invoices.retry_success"));
             await refreshSelected(invoiceId);
         } catch (error) {
-            message.error(error.response?.data?.message || t("electronic_invoices.retry_error"));
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "electronic_invoices.retry_error"));
         } finally {
             setRetryingId(null);
         }
@@ -734,7 +754,7 @@ const ElectronicInvoices = () => {
             message.success(t("electronic_invoices.sync_success"));
             await refreshSelected(invoiceId);
         } catch (error) {
-            message.error(error.response?.data?.message || t("electronic_invoices.sync_error_action"));
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "electronic_invoices.sync_error_action"));
         } finally {
             setSyncingId(null);
         }
@@ -758,7 +778,7 @@ const ElectronicInvoices = () => {
             setCreditNoteModalOpen(false);
             await loadCreditNotes(selected.orderId);
         } catch (error) {
-            message.error(error.response?.data?.message || t("electronic_invoices.credit_note.error"));
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "electronic_invoices.credit_note.error"));
         } finally {
             setCreditNoteSubmitting(false);
         }
@@ -1030,35 +1050,42 @@ const ElectronicInvoices = () => {
                     ) : items.length === 0 ? (
                         <div className="text-center text-[var(--ohnix-text-muted)] py-10">{t("electronic_invoices.empty_state")}</div>
                     ) : (
-                        items.map((row) => (
-                            <button
-                                key={row.id}
-                                type="button"
-                                onClick={() => setSelected(row)}
-                                className="invoice-mobile-card text-left"
-                            >
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-3">
-                                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#29D8D5]/25 bg-gradient-to-br from-[#29D8D5]/25 to-[#44F3F0]/5 text-[#44F3F0]">
-                                            <FileTextOutlined />
-                                        </span>
-                                        <div>
-                                            <div className="font-semibold text-[var(--ohnix-text-primary)]">{row.invoiceNumber || row.referenceCode}</div>
-                                            <div className="text-xs text-[var(--ohnix-text-muted)]">{row.order?.customerName || "—"}</div>
+                        <>
+                            {items.slice(0, mobileVisibleCount).map((row) => (
+                                <button
+                                    key={row.id}
+                                    type="button"
+                                    onClick={() => setSelected(row)}
+                                    className="invoice-mobile-card text-left"
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-3">
+                                            <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#29D8D5]/25 bg-gradient-to-br from-[#29D8D5]/25 to-[#44F3F0]/5 text-[#44F3F0]">
+                                                <FileTextOutlined />
+                                            </span>
+                                            <div>
+                                                <div className="font-semibold text-[var(--ohnix-text-primary)]">{row.invoiceNumber || row.referenceCode}</div>
+                                                <div className="text-xs text-[var(--ohnix-text-muted)]">{row.order?.customerName || "—"}</div>
+                                            </div>
                                         </div>
+                                        <StatusPill status={row.status} />
                                     </div>
-                                    <StatusPill status={row.status} />
-                                </div>
-                                <div className="mt-3 flex items-center justify-between text-xs">
-                                    <div className="text-[var(--ohnix-text-muted)]">{t("electronic_invoices.table.amount")}</div>
-                                    <div className="font-semibold text-[var(--ohnix-text-primary)]">{formatCurrency(Number(row.order?.total ?? row.total ?? 0))}</div>
-                                </div>
-                                <div className="mt-1 flex items-center justify-between text-xs">
-                                    <div className="text-[var(--ohnix-text-muted)]">{t("electronic_invoices.table.cufe")}</div>
-                                    <CufeCell cufe={row.cufe} />
-                                </div>
-                            </button>
-                        ))
+                                    <div className="mt-3 flex items-center justify-between text-xs">
+                                        <div className="text-[var(--ohnix-text-muted)]">{t("electronic_invoices.table.amount")}</div>
+                                        <div className="font-semibold text-[var(--ohnix-text-primary)]">{formatCurrency(Number(row.order?.total ?? row.total ?? 0))}</div>
+                                    </div>
+                                    <div className="mt-1 flex items-center justify-between text-xs">
+                                        <div className="text-[var(--ohnix-text-muted)]">{t("electronic_invoices.table.cufe")}</div>
+                                        <CufeCell cufe={row.cufe} />
+                                    </div>
+                                </button>
+                            ))}
+                            {mobileVisibleCount < items.length && (
+                                <Button block onClick={() => setMobileVisibleCount((c) => c + MOBILE_PAGE_SIZE)}>
+                                    {t("common.load_more")}
+                                </Button>
+                            )}
+                        </>
                     )}
                 </div>
             </section>

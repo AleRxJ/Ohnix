@@ -15,11 +15,13 @@ import {
 } from "@ant-design/icons";
 import { useCurrency } from "../../context/CurrencyContext";
 import useI18n from "../../hooks/useI18n";
+import useIsMobile from "../../hooks/useIsMobile";
 import { DEFAULT_LOW_STOCK_THRESHOLD, PRODUCT_IMAGE_FALLBACK } from "../../utils/productUtils";
 import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 import LocationStockPanel from "./LocationStockPanel";
 import MovementRow from "./MovementRow";
 import MovementHistoryModal from "./MovementHistoryModal";
+import EmptyState from "../common/EmptyState";
 
 const { Text, Title } = Typography;
 
@@ -34,6 +36,7 @@ const ProductDetailsDrawer = ({
 }) => {
     const { formatCurrency } = useCurrency();
     const { t, currentLanguage } = useI18n();
+    const isMobile = useIsMobile();
     const [movements, setMovements] = useState([]);
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
     // "idle" | "loading" | "error" | "loaded" - tracked separately from
@@ -126,8 +129,7 @@ const ProductDetailsDrawer = ({
               ).toFixed(1)
             : 0;
 
-    const drawerWidth =
-        width || (typeof window !== "undefined" && window.innerWidth < 768 ? "100vw" : "480px");
+    const drawerWidth = width || (isMobile ? "100vw" : "480px");
 
     return (
         <Drawer
@@ -145,83 +147,105 @@ const ProductDetailsDrawer = ({
                 mask: { backgroundColor: "rgba(0,0,0,0.45)" },
                 header: {
                     borderBottom: "1px solid var(--ohnix-line-3)",
-                    padding: "20px 24px",
+                    padding: isMobile ? "16px" : "20px 24px",
                     background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                 },
                 body: {
-                    padding: "24px",
+                    padding: isMobile ? "16px" : "24px",
                     background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                 },
             }}
         >
-            <div className="space-y-5">
-                <div className="module-shell rounded-3xl p-5 reveal-card">
-                    <div className="flex gap-5">
-                        <div className="flex-shrink-0">
-                            <div className="w-28 h-full rounded-lg overflow-hidden bg-white/[0.04] border border-[var(--ohnix-line-4)] flex items-center justify-center">
-                                <Image
-                                    src={product.product_image}
-                                    alt={product.product_name}
-                                    className="w-full h-full object-cover"
-                                    fallback={PRODUCT_IMAGE_FALLBACK}
-                                    preview={{
-                                        mask: <div className="text-[var(--ohnix-text-primary)] text-xs font-medium">{t("products.preview")}</div>,
+            <div className="space-y-4 sm:space-y-5">
+                <Image.PreviewGroup>
+                    <div className="module-shell rounded-2xl sm:rounded-3xl p-4 sm:p-5 reveal-card">
+                        <div className="flex gap-3 sm:gap-5">
+                            <div className="flex-shrink-0">
+                                <div className="w-28 h-full rounded-lg overflow-hidden bg-white/[0.04] border border-[var(--ohnix-line-4)] flex items-center justify-center">
+                                    <Image
+                                        src={product.product_image}
+                                        alt={product.product_name}
+                                        className="w-full h-full object-cover"
+                                        fallback={PRODUCT_IMAGE_FALLBACK}
+                                        preview={{
+                                            mask: <div className="text-[var(--ohnix-text-primary)] text-xs font-medium">{t("products.preview")}</div>,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                                <Title level={4} className="!text-[var(--ohnix-text-primary)] !mb-2 !text-lg !font-semibold">
+                                    {product.product_name}
+                                </Title>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <TagOutlined className="text-[var(--ohnix-text-dim)] text-xs" />
+                                    <Text className="text-sm text-[var(--ohnix-text-muted)]">{product.product_code}</Text>
+                                </div>
+                                <div
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border"
+                                    style={{
+                                        backgroundColor: stockStatus.bg,
+                                        color: stockStatus.color,
+                                        borderColor: stockStatus.border,
                                     }}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                            <Title level={4} className="!text-[var(--ohnix-text-primary)] !mb-2 !text-lg !font-semibold">
-                                {product.product_name}
-                            </Title>
-                            <div className="flex items-center gap-2 mb-3">
-                                <TagOutlined className="text-[var(--ohnix-text-dim)] text-xs" />
-                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{product.product_code}</Text>
-                            </div>
-                            <div
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border"
-                                style={{
-                                    backgroundColor: stockStatus.bg,
-                                    color: stockStatus.color,
-                                    borderColor: stockStatus.border,
-                                }}
-                            >
-                                {stockStatus.icon}
-                                <span>{stockStatus.text}</span>
+                                >
+                                    {stockStatus.icon}
+                                    <span>{stockStatus.text}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                    <div className="module-shell rounded-3xl p-4">
+                    {product.images && product.images.length > 1 && (
+                        <div className="flex flex-wrap gap-2">
+                            {product.images
+                                .filter((img) => !img.is_primary)
+                                .map((img) => (
+                                    <div
+                                        key={img._id}
+                                        className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-[var(--ohnix-line-4)] bg-white/[0.04]"
+                                    >
+                                        <Image
+                                            src={img.url}
+                                            alt={product.product_name}
+                                            className="h-full w-full object-cover"
+                                            fallback={PRODUCT_IMAGE_FALLBACK}
+                                        />
+                                    </div>
+                                ))}
+                        </div>
+                    )}
+                </Image.PreviewGroup>
+
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div className="module-shell rounded-2xl sm:rounded-3xl p-3 sm:p-4 min-w-0">
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-10 h-10 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center mb-2">
-                                <InboxOutlined className="text-[#29D8D5] text-lg" />
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center mb-1.5 sm:mb-2">
+                                <InboxOutlined className="text-[#29D8D5] text-base sm:text-lg" />
                             </div>
-                            <Text className="text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.stock")}</Text>
-                            <Text className="text-xl font-bold text-[var(--ohnix-text-primary)]">{product.stock}</Text>
+                            <Text className="text-[10px] sm:text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.stock")}</Text>
+                            <Text className="text-base sm:text-xl font-bold text-[var(--ohnix-text-primary)] truncate max-w-full">{product.stock}</Text>
                         </div>
                     </div>
 
-                    <div className="module-shell rounded-3xl p-4">
+                    <div className="module-shell rounded-2xl sm:rounded-3xl p-3 sm:p-4 min-w-0">
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-10 h-10 rounded-lg bg-[#44F3F0]/10 flex items-center justify-center mb-2">
-                                <DollarOutlined className="text-[#44F3F0] text-lg" />
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-[#44F3F0]/10 flex items-center justify-center mb-1.5 sm:mb-2">
+                                <DollarOutlined className="text-[#44F3F0] text-base sm:text-lg" />
                             </div>
-                            <Text className="text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.profit")}</Text>
-                            <Text className="text-xl font-bold text-[#44F3F0]">{formatCurrency(Number(profitMargin))}</Text>
+                            <Text className="text-[10px] sm:text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.profit")}</Text>
+                            <Text className="text-sm sm:text-xl font-bold text-[#44F3F0] truncate max-w-full">{formatCurrency(Number(profitMargin))}</Text>
                         </div>
                     </div>
 
-                    <div className="module-shell rounded-3xl p-4">
+                    <div className="module-shell rounded-2xl sm:rounded-3xl p-3 sm:p-4 min-w-0">
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-10 h-10 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center mb-2">
-                                <PercentageOutlined className="text-[#29D8D5] text-lg" />
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center mb-1.5 sm:mb-2">
+                                <PercentageOutlined className="text-[#29D8D5] text-base sm:text-lg" />
                             </div>
-                            <Text className="text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.margin")}</Text>
-                            <Text className="text-xl font-bold text-[var(--ohnix-text-primary)]">{profitPercentage}%</Text>
+                            <Text className="text-[10px] sm:text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.margin")}</Text>
+                            <Text className="text-base sm:text-xl font-bold text-[var(--ohnix-text-primary)] truncate max-w-full">{profitPercentage}%</Text>
                         </div>
                     </div>
                 </div>
@@ -251,17 +275,7 @@ const ProductDetailsDrawer = ({
                                 </Button>
                             </div>
                         ) : movements.length === 0 ? (
-                            // Not antd's <Empty/> - its default illustration + text use
-                            // antd's light-theme colors (no dark algorithm is configured
-                            // app-wide, see AntdConfigProvider.jsx), which render as a
-                            // near-invisible light-gray image and dark-gray text against
-                            // this app's near-black background.
-                            <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
-                                <HistoryOutlined className="text-2xl text-[var(--ohnix-text-dim)]" />
-                                <Text className="text-sm text-[var(--ohnix-text-muted)]">
-                                    {t("products.no_movements")}
-                                </Text>
-                            </div>
+                            <EmptyState icon={<HistoryOutlined />} title={t("products.no_movements")} compact />
                         ) : (
                             <div className="space-y-3 max-h-80 overflow-y-auto pr-1 ohnix-scrollbar-thin">
                                 {movements.slice(0, 5).map((m) => (
@@ -329,6 +343,68 @@ const ProductDetailsDrawer = ({
                             <div className="flex justify-between"><Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.dian_standard_code")}</Text><Text className="text-sm text-[var(--ohnix-text-primary)]">{product.standard_code || "—"}</Text></div>
                             <div className="flex justify-between"><Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.tax_treatment")}</Text><Text className="text-sm text-[var(--ohnix-text-primary)]">{t(`products.tax_treatment_${product.tax_treatment || "taxed"}`)}</Text></div>
                             <div className="flex justify-between"><Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.dian_tax")}</Text><Text className="text-sm text-[var(--ohnix-text-primary)]">{product.tax_treatment === "excluded" ? t("products.dian_excluded") : product.tax_treatment === "exempt" ? `${product.tax_code || "01"} · ${t("products.dian_exempt")}` : `${product.tax_code || "01"} · ${product.tax_rate ?? 0}%`}</Text></div>
+                        </div>
+                    </div>
+                )}
+
+                {product.is_physical && (
+                    <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
+                        <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)]">
+                            <div className="flex items-center gap-2">
+                                <InboxOutlined className="text-[#29D8D5]" />
+                                <Text className="text-sm font-bold text-[var(--ohnix-text-primary)]">{t("products.physical_characteristics")}</Text>
+                            </div>
+                        </div>
+                        <div className="p-5 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.weight")}</Text>
+                                <Text className="text-sm text-[var(--ohnix-text-primary)]">
+                                    {product.weight_value != null ? `${product.weight_value} ${product.weight_unit}` : "—"}
+                                </Text>
+                            </div>
+                            <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                            <div className="flex items-center justify-between">
+                                <Text className="text-sm text-[var(--ohnix-text-muted)]">
+                                    {t("products.height")} × {t("products.width")} × {t("products.length")}
+                                </Text>
+                                <Text className="text-sm text-[var(--ohnix-text-primary)]">
+                                    {product.height_value != null
+                                        ? `${product.height_value} × ${product.width_value} × ${product.length_value} ${product.dimension_unit}`
+                                        : "—"}
+                                </Text>
+                            </div>
+                            <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                            <div className="flex items-center justify-between">
+                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.volumetric_weight")}</Text>
+                                <Text className="text-sm text-[var(--ohnix-text-primary)]">
+                                    {product.volumetric_weight != null ? `${product.volumetric_weight} ${product.weight_unit}` : "—"}
+                                </Text>
+                            </div>
+                            <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                            <div className="flex items-center justify-between">
+                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.packaging_type")}</Text>
+                                <Text className="text-sm text-[var(--ohnix-text-primary)]">
+                                    {t(`products.packaging_${product.packaging_type || "box"}`)}
+                                </Text>
+                            </div>
+                            {product.units_per_package > 1 && (
+                                <>
+                                    <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                                    <div className="flex items-center justify-between">
+                                        <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.units_per_package")}</Text>
+                                        <Text className="text-sm text-[var(--ohnix-text-primary)]">{product.units_per_package}</Text>
+                                    </div>
+                                </>
+                            )}
+                            {product.is_fragile && (
+                                <>
+                                    <Divider className="!my-0" style={{ borderColor: "var(--ohnix-line-3)" }} />
+                                    <div className="flex items-center justify-between">
+                                        <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("products.is_fragile")}</Text>
+                                        <Text className="text-sm text-[#f59e0b]">{t("common.yes")}</Text>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 )}

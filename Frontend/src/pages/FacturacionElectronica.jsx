@@ -10,12 +10,12 @@ const FacturacionElectronica = () => {
     const { currentLanguage } = useI18n();
 
     const description =
-        "Facturacion electronica DIAN para pymes en Colombia, integrada con tu inventario y pedidos. Emite, valida y da seguimiento a tus facturas desde un solo lugar con Ohnix.";
+        "Facturacion electronica DIAN para pymes en Colombia, con tecnologia propia integrada directamente con la DIAN y conectada a tu inventario y pedidos. Emite, valida y da seguimiento a tus facturas desde un solo lugar con Ohnix.";
 
     const benefits = [
         {
             title: "Emision valida ante la DIAN",
-            detail: "Genera facturas electronicas a traves de Alanube, proveedor tecnologico autorizado, sin salir de tu operacion diaria.",
+            detail: "Ohnix genera y valida tus facturas electronicas con tecnologia propia, habilitada directamente ante la DIAN, sin depender de un proveedor externo de facturacion.",
         },
         {
             title: "Directo desde tus pedidos",
@@ -34,7 +34,7 @@ const FacturacionElectronica = () => {
     const faq = [
         {
             q: "Ohnix genera facturas electronicas validas ante la DIAN?",
-            a: "Si. Ohnix se integra con Alanube, proveedor tecnologico autorizado por la DIAN, para emitir y validar facturas electronicas conforme a la normativa colombiana.",
+            a: "Si. Ohnix factura con tecnologia propia, habilitada directamente ante la DIAN, para emitir y validar facturas electronicas conforme a la normativa colombiana.",
         },
         {
             q: "En que plan esta incluida la facturacion electronica?",

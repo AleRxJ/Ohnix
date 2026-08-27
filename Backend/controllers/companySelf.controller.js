@@ -6,6 +6,14 @@ import { uploadFile, deleteFile } from "../utils/storage.js";
 import { ensureUserSubscription, getEffectivePlan } from "../middleware/pricing.middleware.js";
 import { computeNitCheckDigit } from "../utils/nit.util.js";
 import {
+    isValidNit,
+    isValidSoftwareId,
+    isValidTechnicalKey,
+    isValidPrefix,
+    isValidNumberingRange,
+    isValidDateRange,
+} from "../utils/dianValidation.util.js";
+import {
     addItcycleNumberingResolutionForCompany,
     ensureElectronicInvoicingPlan,
     registerCompanyWithItcycle,
@@ -61,10 +69,51 @@ const SELF_SELECT = {
     itcycleCompanyId: true,
     vatResponsible: true,
     vatResponsibleEffectiveFrom: true,
+    // Tax configuration only - no calculation reads these yet (see the
+    // schema comment on Company.isWithholdingAgent). Exposed here so a
+    // company can record the fact - and have their accountant confirm it -
+    // ahead of the retención en la fuente / ReteICA engine existing.
+    isWithholdingAgent: true,
+    withholdingAgentEffectiveFrom: true,
+    icaMunicipalityCode: true,
+    icaActivityCode: true,
+    icaRatePerThousand: true,
 };
 
 const isValidHexColor = (value) => /^#[0-9A-Fa-f]{6}$/.test(value || "");
 const VAT_RESPONSIBILITIES = ["unset", "responsible", "not_responsible"];
+
+// itcycle-api-dian's own admin API (SetDianConfigurationBodySchema) accepts
+// these as bare strings and only dian-kit's issuance-time schema would ever
+// reject a bad one - by then the resolution is already saved. Validating the
+// real DIAN shape here (see Backend/utils/dianValidation.util.js) catches a
+// typo'd credential at setup instead of at the first invoice attempt.
+const assertValidDianConfiguration = (dianConfiguration) => {
+    if (!isValidSoftwareId(dianConfiguration?.softwareId)) {
+        throw new ApiError(400, "El ID de software DIAN debe ser el UUID que la DIAN te entregó al habilitar tu software (ej. deb9167c-e2f6-4796-9b4d-d102472e2397).");
+    }
+    if (!`${dianConfiguration?.softwarePin || ""}`.trim()) {
+        throw new ApiError(400, "El PIN de software es obligatorio.");
+    }
+    if (dianConfiguration?.technicalKey !== undefined && dianConfiguration.technicalKey !== "" && !isValidTechnicalKey(dianConfiguration.technicalKey)) {
+        throw new ApiError(400, "La clave técnica debe ser el valor de 40 caracteres hexadecimales que la DIAN entrega junto con el ID de software.");
+    }
+};
+
+const assertValidNumberingResolution = (resolution) => {
+    if (!isValidPrefix(resolution?.prefix)) {
+        throw new ApiError(400, "El prefijo de la resolución debe tener máximo 4 caracteres (letras o números), tal como lo autorizó la DIAN.");
+    }
+    if (!`${resolution?.resolutionNumber || ""}`.trim()) {
+        throw new ApiError(400, "El número de resolución es obligatorio.");
+    }
+    if (!isValidNumberingRange(resolution?.startNumber, resolution?.endNumber)) {
+        throw new ApiError(400, "El rango de numeración no es válido: el número final debe ser mayor al inicial.");
+    }
+    if (!isValidDateRange(resolution?.startDate, resolution?.endDate)) {
+        throw new ApiError(400, "El período de vigencia de la resolución no es válido: la fecha final debe ser posterior a la inicial.");
+    }
+};
 
 // Never accept a company id from a self-service request. A company owner can
 // only configure the company linked to their authenticated account.
@@ -74,7 +123,7 @@ const getOwnedCompanyOrThrow = async (userId) => {
         select: { companyId: true },
     });
     if (!user?.companyId) {
-        throw new ApiError(422, "Configura primero los datos de tu empresa antes de activar facturaciÃ³n electrÃ³nica.");
+        throw new ApiError(422, "Configura primero los datos de tu empresa antes de activar facturación electrónica.");
     }
     const company = await prisma.company.findUnique({ where: { id: user.companyId}, select: SELF_SELECT });
     if (!company) throw new ApiError(404, "Empresa no encontrada.");
@@ -83,9 +132,24 @@ const getOwnedCompanyOrThrow = async (userId) => {
 
 export const getMyItcycleStatus = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
-    const readiness = company.itcycleCompanyId
-        ? await getCompanyDianReadiness({ companyId: company.id })
-        : null;
+
+    // A transient itcycle-api-dian failure (Render free-tier cold start,
+    // a deploy in progress, a brief network blip) must never make an
+    // ALREADY-registered company look unregistered again - that would send
+    // a real customer back to the initial registration wizard, which then
+    // rejects them with 409 "ya está configurada" if they try to resubmit.
+    // Only the readiness projection itself is unknown here, never the
+    // registration fact (which is Ohnix's own stored itcycleCompanyId).
+    let readiness = null;
+    let readinessError = null;
+    if (company.itcycleCompanyId) {
+        try {
+            readiness = await getCompanyDianReadiness({ companyId: company.id });
+        } catch (error) {
+            readinessError = error.message || "No fue posible verificar el estado ante itcycle-api-dian.";
+        }
+    }
+
     return res.status(200).json(
         new ApiResponse(200, {
             provisioned: Boolean(company.itcycleCompanyId),
@@ -93,7 +157,8 @@ export const getMyItcycleStatus = asyncHandler(async (req, res) => {
             electronicInvoicingEnabled: company.electronicInvoicingEnabled,
             electronicInvoicingProvider: company.electronicInvoicingProvider,
             readiness,
-        }, "Estado de facturaciÃ³n electrÃ³nica obtenido correctamente")
+            readinessError,
+        }, "Estado de facturación electrónica obtenido correctamente")
     );
 });
 
@@ -106,7 +171,12 @@ export const activateMyItcycleElectronicInvoicing = asyncHandler(async (req, res
 
     const readiness = await getCompanyDianReadiness({ companyId: company.id });
     if (!readiness?.canIssueInvoices) {
-        throw new ApiError(422, "Tu empresa todavía no está lista para emitir. Completa: " + (readiness?.missing || []).join(", "));
+        // `missing` codes (e.g. "invoice_resolution_01") are itcycle-api-dian's
+        // internal vocabulary, meaningless to a business owner - pass them via
+        // `errors` (same structured-list pattern as insufficient-stock errors)
+        // so the frontend translates each one, instead of baking raw codes
+        // into `message` where they'd leak straight into a toast.
+        throw new ApiError(422, "Tu empresa todavía no está lista para emitir.", readiness?.missing || []);
     }
 
     const updated = await prisma.company.update({
@@ -120,7 +190,7 @@ export const activateMyItcycleElectronicInvoicing = asyncHandler(async (req, res
 export const registerMyCompanyWithItcycle = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     if (company.itcycleCompanyId) {
-        throw new ApiError(409, "Tu empresa ya estÃ¡ configurada para facturar. Agrega una resoluciÃ³n por separado si la necesitas.");
+        throw new ApiError(409, "Tu empresa ya está configurada para facturar. Agrega una resolución por separado si la necesitas.");
     }
     // electronicInvoicingProvider defaults to "alanube" for every company
     // (see schema.prisma), so its mere presence isn't a signal an admin
@@ -136,20 +206,23 @@ export const registerMyCompanyWithItcycle = asyncHandler(async (req, res) => {
     }
     await ensureElectronicInvoicingPlan(req.user.prismaId);
     const { dianConfiguration, numberingResolutions, certificate } = req.body || {};
+    assertValidDianConfiguration(dianConfiguration);
+    for (const resolution of numberingResolutions || []) assertValidNumberingResolution(resolution);
     const data = await registerCompanyWithItcycle({
         companyId: company.id,
         dianConfiguration,
         numberingResolutions,
         certificate,
     });
-    return res.status(200).json(new ApiResponse(200, data, "Empresa configurada para facturaciÃ³n electrÃ³nica"));
+    return res.status(200).json(new ApiResponse(200, data, "Empresa configurada para facturación electrónica"));
 });
 
 export const addMyItcycleNumberingResolution = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     await ensureElectronicInvoicingPlan(req.user.prismaId);
+    assertValidNumberingResolution(req.body || {});
     const data = await addItcycleNumberingResolutionForCompany({ companyId: company.id, ...(req.body || {}) });
-    return res.status(201).json(new ApiResponse(201, data, "ResoluciÃ³n agregada correctamente"));
+    return res.status(201).json(new ApiResponse(201, data, "Resolución agregada correctamente"));
 });
 
 export const setMyFirmaPassLoginKey = asyncHandler(async (req, res) => {
@@ -177,16 +250,25 @@ export const confirmMyFirmaPassValidation = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     await ensureElectronicInvoicingPlan(req.user.prismaId);
     const data = await confirmCompanyFirmaPassValidation({ companyId: company.id, validationUuid: req.params.validationUuid });
-    return res.status(200).json(new ApiResponse(200, data, "ValidaciÃ³n de FirmaPass confirmada"));
+    return res.status(200).json(new ApiResponse(200, data, "Validación de FirmaPass confirmada"));
 });
 
 export const getMyFirmaPassStatus = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     if (!company.itcycleCompanyId) {
-        return res.status(200).json(new ApiResponse(200, { provisioned: false, certificates: [] }, "FirmaPass aÃºn no estÃ¡ disponible"));
+        return res.status(200).json(new ApiResponse(200, { provisioned: false, certificates: [] }, "FirmaPass aún no está disponible"));
     }
-    const data = await getCompanyFirmaPassStatus({ companyId: company.id });
-    return res.status(200).json(new ApiResponse(200, { provisioned: true, ...data }, "Estado de FirmaPass obtenido correctamente"));
+    // Same reasoning as getMyItcycleStatus - a transient itcycle-api-dian
+    // failure must not throw the whole request away, it just means the
+    // FirmaPass certificate list is momentarily unknown.
+    try {
+        const data = await getCompanyFirmaPassStatus({ companyId: company.id });
+        return res.status(200).json(new ApiResponse(200, { provisioned: true, ...data }, "Estado de FirmaPass obtenido correctamente"));
+    } catch (error) {
+        return res.status(200).json(
+            new ApiResponse(200, { provisioned: true, certificates: [], statusError: error.message || "No fue posible verificar el estado ante itcycle-api-dian." }, "Estado de FirmaPass obtenido parcialmente")
+        );
+    }
 });
 
 export const getMyCompany = asyncHandler(async (req, res) => {
@@ -221,8 +303,21 @@ export const getMyCompany = asyncHandler(async (req, res) => {
 });
 
 export const updateMyCompany = asyncHandler(async (req, res, next) => {
-    const { name, legalName, contactEmail, phone, pdfFooterText, pdfAccentColor, taxIdentification, countryCode, vatResponsible } =
-        req.body || {};
+    const {
+        name,
+        legalName,
+        contactEmail,
+        phone,
+        pdfFooterText,
+        pdfAccentColor,
+        taxIdentification,
+        countryCode,
+        vatResponsible,
+        isWithholdingAgent,
+        icaMunicipalityCode,
+        icaActivityCode,
+        icaRatePerThousand,
+    } = req.body || {};
 
     const subscription = await ensureUserSubscription(req.user.prismaId);
     const effectivePlan = getEffectivePlan(subscription);
@@ -251,8 +346,29 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
     }
 
     const trimmedTaxId = taxIdentification !== undefined ? `${taxIdentification || ""}`.replace(/[^0-9]/g, "") : undefined;
-    if (taxIdentification !== undefined && taxIdentification && !trimmedTaxId) {
-        return next(new ApiError(400, "El NIT/tax ID debe contener al menos un dígito."));
+    if (taxIdentification !== undefined && taxIdentification && !isValidNit(trimmedTaxId)) {
+        return next(new ApiError(400, "El NIT debe tener entre 6 y 15 dígitos."));
+    }
+
+    if (isWithholdingAgent !== undefined && typeof isWithholdingAgent !== "boolean") {
+        return next(new ApiError(400, "isWithholdingAgent debe ser verdadero o falso."));
+    }
+
+    const trimmedIcaMunicipalityCode = icaMunicipalityCode !== undefined ? `${icaMunicipalityCode || ""}`.replace(/[^0-9]/g, "") : undefined;
+    if (trimmedIcaMunicipalityCode && !/^\d{5}$/.test(trimmedIcaMunicipalityCode)) {
+        return next(new ApiError(400, "icaMunicipalityCode debe ser el código DANE de 5 dígitos del municipio."));
+    }
+
+    const trimmedIcaActivityCode = icaActivityCode !== undefined ? `${icaActivityCode || ""}`.replace(/[^0-9]/g, "") : undefined;
+    if (trimmedIcaActivityCode && !/^\d{4}$/.test(trimmedIcaActivityCode)) {
+        return next(new ApiError(400, "icaActivityCode debe ser el código CIIU de 4 dígitos de la actividad económica."));
+    }
+
+    const parsedIcaRate = icaRatePerThousand !== undefined && icaRatePerThousand !== null && icaRatePerThousand !== ""
+        ? Number(icaRatePerThousand)
+        : icaRatePerThousand;
+    if (icaRatePerThousand !== undefined && icaRatePerThousand !== null && icaRatePerThousand !== "" && (!Number.isFinite(parsedIcaRate) || parsedIcaRate < 0 || parsedIcaRate > 50)) {
+        return next(new ApiError(400, "icaRatePerThousand debe ser un número entre 0 y 50 (tarifa por mil)."));
     }
 
     const user = await prisma.user.findUnique({
@@ -260,8 +376,8 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         select: {
             companyId: true,
             username: true,
-            company: (trimmedTaxId && !hasExplicitCountry) || normalizedVatResponsible !== undefined
-                ? { select: { countryCode: true, vatResponsible: true } }
+            company: (trimmedTaxId && !hasExplicitCountry) || normalizedVatResponsible !== undefined || isWithholdingAgent !== undefined
+                ? { select: { countryCode: true, vatResponsible: true, isWithholdingAgent: true } }
                 : undefined,
         },
     });
@@ -290,6 +406,17 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
                       : {}),
               }
             : {}),
+        ...(isWithholdingAgent !== undefined
+            ? {
+                  isWithholdingAgent,
+                  ...(isWithholdingAgent !== user?.company?.isWithholdingAgent
+                      ? { withholdingAgentEffectiveFrom: isWithholdingAgent ? new Date() : null }
+                      : {}),
+              }
+            : {}),
+        ...(icaMunicipalityCode !== undefined ? { icaMunicipalityCode: trimmedIcaMunicipalityCode || null } : {}),
+        ...(icaActivityCode !== undefined ? { icaActivityCode: trimmedIcaActivityCode || null } : {}),
+        ...(icaRatePerThousand !== undefined ? { icaRatePerThousand: parsedIcaRate === "" || parsedIcaRate === null ? null : parsedIcaRate } : {}),
         // For any other country this just stores the raw identifier with no
         // computed digit, same as company.controller.js's admin path leaves
         // it to be set explicitly there.
@@ -382,4 +509,32 @@ export const updateMyCompanyLogo = asyncHandler(async (req, res, next) => {
 
     const company = await prisma.company.findUnique({ where: { id: companyId }, select: SELF_SELECT });
     return res.status(200).json(new ApiResponse(200, company, "Logo actualizado correctamente"));
+});
+
+// Reset-to-default counterpart to updateMyCompanyLogo - no plan gate, since
+// removing a logo (falling back to the generic Ohnix template) must stay
+// available even to a company that downgraded below the plan that let it
+// upload one in the first place.
+export const deleteMyCompanyLogo = asyncHandler(async (req, res, next) => {
+    const user = await prisma.user.findUnique({
+        where: { id: req.user.prismaId },
+        select: { companyId: true },
+    });
+    if (!user?.companyId) {
+        return next(new ApiError(404, "Empresa no encontrada."));
+    }
+
+    const existing = await prisma.company.findUnique({
+        where: { id: user.companyId },
+        select: { logoUrl: true },
+    });
+    if (!existing?.logoUrl) {
+        return next(new ApiError(400, "Tu empresa no tiene un logo configurado."));
+    }
+
+    await prisma.company.update({ where: { id: user.companyId }, data: { logoUrl: null } });
+    deleteFile(existing.logoUrl);
+
+    const company = await prisma.company.findUnique({ where: { id: user.companyId }, select: SELF_SELECT });
+    return res.status(200).json(new ApiResponse(200, company, "Logo eliminado correctamente"));
 });

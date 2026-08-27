@@ -55,18 +55,24 @@ const StatCard = ({
                     )}
                 </div>
 
-                <div className="mb-3">
+                <div className="mb-3 min-w-0">
                     <Statistic
                         value={value}
                         precision={precision}
                         formatter={formatter}
                         prefix={prefix}
                         suffix={suffix}
+                        // Fixed 32px used to overflow the card on narrow screens
+                        // for large COP amounts (e.g. "$45.320.000") - clamp()
+                        // shrinks it down to fit a ~280px-wide mobile card
+                        // instead of the number spilling past the card edge,
+                        // and overflow-wrap catches whatever's still too wide.
                         valueStyle={{
-                            fontSize: "32px",
+                            fontSize: "clamp(20px, 5.5vw, 32px)",
                             fontWeight: "700",
                             color: "var(--ohnix-text-primary)",
                             lineHeight: "1.2",
+                            overflowWrap: "anywhere",
                             ...valueStyle,
                         }}
                     />

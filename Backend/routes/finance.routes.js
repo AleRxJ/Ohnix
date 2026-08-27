@@ -8,6 +8,7 @@ import {
     updateCashAccount,
     deactivateCashAccount,
     listCashAccountMovements,
+    registerManualExpense,
     listOrderPayments,
     registerOrderPayment,
     listPurchasePayments,
@@ -35,6 +36,9 @@ router.route("/cash-accounts/:id/deactivate")
 
 router.route("/cash-accounts/:id/movements")
     .get(requireModulePermission("finance", "view"), listCashAccountMovements);
+
+router.route("/expenses")
+    .post(requireModulePermission("finance", "edit"), registerManualExpense);
 
 router.route("/orders/:orderId/payments")
     .get(requireModulePermission("finance", "view"), listOrderPayments)

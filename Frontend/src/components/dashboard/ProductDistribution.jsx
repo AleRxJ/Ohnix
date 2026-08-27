@@ -48,7 +48,6 @@ const ProductDistribution = ({ topProducts }) => {
         innerRadius: 0.68,
         color: CHART_COLORS,
         label: {
-            type: "inner",
             offset: "-50%",
             content: "{percentage}",
             style: {

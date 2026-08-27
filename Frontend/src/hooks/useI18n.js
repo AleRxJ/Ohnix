@@ -3,7 +3,7 @@ import { MANUAL_LANGUAGE_KEY } from '../i18n/geoLanguage.js';
 
 export const useI18n = () => {
   const { t, i18n } = useTranslation();
-  const normalizedLanguage = (i18n.resolvedLanguage || i18n.language || 'en').slice(0, 2);
+  const normalizedLanguage = (i18n.resolvedLanguage || i18n.language || 'es').slice(0, 2);
 
   return {
     t,

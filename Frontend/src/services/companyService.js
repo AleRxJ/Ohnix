@@ -23,6 +23,11 @@ export const companyService = {
         return response.data;
     },
 
+    async deleteMyCompanyLogo() {
+        const response = await api.delete("/company/me/logo");
+        return response.data;
+    },
+
     async getMyItcycleStatus() {
         const response = await api.get("/company/me/itcycle/status");
         return response.data;
@@ -35,8 +40,10 @@ export const companyService = {
         return response.data;
     },
 
-    async addMyItcycleNumberingResolution(payload) {
-        const response = await api.post("/company/me/itcycle/numbering-resolutions", payload);
+    async addMyItcycleNumberingResolution(payload, idempotencyKey) {
+        const response = await api.post("/company/me/itcycle/numbering-resolutions", payload, {
+            headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        });
         return response.data;
     },
 

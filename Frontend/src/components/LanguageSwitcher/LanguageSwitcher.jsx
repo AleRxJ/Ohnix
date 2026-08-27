@@ -30,7 +30,9 @@ const LanguageSwitcher = () => {
       <Select
         value={currentLanguage}
         onChange={handleLanguageChange}
-        style={{ width: '120px' }}
+        className="ohnix-language-select"
+        popupClassName="ohnix-language-dropdown"
+        style={{ width: '132px' }}
         prefix={<GlobalOutlined />}
         options={availableLanguages.map((lang) => ({
           value: lang,

@@ -356,6 +356,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                 dataSource={members}
                 loading={loading}
                 pagination={false}
+                scroll={{ x: "max-content" }}
             />
 
             {isOwner && (

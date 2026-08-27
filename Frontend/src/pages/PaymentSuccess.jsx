@@ -336,7 +336,7 @@ const PaymentSuccess = () => {
                 {
                     key: "thresholds",
                     title: "Configura umbrales personalizados por producto",
-                    description: "Cada producto puede tener su propio nivel mínimo de stock. Alertas inteligentes.",
+                    description: "Cada producto puede tener su propio nivel mínimo de stock. Alertas automáticas por producto.",
                     done: manualChecklistDone.thresholds || false,
                     route: "/products",
                     actionLabel: "Configurar productos",
@@ -368,7 +368,7 @@ const PaymentSuccess = () => {
                 {
                     key: "onboarding",
                     title: "Agenda tu sesión de onboarding",
-                    description: "Tu Account Manager te contactará en menos de 24h para arrancar con tu implementación.",
+                    description: "Tu Account Manager se pondrá en contacto contigo para arrancar con tu implementación.",
                     done: manualChecklistDone.onboarding || false,
                     route: "/profile",
                     actionLabel: "Contactar Account Manager",

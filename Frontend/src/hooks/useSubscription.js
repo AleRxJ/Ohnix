@@ -18,10 +18,12 @@ export const PLAN_FEATURES = {
         apiAccess:           false,
         electronicInvoicing: false,
         advancedReports:     false,
+        accounting:          false,
         teamRoles:           false,
         teamLivePresence:    false,
         teamActivityLog:     false,
         multiLocation:       false,
+        salesQuotations:     false,
     },
     growth: {
         reportSales:         true,
@@ -36,10 +38,12 @@ export const PLAN_FEATURES = {
         apiAccess:           false,
         electronicInvoicing: true,
         advancedReports:     false,
+        accounting:          false,
         teamRoles:           true,
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       false,
+        salesQuotations:     true,
     },
     scale: {
         reportSales:         true,
@@ -54,10 +58,12 @@ export const PLAN_FEATURES = {
         apiAccess:           true,
         electronicInvoicing: true,
         advancedReports:     true,
+        accounting:          true,
         teamRoles:           true,
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       true,
+        salesQuotations:     true,
     },
     enterprise: {
         reportSales:         true,
@@ -72,10 +78,12 @@ export const PLAN_FEATURES = {
         apiAccess:           true,
         electronicInvoicing: true,
         advancedReports:     true,
+        accounting:          true,
         teamRoles:           true,
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       true,
+        salesQuotations:     true,
     },
 };
 
@@ -111,10 +119,12 @@ export const FEATURE_LABELS = [
     { key: "apiAccess",         es: "Acceso a API REST",               en: "REST API access"              },
     { key: "electronicInvoicing", es: "Facturación electrónica DIAN",  en: "DIAN electronic invoicing"    },
     { key: "advancedReports",   es: "Reportes avanzados (margen, clientes, equipo)", en: "Advanced reports (margin, customers, team)" },
+    { key: "accounting",        es: "Contabilidad automática (asientos, PUC, cierres)", en: "Automated accounting (journal entries, chart of accounts, closes)" },
     { key: "teamRoles",         es: "Roles y permisos por módulo",     en: "Per-module roles & permissions" },
     { key: "teamLivePresence",  es: "Presencia en vivo y bloqueo de registros", en: "Live presence & record locking" },
     { key: "teamActivityLog",   es: "Log de actividad del equipo",     en: "Team activity log"            },
     { key: "multiLocation",     es: "Múltiples puntos de venta",       en: "Multiple points of sale"      },
+    { key: "salesQuotations",   es: "Cotizaciones para clientes",       en: "Customer sales quotations"    },
 ].filter((feature) => ELECTRONIC_INVOICING_ENABLED || feature.key !== "electronicInvoicing");
 
 // The minimum plan that unlocks each feature (used for "upgrade to X" messages)
@@ -131,10 +141,12 @@ export const FEATURE_MINIMUM_PLAN = {
     apiAccess:           "scale",
     electronicInvoicing: "growth",
     advancedReports:     "scale",
+    accounting:          "scale",
     teamRoles:           "growth",
     teamLivePresence:    "growth",
     teamActivityLog:     "growth",
     multiLocation:       "scale",
+    salesQuotations:     "growth",
 };
 
 const useSubscription = () => {

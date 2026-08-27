@@ -17,6 +17,7 @@ import {
     CameraOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import { useTeam } from "../../context/TeamContext";
 
 const { Text } = Typography;
 
@@ -29,6 +30,10 @@ const ProfileHeader = ({
     setEditMode,
 }) => {
     const { t } = useI18n();
+    const { isTeamMember } = useTeam();
+    const accountTypeKey = isTeamMember
+        ? "profile.invited_user_account"
+        : "profile.inventory_admin_account";
 
     // Generar avatar por defecto si no existe o está vacío
     const getAvatarSrc = () => {
@@ -115,9 +120,7 @@ const ProfileHeader = ({
                                             </p>
                                         </div>
                                         <p className="text-sm text-[var(--ohnix-text-muted)] max-w-2xl mx-auto md:mx-0">
-                                            {user?.role === "admin"
-                                                ? t("profile.administrator_account")
-                                                : t("profile.standard_account")}
+                                            {t(accountTypeKey)}
                                         </p>
                                     </div>
 
@@ -149,7 +152,7 @@ const ProfileHeader = ({
                                             {t("profile.account_type")}
                                         </Text>
                                         <p className="text-sm font-medium text-[var(--ohnix-text-primary)] capitalize truncate">
-                                            {user?.role || t("common.unknown")}
+                                            {t(accountTypeKey)}
                                         </p>
                                     </div>
                                     <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-4 py-4 backdrop-blur-sm">

@@ -141,6 +141,31 @@ enum ProductTaxTreatment {
   exempt
 }
 
+// Physical characteristics feed shipping/logistics quoting (carrier
+// integrations aren't wired up yet, but every product already carries what
+// a quote needs). WeightUnit/DimensionUnit are display preferences only -
+// Product.weightValue/heightValue/widthValue/lengthValue are always
+// persisted in grams/cm regardless of which unit the seller typed the
+// number in, so nothing downstream (volumetric weight, order snapshots, a
+// future carrier adapter) ever has to convert units back and forth.
+enum WeightUnit {
+  g
+  kg
+}
+
+enum DimensionUnit {
+  cm
+  m
+}
+
+enum PackagingType {
+  box
+  envelope
+  bag
+  tube
+  pallet
+}
+
 model User {
   id                String        @id @default(cuid())
   legacyMongoId     String?       @unique @map("legacy_mongo_id")
@@ -176,6 +201,10 @@ model User {
   suppliers                 Supplier[]
   purchasesCreated          Purchase[]           @relation("PurchaseCreatedBy")
   purchasesUpdated          Purchase[]           @relation("PurchaseUpdatedBy")
+  quotationsCreated         PurchaseQuotation[]  @relation("QuotationCreatedBy")
+  quotationsUpdated         PurchaseQuotation[]  @relation("QuotationUpdatedBy")
+  salesQuotationsCreated    SalesQuotation[]     @relation("SalesQuotationCreatedBy")
+  salesQuotationsUpdated    SalesQuotation[]     @relation("SalesQuotationUpdatedBy")
   ordersCreated             Order[]              @relation("OrderCreatedBy")
   ordersUpdated             Order[]              @relation("OrderUpdatedBy")
   planUpgradeRequests       PlanUpgradeRequest[]
@@ -284,6 +313,23 @@ model Company {
   // the tax treatment of orders already placed before it.
   vatResponsible                   VatResponsibility @default(unset) @map("vat_responsible")
   vatResponsibleEffectiveFrom      DateTime?         @map("vat_responsible_effective_from")
+  // Withholding-agent status (agente retenedor de renta) - same shape and
+  // "effective from" convention as vatResponsible above, but this is
+  // CONFIGURATION only: no automatic retención en la fuente calculation
+  // reads these fields yet (see accountingPosting.service.js's scope note).
+  // Storing it now lets a company record the fact - and have it reviewed by
+  // their accountant - ahead of that calculation engine existing.
+  isWithholdingAgent               Boolean           @default(false) @map("is_withholding_agent")
+  withholdingAgentEffectiveFrom    DateTime?         @map("withholding_agent_effective_from")
+  // ReteICA config: unlike IVA/Retefuente, the applicable rate is set by
+  // each municipality's own acuerdo for a given economic activity (CIIU) -
+  // there's no national default to fall back to, so this is captured as a
+  // plain per-company fact the user enters (ideally with their accountant),
+  // not derived from anything else in the system. Same "configuration only,
+  // no calculation yet" scope as isWithholdingAgent above.
+  icaMunicipalityCode              String?           @map("ica_municipality_code")
+  icaActivityCode                  String?           @map("ica_activity_code")
+  icaRatePerThousand               Decimal?          @map("ica_rate_per_thousand") @db.Decimal(6, 3)
   isActive                         Boolean           @default(true) @map("is_active")
   createdAt                        DateTime          @default(now()) @map("created_at")
   updatedAt                        DateTime          @updatedAt @map("updated_at")
@@ -469,46 +515,47 @@ model Unit {
 }
 
 model Supplier {
-  id             String   @id @default(cuid())
-  legacyMongoId  String?  @unique @map("legacy_mongo_id")
-  name           String
-  email          String
-  phone          String
-  address        String
-  shopname       String?
-  type           String?
-  bankName       String?  @map("bank_name")
-  accountHolder  String?  @map("account_holder")
-  accountNumber  String?  @map("account_number")
-  photo          String
+  id                         String   @id @default(cuid())
+  legacyMongoId              String?  @unique @map("legacy_mongo_id")
+  name                       String
+  email                      String
+  phone                      String
+  address                    String
+  shopname                   String?
+  type                       String?
+  bankName                   String?  @map("bank_name")
+  accountHolder              String?  @map("account_holder")
+  accountNumber              String?  @map("account_number")
+  photo                      String
   // Same DIAN fields/names as Customer's own block below, so
   // electronicInvoicing.service.js's buildItcycleCustomerParty/
   // buildItcyclePartyAddress work against a Supplier row unchanged.
-  identificationDocumentCode String? @map("identification_document_code")
-  identification             String? @map("identification")
-  legalOrganizationCode      String? @map("legal_organization_code")
-  tributeCode                String? @map("tribute_code")
-  municipalityCode           String? @map("municipality_code")
-  countryCode                String? @map("country_code")
+  identificationDocumentCode String?  @map("identification_document_code")
+  identification             String?  @map("identification")
+  legalOrganizationCode      String?  @map("legal_organization_code")
+  tributeCode                String?  @map("tribute_code")
+  municipalityCode           String?  @map("municipality_code")
+  countryCode                String?  @map("country_code")
   // Precondition for auto-issuing a Documento Soporte on purchase completion
   // (purchaseSupportDocument.service.js) - mirrors how order.orderStatus
   // "completed" gates sales invoicing. Only suppliers legally NOT required
   // to issue their own invoice need this document.
-  notObligatedToInvoice Boolean @default(false) @map("not_obligated_to_invoice")
-  isTutorialData Boolean  @default(false) @map("is_tutorial_data")
-  createdById    String   @map("created_by")
+  notObligatedToInvoice      Boolean  @default(false) @map("not_obligated_to_invoice")
+  isTutorialData             Boolean  @default(false) @map("is_tutorial_data")
+  createdById                String   @map("created_by")
   // Which location this supplier was created at - see Order.pointOfSaleId
   // for the pattern. Assigned once, at creation (resolveOrAssertPointOfSaleId),
   // same as orders/purchases; a restricted-scope member at another location
   // never sees this supplier, even to buy from it (2026-08-21 scope
   // decision: "por creación", not a shared directory).
-  pointOfSaleId  String   @map("point_of_sale_id")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  pointOfSaleId              String   @map("point_of_sale_id")
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
 
-  createdBy   User        @relation(fields: [createdById], references: [id])
-  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
+  createdBy   User                @relation(fields: [createdById], references: [id])
+  pointOfSale PointOfSale         @relation(fields: [pointOfSaleId], references: [id])
   purchases   Purchase[]
+  quotations  PurchaseQuotation[]
 
   @@index([createdById])
   @@index([pointOfSaleId])
@@ -543,6 +590,7 @@ model Customer {
   createdBy   User        @relation(fields: [createdById], references: [id])
   pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
   orders      Order[]
+  salesQuotations SalesQuotation[]
 
   @@index([createdById])
   @@index([pointOfSaleId])
@@ -550,55 +598,117 @@ model Customer {
 }
 
 model Product {
-  id                String              @id @default(cuid())
-  legacyMongoId     String?             @unique @map("legacy_mongo_id")
-  productName       String              @map("product_name")
-  productCode       String              @map("product_code")
-  categoryId        String              @map("category_id")
-  unitId            String              @map("unit_id")
-  buyingPrice       Decimal             @map("buying_price") @db.Decimal(12, 2)
-  sellingPrice      Decimal             @map("selling_price") @db.Decimal(12, 2)
+  id                 String              @id @default(cuid())
+  legacyMongoId      String?             @unique @map("legacy_mongo_id")
+  productName        String              @map("product_name")
+  productCode        String              @map("product_code")
+  categoryId         String              @map("category_id")
+  unitId             String              @map("unit_id")
+  buyingPrice        Decimal             @map("buying_price") @db.Decimal(12, 2)
+  sellingPrice       Decimal             @map("selling_price") @db.Decimal(12, 2)
   // Account-wide total across every Point of Sale - a fast-read cache kept
   // in sync with ProductLocationStock the same way ProductLocationStock
   // itself is a fast-read cache in front of StockMovement (see that
   // model's comment). Always equals the sum of this product's
   // ProductLocationStock rows; never written directly except by that sync -
   // see productLocationStock.service.js#claimLocationStock.
-  stock             Int                 @default(0)
-  productImage      String              @default("default-product.png") @map("product_image")
-  unitMeasureCode   String              @default("94") @map("unit_measure_code")
-  standardCode      String              @default("999") @map("standard_code")
-  taxCode           String?             @default("01") @map("tax_code")
-  taxRate           Decimal?            @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  stock              Int                 @default(0)
+  productImage       String              @default("default-product.png") @map("product_image")
+  unitMeasureCode    String              @default("94") @map("unit_measure_code")
+  standardCode       String              @default("999") @map("standard_code")
+  taxCode            String?             @default("01") @map("tax_code")
+  taxRate            Decimal?            @default(0) @map("tax_rate") @db.Decimal(5, 2)
   // Replaces the old isTaxExcluded boolean - see ProductTaxTreatment for why
   // "excluded" and "exempt" can't be the same flag. taxRate keeps meaning
   // "the rate to charge when taxTreatment is taxed"; it's ignored for
   // excluded/exempt (exempt is always 0% by definition, ET art. 477/478/481).
-  taxTreatment      ProductTaxTreatment @default(taxed) @map("tax_treatment")
+  taxTreatment       ProductTaxTreatment @default(taxed) @map("tax_treatment")
   // Per-product override for the low-stock alert threshold (Escala+ plan
   // feature). Null means "use the account-wide default threshold".
-  lowStockThreshold Int?                @map("low_stock_threshold")
-  isTutorialData    Boolean             @default(false) @map("is_tutorial_data")
-  createdById       String              @map("created_by")
-  updatedById       String?             @map("updated_by")
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
+  lowStockThreshold  Int?                @map("low_stock_threshold")
+  // Physical characteristics for shipping/logistics (see the WeightUnit
+  // enum comment for the storage-vs-display-unit split). isPhysical
+  // defaults true so every pre-existing product stays valid; a digital
+  // good/service is the only case that sets it false, which is also the
+  // only case where the rest of this block is allowed to be null.
+  isPhysical         Boolean             @default(true) @map("is_physical")
+  weightValue        Decimal?            @map("weight_value") @db.Decimal(10, 2)
+  weightUnit         WeightUnit          @default(g) @map("weight_unit")
+  heightValue        Decimal?            @map("height_value") @db.Decimal(10, 2)
+  widthValue         Decimal?            @map("width_value") @db.Decimal(10, 2)
+  lengthValue        Decimal?            @map("length_value") @db.Decimal(10, 2)
+  dimensionUnit      DimensionUnit       @default(cm) @map("dimension_unit")
+  // Derived from height/width/length by product.controller.js
+  // (computeVolumetricWeightGrams) every time any of the three changes -
+  // never a direct user input, so it can't drift from the dimensions it
+  // was computed from. Divisor (5000 cm3/kg) is the standard used by every
+  // major Colombian carrier (Servientrega, Coordinadora, Interrápidísimo,
+  // TCC); a carrier-specific divisor belongs in that carrier's future
+  // adapter, not here.
+  volumetricWeight   Decimal?            @map("volumetric_weight") @db.Decimal(10, 2)
+  // How many physical units make up one sellable/dispatched unit of this
+  // product - e.g. a "six-pack" SKU where unitsPerPackage = 6. Doesn't
+  // affect weight/dimensions (those already describe the dispatched
+  // package), it's informational for whoever packs the order.
+  unitsPerPackage    Int                 @default(1) @map("units_per_package")
+  packagingType      PackagingType       @default(box) @map("packaging_type")
+  isFragile          Boolean             @default(false) @map("is_fragile")
+  // Package-for-dispatch overrides. Null means "the dispatched package IS
+  // the unit itself" (weightValue/height/width/lengthValue above already
+  // describe it) - the common case of one unit = one box, which this way
+  // doesn't force every seller to fill in the same numbers twice. Only set
+  // when what actually ships differs from the bare unit (e.g. bundled with
+  // extra packaging material).
+  packageWeightValue Decimal?            @map("package_weight_value") @db.Decimal(10, 2)
+  packageHeightValue Decimal?            @map("package_height_value") @db.Decimal(10, 2)
+  packageWidthValue  Decimal?            @map("package_width_value") @db.Decimal(10, 2)
+  packageLengthValue Decimal?            @map("package_length_value") @db.Decimal(10, 2)
+  isTutorialData     Boolean             @default(false) @map("is_tutorial_data")
+  createdById        String              @map("created_by")
+  updatedById        String?             @map("updated_by")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
 
   category        Category               @relation(fields: [categoryId], references: [id])
   unit            Unit                   @relation(fields: [unitId], references: [id])
   createdBy       User                   @relation("ProductCreatedBy", fields: [createdById], references: [id])
   updatedBy       User?                  @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
-  orderDetails    OrderDetail[]
-  purchaseDetails PurchaseDetail[]
-  stockMovements  StockMovement[]
-  locationStock   ProductLocationStock[]
-  transfers       StockTransfer[]
+  orderDetails     OrderDetail[]
+  purchaseDetails  PurchaseDetail[]
+  quotationDetails PurchaseQuotationDetail[]
+  salesQuotationDetails SalesQuotationDetail[]
+  stockMovements   StockMovement[]
+  locationStock    ProductLocationStock[]
+  transfers        StockTransfer[]
+  images           ProductImage[]
 
   @@unique([productCode, createdById])
   @@index([createdById])
   @@index([categoryId])
   @@index([unitId])
   @@map("products")
+}
+
+// Gallery entry for a product - Product.productImage stays a synced cache
+// of whichever row here has isPrimary=true (see
+// services/productImage.service.js#syncPrimaryScalar), so every existing
+// reader of the scalar field (reports, bulk import defaults, the mapped API
+// response) keeps working unchanged. isPrimary is always exactly
+// `position === 0`; both are stored (rather than deriving isPrimary from a
+// MIN(position) query) so the API response is self-explanatory, but every
+// write goes through that one service so the two can't drift apart.
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  position  Int      @default(0)
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([productId, position])
+  @@map("product_images")
 }
 
 // Per-location partition of a product's stock - the piece Product.stock
@@ -771,13 +881,17 @@ model Purchase {
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  supplier               Supplier                 @relation(fields: [supplierId], references: [id])
-  pointOfSale            PointOfSale              @relation(fields: [pointOfSaleId], references: [id])
-  createdBy              User                     @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
-  updatedBy              User?                    @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
-  purchaseDetails        PurchaseDetail[]
-  payments               PurchasePayment[]
+  supplier                Supplier                 @relation(fields: [supplierId], references: [id])
+  pointOfSale             PointOfSale              @relation(fields: [pointOfSaleId], references: [id])
+  createdBy               User                     @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
+  updatedBy               User?                    @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
+  purchaseDetails         PurchaseDetail[]
+  payments                PurchasePayment[]
   purchaseSupportDocument PurchaseSupportDocument?
+  // Back-relation for PurchaseQuotation.convertedPurchase - set only when
+  // this Purchase was created by approving a quotation, never on a purchase
+  // created directly.
+  sourceQuotation         PurchaseQuotation?
 
   @@index([createdById])
   @@index([supplierId])
@@ -825,6 +939,148 @@ model PurchaseDetail {
   @@map("purchase_details")
 }
 
+enum QuotationStatus {
+  draft    // being edited, prices not yet locked in as final
+  received // supplier's quoted prices confirmed - ready to compare/decide
+  approved // converted into a real Purchase (terminal)
+  rejected // discarded (terminal)
+}
+
+enum SalesQuotationStatus {
+  draft
+  sent
+  viewed
+  accepted
+  rejected
+  expired
+  converted
+}
+
+enum SalesQuotationDiscountType {
+  percentage
+  fixed
+}
+
+// A customer-facing sales offer. This is intentionally separate from
+// PurchaseQuotation: supplier quotes store buying costs and can become
+// purchase orders, while sales quotes store selling prices and can later
+// become customer orders.
+model SalesQuotation {
+  id                 String             @id @default(cuid())
+  quotationNo        String             @unique @map("quotation_no")
+  publicToken        String?            @unique @map("public_token")
+  customerId         String             @map("customer_id")
+  pointOfSaleId      String             @map("point_of_sale_id")
+  status             SalesQuotationStatus @default(draft)
+  issuedAt           DateTime           @default(now()) @map("issued_at")
+  validUntil         DateTime?          @map("valid_until")
+  notes              String?
+  subtotal           Decimal            @db.Decimal(12, 2)
+  discountType       SalesQuotationDiscountType @default(percentage) @map("discount_type")
+  discountRate       Decimal            @default(0) @map("discount_rate") @db.Decimal(5, 2)
+  discount           Decimal            @default(0) @db.Decimal(12, 2)
+  tax                Decimal            @default(0) @db.Decimal(12, 2)
+  total              Decimal            @db.Decimal(12, 2)
+  createdById        String             @map("created_by")
+  updatedById        String?            @map("updated_by")
+  convertedOrderId   String?            @unique @map("converted_order_id")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  pointOfSale   PointOfSale    @relation(fields: [pointOfSaleId], references: [id])
+  createdBy     User           @relation("SalesQuotationCreatedBy", fields: [createdById], references: [id])
+  updatedBy     User?          @relation("SalesQuotationUpdatedBy", fields: [updatedById], references: [id])
+  convertedOrder Order?        @relation(fields: [convertedOrderId], references: [id])
+  details       SalesQuotationDetail[]
+
+  @@index([customerId])
+  @@index([pointOfSaleId])
+  @@index([createdById])
+  @@index([status])
+  @@map("sales_quotations")
+}
+
+model SalesQuotationDetail {
+  id             String        @id @default(cuid())
+  quotationId    String        @map("quotation_id")
+  productId      String        @map("product_id")
+  quantity       Int
+  unitPrice      Decimal       @map("unit_price") @db.Decimal(12, 2)
+  discountRate   Decimal       @default(0) @map("discount_rate") @db.Decimal(5, 2)
+  discount       Decimal       @default(0) @db.Decimal(12, 2)
+  taxRate        Decimal       @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  taxAmount      Decimal       @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  lineTotal      Decimal       @map("line_total") @db.Decimal(12, 2)
+
+  quotation SalesQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product   Product        @relation(fields: [productId], references: [id])
+
+  @@index([quotationId])
+  @@index([productId])
+  @@map("sales_quotation_details")
+}
+
+// A supplier's price offer for a hypothetical purchase - deliberately NOT a
+// PurchaseStatus value. Even Purchase.pending is already a committed order
+// (numbered, counted in reports, only waiting on physical delivery - see
+// purchase.service.js#createPurchase's shouldAddStock check); a quotation is
+// the pre-commitment step where several competing supplier offers can exist
+// for the same need before one is chosen. No stock/tax/accounting side
+// effects happen here - those only happen once a quotation is converted into
+// a real Purchase (see purchase.service.js#createPurchase's
+// source_quotation_id handling).
+model PurchaseQuotation {
+  id                  String          @id @default(cuid())
+  quotationNo         String          @unique @map("quotation_no")
+  supplierId          String          @map("supplier_id")
+  // Same scoping as Purchase/Supplier - see purchase.service.js#createPurchase.
+  pointOfSaleId       String          @map("point_of_sale_id")
+  status              QuotationStatus @default(draft)
+  // Optional - only shown as a soft warning in the UI, never blocks
+  // conversion (a supplier may still honor an "expired" quote).
+  validUntil          DateTime?       @map("valid_until")
+  notes               String?
+  // Set together with status flipping to "approved", inside the same
+  // transaction that creates the resulting Purchase - see
+  // purchase.service.js#createPurchase.
+  convertedPurchaseId String?         @unique @map("converted_purchase_id")
+  createdById         String          @map("created_by")
+  updatedById         String?         @map("updated_by")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  supplier          Supplier                  @relation(fields: [supplierId], references: [id])
+  pointOfSale       PointOfSale               @relation(fields: [pointOfSaleId], references: [id])
+  createdBy         User                      @relation("QuotationCreatedBy", fields: [createdById], references: [id])
+  updatedBy         User?                     @relation("QuotationUpdatedBy", fields: [updatedById], references: [id])
+  convertedPurchase Purchase?                 @relation(fields: [convertedPurchaseId], references: [id])
+  details           PurchaseQuotationDetail[]
+
+  @@index([createdById])
+  @@index([supplierId])
+  @@index([pointOfSaleId])
+  @@map("purchase_quotations")
+}
+
+model PurchaseQuotationDetail {
+  id          String  @id @default(cuid())
+  quotationId String  @map("quotation_id")
+  productId   String  @map("product_id")
+  quantity    Int
+  // The quoted price - no tax fields here, unlike PurchaseDetail: tax
+  // treatment depends on live product/company state and is only meaningful
+  // (and computed fresh) once this converts into a real Purchase.
+  unitcost    Decimal @db.Decimal(12, 2)
+
+  quotation PurchaseQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product   Product           @relation(fields: [productId], references: [id])
+
+  @@index([quotationId])
+  @@index([productId])
+  @@map("purchase_quotation_details")
+}
+
 model Order {
   id             String      @id @default(cuid())
   legacyMongoId  String?     @unique @map("legacy_mongo_id")
@@ -855,6 +1111,7 @@ model Order {
   orderDetails      OrderDetail[]
   electronicInvoice ElectronicInvoice?
   payments          OrderPayment[]
+  salesQuotation    SalesQuotation?
 
   @@index([createdById])
   @@index([customerId])
@@ -863,13 +1120,13 @@ model Order {
 }
 
 model OrderDetail {
-  id                  String              @id @default(cuid())
-  legacyMongoId       String?             @unique @map("legacy_mongo_id")
-  orderId             String              @map("order_id")
-  productId           String              @map("product_id")
-  quantity            Int
-  unitcost            Decimal             @db.Decimal(12, 2)
-  total               Decimal             @db.Decimal(12, 2)
+  id                      String              @id @default(cuid())
+  legacyMongoId           String?             @unique @map("legacy_mongo_id")
+  orderId                 String              @map("order_id")
+  productId               String              @map("product_id")
+  quantity                Int
+  unitcost                Decimal             @db.Decimal(12, 2)
+  total                   Decimal             @db.Decimal(12, 2)
   // Frozen at order creation (order.service.js#computeOrderTotals) - the
   // effective tax treatment/rate actually applied to this line, already
   // resolved against both the product's own classification AND the
@@ -878,19 +1135,27 @@ model OrderDetail {
   // re-deriving from the live Product/Company, so a tax-rate edit or a
   // change in company.vatResponsible after the sale never rewrites the tax
   // treatment of a line that was already sold under the old one.
-  taxTreatmentApplied ProductTaxTreatment @default(taxed) @map("tax_treatment_applied")
-  taxRateApplied      Decimal             @default(0) @map("tax_rate_applied") @db.Decimal(5, 2)
-  taxAmount           Decimal             @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  taxTreatmentApplied     ProductTaxTreatment @default(taxed) @map("tax_treatment_applied")
+  taxRateApplied          Decimal             @default(0) @map("tax_rate_applied") @db.Decimal(5, 2)
+  taxAmount               Decimal             @default(0) @map("tax_amount") @db.Decimal(12, 2)
   // Running totals across every partial return event for this line - same
   // pattern as PurchaseDetail (see its schema comment): StockMovement
   // (sourceType "order_return", sourceId = this order's id) is the
   // append-only ledger, these are the fast-read cache. "Fully returned" is
   // derived as returnedQuantity === quantity, not stored.
-  returnDate          DateTime?           @map("return_date")
-  returnedQuantity    Int                 @default(0) @map("returned_quantity")
-  refundAmount        Decimal             @default(0) @map("refund_amount") @db.Decimal(12, 2)
-  createdAt           DateTime            @default(now()) @map("created_at")
-  updatedAt           DateTime            @updatedAt @map("updated_at")
+  returnDate              DateTime?           @map("return_date")
+  returnedQuantity        Int                 @default(0) @map("returned_quantity")
+  refundAmount            Decimal             @default(0) @map("refund_amount") @db.Decimal(12, 2)
+  // Frozen at order creation (order.service.js#createOrder), same reasoning
+  // as taxRateApplied above: the per-unit weight/volumetric weight the
+  // product actually had when it was sold, in grams, so a later edit to the
+  // product's own physical characteristics never rewrites what a shipping
+  // payload for this already-placed order reports. Null when the product
+  // wasn't physical (or had no weight recorded) at sale time.
+  weightApplied           Decimal?            @map("weight_applied") @db.Decimal(10, 2)
+  volumetricWeightApplied Decimal?            @map("volumetric_weight_applied") @db.Decimal(10, 2)
+  createdAt               DateTime            @default(now()) @map("created_at")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
 
   order   Order   @relation(fields: [orderId], references: [id])
   product Product @relation(fields: [productId], references: [id])
@@ -1178,6 +1443,8 @@ model PointOfSale {
   customers      Customer[]
   suppliers      Supplier[]
   cashAccounts   CashAccount[]
+  quotations     PurchaseQuotation[]
+  salesQuotations SalesQuotation[]
 
   @@index([accountId, isActive])
   @@map("points_of_sale")
@@ -1430,6 +1697,13 @@ enum JournalSourceType {
   // Clientes/Ingresos/IVA generado adjustment - see
   // postFinancialCreditNoteJournalEntry.
   credit_note_financial
+  // Fase 5 - period close: reverses that period's revenue/cost/expense
+  // activity into a retained-earnings equity account. Excluded from
+  // financialStatements.service.js's income-statement aggregation (so a
+  // closed period's own P&L still reads correctly) but included normally
+  // in the balance sheet's equity aggregation - see closeAccountingPeriod.
+  period_close
+  manual_expense
 }
 
 // Append-only double-entry ledger header - mirrors StockMovement/CashMovement's

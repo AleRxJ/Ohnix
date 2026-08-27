@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { sendMailSafe } from "../utils/nodemailer.js";
+import { sendContactFormLeadEvent } from "../services/metaConversionsApi.service.js";
 
 const escapeHtml = (value) =>
     `${value ?? ""}`.replace(/[&<>"']/g, (char) => ({
@@ -54,6 +55,14 @@ export const submitContactForm = asyncHandler(async (req, res) => {
     if (result?.error) {
         throw new ApiError(502, "Could not send your message right now. Please try again later.");
     }
+
+    sendContactFormLeadEvent({
+        email: email.trim(),
+        phone: phone?.trim(),
+        clientIp: req.ip,
+        userAgent: req.headers["user-agent"],
+        eventSourceUrl: req.headers.referer,
+    });
 
     return res
         .status(200)

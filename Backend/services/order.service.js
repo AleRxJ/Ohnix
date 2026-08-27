@@ -46,6 +46,11 @@ const findProductByAnyId = async (id) =>
             taxCode: true,
             taxTreatment: true,
             lowStockThreshold: true,
+            isPhysical: true,
+            weightValue: true,
+            volumetricWeight: true,
+            packagingType: true,
+            isFragile: true,
             // Read live at sale-completion time for the automatic COGS
             // journal line (accountingPosting.service.js) - not frozen per
             // OrderDetail like unitcost/tax fields are, since this codebase
@@ -133,7 +138,7 @@ const triggerElectronicInvoicingIfCompleted = ({ orderId, userId, userRole, trig
 
 class OrderService {
     async createOrder(orderData, userId, userRole, pointOfSaleId) {
-        const { customer_id, order_status, orderItems, is_tutorial_data } = orderData;
+        const { customer_id, order_status, orderItems, is_tutorial_data, source_sales_quotation_id } = orderData;
 
         if (!customer_id || !Array.isArray(orderItems) || orderItems.length === 0) {
             throw new ApiError(400, "Invalid order data");
@@ -277,6 +282,16 @@ class OrderService {
                 },
             });
 
+            if (source_sales_quotation_id) {
+                const linked = await tx.salesQuotation.updateMany({
+                    where: { id: source_sales_quotation_id, status: "accepted", convertedOrderId: null },
+                    data: { status: "converted", convertedOrderId: createdOrder.id, updatedById: userId },
+                });
+                if (linked.count === 0) {
+                    throw new ApiError(409, "This quotation was already converted or is no longer available.", [], "", "sales_quotation_already_converted");
+                }
+            }
+
             for (const [index, item] of resolvedItems.entries()) {
                 const itemTax = itemTaxes[index];
                 await tx.orderDetail.create({
@@ -289,6 +304,9 @@ class OrderService {
                         taxTreatmentApplied: itemTax.treatment,
                         taxRateApplied: itemTax.rate,
                         taxAmount: itemTax.amount,
+                        weightApplied: item.product.weightValue !== null ? Number(item.product.weightValue) : null,
+                        volumetricWeightApplied:
+                            item.product.volumetricWeight !== null ? Number(item.product.volumetricWeight) : null,
                     },
                 });
 
@@ -966,6 +984,125 @@ class OrderService {
             order_fully_returned: orderFullyReturned,
             total_refund_amount: results.reduce((sum, r) => sum + r.refund_now, 0),
             return_details: results,
+        };
+    }
+
+    // Carrier-agnostic package list for this order - the payload a future
+    // shipping-carrier adapter would translate into its own API's format
+    // (see the physical-characteristics design: this model never speaks a
+    // specific carrier's vocabulary, only grams/cm/booleans). One package
+    // per order line on purpose - consolidating several lines into a single
+    // real box is an operational packing decision the person packing the
+    // order makes, not something this payload should guess at.
+    async buildShippingPayload(orderId, userId, userRole, actingUser) {
+        const order = await prisma.order.findFirst({
+            where: { OR: [{ id: orderId }, { legacyMongoId: orderId }] },
+            include: {
+                customer: {
+                    select: { id: true, legacyMongoId: true, name: true, phone: true, address: true },
+                },
+            },
+        });
+
+        if (!order) {
+            throw new ApiError(404, "Order not found");
+        }
+        if (userRole !== "admin" && order.createdById !== userId) {
+            throw new ApiError(403, "You don't have permission to view this order's shipping payload");
+        }
+        if (actingUser) assertPosAccess(actingUser, order.pointOfSaleId);
+
+        const details = await prisma.orderDetail.findMany({
+            where: { orderId: order.id },
+            include: {
+                product: {
+                    select: {
+                        id: true,
+                        legacyMongoId: true,
+                        productName: true,
+                        isPhysical: true,
+                        packagingType: true,
+                        isFragile: true,
+                        weightValue: true,
+                        heightValue: true,
+                        widthValue: true,
+                        lengthValue: true,
+                        packageWeightValue: true,
+                        packageHeightValue: true,
+                        packageWidthValue: true,
+                        packageLengthValue: true,
+                    },
+                },
+            },
+        });
+
+        const packages = [];
+        for (const detail of details) {
+            const product = detail.product;
+            // Not physical (or sold before physical characteristics
+            // existed and never backfilled) - nothing for a carrier to
+            // weigh or box.
+            if (!product?.isPhysical) continue;
+
+            // Already-placed orders use the frozen weightApplied/
+            // volumetricWeightApplied (per unit, at sale time) instead of
+            // the product's current numbers - same reasoning as
+            // taxRateApplied, so editing the product later never rewrites
+            // what a shipment for this order already reports.
+            const unitWeightGrams =
+                detail.weightApplied !== null ? Number(detail.weightApplied) : Number(product.weightValue ?? 0);
+            const unitVolumetricWeightGrams =
+                detail.volumetricWeightApplied !== null
+                    ? Number(detail.volumetricWeightApplied)
+                    : Number(product.volumetricWeight ?? 0);
+
+            // Package-for-dispatch dimensions/weight fall back to the
+            // unit's own numbers when no override was set - see
+            // Product.packageWeightValue's schema comment.
+            const packageUnitWeightGrams =
+                product.packageWeightValue !== null ? Number(product.packageWeightValue) : unitWeightGrams;
+            const heightCm =
+                product.packageHeightValue !== null ? Number(product.packageHeightValue) : Number(product.heightValue ?? 0);
+            const widthCm =
+                product.packageWidthValue !== null ? Number(product.packageWidthValue) : Number(product.widthValue ?? 0);
+            const lengthCm =
+                product.packageLengthValue !== null ? Number(product.packageLengthValue) : Number(product.lengthValue ?? 0);
+
+            const billableUnitWeightGrams = Math.max(packageUnitWeightGrams, unitVolumetricWeightGrams);
+
+            packages.push({
+                product_id: toExternalId(product),
+                product_name: product.productName,
+                quantity: detail.quantity,
+                weight_grams: Number((packageUnitWeightGrams * detail.quantity).toFixed(2)),
+                volumetric_weight_grams: Number((unitVolumetricWeightGrams * detail.quantity).toFixed(2)),
+                billable_weight_grams: Number((billableUnitWeightGrams * detail.quantity).toFixed(2)),
+                height_cm: heightCm,
+                width_cm: widthCm,
+                length_cm: lengthCm,
+                packaging_type: product.packagingType,
+                is_fragile: product.isFragile,
+            });
+        }
+
+        return {
+            order_id: toExternalId(order),
+            order_reference: order.invoiceNo,
+            point_of_sale_id: order.pointOfSaleId,
+            // No address model exists yet for either side of a shipment
+            // (Customer only has a free-text address, Company has none at
+            // all) - a future carrier integration resolves origin/
+            // destination itself; this only hands over what already exists.
+            destination: order.customer
+                ? {
+                      customer_id: toExternalId(order.customer),
+                      name: order.customer.name,
+                      phone: order.customer.phone,
+                      address: order.customer.address,
+                  }
+                : null,
+            packages,
+            has_shippable_items: packages.length > 0,
         };
     }
 }

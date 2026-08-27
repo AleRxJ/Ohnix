@@ -18,6 +18,7 @@ import {
     WalletOutlined,
     BookOutlined,
     SafetyCertificateOutlined,
+    TagsOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 
@@ -96,7 +97,7 @@ export const steps = [
 // ever hides items for someone acting on someone else's account. Defaults
 // to "always visible" so callers that don't pass it (or aren't inside a
 // team) see the full menu, same as before this existed.
-export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false, showFiscalSetup = false) => {
+export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false, showFiscalSetup = false, needsFiscalSetup = false) => {
     const items = [
         {
             key: "dashboard",
@@ -111,34 +112,16 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: <Link to="/products">{t("common.products")}</Link>,
         },
         {
-            key: "orders",
-            moduleKey: "orders",
-            icon: <ShoppingCartOutlined />,
-            label: <Link to="/orders">{t("common.orders")}</Link>,
-        },
-        {
-            key: "customers",
-            moduleKey: "customers",
-            icon: <TeamOutlined />,
-            label: <Link to="/customers">{t("common.customers")}</Link>,
-        },
-        {
-            key: "purchases",
-            moduleKey: "purchases",
-            icon: <ShoppingOutlined />,
-            label: <Link to="/purchases">{t("common.purchases")}</Link>,
-        },
-        {
-            key: "suppliers",
-            moduleKey: "suppliers",
-            icon: <UserSwitchOutlined />,
-            label: <Link to="/suppliers">{t("common.suppliers")}</Link>,
-        },
-        {
             key: "categories",
             moduleKey: "categories",
             icon: <AppstoreOutlined />,
             label: <Link to="/categories">{t("common.categories")}</Link>,
+        },
+        {
+            key: "orders",
+            moduleKey: "orders",
+            icon: <ShoppingCartOutlined />,
+            label: <Link to="/orders">{t("common.orders")}</Link>,
         },
         ...(showElectronicInvoicing ? [{
             key: "electronic-invoices",
@@ -146,16 +129,50 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <FileTextOutlined />,
             label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
         }] : []),
+        {
+            key: "customers",
+            moduleKey: "customers",
+            icon: <TeamOutlined />,
+            label: <Link to="/customers">{t("common.customers")}</Link>,
+        },
+        {
+            key: "quotations",
+            moduleKey: "purchases",
+            icon: <TagsOutlined />,
+            label: <Link to="/quotations">{t("common.quotations_nav")}</Link>,
+        },
+        {
+            key: "purchases",
+            moduleKey: "purchases",
+            icon: <ShoppingOutlined />,
+            label: <Link to="/purchases">{t("common.purchases")}</Link>,
+        },
         ...(showSupportDocuments ? [{
             key: "purchase-support-documents",
             moduleKey: "purchases",
             icon: <FileTextOutlined />,
             label: <Link to="/purchase-support-documents">{t("common.purchase_support_documents_nav")}</Link>,
         }] : []),
+        {
+            key: "suppliers",
+            moduleKey: "suppliers",
+            icon: <UserSwitchOutlined />,
+            label: <Link to="/suppliers">{t("common.suppliers")}</Link>,
+        },
         ...(showFiscalSetup ? [{
             key: "fiscal-setup",
             icon: <SafetyCertificateOutlined />,
-            label: <Link to="/fiscal-setup">Configuración DIAN</Link>,
+            label: (
+                <Link to="/fiscal-setup" className="flex items-center justify-between gap-2">
+                    <span>{t("common.fiscal_setup_nav")}</span>
+                    {needsFiscalSetup && (
+                        <span className="relative flex h-2 w-2 shrink-0">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FFCF70] opacity-75" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#FFCF70]" />
+                        </span>
+                    )}
+                </Link>
+            ),
         }] : []),
         {
             key: "reports",
@@ -163,11 +180,6 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <BarChartOutlined />,
             label: <Link to="/reports">{t("common.reports")}</Link>,
         },
-        ...(showTeam ? [{
-            key: "team",
-            icon: <UsergroupAddOutlined />,
-            label: <Link to="/team">{t("common.team_nav")}</Link>,
-        }] : []),
         {
             key: "finance",
             moduleKey: "finance",
@@ -180,6 +192,11 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <BookOutlined />,
             label: <Link to="/accounting">{t("common.accounting_nav")}</Link>,
         },
+        ...(showTeam ? [{
+            key: "team",
+            icon: <UsergroupAddOutlined />,
+            label: <Link to="/team">{t("common.team_nav")}</Link>,
+        }] : []),
         {
             key: "billing",
             moduleKey: "billing",

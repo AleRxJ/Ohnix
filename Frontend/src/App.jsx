@@ -44,6 +44,9 @@ const DashboardLayout = lazy(() => import("./components/layout/DashboardLayout")
 const Products = lazy(() => import("./pages/Products"));
 const Orders = lazy(() => import("./pages/Orders"));
 const Purchase = lazy(() => import("./pages/Purchase"));
+const Quotations = lazy(() => import("./pages/Quotations"));
+const SalesQuotations = lazy(() => import("./pages/SalesQuotations"));
+const PublicSalesQuotation = lazy(() => import("./pages/PublicSalesQuotation"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Suppliers = lazy(() => import("./pages/Suppliers"));
 const Category = lazy(() => import("./pages/Category"));
@@ -109,12 +112,27 @@ const RequireBillingAccess = ({ children }) => {
 
 // Fiscal configuration is account-wide: it belongs to the business owner,
 // not to a team role. Solo customers are owners too, so this deliberately
-// does not require a Team to exist.
+// does not require a Team to exist. Same ELECTRONIC_INVOICING_ENABLED +
+// countryCode "CO" gate every other DIAN surface in this app already uses
+// (ColombiaInvoiceRoute, SupportDocumentRoute) - itcycle-api-dian is a
+// Colombia-only concept, and the whole DIAN surface stays dark platform-wide
+// until that flag flips, this route is no exception.
 const RequireFiscalSetupAccess = ({ children }) => {
-    const { loading: authLoading } = useContext(AuthContext);
+    const { user, loading: authLoading } = useContext(AuthContext);
     const { isTeamMember, loading: teamLoading } = useTeam();
+    if (!ELECTRONIC_INVOICING_ENABLED) return <Navigate to="/dashboard" replace />;
     if (authLoading || teamLoading) return <RouteLoadingFallback />;
-    return isTeamMember ? <Navigate to="/dashboard" replace /> : children;
+    // Unlike ColombiaInvoiceRoute/SupportDocumentRoute (which gate an action
+    // on an ALREADY-Colombian company), this page's whole purpose is often to
+    // set the company's country for the first time - registerUser never
+    // creates a Company row, so a brand-new owner has no company yet at all.
+    // Requiring countryCode === "CO" up front would permanently lock that
+    // owner out of the one page that lets them set it. Only a company that
+    // already exists with a DIFFERENT country blocks entry.
+    const companyIsColombianOrUnset = !user?.company || user.company.countryCode === "CO";
+    return !isTeamMember && companyIsColombianOrUnset
+        ? children
+        : <Navigate to="/dashboard" replace />;
 };
 
 // Same reasoning as RequireBillingAccess, generalized: every module nav
@@ -215,6 +233,7 @@ function App() {
                             {/* Public onboarding for an invited teammate - the token
                                 itself is the credential, no ProtectedRoute wrapper. */}
                             <Route path="/team/invite/:token" element={<AcceptInvitation />} />
+                            <Route path="/public/sales-quotations/:token" element={<PublicSalesQuotation />} />
 
                             {/* Email verification route (protected, but doesn't require verification) */}
                             <Route
@@ -250,6 +269,8 @@ function App() {
                                 <Route path="electronic-invoices" element={<ColombiaInvoiceRoute><ElectronicInvoices /></ColombiaInvoiceRoute>} />
                                 <Route path="purchase-support-documents" element={<SupportDocumentRoute><PurchaseSupportDocuments /></SupportDocumentRoute>} />
                                 <Route path="purchases" element={<RequirePurchasesAccess><Purchase /></RequirePurchasesAccess>} />
+                                <Route path="quotations" element={<RequirePurchasesAccess><Quotations /></RequirePurchasesAccess>} />
+                                <Route path="sales-quotations" element={<Navigate to="/quotations?type=sales" replace />} />
                                 <Route path="customers" element={<RequireCustomersAccess><Customers /></RequireCustomersAccess>} />
                                 <Route path="suppliers" element={<RequireSuppliersAccess><Suppliers /></RequireSuppliersAccess>} />
                                 <Route path="categories" element={<RequireCategoriesAccess><Category /></RequireCategoriesAccess>} />

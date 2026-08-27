@@ -36,7 +36,13 @@ const ensureElectronicInvoicingPlan = async (userId) => {
     if (!getPlanFeatures(effectivePlan).electronicInvoicing) {
         throw new ApiError(
             403,
-            "Electronic invoicing is available starting on the Negocio plan. Upgrade to issue DIAN documents."
+            "Electronic invoicing is available starting on the Negocio plan. Upgrade to issue DIAN documents.",
+            [],
+            "",
+            // Same code as electronicInvoicing.service.js's copy of this
+            // check - PurchaseSupportDocuments.jsx translates it via
+            // resolveApiErrorMessage instead of showing it raw.
+            "electronic_invoicing_plan_required"
         );
     }
 };

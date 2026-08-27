@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useContext, useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
     Card,
     Row,
@@ -22,6 +22,8 @@ import {
     PieChartOutlined,
     InfoCircleOutlined,
     ReloadOutlined,
+    SafetyCertificateOutlined,
+    ArrowRightOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
@@ -38,6 +40,8 @@ import { subscriptionService } from "../services/subscriptionService";
 import { useTeam } from "../context/TeamContext";
 import { getFirstAccessibleRoute } from "../utils/teamRouting";
 import { useDataInvalidation } from "../hooks/useDataInvalidation";
+import AuthContext from "../context/AuthContext";
+import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
 
 const { useToken } = theme;
 const { Title, Text } = Typography;
@@ -48,9 +52,18 @@ const Dashboard = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
     const location = useLocation();
-    const { hasPermission, loading: teamLoading } = useTeam();
+    const { user } = useContext(AuthContext);
+    const { hasPermission, isTeamMember, loading: teamLoading } = useTeam();
     const canSeeBilling = hasPermission("billing", "view");
     const canSeeDashboard = hasPermission("dashboard", "view");
+    // Same gating useSubscription/getMenuItems use to decide whether this
+    // account owns fiscal setup at all (Colombia, not a team member) - the
+    // nudge only ever shows to someone who can actually act on it.
+    const needsDianSetup = !teamLoading
+        && ELECTRONIC_INVOICING_ENABLED
+        && (!user?.company || user?.company?.countryCode === "CO")
+        && !isTeamMember
+        && !user?.company?.electronicInvoicingEnabled;
 
     // /dashboard is every entry point's default target (post-login, post-
     // invite-acceptance, GuestRoute, etc.) - a restricted team member who
@@ -412,6 +425,48 @@ const Dashboard = () => {
         <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.08),transparent_26%),linear-gradient(180deg,var(--ohnix-bg-alt)_0%,var(--ohnix-bg)_100%)] text-[var(--ohnix-text-primary)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <DashboardHeader onRefresh={fetchDashboardData} />
+
+                {needsDianSetup && (
+                    <section className="mt-6 animate-fade-up">
+                        <div className="relative overflow-hidden rounded-2xl border border-[#FFCF70]/30 bg-[linear-gradient(120deg,rgba(245,158,11,0.14),rgba(124,106,247,0.06)_55%,transparent)] p-5 shadow-[var(--ohnix-shadow-card)]">
+                            <div className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full border border-[#FFCF70]/20" />
+                            <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#FFCF70]/40 bg-[#FFCF70]/10 text-xl text-[#FFCF70] shadow-[0_0_20px_rgba(245,158,11,0.25)] animate-glow-pulse">
+                                        <SafetyCertificateOutlined />
+                                    </div>
+                                    <div>
+                                        <span
+                                            className="status-pill"
+                                            style={{ color: "#FFCF70", background: "rgba(245,158,11,0.14)", border: "1px solid rgba(245,158,11,0.35)" }}
+                                        >
+                                            <span className="status-dot status-dot--draft" />
+                                            {t("dashboard.dian_tip_badge")}
+                                        </span>
+                                        <h3 className="mt-2 text-base font-bold leading-tight text-[var(--ohnix-text-primary)] sm:text-lg">
+                                            {t("dashboard.dian_tip_title")}
+                                        </h3>
+                                        <p className="mt-1 max-w-xl text-sm text-[var(--ohnix-text-muted)]">
+                                            {t("dashboard.dian_tip_description")}
+                                        </p>
+                                    </div>
+                                </div>
+                                <Link to="/fiscal-setup" className="w-full shrink-0 sm:w-auto">
+                                    <Button
+                                        type="primary"
+                                        size="large"
+                                        icon={<ArrowRightOutlined />}
+                                        iconPosition="end"
+                                        block={window.innerWidth < 640}
+                                        className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]"
+                                    >
+                                        {t("dashboard.dian_tip_cta")}
+                                    </Button>
+                                </Link>
+                            </div>
+                        </div>
+                    </section>
+                )}
 
                 <section className="mt-6 animate-fade-up-delay">
                     <div className="bg-[var(--ohnix-surface-card)] rounded-2xl border border-[var(--ohnix-line-4)] shadow-[var(--ohnix-shadow-card)] p-6 backdrop-blur-md">

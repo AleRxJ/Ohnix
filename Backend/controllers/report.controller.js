@@ -609,11 +609,20 @@ const getLowStockAlerts = asyncHandler(async (req, res, next) => {
 // base sales/purchase/top-products reports (Negocio+), these are exclusive
 // to Escala and Enterprise.
 
+// end_date always arrives as a plain "YYYY-MM-DD" string (every date picker
+// on the frontend sends dayjs().format("YYYY-MM-DD")), which `new Date(...)`
+// parses as UTC midnight - a raw `lte` against that silently excludes every
+// row from later that same day. Pushing to the last instant of that date
+// makes "hasta hoy" actually include today, not just up to midnight this
+// morning (see accounting.controller.js's matching endOfDay - same bug,
+// same fix, found while auditing the Contabilidad module).
 const buildDateFilter = (start_date, end_date) => {
     const filter = {};
     if (start_date && end_date) {
         filter.gte = new Date(start_date);
-        filter.lte = new Date(end_date);
+        const endOfDay = new Date(end_date);
+        endOfDay.setUTCHours(23, 59, 59, 999);
+        filter.lte = endOfDay;
     }
     return filter;
 };

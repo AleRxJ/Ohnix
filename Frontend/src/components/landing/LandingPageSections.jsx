@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import useI18n from "../../hooks/useI18n";
+import useScrollLock from "../../hooks/useScrollLock";
 import { api } from "../../api/api";
 import { trackContactFormConversion } from "../../utils/googleAds";
+import { trackContactFormLead } from "../../utils/metaPixel";
 import {
     ArrowRightOutlined,
     ApiOutlined,
@@ -350,10 +352,7 @@ export const PageOrbitalLayer = () => {
 
 export const VideoModal = ({ isOpen, onClose, src, title }) => {
     const { t } = useI18n();
-    useEffect(() => {
-        document.body.style.overflow = isOpen ? "hidden" : "";
-        return () => { document.body.style.overflow = ""; };
-    }, [isOpen]);
+    useScrollLock(isOpen);
 
     useEffect(() => {
         const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -1097,14 +1096,35 @@ export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) 
 
                     {/* Features — flex-1 so all cards align CTA to bottom */}
                     <ul className="mt-4 flex-1 space-y-2">
-                        {plan.features.map((feature) => (
-                            <li key={feature} className="flex items-start gap-2 text-[12px] text-[#C4CDD2]">
-                                <span className="mt-[3px] flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#29D8D5]/15 text-[#44F3F0]">
-                                    <CheckOutlined className="text-[7px]" />
-                                </span>
-                                <span className="leading-snug">{feature}</span>
-                            </li>
-                        ))}
+                        {plan.features.map((feature) => {
+                            // A plain string scales with the previous tier; an
+                            // object marks the one capability this tier actually
+                            // adds - see Precios.jsx for the same pattern.
+                            const label = typeof feature === "string" ? feature : feature.text;
+                            const isNew = typeof feature === "object" && feature.highlight;
+                            return (
+                                <li
+                                    key={label}
+                                    className={`flex items-start gap-2 text-[12px] ${isNew ? "text-white" : "text-[#C4CDD2]"}`}
+                                >
+                                    <span
+                                        className={`mt-[3px] flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full ${
+                                            isNew ? "bg-[#29D8D5] text-[#021314]" : "bg-[#29D8D5]/15 text-[#44F3F0]"
+                                        }`}
+                                    >
+                                        <CheckOutlined className="text-[7px]" />
+                                    </span>
+                                    <span className={`leading-snug ${isNew ? "font-semibold" : ""}`}>
+                                        {label}
+                                        {isNew && (
+                                            <span className="ml-2 inline-flex items-center rounded-full bg-[#29D8D5]/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#44F3F0]">
+                                                Nuevo
+                                            </span>
+                                        )}
+                                    </span>
+                                </li>
+                            );
+                        })}
                     </ul>
 
                     {/* CTA — always flush to bottom */}
@@ -1206,13 +1226,13 @@ export const FeatureHubSection = ({ heading }) => {
             ),
         },
         {
-            title: t("landing.hub.features.calc.title"),
-            label: t("landing.hub.features.calc.label"),
-            description: t("landing.hub.features.calc.description"),
+            title: t("landing.hub.features.accounting.title"),
+            label: t("landing.hub.features.accounting.label"),
+            description: t("landing.hub.features.accounting.description"),
             highlights: [
-                t("landing.hub.features.calc.highlights.one"),
-                t("landing.hub.features.calc.highlights.two"),
-                t("landing.hub.features.calc.highlights.three"),
+                t("landing.hub.features.accounting.highlights.one"),
+                t("landing.hub.features.accounting.highlights.two"),
+                t("landing.hub.features.accounting.highlights.three"),
             ],
             accent: "#F97316",
             icon: (
@@ -1637,6 +1657,7 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
             await api.post("/contact", formData);
             setSubmitted(true);
             trackContactFormConversion();
+            trackContactFormLead();
             setFormData({ name: "", email: "", phone: "", message: "", company: "" });
             setTimeout(() => setSubmitted(false), 3000);
         } catch (error) {

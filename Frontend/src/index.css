@@ -535,6 +535,65 @@ body {
   color: var(--ohnix-text-dim) !important;
 }
 
+/* Switch - first real usage of antd's <Switch> in the app was the physical-
+   characteristics form (ProductModal), which is exactly why ThemeToggle.jsx
+   avoided reusing an antd control: nothing here had ever given one a themed
+   skin before. Left at antd's own default, the unchecked track (a near-
+   black translucent gray) all but disappears against Dark's near-black
+   surfaces, and the checked track's default blue clashes with the app's
+   teal brand color everywhere else. */
+.ant-switch {
+  background: var(--ohnix-line-5) !important;
+  border: 1px solid var(--ohnix-line-6) !important;
+}
+.ant-switch:hover:not(.ant-switch-disabled) {
+  background: var(--ohnix-line-6) !important;
+}
+.ant-switch.ant-switch-checked {
+  background: #29d8d5 !important;
+  border-color: #29d8d5 !important;
+}
+.ant-switch.ant-switch-checked:hover:not(.ant-switch-disabled) {
+  background: #44f3f0 !important;
+  border-color: #44f3f0 !important;
+}
+.ant-switch .ant-switch-inner-checked,
+.ant-switch .ant-switch-inner-unchecked {
+  color: var(--ohnix-text-primary) !important;
+}
+.ant-switch.ant-switch-checked .ant-switch-inner-checked {
+  color: var(--ohnix-accent-contrast) !important;
+}
+.ant-switch.ant-switch-disabled {
+  opacity: 0.55 !important;
+}
+
+/* Collapse - same "never themed before" gap as Switch above (first used by
+   the physical-characteristics dispatch-package section). The ghost variant
+   drops antd's own border/background already, but the expand-icon arrow
+   still defaults to antd's near-black icon color, invisible against Dark's
+   near-black surfaces. Left unscoped (not just `.ant-collapse-ghost`) so any
+   other Collapse usage in the app inherits the same fix for free, matching
+   how the Select overrides above are unscoped too. */
+.ant-collapse {
+  background: transparent !important;
+  border-color: var(--ohnix-line-4) !important;
+}
+.ant-collapse > .ant-collapse-item {
+  border-color: var(--ohnix-line-4) !important;
+}
+.ant-collapse-header {
+  color: var(--ohnix-text-muted) !important;
+}
+.ant-collapse-header .ant-collapse-expand-icon {
+  color: var(--ohnix-text-dim) !important;
+}
+.ant-collapse-content {
+  background: transparent !important;
+  border-top-color: var(--ohnix-line-4) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
 .antd-custom-table .ant-table {
   background: transparent !important;
   color: var(--ohnix-text-soft) !important;
@@ -1234,6 +1293,474 @@ textarea.ant-input[disabled] {
 }
 .ohnix-scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
 
+.ohnix-mobile-menu .ant-menu {
+  background: transparent !important;
+  color: var(--ohnix-text-soft) !important;
+}
+
+.ohnix-mobile-menu .ant-menu-title-content {
+  color: inherit !important;
+}
+
+.ohnix-mobile-menu .ant-menu-item {
+  color: var(--ohnix-text-soft) !important;
+  border-radius: 10px;
+  margin-inline: 0;
+  width: 100%;
+}
+
+.ohnix-mobile-menu .ant-menu-item:hover {
+  color: var(--ohnix-text-primary) !important;
+  background: var(--ohnix-hover-overlay) !important;
+}
+
+.ohnix-mobile-menu .ant-menu-item-selected {
+  color: var(--ohnix-text-primary) !important;
+  background: rgba(41, 216, 213, 0.18) !important;
+  box-shadow: inset 3px 0 0 #29d8d5;
+}
+
+.ohnix-mobile-menu .ant-menu-item-selected::after {
+  display: none;
+}
+
+.ohnix-mobile-menu {
+  background: color-mix(in srgb, var(--ohnix-surface) 86%, transparent) !important;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(41, 216, 213, 0.08);
+}
+
+.ohnix-mobile-menu::before {
+  content: "";
+  position: absolute;
+  inset: 0 18% auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #29d8d5, transparent);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.ohnix-mobile-menu .ant-menu-item .ant-menu-item-icon,
+.ohnix-mobile-menu .ant-menu-item-selected .ant-menu-item-icon {
+  color: currentColor !important;
+}
+
+.profile-page .ant-card {
+  background: color-mix(in srgb, var(--ohnix-surface-card) 94%, transparent) !important;
+  border-color: var(--ohnix-line-4) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.profile-page .ant-typography,
+.profile-page .ant-card-head-title,
+.profile-page .ant-tabs-tab-btn {
+  color: var(--ohnix-text-primary) !important;
+}
+
+.profile-page .ant-tabs-tab:not(.ant-tabs-tab-active) .ant-tabs-tab-btn,
+.profile-page .ant-typography-secondary {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.profile-page .ant-tabs-ink-bar {
+  background: #29d8d5 !important;
+}
+
+.profile-page .ant-tabs-nav::before {
+  border-color: var(--ohnix-line-4) !important;
+}
+
+.profile-page .profile-tour-button {
+  color: var(--ohnix-text-primary) !important;
+  background: var(--ohnix-hover-overlay) !important;
+}
+
+.profile-page .profile-tour-button:disabled {
+  color: var(--ohnix-text-muted) !important;
+  background: var(--ohnix-line-1) !important;
+  border-color: var(--ohnix-line-5) !important;
+  cursor: not-allowed;
+}
+
+.sidebar-profile-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #29d8d5, transparent);
+  opacity: 0.7;
+}
+
+.profile-page .ant-card .bg-\[var\(--ohnix-line-2\)\] {
+  background: color-mix(in srgb, var(--ohnix-surface-2) 78%, transparent) !important;
+}
+
+.quotation-page .quotation-primary-action {
+  border: 0 !important;
+  background: linear-gradient(135deg, #29d8d5, #44f3f0) !important;
+  color: #021314 !important;
+  box-shadow: 0 12px 24px rgba(41, 216, 213, 0.2);
+}
+
+.quotation-page .quotation-primary-action:hover {
+  box-shadow: 0 16px 30px rgba(41, 216, 213, 0.3);
+  transform: translateY(-1px);
+}
+
+.quotation-page .quotation-toolbar .ant-card-body {
+  padding: 14px;
+}
+
+.quotation-page .quotation-toolbar .ant-input-affix-wrapper,
+.quotation-page .quotation-toolbar .ant-input-group-addon,
+.quotation-page .quotation-toolbar .ant-select-selector {
+  background: var(--ohnix-surface-2) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.quotation-page .quotation-toolbar .ant-input::placeholder,
+.quotation-page .quotation-toolbar .ant-select-selection-placeholder {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.quotation-page .quotation-table-shell .ant-card-body {
+  padding: 0;
+}
+
+.quotation-page .quotation-table-shell .ant-table-thead > tr > th {
+  background: var(--ohnix-surface-3) !important;
+  color: var(--ohnix-text-muted) !important;
+  border-bottom-color: var(--ohnix-line-4) !important;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.quotation-page .quotation-table-shell .ant-table-tbody > tr > td {
+  border-bottom-color: var(--ohnix-line-3) !important;
+  color: var(--ohnix-text-soft) !important;
+}
+
+.quotation-page .quotation-table-shell .ant-table-tbody > tr:hover > td {
+  background: var(--ohnix-hover-overlay) !important;
+}
+
+.quotation-page .quotation-mobile-card .ant-card-body {
+  background: var(--ohnix-surface-card) !important;
+  padding: 14px;
+}
+
+.sales-quotations-page .ant-card,
+.sales-quotation-modal .ant-modal-content {
+  background: var(--ohnix-surface-card) !important;
+  border-color: var(--ohnix-line-4) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotations-page .sales-quotations-header {
+  margin-bottom: 24px;
+}
+
+.sales-quotations-page .sales-quotations-header h1 {
+  margin: 0 0 6px;
+  font-size: clamp(1.75rem, 3vw, 2.35rem);
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.sales-quotations-page .sales-quotations-header p {
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.sales-quotations-page .ant-card {
+  border-radius: 14px !important;
+  box-shadow: var(--ohnix-shadow-card) !important;
+}
+
+.sales-quotations-page .ant-card-body {
+  padding: 18px !important;
+}
+
+.sales-quotations-page .ant-table,
+.sales-quotations-page .ant-table-container,
+.sales-quotations-page .ant-table-tbody > tr > td,
+.sales-quotations-page .ant-table-thead > tr > th,
+.sales-quotations-page .ant-table-placeholder > td,
+.sales-quotations-page .ant-table-cell {
+  background: transparent !important;
+  border-color: var(--ohnix-line-3) !important;
+  color: var(--ohnix-text-soft) !important;
+}
+
+.sales-quotations-page .ant-table-placeholder,
+.sales-quotations-page .ant-table-placeholder:hover > td,
+.sales-quotations-page .ant-empty {
+  background: transparent !important;
+}
+
+.sales-quotations-page .ant-empty-description {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.sales-quotations-page .ant-empty-image {
+  opacity: 0.6;
+}
+
+.sales-quotations-page .ant-pagination,
+.sales-quotations-page .ant-pagination-item a,
+.sales-quotations-page .ant-pagination-total-text,
+.sales-quotations-page .ant-pagination-prev .ant-pagination-item-link,
+.sales-quotations-page .ant-pagination-next .ant-pagination-item-link {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.sales-quotations-page .ant-pagination-item {
+  background: transparent !important;
+  border-color: var(--ohnix-line-4) !important;
+}
+
+.sales-quotations-page .ant-pagination-item-active {
+  border-color: #29d8d5 !important;
+  background: rgba(41, 216, 213, 0.12) !important;
+}
+
+.sales-quotations-page .ant-btn-default,
+.sales-quotation-modal .ant-btn-default {
+  background: var(--ohnix-hover-overlay) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotations-page .ant-input,
+.sales-quotations-page .ant-input-affix-wrapper,
+.sales-quotation-modal .ant-input,
+.sales-quotation-modal .ant-input-affix-wrapper,
+.sales-quotation-modal .ant-input-number,
+.sales-quotation-modal .ant-select-selector {
+  background: var(--ohnix-surface-2) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotations-page .ant-input::placeholder,
+.sales-quotation-modal .ant-input::placeholder,
+.sales-quotation-modal textarea::placeholder {
+  color: var(--ohnix-text-dim) !important;
+}
+
+.sales-quotations-page .ant-table-thead > tr > th {
+  color: var(--ohnix-text-muted) !important;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sales-quotation-modal .ant-modal-header,
+.sales-quotation-modal .ant-modal-body {
+  background: transparent !important;
+}
+
+.sales-quotation-modal .ant-form-item-label > label,
+.sales-quotation-modal .ant-form-item-extra {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.sales-quotation-modal .ant-input,
+.sales-quotation-modal .ant-input-number,
+.sales-quotation-modal .ant-input-number-input,
+.sales-quotation-modal .ant-select-selector {
+  background: var(--ohnix-surface-2) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-input-number-input {
+  background: var(--ohnix-surface-2) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-input-number-prefix,
+.sales-quotation-modal .ant-input-number-suffix {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.sales-quotation-modal .ant-input-number-input,
+.sales-quotation-modal .ant-input-number-input-wrap,
+.sales-quotation-modal .ant-input-number-handler-wrap,
+.sales-quotation-modal .ant-picker,
+.sales-quotation-modal .ant-picker-input > input,
+.sales-quotation-modal .ant-select-selection-item,
+.sales-quotation-modal .ant-select-selection-placeholder {
+  background: transparent !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-input-number,
+.sales-quotation-modal .ant-input-number-affix-wrapper,
+.sales-quotation-modal .ant-select-selector,
+.sales-quotation-modal .ant-input,
+.sales-quotation-modal textarea,
+.sales-quotation-modal .ant-picker {
+  background: var(--ohnix-surface-2) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+  box-shadow: none !important;
+}
+
+.sales-quotation-modal .ant-input-number-affix-wrapper,
+.sales-quotation-modal .ant-input-number-affix-wrapper .ant-input-number-input-wrap,
+.sales-quotation-modal .ant-input-number-affix-wrapper input,
+.sales-quotation-modal .ant-input-number-input-wrap,
+.sales-quotation-modal .ant-input-number-input {
+  background-color: var(--ohnix-surface-2) !important;
+  color: var(--ohnix-text-primary) !important;
+  -webkit-text-fill-color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-input-number:hover,
+.sales-quotation-modal .ant-input-number-focused,
+.sales-quotation-modal .ant-picker:hover,
+.sales-quotation-modal .ant-picker-focused,
+.sales-quotation-modal .ant-select-focused .ant-select-selector,
+.sales-quotation-modal .ant-input:focus,
+.sales-quotation-modal textarea:focus {
+  border-color: rgba(41, 216, 213, 0.75) !important;
+  box-shadow: 0 0 0 2px rgba(41, 216, 213, 0.12) !important;
+}
+
+.sales-quotation-modal .ant-btn-dashed {
+  background: var(--ohnix-hover-overlay) !important;
+  border-color: var(--ohnix-line-6) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-btn-default,
+.sales-quotation-modal .ant-btn-dashed {
+  background-color: var(--ohnix-hover-overlay) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-btn-dashed:hover {
+  background: rgba(41, 216, 213, 0.1) !important;
+  border-color: #29d8d5 !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-form-item-label > label,
+.sales-quotation-modal .ant-form-item-label > label::after {
+  color: var(--ohnix-text-soft) !important;
+}
+
+.public-sales-quotation {
+  min-height: 100vh;
+  padding: 28px 16px;
+  background: radial-gradient(circle at 15% 0%, rgba(41, 216, 213, 0.12), transparent 32%), var(--ohnix-bg);
+  color: var(--ohnix-text-primary);
+}
+
+.public-sales-quotation-document {
+  max-width: 960px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--ohnix-line-4);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--ohnix-surface-card) 96%, transparent);
+  box-shadow: var(--ohnix-shadow-elevated);
+}
+
+.public-sales-quotation-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 38px 42px 32px;
+  background: linear-gradient(130deg, rgba(41, 216, 213, 0.14), transparent 55%), var(--ohnix-surface-card);
+  border-bottom: 1px solid var(--ohnix-line-4);
+}
+
+.public-sales-quotation-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; color: var(--ohnix-text-primary); font-size: 20px; font-weight: 700; letter-spacing: .18em; }
+.public-sales-quotation-brand img { width: 76px; height: 76px; object-fit: contain; filter: drop-shadow(0 0 14px rgba(41,216,213,.42)); }
+.public-sales-quotation-eyebrow { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; color: #29d8d5; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+.public-sales-quotation-hero h1 { margin: 0 0 8px; color: var(--ohnix-text-primary); font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1.05; }
+.public-sales-quotation-number { margin: 0; color: var(--ohnix-text-muted); font-size: 14px; }
+.public-sales-quotation-number strong { color: var(--ohnix-text-primary); }
+.public-sales-quotation-status { align-self: flex-start; margin-top: 12px; }
+.public-sales-quotation-header-tools { display: flex; flex-direction: column; align-items: flex-end; gap: 22px; }
+.public-sales-quotation-preferences { display: flex; align-items: center; gap: 10px; }
+.public-sales-quotation-preferences .language-switcher .ant-select { min-width: 120px; }
+.public-sales-quotation-meta { display: grid; grid-template-columns: 1.4fr 1.5fr 1fr 1fr; gap: 18px; padding: 24px 42px; border-bottom: 1px solid var(--ohnix-line-3); }
+.public-sales-quotation-meta div { display: flex; flex-direction: column; gap: 5px; }
+.public-sales-quotation-meta span, .public-sales-quotation-notes > span { color: var(--ohnix-text-muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.public-sales-quotation-meta strong { color: var(--ohnix-text-primary); font-size: 15px; }
+.public-sales-quotation-meta small { color: var(--ohnix-text-muted); font-size: 12px; }
+.public-sales-quotation-lines { padding: 30px 42px 18px; }
+.public-sales-quotation-section-heading > div { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 18px; }
+.public-sales-quotation-section-heading > div > span { color: #29d8d5; font-size: 12px; font-weight: 700; }
+.public-sales-quotation-section-heading h2 { margin: 0 0 4px; color: var(--ohnix-text-primary); font-size: 17px; }
+.public-sales-quotation-section-heading p { margin: 0; color: var(--ohnix-text-muted); font-size: 12px; }
+.public-sales-quotation-lines .ant-table, .public-sales-quotation-lines .ant-table-container { background: transparent !important; }
+.public-sales-quotation-lines .ant-table-thead > tr > th { background: var(--ohnix-surface-3) !important; color: var(--ohnix-text-muted) !important; border-color: var(--ohnix-line-3) !important; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.public-sales-quotation-lines .ant-table-tbody > tr > td { background: transparent !important; color: var(--ohnix-text-soft) !important; border-color: var(--ohnix-line-3) !important; }
+.public-sales-quotation-total-area { display: grid; grid-template-columns: 1fr 280px; gap: 36px; padding: 22px 42px 30px; }
+.public-sales-quotation-notes { color: var(--ohnix-text-muted); font-size: 13px; line-height: 1.6; }
+.public-sales-quotation-notes p { white-space: pre-wrap; }
+.public-sales-quotation-totals { font-size: 13px; }
+.public-sales-quotation-totals div { display: flex; justify-content: space-between; gap: 16px; padding: 6px 0; color: var(--ohnix-text-muted); }
+.public-sales-quotation-totals strong { color: var(--ohnix-text-primary); }
+.public-sales-quotation-totals .grand-total { margin-top: 8px; padding-top: 12px; border-top: 2px solid #29d8d5; color: var(--ohnix-text-primary); font-size: 18px; font-weight: 700; }
+.public-sales-quotation-tax-note { grid-column: 1 / -1; margin: -14px 0 0; color: var(--ohnix-text-muted); font-size: 11px; line-height: 1.5; }
+.public-sales-quotation-response { display: flex; justify-content: space-between; gap: 20px; align-items: center; padding: 22px 42px; border-top: 1px solid var(--ohnix-line-3); background: rgba(41, 216, 213, 0.06); }
+.public-sales-quotation-response div:first-child { display: flex; flex-direction: column; gap: 4px; }
+.public-sales-quotation-response span { color: var(--ohnix-text-muted); font-size: 12px; }
+.public-sales-quotation-actions { display: flex; gap: 10px; }
+.public-sales-quotation-actions button { min-height: 38px; padding: 0 16px; border-radius: 9px; border: 1px solid var(--ohnix-line-5); background: var(--ohnix-hover-overlay); color: var(--ohnix-text-primary); font-weight: 600; cursor: pointer; }
+.public-sales-quotation-actions button:last-child { border-color: #29d8d5; background: #29d8d5; color: #021314; }
+.public-sales-quotation-actions button:disabled { opacity: .5; cursor: not-allowed; }
+.public-sales-quotation-footer { padding: 18px 42px; border-top: 1px solid var(--ohnix-line-3); color: var(--ohnix-text-muted); font-size: 11px; text-align: center; }
+.public-sales-quotation-loading { display: flex; min-height: 100vh; align-items: center; justify-content: center; background: var(--ohnix-bg); }
+
+@media (max-width: 640px) {
+  .public-sales-quotation { padding: 12px 8px; }
+  .public-sales-quotation-hero, .public-sales-quotation-meta, .public-sales-quotation-lines, .public-sales-quotation-total-area, .public-sales-quotation-response, .public-sales-quotation-footer { padding-left: 20px; padding-right: 20px; }
+  .public-sales-quotation-hero { flex-direction: column; padding-top: 26px; }
+  .public-sales-quotation-header-tools { width: 100%; align-items: stretch; }
+  .public-sales-quotation-preferences { justify-content: space-between; }
+  .public-sales-quotation-meta, .public-sales-quotation-total-area { grid-template-columns: 1fr; }
+  .public-sales-quotation-totals { max-width: 280px; margin-left: auto; width: 100%; }
+  .public-sales-quotation-response { align-items: stretch; flex-direction: column; }
+  .public-sales-quotation-actions { flex-direction: column-reverse; }
+}
+
+.quotations-module-tabs {
+  border-bottom: 1px solid var(--ohnix-line-3);
+  background: color-mix(in srgb, var(--ohnix-surface) 72%, transparent);
+}
+
+.quotations-module-tabs .ant-tabs {
+  margin-bottom: -1px;
+}
+
+.quotations-module-tabs .ant-tabs-tab {
+  color: var(--ohnix-text-muted) !important;
+  font-weight: 600;
+}
+
+.quotations-module-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--ohnix-text-primary) !important;
+}
+
+.quotations-module-tabs .ant-tabs-ink-bar {
+  background: #29d8d5 !important;
+}
+
+.quotations-module-tabs .ant-tabs-nav::before {
+  border-bottom: 0 !important;
+}
+
 /* Unit Modal Tabs */
 .unit-modal-tabs .ant-tabs {
   color: var(--ohnix-text-primary);
@@ -1891,6 +2418,81 @@ textarea.ant-input[disabled] {
                     color: var(--ohnix-text-primary);
                     border-color: var(--ohnix-line-3);
                 }
+
+                .quotation-form-modal .ant-modal-content {
+                  background: linear-gradient(150deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
+                  border: 1px solid var(--ohnix-line-5);
+                  border-radius: 20px;
+                  box-shadow: var(--ohnix-shadow-elevated);
+                }
+                .quotation-form-modal .ant-modal-header {
+                  margin-bottom: 0;
+                }
+                .quotation-form-modal .ant-modal-body {
+                  scrollbar-width: thin;
+                  scrollbar-color: var(--ohnix-scrollbar-thumb) transparent;
+                }
+                .quotation-form-modal .ant-modal-body::-webkit-scrollbar {
+                  width: 6px;
+                }
+                .quotation-form-modal .ant-modal-body::-webkit-scrollbar-thumb {
+                  background: var(--ohnix-scrollbar-thumb);
+                  border-radius: 999px;
+                }
+                .quotation-form-modal .ant-card-head {
+                  background: color-mix(in srgb, var(--ohnix-surface-3) 70%, transparent) !important;
+                }
+                .quotation-form-modal .ant-card-body {
+                  background: color-mix(in srgb, var(--ohnix-surface-2) 48%, transparent) !important;
+                }
+                .quotation-form-modal .quotation-section-card {
+                  border: 0 !important;
+                  background: transparent !important;
+                  box-shadow: none !important;
+                }
+                .quotation-form-modal .quotation-section-card .ant-card-head {
+                  min-height: 42px;
+                  padding: 0 0 10px;
+                  background: transparent !important;
+                }
+                .quotation-form-modal .quotation-section-card .ant-card-body {
+                  padding: 20px 0 4px;
+                  background: transparent !important;
+                }
+                .quotation-form-modal .ant-form-item-extra {
+                  color: var(--ohnix-text-muted) !important;
+                }
+                .quotation-form-modal .ant-picker,
+                .quotation-form-modal .ant-picker-input > input {
+                  color: var(--ohnix-text-primary) !important;
+                }
+                .quotation-form-modal .ant-picker-input > input::placeholder {
+                  color: var(--ohnix-text-dim) !important;
+                }
+                .quotation-form-modal .quotation-detail-row {
+                  margin-bottom: 12px;
+                  padding: 16px;
+                  border-radius: 12px;
+                  background: color-mix(in srgb, var(--ohnix-surface-2) 72%, transparent) !important;
+                  box-shadow: none !important;
+                  transform: none !important;
+                }
+                .quotation-form-modal .quotation-detail-row:hover {
+                  border-color: rgba(41, 216, 213, 0.35) !important;
+                  box-shadow: none !important;
+                  transform: none !important;
+                }
+                .quotation-form-modal .quotation-detail-row .ant-form-item-label > label {
+                  font-size: 12px;
+                  color: var(--ohnix-text-muted) !important;
+                }
+                .quotation-form-modal .quotation-detail-row .ant-input-number,
+                .quotation-form-modal .quotation-detail-row .ant-select-selector {
+                  border-radius: 9px !important;
+                }
+                        .quotation-form-modal .quotation-pos-column:not(:has(.point-of-sale-field)) {
+                          display: none;
+                        }
 
 
 /* Moved out of src/components/Purchase/PurchaseDetails.jsx's inline <style jsx> (invalid Next.js-only syntax

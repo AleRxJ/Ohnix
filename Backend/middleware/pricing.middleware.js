@@ -98,6 +98,11 @@ export const PLAN_FEATURES = {
         apiAccess:           false,
         electronicInvoicing: false,
         advancedReports:     false,
+        // Automated accounting (journal entries, chart of accounts, period
+        // closes) is Escala's differentiator per the pricing audit - every
+        // competitor already bundles e-invoicing in their base plan, so it's
+        // not enough of a wedge on its own; accounting is.
+        accounting:          false,
         // Team features (roles, live presence, activity log) are gated by
         // planSupportsTeams() (team.service.js) - Starter has 0 seats
         // (TEAM_SEAT_LIMITS.starter), so it gets no team features at all.
@@ -108,6 +113,7 @@ export const PLAN_FEATURES = {
         // idea as teamRoles above (gated here AND by
         // PLAN_LIMITS.maxPointsOfSale, see pointOfSale.service.js).
         multiLocation:       false,
+        salesQuotations:     false,
     },
     // $49/mes — Negocio: full analytics + exports + DIAN e-invoicing
     // (electronicInvoicing costs real money per document via Alanube - never
@@ -125,6 +131,7 @@ export const PLAN_FEATURES = {
         apiAccess:           false,
         electronicInvoicing: true,
         advancedReports:     false,
+        accounting:          false,
         // Once a plan has any team seats at all (TEAM_SEAT_LIMITS.growth = 3),
         // it gets the full team feature set - team.service.js's createRole/
         // live/socketServer.js presence/ActivityTab logging have no further
@@ -133,6 +140,7 @@ export const PLAN_FEATURES = {
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       false,
+        salesQuotations:     true,
     },
     // $99/mes — Escala: API + advanced reports (profit margin, top
     // customers, sales-by-team-member, period comparison - see
@@ -152,10 +160,12 @@ export const PLAN_FEATURES = {
         apiAccess:           true,
         electronicInvoicing: true,
         advancedReports:     true,
+        accounting:          true,
         teamRoles:           true,
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       true,
+        salesQuotations:     true,
     },
     // Custom — Enterprise: everything
     enterprise: {
@@ -171,10 +181,12 @@ export const PLAN_FEATURES = {
         apiAccess:           true,
         electronicInvoicing: true,
         advancedReports:     true,
+        accounting:          true,
         teamRoles:           true,
         teamLivePresence:    true,
         teamActivityLog:     true,
         multiLocation:       true,
+        salesQuotations:     true,
     },
 };
 
@@ -375,7 +387,15 @@ export const enforcePlanFeature = (featureKey) =>
             return next(
                 new ApiError(
                     403,
-                    `Feature not available on the ${subscription.plan} plan. Please upgrade to access it.`
+                    `Feature not available on the ${subscription.plan} plan. Please upgrade to access it.`,
+                    [],
+                    "",
+                    // English message above is the dev-facing fallback - any
+                    // frontend consumer of a route gated by this shared
+                    // middleware (apiAccess, multiLocation, advancedReports,
+                    // reportSales, accounting, ...) can translate this one
+                    // generic code instead of showing it raw.
+                    "plan_feature_required"
                 )
             );
         }

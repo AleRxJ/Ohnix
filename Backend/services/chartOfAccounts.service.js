@@ -1,4 +1,7 @@
 import { prisma } from "../db/prisma.js";
+import { ApiError } from "../utils/ApiError.js";
+
+const ACCOUNT_TYPES = ["asset", "liability", "equity", "revenue", "expense", "cost"];
 
 // Minimal Colombian PUC (Plan Único de Cuentas) seed - just enough accounts
 // for the 4 automatic postings this phase covers (venta, compra, pago de
@@ -52,3 +55,54 @@ export const resolveCashAccountChartAccount = async (tx, accountId, cashAccount)
 };
 
 export const listChartAccounts = async (accountId) => ensureDefaultChartOfAccounts(prisma, accountId);
+
+const RETAINED_EARNINGS_ACCOUNT = { code: "3605", name: "Utilidades acumuladas", accountType: "equity" };
+
+// Lazily adds the retained-earnings account for tenants whose chart was
+// seeded before period-close existed (their 9 DEFAULT_ACCOUNTS won't include
+// it) - same "created on first use" idiom as ensureDefaultChartOfAccounts,
+// called only from accountingPeriod.service.js#closeAccountingPeriod right
+// before it needs somewhere to post that period's net result.
+export const ensureRetainedEarningsAccount = async (tx, accountId) => {
+    await ensureDefaultChartOfAccounts(tx, accountId);
+    const existing = await tx.chartAccount.findFirst({ where: { createdById: accountId, code: RETAINED_EARNINGS_ACCOUNT.code } });
+    if (existing) return existing;
+    return tx.chartAccount.create({ data: { ...RETAINED_EARNINGS_ACCOUNT, createdById: accountId } });
+};
+
+// Manual additions to the default 9-account seed - e.g. a company that wants
+// its own expense accounts (never auto-posted to, see accountingPosting.
+// service.js's scope note) or a finer-grained split of an existing class.
+// parentId is the hierarchy the schema always supported but the default
+// seed never used (ChartAccount.parentId's own comment) - optional here too,
+// a flat chart is still perfectly valid.
+export const createChartAccount = async (accountId, { code, name, accountType, parentId }) => {
+    if (!code?.trim()) throw new ApiError(400, "El código de la cuenta es obligatorio.");
+    if (!name?.trim()) throw new ApiError(400, "El nombre de la cuenta es obligatorio.");
+    if (!ACCOUNT_TYPES.includes(accountType)) {
+        throw new ApiError(400, `accountType debe ser uno de: ${ACCOUNT_TYPES.join(", ")}.`);
+    }
+
+    const trimmedCode = code.trim();
+    const existing = await prisma.chartAccount.findFirst({ where: { createdById: accountId, code: trimmedCode } });
+    if (existing) throw new ApiError(409, `Ya existe una cuenta con el código ${trimmedCode}.`);
+
+    if (parentId) {
+        const parent = await prisma.chartAccount.findFirst({ where: { id: parentId, createdById: accountId } });
+        if (!parent) throw new ApiError(400, "La cuenta padre indicada no existe.");
+    }
+
+    return prisma.chartAccount.create({
+        data: { code: trimmedCode, name: name.trim(), accountType, parentId: parentId || null, createdById: accountId },
+    });
+};
+
+// Deactivating (never deleting) keeps every JournalEntryLine that already
+// points at this account intact - same "never delete, only isActive" idiom
+// used for products/cash accounts elsewhere. Reactivating is the same call
+// with isActive: true.
+export const setChartAccountActive = async (accountId, chartAccountId, isActive) => {
+    const account = await prisma.chartAccount.findFirst({ where: { id: chartAccountId, createdById: accountId } });
+    if (!account) throw new ApiError(404, "Cuenta contable no encontrada.");
+    return prisma.chartAccount.update({ where: { id: chartAccountId }, data: { isActive } });
+};

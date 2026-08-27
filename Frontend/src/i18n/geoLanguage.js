@@ -14,6 +14,20 @@ const GEO_LOOKUP_TIMEOUT_MS = 3000;
 // and useI18n.js (writes it on manual selection).
 export const MANUAL_LANGUAGE_KEY = "language_manual";
 
+// Search engine crawlers (Googlebot in particular) render the page from
+// US-based datacenter IPs with a generic en-US environment, so both the
+// browser-language guess and this IP geolocation lookup resolve to "en"
+// regardless of the site's actual (Colombian/Spanish-speaking) audience.
+// Skipping auto-detection for known crawlers keeps the indexed content on
+// the site's default language (Spanish) instead of flipping to English.
+const BOT_USER_AGENT_PATTERN =
+    /bot|crawl|spider|slurp|mediapartners|facebookexternalhit|whatsapp|preview/i;
+
+export function isLikelyBot() {
+    if (typeof navigator === "undefined" || !navigator.userAgent) return false;
+    return BOT_USER_AGENT_PATTERN.test(navigator.userAgent);
+}
+
 // Timestamp (ms) of the last successful automatic country detection. Used
 // to re-check periodically instead of either "once ever" (misses real
 // location changes) or "every single load" (a network call - and a

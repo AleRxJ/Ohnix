@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { MenuOutlined, GlobalOutlined, CloseOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import useI18n from "../../hooks/useI18n";
+import useScrollLock from "../../hooks/useScrollLock";
 
 // Plain HTML/Tailwind instead of antd (Layout/Button/Drawer/Dropdown) - this
 // is public-facing marketing chrome, rendered on every marketing page, and
@@ -32,6 +33,16 @@ const Navbar = () => {
         if (anchor) {
             anchor.scrollIntoView({ behavior: "smooth", block: "start" });
         }
+    };
+
+    // Used from the mobile drawer's nav links: closing the drawer unlocks
+    // body scroll (useScrollLock's cleanup restores the pre-open scroll
+    // position), which would otherwise race with / cancel a scrollIntoView
+    // fired at the same time. Close first, then wait a couple of paints so
+    // the unlock effect has actually run before scrolling to the target.
+    const navigateToSectionFromDrawer = (id) => {
+        closeDrawer();
+        requestAnimationFrame(() => requestAnimationFrame(() => scrollToSection(id)));
     };
 
     useEffect(() => {
@@ -66,19 +77,20 @@ const Navbar = () => {
         };
     }, [langMenuOpen]);
 
-    // Lock body scroll and allow Escape-to-close while the mobile drawer is open.
+    // Lock body scroll while the mobile drawer is open. Plain
+    // overflow:hidden (used here before) doesn't reliably block background
+    // scroll on iOS Safari when the user drags directly on the page - see
+    // useScrollLock for the position:fixed workaround that actually holds.
+    useScrollLock(visible);
+
+    // Allow Escape-to-close while the mobile drawer is open.
     useEffect(() => {
         if (!visible) return;
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
         const handleEscape = (e) => {
             if (e.key === "Escape") setVisible(false);
         };
         document.addEventListener("keydown", handleEscape);
-        return () => {
-            document.body.style.overflow = previousOverflow;
-            document.removeEventListener("keydown", handleEscape);
-        };
+        return () => document.removeEventListener("keydown", handleEscape);
     }, [visible]);
 
     const showDrawer = () => setVisible(true);
@@ -226,7 +238,7 @@ const Navbar = () => {
                     <div
                         role="dialog"
                         aria-modal="true"
-                        className="fixed right-0 top-0 z-[70] flex h-full w-[280px] flex-col bg-[#050505]"
+                        className="fixed right-0 top-0 z-[70] flex h-dvh w-[280px] max-w-[85vw] flex-col overflow-hidden bg-[#050505]"
                         style={{ boxShadow: "-8px 0 24px rgba(0,0,0,0.35)" }}
                     >
                         <div
@@ -247,7 +259,7 @@ const Navbar = () => {
                                 <CloseOutlined />
                             </button>
                         </div>
-                        <div className="flex flex-1 flex-col p-6 text-white">
+                        <div className="flex flex-1 flex-col p-6 text-white overflow-y-auto ohnix-scrollbar-thin">
                             <nav className="flex-1">
                                 {navLinks.map((link) => (
                                     <div key={link.path} className="mb-1">
@@ -256,9 +268,10 @@ const Navbar = () => {
                                             onClick={(e) => {
                                                 if (location.pathname === "/") {
                                                     e.preventDefault();
-                                                    scrollToSection(link.path);
+                                                    navigateToSectionFromDrawer(link.path);
+                                                } else {
+                                                    closeDrawer();
                                                 }
-                                                closeDrawer();
                                             }}
                                             className="block rounded-2xl px-4 py-3 text-sm font-medium text-[#A9B3B8] transition-all duration-200 hover:bg-white/[0.05] hover:text-white"
                                         >

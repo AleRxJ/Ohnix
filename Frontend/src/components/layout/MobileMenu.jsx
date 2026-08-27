@@ -1,6 +1,7 @@
 // components/layout/MobileMenu.jsx
 import React, { useEffect, useRef } from "react";
 import { Menu, Skeleton } from "antd";
+import { CloseOutlined } from "@ant-design/icons";
 import { getMenuItems } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
@@ -9,10 +10,11 @@ import useSubscription from "../../hooks/useSubscription";
 import { useTheme } from "../../context/ThemeContext";
 import ThemeToggle from "../common/ThemeToggle";
 import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
+import useScrollLock from "../../hooks/useScrollLock";
 
 const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 
-const MobileMenu = ({ collapsed, currentPage, onClose }) => {
+const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
     const { user } = React.useContext(AuthContext);
     const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
     const { plan } = useSubscription();
@@ -20,6 +22,8 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
     const { isLite } = useTheme();
     const panelRef = useRef(null);
     const showTeam = Boolean(team) || TEAM_CAPABLE_PLANS.includes(plan);
+    const showFiscalSetup = ELECTRONIC_INVOICING_ENABLED && (!user?.company || user?.company?.countryCode === "CO") && !isTeamMember;
+    const needsFiscalSetup = showFiscalSetup && !user?.company?.electronicInvoicingEnabled;
 
     useEffect(() => {
         const handlePointerDown = (event) => {
@@ -43,6 +47,22 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
         };
     }, [collapsed, onClose]);
 
+    // Lock body scroll while open - this one didn't lock scroll at all
+    // before, so the page behind it could still scroll while the menu was
+    // open, feeding into the resize-driven auto-close bug in
+    // DashboardLayout.jsx (a background scroll on mobile can trigger the
+    // browser chrome to hide/show and fire a resize event).
+    useScrollLock(isMobile && !collapsed);
+
+    useEffect(() => {
+        if (collapsed) return;
+        const handleEscape = (e) => {
+            if (e.key === "Escape") onClose?.();
+        };
+        document.addEventListener("keydown", handleEscape);
+        return () => document.removeEventListener("keydown", handleEscape);
+    }, [collapsed, onClose]);
+
     return (
         <div
             className="md:hidden fixed inset-0 transition-all duration-300 ease-in-out no-print"
@@ -53,48 +73,69 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
             }}
         >
             <div
-                className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
+                className="absolute inset-0 bg-black/55 backdrop-blur-[4px]"
                 onClick={onClose}
             />
             <div
                 ref={panelRef}
-                className="absolute top-16 left-0 right-0 max-h-[calc(100vh-4rem)] overflow-hidden border-b border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-header)] shadow-2xl"
+                className="ohnix-mobile-menu absolute bottom-3 left-3 right-3 top-20 flex max-h-[calc(100dvh-5.75rem)] flex-col overflow-hidden rounded-2xl border border-[var(--ohnix-line-4)] shadow-2xl"
             >
                 <div className="px-4 py-3 h-full flex flex-col gap-3">
-                    <div className="flex items-center justify-end">
-                        <ThemeToggle />
-                    </div>
-                    <div className="flex-1 rounded-2xl overflow-hidden border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] shadow-inner">
-                        <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-[#29D8D5]/70 scrollbar-track-white/10 hover:scrollbar-thumb-[#44F3F0]">
-                            {teamLoading ? (
-                                <div className="space-y-3 p-3">
-                                    {Array.from({ length: 6 }).map((_, i) => (
-                                        <Skeleton.Input key={i} active size="small" block style={{ height: 20 }} />
-                                    ))}
-                                </div>
-                            ) : (
-                                <Menu
-                                    theme={isLite ? "light" : "dark"}
-                                    selectedKeys={[currentPage]}
-                                    mode="inline"
-                                    items={getMenuItems(
-                                        t,
-                                        user?.role,
-                                        ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO",
-                                        showTeam,
-                                        hasPermission,
-                                        ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
-                                        !isTeamMember
-                                    )}
-                                    onClick={onClose}
-                                    className="border-r-0"
-                                    style={{
-                                        background: "transparent",
-                                        padding: "0.5rem",
-                                    }}
-                                />
-                            )}
+                    <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2.5">
+                            <img
+                                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon.svg"}
+                                alt=""
+                                aria-hidden="true"
+                                className="h-11 w-11 object-contain"
+                            />
+                            <span className="text-sm font-semibold tracking-wide text-[var(--ohnix-text-primary)]">
+                                Menú
+                            </span>
                         </div>
+                        <div className="flex items-center gap-2">
+                            <ThemeToggle />
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                aria-label="Cerrar menú"
+                                title="Cerrar menú"
+                                className="ohnix-mobile-menu-close inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--ohnix-line-5)] bg-[var(--ohnix-hover-overlay)] text-base text-[var(--ohnix-text-soft)] transition-colors hover:border-[#29D8D5]/60 hover:bg-[var(--ohnix-hover-overlay-strong)] hover:text-[var(--ohnix-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#29D8D5]/60"
+                            >
+                                <CloseOutlined />
+                            </button>
+                        </div>
+                    </div>
+                    <div className="ohnix-scrollbar-thin min-h-0 flex-1 touch-pan-y overscroll-contain overflow-y-auto">
+                        {teamLoading ? (
+                            <div className="space-y-3 p-3">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <Skeleton.Input key={i} active size="small" block style={{ height: 20 }} />
+                                ))}
+                            </div>
+                        ) : (
+                            <Menu
+                                theme={isLite ? "light" : "dark"}
+                                selectedKeys={[currentPage]}
+                                mode="inline"
+                                items={getMenuItems(
+                                    t,
+                                    user?.role,
+                                    ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO",
+                                    showTeam,
+                                    hasPermission,
+                                    ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
+                                    showFiscalSetup,
+                                    needsFiscalSetup
+                                )}
+                                onClick={onClose}
+                                className="border-r-0"
+                                style={{
+                                    background: "transparent",
+                                    padding: "0.5rem 0",
+                                }}
+                            />
+                        )}
                     </div>
                 </div>
             </div>

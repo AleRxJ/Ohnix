@@ -222,7 +222,7 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
                         <div>
                             <Title
                                 level={5}
-                                className="text-amber-50 m-0 mb-1 text-sm font-semibold"
+                                className="text-[var(--ohnix-alert-amber-text)] m-0 mb-1 text-sm font-semibold"
                             >
                                 {t("profile.account_verification_required")}
                             </Title>
@@ -338,7 +338,7 @@ const AccountInfoTab = ({ user, isVerified, handleTabChange, refreshUser }) => {
                         <Button
                             onClick={handleReEnableTour}
                             disabled={!tourHidden}
-                            className="rounded-xl h-10 px-6 font-medium border-[var(--ohnix-line-4)] disabled:opacity-50"
+                            className="profile-tour-button rounded-xl h-10 px-6 font-medium border-[var(--ohnix-line-4)] disabled:opacity-100"
                         >
                             {t("inventory_tour.settings_button")}
                         </Button>

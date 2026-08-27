@@ -18,6 +18,13 @@ import { purchaseSupportDocumentService } from "../services/purchaseSupportDocum
 import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
 import useI18n from "../hooks/useI18n";
+import useIsMobile from "../hooks/useIsMobile";
+import { resolveApiErrorMessage } from "../utils/apiError";
+
+// Same reasoning as ElectronicInvoices.jsx's PLAN_GATE_CODE_MESSAGES -
+// purchaseSupportDocument.service.js's own ensureElectronicInvoicingPlan
+// copy throws the same English-by-design, code-tagged error.
+const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
 import useCountUp from "../hooks/useCountUp";
 
 // Purchase-side mirror of ElectronicInvoices.jsx, for Documento Soporte (DIAN
@@ -162,6 +169,7 @@ const EVENT_LABEL_KEYS = {
 
 const DocumentDetailDrawer = ({ document, onClose, onRetry, onSync, retrying, syncing }) => {
     const { t } = useI18n();
+    const isMobile = useIsMobile();
     if (!document) return null;
     const issuedAt = document.issuedAt ? new Date(document.issuedAt) : null;
     const events = Array.isArray(document.events) ? document.events : [];
@@ -170,7 +178,7 @@ const DocumentDetailDrawer = ({ document, onClose, onRetry, onSync, retrying, sy
         <Drawer
             open={Boolean(document)}
             onClose={onClose}
-            width={typeof window !== "undefined" && window.innerWidth < 768 ? "100%" : 540}
+            width={isMobile ? "100%" : 540}
             className="dian-drawer"
             title={
                 <div className="flex items-center justify-between">
@@ -306,6 +314,14 @@ const PurchaseSupportDocuments = () => {
     const [selected, setSelected] = useState(null);
     const [retryingId, setRetryingId] = useState(null);
     const [syncingId, setSyncingId] = useState(null);
+    // `items` is the full, unpaginated list (the desktop table below pages
+    // it client-side) - the mobile card list used to render every single
+    // document at once regardless of how many existed.
+    const MOBILE_PAGE_SIZE = 15;
+    const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_PAGE_SIZE);
+    useEffect(() => {
+        setMobileVisibleCount(MOBILE_PAGE_SIZE);
+    }, [items]);
 
     const load = useCallback(async () => {
         try {
@@ -342,7 +358,7 @@ const PurchaseSupportDocuments = () => {
             message.success(t("purchase_support_documents.retry_success"));
             await refreshSelected(documentId);
         } catch (error) {
-            message.error(error.response?.data?.message || t("purchase_support_documents.retry_error"));
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "purchase_support_documents.retry_error"));
         } finally {
             setRetryingId(null);
         }
@@ -355,7 +371,7 @@ const PurchaseSupportDocuments = () => {
             message.success(t("purchase_support_documents.sync_success"));
             await refreshSelected(documentId);
         } catch (error) {
-            message.error(error.response?.data?.message || t("purchase_support_documents.sync_error_action"));
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "purchase_support_documents.sync_error_action"));
         } finally {
             setSyncingId(null);
         }
@@ -525,26 +541,33 @@ const PurchaseSupportDocuments = () => {
                     ) : items.length === 0 ? (
                         <div className="text-center text-[var(--ohnix-text-muted)] py-10">{t("purchase_support_documents.empty_state")}</div>
                     ) : (
-                        items.map((row) => (
-                            <button key={row.id} type="button" onClick={() => setSelected(row)} className="invoice-mobile-card text-left">
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-3">
-                                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#29D8D5]/25 bg-gradient-to-br from-[#29D8D5]/25 to-[#44F3F0]/5 text-[#44F3F0]">
-                                            <FileTextOutlined />
-                                        </span>
-                                        <div>
-                                            <div className="font-semibold text-[var(--ohnix-text-primary)]">{row.documentNumber || row.referenceCode}</div>
-                                            <div className="text-xs text-[var(--ohnix-text-muted)]">{row.purchase?.supplierName || "—"}</div>
+                        <>
+                            {items.slice(0, mobileVisibleCount).map((row) => (
+                                <button key={row.id} type="button" onClick={() => setSelected(row)} className="invoice-mobile-card text-left">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-3">
+                                            <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#29D8D5]/25 bg-gradient-to-br from-[#29D8D5]/25 to-[#44F3F0]/5 text-[#44F3F0]">
+                                                <FileTextOutlined />
+                                            </span>
+                                            <div>
+                                                <div className="font-semibold text-[var(--ohnix-text-primary)]">{row.documentNumber || row.referenceCode}</div>
+                                                <div className="text-xs text-[var(--ohnix-text-muted)]">{row.purchase?.supplierName || "—"}</div>
+                                            </div>
                                         </div>
+                                        <StatusPill status={row.status} />
                                     </div>
-                                    <StatusPill status={row.status} />
-                                </div>
-                                <div className="mt-1 flex items-center justify-between text-xs">
-                                    <div className="text-[var(--ohnix-text-muted)]">{t("purchase_support_documents.table.cufe")}</div>
-                                    <CufeCell cufe={row.cufe} />
-                                </div>
-                            </button>
-                        ))
+                                    <div className="mt-1 flex items-center justify-between text-xs">
+                                        <div className="text-[var(--ohnix-text-muted)]">{t("purchase_support_documents.table.cufe")}</div>
+                                        <CufeCell cufe={row.cufe} />
+                                    </div>
+                                </button>
+                            ))}
+                            {mobileVisibleCount < items.length && (
+                                <Button block onClick={() => setMobileVisibleCount((c) => c + MOBILE_PAGE_SIZE)}>
+                                    {t("common.load_more")}
+                                </Button>
+                            )}
+                        </>
                     )}
                 </div>
             </section>

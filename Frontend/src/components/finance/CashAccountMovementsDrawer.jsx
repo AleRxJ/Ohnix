@@ -6,6 +6,7 @@ import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { getCurrencyInputProps } from "../../utils/currency";
 import { useCashAccountMovements } from "../../hooks/finance/useCashAccounts";
+import useIsMobile from "../../hooks/useIsMobile";
 
 const { Option } = Select;
 
@@ -22,6 +23,7 @@ const SOURCE_LABEL_KEYS = {
 const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
     const { t } = useI18n();
     const { formatCurrency, currency } = useCurrency();
+    const isMobile = useIsMobile();
     const currencyInputProps = getCurrencyInputProps(currency.code);
     const [entryForm] = Form.useForm();
     const [matchTarget, setMatchTarget] = useState(null); // the unmatched entry being reconciled
@@ -160,15 +162,15 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
             placement="right"
             onClose={onClose}
             open={visible}
-            width={640}
+            width={isMobile ? "100vw" : 640}
             closeIcon={<CloseOutlined className="text-[var(--ohnix-text-muted)]" />}
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.45)" },
-                body: { padding: 24, background: "var(--ohnix-surface-card-soft)" },
-                header: { borderBottom: "1px solid var(--ohnix-line-3)", padding: "20px 24px", background: "var(--ohnix-surface-card-soft)" },
+                body: { padding: isMobile ? 16 : 24, background: "var(--ohnix-surface-card-soft)" },
+                header: { borderBottom: "1px solid var(--ohnix-line-3)", padding: isMobile ? "16px" : "20px 24px", background: "var(--ohnix-surface-card-soft)" },
             }}
         >
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
                 <div className="rounded-2xl p-4 border border-[var(--ohnix-line-4)] flex items-center justify-between bg-[var(--ohnix-line-1)]">
                     <div className="flex items-center gap-3">
                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#29D8D5]/30 bg-[linear-gradient(135deg,rgba(41,216,213,0.18),rgba(68,243,240,0.06))]">
@@ -249,6 +251,7 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
                             pagination={false}
                             rowKey="_id"
                             size="small"
+                            scroll={{ x: "max-content" }}
                         />
                     ) : (
                         <div className="text-sm text-[var(--ohnix-text-muted)] py-4">{t("finance.no_unmatched_entries")}</div>

@@ -16,7 +16,7 @@ const balanceForType = (accountType, debit, credit) =>
 // ChartAccount that actually has activity in range - mirrors
 // journalEntry.service.js#listJournalEntries's tenant filter
 // (period.createdById), the only place tenant scope lives for this ledger.
-const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate }) => {
+const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate, excludeSourceTypes, periodIds }) => {
     const rows = await prisma.journalEntryLine.groupBy({
         by: ["chartAccountId"],
         where: {
@@ -26,6 +26,8 @@ const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate 
                 ...(startDate || endDate
                     ? { entryDate: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } }
                     : {}),
+                ...(excludeSourceTypes ? { sourceType: { notIn: excludeSourceTypes } } : {}),
+                ...(periodIds ? { periodId: { in: periodIds } } : {}),
             },
         },
         _sum: { debit: true, credit: true },
@@ -44,6 +46,7 @@ const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate 
             const debit = Number(row._sum.debit || 0);
             const credit = Number(row._sum.credit || 0);
             return {
+                id: account.id,
                 code: account.code,
                 name: account.name,
                 account_type: account.accountType,
@@ -58,8 +61,19 @@ const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate 
 // (ingresos - costo de ventas), not a full net-income statement. `expenses`
 // is included anyway (always empty today) so the shape is ready the moment
 // something does post there, at zero extra cost.
+//
+// Excludes `period_close` lines: those exist only to zero a closed period's
+// nominal accounts into retained earnings (see accountingPeriod.service.js),
+// and would otherwise cancel out that same period's real revenue/costs when
+// this function is asked about a range that includes it.
 export const getIncomeStatement = async ({ accountId, startDate, endDate }) => {
-    const rows = await aggregateByAccount({ accountId, accountTypes: ["revenue", "cost", "expense"], startDate, endDate });
+    const rows = await aggregateByAccount({
+        accountId,
+        accountTypes: ["revenue", "cost", "expense"],
+        startDate,
+        endDate,
+        excludeSourceTypes: ["period_close"],
+    });
     const revenue = rows.filter((r) => r.account_type === "revenue");
     const costs = rows.filter((r) => r.account_type === "cost");
     const expenses = rows.filter((r) => r.account_type === "expense");
@@ -81,13 +95,28 @@ export const getIncomeStatement = async ({ accountId, startDate, endDate }) => {
     };
 };
 
+// Periods that don't yet have a posted `period_close` entry - their net
+// result still only exists as the derived `currentEarnings` plug below.
+// Once a period IS closed (accountingPeriod.service.js), its result moves
+// into a real "Utilidades acumuladas" equity balance instead, so it must
+// drop out of this set or it would be counted twice.
+const getUnclosedPeriodIds = async (accountId) => {
+    const periods = await prisma.accountingPeriod.findMany({ where: { createdById: accountId }, select: { id: true } });
+    if (periods.length === 0) return [];
+    const closingEntries = await prisma.journalEntry.findMany({
+        where: { sourceType: "period_close", periodId: { in: periods.map((p) => p.id) } },
+        select: { periodId: true },
+    });
+    const closedIds = new Set(closingEntries.map((e) => e.periodId));
+    return periods.filter((p) => !closedIds.has(p.id)).map((p) => p.id);
+};
+
 // Cumulative from inception through asOfDate (never period-scoped) - a
 // balance sheet is a snapshot of everything that ever happened, not a
-// period's worth. `currentEarnings` is a DERIVED figure (life-to-date net
-// income), not a posted equity account - there's no formal period-close in
-// this app yet (Fase 5's own scope note), so accumulated profit only ever
-// exists as this computed plug, same convention any interim/unaudited
-// balance uses before closing entries run.
+// period's worth. `currentEarnings` is a DERIVED plug covering only periods
+// that haven't been formally closed yet; a closed period's result is a real
+// posted equity balance instead (see getUnclosedPeriodIds above), which
+// `equity` below already picks up like any other account.
 export const getBalanceSheet = async ({ accountId, asOfDate }) => {
     const rows = await aggregateByAccount({ accountId, accountTypes: ["asset", "liability", "equity"], endDate: asOfDate });
     const assets = rows.filter((r) => r.account_type === "asset");
@@ -98,8 +127,22 @@ export const getBalanceSheet = async ({ accountId, asOfDate }) => {
     const totalLiabilities = round2(sumAmounts(liabilities));
     const totalEquityAccounts = round2(sumAmounts(equity));
 
-    const incomeStatement = await getIncomeStatement({ accountId, endDate: asOfDate });
-    const currentEarnings = incomeStatement.net_income;
+    const unclosedPeriodIds = await getUnclosedPeriodIds(accountId);
+    const currentEarnings = unclosedPeriodIds.length
+        ? (await (async () => {
+              const nominalRows = await aggregateByAccount({
+                  accountId,
+                  accountTypes: ["revenue", "cost", "expense"],
+                  endDate: asOfDate,
+                  excludeSourceTypes: ["period_close"],
+                  periodIds: unclosedPeriodIds,
+              });
+              const revenue = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "revenue")));
+              const costs = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "cost")));
+              const expenses = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "expense")));
+              return round2(revenue - costs - expenses);
+          })())
+        : 0;
 
     const totalEquity = round2(totalEquityAccounts + currentEarnings);
     const totalLiabilitiesAndEquity = round2(totalLiabilities + totalEquity);
@@ -116,4 +159,97 @@ export const getBalanceSheet = async ({ accountId, asOfDate }) => {
         // sanity check on the report itself, not just another figure.
         balanced: Math.abs(totalAssets - totalLiabilitiesAndEquity) < 0.01,
     };
+};
+
+// Builds the reversing lines for a period-close entry: one line per
+// revenue/cost/expense account with net activity in [startDate, endDate],
+// sized to bring that account's balance for the period back to zero, plus
+// the balancing amount that closeAccountingPeriod posts to retained
+// earnings. Returns amounts only (Number, not Decimal) - accountingPeriod.
+// service.js decides where they get posted; this function never writes.
+export const getPeriodClosingPlan = async ({ accountId, startDate, endDate }) => {
+    const rows = await aggregateByAccount({
+        accountId,
+        accountTypes: ["revenue", "cost", "expense"],
+        startDate,
+        endDate,
+        excludeSourceTypes: ["period_close"],
+    });
+
+    // Revenue is credit-normal (amount = credit - debit): a positive balance
+    // needs a debit to zero it. Cost/expense are debit-normal (amount =
+    // debit - credit): a positive balance needs a credit. Either polarity
+    // flips the same way if a period nets negative (e.g. returns > sales).
+    const reversalLines = rows
+        .filter((r) => r.amount !== 0)
+        .map((r) => {
+            const zeroesWithDebit = r.account_type === "revenue" ? r.amount > 0 : r.amount < 0;
+            const magnitude = Math.abs(r.amount);
+            return {
+                chartAccountId: r.id,
+                debit: zeroesWithDebit ? magnitude : 0,
+                credit: zeroesWithDebit ? 0 : magnitude,
+            };
+        });
+
+    const totalRevenue = round2(sumAmounts(rows.filter((r) => r.account_type === "revenue")));
+    const totalCosts = round2(sumAmounts(rows.filter((r) => r.account_type === "cost")));
+    const totalExpenses = round2(sumAmounts(rows.filter((r) => r.account_type === "expense")));
+    const netIncome = round2(totalRevenue - totalCosts - totalExpenses);
+
+    return { reversalLines, netIncome };
+};
+
+// Balance de comprobación: every account in the chart (active or not, even
+// with zero activity) with its opening balance, this period's debit/credit
+// movement, and closing balance. Unlike the income statement/balance sheet
+// (which each show one slice of the chart), this is the classic "does
+// everything still tie out" report - useful right before closing a period.
+export const getTrialBalance = async ({ accountId, startDate, endDate }) => {
+    const accounts = await prisma.chartAccount.findMany({ where: { createdById: accountId }, orderBy: { code: "asc" } });
+    if (accounts.length === 0) return [];
+
+    const priorRows = startDate
+        ? await prisma.journalEntryLine.groupBy({
+              by: ["chartAccountId"],
+              where: { chartAccount: { createdById: accountId }, journalEntry: { period: { createdById: accountId }, entryDate: { lt: startDate } } },
+              _sum: { debit: true, credit: true },
+          })
+        : [];
+    const priorById = new Map(priorRows.map((r) => [r.chartAccountId, r]));
+
+    const rangeRows = await prisma.journalEntryLine.groupBy({
+        by: ["chartAccountId"],
+        where: {
+            chartAccount: { createdById: accountId },
+            journalEntry: {
+                period: { createdById: accountId },
+                ...(startDate || endDate
+                    ? { entryDate: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } }
+                    : {}),
+            },
+        },
+        _sum: { debit: true, credit: true },
+    });
+    const rangeById = new Map(rangeRows.map((r) => [r.chartAccountId, r]));
+
+    return accounts.map((account) => {
+        const prior = priorById.get(account.id);
+        const range = rangeById.get(account.id);
+        const openingBalance = prior ? balanceForType(account.accountType, Number(prior._sum.debit || 0), Number(prior._sum.credit || 0)) : 0;
+        const debit = Number(range?._sum.debit || 0);
+        const credit = Number(range?._sum.credit || 0);
+
+        return {
+            id: account.id,
+            code: account.code,
+            name: account.name,
+            account_type: account.accountType,
+            is_active: account.isActive,
+            opening_balance: round2(openingBalance),
+            debit: round2(debit),
+            credit: round2(credit),
+            closing_balance: round2(openingBalance + balanceForType(account.accountType, debit, credit)),
+        };
+    });
 };

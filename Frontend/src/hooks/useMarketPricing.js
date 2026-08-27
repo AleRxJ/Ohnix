@@ -9,6 +9,13 @@ import { formatCurrency } from "../utils/currency";
 // own copy (which is exactly the "second source of truth" this hook exists
 // to prevent).
 const DETECTED_COUNTRY_SESSION_KEY = "ohnix_pricing_detected_country";
+// Caches the resolved GET /api/v1/pricing/public response itself, not just
+// the detected country - without this, every mount of this hook (landing
+// teaser, then Precios.jsx, then checkout, ...) re-ran the full geo-detect
+// + fetch pipeline from scratch, so a single slow/blocked request anywhere
+// in that chain would flash the (now COP) static fallback again even after
+// the real market price had already been resolved once this session.
+const MARKET_PRICING_SESSION_KEY = "ohnix_market_pricing";
 
 const getSessionDetectedCountry = () => {
     if (typeof window === "undefined") return null;
@@ -23,6 +30,25 @@ const setSessionDetectedCountry = (countryCode) => {
     if (typeof window === "undefined" || !countryCode) return;
     try {
         window.sessionStorage.setItem(DETECTED_COUNTRY_SESSION_KEY, countryCode);
+    } catch {
+        // Best-effort only - a failed cache write shouldn't block pricing.
+    }
+};
+
+const getSessionMarketPricing = () => {
+    if (typeof window === "undefined") return null;
+    try {
+        const raw = window.sessionStorage.getItem(MARKET_PRICING_SESSION_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+};
+
+const setSessionMarketPricing = (data) => {
+    if (typeof window === "undefined" || !data) return;
+    try {
+        window.sessionStorage.setItem(MARKET_PRICING_SESSION_KEY, JSON.stringify(data));
     } catch {
         // Best-effort only - a failed cache write shouldn't block pricing.
     }
@@ -44,9 +70,16 @@ const formatPlanPrice = (amount, currency) => {
 // back to their existing static locale price strings in that case, same as
 // Precios.jsx and LandingPage.jsx do.
 export const useMarketPricing = () => {
-    const [marketPricing, setMarketPricing] = useState(null);
+    // Lazy-initialized from sessionStorage so a page mounted after this
+    // session already resolved a price (e.g. navigating landing -> Precios
+    // -> checkout) renders the real market price immediately, instead of
+    // showing the static fallback again while a redundant fetch repeats.
+    const [marketPricing, setMarketPricing] = useState(getSessionMarketPricing);
 
     useEffect(() => {
+        // Already resolved earlier this session - nothing to (re-)fetch.
+        if (marketPricing) return undefined;
+
         let active = true;
 
         const resolvePricing = async () => {
@@ -63,6 +96,7 @@ export const useMarketPricing = () => {
                 const response = await pricingService.getPublicPricing(countryCode);
                 if (active && response?.data) {
                     setMarketPricing(response.data);
+                    setSessionMarketPricing(response.data);
                 }
             } catch {
                 // Network/backend failure - caller stays on its static fallback prices.
@@ -73,6 +107,9 @@ export const useMarketPricing = () => {
         return () => {
             active = false;
         };
+        // Intentionally run once per mount only: `marketPricing` is read here
+        // just to skip an already-cached result, not to be reacted to.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const priceByPlanKey = useMemo(() => {

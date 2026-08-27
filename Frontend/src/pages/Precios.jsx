@@ -6,6 +6,7 @@ import SeoHead from "../components/common/SeoHead";
 import useI18n from "../hooks/useI18n";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
 import { useMarketPricing } from "../hooks/useMarketPricing";
+import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
 
 const Precios = () => {
     const navigate = useNavigate();
@@ -24,9 +25,13 @@ const Precios = () => {
     // small pill next to the amount (same treatment as the landing page's
     // pricing teaser) instead of concatenated into the same giant string,
     // which used to force "$ 38.000 COP" to wrap mid-price inside the card.
+    // `fallback` is itself now a COP reference price (see locales/*/common.json)
+    // shown while market pricing resolves or if it fails, so it gets the same
+    // "COP" badge as a resolved COP price - not `null`, which used to read as
+    // an unqualified (and easily misread as USD) dollar amount.
     const planPrice = (planKey, fallback) => {
         const priceInfo = priceByPlanKey[planKey];
-        if (!priceInfo) return { price: fallback, currencyBadge: null };
+        if (!priceInfo) return { price: fallback, currencyBadge: "COP" };
         return { price: priceInfo.label, currencyBadge: priceInfo.currency === "COP" ? "COP" : null };
     };
 
@@ -43,7 +48,6 @@ const Precios = () => {
                 t("landing.pricing.plans.starter.features.reports"),
                 t("landing.pricing.plans.starter.features.pdf"),
                 t("landing.pricing.plans.starter.features.alerts"),
-                t("landing.pricing.plans.starter.features.support"),
             ],
             cta: "Empezar gratis",
         },
@@ -62,9 +66,8 @@ const Precios = () => {
                 t("landing.pricing.plans.growth.features.export"),
                 t("landing.pricing.plans.growth.features.pdf"),
                 t("landing.pricing.plans.growth.features.alerts"),
-                t("landing.pricing.plans.growth.features.invoicing"),
-                t("landing.pricing.plans.growth.features.support"),
-            ],
+                ELECTRONIC_INVOICING_ENABLED && { text: t("landing.pricing.plans.growth.features.invoicing"), highlight: true },
+            ].filter(Boolean),
             cta: "Escalar operacion",
             featured: true,
         },
@@ -83,9 +86,10 @@ const Precios = () => {
                 t("landing.pricing.plans.scale.features.reports"),
                 t("landing.pricing.plans.scale.features.pdf"),
                 t("landing.pricing.plans.scale.features.api"),
+                ELECTRONIC_INVOICING_ENABLED && t("landing.pricing.plans.scale.features.invoicing"),
+                { text: t("landing.pricing.plans.scale.features.accounting"), highlight: true },
                 t("landing.pricing.plans.scale.features.alerts"),
-                t("landing.pricing.plans.scale.features.support"),
-            ],
+            ].filter(Boolean),
             cta: "Escalar operacion",
         },
         {
@@ -100,10 +104,10 @@ const Precios = () => {
                 t("landing.pricing.plans.enterprise.features.team"),
                 t("landing.pricing.plans.enterprise.features.locations"),
                 t("landing.pricing.plans.enterprise.features.api"),
+                t("landing.pricing.plans.enterprise.features.accounting"),
                 t("landing.pricing.plans.enterprise.features.integrations"),
                 t("landing.pricing.plans.enterprise.features.manager"),
                 t("landing.pricing.plans.enterprise.features.sla"),
-                t("landing.pricing.plans.enterprise.features.onboarding"),
             ],
             cta: "Hablar con ventas",
         },
@@ -113,11 +117,12 @@ const Precios = () => {
         "Conoce los planes de Ohnix para controlar inventario, compras y ventas en pymes con claridad operativa y escalabilidad.";
 
     // Schema.org Offer.price needs a bare number in the market's real
-    // currency, not the display string ("$19", "$59.900 COP"). Sourced from
-    // the same resolved market pricing as the on-page cards (falls back to
-    // the existing USD reference numbers if detection/fetch hasn't
-    // resolved yet) so structured data never disagrees with what's shown.
-    const offerCurrency = marketPricing?.currency?.toUpperCase() || "USD";
+    // currency, not the display string ("$38.000", "$59.900 COP"). Sourced
+    // from the same resolved market pricing as the on-page cards (falls
+    // back to the same COP reference numbers as the cards if detection/
+    // fetch hasn't resolved yet - see planPrice() above) so structured data
+    // never disagrees with what's shown.
+    const offerCurrency = marketPricing?.currency?.toUpperCase() || "COP";
     const offerAmountByPlanKey = marketPricing?.plans
         ? marketPricing.plans.reduce((acc, plan) => {
               if (plan.amount !== null && plan.amount !== undefined) {
@@ -125,7 +130,7 @@ const Precios = () => {
               }
               return acc;
           }, {})
-        : { starter: 19, growth: 49, scale: 99 };
+        : { starter: 38000, growth: 99000, scale: 200000 };
 
     const productSchemaImage = "https://ohnix.co/Ohnix_FullLogo.png";
     const offerValidFrom = "2026-01-01";
@@ -243,14 +248,38 @@ const Precios = () => {
                                 <p className="mt-4 text-sm leading-7 text-[#D4DBDF]">{plan.description}</p>
                                 <div className="mt-5 border-t border-white/[0.06]" />
                                 <ul className="mt-4 space-y-2">
-                                    {plan.features.map((feature) => (
-                                        <li key={feature} className="flex items-start gap-2 text-[13px] text-[#C4CDD2]">
-                                            <span className="mt-[3px] flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[#29D8D5]/15 text-[#44F3F0]">
-                                                <CheckOutlined className="text-[7px]" />
-                                            </span>
-                                            <span className="leading-snug">{feature}</span>
-                                        </li>
-                                    ))}
+                                    {plan.features.map((feature) => {
+                                        // A plain string is an inherited/scaling feature (more
+                                        // of what the previous tier already had). An object
+                                        // marks the ONE capability this tier actually adds -
+                                        // without this, every card reads as an undifferentiated
+                                        // checklist and it's not obvious what an extra $50/mes
+                                        // buys you (the exact confusion that prompted this pass).
+                                        const label = typeof feature === "string" ? feature : feature.text;
+                                        const isNew = typeof feature === "object" && feature.highlight;
+                                        return (
+                                            <li
+                                                key={label}
+                                                className={`flex items-start gap-2 text-[13px] ${isNew ? "text-white" : "text-[#C4CDD2]"}`}
+                                            >
+                                                <span
+                                                    className={`mt-[3px] flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full ${
+                                                        isNew ? "bg-[#29D8D5] text-[#021314]" : "bg-[#29D8D5]/15 text-[#44F3F0]"
+                                                    }`}
+                                                >
+                                                    <CheckOutlined className="text-[7px]" />
+                                                </span>
+                                                <span className={`leading-snug ${isNew ? "font-semibold" : ""}`}>
+                                                    {label}
+                                                    {isNew && (
+                                                        <span className="ml-2 inline-flex items-center rounded-full bg-[#29D8D5]/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#44F3F0]">
+                                                            Nuevo
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                                 <button
                                     type="button"

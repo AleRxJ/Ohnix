@@ -7,11 +7,11 @@ import { postPurchasePaymentJournalEntry } from "./accountingPosting.service.js"
 // total of every line (PurchaseDetail.total + taxAmount), minus SUM(PurchasePayment.amount).
 // Purchase has no stored total (see purchase.controller.js#mapPurchase) - it's
 // always derived from its details, same here.
-export const getPurchasePendingBalance = async (purchaseId) => {
+export const getPurchasePendingBalance = async (purchaseId, db = prisma) => {
     const [purchase, detailsAgg, paidAgg] = await Promise.all([
-        prisma.purchase.findUnique({ where: { id: purchaseId }, select: { id: true, purchaseNo: true, purchaseStatus: true } }),
-        prisma.purchaseDetail.aggregate({ where: { purchaseId }, _sum: { total: true, taxAmount: true } }),
-        prisma.purchasePayment.aggregate({ where: { purchaseId }, _sum: { amount: true } }),
+        db.purchase.findUnique({ where: { id: purchaseId }, select: { id: true, purchaseNo: true, purchaseStatus: true } }),
+        db.purchaseDetail.aggregate({ where: { purchaseId }, _sum: { total: true, taxAmount: true } }),
+        db.purchasePayment.aggregate({ where: { purchaseId }, _sum: { amount: true } }),
     ]);
     if (!purchase) throw new ApiError(404, "Compra no encontrada.");
 
@@ -21,12 +21,16 @@ export const getPurchasePendingBalance = async (purchaseId) => {
     return { purchase, total, paid, pending };
 };
 
-export const listPurchasePayments = async (purchaseId) =>
-    prisma.purchasePayment.findMany({
-        where: { purchaseId },
+export const listPurchasePayments = async ({ accountId, purchaseId }) => {
+    const purchase = await prisma.purchase.findFirst({ where: { id: purchaseId, createdById: accountId }, select: { id: true } });
+    if (!purchase) throw new ApiError(404, "Compra no encontrada.");
+
+    return prisma.purchasePayment.findMany({
+        where: { purchaseId: purchase.id },
         include: { cashAccount: { select: { id: true, name: true } }, createdBy: { select: { id: true, username: true } } },
         orderBy: { paidAt: "desc" },
     });
+};
 
 export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, amount, cashAccountId, method, reference }) => {
     const numericAmount = Number(amount);
@@ -42,12 +46,13 @@ export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, 
     });
     if (!cashAccount) throw new ApiError(404, "Cuenta de caja/banco no encontrada.");
 
-    const { pending } = await getPurchasePendingBalance(purchaseId);
-    if (numericAmount > pending + 0.001) {
-        throw new ApiError(422, `El pago (${numericAmount}) excede el saldo pendiente de la compra (${pending}).`);
-    }
+    try {
+        return await prisma.$transaction(async (tx) => {
+        const { pending } = await getPurchasePendingBalance(purchaseId, tx);
+        if (numericAmount > pending + 0.001) {
+            throw new ApiError(422, `El pago (${numericAmount}) excede el saldo pendiente de la compra (${pending}).`);
+        }
 
-    return prisma.$transaction(async (tx) => {
         const balanceAfter = await claimCashAccount(tx, { cashAccountId, amount: numericAmount });
         if (balanceAfter === null) {
             throw new ApiError(422, "Saldo insuficiente en la cuenta de caja/banco seleccionada.");
@@ -83,5 +88,11 @@ export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, 
         });
 
         return payment;
-    });
+        }, { isolationLevel: "Serializable" });
+    } catch (error) {
+        if (error?.code === "P2034") {
+            throw new ApiError(409, "El pago no pudo registrarse porque el saldo cambió. Intenta de nuevo.");
+        }
+        throw error;
+    }
 };

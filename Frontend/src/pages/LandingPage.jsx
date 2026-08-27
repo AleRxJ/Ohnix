@@ -5,6 +5,7 @@ import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
 import { useMarketPricing } from "../hooks/useMarketPricing";
+import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
 import {
     OrbitalHero,
     CardGrid,
@@ -38,9 +39,13 @@ const LandingPage = () => {
 
     // "$" alone is ambiguous between USD and COP - PricingSection renders
     // planPrice() as a currencyBadge pill next to the amount when set.
+    // `fallback` is itself now a COP reference price (see locales/*/common.json)
+    // shown while market pricing resolves or if it fails, so it gets the same
+    // "COP" badge as a resolved COP price - not `null`, which used to read as
+    // an unqualified (and easily misread as USD) dollar amount.
     const planPrice = (planKey, fallback) => {
         const priceInfo = priceByPlanKey[planKey];
-        if (!priceInfo) return { price: fallback, currencyBadge: null };
+        if (!priceInfo) return { price: fallback, currencyBadge: "COP" };
         return { price: priceInfo.label, currencyBadge: priceInfo.currency === "COP" ? "COP" : null };
     };
 
@@ -214,7 +219,6 @@ const LandingPage = () => {
                 t("landing.pricing.plans.starter.features.reports"),
                 t("landing.pricing.plans.starter.features.pdf"),
                 t("landing.pricing.plans.starter.features.alerts"),
-                t("landing.pricing.plans.starter.features.support"),
             ],
             cta: t("landing.pricing.plans.starter.cta"),
             note: t("landing.pricing.trial_note"),
@@ -236,8 +240,8 @@ const LandingPage = () => {
                 t("landing.pricing.plans.growth.features.export"),
                 t("landing.pricing.plans.growth.features.pdf"),
                 t("landing.pricing.plans.growth.features.alerts"),
-                t("landing.pricing.plans.growth.features.support"),
-            ],
+                ELECTRONIC_INVOICING_ENABLED && { text: t("landing.pricing.plans.growth.features.invoicing"), highlight: true },
+            ].filter(Boolean),
             cta: t("landing.pricing.plans.growth.cta"),
             icon: brandIcons.observability,
             featured: true,
@@ -258,9 +262,10 @@ const LandingPage = () => {
                 t("landing.pricing.plans.scale.features.reports"),
                 t("landing.pricing.plans.scale.features.pdf"),
                 t("landing.pricing.plans.scale.features.api"),
+                ELECTRONIC_INVOICING_ENABLED && t("landing.pricing.plans.scale.features.invoicing"),
+                { text: t("landing.pricing.plans.scale.features.accounting"), highlight: true },
                 t("landing.pricing.plans.scale.features.alerts"),
-                t("landing.pricing.plans.scale.features.support"),
-            ],
+            ].filter(Boolean),
             cta: t("landing.pricing.plans.scale.cta"),
             icon: brandIcons.adaptive,
         },
@@ -279,7 +284,6 @@ const LandingPage = () => {
                 t("landing.pricing.plans.enterprise.features.integrations"),
                 t("landing.pricing.plans.enterprise.features.manager"),
                 t("landing.pricing.plans.enterprise.features.sla"),
-                t("landing.pricing.plans.enterprise.features.onboarding"),
             ],
             cta: t("landing.pricing.plans.enterprise.cta"),
             icon: brandIcons.trust,
