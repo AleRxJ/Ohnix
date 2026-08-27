@@ -12,6 +12,13 @@ import {
     transferProductStock,
 } from "../controllers/product.controller.js";
 import { bulkUploadProducts } from "../controllers/product.bulk.controller.js";
+import {
+    addProductImages,
+    deleteProductImage,
+    setPrimaryProductImage,
+    reorderProductImages,
+} from "../controllers/productImage.controller.js";
+import { MAX_PRODUCT_IMAGES } from "../services/productImage.service.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.middleware.js";
@@ -41,6 +48,21 @@ router
     .route("/:id")
     .patch(requireModulePermission("products", "edit"), upload.single("product_image"), updateProduct)
     .delete(requireModulePermission("products", "edit"), deleteProduct);
+
+// Gallery sub-resource. The literal "/reorder" route MUST be registered
+// before "/:imageId" below, or Express matches "reorder" as an :imageId.
+router
+    .route("/:id/images")
+    .post(requireModulePermission("products", "edit"), upload.array("images", MAX_PRODUCT_IMAGES), addProductImages);
+router
+    .route("/:id/images/reorder")
+    .patch(requireModulePermission("products", "edit"), reorderProductImages);
+router
+    .route("/:id/images/:imageId")
+    .delete(requireModulePermission("products", "edit"), deleteProductImage);
+router
+    .route("/:id/images/:imageId/primary")
+    .patch(requireModulePermission("products", "edit"), setPrimaryProductImage);
 
 router
     .route("/:id/adjust-stock")

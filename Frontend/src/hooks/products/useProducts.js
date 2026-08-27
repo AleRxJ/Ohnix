@@ -197,6 +197,98 @@ export const useProducts = () => {
         }
     };
 
+    // productId + array of File objects → uploads them all in one request
+    // and returns the updated product (with its full `images` gallery).
+    // `onUploadProgress` is passed straight through to axios so callers can
+    // show a per-request progress bar/percentage.
+    const addProductImages = async (productId, files, onUploadProgress) => {
+        const formData = new FormData();
+        files.forEach((file) => formData.append("images", file));
+
+        try {
+            const response = await api.post(`/products/${productId}/images`, formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+                onUploadProgress,
+            });
+
+            if (response.data.success) {
+                toast.success(t("products.images_added"));
+                setProducts((prev) =>
+                    prev.map((p) => (p._id === productId ? response.data.data : p))
+                );
+                return { success: true, data: response.data.data };
+            }
+        } catch (err) {
+            console.error("Add product images error:", err);
+            const errorMessage =
+                err.response?.data?.message || t("products.image_upload_failed");
+            toast.error(errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    };
+
+    const deleteProductImage = async (productId, imageId) => {
+        try {
+            const response = await api.delete(`/products/${productId}/images/${imageId}`);
+
+            if (response.data.success) {
+                toast.success(t("products.image_deleted"));
+                setProducts((prev) =>
+                    prev.map((p) => (p._id === productId ? response.data.data : p))
+                );
+                return { success: true, data: response.data.data };
+            }
+        } catch (err) {
+            console.error("Delete product image error:", err);
+            const errorMessage =
+                err.response?.data?.message || t("products.image_delete_failed");
+            toast.error(errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    };
+
+    const setPrimaryProductImage = async (productId, imageId) => {
+        try {
+            const response = await api.patch(`/products/${productId}/images/${imageId}/primary`);
+
+            if (response.data.success) {
+                toast.success(t("products.image_set_as_primary_success"));
+                setProducts((prev) =>
+                    prev.map((p) => (p._id === productId ? response.data.data : p))
+                );
+                return { success: true, data: response.data.data };
+            }
+        } catch (err) {
+            console.error("Set primary product image error:", err);
+            const errorMessage =
+                err.response?.data?.message || t("products.image_set_primary_failed");
+            toast.error(errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    };
+
+    const reorderProductImages = async (productId, imageIds) => {
+        try {
+            const response = await api.patch(`/products/${productId}/images/reorder`, {
+                image_ids: imageIds,
+            });
+
+            if (response.data.success) {
+                toast.success(t("products.images_reordered"));
+                setProducts((prev) =>
+                    prev.map((p) => (p._id === productId ? response.data.data : p))
+                );
+                return { success: true, data: response.data.data };
+            }
+        } catch (err) {
+            console.error("Reorder product images error:", err);
+            const errorMessage =
+                err.response?.data?.message || t("products.image_reorder_failed");
+            toast.error(errorMessage);
+            return { success: false, error: errorMessage };
+        }
+    };
+
     const bulkCreateProducts = async (file) => {
         const formData = new FormData();
         formData.append("file", file);
@@ -233,5 +325,9 @@ export const useProducts = () => {
         fetchStockMovements,
         bulkCreateProducts,
         bulkUpdateLowStockThreshold,
+        addProductImages,
+        deleteProductImage,
+        setPrimaryProductImage,
+        reorderProductImages,
     };
 };

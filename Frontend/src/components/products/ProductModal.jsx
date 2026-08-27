@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { Modal, Form, Input, Select, InputNumber, Row, Col, Button, Tooltip, Switch, Collapse } from "antd";
 import { AppstoreOutlined, ScanOutlined, LockOutlined, InboxOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
-import ProductImageUpload from "./ProductImageUpload";
+import ProductImagesUpload from "./ProductImagesUpload";
 import BarcodeScannerModal from "./BarcodeScannerModal";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -30,6 +30,14 @@ const ProductModal = ({
     onCancel,
     onImageChange,
     isTourCreateStep,
+    productImages,
+    extraImageFiles,
+    onExtraImageFilesChange,
+    onGalleryUpdated,
+    addProductImages,
+    deleteProductImage,
+    setPrimaryProductImage,
+    reorderProductImages,
 }) => {
     const { t } = useI18n();
     const { currency } = useCurrency();
@@ -670,12 +678,22 @@ const ProductModal = ({
                             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[var(--ohnix-line-3)]">
                                 <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
                                 <h3 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">
-                                    {t("products.product_image")}
+                                    {t("products.product_images")}
                                 </h3>
                             </div>
-                            <ProductImageUpload
+                            <ProductImagesUpload
                                 imageUrl={imageUrl}
-                                onChange={onImageChange}
+                                onImageChange={onImageChange}
+                                isEditing={Boolean(editingProduct?._id)}
+                                productId={editingProduct?._id}
+                                images={productImages}
+                                extraFiles={extraImageFiles}
+                                onExtraFilesChange={onExtraImageFilesChange}
+                                onGalleryUpdated={onGalleryUpdated}
+                                addProductImages={addProductImages}
+                                deleteProductImage={deleteProductImage}
+                                setPrimaryProductImage={setPrimaryProductImage}
+                                reorderProductImages={reorderProductImages}
                             />
                         </div>
                     </Col>

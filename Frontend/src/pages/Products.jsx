@@ -37,6 +37,10 @@ const Products = () => {
         adjustStock,
         fetchStockMovements,
         bulkUpdateLowStockThreshold,
+        addProductImages,
+        deleteProductImage,
+        setPrimaryProductImage,
+        reorderProductImages,
     } = useProducts();
     const { categories } = useCategories();
     const { units } = useUnits();
@@ -61,6 +65,11 @@ const Products = () => {
     const [modalLoading, setModalLoading] = useState(false);
     const [imageFile, setImageFile] = useState(null);
     const [imageUrl, setImageUrl] = useState("");
+    // Extra (non-primary) images staged before a new product exists yet -
+    // uploaded right after create succeeds. Unused once editing an existing
+    // product, where the gallery is managed live instead - see
+    // ProductImagesUpload.jsx.
+    const [extraImageFiles, setExtraImageFiles] = useState([]);
     const [isAdjustStockVisible, setIsAdjustStockVisible] = useState(false);
     const [adjustingProduct, setAdjustingProduct] = useState(null);
     const [adjustStockLoading, setAdjustStockLoading] = useState(false);
@@ -93,10 +102,27 @@ const Products = () => {
     // filter isn't silently dropped by a background refresh.
     useDataInvalidation("product", handleSearch);
 
+    // The live gallery (edit mode) always reads from `products`, not the
+    // `editingProduct` snapshot taken when the modal opened - every
+    // add/delete/set-primary/reorder call already updates `products` (see
+    // useProducts.js), so this stays fresh without extra plumbing.
+    const liveEditingProduct = editingProduct
+        ? products.find((p) => p._id === editingProduct._id) || editingProduct
+        : null;
+
+    // Keeps the primary-slot preview in sync when a gallery action (delete
+    // the primary, set another image as primary, drag one to the front)
+    // changes which image is primary - the rest of the product's local
+    // state doesn't need to change for that.
+    const handleGalleryUpdated = (updatedProduct) => {
+        setImageUrl(updatedProduct.product_image || "");
+    };
+
     const handleAddProduct = () => {
         setEditingProduct(null);
         setImageFile(null);
         setImageUrl("");
+        setExtraImageFiles([]);
         form.resetFields();
         if (isTutorialActive && currentTourStepId === "create-product") {
             form.setFieldsValue({
@@ -115,6 +141,7 @@ const Products = () => {
         setEditingProduct(product);
         setImageUrl(product.product_image || "");
         setImageFile(null);
+        setExtraImageFiles([]);
         form.setFieldsValue({
             product_name: product.product_name,
             product_code: product.product_code,
@@ -214,10 +241,17 @@ const Products = () => {
                 : await createProduct(formData);
 
             if (result.success) {
+                // Extra images can only be attached once the product has an
+                // id - stage-then-flush is what makes "create with several
+                // images" a single flow from the user's perspective.
+                if (!editingProduct && extraImageFiles.length > 0 && result.data?._id) {
+                    await addProductImages(result.data._id, extraImageFiles);
+                }
                 setIsModalVisible(false);
                 form.resetFields();
                 setImageFile(null);
                 setImageUrl("");
+                setExtraImageFiles([]);
                 if (!editingProduct && isTutorialActive) {
                     notifyAction(
                         "product",
@@ -426,6 +460,7 @@ const Products = () => {
                             setEditingProduct(null);
                             setImageFile(null);
                             setImageUrl("");
+                            setExtraImageFiles([]);
                             form.resetFields();
                         }}
                         onImageChange={handleImageChange}
@@ -434,6 +469,14 @@ const Products = () => {
                         isTourCreateStep={
                             isTutorialActive && !editingProduct && currentTourStepId === "create-product"
                         }
+                        productImages={liveEditingProduct?.images}
+                        extraImageFiles={extraImageFiles}
+                        onExtraImageFilesChange={setExtraImageFiles}
+                        onGalleryUpdated={handleGalleryUpdated}
+                        addProductImages={addProductImages}
+                        deleteProductImage={deleteProductImage}
+                        setPrimaryProductImage={setPrimaryProductImage}
+                        reorderProductImages={reorderProductImages}
                     />
 
                     <ProductFilters

@@ -139,12 +139,12 @@ const run = async () => {
     } : updated.json, null, 2));
 
     section("GET /reports/vat (cross-check the VAT report referenced from Impuestos tab)");
-    const vat = await call(accessToken, "GET", `/reports/vat?from=${yearStart}&to=${to}`);
+    const vat = await call(accessToken, "GET", `/reports/vat?start_date=${yearStart}&end_date=${to}`);
     console.log(vat.status, JSON.stringify(vat.json.data?.summary, null, 2));
 
     section("GET /reports/cartera (cross-check the Cartera report referenced from Resumen tab)");
-    const cartera = await call(accessToken, "GET", `/reports/cartera?from=${yearStart}&to=${to}`);
-    console.log(cartera.status, JSON.stringify(cartera.json.data?.summary || cartera.json.data, null, 2));
+    const cartera = await call(accessToken, "GET", `/reports/cartera?start_date=${yearStart}&end_date=${to}`);
+    console.log(cartera.status, JSON.stringify(cartera.json.data?.receivables?.summary, null, 2));
 
     console.log("\nDONE");
 };

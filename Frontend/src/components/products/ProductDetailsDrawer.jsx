@@ -157,44 +157,66 @@ const ProductDetailsDrawer = ({
             }}
         >
             <div className="space-y-4 sm:space-y-5">
-                <div className="module-shell rounded-2xl sm:rounded-3xl p-4 sm:p-5 reveal-card">
-                    <div className="flex gap-3 sm:gap-5">
-                        <div className="flex-shrink-0">
-                            <div className="w-28 h-full rounded-lg overflow-hidden bg-white/[0.04] border border-[var(--ohnix-line-4)] flex items-center justify-center">
-                                <Image
-                                    src={product.product_image}
-                                    alt={product.product_name}
-                                    className="w-full h-full object-cover"
-                                    fallback={PRODUCT_IMAGE_FALLBACK}
-                                    preview={{
-                                        mask: <div className="text-[var(--ohnix-text-primary)] text-xs font-medium">{t("products.preview")}</div>,
-                                    }}
-                                />
+                <Image.PreviewGroup>
+                    <div className="module-shell rounded-2xl sm:rounded-3xl p-4 sm:p-5 reveal-card">
+                        <div className="flex gap-3 sm:gap-5">
+                            <div className="flex-shrink-0">
+                                <div className="w-28 h-full rounded-lg overflow-hidden bg-white/[0.04] border border-[var(--ohnix-line-4)] flex items-center justify-center">
+                                    <Image
+                                        src={product.product_image}
+                                        alt={product.product_name}
+                                        className="w-full h-full object-cover"
+                                        fallback={PRODUCT_IMAGE_FALLBACK}
+                                        preview={{
+                                            mask: <div className="text-[var(--ohnix-text-primary)] text-xs font-medium">{t("products.preview")}</div>,
+                                        }}
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="flex-1 min-w-0">
-                            <Title level={4} className="!text-[var(--ohnix-text-primary)] !mb-2 !text-lg !font-semibold">
-                                {product.product_name}
-                            </Title>
-                            <div className="flex items-center gap-2 mb-3">
-                                <TagOutlined className="text-[var(--ohnix-text-dim)] text-xs" />
-                                <Text className="text-sm text-[var(--ohnix-text-muted)]">{product.product_code}</Text>
-                            </div>
-                            <div
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border"
-                                style={{
-                                    backgroundColor: stockStatus.bg,
-                                    color: stockStatus.color,
-                                    borderColor: stockStatus.border,
-                                }}
-                            >
-                                {stockStatus.icon}
-                                <span>{stockStatus.text}</span>
+                            <div className="flex-1 min-w-0">
+                                <Title level={4} className="!text-[var(--ohnix-text-primary)] !mb-2 !text-lg !font-semibold">
+                                    {product.product_name}
+                                </Title>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <TagOutlined className="text-[var(--ohnix-text-dim)] text-xs" />
+                                    <Text className="text-sm text-[var(--ohnix-text-muted)]">{product.product_code}</Text>
+                                </div>
+                                <div
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border"
+                                    style={{
+                                        backgroundColor: stockStatus.bg,
+                                        color: stockStatus.color,
+                                        borderColor: stockStatus.border,
+                                    }}
+                                >
+                                    {stockStatus.icon}
+                                    <span>{stockStatus.text}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+
+                    {product.images && product.images.length > 1 && (
+                        <div className="flex flex-wrap gap-2">
+                            {product.images
+                                .filter((img) => !img.is_primary)
+                                .map((img) => (
+                                    <div
+                                        key={img._id}
+                                        className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-[var(--ohnix-line-4)] bg-white/[0.04]"
+                                    >
+                                        <Image
+                                            src={img.url}
+                                            alt={product.product_name}
+                                            className="h-full w-full object-cover"
+                                            fallback={PRODUCT_IMAGE_FALLBACK}
+                                        />
+                                    </div>
+                                ))}
+                        </div>
+                    )}
+                </Image.PreviewGroup>
 
                 <div className="grid grid-cols-3 gap-2 sm:gap-3">
                     <div className="module-shell rounded-2xl sm:rounded-3xl p-3 sm:p-4 min-w-0">

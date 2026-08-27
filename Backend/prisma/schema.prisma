@@ -676,12 +676,35 @@ model Product {
   stockMovements   StockMovement[]
   locationStock    ProductLocationStock[]
   transfers        StockTransfer[]
+  images           ProductImage[]
 
   @@unique([productCode, createdById])
   @@index([createdById])
   @@index([categoryId])
   @@index([unitId])
   @@map("products")
+}
+
+// Gallery entry for a product - Product.productImage stays a synced cache
+// of whichever row here has isPrimary=true (see
+// services/productImage.service.js#syncPrimaryScalar), so every existing
+// reader of the scalar field (reports, bulk import defaults, the mapped API
+// response) keeps working unchanged. isPrimary is always exactly
+// `position === 0`; both are stored (rather than deriving isPrimary from a
+// MIN(position) query) so the API response is self-explanatory, but every
+// write goes through that one service so the two can't drift apart.
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  position  Int      @default(0)
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([productId, position])
+  @@map("product_images")
 }
 
 // Per-location partition of a product's stock - the piece Product.stock

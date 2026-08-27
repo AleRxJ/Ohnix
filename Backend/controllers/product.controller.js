@@ -20,6 +20,7 @@ import { emitAccountEvent, emitPosEvent } from "../live/dataEvents.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
 import { resolveOrAssertPointOfSaleId, assertPosAccess } from "../middleware/pos.permissions.js";
 import { normalizeProductImage } from "../utils/productImage.js";
+import { attachImage, replacePrimaryImage } from "../services/productImage.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -327,6 +328,17 @@ const mapProduct = (product, scopedStock) => ({
     package_length_value:
         product.packageLengthValue === null ? null : Number(cmToUnit(Number(product.packageLengthValue), product.dimensionUnit)),
     is_tutorial_data: product.isTutorialData,
+    images: (product.images || [])
+        .slice()
+        .sort((a, b) => a.position - b.position)
+        .map((img) => ({
+            _id: toExternalId(img),
+            url: img.url,
+            position: img.position,
+            is_primary: img.isPrimary,
+            createdAt: img.createdAt,
+            updatedAt: img.updatedAt,
+        })),
     created_by: product.createdBy
         ? {
               _id: toExternalId(product.createdBy),
@@ -361,6 +373,7 @@ const findProductByAnyId = async (id) =>
             updatedBy: {
                 select: { id: true, legacyMongoId: true, username: true },
             },
+            images: { orderBy: { position: "asc" } },
         },
     });
 
@@ -537,6 +550,12 @@ const createProduct = asyncHandler(async (req, res, next) => {
             },
         });
 
+        // The scalar productImage column is already set above (create's own
+        // data), so this only needs to create the matching gallery row -
+        // attachImage's syncPrimaryScalar write is a harmless no-op repeat
+        // of the same value.
+        product.images = req.file ? [await attachImage(prisma, product.id, productImageUrl)] : [];
+
         emitAccountEvent(req.user.prismaId, "product", "created");
         return res
             .status(201)
@@ -615,6 +634,7 @@ const getAllProducts = asyncHandler(async (req, res, next) => {
                 updatedBy: {
                     select: { id: true, legacyMongoId: true, username: true },
                 },
+                images: { orderBy: { position: "asc" } },
             },
         });
 
@@ -694,14 +714,18 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             resolvedUnitId = unit.id;
         }
 
-        let productImage = existingProduct.productImage;
+        // Handled after the product row itself is updated below (see
+        // replacePrimaryImage) rather than as a plain field on `payload`, so
+        // the ProductImage gallery row and the productImage scalar can't
+        // drift apart - see services/productImage.service.js.
+        let uploadedImageUrl = null;
         if (req.file) {
             const image = await uploadFile(req.file, {
                 ownerId: req.user.prismaId,
                 entity: "products",
             });
             if (image) {
-                productImage = image.url;
+                uploadedImageUrl = image.url;
             }
         }
 
@@ -744,7 +768,6 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             ...(updateData.tax_treatment !== undefined && { taxTreatment: updateData.tax_treatment }),
             ...(resolvedLowStockThreshold !== undefined && { lowStockThreshold: resolvedLowStockThreshold }),
             ...physicalData,
-            productImage,
             updatedById: req.user.prismaId,
         };
 
@@ -787,7 +810,7 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             return next(new ApiError(400, "Selling price must be >= buying price"));
         }
 
-        const product = await updateWithConflictCheck({
+        let product = await updateWithConflictCheck({
             model: prisma.product,
             id: existingProduct.id,
             expectedUpdatedAt: parseExpectedUpdatedAt(updateData.expected_updated_at),
@@ -805,16 +828,18 @@ const updateProduct = asyncHandler(async (req, res, next) => {
                 updatedBy: {
                     select: { id: true, legacyMongoId: true, username: true },
                 },
+                images: { orderBy: { position: "asc" } },
             },
             conflictMessage: "This product was changed by someone else. Reload to see the latest version.",
         });
 
-        // Fire-and-forget: the old image is only orphaned once the DB row
-        // safely points at the new one, and deleteFile() already swallows
-        // its own errors, so this can't turn a successful update into a
-        // failed response.
-        if (req.file && productImage !== existingProduct.productImage) {
-            deleteFile(existingProduct.productImage);
+        // The DB row is only safely pointed at the new image once this
+        // succeeds - replacePrimaryImage deletes the old primary's file
+        // itself (mirrors the old fire-and-forget deleteFile behavior here)
+        // and keeps productImage/ProductImage in sync either way.
+        if (uploadedImageUrl) {
+            await replacePrimaryImage(prisma, existingProduct.id, uploadedImageUrl);
+            product = await findProductByAnyId(existingProduct.id);
         }
 
         emitAccountEvent(existingProduct.createdById, "product", "updated");
@@ -852,7 +877,13 @@ const deleteProduct = asyncHandler(async (req, res, next) => {
         }
 
         await prisma.product.delete({ where: { id: existingProduct.id } });
-        deleteFile(existingProduct.productImage);
+        // The DB rows are already gone via the ProductImage relation's
+        // onDelete: Cascade - this only cleans up their R2 objects, which
+        // cascade doesn't touch. Covers every gallery image, not just the
+        // primary (existingProduct.productImage is always one of these
+        // urls once a product has real images - see
+        // productImage.service.js#syncPrimaryScalar).
+        existingProduct.images.forEach((img) => deleteFile(img.url));
 
         emitAccountEvent(existingProduct.createdById, "product", "deleted");
         return res
@@ -999,6 +1030,7 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
                     unit: { select: { id: true, legacyMongoId: true, unitName: true } },
                     createdBy: { select: { id: true, legacyMongoId: true, username: true } },
                     updatedBy: { select: { id: true, legacyMongoId: true, username: true } },
+                    images: { orderBy: { position: "asc" } },
                 },
             });
 
@@ -1210,6 +1242,7 @@ const getAllProductsAdmin = asyncHandler(async (_req, res, next) => {
                 updatedBy: {
                     select: { id: true, legacyMongoId: true, username: true },
                 },
+                images: { orderBy: { position: "asc" } },
             },
         });
 
@@ -1233,4 +1266,6 @@ export {
     getProductStockMovements,
     getProductLocationStock,
     transferProductStock,
+    mapProduct,
+    findProductByAnyId,
 };
