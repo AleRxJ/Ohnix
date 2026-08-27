@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
     Table,
     Button,
@@ -20,6 +20,7 @@ import {
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { useTeam } from "../../context/TeamContext";
+import useIsMobile from "../../hooks/useIsMobile";
 import { DEFAULT_LOW_STOCK_THRESHOLD, PRODUCT_IMAGE_FALLBACK } from "../../utils/productUtils";
 
 const { Text } = Typography;
@@ -337,10 +338,21 @@ const ProductsTable = ({
         },
     ];
 
-    // Check if screen is mobile (you can adjust breakpoint as needed)
-    const isMobile = window.innerWidth < 768;
+    const isMobile = useIsMobile();
+    const MOBILE_PAGE_SIZE = 15;
+    const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_PAGE_SIZE);
+
+    // `products` is the full, unpaginated list (desktop pages it client-side
+    // via the antd Table below) - rendering every card at once here used to
+    // mean hundreds of Card components mounted on a phone at once for any
+    // shop with a real catalog. Resets to the first page whenever the
+    // underlying list changes (new search/filter/fetch), not just on mount.
+    useEffect(() => {
+        setMobileVisibleCount(MOBILE_PAGE_SIZE);
+    }, [products]);
 
     if (isMobile) {
+        const visibleProducts = products.slice(0, mobileVisibleCount);
         return (
             <div className="animate-fade-up">
                 {loading ? (
@@ -352,12 +364,28 @@ const ProductsTable = ({
                         </Text>
                     </div>
                 ) : (
-                    products.map((product) => (
-                        <MobileProductCard
-                            key={product._id}
-                            product={product}
-                        />
-                    ))
+                    <>
+                        {visibleProducts.map((product) => (
+                            <MobileProductCard
+                                key={product._id}
+                                product={product}
+                            />
+                        ))}
+                        <div className="flex flex-col items-center gap-2 pt-2 pb-1">
+                            <span className="text-xs text-[var(--ohnix-text-muted)]">
+                                {t("common.total")} {products.length} {t("products.products")}
+                            </span>
+                            {mobileVisibleCount < products.length && (
+                                <Button
+                                    block
+                                    onClick={() => setMobileVisibleCount((c) => c + MOBILE_PAGE_SIZE)}
+                                    className="max-w-xs"
+                                >
+                                    {t("common.load_more")}
+                                </Button>
+                            )}
+                        </div>
+                    </>
                 )}
             </div>
         );

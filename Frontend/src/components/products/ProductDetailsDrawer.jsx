@@ -15,11 +15,13 @@ import {
 } from "@ant-design/icons";
 import { useCurrency } from "../../context/CurrencyContext";
 import useI18n from "../../hooks/useI18n";
+import useIsMobile from "../../hooks/useIsMobile";
 import { DEFAULT_LOW_STOCK_THRESHOLD, PRODUCT_IMAGE_FALLBACK } from "../../utils/productUtils";
 import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 import LocationStockPanel from "./LocationStockPanel";
 import MovementRow from "./MovementRow";
 import MovementHistoryModal from "./MovementHistoryModal";
+import EmptyState from "../common/EmptyState";
 
 const { Text, Title } = Typography;
 
@@ -34,6 +36,7 @@ const ProductDetailsDrawer = ({
 }) => {
     const { formatCurrency } = useCurrency();
     const { t, currentLanguage } = useI18n();
+    const isMobile = useIsMobile();
     const [movements, setMovements] = useState([]);
     const [historyModalOpen, setHistoryModalOpen] = useState(false);
     // "idle" | "loading" | "error" | "loaded" - tracked separately from
@@ -126,8 +129,7 @@ const ProductDetailsDrawer = ({
               ).toFixed(1)
             : 0;
 
-    const drawerWidth =
-        width || (typeof window !== "undefined" && window.innerWidth < 768 ? "100vw" : "480px");
+    const drawerWidth = width || (isMobile ? "100vw" : "480px");
 
     return (
         <Drawer
@@ -145,18 +147,18 @@ const ProductDetailsDrawer = ({
                 mask: { backgroundColor: "rgba(0,0,0,0.45)" },
                 header: {
                     borderBottom: "1px solid var(--ohnix-line-3)",
-                    padding: "20px 24px",
+                    padding: isMobile ? "16px" : "20px 24px",
                     background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                 },
                 body: {
-                    padding: "24px",
+                    padding: isMobile ? "16px" : "24px",
                     background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                 },
             }}
         >
-            <div className="space-y-5">
-                <div className="module-shell rounded-3xl p-5 reveal-card">
-                    <div className="flex gap-5">
+            <div className="space-y-4 sm:space-y-5">
+                <div className="module-shell rounded-2xl sm:rounded-3xl p-4 sm:p-5 reveal-card">
+                    <div className="flex gap-3 sm:gap-5">
                         <div className="flex-shrink-0">
                             <div className="w-28 h-full rounded-lg overflow-hidden bg-white/[0.04] border border-[var(--ohnix-line-4)] flex items-center justify-center">
                                 <Image
@@ -194,34 +196,34 @@ const ProductDetailsDrawer = ({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                    <div className="module-shell rounded-3xl p-4">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    <div className="module-shell rounded-2xl sm:rounded-3xl p-3 sm:p-4 min-w-0">
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-10 h-10 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center mb-2">
-                                <InboxOutlined className="text-[#29D8D5] text-lg" />
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center mb-1.5 sm:mb-2">
+                                <InboxOutlined className="text-[#29D8D5] text-base sm:text-lg" />
                             </div>
-                            <Text className="text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.stock")}</Text>
-                            <Text className="text-xl font-bold text-[var(--ohnix-text-primary)]">{product.stock}</Text>
+                            <Text className="text-[10px] sm:text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.stock")}</Text>
+                            <Text className="text-base sm:text-xl font-bold text-[var(--ohnix-text-primary)] truncate max-w-full">{product.stock}</Text>
                         </div>
                     </div>
 
-                    <div className="module-shell rounded-3xl p-4">
+                    <div className="module-shell rounded-2xl sm:rounded-3xl p-3 sm:p-4 min-w-0">
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-10 h-10 rounded-lg bg-[#44F3F0]/10 flex items-center justify-center mb-2">
-                                <DollarOutlined className="text-[#44F3F0] text-lg" />
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-[#44F3F0]/10 flex items-center justify-center mb-1.5 sm:mb-2">
+                                <DollarOutlined className="text-[#44F3F0] text-base sm:text-lg" />
                             </div>
-                            <Text className="text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.profit")}</Text>
-                            <Text className="text-xl font-bold text-[#44F3F0]">{formatCurrency(Number(profitMargin))}</Text>
+                            <Text className="text-[10px] sm:text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.profit")}</Text>
+                            <Text className="text-sm sm:text-xl font-bold text-[#44F3F0] truncate max-w-full">{formatCurrency(Number(profitMargin))}</Text>
                         </div>
                     </div>
 
-                    <div className="module-shell rounded-3xl p-4">
+                    <div className="module-shell rounded-2xl sm:rounded-3xl p-3 sm:p-4 min-w-0">
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-10 h-10 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center mb-2">
-                                <PercentageOutlined className="text-[#29D8D5] text-lg" />
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-[#29D8D5]/10 flex items-center justify-center mb-1.5 sm:mb-2">
+                                <PercentageOutlined className="text-[#29D8D5] text-base sm:text-lg" />
                             </div>
-                            <Text className="text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.margin")}</Text>
-                            <Text className="text-xl font-bold text-[var(--ohnix-text-primary)]">{profitPercentage}%</Text>
+                            <Text className="text-[10px] sm:text-xs text-[var(--ohnix-text-muted)] mb-1 font-bold">{t("products.margin")}</Text>
+                            <Text className="text-base sm:text-xl font-bold text-[var(--ohnix-text-primary)] truncate max-w-full">{profitPercentage}%</Text>
                         </div>
                     </div>
                 </div>
@@ -251,17 +253,7 @@ const ProductDetailsDrawer = ({
                                 </Button>
                             </div>
                         ) : movements.length === 0 ? (
-                            // Not antd's <Empty/> - its default illustration + text use
-                            // antd's light-theme colors (no dark algorithm is configured
-                            // app-wide, see AntdConfigProvider.jsx), which render as a
-                            // near-invisible light-gray image and dark-gray text against
-                            // this app's near-black background.
-                            <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
-                                <HistoryOutlined className="text-2xl text-[var(--ohnix-text-dim)]" />
-                                <Text className="text-sm text-[var(--ohnix-text-muted)]">
-                                    {t("products.no_movements")}
-                                </Text>
-                            </div>
+                            <EmptyState icon={<HistoryOutlined />} title={t("products.no_movements")} compact />
                         ) : (
                             <div className="space-y-3 max-h-80 overflow-y-auto pr-1 ohnix-scrollbar-thin">
                                 {movements.slice(0, 5).map((m) => (

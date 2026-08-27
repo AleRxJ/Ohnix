@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import { Link } from "react-router-dom";
-import { Drawer, Tag, Spin, Button, Table, Divider, Space } from "antd";
+import { Drawer, Tag, Spin, Button, Table, Divider, Space, Card } from "antd";
 import {
     FilePdfOutlined,
     CloseOutlined,
@@ -20,6 +20,8 @@ import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
+import useIsMobile from "../../hooks/useIsMobile";
+import EmptyState from "../common/EmptyState";
 
 const OrderDetailsDrawer = ({
     visible,
@@ -37,6 +39,7 @@ const OrderDetailsDrawer = ({
     const { formatCurrency } = useCurrency();
     const { user } = useContext(AuthContext);
     const { team, isOwner } = useTeam();
+    const isMobile = useIsMobile();
     // View-only presence here (no lock) - order status changes happen inline
     // in OrdersTable's row select, not in this read-only details drawer, so
     // there's no single "edit form" moment to soft-lock against.
@@ -177,22 +180,22 @@ const OrderDetailsDrawer = ({
             placement="right"
             onClose={onClose}
             open={visible}
-            width={520}
+            width={isMobile ? "100vw" : 520}
             closeIcon={<CloseOutlined className="text-[var(--ohnix-text-muted)]" />}
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.45)" },
                 body: {
-                    padding: 24,
+                    padding: isMobile ? 16 : 24,
                     background: "var(--ohnix-surface-card-soft)",
                 },
                 header: {
                     borderBottom: "1px solid var(--ohnix-line-3)",
-                    padding: "20px 24px",
+                    padding: isMobile ? "16px" : "20px 24px",
                     background: "var(--ohnix-surface-card-soft)",
                 },
             }}
         >
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
                 {team && <PresenceLockBar viewers={viewers} lock={null} currentUserId={user?.id} />}
                 <div className="flex items-center justify-between pb-4 border-b border-[var(--ohnix-line-4)]">
                     <span className="text-sm font-medium text-[var(--ohnix-text-muted)] uppercase tracking-wide">
@@ -207,7 +210,7 @@ const OrderDetailsDrawer = ({
                     </Tag>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-4 sm:gap-6">
                     <div>
                         <div className="flex items-center space-x-2 mb-2">
                             <UserOutlined className="text-[var(--ohnix-text-dim)]" />
@@ -307,13 +310,37 @@ const OrderDetailsDrawer = ({
                             <Spin />
                         </div>
                     ) : orderPayments.length > 0 ? (
-                        <Table
-                            dataSource={orderPayments}
-                            columns={paymentColumns}
-                            pagination={false}
-                            rowKey="_id"
-                            size="small"
-                        />
+                        isMobile ? (
+                            <div className="space-y-2">
+                                {orderPayments.map((p) => (
+                                    <div
+                                        key={p._id}
+                                        className="rounded-xl p-3 border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] flex items-center justify-between gap-3"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-[#44F3F0] m-0">{formatCurrency(p.amount)}</p>
+                                            <p className="text-xs text-[var(--ohnix-text-muted)] m-0 truncate">
+                                                {dayjs(p.paid_at).format("DD/MM/YYYY HH:mm")}
+                                            </p>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-xs text-[var(--ohnix-text-primary)] m-0 truncate max-w-[120px]">
+                                                {p.cash_account?.name || t("common.na")}
+                                            </p>
+                                            <p className="text-xs text-[var(--ohnix-text-muted)] m-0">{p.method || t("common.na")}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <Table
+                                dataSource={orderPayments}
+                                columns={paymentColumns}
+                                pagination={false}
+                                rowKey="_id"
+                                size="small"
+                            />
+                        )
                     ) : (
                         <div className="text-sm text-[var(--ohnix-text-muted)] py-2">{t("finance.no_payments")}</div>
                     )}
@@ -333,25 +360,57 @@ const OrderDetailsDrawer = ({
                             </p>
                         </div>
                     ) : orderDetails.length > 0 ? (
-                        <Table
-                            dataSource={orderDetails}
-                            columns={columns}
-                            pagination={false}
-                            rowKey={(record, index) => index}
-                            size="middle"
-                            bordered
-                        />
+                        isMobile ? (
+                            <div className="space-y-3">
+                                {orderDetails.map((item, index) => (
+                                    <Card
+                                        key={index}
+                                        size="small"
+                                        className="module-shell overflow-hidden"
+                                        bodyStyle={{ padding: 12 }}
+                                    >
+                                        <div className="flex items-start justify-between gap-2 mb-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <ShoppingCartOutlined className="text-[#44F3F0] shrink-0" />
+                                                <span className="font-medium text-[var(--ohnix-text-primary)] text-sm truncate">
+                                                    {item.product_id?.product_name || t("common.na")}
+                                                </span>
+                                            </div>
+                                            <span className="text-[#44F3F0] font-semibold text-sm shrink-0">
+                                                {formatCurrency(item.total)}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs text-[var(--ohnix-text-muted)]">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#29D8D5]/15 text-[#44F3F0] font-medium">
+                                                {t("common.quantity")}: {item.quantity}
+                                            </span>
+                                            <span>{t("orders.unit_price")}: {formatCurrency(item.unitcost)}</span>
+                                        </div>
+                                        {item.returned_quantity ? (
+                                            <div className="mt-2 pt-2 border-t border-[var(--ohnix-line-3)] flex items-center justify-between text-xs">
+                                                <Tag color="gold" className="font-medium m-0">
+                                                    {t(item.fully_returned ? "purchases.returned" : "purchases.return_preview_partial_return")}
+                                                </Tag>
+                                                <span className="text-red-400 font-medium">
+                                                    {t("purchases.refund")}: {formatCurrency(item.refund_amount)}
+                                                </span>
+                                            </div>
+                                        ) : null}
+                                    </Card>
+                                ))}
+                            </div>
+                        ) : (
+                            <Table
+                                dataSource={orderDetails}
+                                columns={columns}
+                                pagination={false}
+                                rowKey={(record, index) => index}
+                                size="middle"
+                                bordered
+                            />
+                        )
                     ) : (
-                        // Not antd's <Empty/> - its default illustration + text use
-                        // antd's light-theme colors, which render as a near-invisible
-                        // light-gray image and dark-gray text against this app's
-                        // near-black background (same fix as ProductDetailsDrawer.jsx).
-                        <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
-                            <ShoppingCartOutlined className="text-2xl text-[var(--ohnix-text-dim)]" />
-                            <span className="text-sm text-[var(--ohnix-text-muted)]">
-                                {t("orders.no_items_found")}
-                            </span>
-                        </div>
+                        <EmptyState icon={<ShoppingCartOutlined />} title={t("orders.no_items_found")} compact />
                     )}
                 </div>
 

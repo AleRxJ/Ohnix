@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Table, Button, Space, Popconfirm, Avatar, Tag, Empty, Tooltip, Card } from "antd";
 import {
     EditOutlined,
@@ -22,6 +22,17 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete, onMove, c
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("customers", "edit");
     const tableShellClass = "rounded-xl shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)]";
+
+    // `customers` is the full, unpaginated list (desktop pages it
+    // client-side via the antd Table below) - the mobile card list used to
+    // render every single card at once regardless of how many customers
+    // existed, only showing a "showing X of Y" caption without ever
+    // actually limiting the DOM to that count.
+    const MOBILE_PAGE_SIZE = 15;
+    const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_PAGE_SIZE);
+    useEffect(() => {
+        setMobileVisibleCount(MOBILE_PAGE_SIZE);
+    }, [customers]);
     // Mobile card view for small screens
     const MobileCustomerCard = ({ customer }) => (
         <Card
@@ -312,18 +323,27 @@ const CustomerTable = ({ customers, loading, onEdit, onView, onDelete, onMove, c
             {/* Mobile View */}
             <div className="block md:hidden">
                 <div className="space-y-0">
-                    {customers.map(customer => (
+                    {customers.slice(0, mobileVisibleCount).map(customer => (
                         <MobileCustomerCard key={customer._id} customer={customer} />
                     ))}
                 </div>
-                {customers.length > 10 && (
-                    <div className="text-center mt-4 pt-4 border-t border-[var(--ohnix-line-4)] text-sm text-[var(--ohnix-text-muted)]">
+                <div className="flex flex-col items-center gap-2 mt-4 pt-4 border-t border-[var(--ohnix-line-4)]">
+                    <span className="text-sm text-[var(--ohnix-text-muted)]">
                         {t("customers.showing_customers", {
-                            shown: Math.min(10, customers.length),
+                            shown: Math.min(mobileVisibleCount, customers.length),
                             total: customers.length,
                         })}
-                    </div>
-                )}
+                    </span>
+                    {mobileVisibleCount < customers.length && (
+                        <Button
+                            block
+                            onClick={() => setMobileVisibleCount((c) => c + MOBILE_PAGE_SIZE)}
+                            className="max-w-xs"
+                        >
+                            {t("common.load_more")}
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {/* Desktop View */}

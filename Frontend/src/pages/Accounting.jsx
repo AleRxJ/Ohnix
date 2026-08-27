@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty } from "antd";
-import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse } from "antd";
+import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
 import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
 import PlanGate from "../components/common/PlanGate";
+import EmptyState from "../components/common/EmptyState";
+import useIsMobile from "../hooks/useIsMobile";
 import { accountingService } from "../services/accountingService";
 import { useCurrency } from "../context/CurrencyContext";
 import { useTeam } from "../context/TeamContext";
@@ -56,6 +58,7 @@ const SOURCE_TYPE_LABEL_KEYS = {
 const AccountLedgerDrawer = ({ account, onClose }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
+    const isMobile = useIsMobile();
     const [dateRange, setDateRange] = useState([dayjs().startOf("year"), dayjs()]);
     const [ledger, setLedger] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -99,12 +102,19 @@ const AccountLedgerDrawer = ({ account, onClose }) => {
         <Drawer
             open={Boolean(account)}
             onClose={onClose}
-            width={720}
+            width={isMobile ? "100vw" : 720}
             title={account ? `${account.code} · ${account.name}` : ""}
+            styles={{ body: { padding: isMobile ? 16 : 24 } }}
         >
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-                <RangePicker value={dateRange} onChange={(dates) => dates && setDateRange(dates)} format="YYYY-MM-DD" allowClear={false} />
-                <Button icon={<CalendarOutlined />} onClick={fetchLedger} loading={loading}>
+                <RangePicker
+                    value={dateRange}
+                    onChange={(dates) => dates && setDateRange(dates)}
+                    format="YYYY-MM-DD"
+                    allowClear={false}
+                    className="w-full sm:w-auto"
+                />
+                <Button icon={<CalendarOutlined />} onClick={fetchLedger} loading={loading} block={isMobile}>
                     {t("reports.refresh_report")}
                 </Button>
             </div>
@@ -118,22 +128,51 @@ const AccountLedgerDrawer = ({ account, onClose }) => {
                     </Col>
                 </Row>
             )}
-            <Table
-                columns={columns}
-                dataSource={ledger?.movements || []}
-                rowKey="entry_id"
-                loading={loading}
-                pagination={{ pageSize: 15 }}
-                className="module-dark-table"
-                size="small"
-                locale={{ emptyText: <Empty description={t("accounting.ledger_empty")} /> }}
-            />
+            {isMobile ? (
+                loading ? (
+                    <div className="text-center py-8 text-[var(--ohnix-text-muted)]">{t("common.loading")}</div>
+                ) : !ledger?.movements?.length ? (
+                    <EmptyState title={t("accounting.ledger_empty")} compact />
+                ) : (
+                    <div className="space-y-2">
+                        {ledger.movements.map((m) => (
+                            <div key={m.entry_id} className="rounded-xl p-3 border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)]">
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="text-xs text-[var(--ohnix-text-muted)]">{dayjs(m.date).format("DD/MM/YYYY")}</span>
+                                    <Tag className="m-0">{t(SOURCE_TYPE_LABEL_KEYS[m.source_type] || m.source_type)}</Tag>
+                                </div>
+                                <p className="text-sm text-[var(--ohnix-text-primary)] m-0 mb-2 truncate">{m.description}</p>
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-[var(--ohnix-text-muted)]">
+                                        {m.debit > 0 && `${t("accounting.lines_col_debit")}: ${formatCurrency(m.debit)}`}
+                                        {m.credit > 0 && `${t("accounting.lines_col_credit")}: ${formatCurrency(m.credit)}`}
+                                    </span>
+                                    <span className="font-semibold text-[#44F3F0]">{formatCurrency(m.running_balance)}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )
+            ) : (
+                <Table
+                    columns={columns}
+                    dataSource={ledger?.movements || []}
+                    rowKey="entry_id"
+                    loading={loading}
+                    pagination={{ pageSize: 15 }}
+                    className="module-dark-table"
+                    size="small"
+                    scroll={{ x: "max-content" }}
+                    locale={{ emptyText: <Empty description={t("accounting.ledger_empty")} /> }}
+                />
+            )}
         </Drawer>
     );
 };
 
 const ChartOfAccountsTab = () => {
     const { t } = useI18n();
+    const isMobile = useIsMobile();
     const [accounts, setAccounts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [ledgerAccount, setLedgerAccount] = useState(null);
