@@ -107,6 +107,17 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
         }
     };
 
+    // electronicInvoicingProvider defaults to "alanube" for every company, so
+    // its mere presence isn't a signal an admin deliberately chose it - only
+    // electronicInvoicingEnabled=true means the admin actually turned on
+    // live invoicing under that other provider. Hiding the wizard here backs
+    // up the same check the backend enforces in registerMyCompanyWithItcycle.
+    const otherProviderActive =
+        !status?.provisioned &&
+        status?.electronicInvoicingEnabled &&
+        status?.electronicInvoicingProvider &&
+        status.electronicInvoicingProvider !== "itcycle";
+
     const field = (name, label, options = {}) => (
         <Form.Item name={name} label={label} rules={options.required ? [{ required: true, message: "Este dato es obligatorio" }] : []}>
             {options.select ? <Select size="large" options={options.select} /> : <Input size="large" type={options.type} className="auth-ohnix-input" />}
@@ -133,6 +144,13 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                     <Alert type={status.electronicInvoicingEnabled ? "success" : "info"} showIcon message={status.electronicInvoicingEnabled ? "Facturaci\u00f3n electr\u00f3nica activa" : "Configuraci\u00f3n DIAN completada"} description={status.electronicInvoicingEnabled ? "Ya puedes emitir documentos electr\u00f3nicos desde Ohnix." : "Completa el certificado digital para activar la emisi\u00f3n."} />
                     <FirmaPassSelfService electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)} onActivated={onCompanyChanged} />
                 </>
+            ) : otherProviderActive ? (
+                <Alert
+                    type="info"
+                    showIcon
+                    message="Tu empresa ya factura electrónicamente"
+                    description={`El administrador de Ohnix ya activó la facturación electrónica de tu empresa con ${status.electronicInvoicingProvider === "factus" ? "Factus" : "Alanube"}. Si necesitas cambiar de proveedor, contacta a soporte.`}
+                />
             ) : (
                 <>
                     <Steps current={step} responsive className="mb-8" items={["Empresa", "Software DIAN", "Direcci\u00f3n", "Resoluci\u00f3n"].map((title) => ({ title }))} />

@@ -994,7 +994,7 @@
     "user_unverified": "Verificación revocada",
     "user_verified": "Usuario verificado",
     "pdf_branding_title": "Marca en el PDF de pedidos",
-    "pdf_branding_hint": "El logo y los datos de la empresa se muestran en el PDF a partir del plan Negocio. El texto de pie de página y el color de marca, desde el plan Escala.",
+    "pdf_branding_hint": "El logo y los datos de la empresa se muestran en el PDF a partir del plan Negocio. El texto de pie de página y el color de marca, desde el plan Escala. Es una configuración de la empresa (no de un usuario individual): si el plan lo permite, el dueño de la cuenta también puede editarla desde su propio panel de Configuración, así que un cambio hecho aquí puede ser sobrescrito por el cliente y viceversa.",
     "upload_logo": "Subir logo",
     "upload_logo_after_create": "Guarda la empresa primero para poder subir su logo.",
     "pdf_footer_text": "Texto de pie de página (Escala+)",

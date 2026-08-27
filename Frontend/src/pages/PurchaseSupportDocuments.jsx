@@ -515,7 +515,7 @@ const PurchaseSupportDocuments = () => {
                         columns={columns}
                         onRow={(record) => ({ onClick: () => setSelected(record), className: "cursor-pointer transition-colors" })}
                         pagination={{ pageSize: 10, showTotal: (total) => t("purchase_support_documents.table.documents_total", { count: total }) }}
-                        className="invoice-premium-table"
+                        className="module-dark-table invoice-premium-table"
                     />
                 </div>
 

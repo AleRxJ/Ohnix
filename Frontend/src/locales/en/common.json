@@ -994,7 +994,7 @@
     "user_unverified": "Verification revoked",
     "user_verified": "User verified",
     "pdf_branding_title": "Order PDF branding",
-    "pdf_branding_hint": "The logo and company details show up on the order PDF from the Business plan up. The footer text and brand color require the Scale plan.",
+    "pdf_branding_hint": "The logo and company details show up on the order PDF from the Business plan up. The footer text and brand color require the Scale plan. This is a company-level setting (not per user): if their plan allows it, the account owner can also edit it from their own Settings panel, so a change made here can be overwritten by the customer and vice versa.",
     "upload_logo": "Upload logo",
     "upload_logo_after_create": "Save the company first to upload its logo.",
     "pdf_footer_text": "Footer text (Scale+)",

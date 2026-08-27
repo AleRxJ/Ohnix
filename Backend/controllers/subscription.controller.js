@@ -1260,6 +1260,56 @@ export const extendUserSubscriptionAdmin = asyncHandler(async (req, res, next) =
         .json(new ApiResponse(200, updated, `Subscription extended by ${days} day(s).`));
 });
 
+/**
+ * POST /subscriptions/admin/users/:userId/subscription/shorten
+ *
+ * Counterpart to extendUserSubscriptionAdmin above: pulls endsAt in by
+ * `days` (body param, 1-365). Requires an existing endsAt - there's
+ * nothing to shorten off of "no expiration". Floors at startedAt so an
+ * admin can't move the date earlier than the subscription actually began.
+ * Deliberately leaves status/cancelAtPeriodEnd untouched: shortening isn't
+ * a cancellation, and subscriptionRenewalScheduler will pause access on its
+ * own once the new endsAt lapses (no proration/credit exists in this
+ * system, so the caller is expected to warn the admin before confirming).
+ */
+export const shortenUserSubscriptionAdmin = asyncHandler(async (req, res, next) => {
+    const targetUser = await findTargetUserOrFail(req.params.userId, next);
+    if (!targetUser) return;
+
+    const days = parseInt(req.body?.days, 10);
+    if (!Number.isFinite(days) || days < 1 || days > 365) {
+        return next(new ApiError(400, "days must be a number between 1 and 365"));
+    }
+
+    const subscription = await ensureUserSubscription(targetUser.id);
+    if (!subscription.endsAt) {
+        return next(new ApiError(400, "This subscription has no end date to shorten."));
+    }
+
+    const startedAt = new Date(subscription.startedAt);
+    const requested = new Date(new Date(subscription.endsAt).getTime() - days * 24 * 60 * 60 * 1000);
+    const endsAt = requested < startedAt ? startedAt : requested;
+
+    const updated = await prisma.subscription.update({
+        where: { userId: targetUser.id },
+        data: { endsAt },
+        select: SUBSCRIPTION_SELECT_ADMIN,
+    });
+
+    await logAdminAction({
+        adminId: req.user.prismaId,
+        action: "shorten_subscription",
+        targetType: "subscription",
+        targetId: targetUser.id,
+        targetUserId: targetUser.id,
+        metadata: { days, previousEndsAt: subscription.endsAt, newEndsAt: updated.endsAt },
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, updated, `Subscription shortened by ${days} day(s).`));
+});
+
 export const getUserUsageAdmin = asyncHandler(async (req, res, next) => {
     const { userId } = req.params;
 

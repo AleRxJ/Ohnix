@@ -305,6 +305,7 @@ const OrderDetailsDrawer = ({
                         </div>
                     ) : orderPayments.length > 0 ? (
                         <Table
+                            className="module-dark-table"
                             dataSource={orderPayments}
                             columns={paymentColumns}
                             pagination={false}
@@ -331,6 +332,7 @@ const OrderDetailsDrawer = ({
                         </div>
                     ) : orderDetails.length > 0 ? (
                         <Table
+                            className="module-dark-table"
                             dataSource={orderDetails}
                             columns={columns}
                             pagination={false}

@@ -31,6 +31,7 @@ import {
     reportEpaycoCheckoutClosed,
     reportEpaycoTransactionReference,
     reverifyAdminPayment,
+    shortenUserSubscriptionAdmin,
     uncancelUserSubscriptionAdmin,
     undoMyDowngrade,
     updateUpgradeRequestAdmin,
@@ -108,6 +109,7 @@ router.route("/admin/users/:userId/audit-log").get(isAdmin, getUserAuditLogAdmin
 router.route("/admin/users/:userId/subscription/cancel").post(isAdmin, cancelUserSubscriptionAdmin);
 router.route("/admin/users/:userId/subscription/uncancel").post(isAdmin, uncancelUserSubscriptionAdmin);
 router.route("/admin/users/:userId/subscription/extend").post(isAdmin, extendUserSubscriptionAdmin);
+router.route("/admin/users/:userId/subscription/shorten").post(isAdmin, shortenUserSubscriptionAdmin);
 router.route("/admin/upgrade-requests").get(isAdmin, getUpgradeRequestsAdmin);
 router.route("/admin/upgrade-requests/:id").patch(isAdmin, updateUpgradeRequestAdmin);
 // Dedicated payments ledger (see getAdminPayments) - distinct from the

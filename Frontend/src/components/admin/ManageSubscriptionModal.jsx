@@ -10,7 +10,7 @@
 // second top-level page around for it.
 import React, { useEffect, useState } from "react";
 import { Modal, Tag, Button, InputNumber, Select, Spin, Empty, Tooltip } from "antd";
-import { PlusCircleOutlined, StopOutlined, UndoOutlined, SyncOutlined, CopyOutlined, SwapOutlined } from "@ant-design/icons";
+import { PlusCircleOutlined, MinusCircleOutlined, StopOutlined, UndoOutlined, SyncOutlined, CopyOutlined, SwapOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import { subscriptionService } from "../../services/subscriptionService";
 
@@ -56,6 +56,7 @@ const AUDIT_ACTION_LABELS = {
     cancel_subscription: "Canceló la suscripción",
     uncancel_subscription: "Deshizo la cancelación",
     extend_subscription: "Extendió la suscripción",
+    shorten_subscription: "Recortó la suscripción",
     reverify_payment: "Reverificó un pago",
     update_upgrade_request: "Actualizó una solicitud",
     close_upgrade_request: "Cerró una solicitud",
@@ -68,6 +69,8 @@ const formatAuditMetadata = (entry) => {
             return `${m.fromPlan} → ${m.toPlan}`;
         case "extend_subscription":
             return `+${m.days} día(s) → vence ${formatDate(m.newEndsAt)}`;
+        case "shorten_subscription":
+            return `-${m.days} día(s) → vence ${formatDate(m.newEndsAt)}`;
         case "reverify_payment":
             return `${m.fromPaymentStatus} → ${m.toPaymentStatus}`;
         case "update_upgrade_request":
@@ -87,6 +90,7 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
     const [actionLoading, setActionLoading] = useState("");
     const [reverifyingId, setReverifyingId] = useState("");
     const [extendDays, setExtendDays] = useState(30);
+    const [shortenDays, setShortenDays] = useState(30);
     const [planDraft, setPlanDraft] = useState(null);
 
     const loadPayments = async (userId) => {
@@ -118,6 +122,7 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
     useEffect(() => {
         if (!target?.userId) return;
         setExtendDays(30);
+        setShortenDays(30);
         load(target.userId);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [target?.userId]);
@@ -305,6 +310,41 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
                         </div>
                         <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
                             Extiende desde la fecha de vencimiento actual (o desde hoy si ya venció), mantiene el mismo plan y deshace una cancelación pendiente.
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ohnix-text-muted)]">
+                            Recortar suscripción
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <InputNumber min={1} max={365} value={shortenDays} onChange={setShortenDays} />
+                            <span className="text-xs text-[var(--ohnix-text-muted)]">días</span>
+                            <Button
+                                danger
+                                icon={<MinusCircleOutlined />}
+                                loading={actionLoading === "shorten"}
+                                disabled={!shortenDays || shortenDays < 1 || !subscription.endsAt}
+                                onClick={() => {
+                                    Modal.confirm({
+                                        title: "¿Recortar esta suscripción?",
+                                        icon: <ExclamationCircleOutlined />,
+                                        content: `Se adelantará el vencimiento ${shortenDays} día(s). Si la nueva fecha ya pasó, el acceso del usuario quedará bloqueado en el próximo ciclo automático (no hay prorrateo ni reembolso en el sistema).`,
+                                        okText: "Sí, recortar",
+                                        okButtonProps: { danger: true },
+                                        cancelText: "Cancelar",
+                                        onOk: () =>
+                                            runAction("shorten", () =>
+                                                subscriptionService.shortenUserSubscriptionAdmin(target.userId, shortenDays)
+                                            ),
+                                    });
+                                }}
+                            >
+                                Recortar
+                            </Button>
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">
+                            Adelanta la fecha de vencimiento actual (sin pasar de la fecha en que inició la suscripción). No aplica prorrateo ni reembolso: si el usuario ya pagó ese periodo, valida la situación con el equipo antes de confirmar.
                         </div>
                     </div>
 

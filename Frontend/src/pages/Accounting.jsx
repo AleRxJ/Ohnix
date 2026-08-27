@@ -159,7 +159,7 @@ const JournalTab = () => {
                     className="module-dark-table"
                     locale={{ emptyText: t("accounting.no_entries") }}
                     expandable={{
-                        expandedRowRender: (entry) => <Table columns={linesColumns} dataSource={entry.lines} rowKey="_id" pagination={false} size="small" />,
+                        expandedRowRender: (entry) => <Table className="module-dark-table" columns={linesColumns} dataSource={entry.lines} rowKey="_id" pagination={false} size="small" />,
                     }}
                 />
             </Card>
