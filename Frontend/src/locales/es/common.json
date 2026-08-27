@@ -2638,6 +2638,7 @@
             "api": "API REST (1,000 req/día)",
             "accounting": "Contabilidad automática (asientos, plan de cuentas, cierres)",
             "alerts": "Alertas con umbral configurable por producto",
+            "sales_quotations": "Cotizaciones para clientes con envío y conversión a pedido",
             "invoicing": "Facturación electrónica DIAN (Colombia)",
             "support": "Soporte prioritario · Onboarding asistido"
           },

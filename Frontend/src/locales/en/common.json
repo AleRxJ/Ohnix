@@ -2644,6 +2644,7 @@
             "api": "REST API (1,000 req/day)",
             "accounting": "Automated accounting (journal entries, chart of accounts, closes)",
             "alerts": "Per-product configurable stock thresholds",
+            "sales_quotations": "Customer quotations with sending and order conversion",
             "invoicing": "DIAN electronic invoicing (Colombia)",
             "support": "Priority support · Assisted onboarding"
           },
