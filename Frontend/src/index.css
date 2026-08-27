@@ -1453,6 +1453,48 @@ textarea.ant-input[disabled] {
   padding: 14px;
 }
 
+.sales-quotations-page .ant-card,
+.sales-quotation-modal .ant-modal-content {
+  background: var(--ohnix-surface-card) !important;
+  border-color: var(--ohnix-line-4) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotations-page .ant-table,
+.sales-quotations-page .ant-table-container,
+.sales-quotations-page .ant-table-tbody > tr > td,
+.sales-quotations-page .ant-table-thead > tr > th {
+  background: transparent !important;
+  border-color: var(--ohnix-line-3) !important;
+  color: var(--ohnix-text-soft) !important;
+}
+
+.sales-quotations-page .ant-table-thead > tr > th {
+  color: var(--ohnix-text-muted) !important;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sales-quotation-modal .ant-modal-header,
+.sales-quotation-modal .ant-modal-body {
+  background: transparent !important;
+}
+
+.sales-quotation-modal .ant-form-item-label > label,
+.sales-quotation-modal .ant-form-item-extra {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.sales-quotation-modal .ant-input,
+.sales-quotation-modal .ant-input-number,
+.sales-quotation-modal .ant-input-number-input,
+.sales-quotation-modal .ant-select-selector {
+  background: var(--ohnix-surface-2) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
 /* Unit Modal Tabs */
 .unit-modal-tabs .ant-tabs {
   color: var(--ohnix-text-primary);

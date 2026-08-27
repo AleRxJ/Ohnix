@@ -21,12 +21,16 @@ export const getPurchasePendingBalance = async (purchaseId) => {
     return { purchase, total, paid, pending };
 };
 
-export const listPurchasePayments = async (purchaseId) =>
-    prisma.purchasePayment.findMany({
-        where: { purchaseId },
+export const listPurchasePayments = async ({ accountId, purchaseId }) => {
+    const purchase = await prisma.purchase.findFirst({ where: { id: purchaseId, createdById: accountId }, select: { id: true } });
+    if (!purchase) throw new ApiError(404, "Compra no encontrada.");
+
+    return prisma.purchasePayment.findMany({
+        where: { purchaseId: purchase.id },
         include: { cashAccount: { select: { id: true, name: true } }, createdBy: { select: { id: true, username: true } } },
         orderBy: { paidAt: "desc" },
     });
+};
 
 export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, amount, cashAccountId, method, reference }) => {
     const numericAmount = Number(amount);

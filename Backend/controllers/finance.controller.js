@@ -113,7 +113,7 @@ export const listCashAccountMovements = asyncHandler(async (req, res) => {
 // --- Order payments (cartera - cuentas por cobrar) ---
 
 export const listOrderPayments = asyncHandler(async (req, res) => {
-    const payments = await orderPaymentService.listOrderPayments(req.params.orderId);
+    const payments = await orderPaymentService.listOrderPayments({ accountId: req.user.prismaId, orderId: req.params.orderId });
     return res.status(200).json(new ApiResponse(200, payments.map(mapPayment), "Order payments fetched successfully"));
 });
 
@@ -136,7 +136,7 @@ export const registerOrderPayment = asyncHandler(async (req, res, next) => {
 // --- Purchase payments (cartera - cuentas por pagar) ---
 
 export const listPurchasePayments = asyncHandler(async (req, res) => {
-    const payments = await purchasePaymentService.listPurchasePayments(req.params.purchaseId);
+    const payments = await purchasePaymentService.listPurchasePayments({ accountId: req.user.prismaId, purchaseId: req.params.purchaseId });
     return res.status(200).json(new ApiResponse(200, payments.map(mapPayment), "Purchase payments fetched successfully"));
 });
 

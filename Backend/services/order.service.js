@@ -138,7 +138,7 @@ const triggerElectronicInvoicingIfCompleted = ({ orderId, userId, userRole, trig
 
 class OrderService {
     async createOrder(orderData, userId, userRole, pointOfSaleId) {
-        const { customer_id, order_status, orderItems, is_tutorial_data } = orderData;
+        const { customer_id, order_status, orderItems, is_tutorial_data, source_sales_quotation_id } = orderData;
 
         if (!customer_id || !Array.isArray(orderItems) || orderItems.length === 0) {
             throw new ApiError(400, "Invalid order data");
@@ -281,6 +281,16 @@ class OrderService {
                     updatedById: userId,
                 },
             });
+
+            if (source_sales_quotation_id) {
+                const linked = await tx.salesQuotation.updateMany({
+                    where: { id: source_sales_quotation_id, status: "accepted", convertedOrderId: null },
+                    data: { status: "converted", convertedOrderId: createdOrder.id, updatedById: userId },
+                });
+                if (linked.count === 0) {
+                    throw new ApiError(409, "This quotation was already converted or is no longer available.", [], "", "sales_quotation_already_converted");
+                }
+            }
 
             for (const [index, item] of resolvedItems.entries()) {
                 const itemTax = itemTaxes[index];

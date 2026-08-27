@@ -19,12 +19,16 @@ export const getOrderPendingBalance = async (orderId) => {
     return { order, paid: Number(paid), pending };
 };
 
-export const listOrderPayments = async (orderId) =>
-    prisma.orderPayment.findMany({
-        where: { orderId },
+export const listOrderPayments = async ({ accountId, orderId }) => {
+    const order = await prisma.order.findFirst({ where: { id: orderId, createdById: accountId }, select: { id: true } });
+    if (!order) throw new ApiError(404, "Pedido no encontrado.");
+
+    return prisma.orderPayment.findMany({
+        where: { orderId: order.id },
         include: { cashAccount: { select: { id: true, name: true } }, createdBy: { select: { id: true, username: true } } },
         orderBy: { paidAt: "desc" },
     });
+};
 
 export const registerOrderPayment = async ({ accountId, actorId, orderId, amount, cashAccountId, method, reference }) => {
     const numericAmount = Number(amount);

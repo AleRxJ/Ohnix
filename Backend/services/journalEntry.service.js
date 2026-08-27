@@ -6,8 +6,8 @@ import { ApiError } from "../utils/ApiError.js";
 // pointOfSale.service.js#ensureDefaultPointOfSale. Always called from inside
 // the same tx that's about to post into it.
 export const getOrCreateAccountingPeriod = async (tx, { accountId, entryDate }) => {
-    const year = entryDate.getFullYear();
-    const month = entryDate.getMonth() + 1;
+    const year = entryDate.getUTCFullYear();
+    const month = entryDate.getUTCMonth() + 1;
 
     const existing = await tx.accountingPeriod.findUnique({
         where: { createdById_year_month: { createdById: accountId, year, month } },

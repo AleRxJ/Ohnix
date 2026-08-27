@@ -142,6 +142,12 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: <Link to="/quotations">{t("common.quotations_nav")}</Link>,
         },
         {
+            key: "sales-quotations",
+            moduleKey: "orders",
+            icon: <TagsOutlined />,
+            label: <Link to="/sales-quotations">{t("common.sales_quotations_nav")}</Link>,
+        },
+        {
             key: "purchases",
             moduleKey: "purchases",
             icon: <ShoppingOutlined />,

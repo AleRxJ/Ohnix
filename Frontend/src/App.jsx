@@ -45,6 +45,8 @@ const Products = lazy(() => import("./pages/Products"));
 const Orders = lazy(() => import("./pages/Orders"));
 const Purchase = lazy(() => import("./pages/Purchase"));
 const Quotations = lazy(() => import("./pages/Quotations"));
+const SalesQuotations = lazy(() => import("./pages/SalesQuotations"));
+const PublicSalesQuotation = lazy(() => import("./pages/PublicSalesQuotation"));
 const Customers = lazy(() => import("./pages/Customers"));
 const Suppliers = lazy(() => import("./pages/Suppliers"));
 const Category = lazy(() => import("./pages/Category"));
@@ -150,6 +152,7 @@ const RequireReportsAccess = requireModuleAccess("reports");
 const RequireProductsAccess = requireModuleAccess("products");
 const RequireOrdersAccess = requireModuleAccess("orders");
 const RequirePurchasesAccess = requireModuleAccess("purchases");
+const RequireSalesQuotationsAccess = requireModuleAccess("orders");
 const RequireCustomersAccess = requireModuleAccess("customers");
 const RequireSuppliersAccess = requireModuleAccess("suppliers");
 const RequireCategoriesAccess = requireModuleAccess("categories");
@@ -231,6 +234,7 @@ function App() {
                             {/* Public onboarding for an invited teammate - the token
                                 itself is the credential, no ProtectedRoute wrapper. */}
                             <Route path="/team/invite/:token" element={<AcceptInvitation />} />
+                            <Route path="/public/sales-quotations/:token" element={<PublicSalesQuotation />} />
 
                             {/* Email verification route (protected, but doesn't require verification) */}
                             <Route
@@ -267,6 +271,7 @@ function App() {
                                 <Route path="purchase-support-documents" element={<SupportDocumentRoute><PurchaseSupportDocuments /></SupportDocumentRoute>} />
                                 <Route path="purchases" element={<RequirePurchasesAccess><Purchase /></RequirePurchasesAccess>} />
                                 <Route path="quotations" element={<RequirePurchasesAccess><Quotations /></RequirePurchasesAccess>} />
+                                <Route path="sales-quotations" element={<RequireSalesQuotationsAccess><SalesQuotations /></RequireSalesQuotationsAccess>} />
                                 <Route path="customers" element={<RequireCustomersAccess><Customers /></RequireCustomersAccess>} />
                                 <Route path="suppliers" element={<RequireSuppliersAccess><Suppliers /></RequireSuppliersAccess>} />
                                 <Route path="categories" element={<RequireCategoriesAccess><Category /></RequireCategoriesAccess>} />
