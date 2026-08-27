@@ -20,7 +20,12 @@ import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
 import { COLOMBIA_DEPARTMENTS, findDepartmentName } from "../../constants/colombiaDivipola";
 import { resolveApiErrorMessage } from "../../utils/apiError";
+import { isValidNit, isValidSoftwareId, isValidTechnicalKey, isValidPrefix } from "../../utils/dianValidation";
 import FirmaPassSelfService from "./FirmaPassSelfService";
+
+const validatorRule = (isValid, message) => ({
+    validator: (_, value) => (!value || isValid(value) ? Promise.resolve() : Promise.reject(new Error(message))),
+});
 
 const { Text, Title } = Typography;
 // ensureElectronicInvoicingPlan (Backend/services/electronicInvoicing.service.js)
@@ -89,22 +94,55 @@ const SupportDocumentResolution = ({ onAdded }) => {
             </div>
             <Form form={form} layout="vertical" className="mt-4">
                 <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-                    <Form.Item name="prefix" label={t("fiscal_setup.prefix")} extra={t("fiscal_setup.prefix_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
-                        <Input size="large" className="auth-ohnix-input" />
+                    <Form.Item
+                        name="prefix"
+                        label={t("fiscal_setup.prefix")}
+                        extra={t("fiscal_setup.prefix_hint")}
+                        rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidPrefix, t("fiscal_setup.prefix_invalid"))]}
+                    >
+                        <Input size="large" maxLength={4} className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} extra={t("fiscal_setup.resolution_number_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} extra={t("fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
                         <Input size="large" className="auth-ohnix-input" />
                     </Form.Item>
                     <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} extra={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
-                        <Input size="large" type="number" className="auth-ohnix-input" />
+                        <Input size="large" type="number" min={1} className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="endNumber" label={t("fiscal_setup.end_number")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
-                        <Input size="large" type="number" className="auth-ohnix-input" />
+                    <Form.Item
+                        name="endNumber"
+                        label={t("fiscal_setup.end_number")}
+                        dependencies={["startNumber"]}
+                        rules={[
+                            { required: true, message: t("fiscal_setup.field_required") },
+                            {
+                                validator: (_, value) => {
+                                    const startNumber = form.getFieldValue("startNumber");
+                                    if (!value || !startNumber) return Promise.resolve();
+                                    return Number(value) > Number(startNumber) ? Promise.resolve() : Promise.reject(new Error(t("fiscal_setup.number_range_invalid")));
+                                },
+                            },
+                        ]}
+                    >
+                        <Input size="large" type="number" min={1} className="auth-ohnix-input" />
                     </Form.Item>
                     <Form.Item name="startDate" label={t("fiscal_setup.start_date")} extra={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                         <DatePicker size="large" className="w-full" />
                     </Form.Item>
-                    <Form.Item name="endDate" label={t("fiscal_setup.end_date")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item
+                        name="endDate"
+                        label={t("fiscal_setup.end_date")}
+                        dependencies={["startDate"]}
+                        rules={[
+                            { required: true, message: t("fiscal_setup.field_required") },
+                            {
+                                validator: (_, value) => {
+                                    const startDate = form.getFieldValue("startDate");
+                                    if (!value || !startDate) return Promise.resolve();
+                                    return value.isAfter(startDate) ? Promise.resolve() : Promise.reject(new Error(t("fiscal_setup.date_range_invalid")));
+                                },
+                            },
+                        ]}
+                    >
                         <DatePicker size="large" className="w-full" />
                     </Form.Item>
                 </div>
@@ -178,7 +216,21 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
 
     const submit = async () => {
         try {
-            await form.validateFields();
+            // Steps are always mounted (see the `display` toggle below) precisely
+            // so this validates every field across all 4 steps, not just the
+            // currently visible one - a step's Form.Items only register their
+            // validation rules while mounted, so validating an unmounted step's
+            // fields silently no-ops and a stale/incomplete value (e.g.
+            // legalName) could otherwise slip through to the backend, surfacing
+            // as a confusing top-level error after the whole wizard is filled in.
+            try {
+                await form.validateFields();
+            } catch (validationError) {
+                const firstInvalidField = validationError?.errorFields?.[0]?.name?.[0];
+                const invalidStep = stepFields.findIndex((fields) => fields.includes(firstInvalidField));
+                if (invalidStep !== -1) setStep(invalidStep);
+                throw validationError;
+            }
             setSaving(true);
             const value = form.getFieldsValue();
             const saved = await companyService.updateMyCompany({
@@ -357,19 +409,65 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                     </div>
 
                     <Form form={form} layout="vertical">
-                        {step === 0 && <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 animate-fade-up">
-                            {field("taxIdentification", t("fiscal_setup.nit"), { required: true, icon: <IdcardOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.nit_hint") })}
-                            {field("legalName", t("fiscal_setup.legal_name"), { required: true, icon: <BankOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.legal_name_hint") })}
-                            {field("email", t("fiscal_setup.billing_email"), { type: "email", icon: <MailOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.billing_email_hint") })}
+                        {/* All 4 steps stay mounted (toggled via `display`, not
+                        conditional rendering) so form.validateFields() at final
+                        submit can actually validate every field, not just the
+                        currently visible step - see the comment in submit(). */}
+                        <div style={{ display: step === 0 ? undefined : "none" }} className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                            <Form.Item
+                                name="taxIdentification"
+                                label={t("fiscal_setup.nit")}
+                                extra={t("fiscal_setup.nit_hint")}
+                                rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidNit, t("fiscal_setup.nit_invalid"))]}
+                            >
+                                <Input size="large" prefix={<IdcardOutlined className="text-[var(--ohnix-text-dim)]" />} className="auth-ohnix-input" />
+                            </Form.Item>
+                            <Form.Item
+                                name="legalName"
+                                label={t("fiscal_setup.legal_name")}
+                                extra={t("fiscal_setup.legal_name_hint")}
+                                rules={[{ required: true, whitespace: true, message: t("fiscal_setup.legal_name_invalid") }]}
+                            >
+                                <Input size="large" prefix={<BankOutlined className="text-[var(--ohnix-text-dim)]" />} className="auth-ohnix-input" />
+                            </Form.Item>
+                            <Form.Item
+                                name="email"
+                                label={t("fiscal_setup.billing_email")}
+                                extra={t("fiscal_setup.billing_email_hint")}
+                                rules={[{ type: "email", message: t("fiscal_setup.billing_email_invalid") }]}
+                            >
+                                <Input size="large" type="email" prefix={<MailOutlined className="text-[var(--ohnix-text-dim)]" />} className="auth-ohnix-input" />
+                            </Form.Item>
                             {field("vatResponsible", t("fiscal_setup.vat_responsibility"), { required: true, hint: t("fiscal_setup.vat_responsibility_hint"), select: [{ value: "responsible", label: t("fiscal_setup.vat_responsible") }, { value: "not_responsible", label: t("fiscal_setup.vat_not_responsible") }] })}
-                        </div>}
-                        {step === 1 && <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 animate-fade-up">
+                        </div>
+                        <div style={{ display: step === 1 ? undefined : "none" }} className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                             {field("environment", t("fiscal_setup.environment"), { required: true, hint: t("fiscal_setup.environment_hint"), select: [{ value: "SANDBOX", label: t("fiscal_setup.environment_sandbox") }, { value: "PRODUCTION", label: t("fiscal_setup.environment_production") }] })}
-                            {field("softwareId", t("fiscal_setup.software_id"), { required: true, icon: <IdcardOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.software_id_hint") })}
-                            {field("softwarePin", t("fiscal_setup.software_pin"), { required: true, type: "password", icon: <KeyOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.software_pin_hint") })}
-                            {field("technicalKey", t("fiscal_setup.technical_key"), { required: true, type: "password", icon: <KeyOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.technical_key_hint") })}
-                        </div>}
-                        {step === 2 && <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 animate-fade-up">
+                            <Form.Item
+                                name="softwareId"
+                                label={t("fiscal_setup.software_id")}
+                                extra={t("fiscal_setup.software_id_hint")}
+                                rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidSoftwareId, t("fiscal_setup.software_id_invalid"))]}
+                            >
+                                <Input size="large" prefix={<IdcardOutlined className="text-[var(--ohnix-text-dim)]" />} className="auth-ohnix-input" placeholder="deb9167c-e2f6-4796-9b4d-d102472e2397" />
+                            </Form.Item>
+                            <Form.Item
+                                name="softwarePin"
+                                label={t("fiscal_setup.software_pin")}
+                                extra={t("fiscal_setup.software_pin_hint")}
+                                rules={[{ required: true, whitespace: true, message: t("fiscal_setup.software_pin_invalid") }]}
+                            >
+                                <Input size="large" type="password" prefix={<KeyOutlined className="text-[var(--ohnix-text-dim)]" />} className="auth-ohnix-input" />
+                            </Form.Item>
+                            <Form.Item
+                                name="technicalKey"
+                                label={t("fiscal_setup.technical_key")}
+                                extra={t("fiscal_setup.technical_key_hint")}
+                                rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidTechnicalKey, t("fiscal_setup.technical_key_invalid"))]}
+                            >
+                                <Input size="large" type="password" prefix={<KeyOutlined className="text-[var(--ohnix-text-dim)]" />} className="auth-ohnix-input" />
+                            </Form.Item>
+                        </div>
+                        <div style={{ display: step === 2 ? undefined : "none" }} className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                             {field("street", t("fiscal_setup.address"), { required: true, icon: <EnvironmentOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.address_hint") })}
                             <Form.Item
                                 name="departmentCode"
@@ -407,14 +505,59 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                                 <Input size="large" className="auth-ohnix-input" placeholder="11001" />
                             </Form.Item>
                             {field("postalZone", t("fiscal_setup.postal_code"), { required: true, hint: t("fiscal_setup.postal_code_hint") })}
-                        </div>}
-                        {step === 3 && <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 animate-fade-up">
+                        </div>
+                        <div style={{ display: step === 3 ? undefined : "none" }} className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                             {field("documentType", t("fiscal_setup.document_type"), { required: true, hint: t("fiscal_setup.document_type_hint"), select: [{ value: "01", label: t("fiscal_setup.document_type_invoice") }, { value: "05", label: t("fiscal_setup.document_type_support") }] })}
-                            {field("prefix", t("fiscal_setup.prefix"), { required: true, hint: t("fiscal_setup.prefix_hint") })}{field("resolutionNumber", t("fiscal_setup.resolution_number"), { required: true, hint: t("fiscal_setup.resolution_number_hint") })}
-                            {field("startNumber", t("fiscal_setup.start_number"), { required: true, type: "number", hint: t("fiscal_setup.number_range_hint") })}{field("endNumber", t("fiscal_setup.end_number"), { required: true, type: "number" })}
+                            <Form.Item
+                                name="prefix"
+                                label={t("fiscal_setup.prefix")}
+                                extra={t("fiscal_setup.prefix_hint")}
+                                rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidPrefix, t("fiscal_setup.prefix_invalid"))]}
+                            >
+                                <Input size="large" maxLength={4} className="auth-ohnix-input" />
+                            </Form.Item>
+                            <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} extra={t("fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
+                                <Input size="large" className="auth-ohnix-input" />
+                            </Form.Item>
+                            <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} extra={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                                <Input size="large" type="number" min={1} className="auth-ohnix-input" />
+                            </Form.Item>
+                            <Form.Item
+                                name="endNumber"
+                                label={t("fiscal_setup.end_number")}
+                                dependencies={["startNumber"]}
+                                rules={[
+                                    { required: true, message: t("fiscal_setup.field_required") },
+                                    {
+                                        validator: (_, value) => {
+                                            const startNumber = form.getFieldValue("startNumber");
+                                            if (!value || !startNumber) return Promise.resolve();
+                                            return Number(value) > Number(startNumber) ? Promise.resolve() : Promise.reject(new Error(t("fiscal_setup.number_range_invalid")));
+                                        },
+                                    },
+                                ]}
+                            >
+                                <Input size="large" type="number" min={1} className="auth-ohnix-input" />
+                            </Form.Item>
                             <Form.Item name="startDate" label={t("fiscal_setup.start_date")} extra={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}><DatePicker size="large" className="w-full" /></Form.Item>
-                            <Form.Item name="endDate" label={t("fiscal_setup.end_date")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}><DatePicker size="large" className="w-full" /></Form.Item>
-                        </div>}
+                            <Form.Item
+                                name="endDate"
+                                label={t("fiscal_setup.end_date")}
+                                dependencies={["startDate"]}
+                                rules={[
+                                    { required: true, message: t("fiscal_setup.field_required") },
+                                    {
+                                        validator: (_, value) => {
+                                            const startDate = form.getFieldValue("startDate");
+                                            if (!value || !startDate) return Promise.resolve();
+                                            return value.isAfter(startDate) ? Promise.resolve() : Promise.reject(new Error(t("fiscal_setup.date_range_invalid")));
+                                        },
+                                    },
+                                ]}
+                            >
+                                <DatePicker size="large" className="w-full" />
+                            </Form.Item>
+                        </div>
                     </Form>
                     <div className="mt-6 flex justify-between border-t border-[var(--ohnix-line-4)] pt-5">
                         <Button icon={<ArrowLeftOutlined />} onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0}>{t("fiscal_setup.back")}</Button>

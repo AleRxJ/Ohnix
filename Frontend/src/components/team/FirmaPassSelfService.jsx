@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
 import { resolveApiErrorMessage } from "../../utils/apiError";
+import { isValidUuid } from "../../utils/dianValidation";
 
 const { Text } = Typography;
 // Same reasoning as ElectronicInvoicingSettings.jsx's PLAN_GATE_CODE_MESSAGES.
@@ -87,7 +88,9 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
     };
 
     const activeCertificate = (status?.certificates || []).some((certificate) => certificate.status === "ACTIVE");
-    const canDriveValidation = Boolean(validationUuid.trim());
+    const validationUuidTrimmed = validationUuid.trim();
+    const validationUuidInvalid = Boolean(validationUuidTrimmed) && !isValidUuid(validationUuidTrimmed);
+    const canDriveValidation = Boolean(validationUuidTrimmed) && !validationUuidInvalid;
 
     return (
         <Card className="mt-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)]">
@@ -173,10 +176,12 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
                         <label className="mb-1 block text-sm font-medium text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_validation_uuid")}</label>
                         <Input
                             className="auth-ohnix-input"
+                            status={validationUuidInvalid ? "error" : undefined}
                             value={validationUuid}
                             onChange={(event) => setValidationUuid(event.target.value)}
                             placeholder={t("fiscal_setup.firmapass_validation_uuid_placeholder")}
                         />
+                        {validationUuidInvalid && <Text type="danger" className="mt-1 block text-xs">{t("fiscal_setup.validation_uuid_invalid")}</Text>}
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

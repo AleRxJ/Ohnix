@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
+import { enforcePlanFeature } from "../middleware/pricing.middleware.js";
 import {
     listChartOfAccounts,
     listJournalEntries,
@@ -15,6 +16,11 @@ import {
 const router = Router();
 
 router.use(verifyJWT);
+// Automated accounting is Escala's differentiator (see pricing.middleware.js's
+// PLAN_FEATURES) - gated once here for the whole module rather than per
+// route, unlike electronicInvoicing (which needs a service-level check
+// because it costs money per document, not per page view).
+router.use(enforcePlanFeature("accounting"));
 
 router.route("/chart-of-accounts").get(requireModulePermission("accounting", "view"), listChartOfAccounts);
 router.route("/status").get(requireModulePermission("accounting", "view"), getAccountingStatus);

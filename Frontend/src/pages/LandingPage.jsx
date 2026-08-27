@@ -5,6 +5,7 @@ import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
 import { useMarketPricing } from "../hooks/useMarketPricing";
+import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
 import {
     OrbitalHero,
     CardGrid,
@@ -240,8 +241,9 @@ const LandingPage = () => {
                 t("landing.pricing.plans.growth.features.export"),
                 t("landing.pricing.plans.growth.features.pdf"),
                 t("landing.pricing.plans.growth.features.alerts"),
+                ELECTRONIC_INVOICING_ENABLED && { text: t("landing.pricing.plans.growth.features.invoicing"), highlight: true },
                 t("landing.pricing.plans.growth.features.support"),
-            ],
+            ].filter(Boolean),
             cta: t("landing.pricing.plans.growth.cta"),
             icon: brandIcons.observability,
             featured: true,
@@ -262,9 +264,11 @@ const LandingPage = () => {
                 t("landing.pricing.plans.scale.features.reports"),
                 t("landing.pricing.plans.scale.features.pdf"),
                 t("landing.pricing.plans.scale.features.api"),
+                ELECTRONIC_INVOICING_ENABLED && t("landing.pricing.plans.scale.features.invoicing"),
+                { text: t("landing.pricing.plans.scale.features.accounting"), highlight: true },
                 t("landing.pricing.plans.scale.features.alerts"),
                 t("landing.pricing.plans.scale.features.support"),
-            ],
+            ].filter(Boolean),
             cta: t("landing.pricing.plans.scale.cta"),
             icon: brandIcons.adaptive,
         },

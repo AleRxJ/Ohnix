@@ -5,10 +5,12 @@ import dayjs from "dayjs";
 import toast from "react-hot-toast";
 import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
+import PlanGate from "../components/common/PlanGate";
 import { accountingService } from "../services/accountingService";
 import { useCurrency } from "../context/CurrencyContext";
 import { useTeam } from "../context/TeamContext";
 import useI18n from "../hooks/useI18n";
+import useSubscription from "../hooks/useSubscription";
 
 const { RangePicker } = DatePicker;
 
@@ -409,15 +411,18 @@ const FinancialStatementsTab = () => {
 
 const Accounting = () => {
     const { t } = useI18n();
+    const { can, loading: subscriptionLoading } = useSubscription();
     const [activeTab, setActiveTab] = useState("chart");
     const [status, setStatus] = useState(null);
+    const hasAccounting = can("accounting");
 
     useEffect(() => {
+        if (!hasAccounting) return;
         accountingService
             .getStatus()
             .then(({ data }) => setStatus(data))
             .catch(() => setStatus(null));
-    }, []);
+    }, [hasAccounting]);
 
     const tabItems = [
         { key: "chart", label: t("accounting.tab_chart_of_accounts"), children: <ChartOfAccountsTab /> },
@@ -431,28 +436,34 @@ const Accounting = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="space-y-6">
                     <PageHeader title={t("accounting.page_title")} subtitle={t("accounting.page_subtitle")} icon={<BookOutlined />} />
-                    {status && !status.has_journal_entries && (
-                        <Alert
-                            type="info"
-                            showIcon
-                            icon={<InfoCircleOutlined />}
-                            message={t("accounting.onboarding_new_title")}
-                            description={t("accounting.onboarding_new_body")}
-                        />
+                    {subscriptionLoading ? null : !hasAccounting ? (
+                        <PlanGate featureKey="accounting" />
+                    ) : (
+                        <>
+                            {status && !status.has_journal_entries && (
+                                <Alert
+                                    type="info"
+                                    showIcon
+                                    icon={<InfoCircleOutlined />}
+                                    message={t("accounting.onboarding_new_title")}
+                                    description={t("accounting.onboarding_new_body")}
+                                />
+                            )}
+                            {status && status.has_journal_entries && status.has_backfilled_entries && (
+                                <Alert
+                                    type="info"
+                                    showIcon
+                                    closable
+                                    icon={<InfoCircleOutlined />}
+                                    message={t("accounting.onboarding_backfilled_title")}
+                                    description={t("accounting.onboarding_backfilled_body")}
+                                />
+                            )}
+                            <Card className="module-shell border border-[var(--ohnix-line-4)] overflow-hidden">
+                                <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} className="custom-tabs" />
+                            </Card>
+                        </>
                     )}
-                    {status && status.has_journal_entries && status.has_backfilled_entries && (
-                        <Alert
-                            type="info"
-                            showIcon
-                            closable
-                            icon={<InfoCircleOutlined />}
-                            message={t("accounting.onboarding_backfilled_title")}
-                            description={t("accounting.onboarding_backfilled_body")}
-                        />
-                    )}
-                    <Card className="module-shell border border-[var(--ohnix-line-4)] overflow-hidden">
-                        <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} className="custom-tabs" />
-                    </Card>
                 </div>
             </div>
         </div>
