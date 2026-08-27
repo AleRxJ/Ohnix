@@ -6,6 +6,7 @@ import { api } from "../api/api.js";
 import useI18n from "../hooks/useI18n";
 import { useCurrency } from "../context/CurrencyContext";
 import { printSalesQuotation } from "../utils/printSalesQuotation.js";
+import PointOfSaleField from "../components/common/PointOfSaleField";
 
 const { Title, Text } = Typography;
 
@@ -74,6 +75,7 @@ const SalesQuotations = () => {
             const response = await api.post("/sales-quotations", {
                 quotation_no: values.quotation_no,
                 customer_id: values.customer_id,
+                pointOfSaleId: values.pointOfSaleId,
                 valid_until: values.valid_until || undefined,
                 notes: values.notes,
                 discount_mode: values.discount_mode || "percentage",
@@ -211,12 +213,13 @@ const SalesQuotations = () => {
                 </div>}
             </Modal>
 
-            <Modal title={<span className="text-[var(--ohnix-text-primary)]">{t("sales_quotations.new")}</span>} open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={820} className="sales-quotation-modal">
+            <Modal title={<span className="text-[var(--ohnix-text-primary)]">{t("sales_quotations.new")}</span>} open={modalOpen} onCancel={() => setModalOpen(false)} footer={null} width={820} className="sales-quotation-modal" rootClassName="sales-quotation-modal">
                 <div className="mb-5 rounded-xl border border-[#29D8D5]/20 bg-[#29D8D5]/[0.06] p-3 text-sm text-[var(--ohnix-text-soft)]">
                     {t("sales_quotations.form_intro")}
                 </div>
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                        <PointOfSaleField />
                         <Form.Item label={t("sales_quotations.customer" )} name="customer_id" rules={[{ required: true, message: t("sales_quotations.customer_required") }]}>
                             <Select showSearch optionFilterProp="label" options={customers.map((customer) => ({ value: customer._id || customer.id, label: `${customer.name} · ${customer.email}` }))} placeholder={t("sales_quotations.customer_placeholder")} />
                         </Form.Item>

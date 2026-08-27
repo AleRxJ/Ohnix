@@ -1588,6 +1588,74 @@ textarea.ant-input[disabled] {
   color: var(--ohnix-text-muted) !important;
 }
 
+.sales-quotation-modal .ant-input-number-input,
+.sales-quotation-modal .ant-input-number-input-wrap,
+.sales-quotation-modal .ant-input-number-handler-wrap,
+.sales-quotation-modal .ant-picker,
+.sales-quotation-modal .ant-picker-input > input,
+.sales-quotation-modal .ant-select-selection-item,
+.sales-quotation-modal .ant-select-selection-placeholder {
+  background: transparent !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-input-number,
+.sales-quotation-modal .ant-input-number-affix-wrapper,
+.sales-quotation-modal .ant-select-selector,
+.sales-quotation-modal .ant-input,
+.sales-quotation-modal textarea,
+.sales-quotation-modal .ant-picker {
+  background: var(--ohnix-surface-2) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+  box-shadow: none !important;
+}
+
+.sales-quotation-modal .ant-input-number-affix-wrapper,
+.sales-quotation-modal .ant-input-number-affix-wrapper .ant-input-number-input-wrap,
+.sales-quotation-modal .ant-input-number-affix-wrapper input,
+.sales-quotation-modal .ant-input-number-input-wrap,
+.sales-quotation-modal .ant-input-number-input {
+  background-color: var(--ohnix-surface-2) !important;
+  color: var(--ohnix-text-primary) !important;
+  -webkit-text-fill-color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-input-number:hover,
+.sales-quotation-modal .ant-input-number-focused,
+.sales-quotation-modal .ant-picker:hover,
+.sales-quotation-modal .ant-picker-focused,
+.sales-quotation-modal .ant-select-focused .ant-select-selector,
+.sales-quotation-modal .ant-input:focus,
+.sales-quotation-modal textarea:focus {
+  border-color: rgba(41, 216, 213, 0.75) !important;
+  box-shadow: 0 0 0 2px rgba(41, 216, 213, 0.12) !important;
+}
+
+.sales-quotation-modal .ant-btn-dashed {
+  background: var(--ohnix-hover-overlay) !important;
+  border-color: var(--ohnix-line-6) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-btn-default,
+.sales-quotation-modal .ant-btn-dashed {
+  background-color: var(--ohnix-hover-overlay) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-btn-dashed:hover {
+  background: rgba(41, 216, 213, 0.1) !important;
+  border-color: #29d8d5 !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.sales-quotation-modal .ant-form-item-label > label,
+.sales-quotation-modal .ant-form-item-label > label::after {
+  color: var(--ohnix-text-soft) !important;
+}
+
 .quotations-module-tabs {
   border-bottom: 1px solid var(--ohnix-line-3);
   background: color-mix(in srgb, var(--ohnix-surface) 72%, transparent);
