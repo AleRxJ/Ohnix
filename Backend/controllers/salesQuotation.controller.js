@@ -8,6 +8,7 @@ import orderService from "../services/order.service.js";
 
 const INCLUDE = {
     customer: { select: { id: true, name: true, email: true, phone: true } },
+    pointOfSale: { select: { name: true, account: { select: { username: true, company: { select: { name: true, legalName: true, contactEmail: true, phone: true } } } } } },
     details: { include: { product: { select: { id: true, productName: true, productCode: true } } } },
     createdBy: { select: { id: true, username: true } },
 };
@@ -17,6 +18,8 @@ const mapQuotation = (quotation) => ({
     quotation_no: quotation.quotationNo,
     public_token: quotation.publicToken,
     customer: quotation.customer,
+    point_of_sale: quotation.pointOfSale,
+    issuer: quotation.createdBy,
     pointOfSaleId: quotation.pointOfSaleId,
     status: quotation.status,
     issued_at: quotation.issuedAt,

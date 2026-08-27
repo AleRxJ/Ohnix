@@ -227,7 +227,7 @@ const SalesQuotations = () => {
                             <Input placeholder={t("sales_quotations.number_placeholder")} />
                         </Form.Item>
                         <Form.Item label={t("sales_quotations.valid_until")} name="valid_until" extra={t("sales_quotations.valid_until_hint")}>
-                            <Input type="date" />
+                            <Input type="datetime-local" />
                         </Form.Item>
                         <Form.Item label={t("sales_quotations.discount_type")} name="discount_mode" initialValue="percentage">
                             <Select options={[{ value: "percentage", label: t("sales_quotations.discount_percentage") }, { value: "fixed", label: t("sales_quotations.discount_fixed") }]} />
@@ -244,6 +244,9 @@ const SalesQuotations = () => {
                     <Form.Item label={t("sales_quotations.notes")} name="notes" extra={t("sales_quotations.notes_hint")}>
                         <Input.TextArea rows={2} placeholder={t("sales_quotations.notes_placeholder")} />
                     </Form.Item>
+                    <div className="mb-5 rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] px-3 py-2 text-xs text-[var(--ohnix-text-muted)]">
+                        {t("sales_quotations.vat_form_hint")}
+                    </div>
                     <div className="mb-3 flex items-center justify-between">
                         <div><Text strong className="text-[var(--ohnix-text-primary)]">{t("sales_quotations.products_title")}</Text><div className="text-xs text-[var(--ohnix-text-muted)]">{t("sales_quotations.products_hint")}</div></div>
                         <Form.List name="details">
