@@ -9,7 +9,7 @@ const { Option } = Select;
 const { TextArea } = Input;
 
 const sectionCardProps = {
-    className: "shadow-sm border-0 module-shell",
+    className: "quotation-section-card",
     headStyle: { borderBottom: "1px solid var(--ohnix-line-3)", background: "transparent" },
 };
 
@@ -59,7 +59,7 @@ const QuotationForm = ({ visible, onCancel, onSubmit, suppliers, products, form,
             footer={null}
             width={880}
             centered
-            className="purchase-form-modal"
+            className="purchase-form-modal quotation-form-modal"
             styles={{
                 mask: { backgroundColor: "rgba(0,0,0,0.55)" },
                 content: {
@@ -78,7 +78,10 @@ const QuotationForm = ({ visible, onCancel, onSubmit, suppliers, products, form,
                     title={
                         <div className="flex items-center text-[var(--ohnix-text-primary)]">
                             <FileTextOutlined className="mr-3 text-[#29D8D5] text-lg" />
-                            <span className="text-base font-semibold text-[var(--ohnix-text-primary)]">{t("quotations.quotation_information")}</span>
+                            <div>
+                                <span className="block text-base font-semibold text-[var(--ohnix-text-primary)]">{t("quotations.quotation_information")}</span>
+                                <span className="block text-xs font-normal text-[var(--ohnix-text-muted)]">{t("quotations.quotation_information_hint")}</span>
+                            </div>
                         </div>
                     }
                 >
@@ -90,6 +93,7 @@ const QuotationForm = ({ visible, onCancel, onSubmit, suppliers, products, form,
                             <Form.Item
                                 label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("quotations.quotation_number")}</span>}
                                 name="quotation_no"
+                                extra={t("quotations.quotation_number_hint")}
                                 rules={[
                                     { required: true, message: t("quotations.enter_quotation_number") },
                                     { max: 10, message: t("quotations.quotation_number_max_length") },
@@ -102,6 +106,7 @@ const QuotationForm = ({ visible, onCancel, onSubmit, suppliers, products, form,
                             <Form.Item
                                 label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("purchases.supplier")}</span>}
                                 name="supplier_id"
+                                extra={t("quotations.supplier_hint")}
                                 rules={[{ required: true, message: t("purchases.select_supplier_message") }]}
                             >
                                 <Select placeholder={t("purchases.select_supplier")} size="large" className="w-full auth-ohnix-input" showSearch optionFilterProp="children">
@@ -119,12 +124,26 @@ const QuotationForm = ({ visible, onCancel, onSubmit, suppliers, products, form,
                                 name="valid_until"
                                 extra={t("quotations.valid_until_hint")}
                             >
-                                <DatePicker size="large" className="w-full" format="YYYY-MM-DD" />
+                                <DatePicker
+                                    size="large"
+                                    className="w-full auth-ohnix-input"
+                                    format="YYYY-MM-DD"
+                                    placeholder={t("quotations.valid_until")}
+                                />
                             </Form.Item>
                         </Col>
-                        <Col xs={24} sm={12}>
-                            <Form.Item label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("quotations.notes")}</span>} name="notes">
-                                <TextArea placeholder={t("quotations.notes_placeholder")} rows={1} className="auth-ohnix-input" />
+                        <Col xs={24}>
+                            <Form.Item
+                                label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("quotations.notes")}</span>}
+                                name="notes"
+                                extra={t("quotations.notes_hint")}
+                            >
+                                <TextArea
+                                    placeholder={t("quotations.notes_placeholder")}
+                                    rows={3}
+                                    autoSize={{ minRows: 2, maxRows: 4 }}
+                                    className="auth-ohnix-input quotation-notes-field"
+                                />
                             </Form.Item>
                         </Col>
                     </Row>
@@ -133,15 +152,26 @@ const QuotationForm = ({ visible, onCancel, onSubmit, suppliers, products, form,
                 <Form.List name="details">
                     {(fields, { add, remove }) => (
                         <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">{t("purchases.purchase_details")}</h4>
+                            <div className="mb-4 flex items-end justify-between gap-4">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">{t("quotations.quotation_details")}</h4>
+                                    <p className="mt-1 text-xs text-[var(--ohnix-text-muted)]">{t("quotations.details_hint")}</p>
+                                </div>
                                 <Button type="primary" onClick={() => add()} icon={<PlusOutlined />} size="middle" className="font-medium">
                                     {t("common.add_item")}
                                 </Button>
                             </div>
                             <div className="space-y-4">
                                 {fields.map(({ key, name, ...restField }) => (
-                                    <PurchaseFormItem key={key} products={products} onRemove={() => remove(name)} name={name} restField={restField} onProductChange={handleProductChange} />
+                                    <PurchaseFormItem
+                                        key={key}
+                                        products={products}
+                                        onRemove={() => remove(name)}
+                                        name={name}
+                                        restField={restField}
+                                        onProductChange={handleProductChange}
+                                        className="quotation-detail-row"
+                                    />
                                 ))}
                             </div>
                         </div>

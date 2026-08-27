@@ -94,7 +94,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                 )}
             </div>
 
-            {!collapsed && <SidebarUserProfile user={user} logout={handleLogout} t={t} />}
+            {!collapsed && <SidebarUserProfile user={user} isTeamMember={isTeamMember} logout={handleLogout} t={t} />}
         </Sider>
     );
 };
@@ -120,7 +120,7 @@ const SidebarLogo = ({ collapsed, isLite, onClick }) => (
     </div>
 );
 
-const SidebarUserProfile = ({ user, logout, t }) => {
+const SidebarUserProfile = ({ user, isTeamMember, logout, t }) => {
     // Generar avatar por defecto si no existe o está vacío
     const getAvatarSrc = () => {
         if (user?.avatar && user.avatar.trim()) {
@@ -142,7 +142,7 @@ const SidebarUserProfile = ({ user, logout, t }) => {
 
     return (
     <div className="shrink-0 border-t border-[var(--ohnix-line-4)] bg-[var(--ohnix-bg)]/55 p-3">
-        <div className="rounded-xl border border-[var(--ohnix-line-5)] bg-[var(--ohnix-surface-2)]/90 p-3 shadow-[var(--ohnix-shadow-card)]">
+        <div className="sidebar-profile-card relative overflow-hidden rounded-xl border border-[var(--ohnix-line-5)] bg-[var(--ohnix-surface-2)]/90 p-3 shadow-[var(--ohnix-shadow-card)]">
             <div className="mb-3 flex items-center gap-3">
                 <Avatar
                     src={getAvatarSrc()}
@@ -160,14 +160,16 @@ const SidebarUserProfile = ({ user, logout, t }) => {
                         {user?.username || "User"}
                     </p>
                     <p className="m-0 mt-0.5 truncate text-xs text-[var(--ohnix-text-muted)]">
-                        {user?.role || "Administrator"}
+                        {isTeamMember
+                            ? t("profile.invited_user_account")
+                            : t("profile.inventory_admin_account")}
                     </p>
                 </div>
             </div>
             <button
                 type="button"
                 onClick={logout}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--ohnix-line-5)] bg-[var(--ohnix-hover-overlay)] px-3 py-2 text-sm font-medium text-[var(--ohnix-text-soft)] transition-all duration-150 hover:border-[#29D8D5]/50 hover:bg-[var(--ohnix-hover-overlay-strong)] hover:text-[var(--ohnix-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#29D8D5]/50"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-[var(--ohnix-hover-overlay)] px-3 py-2 text-sm font-medium text-[var(--ohnix-text-soft)] transition-all duration-150 hover:border-[#29D8D5]/50 hover:bg-[#29D8D5]/10 hover:text-[var(--ohnix-text-primary)] focus:outline-none focus:ring-2 focus:ring-[#29D8D5]/50"
             >
                 <LogoutOutlined className="text-base" />
                 <span>{t("common.logout")}</span>

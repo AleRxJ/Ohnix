@@ -7,7 +7,7 @@ import { getCurrencyInputProps } from "../../utils/currency";
 
 const { Option } = Select;
 
-const PurchaseFormItem = ({ products, onRemove, name, restField, locked, hideRemove, onProductChange }) => {
+const PurchaseFormItem = ({ products, onRemove, name, restField, locked, hideRemove, onProductChange, className = "" }) => {
     const form = Form.useFormInstance();
     const { t } = useI18n();
     const { currency } = useCurrency();
@@ -23,7 +23,7 @@ const PurchaseFormItem = ({ products, onRemove, name, restField, locked, hideRem
     };
 
     return (
-        <div className="relative module-shell border border-[var(--ohnix-line-4)] rounded-2xl p-5 mb-4">
+        <div className={`relative module-shell border border-[var(--ohnix-line-4)] rounded-2xl p-5 mb-4 ${className}`}>
             {!hideRemove && (
                 <Button
                     type="text"

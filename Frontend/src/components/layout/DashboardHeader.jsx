@@ -18,6 +18,7 @@ import LanguageSwitcher from "../LanguageSwitcher/LanguageSwitcher";
 import ThemeToggle from "../common/ThemeToggle";
 import { userService } from "../../services/userService";
 import { useTheme } from "../../context/ThemeContext";
+import { useTeam } from "../../context/TeamContext";
 
 const DashboardHeader = ({ collapsed, setCollapsed }) => {
     const { user, logout } = useContext(AuthContext);
@@ -179,15 +180,27 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
 };
 
 const UserProfileInfo = ({ user }) => (
-    <div className="hidden sm:flex flex-col items-end mr-3">
-        <span className="text-sm font-bold text-[var(--ohnix-text-primary)]">
+    <UserProfileInfoContent user={user} />
+);
+
+const UserProfileInfoContent = ({ user }) => {
+    const { isTeamMember } = useTeam();
+    const { t } = useI18n();
+
+    return (
+    <div className="hidden sm:flex flex-col items-end mr-3 leading-tight">
+        <span className="flex items-center gap-1.5 text-sm font-bold text-[var(--ohnix-text-primary)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_8px_rgba(41,216,213,0.8)]" />
             {user?.username || "User"}
         </span>
-        <span className="text-xs text-[var(--ohnix-text-muted)]">
-            {user?.role || "Administrator"}
+        <span className="mt-1 text-[11px] text-[var(--ohnix-text-muted)]">
+            {isTeamMember
+                ? t("profile.invited_user_account")
+                : t("profile.inventory_admin_account")}
         </span>
     </div>
-);
+    );
+};
 
 const UserAvatar = ({ user, avatarMenu }) => {
     // Generar avatar por defecto si no existe o está vacío
@@ -211,7 +224,11 @@ const UserAvatar = ({ user, avatarMenu }) => {
     
     return (
     <Dropdown menu={{ items: avatarMenu }} placement="bottomRight" arrow>
-        <div className="cursor-pointer">
+        <button
+            type="button"
+            aria-label="Abrir menú de usuario"
+            className="rounded-full border-0 bg-transparent p-0 focus:outline-none focus:ring-2 focus:ring-[#29D8D5]/60"
+        >
             <Avatar
                 src={getAvatarSrc()}
                 style={{
@@ -222,7 +239,7 @@ const UserAvatar = ({ user, avatarMenu }) => {
                 icon={<UserOutlined />}
                 size="large"
             />
-        </div>
+        </button>
     </Dropdown>
     );
 };

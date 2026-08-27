@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, Input, Button, Row, Col, Typography, Tooltip, Form } from "antd";
+import { Card, Input, Button, Row, Col, Typography, Tooltip, Form, Select } from "antd";
 import { PlusOutlined, SearchOutlined, TagsOutlined } from "@ant-design/icons";
 import QuotationStats from "./QuotationStats";
 import QuotationTable from "./QuotationTable";
@@ -33,6 +33,7 @@ const QuotationList = ({
     onCreatePurchase,
 }) => {
     const [searchText, setSearchText] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
     const [modalVisible, setModalVisible] = useState(false);
     const [detailModalVisible, setDetailModalVisible] = useState(false);
     const [convertModalVisible, setConvertModalVisible] = useState(false);
@@ -100,7 +101,7 @@ const QuotationList = ({
     };
 
     return (
-        <div className="min-h-screen bg-transparent text-[var(--ohnix-text-primary)]">
+        <div className="quotation-page min-h-screen bg-transparent text-[var(--ohnix-text-primary)]">
             <div className="p-4 sm:p-6 lg:p-8">
                 <div className="mb-8">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -111,44 +112,57 @@ const QuotationList = ({
                             </h1>
                             <p className="text-[var(--ohnix-text-muted)] text-sm sm:text-base">{t("quotations.manage_quotations_description")}</p>
                         </div>
+                        <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
+                            <span className="w-full sm:w-auto inline-block">
+                                <Button
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    size="large"
+                                    onClick={handleAddQuotation}
+                                    className="quotation-primary-action w-full sm:w-auto"
+                                    disabled={!canEdit}
+                                >
+                                    {t("quotations.add_new_quotation")}
+                                </Button>
+                            </span>
+                        </Tooltip>
                     </div>
 
                     <QuotationStats stats={stats} />
                 </div>
 
-                <Card className="mb-6 shadow-sm border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] text-[var(--ohnix-text-primary)]">
+                <Card className="quotation-toolbar mb-6 shadow-sm border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] text-[var(--ohnix-text-primary)]">
                     <Row gutter={[16, 16]} align="middle" className="flex-col sm:flex-row">
                         <Col flex="auto" className="w-full sm:w-auto">
-                            <Input.Search
-                                placeholder={t("quotations.search_by_quotation")}
-                                allowClear
-                                enterButton={<Button type="primary" icon={<SearchOutlined />}>{t("common.search")}</Button>}
-                                size="large"
-                                onSearch={(value) => setSearchText(value)}
-                                onChange={(e) => setSearchText(e.target.value)}
-                                className="w-full"
-                            />
-                        </Col>
-                        <Col className="w-full sm:w-auto">
-                            <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
-                                <span className="w-full sm:w-auto inline-block">
-                                    <Button
-                                        type="primary"
-                                        icon={<PlusOutlined />}
-                                        size="large"
-                                        onClick={handleAddQuotation}
-                                        className="w-full sm:w-auto bg-[#44F3F0] text-[#021314] border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-                                        disabled={!canEdit}
-                                    >
-                                        {t("quotations.add_new_quotation")}
-                                    </Button>
-                                </span>
-                            </Tooltip>
+                            <div className="flex flex-col gap-3 sm:flex-row">
+                                <Input.Search
+                                    placeholder={t("quotations.search_by_quotation")}
+                                    allowClear
+                                    enterButton={<Button type="primary" icon={<SearchOutlined />}>{t("common.search")}</Button>}
+                                    size="large"
+                                    onSearch={(value) => setSearchText(value)}
+                                    onChange={(e) => setSearchText(e.target.value)}
+                                    className="w-full"
+                                />
+                                <Select
+                                    value={statusFilter}
+                                    onChange={setStatusFilter}
+                                    size="large"
+                                    className="w-full sm:w-48"
+                                    options={[
+                                        { value: "all", label: t("quotations.all_statuses") },
+                                        { value: "draft", label: t("quotations.status_draft") },
+                                        { value: "received", label: t("quotations.status_received") },
+                                        { value: "approved", label: t("quotations.status_approved") },
+                                        { value: "rejected", label: t("quotations.status_rejected") },
+                                    ]}
+                                />
+                            </div>
                         </Col>
                     </Row>
                 </Card>
 
-                <Card className="shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)] text-[var(--ohnix-text-primary)]">
+                <Card className="quotation-table-shell shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)] text-[var(--ohnix-text-primary)]">
                     <div className="p-4 sm:p-6">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-1 h-6 bg-gradient-to-b from-[#29D8D5] to-[#44F3F0] rounded-full"></div>
@@ -158,6 +172,7 @@ const QuotationList = ({
                             quotations={quotations}
                             loading={loading}
                             searchText={searchText}
+                            statusFilter={statusFilter}
                             onViewDetails={handleViewDetails}
                             onMarkReceived={onMarkReceived}
                             onReject={onReject}

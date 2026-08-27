@@ -13,6 +13,7 @@ const QuotationTable = ({
     quotations = [],
     loading = false,
     searchText = "",
+    statusFilter = "all",
     onViewDetails = () => {},
     onMarkReceived = () => {},
     onReject = () => {},
@@ -23,13 +24,16 @@ const QuotationTable = ({
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("purchases", "edit");
 
-    const filteredQuotations = searchText
+    const filteredByText = searchText
         ? quotations.filter(
               (q) =>
                   q.quotation_no?.toLowerCase().includes(searchText.toLowerCase()) ||
                   q.supplier_id?.name?.toLowerCase().includes(searchText.toLowerCase())
           )
         : quotations;
+        const filteredQuotations = statusFilter === "all"
+                ? filteredByText
+                : filteredByText.filter((quotation) => quotation.status === statusFilter);
 
     const MOBILE_PAGE_SIZE = 15;
     const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_PAGE_SIZE);
@@ -69,7 +73,7 @@ const QuotationTable = ({
     );
 
     const MobileQuotationCard = ({ quotation }) => (
-        <Card className="mb-3 module-shell overflow-hidden hover-lift" size="small">
+        <Card className="quotation-mobile-card mb-3 module-shell overflow-hidden hover-lift" size="small">
             <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="min-w-0">
                     <p className="text-sm font-semibold text-[#44F3F0] m-0">#{quotation.quotation_no}</p>
@@ -80,8 +84,8 @@ const QuotationTable = ({
                 </Tag>
             </div>
             <div className="flex items-center justify-between text-xs text-[var(--ohnix-text-muted)] mb-3">
-                <span>{dayjs(quotation.createdAt).format("DD/MM/YYYY")}</span>
-                <span>{quotation.created_by?.username || t("common.na")}</span>
+                <span>{t("common.date")}: {dayjs(quotation.createdAt).format("DD/MM/YYYY")}</span>
+                <span className="truncate">{quotation.created_by?.username || t("common.na")}</span>
             </div>
             <div className="flex gap-2">{renderActions(quotation, "middle")}</div>
         </Card>

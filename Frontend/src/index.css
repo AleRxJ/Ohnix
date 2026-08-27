@@ -1382,8 +1382,75 @@ textarea.ant-input[disabled] {
   cursor: not-allowed;
 }
 
+.sidebar-profile-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #29d8d5, transparent);
+  opacity: 0.7;
+}
+
 .profile-page .ant-card .bg-\[var\(--ohnix-line-2\)\] {
   background: color-mix(in srgb, var(--ohnix-surface-2) 78%, transparent) !important;
+}
+
+.quotation-page .quotation-primary-action {
+  border: 0 !important;
+  background: linear-gradient(135deg, #29d8d5, #44f3f0) !important;
+  color: #021314 !important;
+  box-shadow: 0 12px 24px rgba(41, 216, 213, 0.2);
+}
+
+.quotation-page .quotation-primary-action:hover {
+  box-shadow: 0 16px 30px rgba(41, 216, 213, 0.3);
+  transform: translateY(-1px);
+}
+
+.quotation-page .quotation-toolbar .ant-card-body {
+  padding: 14px;
+}
+
+.quotation-page .quotation-toolbar .ant-input-affix-wrapper,
+.quotation-page .quotation-toolbar .ant-input-group-addon,
+.quotation-page .quotation-toolbar .ant-select-selector {
+  background: var(--ohnix-surface-2) !important;
+  border-color: var(--ohnix-line-5) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+.quotation-page .quotation-toolbar .ant-input::placeholder,
+.quotation-page .quotation-toolbar .ant-select-selection-placeholder {
+  color: var(--ohnix-text-muted) !important;
+}
+
+.quotation-page .quotation-table-shell .ant-card-body {
+  padding: 0;
+}
+
+.quotation-page .quotation-table-shell .ant-table-thead > tr > th {
+  background: var(--ohnix-surface-3) !important;
+  color: var(--ohnix-text-muted) !important;
+  border-bottom-color: var(--ohnix-line-4) !important;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.quotation-page .quotation-table-shell .ant-table-tbody > tr > td {
+  border-bottom-color: var(--ohnix-line-3) !important;
+  color: var(--ohnix-text-soft) !important;
+}
+
+.quotation-page .quotation-table-shell .ant-table-tbody > tr:hover > td {
+  background: var(--ohnix-hover-overlay) !important;
+}
+
+.quotation-page .quotation-mobile-card .ant-card-body {
+  background: var(--ohnix-surface-card) !important;
+  padding: 14px;
 }
 
 /* Unit Modal Tabs */
@@ -2042,6 +2109,78 @@ textarea.ant-input[disabled] {
                     background: var(--ohnix-line-1);
                     color: var(--ohnix-text-primary);
                     border-color: var(--ohnix-line-3);
+                }
+
+                .quotation-form-modal .ant-modal-content {
+                  background: linear-gradient(150deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
+                  border: 1px solid var(--ohnix-line-5);
+                  border-radius: 20px;
+                  box-shadow: var(--ohnix-shadow-elevated);
+                }
+                .quotation-form-modal .ant-modal-header {
+                  margin-bottom: 0;
+                }
+                .quotation-form-modal .ant-modal-body {
+                  scrollbar-width: thin;
+                  scrollbar-color: var(--ohnix-scrollbar-thumb) transparent;
+                }
+                .quotation-form-modal .ant-modal-body::-webkit-scrollbar {
+                  width: 6px;
+                }
+                .quotation-form-modal .ant-modal-body::-webkit-scrollbar-thumb {
+                  background: var(--ohnix-scrollbar-thumb);
+                  border-radius: 999px;
+                }
+                .quotation-form-modal .ant-card-head {
+                  background: color-mix(in srgb, var(--ohnix-surface-3) 70%, transparent) !important;
+                }
+                .quotation-form-modal .ant-card-body {
+                  background: color-mix(in srgb, var(--ohnix-surface-2) 48%, transparent) !important;
+                }
+                .quotation-form-modal .quotation-section-card {
+                  border: 0 !important;
+                  background: transparent !important;
+                  box-shadow: none !important;
+                }
+                .quotation-form-modal .quotation-section-card .ant-card-head {
+                  min-height: 42px;
+                  padding: 0 0 10px;
+                  background: transparent !important;
+                }
+                .quotation-form-modal .quotation-section-card .ant-card-body {
+                  padding: 20px 0 4px;
+                  background: transparent !important;
+                }
+                .quotation-form-modal .ant-form-item-extra {
+                  color: var(--ohnix-text-muted) !important;
+                }
+                .quotation-form-modal .ant-picker,
+                .quotation-form-modal .ant-picker-input > input {
+                  color: var(--ohnix-text-primary) !important;
+                }
+                .quotation-form-modal .ant-picker-input > input::placeholder {
+                  color: var(--ohnix-text-dim) !important;
+                }
+                .quotation-form-modal .quotation-detail-row {
+                  margin-bottom: 12px;
+                  padding: 16px;
+                  border-radius: 12px;
+                  background: color-mix(in srgb, var(--ohnix-surface-2) 72%, transparent) !important;
+                  box-shadow: none !important;
+                  transform: none !important;
+                }
+                .quotation-form-modal .quotation-detail-row:hover {
+                  border-color: rgba(41, 216, 213, 0.35) !important;
+                  box-shadow: none !important;
+                  transform: none !important;
+                }
+                .quotation-form-modal .quotation-detail-row .ant-form-item-label > label {
+                  font-size: 12px;
+                  color: var(--ohnix-text-muted) !important;
+                }
+                .quotation-form-modal .quotation-detail-row .ant-input-number,
+                .quotation-form-modal .quotation-detail-row .ant-select-selector {
+                  border-radius: 9px !important;
                 }
 
 
