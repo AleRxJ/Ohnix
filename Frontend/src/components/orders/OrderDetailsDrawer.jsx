@@ -360,17 +360,6 @@ const OrderDetailsDrawer = ({
                             </p>
                         </div>
                     ) : orderDetails.length > 0 ? (
-<<<<<<< HEAD
-                        <Table
-                            className="module-dark-table"
-                            dataSource={orderDetails}
-                            columns={columns}
-                            pagination={false}
-                            rowKey={(record, index) => index}
-                            size="middle"
-                            bordered
-                        />
-=======
                         isMobile ? (
                             <div className="space-y-3">
                                 {orderDetails.map((item, index) => (
@@ -412,6 +401,7 @@ const OrderDetailsDrawer = ({
                             </div>
                         ) : (
                             <Table
+                                className="module-dark-table"
                                 dataSource={orderDetails}
                                 columns={columns}
                                 pagination={false}
@@ -420,7 +410,6 @@ const OrderDetailsDrawer = ({
                                 bordered
                             />
                         )
->>>>>>> afc8cff7b67dd30f4e0bba325639858fa2f6a750
                     ) : (
                         <EmptyState icon={<ShoppingCartOutlined />} title={t("orders.no_items_found")} compact />
                     )}
