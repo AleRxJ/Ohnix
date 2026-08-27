@@ -191,6 +191,7 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
                         </div>
                     ) : movements.length > 0 ? (
                         <Table
+                            className="module-dark-table"
                             dataSource={movements}
                             columns={movementColumns}
                             pagination={{ pageSize: 10 }}

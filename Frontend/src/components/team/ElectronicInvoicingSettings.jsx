@@ -290,6 +290,17 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
         }
     };
 
+    // electronicInvoicingProvider defaults to "alanube" for every company, so
+    // its mere presence isn't a signal an admin deliberately chose it - only
+    // electronicInvoicingEnabled=true means the admin actually turned on
+    // live invoicing under that other provider. Hiding the wizard here backs
+    // up the same check the backend enforces in registerMyCompanyWithItcycle.
+    const otherProviderActive =
+        !status?.provisioned &&
+        status?.electronicInvoicingEnabled &&
+        status?.electronicInvoicingProvider &&
+        status.electronicInvoicingProvider !== "itcycle";
+
     const field = (name, label, options = {}) => (
         <Form.Item name={name} label={label} extra={options.hint} rules={options.required ? [{ required: true, message: t("fiscal_setup.field_required") }] : []}>
             {options.select
@@ -351,6 +362,13 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                     <FirmaPassSelfService electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)} onActivated={onCompanyChanged} />
                     {!hasSupportDocumentResolution && <SupportDocumentResolution onAdded={refresh} />}
                 </>
+            ) : otherProviderActive ? (
+                <Alert
+                    type="info"
+                    showIcon
+                    message="Tu empresa ya factura electrónicamente"
+                    description={`El administrador de Ohnix ya activó la facturación electrónica de tu empresa con ${status.electronicInvoicingProvider === "factus" ? "Factus" : "Alanube"}. Si necesitas cambiar de proveedor, contacta a soporte.`}
+                />
             ) : (
                 <>
                     <div className="mb-8">

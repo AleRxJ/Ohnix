@@ -188,6 +188,11 @@ export const subscriptionService = {
         return response.data;
     },
 
+    async shortenUserSubscriptionAdmin(userId, days) {
+        const response = await api.post(`/subscriptions/admin/users/${userId}/subscription/shorten`, { days });
+        return response.data;
+    },
+
     async createUpgradeCheckoutSession(requestId) {
         const response = await api.post(
             `/subscriptions/me/upgrade-requests/${requestId}/checkout-session`,

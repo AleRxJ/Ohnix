@@ -1040,7 +1040,7 @@ const ElectronicInvoices = () => {
                             className: "cursor-pointer transition-colors",
                         })}
                         pagination={{ pageSize: 10, showTotal: (total) => t("electronic_invoices.table.documents_total", { count: total }) }}
-                        className="invoice-premium-table"
+                        className="module-dark-table invoice-premium-table"
                     />
                 </div>
 

@@ -303,7 +303,7 @@ const PurchaseDetails = ({
                                         <Spin />
                                     </div>
                                 ) : purchasePayments.length > 0 ? (
-                                    <Table dataSource={purchasePayments} columns={paymentColumns} pagination={false} rowKey="_id" size="small" />
+                                    <Table className="module-dark-table" dataSource={purchasePayments} columns={paymentColumns} pagination={false} rowKey="_id" size="small" />
                                 ) : (
                                     <div className="text-sm text-[var(--ohnix-text-muted)] py-2">{t("finance.no_payments")}</div>
                                 )}
