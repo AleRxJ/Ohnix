@@ -86,7 +86,7 @@ const QuotationForm = ({ visible, onCancel, onSubmit, suppliers, products, form,
                     }
                 >
                     <Row gutter={16}>
-                        <Col xs={24} sm={12}>
+                        <Col xs={24} sm={12} className="quotation-pos-column">
                             <PointOfSaleField />
                         </Col>
                         <Col xs={24} sm={12}>

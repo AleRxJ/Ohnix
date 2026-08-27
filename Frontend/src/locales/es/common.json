@@ -887,6 +887,7 @@
     "field_label": "Punto de venta",
     "field_placeholder": "Elige un punto de venta",
     "field_required": "Elige el punto de venta",
+    "no_available_options": "No hay puntos de venta disponibles",
     "move_action": "Mover de punto de venta",
     "move_modal_title": "Mover a otro punto de venta",
     "move_current_label": "Punto de venta actual",

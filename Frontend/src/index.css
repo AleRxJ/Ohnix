@@ -2411,6 +2411,9 @@ textarea.ant-input[disabled] {
                 .quotation-form-modal .quotation-detail-row .ant-select-selector {
                   border-radius: 9px !important;
                 }
+                        .quotation-form-modal .quotation-pos-column:not(:has(.point-of-sale-field)) {
+                          display: none;
+                        }
 
 
 /* Moved out of src/components/Purchase/PurchaseDetails.jsx's inline <style jsx> (invalid Next.js-only syntax

@@ -887,6 +887,7 @@
     "field_label": "Point of sale",
     "field_placeholder": "Choose a point of sale",
     "field_required": "Choose the point of sale",
+    "no_available_options": "No points of sale available",
     "move_action": "Move to another location",
     "move_modal_title": "Move to another point of sale",
     "move_current_label": "Current point of sale",
