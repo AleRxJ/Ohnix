@@ -16,7 +16,7 @@
     "orders": "Orders",
     "electronic_invoices_nav": "E-Invoices",
     "purchase_support_documents_nav": "Support Documents",
-    "quotations_nav": "Purchase quotations",
+    "quotations_nav": "Quotations",
     "sales_quotations_nav": "Sales quotations",
     "fiscal_setup_nav": "DIAN Setup",
     "purchases": "Purchases",
@@ -1719,6 +1719,8 @@
   },
   "quotations": {
     "quotations": "Quotations",
+    "purchase_tab": "From suppliers",
+    "sales_tab": "For customers",
     "manage_quotations_description": "Record your suppliers' quotes and convert the one you want into a real purchase order.",
     "search_by_quotation": "Search by quotation number or supplier",
     "all_statuses": "All statuses",

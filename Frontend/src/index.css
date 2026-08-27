@@ -1495,6 +1495,32 @@ textarea.ant-input[disabled] {
   color: var(--ohnix-text-primary) !important;
 }
 
+.quotations-module-tabs {
+  border-bottom: 1px solid var(--ohnix-line-3);
+  background: color-mix(in srgb, var(--ohnix-surface) 72%, transparent);
+}
+
+.quotations-module-tabs .ant-tabs {
+  margin-bottom: -1px;
+}
+
+.quotations-module-tabs .ant-tabs-tab {
+  color: var(--ohnix-text-muted) !important;
+  font-weight: 600;
+}
+
+.quotations-module-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--ohnix-text-primary) !important;
+}
+
+.quotations-module-tabs .ant-tabs-ink-bar {
+  background: #29d8d5 !important;
+}
+
+.quotations-module-tabs .ant-tabs-nav::before {
+  border-bottom: 0 !important;
+}
+
 /* Unit Modal Tabs */
 .unit-modal-tabs .ant-tabs {
   color: var(--ohnix-text-primary);

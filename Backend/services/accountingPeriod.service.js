@@ -29,8 +29,10 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
     if (period.status === "closed") throw new ApiError(400, "Este periodo ya está cerrado.");
 
     const now = new Date();
-    if (period.year === now.getUTCFullYear() && period.month === now.getUTCMonth() + 1) {
-        throw new ApiError(400, "No se puede cerrar el periodo del mes en curso.");
+    const periodKey = period.year * 12 + period.month;
+    const currentPeriodKey = now.getUTCFullYear() * 12 + now.getUTCMonth() + 1;
+    if (periodKey >= currentPeriodKey) {
+        throw new ApiError(400, "Solo se pueden cerrar periodos de meses anteriores.");
     }
 
     const startDate = new Date(Date.UTC(period.year, period.month - 1, 1));

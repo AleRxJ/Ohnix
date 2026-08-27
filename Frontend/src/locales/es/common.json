@@ -16,7 +16,7 @@
     "orders": "Pedidos",
     "electronic_invoices_nav": "Documentos electrónicos",
     "purchase_support_documents_nav": "Documentos soporte",
-    "quotations_nav": "Cotizaciones de compra",
+    "quotations_nav": "Cotizaciones",
     "sales_quotations_nav": "Cotizaciones de venta",
     "fiscal_setup_nav": "Configuración DIAN",
     "purchases": "Compras",
@@ -1720,6 +1720,8 @@
   },
   "quotations": {
     "quotations": "Cotizaciones",
+    "purchase_tab": "De proveedores",
+    "sales_tab": "Para clientes",
     "manage_quotations_description": "Registra las cotizaciones de tus proveedores y conviértelas en una orden de compra cuando decidas cuál te conviene.",
     "search_by_quotation": "Buscar por número de cotización o proveedor",
     "all_statuses": "Todos los estados",

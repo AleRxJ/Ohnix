@@ -152,7 +152,6 @@ const RequireReportsAccess = requireModuleAccess("reports");
 const RequireProductsAccess = requireModuleAccess("products");
 const RequireOrdersAccess = requireModuleAccess("orders");
 const RequirePurchasesAccess = requireModuleAccess("purchases");
-const RequireSalesQuotationsAccess = requireModuleAccess("orders");
 const RequireCustomersAccess = requireModuleAccess("customers");
 const RequireSuppliersAccess = requireModuleAccess("suppliers");
 const RequireCategoriesAccess = requireModuleAccess("categories");
@@ -271,7 +270,7 @@ function App() {
                                 <Route path="purchase-support-documents" element={<SupportDocumentRoute><PurchaseSupportDocuments /></SupportDocumentRoute>} />
                                 <Route path="purchases" element={<RequirePurchasesAccess><Purchase /></RequirePurchasesAccess>} />
                                 <Route path="quotations" element={<RequirePurchasesAccess><Quotations /></RequirePurchasesAccess>} />
-                                <Route path="sales-quotations" element={<RequireSalesQuotationsAccess><SalesQuotations /></RequireSalesQuotationsAccess>} />
+                                <Route path="sales-quotations" element={<Navigate to="/quotations" replace />} />
                                 <Route path="customers" element={<RequireCustomersAccess><Customers /></RequireCustomersAccess>} />
                                 <Route path="suppliers" element={<RequireSuppliersAccess><Suppliers /></RequireSuppliersAccess>} />
                                 <Route path="categories" element={<RequireCategoriesAccess><Category /></RequireCategoriesAccess>} />
