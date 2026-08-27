@@ -21,7 +21,7 @@ import { pointOfSaleService } from "../../services/pointOfSaleService";
 // possible answer. Options are the actor's own scope only (inOwnScope) -
 // creating a customer/order/etc. at a location outside your own access
 // isn't something this field needs to support.
-const PointOfSaleField = ({ name = "pointOfSaleId" }) => {
+const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false }) => {
     const { t } = useI18n();
     const [options, setOptions] = useState(null); // null = still loading
 
@@ -48,6 +48,7 @@ const PointOfSaleField = ({ name = "pointOfSaleId" }) => {
                 className="rounded-lg auth-ohnix-input"
                 placeholder={t("pointOfSale.field_placeholder")}
                 suffixIcon={<ShopOutlined className="text-[var(--ohnix-text-dim)]" />}
+                disabled={disabled}
                 options={options.map((pos) => ({ value: pos.id, label: pos.name }))}
             />
         </Form.Item>

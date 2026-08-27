@@ -9,6 +9,7 @@ const mapQuotation = (quotation) => ({
     _id: quotation.id,
     quotation_no: quotation.quotationNo,
     status: quotation.status,
+    pointOfSaleId: quotation.pointOfSaleId,
     valid_until: quotation.validUntil,
     notes: quotation.notes,
     converted_purchase_id: quotation.convertedPurchaseId,

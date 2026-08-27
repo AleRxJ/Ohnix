@@ -75,6 +75,7 @@ const QuotationList = ({
         convertForm.setFieldsValue({
             purchase_no: generatePurchaseNo(),
             purchase_status: "pending",
+            pointOfSaleId: quotation.pointOfSaleId,
             supplier_id: quotation.supplier_id?._id || quotation.supplier_id,
             details: (quotation.details || []).map((d) => ({
                 product_id: d.product_id?._id || d.product_id,

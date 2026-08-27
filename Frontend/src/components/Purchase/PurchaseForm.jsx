@@ -18,6 +18,7 @@ import {
 import PurchaseFormItem from "./PurchaseFormItem";
 import useI18n from "../../hooks/useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
+import PointOfSaleField from "../common/PointOfSaleField";
 
 const { Option } = Select;
 
@@ -70,6 +71,7 @@ const PurchaseForm = ({
     const handleSubmit = (values) => {
         const purchaseData = {
             supplier_id: values.supplier_id,
+            pointOfSaleId: values.pointOfSaleId,
             purchase_no: values.purchase_no,
             purchase_status: values.purchase_status || "pending",
             details: values.details.map((detail) => ({
@@ -136,6 +138,9 @@ const PurchaseForm = ({
                     }
                 >
                     <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                            <PointOfSaleField disabled={fieldsLocked} />
+                        </Col>
                         <Col xs={24} sm={12}>
                             <Form.Item
                                 label={

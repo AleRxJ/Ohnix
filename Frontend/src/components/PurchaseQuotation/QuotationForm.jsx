@@ -3,6 +3,7 @@ import { Modal, Form, Input, Select, Row, Col, Divider, Button, Card, DatePicker
 import { PlusOutlined, FileTextOutlined, TagsOutlined } from "@ant-design/icons";
 import PurchaseFormItem from "../Purchase/PurchaseFormItem";
 import useI18n from "../../hooks/useI18n";
+import PointOfSaleField from "../common/PointOfSaleField";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -31,6 +32,7 @@ const QuotationForm = ({ visible, onCancel, onSubmit, suppliers, products, form,
     const handleSubmit = (values) => {
         onSubmit({
             supplier_id: values.supplier_id,
+            pointOfSaleId: values.pointOfSaleId,
             quotation_no: values.quotation_no,
             valid_until: values.valid_until ? values.valid_until.format("YYYY-MM-DD") : undefined,
             notes: values.notes,
@@ -81,6 +83,9 @@ const QuotationForm = ({ visible, onCancel, onSubmit, suppliers, products, form,
                     }
                 >
                     <Row gutter={16}>
+                        <Col xs={24} sm={12}>
+                            <PointOfSaleField />
+                        </Col>
                         <Col xs={24} sm={12}>
                             <Form.Item
                                 label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("quotations.quotation_number")}</span>}
