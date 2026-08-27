@@ -77,14 +77,14 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
             />
             <div
                 ref={panelRef}
-                className="absolute top-16 left-0 right-0 max-h-[calc(100vh-4rem)] overflow-hidden border-b border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-header)] shadow-2xl"
+                className="absolute top-16 left-0 right-0 flex h-[calc(100dvh-4rem)] max-h-[calc(100vh-4rem)] flex-col overflow-hidden border-b border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-header)] shadow-2xl"
             >
                 <div className="px-4 py-3 h-full flex flex-col gap-3">
                     <div className="flex items-center justify-end">
                         <ThemeToggle />
                     </div>
-                    <div className="flex-1 rounded-2xl overflow-hidden border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] shadow-inner">
-                        <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-[#29D8D5]/70 scrollbar-track-white/10 hover:scrollbar-thumb-[#44F3F0]">
+                    <div className="min-h-0 flex-1 rounded-2xl overflow-hidden border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] shadow-inner">
+                        <div className="h-full min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-[#29D8D5]/70 scrollbar-track-white/10 hover:scrollbar-thumb-[#44F3F0]">
                             {teamLoading ? (
                                 <div className="space-y-3 p-3">
                                     {Array.from({ length: 6 }).map((_, i) => (
