@@ -1792,6 +1792,10 @@
     "discount_type": "Tipo de descuento",
     "discount_percentage": "Porcentaje",
     "discount_fixed": "Valor fijo",
+    "general_discount_percentage": "Descuento general (%)",
+    "general_discount_fixed": "Descuento general (valor fijo)",
+    "product_discount": "Descuento por producto (%)",
+    "product_discount_hint": "Descuento aplicado únicamente a este producto.",
     "percentage_discount_hint": "Porcentaje aplicado al subtotal de la cotización.",
     "fixed_discount_hint": "Valor monetario fijo que se resta al subtotal.",
     "view_details": "Ver detalle",
@@ -1848,7 +1852,10 @@
     "subtotal": "Subtotal",
     "tax": "Impuestos",
     "accept": "Aceptar cotización",
-    "reject": "Rechazar cotización"
+    "reject": "Rechazar cotización",
+    "response_title": "¿Qué deseas hacer con esta propuesta?",
+    "response_hint": "Tu respuesta será enviada al equipo de Ohnix.",
+    "footer_note": "Propuesta comercial generada con Ohnix"
   },
   "suppliers": {
     "supplier": "Proveedor",

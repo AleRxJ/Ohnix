@@ -235,7 +235,7 @@ const SalesQuotations = () => {
                         <Form.Item noStyle shouldUpdate={(previous, current) => previous.discount_mode !== current.discount_mode}>
                             {({ getFieldValue }) => {
                                 const isFixed = getFieldValue("discount_mode") === "fixed";
-                                return <Form.Item label={isFixed ? t("sales_quotations.discount_fixed") : t("sales_quotations.discount_percentage")} name={isFixed ? "discount_value" : "discount_rate"} initialValue={0} extra={t(isFixed ? "sales_quotations.fixed_discount_hint" : "sales_quotations.percentage_discount_hint")}>
+                                return <Form.Item label={isFixed ? t("sales_quotations.general_discount_fixed") : t("sales_quotations.general_discount_percentage")} name={isFixed ? "discount_value" : "discount_rate"} initialValue={0} extra={t(isFixed ? "sales_quotations.fixed_discount_hint" : "sales_quotations.percentage_discount_hint")}>
                                     <InputNumber min={0} max={isFixed ? undefined : 100} prefix={isFixed ? currency.symbol : undefined} suffix={isFixed ? undefined : "%"} className="w-full" />
                                 </Form.Item>;
                             }}
@@ -256,7 +256,7 @@ const SalesQuotations = () => {
                                 <Form.Item {...restField} name={[name, "product_id"]} label={t("sales_quotations.product")} rules={[{ required: true, message: t("sales_quotations.product_required") }]}><Select showSearch optionFilterProp="label" options={products.map((product) => ({ value: product._id || product.id, label: `${product.product_name} · ${formatCurrency(product.selling_price)}` }))} onChange={(value) => { const product = products.find((item) => (item._id || item.id) === value); if (product) form.setFieldValue(["details", name, "unit_price"], product.selling_price); }} /></Form.Item>
                                 <Form.Item {...restField} name={[name, "quantity"]} label={t("common.quantity")} rules={[{ required: true }]}><InputNumber min={1} className="w-full" /></Form.Item>
                                 <Form.Item {...restField} name={[name, "unit_price"]} label={t("sales_quotations.unit_price")} rules={[{ required: true }]}><InputNumber min={0} className="w-full" /></Form.Item>
-                                <Form.Item {...restField} name={[name, "discount_rate"]} label={t("sales_quotations.discount")}><InputNumber min={0} max={100} suffix="%" className="w-full" /></Form.Item>
+                                <Form.Item {...restField} name={[name, "discount_rate"]} label={t("sales_quotations.product_discount")} extra={t("sales_quotations.product_discount_hint")}><InputNumber min={0} max={100} suffix="%" className="w-full" /></Form.Item>
                                 <Button danger type="text" onClick={() => remove(name)} className="self-end">{t("common.delete")}</Button>
                             </div>
                         ))}

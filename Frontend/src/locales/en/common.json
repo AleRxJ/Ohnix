@@ -1791,6 +1791,10 @@
     "discount_type": "Discount type",
     "discount_percentage": "Percentage",
     "discount_fixed": "Fixed amount",
+    "general_discount_percentage": "General discount (%)",
+    "general_discount_fixed": "General discount (fixed amount)",
+    "product_discount": "Product discount (%)",
+    "product_discount_hint": "Discount applied only to this product.",
     "percentage_discount_hint": "Percentage applied to the quotation subtotal.",
     "fixed_discount_hint": "A fixed monetary value subtracted from the subtotal.",
     "view_details": "View details",
@@ -1847,7 +1851,10 @@
     "subtotal": "Subtotal",
     "tax": "Tax",
     "accept": "Accept quotation",
-    "reject": "Reject quotation"
+    "reject": "Reject quotation",
+    "response_title": "What would you like to do with this proposal?",
+    "response_hint": "Your response will be sent to the Ohnix team.",
+    "footer_note": "Commercial proposal generated with Ohnix"
   },
   "suppliers": {
     "supplier": "Supplier",
