@@ -23,15 +23,17 @@ import PointsOfSaleTab from "../components/team/PointsOfSaleTab";
 import MemberOverview from "../components/team/MemberOverview";
 
 const StatTile = ({ icon, label, value, accent = "#29D8D5" }) => (
-    <div className="flex items-center gap-3 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.18)]">
+    <div className="flex items-center gap-3 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] p-3 sm:p-4 shadow-[0_16px_40px_rgba(0,0,0,0.18)] min-w-0">
         <div
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border"
             style={{ borderColor: `${accent}40`, background: `${accent}14`, color: accent }}
         >
             {icon}
         </div>
-        <div className="min-w-0">
-            <p className="m-0 text-2xl font-bold leading-tight text-[var(--ohnix-text-primary)]">{value}</p>
+        <div className="min-w-0 flex-1">
+            <p className="m-0 truncate text-xl sm:text-2xl font-bold leading-tight text-[var(--ohnix-text-primary)]" title={typeof value === "string" ? value : undefined}>
+                {value}
+            </p>
             <p className="m-0 truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ohnix-text-muted)]">{label}</p>
         </div>
     </div>

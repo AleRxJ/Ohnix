@@ -9,6 +9,7 @@ import useSubscription from "../../hooks/useSubscription";
 import { useTheme } from "../../context/ThemeContext";
 import ThemeToggle from "../common/ThemeToggle";
 import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
+import useScrollLock from "../../hooks/useScrollLock";
 
 const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 
@@ -43,6 +44,22 @@ const MobileMenu = ({ collapsed, currentPage, onClose }) => {
             document.removeEventListener("mousedown", handlePointerDown);
             document.removeEventListener("touchstart", handlePointerDown);
         };
+    }, [collapsed, onClose]);
+
+    // Lock body scroll while open - this one didn't lock scroll at all
+    // before, so the page behind it could still scroll while the menu was
+    // open, feeding into the resize-driven auto-close bug in
+    // DashboardLayout.jsx (a background scroll on mobile can trigger the
+    // browser chrome to hide/show and fire a resize event).
+    useScrollLock(!collapsed);
+
+    useEffect(() => {
+        if (collapsed) return;
+        const handleEscape = (e) => {
+            if (e.key === "Escape") onClose?.();
+        };
+        document.addEventListener("keydown", handleEscape);
+        return () => document.removeEventListener("keydown", handleEscape);
     }, [collapsed, onClose]);
 
     return (

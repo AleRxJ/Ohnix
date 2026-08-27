@@ -6,6 +6,19 @@ import * as journalEntryService from "../services/journalEntry.service.js";
 import * as accountingPeriodService from "../services/accountingPeriod.service.js";
 import * as financialStatementsService from "../services/financialStatements.service.js";
 
+// `to`/`as_of` always arrives as a plain "YYYY-MM-DD" string (every date
+// picker on the frontend sends dayjs().format("YYYY-MM-DD")), which
+// `new Date(...)` parses as UTC midnight - a raw `lte` against that would
+// silently exclude every entry from later that same day. This pushes the
+// boundary to the last instant of that date so "hasta hoy"/"a hoy" actually
+// includes today's own transactions, not just up to midnight this morning.
+const endOfDay = (dateString) => {
+    if (!dateString) return undefined;
+    const d = new Date(dateString);
+    d.setUTCHours(23, 59, 59, 999);
+    return d;
+};
+
 const mapChartAccount = (a) => ({
     _id: a.id,
     code: a.code,
@@ -68,7 +81,7 @@ export const listJournalEntries = asyncHandler(async (req, res) => {
     const entries = await journalEntryService.listJournalEntries({
         accountId: req.user.prismaId,
         startDate: from ? new Date(from) : undefined,
-        endDate: to ? new Date(to) : undefined,
+        endDate: endOfDay(to),
         sourceType: source_type || undefined,
         sourceId: source_id || undefined,
         periodId: period_id || undefined,
@@ -87,7 +100,7 @@ export const getAccountLedger = asyncHandler(async (req, res) => {
         accountId: req.user.prismaId,
         chartAccountId: req.params.id,
         startDate: from ? new Date(from) : undefined,
-        endDate: to ? new Date(to) : undefined,
+        endDate: endOfDay(to),
     });
     return res.status(200).json(new ApiResponse(200, {
         account: mapChartAccount({ id: ledger.account.id, code: ledger.account.code, name: ledger.account.name, accountType: ledger.account.account_type }),
@@ -115,7 +128,7 @@ export const getIncomeStatement = asyncHandler(async (req, res) => {
     const statement = await financialStatementsService.getIncomeStatement({
         accountId: req.user.prismaId,
         startDate: from ? new Date(from) : undefined,
-        endDate: to ? new Date(to) : undefined,
+        endDate: endOfDay(to),
     });
     return res.status(200).json(new ApiResponse(200, statement, "Income statement fetched successfully"));
 });
@@ -124,7 +137,7 @@ export const getBalanceSheet = asyncHandler(async (req, res) => {
     const { as_of } = req.query;
     const statement = await financialStatementsService.getBalanceSheet({
         accountId: req.user.prismaId,
-        asOfDate: as_of ? new Date(as_of) : new Date(),
+        asOfDate: as_of ? endOfDay(as_of) : new Date(),
     });
     return res.status(200).json(new ApiResponse(200, statement, "Balance sheet fetched successfully"));
 });
@@ -134,7 +147,7 @@ export const getTrialBalance = asyncHandler(async (req, res) => {
     const rows = await financialStatementsService.getTrialBalance({
         accountId: req.user.prismaId,
         startDate: from ? new Date(from) : undefined,
-        endDate: to ? new Date(to) : undefined,
+        endDate: endOfDay(to),
     });
     return res.status(200).json(new ApiResponse(200, rows, "Trial balance fetched successfully"));
 });

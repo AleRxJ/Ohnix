@@ -18,6 +18,7 @@ import {
     WalletOutlined,
     BookOutlined,
     SafetyCertificateOutlined,
+    TagsOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 
@@ -133,6 +134,12 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             moduleKey: "customers",
             icon: <TeamOutlined />,
             label: <Link to="/customers">{t("common.customers")}</Link>,
+        },
+        {
+            key: "quotations",
+            moduleKey: "purchases",
+            icon: <TagsOutlined />,
+            label: <Link to="/quotations">{t("common.quotations_nav")}</Link>,
         },
         {
             key: "purchases",

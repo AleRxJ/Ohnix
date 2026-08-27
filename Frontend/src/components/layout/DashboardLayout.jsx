@@ -29,6 +29,7 @@ const PAGE_TITLE_KEYS = {
     orders: "common.orders",
     customers: "common.customers",
     purchases: "common.purchases",
+    quotations: "common.quotations_nav",
     suppliers: "common.suppliers",
     categories: "common.categories",
     "electronic-invoices": "common.electronic_invoices_nav",
@@ -222,15 +223,29 @@ const DashboardLayout = () => {
     // access because the account lapsed is real for everyone, not a nudge.
     const canActOnBilling = isOwner || hasPermission("billing", "edit");
 
+    // Mobile browsers fire a `resize` event on things that have nothing to do
+    // with actually becoming "desktop-sized" - the address bar hiding/showing
+    // as the page scrolls, the on-screen keyboard opening, etc. `collapsed`
+    // doubles as "is the mobile menu open" (MobileMenu renders when
+    // `!collapsed`), so unconditionally forcing collapsed=true on every
+    // resize while width stayed under 768 meant: open the hamburger menu,
+    // then scroll (or rotate, or focus a field) - the very next resize event
+    // snapped it shut, even though the viewport never actually left mobile.
+    // Only force it closed on the actual desktop->mobile transition.
     useEffect(() => {
+        let wasMobile = window.innerWidth < 768;
+        setIsMobile(wasMobile);
+        if (wasMobile) setCollapsed(true);
+
         const checkScreenSize = () => {
-            setIsMobile(window.innerWidth < 768);
-            if (window.innerWidth < 768) {
+            const nowMobile = window.innerWidth < 768;
+            setIsMobile(nowMobile);
+            if (nowMobile && !wasMobile) {
                 setCollapsed(true);
             }
+            wasMobile = nowMobile;
         };
 
-        checkScreenSize();
         window.addEventListener("resize", checkScreenSize);
 
         return () => {

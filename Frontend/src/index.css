@@ -535,6 +535,65 @@ body {
   color: var(--ohnix-text-dim) !important;
 }
 
+/* Switch - first real usage of antd's <Switch> in the app was the physical-
+   characteristics form (ProductModal), which is exactly why ThemeToggle.jsx
+   avoided reusing an antd control: nothing here had ever given one a themed
+   skin before. Left at antd's own default, the unchecked track (a near-
+   black translucent gray) all but disappears against Dark's near-black
+   surfaces, and the checked track's default blue clashes with the app's
+   teal brand color everywhere else. */
+.ant-switch {
+  background: var(--ohnix-line-5) !important;
+  border: 1px solid var(--ohnix-line-6) !important;
+}
+.ant-switch:hover:not(.ant-switch-disabled) {
+  background: var(--ohnix-line-6) !important;
+}
+.ant-switch.ant-switch-checked {
+  background: #29d8d5 !important;
+  border-color: #29d8d5 !important;
+}
+.ant-switch.ant-switch-checked:hover:not(.ant-switch-disabled) {
+  background: #44f3f0 !important;
+  border-color: #44f3f0 !important;
+}
+.ant-switch .ant-switch-inner-checked,
+.ant-switch .ant-switch-inner-unchecked {
+  color: var(--ohnix-text-primary) !important;
+}
+.ant-switch.ant-switch-checked .ant-switch-inner-checked {
+  color: var(--ohnix-accent-contrast) !important;
+}
+.ant-switch.ant-switch-disabled {
+  opacity: 0.55 !important;
+}
+
+/* Collapse - same "never themed before" gap as Switch above (first used by
+   the physical-characteristics dispatch-package section). The ghost variant
+   drops antd's own border/background already, but the expand-icon arrow
+   still defaults to antd's near-black icon color, invisible against Dark's
+   near-black surfaces. Left unscoped (not just `.ant-collapse-ghost`) so any
+   other Collapse usage in the app inherits the same fix for free, matching
+   how the Select overrides above are unscoped too. */
+.ant-collapse {
+  background: transparent !important;
+  border-color: var(--ohnix-line-4) !important;
+}
+.ant-collapse > .ant-collapse-item {
+  border-color: var(--ohnix-line-4) !important;
+}
+.ant-collapse-header {
+  color: var(--ohnix-text-muted) !important;
+}
+.ant-collapse-header .ant-collapse-expand-icon {
+  color: var(--ohnix-text-dim) !important;
+}
+.ant-collapse-content {
+  background: transparent !important;
+  border-top-color: var(--ohnix-line-4) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
 .antd-custom-table .ant-table {
   background: transparent !important;
   color: var(--ohnix-text-soft) !important;

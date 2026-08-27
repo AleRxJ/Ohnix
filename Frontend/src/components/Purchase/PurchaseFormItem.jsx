@@ -7,7 +7,7 @@ import { getCurrencyInputProps } from "../../utils/currency";
 
 const { Option } = Select;
 
-const PurchaseFormItem = ({ products, onRemove, name, restField, locked, onProductChange }) => {
+const PurchaseFormItem = ({ products, onRemove, name, restField, locked, hideRemove, onProductChange }) => {
     const form = Form.useFormInstance();
     const { t } = useI18n();
     const { currency } = useCurrency();
@@ -24,16 +24,18 @@ const PurchaseFormItem = ({ products, onRemove, name, restField, locked, onProdu
 
     return (
         <div className="relative module-shell border border-[var(--ohnix-line-4)] rounded-2xl p-5 mb-4">
-            <Button
-                type="text"
-                danger
-                onClick={() => {
-                    onRemove();
-                    revalidateProductFields();
-                }}
-                className="absolute top-3 right-3 flex items-center justify-center h-8 w-8 rounded-lg hover:bg-red-500/10 z-10"
-                icon={<DeleteOutlined className="text-sm" />}
-            />
+            {!hideRemove && (
+                <Button
+                    type="text"
+                    danger
+                    onClick={() => {
+                        onRemove();
+                        revalidateProductFields();
+                    }}
+                    className="absolute top-3 right-3 flex items-center justify-center h-8 w-8 rounded-lg hover:bg-red-500/10 z-10"
+                    icon={<DeleteOutlined className="text-sm" />}
+                />
+            )}
 
             <div className="pr-10">
                 <Row gutter={[16, 16]}>

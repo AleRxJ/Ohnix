@@ -83,7 +83,7 @@ const findPurchaseByAnyId = async (id) =>
 
 class PurchaseService {
     async createPurchase(purchaseData, userId, userRole, pointOfSaleId) {
-        const { supplier_id, purchase_no, purchase_status, details, is_tutorial_data } = purchaseData;
+        const { supplier_id, purchase_no, purchase_status, details, is_tutorial_data, source_quotation_id } = purchaseData;
 
         if (
             !supplier_id ||
@@ -177,6 +177,29 @@ class PurchaseService {
                         updatedById: userId,
                     },
                 });
+
+                // Approving a quotation converts it into this exact Purchase,
+                // inside the same transaction - the atomic claim (status must
+                // still be "received") makes double-conversion impossible
+                // even if two tabs try it at once: whichever request loses
+                // the race gets 0 affected rows and the whole transaction
+                // (including the Purchase row just created above) rolls
+                // back, so no orphaned/duplicate Purchase is ever left behind.
+                if (source_quotation_id) {
+                    const linked = await tx.purchaseQuotation.updateMany({
+                        where: { id: source_quotation_id, status: "received" },
+                        data: { status: "approved", convertedPurchaseId: createdPurchase.id, updatedById: userId },
+                    });
+                    if (linked.count === 0) {
+                        throw new ApiError(
+                            409,
+                            "This quotation was already converted or is no longer available.",
+                            [],
+                            "",
+                            "quotation_already_converted"
+                        );
+                    }
+                }
 
                 let purchaseTotal = 0;
                 let purchaseTaxAmount = 0;

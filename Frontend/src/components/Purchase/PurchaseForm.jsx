@@ -38,10 +38,19 @@ const PurchaseForm = ({
     form,
     initialValues,
     submitting,
+    // Set when this modal opens as "convert quotation -> purchase" (see
+    // QuotationList.jsx). Supplier and line items came from an already-
+    // approved supplier quote, so they're pre-filled and locked here -
+    // changing them would silently disconnect the resulting Purchase from
+    // the prices that were actually quoted and compared. Only the purchase
+    // number/status stay editable, same as a normal purchase.
+    initialQuotation,
 }) => {
     const { t } = useI18n();
     const { isOpen: isTutorialActive, effectiveSteps, stepIndex } = useInventoryTour();
     const isTourCreateStep = isTutorialActive && effectiveSteps[stepIndex]?.id === "create-purchase";
+    const isConvertingQuotation = Boolean(initialQuotation);
+    const fieldsLocked = isTourCreateStep || isConvertingQuotation;
 
     const handleProductChange = (productId, fieldName) => {
         const product = products.find((p) => p._id === productId);
@@ -68,6 +77,7 @@ const PurchaseForm = ({
                 quantity: detail.quantity,
                 unitcost: detail.unitcost,
             })),
+            ...(isConvertingQuotation && { source_quotation_id: initialQuotation.id }),
         };
         onSubmit(purchaseData);
     };
@@ -79,7 +89,9 @@ const PurchaseForm = ({
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
                         <ShoppingCartOutlined className="text-[#44F3F0]" />
                     </div>
-                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">{t("purchases.add_new_purchase")}</span>
+                    <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                        {isConvertingQuotation ? t("quotations.convert_modal_title") : t("purchases.add_new_purchase")}
+                    </span>
                 </div>
             }
             open={visible}
@@ -153,7 +165,13 @@ const PurchaseForm = ({
                                 }
                                 name="supplier_id"
                                 rules={[{ required: true, message: t("purchases.select_supplier_message") }]}
-                                extra={isTourCreateStep ? t("inventory_tour.practice_locked_hint") : undefined}
+                                extra={
+                                    isTourCreateStep
+                                        ? t("inventory_tour.practice_locked_hint")
+                                        : isConvertingQuotation
+                                          ? t("quotations.convert_supplier_locked_hint")
+                                          : undefined
+                                }
                             >
                                 <Select
                                     placeholder={t("purchases.select_supplier")}
@@ -161,7 +179,7 @@ const PurchaseForm = ({
                                     className="w-full auth-ohnix-input"
                                     showSearch
                                     optionFilterProp="children"
-                                    disabled={isTourCreateStep}
+                                    disabled={fieldsLocked}
                                 >
                                     {suppliers.map((supplier) => (
                                         <Option key={supplier._id} value={supplier._id}>
@@ -202,16 +220,21 @@ const PurchaseForm = ({
                                 <h4 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">
                                     {t("purchases.purchase_details")}
                                 </h4>
-                                <Button
-                                    type="primary"
-                                    onClick={() => add()}
-                                    icon={<PlusOutlined />}
-                                    size="middle"
-                                    className="font-medium"
-                                >
-                                    {t("common.add_item")}
-                                </Button>
+                                {!isConvertingQuotation && (
+                                    <Button
+                                        type="primary"
+                                        onClick={() => add()}
+                                        icon={<PlusOutlined />}
+                                        size="middle"
+                                        className="font-medium"
+                                    >
+                                        {t("common.add_item")}
+                                    </Button>
+                                )}
                             </div>
+                            {isConvertingQuotation && (
+                                <p className="mb-4 text-xs text-[var(--ohnix-text-muted)]">{t("quotations.convert_lines_locked_hint")}</p>
+                            )}
                             <div className="space-y-4">
                                 {fields.map(({ key, name, ...restField }) => (
                                     <PurchaseFormItem
@@ -220,7 +243,8 @@ const PurchaseForm = ({
                                         onRemove={() => remove(name)}
                                         name={name}
                                         restField={restField}
-                                        locked={isTourCreateStep && name === 0}
+                                        locked={fieldsLocked}
+                                        hideRemove={isConvertingQuotation}
                                         onProductChange={handleProductChange}
                                     />
                                 ))}
@@ -245,7 +269,7 @@ const PurchaseForm = ({
                         loading={submitting}
                         className="h-10 px-6 rounded-md bg-gradient-to-r from-[#29D8D5] to-[#44F3F0] border-0 text-[#021314] font-medium transition-all duration-200"
                     >
-                        {t("purchases.create_purchase")}
+                        {isConvertingQuotation ? t("quotations.confirm_convert") : t("purchases.create_purchase")}
                     </Button>
                 </div>
             </Form>
