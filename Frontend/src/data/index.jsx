@@ -18,6 +18,7 @@ import {
     WalletOutlined,
     BookOutlined,
     SafetyCertificateOutlined,
+    ExperimentOutlined,
     TagsOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
@@ -236,6 +237,11 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             key: "admin-firmapass-validations",
             icon: <SafetyCertificateOutlined />,
             label: <Link to="/admin/firmapass-validations">{t("common.admin_firmapass_validations")}</Link>,
+        });
+        items.push({
+            key: "admin-dian-test-matrix",
+            icon: <ExperimentOutlined />,
+            label: <Link to="/admin/dian-test-matrix">{t("common.admin_dian_test_matrix")}</Link>,
         });
     }
 

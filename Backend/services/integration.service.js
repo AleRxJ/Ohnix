@@ -131,17 +131,20 @@ export const publishProduct = async (connectionId, accountId, productId) => {
 
         await upsertExternalReference(connectionId, "product", product.id, result.externalId, { externalUrl: result.externalUrl });
 
+        // inventoryMeta's per-entry shape is connector-specific and opaque
+        // here on purpose (see base.connector.js#pushProduct) - it's stored
+        // verbatim and handed back unchanged to pushInventory below.
         for (const variant of variants) {
             const externalVariantId = result.variantExternalIds?.[variant.id];
             if (!externalVariantId) continue;
             await upsertExternalReference(connectionId, "variant", variant.id, externalVariantId, {
-                metadata: { inventoryItemId: result.inventoryItemIds?.[variant.id] },
+                metadata: result.inventoryMeta?.[variant.id] || null,
             });
         }
-        if (variants.length === 0 && result.inventoryItemIds?.default) {
+        if (variants.length === 0 && result.inventoryMeta?.default) {
             await upsertExternalReference(connectionId, "product", product.id, result.externalId, {
                 externalUrl: result.externalUrl,
-                metadata: { inventoryItemId: result.inventoryItemIds.default },
+                metadata: result.inventoryMeta.default,
             });
         }
 
@@ -191,8 +194,8 @@ export const syncInventory = async (connectionId, accountId, { productId, varian
     try {
         await connector.pushInventory(withCredentials(connection), {
             variantExternalId: ref.externalId,
-            inventoryItemId: ref.metadata?.inventoryItemId,
             quantity,
+            ...(ref.metadata || {}),
         });
         await prisma.externalReference.update({ where: { id: ref.id }, data: { lastSyncedAt: new Date(), lastError: null } });
         await logSync(connection.id, { direction: "outbound", entityType, action: "inventory_sync", entityId, externalId: ref.externalId, status: "success", responsePayload: { quantity } });

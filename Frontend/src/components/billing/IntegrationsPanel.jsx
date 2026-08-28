@@ -20,6 +20,30 @@ const darkModalStyles = {
 
 const STATUS_COLOR = { connected: "green", error: "red", disconnected: "default" };
 
+const PROVIDER_OPTIONS = [
+    { label: "Shopify", value: "shopify" },
+    { label: "WooCommerce (WordPress)", value: "woocommerce" },
+    { label: "Mercado Libre", value: "mercadolibre", disabled: true },
+];
+
+const buildConnectPayload = (provider, values) => {
+    if (provider === "woocommerce") {
+        return {
+            provider,
+            name: values.name,
+            config: { siteUrl: values.site_url.trim() },
+            credentials: { consumerKey: values.consumer_key.trim(), consumerSecret: values.consumer_secret.trim() },
+        };
+    }
+    // shopify
+    return {
+        provider,
+        name: values.name,
+        config: { shopDomain: values.shop_domain.trim() },
+        credentials: { accessToken: values.access_token.trim(), webhookSecret: values.webhook_secret?.trim() },
+    };
+};
+
 const IntegrationsPanel = () => {
     const { can, loading: subscriptionLoading } = useSubscription();
     const { t } = useI18n();
@@ -31,6 +55,7 @@ const IntegrationsPanel = () => {
     const [logsTarget, setLogsTarget] = useState(null);
     const [logs, setLogs] = useState([]);
     const [form] = Form.useForm();
+    const selectedProvider = Form.useWatch("provider", form);
 
     const canUseIntegrations = can("apiAccess");
 
@@ -53,12 +78,7 @@ const IntegrationsPanel = () => {
     const handleConnect = async (values) => {
         try {
             setConnecting(true);
-            const created = await integrationService.create({
-                provider: "shopify",
-                name: values.name,
-                config: { shopDomain: values.shop_domain.trim() },
-                credentials: { accessToken: values.access_token.trim(), webhookSecret: values.webhook_secret?.trim() },
-            });
+            const created = await integrationService.create(buildConnectPayload(values.provider, values));
             toast.success(t("billing.integrations.created"));
             form.resetFields();
             setConnectOpen(false);
@@ -188,7 +208,7 @@ const IntegrationsPanel = () => {
                                 }
                                 description={
                                     <span className="text-xs text-[var(--ohnix-text-muted)]">
-                                        {item.provider}
+                                        {PROVIDER_OPTIONS.find((p) => p.value === item.provider)?.label || item.provider}
                                         {" · "}
                                         {item.last_synced_at
                                             ? t("billing.integrations.last_synced", { date: new Date(item.last_synced_at).toLocaleString() })
@@ -222,29 +242,69 @@ const IntegrationsPanel = () => {
             >
                 <Form form={form} layout="vertical" onFinish={handleConnect} initialValues={{ provider: "shopify" }}>
                     <Form.Item name="provider" label={t("billing.integrations.provider_label")}>
-                        <Select disabled options={[{ label: "Shopify", value: "shopify" }]} />
+                        <Select
+                            options={PROVIDER_OPTIONS}
+                            optionRender={(option) => (
+                                <div className="flex items-center justify-between gap-2">
+                                    <span>{option.data.label}</span>
+                                    {option.data.disabled && (
+                                        <Tag color="default">{t("billing.integrations.coming_soon")}</Tag>
+                                    )}
+                                </div>
+                            )}
+                        />
                     </Form.Item>
                     <Form.Item name="name" label={t("billing.integrations.name_label")} rules={[{ required: true, message: t("validation.required_field") }]}>
                         <Input className="auth-ohnix-input" placeholder={t("billing.integrations.name_placeholder")} maxLength={60} />
                     </Form.Item>
-                    <Form.Item
-                        name="shop_domain"
-                        label={t("billing.integrations.shop_domain_label")}
-                        rules={[{ required: true, message: t("validation.required_field") }]}
-                    >
-                        <Input className="auth-ohnix-input" placeholder={t("billing.integrations.shop_domain_placeholder")} />
-                    </Form.Item>
-                    <Form.Item
-                        name="access_token"
-                        label={t("billing.integrations.access_token_label")}
-                        extra={t("billing.integrations.access_token_hint")}
-                        rules={[{ required: true, message: t("validation.required_field") }]}
-                    >
-                        <Input.Password className="auth-ohnix-input" placeholder={t("billing.integrations.access_token_placeholder")} />
-                    </Form.Item>
-                    <Form.Item name="webhook_secret" label={t("billing.integrations.webhook_secret_label")}>
-                        <Input.Password className="auth-ohnix-input" placeholder={t("billing.integrations.webhook_secret_placeholder")} />
-                    </Form.Item>
+
+                    {selectedProvider === "woocommerce" ? (
+                        <>
+                            <Form.Item
+                                name="site_url"
+                                label={t("billing.integrations.woo_site_url_label")}
+                                rules={[{ required: true, message: t("validation.required_field") }]}
+                            >
+                                <Input className="auth-ohnix-input" placeholder={t("billing.integrations.woo_site_url_placeholder")} />
+                            </Form.Item>
+                            <Form.Item
+                                name="consumer_key"
+                                label={t("billing.integrations.woo_consumer_key_label")}
+                                extra={t("billing.integrations.woo_credentials_hint")}
+                                rules={[{ required: true, message: t("validation.required_field") }]}
+                            >
+                                <Input.Password className="auth-ohnix-input" placeholder={t("billing.integrations.woo_consumer_key_placeholder")} />
+                            </Form.Item>
+                            <Form.Item
+                                name="consumer_secret"
+                                label={t("billing.integrations.woo_consumer_secret_label")}
+                                rules={[{ required: true, message: t("validation.required_field") }]}
+                            >
+                                <Input.Password className="auth-ohnix-input" placeholder={t("billing.integrations.woo_consumer_secret_placeholder")} />
+                            </Form.Item>
+                        </>
+                    ) : (
+                        <>
+                            <Form.Item
+                                name="shop_domain"
+                                label={t("billing.integrations.shop_domain_label")}
+                                rules={[{ required: true, message: t("validation.required_field") }]}
+                            >
+                                <Input className="auth-ohnix-input" placeholder={t("billing.integrations.shop_domain_placeholder")} />
+                            </Form.Item>
+                            <Form.Item
+                                name="access_token"
+                                label={t("billing.integrations.access_token_label")}
+                                extra={t("billing.integrations.access_token_hint")}
+                                rules={[{ required: true, message: t("validation.required_field") }]}
+                            >
+                                <Input.Password className="auth-ohnix-input" placeholder={t("billing.integrations.access_token_placeholder")} />
+                            </Form.Item>
+                            <Form.Item name="webhook_secret" label={t("billing.integrations.webhook_secret_label")}>
+                                <Input.Password className="auth-ohnix-input" placeholder={t("billing.integrations.webhook_secret_placeholder")} />
+                            </Form.Item>
+                        </>
+                    )}
                 </Form>
             </Modal>
 

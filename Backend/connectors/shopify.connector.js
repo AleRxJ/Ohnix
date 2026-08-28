@@ -106,18 +106,18 @@ const pushProduct = async (connection, { product, variants, externalId }) => {
 
     const shopifyProduct = data.product;
     const variantExternalIds = {};
-    const inventoryItemIds = {};
+    const inventoryMeta = {};
     shopifyProduct.variants.forEach((v, i) => {
         const key = variants[i]?.id || "default";
         variantExternalIds[key] = String(v.id);
-        inventoryItemIds[key] = String(v.inventory_item_id);
+        inventoryMeta[key] = { inventoryItemId: String(v.inventory_item_id) };
     });
 
     return {
         externalId: String(shopifyProduct.id),
         externalUrl: `https://${connection.config.shopDomain.replace(".myshopify.com", "")}.myshopify.com/admin/products/${shopifyProduct.id}`,
         variantExternalIds,
-        inventoryItemIds,
+        inventoryMeta,
     };
 };
 

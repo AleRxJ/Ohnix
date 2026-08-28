@@ -24,10 +24,21 @@
 // @property {(connection, callbackBaseUrl) => Promise<void>} registerWebhooks
 //   Subscribes the channel's own webhooks (order created/updated/cancelled,
 //   etc.) to point back at Ohnix's receiver for this connection.
-// @property {(connection, {product, variants}) => Promise<{externalId, externalUrl, variantExternalIds: Record<string,string>, inventoryItemIds: Record<string,string>}>} pushProduct
+// @property {(connection, {product, variants}) => Promise<{externalId, externalUrl, variantExternalIds: Record<string,string>, inventoryMeta: Record<string, {inventoryItemId: string, [extra: string]: any}>}>} pushProduct
 //   Creates or updates the product (and its variants) on the channel.
-// @property {(connection, {variantExternalId, inventoryItemId, quantity}) => Promise<void>} pushInventory
-//   Sets available quantity for one already-published variant.
+//   inventoryMeta is keyed the same way as variantExternalIds (variant id,
+//   or "default" for a variant-less product) - its per-entry object is
+//   opaque to the caller (integration.service.js) and stored verbatim as
+//   ExternalReference.metadata, then handed back unchanged to pushInventory
+//   below. This is deliberately how a connector carries whatever extra
+//   handle it needs beyond the channel's own product/variant id (Shopify's
+//   inventory_item_id, WooCommerce's parent product id for a variation)
+//   without the core ever needing to know which fields exist for which
+//   provider.
+// @property {(connection, {variantExternalId, quantity, ...inventoryMeta}) => Promise<void>} pushInventory
+//   Sets available quantity for one already-published variant. Receives
+//   every field from that variant's stored inventoryMeta spread into the
+//   options object, plus variantExternalId/quantity.
 // @property {(rawBody: Buffer, headers: Record<string,string>, connection) => boolean} verifyWebhookSignature
 //   Confirms an inbound webhook really came from the channel.
 // @property {(payload: any) => {externalOrderId: string, status: string, customer: object, lineItems: Array<object>, currency: string, totals: object}} mapInboundOrder

@@ -255,6 +255,22 @@ export const getItcycleDianReadiness = async ({ companyId }) => {
     });
 };
 
+// Resolves the real DIAN verdict for a document an async send (SendTestSetAsync)
+// left in itcycle-api-dian's intermediate "SENT" status - see that repo's
+// documentSend.service.ts#computeSentStatusFields and
+// admin.service.ts#refreshDocumentStatus for why this exists. `companyId`
+// here is itcycle's OWN company id (Company.itcycleCompanyId), matching
+// every other admin-* function in this file. Safe to call repeatedly -
+// already-terminal documents are returned unchanged, no DIAN call made.
+export const refreshItcycleDocumentStatus = async ({ companyId, documentType, id }) => {
+    requireAdminConfigured();
+    return request({
+        method: "POST",
+        path: `/api/v1/admin/companies/${companyId}/documents/${documentType}/${id}/refresh-status`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
 // ---------------------------------------------------------------------------
 // Documents (per-company API key - see Company.itcycleApiKeyCiphertext).
 // ---------------------------------------------------------------------------
@@ -279,11 +295,41 @@ export const createItcycleCreditNote = async ({ apiKey, internalReference, invoi
     });
 };
 
+// Mirrors createItcycleCreditNote exactly - itcycle-api-dian's debit-note
+// endpoint takes the same body shape (invoiceId + document + discrepancyResponse).
+export const createItcycleDebitNote = async ({ apiKey, internalReference, invoiceId, document, discrepancyResponse, send }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "POST",
+        path: "/api/v1/documents/debit-notes",
+        body: { internalReference, invoiceId, document, discrepancyResponse, send },
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
 export const getItcycleInvoiceStatus = async ({ apiKey, id }) => {
     if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
     return request({
         method: "GET",
         path: `/api/v1/documents/invoices/${id}`,
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
+export const getItcycleCreditNoteStatus = async ({ apiKey, id }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "GET",
+        path: `/api/v1/documents/credit-notes/${id}`,
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
+export const getItcycleDebitNoteStatus = async ({ apiKey, id }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "GET",
+        path: `/api/v1/documents/debit-notes/${id}`,
         authHeader: companyAuthHeader(apiKey),
     });
 };

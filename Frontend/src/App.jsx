@@ -57,6 +57,7 @@ const Accounting = lazy(() => import("./pages/Accounting"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 const AdminFirmaPassValidations = lazy(() => import("./pages/AdminFirmaPassValidations"));
+const AdminDianTestMatrix = lazy(() => import("./pages/AdminDianTestMatrix"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
 const EpaycoResponseRedirect = lazy(() => import("./pages/EpaycoResponseRedirect"));
@@ -287,6 +288,7 @@ function App() {
                                 <Route path="admin/management" element={<AdminManagement />} />
                                 <Route path="admin/subscriptions" element={<AdminSubscriptions />} />
                                 <Route path="admin/firmapass-validations" element={<AdminFirmaPassValidations />} />
+                                <Route path="admin/dian-test-matrix" element={<AdminDianTestMatrix />} />
                             </Route>
 
                             {/* catch all - uses antd (Result/Button), stays inside AntdRoutesLayout */}

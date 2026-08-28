@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -31,9 +32,23 @@ export const postIntegration = asyncHandler(async (req, res, next) => {
     if (provider === "shopify" && (!config?.shopDomain || !credentials?.accessToken)) {
         return next(new ApiError(400, "config.shopDomain and credentials.accessToken are required for a Shopify connection"));
     }
+    if (provider === "woocommerce" && (!config?.siteUrl || !credentials?.consumerKey || !credentials?.consumerSecret)) {
+        return next(
+            new ApiError(400, "config.siteUrl, credentials.consumerKey and credentials.consumerSecret are required for a WooCommerce connection")
+        );
+    }
+
+    // WooCommerce lets the webhook creator choose the signing secret at
+    // registration time (unlike Shopify, which verifies against a secret
+    // that already exists on the merchant's app) - so Ohnix generates one
+    // itself instead of asking the user to invent/find one.
+    const resolvedCredentials =
+        provider === "woocommerce" && !credentials?.webhookSecret
+            ? { ...credentials, webhookSecret: `wc_whsec_${crypto.randomBytes(24).toString("hex")}` }
+            : credentials;
 
     try {
-        const connection = await createConnection(req.user.prismaId, { provider, name, credentials, config });
+        const connection = await createConnection(req.user.prismaId, { provider, name, credentials: resolvedCredentials, config });
         return res.status(201).json(new ApiResponse(201, mapConnection(connection), "Integration created. Test the connection to activate it."));
     } catch (error) {
         if (error instanceof ApiError) return next(error);

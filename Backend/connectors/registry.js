@@ -1,4 +1,5 @@
 import { shopifyConnector } from "./shopify.connector.js";
+import { woocommerceConnector } from "./woocommerce.connector.js";
 import { ApiError } from "../utils/ApiError.js";
 
 // provider (IntegrationProvider enum value) -> Connector implementation
@@ -8,6 +9,7 @@ import { ApiError } from "../utils/ApiError.js";
 // OUT to, so it never goes through this registry.
 const CONNECTORS = {
     shopify: shopifyConnector,
+    woocommerce: woocommerceConnector,
 };
 
 export const getConnector = (provider) => {

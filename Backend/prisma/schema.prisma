@@ -41,6 +41,7 @@ enum ProductStatus {
 
 enum IntegrationProvider {
   shopify
+  woocommerce
   custom_api
 }
 
@@ -285,6 +286,8 @@ model User {
   adminAuditLogsPerformed AdminAuditLog[] @relation("AdminAuditLogAdmin")
   adminAuditLogsReceived  AdminAuditLog[] @relation("AdminAuditLogTarget")
 
+  dianTestMatrixRunsRequested DianTestMatrixRun[]
+
   @@map("users")
 }
 
@@ -385,6 +388,7 @@ model Company {
   electronicInvoices       ElectronicInvoice[]
   purchaseSupportDocuments PurchaseSupportDocument[]
   apiKeys                  ApiKey[]
+  dianTestMatrixRuns       DianTestMatrixRun[]
 
   @@map("companies")
 }
@@ -2119,4 +2123,95 @@ model FirmaPassValidationAlert {
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@map("firmapass_validation_alerts")
+}
+
+enum DianTestMatrixRunStatus {
+  pending
+  running
+  completed
+  failed
+  cancelled
+}
+
+enum DianTestMatrixDocumentType {
+  invoice
+  creditNote
+  debitNote
+}
+
+enum DianTestMatrixDocumentStatus {
+  pending
+  sending
+  sent
+  accepted
+  rejected
+  error
+}
+
+/// One admin-triggered run of the DIAN habilitación "set de pruebas" for one
+/// company already provisioned with itcycle-api-dian (software propio - see
+/// ElectronicInvoicingSettings.jsx's software step). `testSetId` is captured
+/// per-run rather than on Company since it's only relevant transiently
+/// during habilitación and never reused once the company moves to
+/// PRODUCTION. See Backend/services/dianTestMatrix.service.js for the
+/// orchestration this drives.
+model DianTestMatrixRun {
+  id                String                  @id @default(cuid())
+  companyId         String                  @map("company_id")
+  testSetId         String                  @map("test_set_id")
+  status            DianTestMatrixRunStatus @default(pending)
+  invoiceTarget     Int                     @default(30) @map("invoice_target")
+  creditNoteTarget  Int                     @default(10) @map("credit_note_target")
+  debitNoteTarget   Int                     @default(10) @map("debit_note_target")
+  passResult        Boolean?                @map("pass_result")
+  // Checked by the worker between documents (never mid-flight on one) so an
+  // admin can stop a run started against the wrong company/testSetId
+  // without waiting out the full 50-document poll budget.
+  cancelRequested   Boolean                 @default(false) @map("cancel_requested")
+  errorMessage      String?                 @map("error_message") @db.Text
+  requestedByUserId String                  @map("requested_by_user_id")
+  startedAt         DateTime?               @map("started_at")
+  finishedAt        DateTime?               @map("finished_at")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  company     Company                  @relation(fields: [companyId], references: [id])
+  requestedBy User                     @relation(fields: [requestedByUserId], references: [id])
+  documents   DianTestMatrixDocument[]
+
+  @@index([companyId, createdAt])
+  @@index([companyId, status])
+  @@map("dian_test_matrix_runs")
+}
+
+/// One synthetic document (factura/nota crédito/nota débito) submitted as
+/// part of a DianTestMatrixRun. `referenceInvoiceSequence` links a note back
+/// to the invoice (by its `sequence` within the same run) it corrects - notes
+/// reuse any already-ACCEPTED invoice from the run, not necessarily distinct
+/// ones. `externalId` is itcycle-api-dian's own Invoice/CreditNote/DebitNote
+/// id, needed to call refreshItcycleDocumentStatus.
+model DianTestMatrixDocument {
+  id                       String                       @id @default(cuid())
+  runId                    String                       @map("run_id")
+  sequence                 Int
+  documentType             DianTestMatrixDocumentType   @map("document_type")
+  referenceInvoiceSequence Int?                         @map("reference_invoice_sequence")
+  internalReference        String                       @unique @map("internal_reference")
+  externalId               String?                      @map("external_id")
+  status                   DianTestMatrixDocumentStatus @default(pending)
+  cufe                     String?
+  statusDescription        String?                      @map("status_description") @db.Text
+  errorMessage             String?                      @map("error_message") @db.Text
+  attempts                 Int                          @default(0)
+  sentAt                   DateTime?                    @map("sent_at")
+  resolvedAt               DateTime?                    @map("resolved_at")
+  createdAt                DateTime                     @default(now()) @map("created_at")
+  updatedAt                DateTime                     @updatedAt @map("updated_at")
+
+  run DianTestMatrixRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, sequence])
+  @@index([runId, status])
+  @@index([runId, documentType])
+  @@map("dian_test_matrix_documents")
 }

@@ -24,6 +24,13 @@ Es una conexión entre Ohnix y tu tienda online. Una vez conectada, Ohnix puede:
 
 Ohnix es siempre la fuente de verdad del **catálogo** (nombre, precio, inventario) — un cambio que hagas directamente en tu tienda (sin pasar por Ohnix) no se refleja de vuelta. Tu tienda es la fuente del **pedido en sí** una vez que ocurre la venta.
 
+## Plataformas soportadas hoy
+
+- **Shopify** — conector completo (productos, variantes, inventario, pedidos).
+- **WooCommerce (WordPress)** — conector completo (productos, variantes, inventario, pedidos).
+- **Mercado Libre** — próximamente.
+- **Tu propio sistema** — vía la [API pública de Ohnix](README.md), sin depender de un conector predefinido.
+
 ## Cómo conectar (Shopify)
 
 1. En Ohnix, ve a **Facturación → Integraciones → Conectar tienda**.
@@ -33,6 +40,16 @@ Ohnix es siempre la fuente de verdad del **catálogo** (nombre, precio, inventar
 5. En la misma pantalla de tu app en Shopify, copia también el **API secret key** (empieza con `shpss_...` o similar) — lo necesitas para que Ohnix pueda verificar los pedidos que Shopify le envíe.
 6. Vuelve a Ohnix y pega el dominio de tu tienda (`tu-tienda.myshopify.com`), el access token y el API secret key.
 7. Haz clic en **Probar conexión** — Ohnix confirma que las credenciales funcionan y registra automáticamente los eventos de pedidos que necesita escuchar.
+
+## Cómo conectar (WooCommerce)
+
+1. En Ohnix, ve a **Facturación → Integraciones → Conectar tienda** y elige **WooCommerce (WordPress)**.
+2. En tu panel de WordPress: **WooCommerce → Ajustes → Avanzado → API REST → Añadir clave**. Dale un nombre (ej. "Ohnix") y permisos de **Lectura/Escritura**.
+3. WooCommerce te mostrará un **Consumer Key** (`ck_...`) y un **Consumer Secret** (`cs_...`) — cópialos, solo se muestran una vez.
+4. Vuelve a Ohnix y pega la URL de tu sitio (`https://mi-tienda.com`), el Consumer Key y el Consumer Secret. No necesitas generar ningún secreto de webhook — Ohnix lo crea automáticamente.
+5. Haz clic en **Probar conexión** — Ohnix confirma que las credenciales funcionan y registra los webhooks de pedidos (`order.created`, `order.updated`, `order.deleted`) directamente en tu WooCommerce.
+
+> Nota: la sincronización de inventario para variaciones de producto en WooCommerce (ej. Camiseta Negra/M) está limitada hoy a productos simples (sin variantes) — sincronizar el stock de una variación específica es un fast-follow.
 
 ## Publicar productos
 

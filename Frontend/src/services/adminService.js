@@ -78,6 +78,33 @@ export const adminService = {
         return response.data;
     },
 
+    // Runs the DIAN habilitación "set de pruebas" (30 facturas, 10 notas
+    // débito, 10 notas crédito) for a company already provisioned with
+    // itcycle-api-dian - see Backend/services/dianTestMatrix.service.js.
+    // Admin-only: this is the "onboarding asistido" step a client can't do
+    // themselves.
+    async startDianTestMatrixRun({ companyId, testSetId }) {
+        const response = await api.post("/admin/dian-test-matrix/runs", { companyId, testSetId });
+        return response.data;
+    },
+
+    async getDianTestMatrixRun(runId) {
+        const response = await api.get(`/admin/dian-test-matrix/runs/${runId}`);
+        return response.data;
+    },
+
+    async listDianTestMatrixRuns({ companyId } = {}) {
+        const response = await api.get("/admin/dian-test-matrix/runs", {
+            params: companyId ? { companyId } : undefined,
+        });
+        return response.data;
+    },
+
+    async cancelDianTestMatrixRun(runId) {
+        const response = await api.post(`/admin/dian-test-matrix/runs/${runId}/cancel`);
+        return response.data;
+    },
+
     // Colombia VAT config (general rate, ET art. 437 UVT threshold, DIAN's
     // yearly UVT peso value) - see Backend/utils/systemSettings.js. These
     // change by government decree, not by a code deploy, so an admin edits
