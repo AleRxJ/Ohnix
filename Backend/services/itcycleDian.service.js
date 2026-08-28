@@ -172,12 +172,14 @@ export const createItcycleApiKey = async ({ companyId, label }) => {
 
 // Alliance-wide (not scoped to a companyId - matching a discovered
 // validation to an Ohnix company is a human/admin judgment call by its
-// `nombre` label, not an automated lookup - FirmaPass exposes no email or
-// other identifying field on a validation). Admin-only.
-export const listItcycleFirmaPassValidations = async ({ perPage } = {}) => {
+// `nombre` label - unless a real purchase set `owner_email`/`order_number`,
+// in which case `orderNumber` below does an exact server-side lookup instead
+// of relying on scanning the page). Admin-only.
+export const listItcycleFirmaPassValidations = async ({ perPage, orderNumber } = {}) => {
     requireAdminConfigured();
     const query = new URLSearchParams();
     if (perPage) query.set("perPage", String(perPage));
+    if (orderNumber) query.set("orderNumber", orderNumber);
     const qs = query.toString();
     return request({
         method: "GET",

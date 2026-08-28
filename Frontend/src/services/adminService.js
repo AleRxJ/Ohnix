@@ -43,12 +43,15 @@ export const adminService = {
     // Backend/services/firmaPassProvisioning.service.js. A client's
     // certificate purchase (made on FirmaPass's own site with iTCycle's
     // coupon) auto-attaches to iTCycle's own FirmaPass account; these let an
-    // admin browse that queue and match a validation to an Ohnix company by
-    // its `nombre` label - FirmaPass exposes no email or other identifying
-    // field to match on automatically.
-    async listFirmaPassValidations({ perPage } = {}) {
+    // admin browse that queue and match a validation to an Ohnix company -
+    // by `orderNumber` (exact server-side lookup) when a real purchase set
+    // one, otherwise by eye via `nombre`/`owner_email`.
+    async listFirmaPassValidations({ perPage, orderNumber } = {}) {
+        const params = {};
+        if (perPage) params.perPage = perPage;
+        if (orderNumber) params.orderNumber = orderNumber;
         const response = await api.get("/companies/admin/itcycle/firmapass/validations", {
-            params: perPage ? { perPage } : undefined,
+            params: Object.keys(params).length ? params : undefined,
         });
         return response.data;
     },

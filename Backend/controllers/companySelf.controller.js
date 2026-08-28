@@ -22,6 +22,7 @@ import {
     confirmCompanyFirmaPassValidation,
     getCompanyFirmaPassStatus,
     getCompanyDianReadiness,
+    resolveCompanyFirmaPassOrderNumber,
     uploadCompanyFirmaPassArchivo,
     uploadCompanyFirmaPassRut,
 } from "../services/firmaPassProvisioning.service.js";
@@ -225,6 +226,15 @@ export const addMyItcycleNumberingResolution = asyncHandler(async (req, res) => 
     assertValidNumberingResolution(req.body || {});
     const data = await addItcycleNumberingResolutionForCompany({ companyId: company.id, ...(req.body || {}) });
     return res.status(201).json(new ApiResponse(201, data, "Resolución agregada correctamente"));
+});
+
+export const resolveMyFirmaPassOrderNumber = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    const orderNumber = `${req.params.orderNumber || ""}`.trim();
+    if (!orderNumber) throw new ApiError(400, "El número de orden es obligatorio.");
+    const data = await resolveCompanyFirmaPassOrderNumber({ companyId: company.id, orderNumber });
+    return res.status(200).json(new ApiResponse(200, data, "Validación de FirmaPass encontrada"));
 });
 
 export const uploadMyFirmaPassRut = asyncHandler(async (req, res) => {

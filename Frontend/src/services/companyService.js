@@ -54,6 +54,11 @@ export const companyService = {
         return response.data;
     },
 
+    async resolveMyFirmaPassOrderNumber(orderNumber) {
+        const response = await api.get(`/company/me/itcycle/firmapass/order/${encodeURIComponent(orderNumber)}`);
+        return response.data;
+    },
+
     async uploadMyFirmaPassRut(validationUuid, payload) {
         const response = await api.post(`/company/me/itcycle/firmapass/validations/${validationUuid}/rut`, payload);
         return response.data;

@@ -368,9 +368,10 @@ export const addItcycleNumberingResolutionAdmin = asyncHandler(async (req, res) 
 // confirmed field for automatic matching. See
 // Backend/services/firmaPassProvisioning.service.js.
 export const listFirmaPassValidationsAdmin = asyncHandler(async (req, res) => {
-    const { perPage } = req.query || {};
+    const { perPage, orderNumber } = req.query || {};
     const data = await listPendingFirmaPassValidations({
         perPage: perPage ? Number(perPage) : undefined,
+        orderNumber: orderNumber || undefined,
     });
     return res.status(200).json(new ApiResponse(200, data, "FirmaPass validations retrieved"));
 });

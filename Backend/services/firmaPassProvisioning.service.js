@@ -41,11 +41,12 @@ const rethrowAsApiError = (error) => {
 // Alliance-wide (not scoped to a company - see itcycleDian.service.js).
 // Ohnix-platform-admin-only: lets an admin browse validations auto-attached
 // to iTCycle's FirmaPass account (every client who bought a certificate with
-// the coupon) and match one to the right Ohnix company by its `nombre`
-// label, since FirmaPass exposes no email or other identifying field.
-export const listPendingFirmaPassValidations = async ({ perPage } = {}) => {
+// the coupon) and match one to the right Ohnix company - by `orderNumber`
+// (exact server-side lookup) when a real purchase set one, otherwise by eye
+// via `nombre`/`owner_email`.
+export const listPendingFirmaPassValidations = async ({ perPage, orderNumber } = {}) => {
     try {
-        return await listItcycleFirmaPassValidations({ perPage });
+        return await listItcycleFirmaPassValidations({ perPage, orderNumber });
     } catch (error) {
         rethrowAsApiError(error);
     }
@@ -65,6 +66,28 @@ export const getFirmaPassValidationDetail = async ({ validationUuid }) => {
     } catch (error) {
         rethrowAsApiError(error);
     }
+};
+
+// Lets a company self-serve "I already bought with FirmaPass, here's my
+// order number" instead of hunting down and pasting the raw UUID -
+// `orderNumber` is an exact filter (see listItcycleFirmaPassValidations), so
+// this is safe to expose to a non-admin caller even though the underlying
+// itcycle-api-dian call is alliance-wide/admin-authenticated: a company can
+// only ever know its OWN order number, and the response here is trimmed down
+// to just {uuid, nombre} - never the full alliance-wide payload.
+export const resolveCompanyFirmaPassOrderNumber = async ({ companyId, orderNumber }) => {
+    await requireItcycleProvisionedCompany({ companyId });
+    let result;
+    try {
+        result = await listItcycleFirmaPassValidations({ orderNumber });
+    } catch (error) {
+        rethrowAsApiError(error);
+    }
+    const match = (result?.data || [])[0];
+    if (!match) {
+        throw new ApiError(404, "No encontramos ninguna validación de FirmaPass con ese número de orden. Verifica el número o pega el UUID manualmente.");
+    }
+    return { uuid: match.uuid, nombre: match.nombre };
 };
 
 export const uploadCompanyFirmaPassRut = async ({ companyId, validationUuid, rutBase64, identificacionRepresentanteLegal }) => {

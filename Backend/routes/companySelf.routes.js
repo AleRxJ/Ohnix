@@ -12,6 +12,7 @@ import {
     getMyFirmaPassStatus,
     getMyItcycleStatus,
     registerMyCompanyWithItcycle,
+    resolveMyFirmaPassOrderNumber,
     updateMyCompany,
     updateMyCompanyLogo,
     uploadMyFirmaPassArchivo,
@@ -33,6 +34,7 @@ router.route("/me/itcycle/status").get(getMyItcycleStatus);
 router.route("/me/itcycle/register").post(idempotent("company.itcycle.register"), registerMyCompanyWithItcycle);
 router.route("/me/itcycle/activate").post(idempotent("company.itcycle.activate"), activateMyItcycleElectronicInvoicing);
 router.route("/me/itcycle/numbering-resolutions").post(idempotent("company.itcycle.numbering-resolution"), addMyItcycleNumberingResolution);
+router.route("/me/itcycle/firmapass/order/:orderNumber").get(resolveMyFirmaPassOrderNumber);
 router.route("/me/itcycle/firmapass/validations/:validationUuid/rut").post(uploadMyFirmaPassRut);
 router.route("/me/itcycle/firmapass/validations/:validationUuid/archivos").post(uploadMyFirmaPassArchivo);
 router.route("/me/itcycle/firmapass/validations/:validationUuid/confirmar").post(confirmMyFirmaPassValidation);

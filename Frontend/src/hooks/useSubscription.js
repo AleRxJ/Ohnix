@@ -116,7 +116,7 @@ export const FEATURE_LABELS = [
     { key: "bulkUpload",        es: "Carga masiva de productos",       en: "Bulk product upload"          },
     { key: "autoEmailAlerts",   es: "Alertas email automáticas",       en: "Automatic email alerts"       },
     { key: "configurableAlerts",es: "Alertas por umbral configurable", en: "Configurable stock thresholds" },
-    { key: "apiAccess",         es: "Acceso a API REST",               en: "REST API access"              },
+    { key: "apiAccess",         es: "API REST + integraciones Shopify/WooCommerce", en: "REST API + Shopify/WooCommerce integrations" },
     { key: "electronicInvoicing", es: "Facturación electrónica DIAN",  en: "DIAN electronic invoicing"    },
     { key: "advancedReports",   es: "Reportes avanzados (margen, clientes, equipo)", en: "Advanced reports (margin, customers, team)" },
     { key: "accounting",        es: "Contabilidad automática (asientos, PUC, cierres)", en: "Automated accounting (journal entries, chart of accounts, closes)" },

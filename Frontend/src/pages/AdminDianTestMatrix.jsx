@@ -1,6 +1,6 @@
-import { useContext, useEffect, useRef, useState } from "react";
-import { Alert, Button, Empty, Popconfirm, Select, Statistic, Table, Tag } from "antd";
-import { ExperimentOutlined, ReloadOutlined, StopOutlined } from "@ant-design/icons";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Button, Empty, Input, Popconfirm, Select, Statistic, Table, Tag } from "antd";
+import { ExperimentOutlined, ReloadOutlined, SearchOutlined, StopOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
@@ -32,6 +32,12 @@ const AdminDianTestMatrix = () => {
     const [activeRun, setActiveRun] = useState(null);
     const [loadingRuns, setLoadingRuns] = useState(true);
     const pollRef = useRef(null);
+
+    // Run history grows with every client that goes through DIAN habilitación
+    // - same reasoning as AdminFirmaPassValidations.jsx, this needs to stay
+    // searchable/filterable rather than one long unfiltered table.
+    const [historySearch, setHistorySearch] = useState("");
+    const [historyStatusFilter, setHistoryStatusFilter] = useState(null);
 
     const loadCompanies = async () => {
         try {
@@ -93,6 +99,18 @@ const AdminDianTestMatrix = () => {
     };
 
     useEffect(() => () => stopPolling(), []);
+
+    const companyNameById = (id) => companies.find((c) => c.id === id)?.name || id;
+
+    const filteredRuns = useMemo(() => {
+        const needle = historySearch.trim().toLowerCase();
+        return runs.filter((r) => {
+            if (historyStatusFilter && r.status !== historyStatusFilter) return false;
+            if (!needle) return true;
+            return [companyNameById(r.companyId), r.testSetId].filter(Boolean).some((field) => field.toLowerCase().includes(needle));
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [runs, companies, historySearch, historyStatusFilter]);
 
     if (!isAdmin) {
         return (
@@ -157,7 +175,7 @@ const AdminDianTestMatrix = () => {
     ];
 
     const historyColumns = [
-        { title: t("admin.dian_test_matrix_company_label"), key: "company", render: (_, r) => companies.find((c) => c.id === r.companyId)?.name || r.companyId },
+        { title: t("admin.dian_test_matrix_company_label"), key: "company", render: (_, r) => companyNameById(r.companyId) },
         { title: "Test Set ID", dataIndex: "testSetId", key: "testSetId", render: (v) => <span className="font-mono text-xs">{v}</span> },
         {
             title: t("admin.dian_test_matrix_col_status"),
@@ -288,18 +306,36 @@ const AdminDianTestMatrix = () => {
             )}
 
             <div className="module-shell rounded-3xl p-4 sm:p-5">
-                <div className="mb-4 flex items-center justify-between">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <h3 className="m-0 text-base font-semibold">{t("admin.dian_test_matrix_history_title")}</h3>
-                    <Button icon={<ReloadOutlined />} loading={loadingRuns} onClick={loadRuns}>{t("admin.dian_test_matrix_refresh")}</Button>
+                    <div className="flex flex-1 flex-wrap justify-end gap-2">
+                        <Input
+                            allowClear
+                            prefix={<SearchOutlined className="text-[var(--ohnix-text-dim)]" />}
+                            placeholder={t("admin.dian_test_matrix_search_placeholder")}
+                            value={historySearch}
+                            onChange={(e) => setHistorySearch(e.target.value)}
+                            className="max-w-xs"
+                        />
+                        <Select
+                            allowClear
+                            placeholder={t("admin.dian_test_matrix_filter_status_placeholder")}
+                            className="min-w-48"
+                            value={historyStatusFilter}
+                            onChange={setHistoryStatusFilter}
+                            options={Object.keys(RUN_STATUS_COLOR).map((status) => ({ value: status, label: t(`admin.dian_test_matrix_status_${status}`) }))}
+                        />
+                        <Button icon={<ReloadOutlined />} loading={loadingRuns} onClick={loadRuns}>{t("admin.dian_test_matrix_refresh")}</Button>
+                    </div>
                 </div>
                 <Table
                     className="module-dark-table"
                     rowKey="id"
                     columns={historyColumns}
-                    dataSource={runs}
+                    dataSource={filteredRuns}
                     loading={loadingRuns}
                     pagination={{ pageSize: 10 }}
-                    locale={{ emptyText: <Empty description={t("admin.dian_test_matrix_history_empty")} /> }}
+                    locale={{ emptyText: <Empty description={historySearch || historyStatusFilter ? t("admin.dian_test_matrix_no_matches") : t("admin.dian_test_matrix_history_empty")} /> }}
                     scroll={{ x: true }}
                 />
             </div>

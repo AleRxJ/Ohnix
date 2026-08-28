@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Input, Space, Tag, Typography, Upload } from "antd";
-import { CheckCircleOutlined, CopyOutlined, ReloadOutlined, SafetyCertificateOutlined, UploadOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, CopyOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined, SearchOutlined, UploadOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
@@ -21,6 +21,13 @@ const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_se
 // own fees. Update here if FirmaPass ever issues a new code.
 const FIRMAPASS_COUPON_CODE = "itcycle_2026";
 
+// Alliance cart links from FirmaPass, coupon pre-applied - clicking either
+// one lands the client straight on FirmaPass's own checkout with the
+// discount already active, so they never have to find/paste the coupon
+// manually. Update here if FirmaPass ever reissues these (product id or code).
+const FIRMAPASS_CART_URL_1_YEAR = "https://firmapass.com/?add-to-cart=6896&coupon=itcycle_2026";
+const FIRMAPASS_CART_URL_2_YEAR = "https://firmapass.com/?add-to-cart=6897&coupon=itcycle_2026";
+
 const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(`${reader.result || ""}`.split(",").pop());
@@ -34,6 +41,14 @@ const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
 // or credentials.
 const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
     const { t } = useI18n();
+    // Two ways to identify the validation FirmaPass created when the client
+    // bought with the coupon: the order number FirmaPass's own checkout gives
+    // them (resolved to a UUID server-side, no manual copy/paste needed), or
+    // the raw UUID FirmaPass shows directly on their validation page. Order
+    // number is the default/recommended path - manual UUID stays for anyone
+    // who already has it or whose order lookup doesn't find a match.
+    const [lookupMode, setLookupMode] = useState("order");
+    const [orderNumber, setOrderNumber] = useState("");
     const [validationUuid, setValidationUuid] = useState("");
     const [representativeId, setRepresentativeId] = useState("");
     const [rutBase64, setRutBase64] = useState(null);
@@ -95,6 +110,15 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
         }
     };
 
+    const lookupOrderNumber = () => run(
+        "lookupOrder",
+        async () => {
+            const response = await companyService.resolveMyFirmaPassOrderNumber(orderNumber.trim());
+            setValidationUuid(response?.data?.uuid || "");
+        },
+        t("fiscal_setup.firmapass_order_found"),
+    );
+
     const activeCertificate = (status?.certificates || []).some((certificate) => certificate.status === "ACTIVE");
     const validationUuidTrimmed = validationUuid.trim();
     const validationUuidInvalid = Boolean(validationUuidTrimmed) && !isValidUuid(validationUuidTrimmed);
@@ -150,38 +174,99 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
                         type="info"
                         showIcon
                         message={t("fiscal_setup.firmapass_purchase_title")}
-                        description={
-                            <div>
-                                <p className="mb-3">{t("fiscal_setup.firmapass_purchase_hint")}</p>
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ohnix-text-muted)]">
-                                        {t("fiscal_setup.firmapass_coupon_label")}
-                                    </span>
-                                    <span className="ohnix-coupon-chip">
-                                        <code>{FIRMAPASS_COUPON_CODE}</code>
-                                        <Button
-                                            type="text"
-                                            size="small"
-                                            className="ohnix-coupon-copy"
-                                            icon={<CopyOutlined />}
-                                            onClick={copyCoupon}
-                                        />
-                                    </span>
-                                </div>
-                            </div>
-                        }
+                        description={<p className="mb-0">{t("fiscal_setup.firmapass_purchase_hint")}</p>}
                     />
 
+                    <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] p-4">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--ohnix-line-5)] bg-[var(--ohnix-line-1)] text-[var(--ohnix-text-soft)]">
+                                    <SafetyCertificateOutlined />
+                                </span>
+                                <span className="text-sm font-semibold text-[var(--ohnix-text-primary)]">FirmaPass</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-[var(--ohnix-text-muted)]">
+                                    {t("fiscal_setup.firmapass_coupon_label")}
+                                </span>
+                                <span className="ohnix-coupon-chip">
+                                    <code>{FIRMAPASS_COUPON_CODE}</code>
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        className="ohnix-coupon-copy"
+                                        icon={<CopyOutlined />}
+                                        onClick={copyCoupon}
+                                    />
+                                </span>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <a href={FIRMAPASS_CART_URL_1_YEAR} target="_blank" rel="noreferrer">
+                                <Button block icon={<LinkOutlined />}>{t("fiscal_setup.firmapass_buy_1_year")}</Button>
+                            </a>
+                            <a href={FIRMAPASS_CART_URL_2_YEAR} target="_blank" rel="noreferrer">
+                                <Button block icon={<LinkOutlined />}>{t("fiscal_setup.firmapass_buy_2_years")}</Button>
+                            </a>
+                        </div>
+                        <p className="mb-0 mt-2 text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.firmapass_buy_hint")}</p>
+                    </div>
+
                     <div>
-                        <label className="mb-1 block text-sm font-medium text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_validation_uuid")}</label>
-                        <Input
-                            className="auth-ohnix-input"
-                            status={validationUuidInvalid ? "error" : undefined}
-                            value={validationUuid}
-                            onChange={(event) => setValidationUuid(event.target.value)}
-                            placeholder={t("fiscal_setup.firmapass_validation_uuid_placeholder")}
-                        />
-                        {validationUuidInvalid && <Text type="danger" className="mt-1 block text-xs">{t("fiscal_setup.validation_uuid_invalid")}</Text>}
+                        <label className="mb-1 block text-sm font-medium text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_lookup_title")}</label>
+                        <div className="mb-2 flex flex-wrap gap-2">
+                            <Button
+                                size="small"
+                                type={lookupMode === "order" ? "primary" : "default"}
+                                onClick={() => setLookupMode("order")}
+                            >
+                                {t("fiscal_setup.firmapass_lookup_by_order")}
+                            </Button>
+                            <Button
+                                size="small"
+                                type={lookupMode === "uuid" ? "primary" : "default"}
+                                onClick={() => setLookupMode("uuid")}
+                            >
+                                {t("fiscal_setup.firmapass_lookup_by_uuid")}
+                            </Button>
+                        </div>
+
+                        {lookupMode === "order" ? (
+                            <div>
+                                <div className="flex flex-wrap gap-2">
+                                    <Input
+                                        className="auth-ohnix-input flex-1"
+                                        value={orderNumber}
+                                        onChange={(event) => setOrderNumber(event.target.value)}
+                                        placeholder={t("fiscal_setup.firmapass_order_number_placeholder")}
+                                    />
+                                    <Button
+                                        icon={<SearchOutlined />}
+                                        loading={busy === "lookupOrder"}
+                                        disabled={!orderNumber.trim()}
+                                        onClick={lookupOrderNumber}
+                                    >
+                                        {t("fiscal_setup.firmapass_lookup_search")}
+                                    </Button>
+                                </div>
+                                {validationUuid && !validationUuidInvalid && (
+                                    <p className="mb-0 mt-2 text-xs text-[var(--ohnix-text-muted)]">
+                                        {t("fiscal_setup.firmapass_uuid_resolved", { uuid: validationUuid })}
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            <div>
+                                <Input
+                                    className="auth-ohnix-input"
+                                    status={validationUuidInvalid ? "error" : undefined}
+                                    value={validationUuid}
+                                    onChange={(event) => setValidationUuid(event.target.value)}
+                                    placeholder={t("fiscal_setup.firmapass_validation_uuid_placeholder")}
+                                />
+                                {validationUuidInvalid && <Text type="danger" className="mt-1 block text-xs">{t("fiscal_setup.validation_uuid_invalid")}</Text>}
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -1009,16 +1009,40 @@ const Billing = () => {
                         disabled={pageBusy}
                     />
 
-                    <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 sm:p-5">
-                        <div className="flex items-center gap-2 text-sm font-bold text-[var(--ohnix-text-primary)]">
-                            <ApiOutlined className="text-[#44F3F0]" />
-                            {t("integrations_page.page_title")}
+                    <div className="mt-6 rounded-2xl border border-[#29D8D5]/25 bg-[linear-gradient(135deg,rgba(41,216,213,0.08),transparent)] p-4 sm:p-5">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-[var(--ohnix-text-primary)]">
+                                    <ApiOutlined className="text-[#44F3F0]" />
+                                    {t("integrations_page.page_title")}
+                                    <Tag color="cyan" className="!m-0">
+                                        {t("billing.new_tag")}
+                                    </Tag>
+                                </div>
+                                <p className="mt-1.5 text-xs leading-relaxed text-[var(--ohnix-text-muted)] sm:text-sm">
+                                    {t("billing.integrations_promo_desc")}
+                                </p>
+                                <ul className="mt-3 grid grid-cols-1 gap-1.5 text-xs text-[var(--ohnix-text-muted)] sm:grid-cols-3">
+                                    <li className="flex items-center gap-1.5">
+                                        <CheckOutlined className="text-[#44F3F0]" />
+                                        {t("billing.integrations_promo_bullet_channels")}
+                                    </li>
+                                    <li className="flex items-center gap-1.5">
+                                        <CheckOutlined className="text-[#44F3F0]" />
+                                        {t("billing.integrations_promo_bullet_api")}
+                                    </li>
+                                    <li className="flex items-center gap-1.5">
+                                        <CheckOutlined className="text-[#44F3F0]" />
+                                        {t("billing.integrations_promo_bullet_webhooks")}
+                                    </li>
+                                </ul>
+                            </div>
+                            <Link to="/integrations" className="flex-shrink-0">
+                                <Button className="w-full bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0] border-0 sm:w-auto">
+                                    {t("billing.go_to_integrations")}
+                                </Button>
+                            </Link>
                         </div>
-                        <Link to="/integrations">
-                            <Button className="bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0] border-0">
-                                {t("billing.go_to_integrations")}
-                            </Button>
-                        </Link>
                     </div>
 
                     {latestActiveRequest ? (
