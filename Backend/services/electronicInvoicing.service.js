@@ -28,8 +28,6 @@ import {
     retryItcycleInvoiceSend,
     ItcycleDianError,
     isItcycleConfigured,
-    getItcycleSoftwareCredentials,
-    isItcycleSoftwareConfigured,
 } from "./itcycleDian.service.js";
 import { encryptSecret, decryptSecret } from "../utils/secretEncryption.js";
 import { computeNitCheckDigit } from "../utils/nit.util.js";
@@ -751,12 +749,18 @@ const mapItcycleCreditNoteResponse = (raw) => ({
  * are forwarded once and never persisted in Ohnix - see secretEncryption.js
  * and itcycle-api-dian's own EncryptedFileCertificateSecretStore.
  */
-export const registerCompanyWithItcycle = async ({ companyId, supplierProfile, numberingResolutions, certificate }) => {
+export const registerCompanyWithItcycle = async ({ companyId, dianConfiguration, supplierProfile, numberingResolutions, certificate }) => {
     if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
-    // softwareId/softwarePin/technicalKey are iTCycle's own, from ONE DIAN
-    // habilitación shared by every client ("software propio" - see
-    // ElectronicInvoicingSettings.jsx) - never accepted from the caller.
-    if (!isItcycleSoftwareConfigured()) throw new ApiError(503, "itcycle-api-dian software credentials are not configured (ITCYCLE_SOFTWARE_ID / ITCYCLE_SOFTWARE_PIN)");
+    // Each Ohnix client is its own "facturador electrónico" before the DIAN -
+    // every company registers its OWN softwareId/PIN/technicalKey (obtained
+    // from its own DIAN habilitación), never a value shared across companies.
+    // See ElectronicInvoicingSettings.jsx's software step and the compliance
+    // discussion that led to this: reusing one habilitación across different
+    // companies' NITs is the Proveedor Tecnológico modality, which Ohnix has
+    // not registered for.
+    if (!text(dianConfiguration?.softwareId) || !text(dianConfiguration?.softwarePin)) {
+        throw new ApiError(422, "La configuración DIAN de tu empresa (softwareId/softwarePin) es obligatoria.");
+    }
 
     const company = await prisma.company.findUnique({ where: { id: companyId } });
     if (!company) throw new ApiError(404, "Company not found");
@@ -777,7 +781,7 @@ export const registerCompanyWithItcycle = async ({ companyId, supplierProfile, n
             dv,
             personType: "1",
         });
-        await setItcycleDianConfiguration({ companyId: itcycleCompany.id, ...getItcycleSoftwareCredentials(), supplierProfile });
+        await setItcycleDianConfiguration({ companyId: itcycleCompany.id, ...dianConfiguration, supplierProfile });
         for (const resolution of numberingResolutions || []) {
             await createItcycleNumberingResolution({ companyId: itcycleCompany.id, ...resolution });
         }

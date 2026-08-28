@@ -10,6 +10,8 @@ import {
     isValidPrefix,
     isValidNumberingRange,
     isValidDateRange,
+    isValidSoftwareId,
+    isValidTechnicalKey,
 } from "../utils/dianValidation.util.js";
 import {
     addItcycleNumberingResolutionForCompany,
@@ -79,6 +81,25 @@ const SELF_SELECT = {
 
 const isValidHexColor = (value) => /^#[0-9A-Fa-f]{6}$/.test(value || "");
 const VAT_RESPONSIBILITIES = ["unset", "responsible", "not_responsible"];
+
+const DIAN_ENVIRONMENTS = ["SANDBOX", "PRODUCTION"];
+
+// Each company's own DIAN habilitación - see registerCompanyWithItcycle's
+// comment on why this can never be a shared/default value.
+const assertValidDianConfiguration = (dianConfiguration) => {
+    if (!DIAN_ENVIRONMENTS.includes(dianConfiguration?.environment)) {
+        throw new ApiError(400, "El ambiente DIAN debe ser SANDBOX o PRODUCTION.");
+    }
+    if (!isValidSoftwareId(dianConfiguration?.softwareId)) {
+        throw new ApiError(400, "El ID de software DIAN debe ser el UUID que la DIAN te entregó al habilitarte.");
+    }
+    if (!`${dianConfiguration?.softwarePin || ""}`.trim()) {
+        throw new ApiError(400, "El PIN de software DIAN es obligatorio.");
+    }
+    if (!isValidTechnicalKey(dianConfiguration?.technicalKey)) {
+        throw new ApiError(400, "La clave técnica debe ser el valor de 40 caracteres hexadecimales que entrega la DIAN.");
+    }
+};
 
 const assertValidNumberingResolution = (resolution) => {
     if (!isValidPrefix(resolution?.prefix)) {
@@ -185,10 +206,12 @@ export const registerMyCompanyWithItcycle = asyncHandler(async (req, res) => {
         );
     }
     await ensureElectronicInvoicingPlan(req.user.prismaId);
-    const { supplierProfile, numberingResolutions, certificate } = req.body || {};
+    const { dianConfiguration, supplierProfile, numberingResolutions, certificate } = req.body || {};
+    assertValidDianConfiguration(dianConfiguration);
     for (const resolution of numberingResolutions || []) assertValidNumberingResolution(resolution);
     const data = await registerCompanyWithItcycle({
         companyId: company.id,
+        dianConfiguration,
         supplierProfile,
         numberingResolutions,
         certificate,

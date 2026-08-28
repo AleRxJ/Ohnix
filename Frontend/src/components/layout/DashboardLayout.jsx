@@ -39,6 +39,7 @@ const PAGE_TITLE_KEYS = {
     billing: "common.billing",
     "admin-management": "common.admin_panel",
     "admin-subscriptions": "common.admin_subscriptions",
+    "admin-firmapass-validations": "common.admin_firmapass_validations",
 };
 
 const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false }) => (

@@ -30,12 +30,36 @@ export const adminService = {
         return response.data;
     },
 
-    // itcycle-api-dian registration/numbering/FirmaPass steps are self-service
-    // now (see Frontend/src/services/companyService.js's /company/me/itcycle/*
-    // calls) - Backend/routes/company.routes.js only keeps this one read-only
-    // status endpoint for Ohnix admin support visibility, the rest were removed.
+    // itcycle-api-dian registration/numbering/FirmaPass rut/archivos/confirmar
+    // steps are self-service now (see Frontend/src/services/companyService.js's
+    // /company/me/itcycle/* calls) - this stays for Ohnix admin support
+    // visibility only.
     async getCompanyFirmaPassStatus(companyId) {
         const response = await api.get(`/companies/admin/${companyId}/itcycle/firmapass/status`);
+        return response.data;
+    },
+
+    // Alliance-wide (not scoped to a company) - see
+    // Backend/services/firmaPassProvisioning.service.js. A client's
+    // certificate purchase (made on FirmaPass's own site with iTCycle's
+    // coupon) auto-attaches to iTCycle's own FirmaPass account; these let an
+    // admin browse that queue and match a validation to an Ohnix company by
+    // its `nombre` label - FirmaPass exposes no email or other identifying
+    // field to match on automatically.
+    async listFirmaPassValidations({ perPage } = {}) {
+        const response = await api.get("/companies/admin/itcycle/firmapass/validations", {
+            params: perPage ? { perPage } : undefined,
+        });
+        return response.data;
+    },
+
+    async getNextFirmaPassValidation() {
+        const response = await api.get("/companies/admin/itcycle/firmapass/validations/nueva-solicitud");
+        return response.data;
+    },
+
+    async getFirmaPassValidationDetail(validationUuid) {
+        const response = await api.get(`/companies/admin/itcycle/firmapass/validations/${validationUuid}`);
         return response.data;
     },
 

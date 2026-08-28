@@ -232,6 +232,11 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <CrownOutlined />,
             label: <Link to="/admin/subscriptions">{t("common.admin_subscriptions")}</Link>,
         });
+        items.push({
+            key: "admin-firmapass-validations",
+            icon: <SafetyCertificateOutlined />,
+            label: <Link to="/admin/firmapass-validations">{t("common.admin_firmapass_validations")}</Link>,
+        });
     }
 
     return items;
