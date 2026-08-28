@@ -126,6 +126,7 @@ const AdminFirmaPassValidations = () => {
                     </Button>
                 </div>
                 <Table
+                    className="module-dark-table"
                     rowKey="uuid"
                     columns={columns}
                     dataSource={validations}

@@ -275,6 +275,7 @@ const AdminDianTestMatrix = () => {
                     </div>
 
                     <Table
+                        className="module-dark-table"
                         rowKey="id"
                         columns={documentColumns}
                         dataSource={activeRun.documents || []}
@@ -292,6 +293,7 @@ const AdminDianTestMatrix = () => {
                     <Button icon={<ReloadOutlined />} loading={loadingRuns} onClick={loadRuns}>{t("admin.dian_test_matrix_refresh")}</Button>
                 </div>
                 <Table
+                    className="module-dark-table"
                     rowKey="id"
                     columns={historyColumns}
                     dataSource={runs}

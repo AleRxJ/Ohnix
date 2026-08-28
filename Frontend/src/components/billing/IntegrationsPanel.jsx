@@ -18,7 +18,12 @@ const darkModalStyles = {
     body: { padding: 24 },
 };
 
-const STATUS_COLOR = { connected: "green", error: "red", disconnected: "default" };
+const STATUS_COLOR = { connected: "green", error: "red" };
+// antd's Tag color="default" renders a fixed light-gray/near-black-text
+// preset that never adapts to Ohnix's own theme toggle (there's no
+// ConfigProvider dark algorithm - see index.css's note on that), so a
+// "neutral" tag needs its own explicit --ohnix-* styling instead.
+const NEUTRAL_TAG_STYLE = { background: "var(--ohnix-line-3)", color: "var(--ohnix-text-muted)", border: "1px solid var(--ohnix-line-4)" };
 
 const PROVIDER_OPTIONS = [
     { label: "Shopify", value: "shopify" },
@@ -203,7 +208,12 @@ const IntegrationsPanel = () => {
                                 title={
                                     <span className="flex items-center gap-2 text-[var(--ohnix-text-primary)]">
                                         {item.name}
-                                        <Tag color={STATUS_COLOR[item.status]}>{t(`billing.integrations.status_${item.status}`)}</Tag>
+                                        <Tag
+                                            color={STATUS_COLOR[item.status]}
+                                            style={STATUS_COLOR[item.status] ? undefined : NEUTRAL_TAG_STYLE}
+                                        >
+                                            {t(`billing.integrations.status_${item.status}`)}
+                                        </Tag>
                                     </span>
                                 }
                                 description={
@@ -248,7 +258,7 @@ const IntegrationsPanel = () => {
                                 <div className="flex items-center justify-between gap-2">
                                     <span>{option.data.label}</span>
                                     {option.data.disabled && (
-                                        <Tag color="default">{t("billing.integrations.coming_soon")}</Tag>
+                                        <Tag style={NEUTRAL_TAG_STYLE}>{t("billing.integrations.coming_soon")}</Tag>
                                     )}
                                 </div>
                             )}
@@ -318,6 +328,7 @@ const IntegrationsPanel = () => {
                 styles={darkModalStyles}
             >
                 <Table
+                    className="module-dark-table"
                     size="small"
                     rowKey="_id"
                     dataSource={logs}

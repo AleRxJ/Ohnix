@@ -10,6 +10,12 @@ const { Text, Paragraph } = Typography;
 
 const MAX_ACTIVE_KEYS = 5;
 
+// antd's Tag color="default" is a fixed light-gray/near-black-text preset
+// that doesn't adapt to Ohnix's own theme toggle (no ConfigProvider dark
+// algorithm is configured), so any "neutral" tag needs explicit --ohnix-*
+// styling instead - same fix applied in IntegrationsPanel/WebhooksPanel.
+const NEUTRAL_TAG_STYLE = { background: "var(--ohnix-line-3)", color: "var(--ohnix-text-muted)", border: "1px solid var(--ohnix-line-4)" };
+
 const darkModalStyles = {
     mask: { backgroundColor: "rgba(0,0,0,0.55)" },
     content: {
@@ -188,7 +194,7 @@ const ApiKeysPanel = () => {
                                     </Button>
                                 ),
                                 item.revoked_at ? (
-                                    <Tag key="revoked" color="default">
+                                    <Tag key="revoked" style={NEUTRAL_TAG_STYLE}>
                                         {t("billing.api_keys.revoked_tag")}
                                     </Tag>
                                 ) : (
@@ -211,7 +217,10 @@ const ApiKeysPanel = () => {
                                 title={
                                     <span className="flex items-center gap-2 text-[var(--ohnix-text-primary)]">
                                         {item.name}
-                                        <Tag color={item.scopes?.length === scopeOptions.length ? "cyan" : "default"}>
+                                        <Tag
+                                            color={item.scopes?.length === scopeOptions.length ? "cyan" : undefined}
+                                            style={item.scopes?.length === scopeOptions.length ? undefined : NEUTRAL_TAG_STYLE}
+                                        >
                                             {item.scopes?.length === scopeOptions.length || !scopeOptions.length
                                                 ? t("billing.api_keys.scopes_all_tag")
                                                 : t("billing.api_keys.scopes_tag", { count: item.scopes?.length || 0 })}

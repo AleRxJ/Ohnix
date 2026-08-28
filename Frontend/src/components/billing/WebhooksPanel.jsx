@@ -164,7 +164,7 @@ const WebhooksPanel = () => {
                                 description={
                                     <span className="flex flex-wrap gap-1 text-xs text-[var(--ohnix-text-muted)]">
                                         {item.events.map((ev) => (
-                                            <Tag key={ev}>{ev}</Tag>
+                                            <Tag key={ev} color="cyan">{ev}</Tag>
                                         ))}
                                     </span>
                                 }
@@ -238,6 +238,7 @@ const WebhooksPanel = () => {
                 styles={darkModalStyles}
             >
                 <Table
+                    className="module-dark-table"
                     size="small"
                     rowKey="_id"
                     dataSource={deliveries}

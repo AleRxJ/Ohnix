@@ -31,6 +31,11 @@ const MobileCompanyCard = ({ company, onEdit, onToggleStatus, t }) => (
                             {company.electronicInvoicingEnabled ? t("admin.dian_enabled") : t("admin.dian_disabled")}
                         </Tag>
                     )}
+                    {company.countryCode === "CO" && (
+                        <Tag color={company.itcycleCompanyId ? "cyan" : "default"}>
+                            {company.itcycleCompanyId ? t("admin.itcycle_configured_short") : t("admin.itcycle_pending_short")}
+                        </Tag>
+                    )}
                     <Tag>{t("admin.users_count")} {company._count?.users || 0}</Tag>
                 </div>
 
@@ -101,6 +106,25 @@ const CompaniesTab = ({ companies, loading, onAdd, onEdit, onToggleStatus }) => 
                 record.countryCode === "CO" ? (
                     <Tag color={record.electronicInvoicingEnabled ? "cyan" : "default"}>
                         {record.electronicInvoicingEnabled ? t("admin.dian_enabled") : t("admin.dian_disabled")}
+                    </Tag>
+                ) : (
+                    <span className="text-xs text-[var(--ohnix-text-dim)]">—</span>
+                ),
+        },
+        {
+            // Distinct from the "DIAN" column above: `electronicInvoicingEnabled`
+            // means live emission is ON (any provider); `itcycleCompanyId` means
+            // the company completed the itcycle habilitación/provisioning step -
+            // a company can be provisioned but not yet activated, so these two
+            // signals are not interchangeable (see ElectronicInvoicingSettings.jsx).
+            title: t("admin.itcycle_column_title"),
+            key: "itcycle",
+            width: 160,
+            responsive: ["xl"],
+            render: (_, record) =>
+                record.countryCode === "CO" ? (
+                    <Tag color={record.itcycleCompanyId ? "cyan" : "default"}>
+                        {record.itcycleCompanyId ? t("admin.itcycle_configured_short") : t("admin.itcycle_pending_short")}
                     </Tag>
                 ) : (
                     <span className="text-xs text-[var(--ohnix-text-dim)]">—</span>
