@@ -2103,3 +2103,20 @@ model WebhookDelivery {
   @@index([status, nextAttemptAt])
   @@map("webhook_deliveries")
 }
+
+// Tracks which FirmaPass validations (auto-attached to iTCycle's alliance
+// account the moment a client buys a certificate with the coupon - see
+// Backend/services/firmaPassProvisioning.service.js) an admin has already
+// been alerted about, so firmaPassValidationScheduler.js's periodic check
+// never emails the same one twice. Not tied to any Ohnix Company - a
+// validation only gets matched to one once an admin recognizes it by its
+// `nombre` label (FirmaPass exposes no email or other identifying field).
+model FirmaPassValidationAlert {
+  id             String   @id @default(cuid())
+  validationUuid String   @unique @map("validation_uuid")
+  nombre         String?
+  estado         String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("firmapass_validation_alerts")
+}

@@ -6,6 +6,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import lowStockScheduler from "../utils/lowStockScheduler.js";
+import { checkForNewFirmaPassValidations } from "../utils/firmaPassValidationScheduler.js";
 
 const router = express.Router();
 
@@ -137,6 +138,22 @@ router.post(
         return res
             .status(200)
             .json(new ApiResponse(200, null, "Scheduler stopped successfully"));
+    })
+);
+
+// Force a FirmaPass pending-validation check right now (admin only), instead
+// of waiting for the FIRMAPASS_VALIDATION_CHECK_CRON tick - see
+// Backend/utils/firmaPassValidationScheduler.js. Same email-batching/
+// already-alerted dedup as the cron; only sends if it actually finds
+// something new.
+router.post(
+    "/firmapass-validation-check",
+    isAdmin,
+    asyncHandler(async (req, res) => {
+        const result = await checkForNewFirmaPassValidations();
+        return res
+            .status(200)
+            .json(new ApiResponse(200, result, "FirmaPass validation check completed"));
     })
 );
 

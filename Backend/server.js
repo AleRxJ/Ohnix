@@ -6,6 +6,7 @@ import { initSocketServer } from "./live/socketServer.js";
 import lowStockScheduler from "./utils/lowStockScheduler.js";
 import renewalScheduler from "./utils/subscriptionRenewalScheduler.js";
 import webhookRetryScheduler from "./utils/webhookRetryScheduler.js";
+import firmaPassValidationScheduler from "./utils/firmaPassValidationScheduler.js";
 import { reconcileLegacyApprovedRequests, reconcileStuckPendingPayments } from "./utils/subscriptionReconcile.js";
 
 dotenv.config({
@@ -67,6 +68,8 @@ connectDB()
                 renewalScheduler.start();
                 console.log("🪝 Starting webhook retry scheduler...");
                 webhookRetryScheduler.start();
+                console.log("🔏 Starting FirmaPass validation check scheduler...");
+                firmaPassValidationScheduler.start();
             }
         });
     })
@@ -80,6 +83,7 @@ process.on("SIGTERM", () => {
     lowStockScheduler.stop();
     renewalScheduler.stop();
     webhookRetryScheduler.stop();
+    firmaPassValidationScheduler.stop();
     process.exit(0);
 });
 
@@ -88,5 +92,6 @@ process.on("SIGINT", () => {
     lowStockScheduler.stop();
     renewalScheduler.stop();
     webhookRetryScheduler.stop();
+    firmaPassValidationScheduler.stop();
     process.exit(0);
 });
