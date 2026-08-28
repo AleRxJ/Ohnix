@@ -52,6 +52,7 @@ const Suppliers = lazy(() => import("./pages/Suppliers"));
 const Category = lazy(() => import("./pages/Category"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Billing = lazy(() => import("./pages/Billing"));
+const Integrations = lazy(() => import("./pages/Integrations"));
 const Finance = lazy(() => import("./pages/Finance"));
 const Accounting = lazy(() => import("./pages/Accounting"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
@@ -282,6 +283,10 @@ function App() {
                                 <Route path="fiscal-setup" element={<RequireFiscalSetupAccess><FiscalSetup /></RequireFiscalSetupAccess>} />
                                 <Route path="team" element={<Team />} />
                                 <Route path="billing" element={<RequireBillingAccess><Billing /></RequireBillingAccess>} />
+                                {/* Same owner-only gate as Billing (see RequireBillingAccess's comment) -
+                                    API keys/integrations/webhooks are account-wide credentials/config,
+                                    blocked for team members at the backend too (blockTeamMembers). */}
+                                <Route path="integrations" element={<RequireBillingAccess><Integrations /></RequireBillingAccess>} />
                                 <Route path="billing/payment-success" element={<RequireBillingAccess><PaymentSuccess /></RequireBillingAccess>} />
                                 <Route path="billing/epayco-checkout" element={<RequireBillingAccess><EpaycoCheckout /></RequireBillingAccess>} />
                                 <Route path="billing/epayco-response" element={<RequireBillingAccess><EpaycoResponseRedirect /></RequireBillingAccess>} />

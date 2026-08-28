@@ -37,6 +37,7 @@ const PAGE_TITLE_KEYS = {
     reports: "common.reports",
     team: "common.team_nav",
     billing: "common.billing",
+    integrations: "common.integrations_nav",
     "admin-management": "common.admin_panel",
     "admin-subscriptions": "common.admin_subscriptions",
     "admin-firmapass-validations": "common.admin_firmapass_validations",

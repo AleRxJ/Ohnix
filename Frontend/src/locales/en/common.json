@@ -25,6 +25,7 @@
     "categories": "Categories",
     "reports": "Reports",
     "billing": "Billing",
+    "integrations_nav": "Integrations & API",
     "finance_nav": "Finance",
     "accounting_nav": "Accounting",
     "admin_panel": "Admin Panel",
@@ -458,6 +459,7 @@
     }
   },
   "billing": {
+    "go_to_integrations": "Go to Integrations & API",
     "api_keys": {
       "title": "API keys",
       "hint": "Generate keys to integrate Ohnix with your own systems via the public REST API.",
@@ -542,6 +544,25 @@
       "woo_consumer_secret_label": "Consumer Secret",
       "woo_consumer_secret_placeholder": "cs_...",
       "woo_credentials_hint": "In WordPress: WooCommerce → Settings → Advanced → REST API → Add key, with Read/Write permissions. Copy the Consumer Key and Consumer Secret it shows you (only shown once)."
+    },
+    "webhooks": {
+      "title": "Outbound webhooks",
+      "hint": "Register a URL so Ohnix notifies you in real time when something changes (new order, inventory updated, etc.).",
+      "create": "New webhook",
+      "empty": "You haven't registered any webhook yet.",
+      "locked_tooltip": "Webhooks are available from the Scale plan",
+      "view_deliveries": "View deliveries",
+      "confirm_delete_title": "Delete this webhook?",
+      "deleted": "Webhook deleted",
+      "create_modal_title": "Register webhook",
+      "url_label": "URL",
+      "url_placeholder": "https://your-system.com/ohnix/webhook",
+      "url_invalid": "Must be a valid URL (https://...)",
+      "events_label": "Events",
+      "reveal_modal_title": "Webhook secret",
+      "reveal_warning": "Copy this secret now — for security it won't be shown in full again. Use it to verify each delivery's signature (see the API docs).",
+      "deliveries_modal_title": "Recent deliveries",
+      "deliveries_empty": "No deliveries logged yet."
     }
   },
   "finance": {
@@ -3131,6 +3152,25 @@
       "manual_sync_error": "Sync error",
       "empty": "Document being prepared"
     }
+  },
+  "integrations_page": {
+    "page_title": "Integrations & API",
+    "page_subtitle": "Connect your store, generate credentials for your own system, and receive real-time events from Ohnix."
+  },
+  "integrations_tour": {
+    "trigger": "See how it works",
+    "skip": "Skip",
+    "done": "Got it",
+    "welcome_title": "Welcome to Integrations & API",
+    "welcome_desc": "This is where you connect Ohnix to your online store, generate credentials for your own system, and set up real-time notifications. Let's walk through each section in 30 seconds.",
+    "api_keys_title": "API keys",
+    "api_keys_desc": "Generate a key so your own system (a custom-built store, an ERP, a script) can read and update Ohnix products, inventory, and orders directly through the API.",
+    "channels_title": "E-commerce integrations",
+    "channels_desc": "Connect Shopify or WooCommerce in a couple of clicks: your products get published there, inventory stays in sync, and every sale automatically arrives as an order in Ohnix.",
+    "webhooks_title": "Outbound webhooks",
+    "webhooks_desc": "Register your own URL so Ohnix notifies you instantly of events like a new order or an inventory change, instead of you having to keep polling the API.",
+    "finish_title": "You're all set",
+    "finish_desc": "You can replay this guide anytime with the \"See how it works\" button. The full developer documentation lives at /api/v1/docs."
   },
   "fiscal_setup": {
     "page_title": "DIAN Setup",

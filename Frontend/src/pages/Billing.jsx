@@ -12,8 +12,9 @@ import {
     CheckOutlined,
     ArrowRightOutlined,
     CopyOutlined,
+    ApiOutlined,
 } from "@ant-design/icons";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
 import { useTeam } from "../context/TeamContext";
@@ -25,8 +26,6 @@ import { FEATURE_LABELS } from "../hooks/useSubscription";
 import { useMarketPricing } from "../hooks/useMarketPricing";
 import SubscriptionPlanCard, { PLAN_COLORS } from "../components/profile/SubscriptionPlanCard";
 import PlanComparisonCard, { LIMIT_ROWS, formatLimit, getPlanPriceLabel } from "../components/profile/PlanComparisonCard";
-import ApiKeysPanel from "../components/billing/ApiKeysPanel";
-import IntegrationsPanel from "../components/billing/IntegrationsPanel";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -1010,8 +1009,17 @@ const Billing = () => {
                         disabled={pageBusy}
                     />
 
-                    <ApiKeysPanel />
-                    <IntegrationsPanel />
+                    <div className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 sm:p-5">
+                        <div className="flex items-center gap-2 text-sm font-bold text-[var(--ohnix-text-primary)]">
+                            <ApiOutlined className="text-[#44F3F0]" />
+                            {t("integrations_page.page_title")}
+                        </div>
+                        <Link to="/integrations">
+                            <Button className="bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0] border-0">
+                                {t("billing.go_to_integrations")}
+                            </Button>
+                        </Link>
+                    </div>
 
                     {latestActiveRequest ? (
                         <div className="mt-6 rounded-2xl border border-[#29D8D5]/20 bg-[#29D8D5]/8 p-4 sm:p-5">

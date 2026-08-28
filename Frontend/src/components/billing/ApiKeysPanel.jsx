@@ -127,7 +127,7 @@ const ApiKeysPanel = () => {
     if (subscriptionLoading) return null;
 
     return (
-        <div className="mt-6 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 sm:p-5">
+        <div data-tour="integrations-api-keys" className="mt-6 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-sm font-bold text-[var(--ohnix-text-primary)]">

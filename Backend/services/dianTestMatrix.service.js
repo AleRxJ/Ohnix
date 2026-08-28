@@ -10,6 +10,7 @@ import {
 } from "./itcycleDian.service.js";
 import { getCompanyDianReadiness } from "./firmaPassProvisioning.service.js";
 import { buildItcycleCustomerParty, buildItcycleLines, buildItcycleTotals } from "./electronicInvoicing.service.js";
+import { notifyAdminsDianTestMatrixRunFinished } from "../utils/dianTestMatrixNotifications.js";
 
 const text = (value) => `${value || ""}`.trim();
 
@@ -364,6 +365,7 @@ async function runDianTestMatrixWorker({ runId, apiKey, testSetId }) {
         const finalRun = await prisma.dianTestMatrixRun.findUniqueOrThrow({ where: { id: runId } });
         if (finalRun.cancelRequested) {
             await prisma.dianTestMatrixRun.update({ where: { id: runId }, data: { status: "cancelled", finishedAt: new Date() } });
+            await sendRunFinishedNotification(runId);
             return;
         }
 
@@ -372,11 +374,31 @@ async function runDianTestMatrixWorker({ runId, apiKey, testSetId }) {
             where: { id: runId },
             data: { status: "completed", finishedAt: new Date(), passResult: acceptedInvoices >= 1 },
         });
+        await sendRunFinishedNotification(runId);
     } catch (error) {
         await prisma.dianTestMatrixRun.update({
             where: { id: runId },
             data: { status: "failed", finishedAt: new Date(), errorMessage: error.message || String(error) },
         });
+        await sendRunFinishedNotification(runId);
+    }
+}
+
+/**
+ * Emails every admin once a run reaches a terminal status - runs can take a
+ * while (up to ~50 documents x several minutes of polling each), so this
+ * closes the loop instead of requiring someone to keep the admin tab open.
+ * Never lets a notification failure affect the run's own recorded outcome -
+ * notifyAdminsDianTestMatrixRunFinished already swallows its own errors, but
+ * the company lookup here is wrapped too, out of the same caution.
+ */
+async function sendRunFinishedNotification(runId) {
+    try {
+        const run = await getDianTestMatrixRun({ runId });
+        const company = await prisma.company.findUnique({ where: { id: run.companyId }, select: { name: true } });
+        await notifyAdminsDianTestMatrixRunFinished({ run, company, summary: run.summary });
+    } catch (error) {
+        console.error(`[dian-test-matrix] failed to send finish notification for run ${runId}:`, error);
     }
 }
 

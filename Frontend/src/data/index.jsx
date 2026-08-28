@@ -20,6 +20,7 @@ import {
     SafetyCertificateOutlined,
     ExperimentOutlined,
     TagsOutlined,
+    ApiOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 
@@ -203,6 +204,15 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             moduleKey: "billing",
             icon: <CreditCardOutlined />,
             label: <Link to="/billing">{t("common.billing")}</Link>,
+        },
+        // Same gate as billing (moduleKey filter below) - API keys/
+        // integrations/webhooks are account-wide, owner-only, same as
+        // billing itself (see App.jsx#RequireBillingAccess).
+        {
+            key: "integrations",
+            moduleKey: "billing",
+            icon: <ApiOutlined />,
+            label: <Link to="/integrations">{t("common.integrations_nav")}</Link>,
         },
     ]
         .filter((item) => !item.moduleKey || canAccess(item.moduleKey))
