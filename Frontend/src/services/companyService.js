@@ -59,6 +59,16 @@ export const companyService = {
         return response.data;
     },
 
+    // Drives the step-by-step self-service UI: FirmaPass's own
+    // pending_documents/uploaded_documents on the validation say exactly
+    // what's left to upload (each with its own real label/description), so
+    // the wizard doesn't have to guess or show a generic "additional
+    // document" field up front.
+    async getMyFirmaPassValidation(validationUuid) {
+        const response = await api.get(`/company/me/itcycle/firmapass/validations/${validationUuid}`);
+        return response.data;
+    },
+
     async uploadMyFirmaPassRut(validationUuid, payload) {
         const response = await api.post(`/company/me/itcycle/firmapass/validations/${validationUuid}/rut`, payload);
         return response.data;

@@ -35,6 +35,12 @@ const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
     reader.readAsDataURL(file);
 });
 
+// A pending/uploaded document entry can be a bare string (older RUT-upload
+// response shape) or a richer object with FirmaPass's own label/description
+// (list/detail response shape, confirmed against the real sandbox API) -
+// normalize both so the step list below never has to branch on shape twice.
+const docType = (doc) => (typeof doc === "string" ? doc : doc?.type);
+
 // FirmaPass creates the identity-validation request outside Ohnix. This UI
 // keeps that boundary explicit, then lets the company owner complete every
 // remaining step without an Ohnix platform administrator handling documents
@@ -50,11 +56,16 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
     const [lookupMode, setLookupMode] = useState("order");
     const [orderNumber, setOrderNumber] = useState("");
     const [validationUuid, setValidationUuid] = useState("");
-    const [representativeId, setRepresentativeId] = useState("");
-    const [rutBase64, setRutBase64] = useState(null);
-    const [documentType, setDocumentType] = useState("");
-    const [documentBase64, setDocumentBase64] = useState(null);
+    // One base64 file per FirmaPass document `type` (rut, cc, ccio, ...) -
+    // replaces a single generic "document type" text field now that
+    // FirmaPass's own pending_documents tells us exactly which types are
+    // still needed, with their real label/description/accept per type.
+    const [docFiles, setDocFiles] = useState({});
     const [status, setStatus] = useState(null);
+    // The validation itself (estado, pending_documents, uploaded_documents,
+    // completion_url) - separate from `status` above (Company-wide
+    // certificate status). Drives which step-by-step upload rows to show.
+    const [validationDetail, setValidationDetail] = useState(null);
     const [busy, setBusy] = useState("");
     // Same reasoning as ElectronicInvoicingSettings.jsx's registerIdempotencyKey -
     // a stable key per mount so a genuine retry (not a second, deliberate
@@ -72,6 +83,33 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
     };
 
     useEffect(() => { refresh(true); }, []);
+
+    // itcycle-api-dian's getValidationDetail is a raw passthrough of
+    // FirmaPass's own {message, data} envelope, on top of Ohnix's own
+    // ApiResponse envelope - hence the double `.data.data`.
+    const refreshValidationDetail = async (uuid) => {
+        try {
+            const response = await companyService.getMyFirmaPassValidation(uuid);
+            setValidationDetail(response?.data?.data || null);
+        } catch {
+            // A lookup failure here (bad/unknown uuid, transient error) just
+            // means the step list falls back to "upload the RUT" below -
+            // nothing to surface as a toast for what's essentially a status refresh.
+            setValidationDetail(null);
+        }
+    };
+
+    // Fires for BOTH lookup paths (order-number resolution and manually
+    // pasting a UUID) since both just end up setting `validationUuid` -
+    // one effect instead of duplicating the fetch in two click handlers.
+    useEffect(() => {
+        const trimmed = validationUuid.trim();
+        if (trimmed && isValidUuid(trimmed)) {
+            refreshValidationDetail(trimmed);
+        } else {
+            setValidationDetail(null);
+        }
+    }, [validationUuid]);
 
     const run = async (key, action, successMessage, errorFormatter) => {
         try {
@@ -119,10 +157,46 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
         t("fiscal_setup.firmapass_order_found"),
     );
 
+    const uploadDocument = (type) => {
+        const fileBase64 = docFiles[type];
+        if (!fileBase64) return;
+        const action = type === "rut"
+            // identificacionRepresentanteLegal (for company/legal-entity RUTs)
+            // isn't collected here - nobody on the team could confirm exactly
+            // when FirmaPass needs it, and an unexplained field is worse than
+            // not offering it yet. Re-add once that's actually verified.
+            ? () => companyService.uploadMyFirmaPassRut(validationUuidTrimmed, { rutBase64: fileBase64 })
+            : () => companyService.uploadMyFirmaPassArchivo(validationUuidTrimmed, { type, fileBase64 });
+        run(`doc:${type}`, async () => {
+            await action();
+            setDocFiles((prev) => { const next = { ...prev }; delete next[type]; return next; });
+            await refreshValidationDetail(validationUuidTrimmed);
+        }, t("fiscal_setup.firmapass_document_sent"));
+    };
+
     const activeCertificate = (status?.certificates || []).some((certificate) => certificate.status === "ACTIVE");
     const validationUuidTrimmed = validationUuid.trim();
     const validationUuidInvalid = Boolean(validationUuidTrimmed) && !isValidUuid(validationUuidTrimmed);
     const canDriveValidation = Boolean(validationUuidTrimmed) && !validationUuidInvalid;
+
+    // FirmaPass's own pending_documents is the source of truth for what's
+    // left once we have it; before the first successful fetch (or if RUT
+    // hasn't been uploaded yet and FirmaPass hasn't returned a list), fall
+    // back to "upload the RUT" - the one step every validation needs first,
+    // regardless of what pending_documents said before that upload existed.
+    // uploaded_documents comes back as an object keyed by type (confirmed
+    // against the real sandbox API: {"rut": {type, label, uploaded_at}}),
+    // not an array like pending_documents - Object.values handles both that
+    // and a plain array fallback (Object.values of an array is itself).
+    const uploadedTypes = new Set(Object.values(validationDetail?.uploaded_documents || {}).map(docType).filter(Boolean));
+    const pendingFromApi = Array.isArray(validationDetail?.pending_documents) ? validationDetail.pending_documents : null;
+    const remainingDocs = pendingFromApi ?? (uploadedTypes.has("rut") ? [] : [{ type: "rut", label: t("fiscal_setup.firmapass_rut") }]);
+    const readyToConfirm = Boolean(validationDetail) && remainingDocs.length === 0;
+    // completion_url is present on any not-yet-finished validation (still
+    // there even once only a document remains pending, not exclusively while
+    // personal data is missing) - offered as an alternative path, not a
+    // diagnosis of exactly what's wrong.
+    const hasCompletionUrl = Boolean(validationDetail?.completion_url);
 
     return (
         <Card className="mt-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)]">
@@ -269,65 +343,81 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
                         )}
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_rut")}</label>
-                            <div className="flex flex-wrap gap-2">
-                                <Upload accept=".pdf,.png,.jpg,.jpeg" maxCount={1} beforeUpload={async (file) => { setRutBase64(await readFileAsBase64(file)); return false; }}>
-                                    <Button icon={<UploadOutlined />}>{t("fiscal_setup.firmapass_attach_rut")}</Button>
-                                </Upload>
-                                <Input
-                                    className="auth-ohnix-input min-w-40 flex-1"
-                                    value={representativeId}
-                                    onChange={(event) => setRepresentativeId(event.target.value)}
-                                    placeholder={t("fiscal_setup.firmapass_representative_id")}
-                                />
-                                <Button
-                                    loading={busy === "rut"}
-                                    disabled={!canDriveValidation || !rutBase64}
-                                    onClick={() => run("rut", () => companyService.uploadMyFirmaPassRut(validationUuid.trim(), { rutBase64, identificacionRepresentanteLegal: representativeId || undefined }), t("fiscal_setup.firmapass_rut_sent"))}
-                                >
-                                    {t("fiscal_setup.firmapass_send_rut")}
-                                </Button>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_additional_document")}</label>
-                            <div className="flex flex-wrap gap-2">
-                                <Input
-                                    className="auth-ohnix-input min-w-32 flex-1"
-                                    value={documentType}
-                                    onChange={(event) => setDocumentType(event.target.value)}
-                                    placeholder={t("fiscal_setup.firmapass_document_type_placeholder")}
-                                />
-                                <Upload accept=".pdf,.png,.jpg,.jpeg" maxCount={1} beforeUpload={async (file) => { setDocumentBase64(await readFileAsBase64(file)); return false; }}>
-                                    <Button icon={<UploadOutlined />}>{t("fiscal_setup.firmapass_attach")}</Button>
-                                </Upload>
-                                <Button
-                                    loading={busy === "document"}
-                                    disabled={!canDriveValidation || !documentType || !documentBase64}
-                                    onClick={() => run("document", () => companyService.uploadMyFirmaPassArchivo(validationUuid.trim(), { type: documentType, fileBase64: documentBase64 }), t("fiscal_setup.firmapass_document_sent"))}
-                                >
-                                    {t("fiscal_setup.firmapass_send")}
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
+                    {canDriveValidation && (
+                        <div className="space-y-3">
+                            <label className="mb-0 block text-sm font-medium text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_steps_title")}</label>
 
-                    <div className="flex flex-wrap gap-2">
-                        <Button
-                            type="primary"
-                            className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]"
-                            loading={busy === "confirm"}
-                            disabled={!canDriveValidation}
-                            onClick={() => run("confirm", () => companyService.confirmMyFirmaPassValidation(validationUuid.trim()), t("fiscal_setup.firmapass_confirm_success"))}
-                        >
-                            {t("fiscal_setup.firmapass_confirm")}
-                        </Button>
-                        <Button icon={<ReloadOutlined />} loading={busy === "refresh"} onClick={() => run("refresh", () => refresh(true))}>
-                            {t("fiscal_setup.firmapass_refresh")}
-                        </Button>
-                    </div>
+                            {remainingDocs.map((doc) => {
+                                const type = docType(doc);
+                                const label = typeof doc === "object" && doc.label ? doc.label : type;
+                                const description = typeof doc === "object" ? doc.description : null;
+                                const accept = (typeof doc === "object" && doc.accept) || ".pdf,.png,.jpg,.jpeg";
+                                return (
+                                    <div key={type} className="rounded-xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-line-1)] p-3">
+                                        <div className="mb-1 text-sm font-semibold text-[var(--ohnix-text-primary)]">{label}</div>
+                                        {description && <p className="mb-2 text-xs text-[var(--ohnix-text-muted)]">{description}</p>}
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Upload
+                                                accept={accept}
+                                                maxCount={1}
+                                                beforeUpload={async (file) => {
+                                                    const base64 = await readFileAsBase64(file);
+                                                    setDocFiles((prev) => ({ ...prev, [type]: base64 }));
+                                                    return false;
+                                                }}
+                                            >
+                                                <Button icon={<UploadOutlined />}>{t("fiscal_setup.firmapass_attach")}</Button>
+                                            </Upload>
+                                            <Button
+                                                loading={busy === `doc:${type}`}
+                                                disabled={!docFiles[type]}
+                                                onClick={() => uploadDocument(type)}
+                                            >
+                                                {t("fiscal_setup.firmapass_send")}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {hasCompletionUrl && (
+                                <Alert
+                                    className="dark-alert dark-alert-purple"
+                                    type="info"
+                                    showIcon
+                                    message={t("fiscal_setup.firmapass_personal_data_title")}
+                                    description={t("fiscal_setup.firmapass_personal_data_hint")}
+                                    action={
+                                        <a href={validationDetail.completion_url} target="_blank" rel="noreferrer">
+                                            <Button size="small" icon={<LinkOutlined />}>{t("fiscal_setup.firmapass_personal_data_button")}</Button>
+                                        </a>
+                                    }
+                                />
+                            )}
+
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    type="primary"
+                                    className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]"
+                                    loading={busy === "confirm"}
+                                    disabled={!readyToConfirm}
+                                    onClick={() => run("confirm", async () => {
+                                        await companyService.confirmMyFirmaPassValidation(validationUuidTrimmed);
+                                        await refreshValidationDetail(validationUuidTrimmed);
+                                    }, t("fiscal_setup.firmapass_confirm_success"))}
+                                >
+                                    {t("fiscal_setup.firmapass_confirm")}
+                                </Button>
+                                <Button
+                                    icon={<ReloadOutlined />}
+                                    loading={busy === "refresh"}
+                                    onClick={() => run("refresh", async () => { await refresh(true); await refreshValidationDetail(validationUuidTrimmed); })}
+                                >
+                                    {t("fiscal_setup.firmapass_refresh")}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
 
                     {(status?.certificates || []).length > 0 && <div className="flex flex-wrap gap-2">
                         {status.certificates.map((certificate) => (
