@@ -2755,11 +2755,21 @@
       "description": "14 días de prueba gratis del plan Emprendedor, sin tarjeta de crédito. Cambia o cancela cuando quieras.",
       "most_popular": "Más popular",
       "trial_note": "14 días gratis · Sin tarjeta",
+      "billing_toggle": {
+        "label": "Ciclo de facturación",
+        "monthly": "Mensual",
+        "annual": "Anual"
+      },
+      "annual_equivalent": "≈ {{amount}}/mes",
+      "annual_suffix": "≈/mes",
+      "monthly_suffix": "/mes",
+      "annual_charge_suffix": "/año",
+      "annual_savings": "Ahorras {{amount}}/año",
       "plans": {
         "starter": {
           "name": "Emprendedor",
           "subtitle": "Para negocios que formalizan su inventario",
-          "price": "$38.000",
+          "price": "$45.000",
           "billing": "/mes",
           "description": "Control completo de stock, pedidos y compras desde el primer día. Sin complejidad.",
           "features": {
@@ -2775,7 +2785,7 @@
         "growth": {
           "name": "Negocio",
           "subtitle": "Para operaciones activas con más volumen",
-          "price": "$99.000",
+          "price": "$129.000",
           "billing": "/mes",
           "description": "Reportes completos, exportaciones y automatizaciones para negocios establecidos.",
           "features": {
@@ -2787,7 +2797,7 @@
             "export": "Exportación CSV · Carga masiva de productos",
             "pdf": "PDF con logo de la empresa",
             "alerts": "Alertas automáticas de stock bajo por email",
-            "invoicing": "Facturación electrónica DIAN (Colombia)",
+            "invoicing": "Facturación electrónica DIAN incluida hasta 300 pedidos/mes",
             "sales_quotations": "Cotizaciones para clientes con envío y conversión a pedido",
             "support": "Soporte prioritario por correo y WhatsApp"
           },
@@ -2796,7 +2806,7 @@
         "scale": {
           "name": "Escala",
           "subtitle": "Para empresas en crecimiento con equipo",
-          "price": "$200.000",
+          "price": "$259.000",
           "billing": "/mes",
           "description": "API, reportes avanzados y personalización completa para equipos en crecimiento.",
           "features": {
@@ -2811,7 +2821,7 @@
             "accounting": "Contabilidad automática (asientos, plan de cuentas, cierres)",
             "alerts": "Alertas con umbral configurable por producto",
             "sales_quotations": "Cotizaciones para clientes con envío y conversión a pedido",
-            "invoicing": "Facturación electrónica DIAN (Colombia)",
+            "invoicing": "Facturación electrónica DIAN incluida hasta 1.000 pedidos/mes",
             "support": "Soporte prioritario · Onboarding asistido"
           },
           "cta": "Elegir plan Escala"
@@ -3330,13 +3340,26 @@
     "firmapass_attach": "Adjuntar",
     "firmapass_send": "Enviar",
     "firmapass_document_sent": "Documento enviado a FirmaPass.",
-    "firmapass_personal_data_title": "También puedes continuar directamente en FirmaPass",
-    "firmapass_personal_data_hint": "Si prefieres revisar o corregir los datos que FirmaPass extrajo de tu RUT (nombres, dirección, contacto), puedes hacerlo en su propio portal.",
+    "firmapass_personal_data_title": "Paso necesario: completa tus datos en FirmaPass",
+    "firmapass_personal_data_hint": "Antes de poder subir documentos o confirmar, FirmaPass necesita que revises/completes este formulario en su propio portal (nombres, dirección, contacto extraídos del RUT). Si los pasos de abajo fallan con \"no se encontró una validación disponible\", este suele ser el motivo.",
     "firmapass_personal_data_button": "Completar en FirmaPass",
     "firmapass_confirm": "Confirmar solicitud",
     "firmapass_confirm_success": "Solicitud confirmada. FirmaPass terminará la emisión de forma asíncrona.",
     "firmapass_refresh": "Actualizar estado",
     "firmapass_status_error": "No fue posible consultar FirmaPass.",
-    "firmapass_step_error": "No fue posible completar el paso."
+    "firmapass_step_error": "No fue posible completar el paso.",
+    "firmapass_validation_not_ready_error": "FirmaPass dice que esta validación no está lista para este paso. Es muy probable que falte completar el formulario de datos personales en su portal (botón \"Completar en FirmaPass\" arriba) — sin eso, la validación no avanza aunque el RUT ya haya sido aceptado.",
+    "firmapass_manual_certificate_title": "¿Ya tienes un certificado digital listo?",
+    "firmapass_manual_certificate_hint": "Si lo compraste en otro lado, o lo obtuviste de FirmaPass fuera de este cupón, súbelo aquí directamente en formato .p12/.pfx y sigue normalmente — no necesitas repetir el proceso de RUT y documentos.",
+    "firmapass_manual_certificate_expand": "Subir certificado",
+    "firmapass_manual_certificate_collapse": "Ocultar",
+    "firmapass_manual_certificate_provider": "Proveedor del certificado",
+    "firmapass_manual_certificate_identifier": "Identificador del certificado",
+    "firmapass_manual_certificate_password": "Contraseña del certificado",
+    "firmapass_manual_certificate_expires": "Fecha de vencimiento",
+    "firmapass_manual_certificate_attach": "Adjuntar archivo .p12/.pfx",
+    "firmapass_manual_certificate_file_ready": "Archivo listo",
+    "firmapass_manual_certificate_submit": "Guardar certificado",
+    "firmapass_manual_certificate_success": "Certificado cargado correctamente."
   }
 }

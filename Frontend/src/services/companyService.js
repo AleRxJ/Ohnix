@@ -88,4 +88,13 @@ export const companyService = {
         const response = await api.get("/company/me/itcycle/firmapass/status");
         return response.data;
     },
+
+    // Alternative to the FirmaPass rut/archivos/confirmar wizard: hand
+    // itcycle-api-dian a certificate bought/obtained elsewhere directly.
+    async uploadMyCertificate(payload, idempotencyKey) {
+        const response = await api.post("/company/me/itcycle/certificates", payload, {
+            headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        });
+        return response.data;
+    },
 };

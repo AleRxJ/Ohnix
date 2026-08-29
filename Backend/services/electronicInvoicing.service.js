@@ -646,6 +646,16 @@ const itcycleFiscalErrors = (order) => {
     return errors;
 };
 
+// itcycle-api-dian (via dian-kit) defaults every send() to the PRODUCTION
+// method (SendBillSync) unless told otherwise - DIAN's own sandbox rejects
+// that outright for a company still going through habilitación ("En
+// proceso"), which only accepts SendTestSetAsync + the exact testSetId DIAN
+// issued for that qualification round. company.itcycleTestSetId is null once
+// DIAN approves the software, so this naturally falls back to the default
+// production method with no further change needed at that point.
+export const buildItcycleSendOptions = (company) =>
+    text(company?.itcycleTestSetId) ? { method: "SendTestSetAsync", testSetId: company.itcycleTestSetId } : undefined;
+
 const buildItcyclePayload = (order) => {
     const errors = itcycleFiscalErrors(order);
     if (errors.length) throw new ApiError(422, "Fiscal data is incomplete for itcycle-api-dian", errors);
@@ -958,7 +968,7 @@ export const issueElectronicInvoiceForOrder = async ({ orderId, requesterUserId,
         const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
         const invoice = buildItcyclePayload(order);
         claim = await claimInvoice({ order, payload: invoice, provider });
-        submit = () => createItcycleInvoice({ apiKey, internalReference: order.invoiceNo, invoice }).then(mapItcycleResponse);
+        submit = () => createItcycleInvoice({ apiKey, internalReference: order.invoiceNo, invoice, send: buildItcycleSendOptions(company) }).then(mapItcycleResponse);
     } else {
         if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");
         const resolution = company.alanubeInvoiceResolution;
@@ -1023,7 +1033,7 @@ export const syncElectronicInvoiceStatus = async ({ orderId, requesterUserId, re
             // status: for CONTINGENCY it's a real retry; otherwise it's a
             // status poll, same as Factus/Alanube above.
             mapped = invoice.status === "contingency"
-                ? mapItcycleResponse(await retryItcycleInvoiceSend({ apiKey, id: invoice.externalId }))
+                ? mapItcycleResponse(await retryItcycleInvoiceSend({ apiKey, id: invoice.externalId, send: buildItcycleSendOptions(company) }))
                 : mapItcycleResponse(await getItcycleInvoiceStatus({ apiKey, id: invoice.externalId }));
         } else {
             if (!invoice.externalId) throw new ApiError(409, "This invoice does not have a provider id yet");
@@ -1354,6 +1364,7 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
             invoiceId: invoice.externalId,
             document: itcyclePayload.document,
             discrepancyResponse: itcyclePayload.discrepancyResponse,
+            send: buildItcycleSendOptions(company),
         }).then(mapItcycleCreditNoteResponse);
     } else {
         if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");

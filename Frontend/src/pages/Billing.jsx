@@ -26,6 +26,7 @@ import { FEATURE_LABELS } from "../hooks/useSubscription";
 import { useMarketPricing } from "../hooks/useMarketPricing";
 import SubscriptionPlanCard, { PLAN_COLORS } from "../components/profile/SubscriptionPlanCard";
 import PlanComparisonCard, { LIMIT_ROWS, formatLimit, getPlanPriceLabel } from "../components/profile/PlanComparisonCard";
+import BillingCycleToggle from "../components/common/BillingCycleToggle";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -289,6 +290,11 @@ const Billing = () => {
     // modal's card grid, so the "what changes" panel below it updates live
     // instead of only showing a fixed "current -> next tier" comparison.
     const selectedTargetPlan = Form.useWatch("targetPlan", upgradeForm);
+    // "MONTHLY" default matches PlanUpgradeRequest.billingCycle's own default
+    // on the backend, so a form the user never touches (submits before this
+    // field mounts, or JS strips it) still sends the same value the backend
+    // would have assumed anyway.
+    const selectedBillingCycle = Form.useWatch("billingCycle", upgradeForm) || "MONTHLY";
     // Enterprise can't rely on the automated checkout (no fixed price), so
     // approving one has to carry a manual payment link the admin negotiated
     // - required only for this plan, only once the admin picks "approved".
@@ -689,6 +695,7 @@ const Billing = () => {
 
         upgradeForm.setFieldsValue({
             targetPlan: availableUpgradeOptions[0],
+            billingCycle: "MONTHLY",
             notes: "",
             requiresManualReview: false,
         });
@@ -1695,6 +1702,27 @@ const Billing = () => {
                             t={t}
                         />
                     </Form.Item>
+
+                    <Form.Item
+                        name="billingCycle"
+                        label={t("landing.pricing.billing_toggle.label")}
+                        className="!mb-4"
+                    >
+                        <BillingCycleToggle
+                            savingsLabel={priceByPlanKey?.[selectedTargetPlan]?.annualSavingsLabel ? "-17%" : null}
+                        />
+                    </Form.Item>
+
+                    {selectedTargetPlan && priceByPlanKey?.[selectedTargetPlan] && (
+                        <p className="-mt-2 mb-4 text-xs text-[var(--ohnix-text-muted)]">
+                            {selectedBillingCycle === "ANNUAL"
+                                ? `${priceByPlanKey[selectedTargetPlan].annualLabel} ${t("landing.pricing.annual_charge_suffix")} · ${t(
+                                      "landing.pricing.annual_savings",
+                                      { amount: priceByPlanKey[selectedTargetPlan].annualSavingsLabel }
+                                  )}`
+                                : `${priceByPlanKey[selectedTargetPlan].monthlyLabel} ${t("landing.pricing.monthly_suffix")}`}
+                        </p>
+                    )}
 
                     {targetPlanCatalogEntry && (
                         <div className="mb-5 rounded-2xl border border-[#29D8D5]/20 bg-gradient-to-br from-[#29D8D5]/[0.06] to-transparent p-4">

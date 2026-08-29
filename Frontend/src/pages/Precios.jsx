@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckOutlined } from "@ant-design/icons";
 import Navbar from "../components/layout/Navbar";
@@ -7,10 +8,12 @@ import useI18n from "../hooks/useI18n";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
 import { useMarketPricing } from "../hooks/useMarketPricing";
 import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
+import BillingCycleToggle from "../components/common/BillingCycleToggle";
 
 const Precios = () => {
     const navigate = useNavigate();
     const { t, currentLanguage } = useI18n();
+    const [billingCycle, setBillingCycle] = useState("MONTHLY");
 
     // Market-aware pricing: marketPricing is null until resolved, so the
     // page falls back to the static (USD-reference) locale strings below
@@ -29,18 +32,37 @@ const Precios = () => {
     // shown while market pricing resolves or if it fails, so it gets the same
     // "COP" badge as a resolved COP price - not `null`, which used to read as
     // an unqualified (and easily misread as USD) dollar amount.
+    // "Paga 10, lleva 12": annual is one lump charge, but shown per-month
+    // here so it's directly comparable to the monthly card at a glance -
+    // same treatment as Siigo/Alegra. `billingSuffix` overrides the plan's
+    // static "/mes" locale string with "≈/mes" while annual is selected, so
+    // the price never reads as if it were actually billed every month.
     const planPrice = (planKey, fallback) => {
         const priceInfo = priceByPlanKey[planKey];
+        if (billingCycle === "ANNUAL" && priceInfo?.annualEquivalentMonthlyLabel) {
+            return {
+                price: priceInfo.annualEquivalentMonthlyLabel,
+                currencyBadge: priceInfo.currency === "COP" ? "COP" : null,
+                billingSuffix: t("landing.pricing.annual_suffix"),
+                savings: priceInfo.annualSavingsLabel
+                    ? t("landing.pricing.annual_savings", { amount: priceInfo.annualSavingsLabel })
+                    : null,
+            };
+        }
         if (!priceInfo) return { price: fallback, currencyBadge: "COP" };
         return { price: priceInfo.label, currencyBadge: priceInfo.currency === "COP" ? "COP" : null };
     };
+
+    const starterPrice = planPrice("starter", t("landing.pricing.plans.starter.price"));
+    const growthPrice = planPrice("growth", t("landing.pricing.plans.growth.price"));
+    const scalePrice = planPrice("scale", t("landing.pricing.plans.scale.price"));
 
     const plans = [
         {
             key: "starter",
             name: t("landing.pricing.plans.starter.name"),
-            ...planPrice("starter", t("landing.pricing.plans.starter.price")),
-            billing: t("landing.pricing.plans.starter.billing"),
+            ...starterPrice,
+            billing: starterPrice.billingSuffix || t("landing.pricing.plans.starter.billing"),
             description: t("landing.pricing.plans.starter.description"),
             features: [
                 t("landing.pricing.plans.starter.features.limits"),
@@ -54,8 +76,8 @@ const Precios = () => {
         {
             key: "growth",
             name: t("landing.pricing.plans.growth.name"),
-            ...planPrice("growth", t("landing.pricing.plans.growth.price")),
-            billing: t("landing.pricing.plans.growth.billing"),
+            ...growthPrice,
+            billing: growthPrice.billingSuffix || t("landing.pricing.plans.growth.billing"),
             description: t("landing.pricing.plans.growth.description"),
             features: [
                 t("landing.pricing.plans.growth.features.unlimited"),
@@ -75,8 +97,8 @@ const Precios = () => {
         {
             key: "scale",
             name: t("landing.pricing.plans.scale.name"),
-            ...planPrice("scale", t("landing.pricing.plans.scale.price")),
-            billing: t("landing.pricing.plans.scale.billing"),
+            ...scalePrice,
+            billing: scalePrice.billingSuffix || t("landing.pricing.plans.scale.billing"),
             description: t("landing.pricing.plans.scale.description"),
             features: [
                 t("landing.pricing.plans.scale.features.unlimited"),
@@ -132,7 +154,7 @@ const Precios = () => {
               }
               return acc;
           }, {})
-        : { starter: 38000, growth: 99000, scale: 200000 };
+        : { starter: 45000, growth: 129000, scale: 259000 };
 
     const productSchemaImage = "https://ohnix.co/Ohnix_FullLogo.png";
     const offerValidFrom = "2026-01-01";
@@ -219,7 +241,15 @@ const Precios = () => {
                         description={description}
                     />
 
-                    <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="mt-8 flex justify-center md:justify-start">
+                        <BillingCycleToggle
+                            value={billingCycle}
+                            onChange={setBillingCycle}
+                            savingsLabel={priceByPlanKey.growth?.annualSavingsLabel ? "-17%" : null}
+                        />
+                    </div>
+
+                    <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
                         {plans.map((plan) => (
                             <article
                                 key={plan.key}
@@ -247,6 +277,9 @@ const Precios = () => {
                                         </span>
                                     )}
                                 </div>
+                                {plan.savings && (
+                                    <p className="mt-1.5 text-[11px] font-semibold text-[#44F3F0]">{plan.savings}</p>
+                                )}
                                 <p className="mt-4 text-sm leading-7 text-[#D4DBDF]">{plan.description}</p>
                                 <div className="mt-5 border-t border-white/[0.06]" />
                                 <ul className="mt-4 space-y-2">
@@ -285,7 +318,7 @@ const Precios = () => {
                                 </ul>
                                 <button
                                     type="button"
-                                    onClick={() => navigate(`/signup?plan=${plan.key}&source=seo-precios`)}
+                                    onClick={() => navigate(`/signup?plan=${plan.key}&billingCycle=${billingCycle}&source=seo-precios`)}
                                     className={`mt-7 w-full rounded-full px-5 py-3 text-sm font-semibold ${
                                         plan.featured
                                             ? "bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0]"

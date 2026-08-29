@@ -57,6 +57,7 @@ const buildAbsoluteUrl = (baseUrl, path) => `${baseUrl}${path.startsWith("/") ? 
 
 const request = async ({ method, path, body, authHeader }) => {
     const config = getItcycleConfig();
+    const hasBody = body !== undefined;
 
     const response = await withTimeout(
         (signal) =>
@@ -64,10 +65,16 @@ const request = async ({ method, path, body, authHeader }) => {
                 method,
                 headers: {
                     ...authHeader,
-                    "Content-Type": "application/json",
+                    // Only declare a JSON content-type when a body is actually
+                    // sent - itcycle-api-dian (Fastify) rejects any request that
+                    // carries this header with no body ("Body cannot be empty
+                    // when content-type is set to 'application/json'"), which
+                    // broke every bodyless POST here: retry-send for
+                    // invoices/credit-notes/support-documents and refresh-status.
+                    ...(hasBody ? { "Content-Type": "application/json" } : {}),
                     Accept: "application/json",
                 },
-                body: body !== undefined ? JSON.stringify(body) : undefined,
+                body: hasBody ? JSON.stringify(body) : undefined,
                 signal,
             }),
         config.timeoutMs
@@ -342,11 +349,12 @@ export const getItcycleDebitNoteStatus = async ({ apiKey, id }) => {
 // itcycle-api-dian's docs/dian/sandbox-tests.md#contingencia) is this POST
 // endpoint. Reuses the exact signed XML already delivered to the customer -
 // itcycle-api-dian never regenerates it.
-export const retryItcycleInvoiceSend = async ({ apiKey, id }) => {
+export const retryItcycleInvoiceSend = async ({ apiKey, id, send }) => {
     if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
     return request({
         method: "POST",
         path: `/api/v1/documents/invoices/${id}/retry-send`,
+        body: { send },
         authHeader: companyAuthHeader(apiKey),
     });
 };
@@ -382,11 +390,12 @@ export const getItcycleSupportDocumentStatus = async ({ apiKey, id }) => {
     });
 };
 
-export const retryItcycleSupportDocumentSend = async ({ apiKey, id }) => {
+export const retryItcycleSupportDocumentSend = async ({ apiKey, id, send }) => {
     if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
     return request({
         method: "POST",
         path: `/api/v1/documents/support-documents/${id}/retry-send`,
+        body: { send },
         authHeader: companyAuthHeader(apiKey),
     });
 };

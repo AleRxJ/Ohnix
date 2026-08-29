@@ -209,7 +209,12 @@ export const resolveCountryConfig = (country) => {
 // most visitors actually expect instead of silently showing USD.
 export const getCurrencyForCountry = (country) => resolveCountryConfig(country)?.currency || "cop";
 
-export const getAmountForPlanAndCurrency = (targetPlan, currency) => {
+// billingCycle "ANNUAL" means "paga 10 meses, lleva 12" - the charged amount
+// is simply 10x the monthly price, computed here rather than read from a
+// separate ANNUAL env var, so a monthly price change can never drift out of
+// sync with its annual equivalent. COP is zero-decimal and USD/EUR amounts
+// are already in cents, so x10 is always exact - no rounding loss.
+export const getAmountForPlanAndCurrency = (targetPlan, currency, billingCycle = "MONTHLY") => {
     const planConfig = PLAN_ONE_TIME_AMOUNT_BY_CURRENCY[targetPlan];
     const resolver = planConfig?.[currency];
     if (typeof resolver !== "function") {
@@ -221,7 +226,8 @@ export const getAmountForPlanAndCurrency = (targetPlan, currency) => {
         return null;
     }
 
-    return Math.round(amount);
+    const cycleAmount = billingCycle === "ANNUAL" ? amount * 10 : amount;
+    return Math.round(cycleAmount);
 };
 
 const createColombiaDirectCheckoutSession = async ({
@@ -245,7 +251,7 @@ const createColombiaDirectCheckoutSession = async ({
         throw new Error("Direct integration is not available for this payment method");
     }
 
-    const amount = getAmountForPlanAndCurrency(request.targetPlan, "cop");
+    const amount = getAmountForPlanAndCurrency(request.targetPlan, "cop", request.billingCycle);
     if (!amount) {
         throw new Error("Colombia direct payments require COP amounts to be configured");
     }
@@ -273,6 +279,7 @@ const createColombiaDirectCheckoutSession = async ({
                 targetPlan: request.targetPlan,
                 amount,
                 currency: "cop",
+                billingCycle: request.billingCycle,
                 paymentMethod,
                 country,
                 successUrl: getSuccessUrl(request.id),
@@ -431,7 +438,11 @@ export const createUpgradeCheckoutSession = async ({
     let lastError = null;
 
     for (const candidateCurrency of currencyCandidates) {
-        const amount = getAmountForPlanAndCurrency(request.targetPlan, candidateCurrency);
+        const amount = getAmountForPlanAndCurrency(
+            request.targetPlan,
+            candidateCurrency,
+            request.billingCycle
+        );
         if (!amount) {
             continue;
         }
@@ -458,8 +469,8 @@ export const createUpgradeCheckoutSession = async ({
                                 price_data: {
                                     currency: candidateCurrency,
                                     product_data: {
-                                        name: `Ohnix ${request.targetPlan} upgrade`,
-                                        description: `Plan upgrade from ${request.currentPlan} to ${request.targetPlan}`,
+                                        name: `Ohnix ${request.targetPlan} upgrade${request.billingCycle === "ANNUAL" ? " (annual)" : ""}`,
+                                        description: `Plan upgrade from ${request.currentPlan} to ${request.targetPlan}${request.billingCycle === "ANNUAL" ? " - annual billing (10x monthly)" : ""}`,
                                     },
                                     unit_amount: amount,
                                 },
@@ -473,6 +484,11 @@ export const createUpgradeCheckoutSession = async ({
                             userId: request.userId,
                             currentPlan: request.currentPlan,
                             targetPlan: request.targetPlan,
+                            // Informational mirror only - activation re-reads
+                            // billingCycle from the PlanUpgradeRequest row in
+                            // the DB, never from this metadata (see
+                            // activateFromCheckoutSession).
+                            billingCycle: request.billingCycle,
                             checkoutCountry: countryConfig.country,
                             checkoutPaymentMethod: normalizedPaymentMethod,
                             checkoutPaymentMethodResolved: candidateMethod,

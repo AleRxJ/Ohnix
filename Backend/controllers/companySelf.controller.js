@@ -24,6 +24,7 @@ import {
     getCompanyDianReadiness,
     getCompanyFirmaPassValidationDetail,
     resolveCompanyFirmaPassOrderNumber,
+    uploadCompanyCertificate,
     uploadCompanyFirmaPassArchivo,
     uploadCompanyFirmaPassRut,
 } from "../services/firmaPassProvisioning.service.js";
@@ -271,6 +272,20 @@ export const confirmMyFirmaPassValidation = asyncHandler(async (req, res) => {
     await ensureElectronicInvoicingPlan(req.user.prismaId);
     const data = await confirmCompanyFirmaPassValidation({ companyId: company.id, validationUuid: req.params.validationUuid });
     return res.status(200).json(new ApiResponse(200, data, "Validación de FirmaPass confirmada"));
+});
+
+// Alternative to the rut/archivos/confirmar wizard above: the company
+// already has a finished digital certificate (bought elsewhere, or a
+// FirmaPass one obtained outside this coupon flow) and just wants to hand
+// it to itcycle-api-dian directly. See uploadCompanyCertificate's own
+// comment for why this needs its own endpoint instead of reusing
+// registerMyCompanyWithItcycle's one-shot `certificate` param.
+export const uploadMyCertificate = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    const { provider, certificateIdentifier, p12Base64, password, expiresAt } = req.body || {};
+    const data = await uploadCompanyCertificate({ companyId: company.id, provider, certificateIdentifier, p12Base64, password, expiresAt });
+    return res.status(200).json(new ApiResponse(200, data, "Certificado cargado correctamente"));
 });
 
 export const getMyFirmaPassStatus = asyncHandler(async (req, res) => {

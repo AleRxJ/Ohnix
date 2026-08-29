@@ -11,10 +11,16 @@ export const PLAN_DISPLAY_NAMES = {
     enterprise: { es: "Enterprise",  en: "Enterprise" },
 };
 
+// Display-only reference/fallback (PlanComparisonCard.jsx falls back to this
+// when GET /pricing/public fails or returns no market price). Must stay in
+// sync by hand with STRIPE_AMOUNT_*_USD in payment.service.js - those env
+// vars are the real checkout amount, this is just what's shown if that
+// endpoint is unreachable. Values ago-2026 repricing: ~15% margin over spot
+// COP/USD conversion of the COP prices below, rounded.
 export const PLAN_PRICES_USD = {
-    starter:    19,
-    growth:     49,
-    scale:      99,
+    starter:    17,
+    growth:     48,
+    scale:      96,
     enterprise: null, // custom — set per negotiation
 };
 
@@ -247,6 +253,7 @@ export const ensureUserSubscription = async (userId) =>
             cancelAtPeriodEnd: true,
             scheduledPlan: true,
             lowStockThreshold: true,
+            billingCycle: true,
         },
     });
 

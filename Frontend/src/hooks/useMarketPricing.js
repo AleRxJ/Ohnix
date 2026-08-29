@@ -65,6 +65,15 @@ const formatPlanPrice = (amount, currency) => {
     return { label: formatCurrency(amount, currency), currency };
 };
 
+// Annual is charged as one lump sum (monthly x10, "paga 10, lleva 12") but
+// shown per-month-equivalent for easy comparison against the monthly price -
+// same treatment Siigo/Alegra use, and matches how the FirmaPass certificate
+// discount is already presented elsewhere in the app.
+const formatAnnualEquivalentMonthly = (annualAmount, currency) => {
+    if (annualAmount === null || annualAmount === undefined) return null;
+    return formatCurrency(Math.round(annualAmount / 12), currency);
+};
+
 // Returns { marketPricing, priceByPlanKey }. `marketPricing` is null until
 // resolved (network/geo lookup in flight or failed) - callers should fall
 // back to their existing static locale price strings in that case, same as
@@ -118,7 +127,20 @@ export const useMarketPricing = () => {
         // formatCurrency/schema.org both expect uppercase ISO 4217 ("COP").
         const currency = marketPricing.currency?.toUpperCase();
         return marketPricing.plans.reduce((acc, plan) => {
-            acc[plan.key] = formatPlanPrice(plan.amount, currency);
+            // `label`/`currency` kept as top-level fields (not nested under
+            // `monthly`) for back-compat with every caller that predates the
+            // monthly/annual toggle - they're identical to monthlyLabel.
+            const monthly = formatPlanPrice(plan.monthlyAmount ?? plan.amount, currency);
+            acc[plan.key] = monthly && {
+                ...monthly,
+                monthlyLabel: monthly.label,
+                annualLabel: formatPlanPrice(plan.annualAmount, currency)?.label ?? null,
+                annualEquivalentMonthlyLabel: formatAnnualEquivalentMonthly(plan.annualAmount, currency),
+                annualSavingsLabel:
+                    plan.monthlyAmount != null && plan.annualAmount != null
+                        ? formatCurrency(plan.monthlyAmount * 12 - plan.annualAmount, currency)
+                        : null,
+            };
             return acc;
         }, {});
     }, [marketPricing]);

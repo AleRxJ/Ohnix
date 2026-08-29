@@ -123,7 +123,11 @@ const EPAYCO_AMOUNT_RESOLVER = {
         ),
 };
 
-export const getEpaycoAmount = (targetPlan) => {
+// billingCycle "ANNUAL" = "paga 10 meses, lleva 12" - same x10 rule as
+// payment.service.js#getAmountForPlanAndCurrency, kept here as its own
+// multiplication rather than a shared import so this file's COP-only amount
+// resolution stays self-contained. COP is zero-decimal, so x10 is exact.
+export const getEpaycoAmount = (targetPlan, billingCycle = "MONTHLY") => {
     const resolver = EPAYCO_AMOUNT_RESOLVER[targetPlan];
     if (typeof resolver !== "function") {
         return null;
@@ -132,7 +136,8 @@ export const getEpaycoAmount = (targetPlan) => {
     if (!Number.isFinite(amount) || amount <= 0) {
         return null;
     }
-    return Math.round(amount);
+    const cycleAmount = billingCycle === "ANNUAL" ? amount * 10 : amount;
+    return Math.round(cycleAmount);
 };
 
 // ---------------------------------------------------------------------------
@@ -157,7 +162,7 @@ export const createEpaycoCheckoutSession = ({ request }) => {
         throw new Error("ePayco is not configured. Set EPAYCO_PUBLIC_KEY, EPAYCO_PRIVATE_KEY and EPAYCO_P_CUST_ID.");
     }
 
-    const amount = getEpaycoAmount(request.targetPlan);
+    const amount = getEpaycoAmount(request.targetPlan, request.billingCycle);
     if (!amount) {
         throw new Error(
             `ePayco COP amount is not configured for plan "${request.targetPlan}". ` +
@@ -190,7 +195,7 @@ export const createEpaycoCheckoutSession = ({ request }) => {
 
 export const buildEpaycoWidgetParams = ({ request, user, reference }) => {
     const cfg = getEpaycoConfig();
-    const amount = getEpaycoAmount(request.targetPlan);
+    const amount = getEpaycoAmount(request.targetPlan, request.billingCycle);
     const planLabel =
         request.targetPlan.charAt(0).toUpperCase() + request.targetPlan.slice(1);
 
@@ -206,8 +211,8 @@ export const buildEpaycoWidgetParams = ({ request, user, reference }) => {
         test: cfg.test,
         amount: String(amount),
         currency: "COP",
-        name: `Ohnix ${planLabel}`,
-        description: `Upgrade de plan ${request.currentPlan} a ${request.targetPlan}`,
+        name: `Ohnix ${planLabel}${request.billingCycle === "ANNUAL" ? " (anual)" : ""}`,
+        description: `Upgrade de plan ${request.currentPlan} a ${request.targetPlan}${request.billingCycle === "ANNUAL" ? " - facturación anual (10x mensual)" : ""}`,
         email: user.email,
         reference,
         responseUrl: responseUrlWithId,

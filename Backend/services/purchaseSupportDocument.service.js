@@ -6,6 +6,7 @@ import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../mi
 import {
     buildItcycleCustomerParty,
     buildItcycleLines,
+    buildItcycleSendOptions,
     buildItcycleTotals,
     normalizeItcycleStatus,
 } from "./electronicInvoicing.service.js";
@@ -234,7 +235,7 @@ export const issueSupportDocumentForPurchase = async ({ purchaseId, requesterUse
 
     if (!claim.claimed) return { reused: true, trigger, countryCode: "CO", supportDocument: serialize(claim.doc) };
     try {
-        const mapped = await createItcycleSupportDocument({ apiKey, internalReference: purchase.purchaseNo, document }).then(mapSupportDocumentResponse);
+        const mapped = await createItcycleSupportDocument({ apiKey, internalReference: purchase.purchaseNo, document, send: buildItcycleSendOptions(company) }).then(mapSupportDocumentResponse);
         const doc = await prisma.$transaction(async (tx) => {
             const updated = await tx.purchaseSupportDocument.update({ where: { id: claim.doc.id }, data: { ...mapped, errorMessage: null, issuedAt: mapped.status === "accepted" ? new Date() : null } });
             await tx.purchaseSupportDocumentEvent.create({ data: { purchaseSupportDocumentId: updated.id, eventType: "provider_response", status: updated.status, payload: mapped.rawResponse } });
@@ -272,7 +273,7 @@ export const syncSupportDocumentStatus = async ({ purchaseId, requesterUserId, r
         // Same two-meanings-of-sync split as syncElectronicInvoiceStatus:
         // CONTINGENCY means a real resend, anything else is a status poll.
         const mapped = doc.status === "contingency"
-            ? mapSupportDocumentResponse(await retryItcycleSupportDocumentSend({ apiKey, id: doc.externalId }))
+            ? mapSupportDocumentResponse(await retryItcycleSupportDocumentSend({ apiKey, id: doc.externalId, send: buildItcycleSendOptions(company) }))
             : mapSupportDocumentResponse(await getItcycleSupportDocumentStatus({ apiKey, id: doc.externalId }));
 
         const updated = await prisma.$transaction(async (tx) => {

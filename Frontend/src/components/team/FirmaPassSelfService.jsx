@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Card, Input, Space, Tag, Typography, Upload } from "antd";
+import { Alert, Button, Card, DatePicker, Form, Input, Space, Tag, Typography, Upload } from "antd";
 import { CheckCircleOutlined, CopyOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined, SearchOutlined, UploadOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
@@ -75,6 +75,24 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
     // activation attempt) replays the cached result instead of re-running
     // activateMyItcycleElectronicInvoicing from scratch.
     const [activateIdempotencyKey] = useState(() => crypto.randomUUID());
+    // Alternative to the whole rut/archivos/confirmar wizard below: a
+    // company that already has a finished certificate (bought elsewhere, or
+    // a FirmaPass one obtained outside this coupon) can hand it over
+    // directly instead of walking every FirmaPass step. Collapsed by
+    // default since the wizard above is still the common path.
+    const [manualCertOpen, setManualCertOpen] = useState(false);
+    const [manualCertFileBase64, setManualCertFileBase64] = useState("");
+    const [certForm] = Form.useForm();
+    const [uploadCertIdempotencyKey] = useState(() => crypto.randomUUID());
+    // getMyFirmaPassStatus's certificate list is scoped to provider="firmapass"
+    // (see itcycle-api-dian's getFirmaPassStatus) - a certificate uploaded
+    // manually with a different provider (or "firmapass" obtained outside
+    // this coupon) would never show up there, leaving activeCertificate
+    // permanently false even though it's genuinely active. readiness's
+    // certificateReady is the provider-agnostic signal (same one
+    // activateMyItcycleElectronicInvoicing itself checks server-side), so
+    // it's fetched here too and OR'd in below.
+    const [readiness, setReadiness] = useState(null);
 
     const refresh = async (silent = false) => {
         try {
@@ -82,6 +100,13 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
             setStatus(response?.data || null);
         } catch (error) {
             if (!silent) toast.error(error?.response?.data?.message || t("fiscal_setup.firmapass_status_error"));
+        }
+        try {
+            const itcycleStatus = await companyService.getMyItcycleStatus();
+            setReadiness(itcycleStatus?.data?.readiness || null);
+        } catch {
+            // Best-effort only - activeCertificate below already has the
+            // FirmaPass-scoped status as a fallback signal.
         }
     };
 
@@ -142,6 +167,22 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
     // getDianReadiness's `missing` codes ride in the ApiError `errors` array
     // (see Backend/controllers/companySelf.controller.js) - translate the
     // closed, stable set of 3 possible codes instead of showing them raw.
+    // FirmaPass's own "no se encontró una validación... disponible para esta
+    // operación" (returned by both /archivos and /confirmar, per their
+    // Postman docs) fires whenever the validation hasn't actually reached
+    // `pvi` internally - most commonly because the personal-data form on
+    // their own portal (completion_url, surfaced below) was never finished,
+    // even though the RUT step already succeeded. That raw message alone
+    // doesn't point the user anywhere, so swap in a translated hint whenever
+    // it shows up instead of just relaying it verbatim.
+    const describeFirmaPassNotReadyError = (error) => {
+        const rawMessage = error?.response?.data?.message;
+        if (typeof rawMessage === "string" && rawMessage.toLowerCase().includes("disponible para esta operaci")) {
+            return t("fiscal_setup.firmapass_validation_not_ready_error");
+        }
+        return null;
+    };
+
     const describeMissingReadiness = (error) => {
         const codes = error?.response?.data?.errors;
         if (!Array.isArray(codes) || codes.length === 0) return null;
@@ -153,6 +194,23 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
         const known = codes.map((code) => labels[code]).filter(Boolean);
         return known.length > 0 ? t("fiscal_setup.firmapass_activate_missing", { items: known.join(", ") }) : null;
     };
+
+    const uploadManualCertificate = (values) => run(
+        "uploadCertificate",
+        async () => {
+            await companyService.uploadMyCertificate({
+                provider: values.provider.trim(),
+                certificateIdentifier: values.certificateIdentifier.trim(),
+                p12Base64: manualCertFileBase64,
+                password: values.password,
+                expiresAt: values.expiresAt?.format("YYYY-MM-DD"),
+            }, uploadCertIdempotencyKey);
+            certForm.resetFields();
+            setManualCertFileBase64("");
+            setManualCertOpen(false);
+        },
+        t("fiscal_setup.firmapass_manual_certificate_success"),
+    );
 
     const copyCoupon = async () => {
         try {
@@ -186,10 +244,10 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
             await action();
             setDocFiles((prev) => { const next = { ...prev }; delete next[type]; return next; });
             await refreshValidationDetail(validationUuidTrimmed);
-        }, t("fiscal_setup.firmapass_document_sent"));
+        }, t("fiscal_setup.firmapass_document_sent"), describeFirmaPassNotReadyError);
     };
 
-    const activeCertificate = (status?.certificates || []).some((certificate) => certificate.status === "ACTIVE");
+    const activeCertificate = (status?.certificates || []).some((certificate) => certificate.status === "ACTIVE") || Boolean(readiness?.certificateReady);
     const validationUuidTrimmed = validationUuid.trim();
     const validationUuidInvalid = Boolean(validationUuidTrimmed) && !isValidUuid(validationUuidTrimmed);
     const canDriveValidation = Boolean(validationUuidTrimmed) && !validationUuidInvalid;
@@ -265,6 +323,63 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
                         message={t("fiscal_setup.firmapass_purchase_title")}
                         description={<p className="mb-0">{t("fiscal_setup.firmapass_purchase_hint")}</p>}
                     />
+
+                    <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] p-4">
+                        <button
+                            type="button"
+                            className="flex w-full items-center justify-between gap-2 text-left"
+                            onClick={() => setManualCertOpen((open) => !open)}
+                        >
+                            <span className="text-sm font-semibold text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_manual_certificate_title")}</span>
+                            <span className="shrink-0 text-xs font-medium text-[#44F3F0]">
+                                {manualCertOpen ? t("fiscal_setup.firmapass_manual_certificate_collapse") : t("fiscal_setup.firmapass_manual_certificate_expand")}
+                            </span>
+                        </button>
+                        <p className="mb-0 mt-1 text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.firmapass_manual_certificate_hint")}</p>
+                        {manualCertOpen && (
+                            <Form form={certForm} layout="vertical" className="mt-3" onFinish={uploadManualCertificate}>
+                                <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
+                                    <Form.Item name="provider" label={t("fiscal_setup.firmapass_manual_certificate_provider")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                                        <Input className="auth-ohnix-input" placeholder="firmapass, certicamara, gse..." />
+                                    </Form.Item>
+                                    <Form.Item name="certificateIdentifier" label={t("fiscal_setup.firmapass_manual_certificate_identifier")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                                        <Input className="auth-ohnix-input" />
+                                    </Form.Item>
+                                    <Form.Item name="password" label={t("fiscal_setup.firmapass_manual_certificate_password")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                                        <Input.Password className="auth-ohnix-input" />
+                                    </Form.Item>
+                                    <Form.Item name="expiresAt" label={t("fiscal_setup.firmapass_manual_certificate_expires")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                                        <DatePicker className="w-full" />
+                                    </Form.Item>
+                                </div>
+                                <div className="mb-3 flex flex-wrap items-center gap-2">
+                                    <Upload
+                                        className="ohnix-doc-upload"
+                                        accept=".p12,.pfx"
+                                        maxCount={1}
+                                        beforeUpload={async (file) => {
+                                            const base64 = await readFileAsBase64(file);
+                                            setManualCertFileBase64(base64);
+                                            return false;
+                                        }}
+                                        onRemove={() => setManualCertFileBase64("")}
+                                    >
+                                        <Button icon={<UploadOutlined />}>{t("fiscal_setup.firmapass_manual_certificate_attach")}</Button>
+                                    </Upload>
+                                    {manualCertFileBase64 && <Text type="success" className="text-xs">{t("fiscal_setup.firmapass_manual_certificate_file_ready")}</Text>}
+                                </div>
+                                <Button
+                                    type="primary"
+                                    htmlType="submit"
+                                    className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]"
+                                    loading={busy === "uploadCertificate"}
+                                    disabled={!manualCertFileBase64}
+                                >
+                                    {t("fiscal_setup.firmapass_manual_certificate_submit")}
+                                </Button>
+                            </Form>
+                        )}
+                    </div>
 
                     <div className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] p-4">
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -370,6 +485,7 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
                                         {description && <p className="mb-2 text-xs text-[var(--ohnix-text-muted)]">{description}</p>}
                                         <div className="flex flex-wrap items-center gap-2">
                                             <Upload
+                                                className="ohnix-doc-upload"
                                                 accept={accept}
                                                 maxCount={1}
                                                 beforeUpload={async (file) => {
@@ -416,7 +532,7 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
                                     onClick={() => run("confirm", async () => {
                                         await companyService.confirmMyFirmaPassValidation(validationUuidTrimmed);
                                         await refreshValidationDetail(validationUuidTrimmed);
-                                    }, t("fiscal_setup.firmapass_confirm_success"))}
+                                    }, t("fiscal_setup.firmapass_confirm_success"), describeFirmaPassNotReadyError)}
                                 >
                                     {t("fiscal_setup.firmapass_confirm")}
                                 </Button>

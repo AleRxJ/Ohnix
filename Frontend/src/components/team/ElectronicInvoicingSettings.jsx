@@ -18,6 +18,7 @@ import {
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
+import { getElectronicInvoicingProviderLabel } from "../../utils/electronicInvoicingProvider";
 import { COLOMBIA_DEPARTMENTS, findDepartmentName } from "../../constants/colombiaDivipola";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { isValidNit, isValidPrefix, isValidSoftwareId, isValidTechnicalKey } from "../../utils/dianValidation";
@@ -371,7 +372,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                     type="info"
                     showIcon
                     message="Tu empresa ya factura electrónicamente"
-                    description={`El administrador de Ohnix ya activó la facturación electrónica de tu empresa con ${status.electronicInvoicingProvider === "factus" ? "Factus" : "Alanube"}. Si necesitas cambiar de proveedor, contacta a soporte.`}
+                    description={`El administrador de Ohnix ya activó la facturación electrónica de tu empresa con ${getElectronicInvoicingProviderLabel(status.electronicInvoicingProvider)}. Si necesitas cambiar de proveedor, contacta a soporte.`}
                 />
             ) : (
                 <>

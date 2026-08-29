@@ -6,6 +6,7 @@ import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
 import { useMarketPricing } from "../hooks/useMarketPricing";
 import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
+import BillingCycleToggle from "../components/common/BillingCycleToggle";
 import {
     OrbitalHero,
     CardGrid,
@@ -36,6 +37,7 @@ const LandingPage = () => {
     // pricing page never disagree (previously this section always showed
     // the static USD-labeled locale strings regardless of visitor country).
     const { priceByPlanKey } = useMarketPricing();
+    const [billingCycle, setBillingCycle] = useState("MONTHLY");
 
     // "$" alone is ambiguous between USD and COP - PricingSection renders
     // planPrice() as a currencyBadge pill next to the amount when set.
@@ -43,8 +45,20 @@ const LandingPage = () => {
     // shown while market pricing resolves or if it fails, so it gets the same
     // "COP" badge as a resolved COP price - not `null`, which used to read as
     // an unqualified (and easily misread as USD) dollar amount.
+    // While ANNUAL is selected, shows the per-month equivalent of the lump
+    // annual charge ("paga 10, lleva 12") - same logic as Precios.jsx.
     const planPrice = (planKey, fallback) => {
         const priceInfo = priceByPlanKey[planKey];
+        if (billingCycle === "ANNUAL" && priceInfo?.annualEquivalentMonthlyLabel) {
+            return {
+                price: priceInfo.annualEquivalentMonthlyLabel,
+                currencyBadge: priceInfo.currency === "COP" ? "COP" : null,
+                billingSuffix: t("landing.pricing.annual_suffix"),
+                savings: priceInfo.annualSavingsLabel
+                    ? t("landing.pricing.annual_savings", { amount: priceInfo.annualSavingsLabel })
+                    : null,
+            };
+        }
         if (!priceInfo) return { price: fallback, currencyBadge: "COP" };
         return { price: priceInfo.label, currencyBadge: priceInfo.currency === "COP" ? "COP" : null };
     };
@@ -75,7 +89,7 @@ const LandingPage = () => {
             ? planKey
             : "starter";
 
-        navigate(`/signup?plan=${normalizedPlan}&source=landing-pricing`);
+        navigate(`/signup?plan=${normalizedPlan}&billingCycle=${billingCycle}&source=landing-pricing`);
     };
 
     const heroStats = [
@@ -205,13 +219,17 @@ const LandingPage = () => {
         },
     ];
 
+    const starterPrice = planPrice("starter", t("landing.pricing.plans.starter.price"));
+    const growthPrice = planPrice("growth", t("landing.pricing.plans.growth.price"));
+    const scalePrice = planPrice("scale", t("landing.pricing.plans.scale.price"));
+
     const pricingPlans = [
         {
             key: "starter",
             name: t("landing.pricing.plans.starter.name"),
             subtitle: t("landing.pricing.plans.starter.subtitle"),
-            ...planPrice("starter", t("landing.pricing.plans.starter.price")),
-            billing: t("landing.pricing.plans.starter.billing"),
+            ...starterPrice,
+            billing: starterPrice.billingSuffix || t("landing.pricing.plans.starter.billing"),
             description: t("landing.pricing.plans.starter.description"),
             features: [
                 t("landing.pricing.plans.starter.features.limits"),
@@ -228,8 +246,8 @@ const LandingPage = () => {
             key: "growth",
             name: t("landing.pricing.plans.growth.name"),
             subtitle: t("landing.pricing.plans.growth.subtitle"),
-            ...planPrice("growth", t("landing.pricing.plans.growth.price")),
-            billing: t("landing.pricing.plans.growth.billing"),
+            ...growthPrice,
+            billing: growthPrice.billingSuffix || t("landing.pricing.plans.growth.billing"),
             description: t("landing.pricing.plans.growth.description"),
             features: [
                 t("landing.pricing.plans.growth.features.unlimited"),
@@ -251,8 +269,8 @@ const LandingPage = () => {
             key: "scale",
             name: t("landing.pricing.plans.scale.name"),
             subtitle: t("landing.pricing.plans.scale.subtitle"),
-            ...planPrice("scale", t("landing.pricing.plans.scale.price")),
-            billing: t("landing.pricing.plans.scale.billing"),
+            ...scalePrice,
+            billing: scalePrice.billingSuffix || t("landing.pricing.plans.scale.billing"),
             description: t("landing.pricing.plans.scale.description"),
             features: [
                 t("landing.pricing.plans.scale.features.unlimited"),
@@ -430,6 +448,7 @@ const LandingPage = () => {
                     plans={pricingPlans}
                     featuredLabel={t("landing.pricing.most_popular")}
                     onPlanSelect={handlePlanCta}
+                    billingToggle={<BillingCycleToggle value={billingCycle} onChange={setBillingCycle} savingsLabel="-17%" />}
                 />
 
                 <FaqSection

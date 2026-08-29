@@ -2670,6 +2670,28 @@ textarea.ant-input[disabled] {
   width: 100%;
 }
 
+/* antd's Upload file-list row (shown once a file is attached, e.g. the
+   FirmaPass document steps) ships hardcoded light-theme text/icon colors
+   with no theme awareness - unlike Dragger/select above, there was no
+   existing override, so the filename/remove-icon read as near-invisible
+   dark-on-dark in Ohnix's Dark theme. */
+.ohnix-doc-upload .ant-upload-list-item-name {
+  color: var(--ohnix-text-primary) !important;
+}
+.ohnix-doc-upload .ant-upload-list-item .ant-upload-icon,
+.ohnix-doc-upload .ant-upload-list-item .ant-upload-icon .anticon {
+  color: var(--ohnix-text-muted) !important;
+}
+.ohnix-doc-upload .ant-upload-list-item:hover {
+  background: var(--ohnix-hover-overlay) !important;
+}
+.ohnix-doc-upload .ant-upload-list-item-action .anticon {
+  color: var(--ohnix-text-muted) !important;
+}
+.ohnix-doc-upload .ant-upload-list-item-action:hover .anticon {
+  color: var(--ohnix-text-primary) !important;
+}
+
 /* Field-level presence (see components/team/FieldPresenceHighlighter.jsx /
    hooks/useResourcePresence.js): tags the Form.Item another connected user
    currently has focused so a save conflict is visible while it's happening,

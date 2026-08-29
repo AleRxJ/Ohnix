@@ -279,19 +279,27 @@ Provider routing behavior:
 STRIPE_SECRET_KEY=sk_test_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
 
-# One-time upgrade amounts in the smallest currency unit
-# COP has no decimals (example: 99000 = COP 99,000)
-STRIPE_AMOUNT_GROWTH_COP=99000
-STRIPE_AMOUNT_SCALE_COP=200000
+# One-time MONTHLY upgrade amounts in the smallest currency unit. The ANNUAL
+# ("paga 10, lleva 12") amount is always 10x this, computed in
+# payment.service.js/epayco.service.js - there is no separate *_ANNUAL_* env
+# var, so a monthly price change can never drift out of sync with annual.
+# COP has no decimals (example: 129000 = COP 129,000)
+STRIPE_AMOUNT_STARTER_COP=45000
+STRIPE_AMOUNT_GROWTH_COP=129000
+STRIPE_AMOUNT_SCALE_COP=259000
 STRIPE_AMOUNT_ENTERPRISE_COP=299000
 
-# EUR uses cents (example: 2900 = EUR 29.00)
-STRIPE_AMOUNT_GROWTH_EUR=2900
-STRIPE_AMOUNT_SCALE_EUR=5900
+# EUR uses cents (example: 4100 = EUR 41.00)
+STRIPE_AMOUNT_STARTER_EUR=1400
+STRIPE_AMOUNT_GROWTH_EUR=4100
+STRIPE_AMOUNT_SCALE_EUR=8200
 STRIPE_AMOUNT_ENTERPRISE_EUR=9900
 
-# Optional USD fallback when COP is not supported by the Stripe account
-STRIPE_AMOUNT_GROWTH_USD=2900
+# USD (cents). Rest-of-world checkout falls back to the display-only
+# PLAN_PRICES_USD reference (pricing.middleware.js) if these are unset.
+STRIPE_AMOUNT_STARTER_USD=1700
+STRIPE_AMOUNT_GROWTH_USD=4800
+STRIPE_AMOUNT_SCALE_USD=9600
 STRIPE_AMOUNT_ENTERPRISE_USD=9900
 
 FRONTEND_URL=http://localhost:5173
@@ -357,8 +365,9 @@ EPAYCO_CONFIRMATION_URL=https://api.ohnix.co/api/v1/subscriptions/payments/epayc
 
 # Amount in COP (smallest unit, no decimals)
 # If not set, falls back to STRIPE_AMOUNT_*_COP
-EPAYCO_AMOUNT_GROWTH_COP=99000
-EPAYCO_AMOUNT_SCALE_COP=200000
+EPAYCO_AMOUNT_STARTER_COP=45000
+EPAYCO_AMOUNT_GROWTH_COP=129000
+EPAYCO_AMOUNT_SCALE_COP=259000
 EPAYCO_AMOUNT_ENTERPRISE_COP=299000
 ```
 

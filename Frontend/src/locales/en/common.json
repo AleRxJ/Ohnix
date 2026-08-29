@@ -2761,11 +2761,21 @@
       "description": "14 days free on the Starter plan, no credit card required. Change or cancel anytime.",
       "most_popular": "Most Popular",
       "trial_note": "14-day free trial · No credit card",
+      "billing_toggle": {
+        "label": "Billing cycle",
+        "monthly": "Monthly",
+        "annual": "Annual"
+      },
+      "annual_equivalent": "≈ {{amount}}/mo",
+      "annual_suffix": "≈/mo",
+      "monthly_suffix": "/mo",
+      "annual_charge_suffix": "/year",
+      "annual_savings": "Save {{amount}}/year",
       "plans": {
         "starter": {
           "name": "Starter",
           "subtitle": "For businesses formalizing their inventory",
-          "price": "$38.000",
+          "price": "$45.000",
           "billing": "/month",
           "description": "Full stock, order, and purchase control from day one. No complexity.",
           "features": {
@@ -2781,7 +2791,7 @@
         "growth": {
           "name": "Business",
           "subtitle": "For active operations with higher throughput",
-          "price": "$99.000",
+          "price": "$129.000",
           "billing": "/month",
           "description": "Full analytics, exports, and automations for established businesses.",
           "features": {
@@ -2793,7 +2803,7 @@
             "export": "CSV export · Bulk product upload",
             "pdf": "Order PDF with company logo",
             "alerts": "Automatic low-stock email alerts",
-            "invoicing": "DIAN electronic invoicing (Colombia)",
+            "invoicing": "DIAN electronic invoicing included up to 300 orders/month",
             "sales_quotations": "Customer quotations with sending and order conversion",
             "support": "Priority email & WhatsApp support"
           },
@@ -2802,7 +2812,7 @@
         "scale": {
           "name": "Scale",
           "subtitle": "For growing companies with a team",
-          "price": "$200.000",
+          "price": "$259.000",
           "billing": "/month",
           "description": "API access, advanced reports, and full customization for growing teams.",
           "features": {
@@ -2817,7 +2827,7 @@
             "accounting": "Automated accounting (journal entries, chart of accounts, closes)",
             "alerts": "Per-product configurable stock thresholds",
             "sales_quotations": "Customer quotations with sending and order conversion",
-            "invoicing": "DIAN electronic invoicing (Colombia)",
+            "invoicing": "DIAN electronic invoicing included up to 1,000 orders/month",
             "support": "Priority support · Assisted onboarding"
           },
           "cta": "Choose Scale"
@@ -3336,13 +3346,26 @@
     "firmapass_attach": "Attach",
     "firmapass_send": "Send",
     "firmapass_document_sent": "Document sent to FirmaPass.",
-    "firmapass_personal_data_title": "You can also continue directly on FirmaPass",
-    "firmapass_personal_data_hint": "If you'd rather review or fix the data FirmaPass pulled from your RUT (name, address, contact info), you can do that on their own portal.",
+    "firmapass_personal_data_title": "Required step: complete your data on FirmaPass",
+    "firmapass_personal_data_hint": "Before documents can be uploaded or the request confirmed, FirmaPass needs you to review/complete this form on their own portal (name, address, contact info pulled from the RUT). If the steps below fail with \"no validation available\", this is usually why.",
     "firmapass_personal_data_button": "Complete on FirmaPass",
     "firmapass_confirm": "Confirm request",
     "firmapass_confirm_success": "Request confirmed. FirmaPass will finish issuance asynchronously.",
     "firmapass_refresh": "Refresh status",
     "firmapass_status_error": "Could not check FirmaPass status.",
-    "firmapass_step_error": "Could not complete this step."
+    "firmapass_step_error": "Could not complete this step.",
+    "firmapass_validation_not_ready_error": "FirmaPass says this validation isn't ready for this step. It's very likely the personal-data form on their portal (the \"Complete on FirmaPass\" button above) still needs to be finished — without that, the validation won't advance even though the RUT was already accepted.",
+    "firmapass_manual_certificate_title": "Already have a digital certificate ready?",
+    "firmapass_manual_certificate_hint": "If you bought it somewhere else, or got it from FirmaPass outside this coupon, upload it here directly as a .p12/.pfx file and carry on as normal — no need to repeat the RUT/document steps.",
+    "firmapass_manual_certificate_expand": "Upload certificate",
+    "firmapass_manual_certificate_collapse": "Hide",
+    "firmapass_manual_certificate_provider": "Certificate provider",
+    "firmapass_manual_certificate_identifier": "Certificate identifier",
+    "firmapass_manual_certificate_password": "Certificate password",
+    "firmapass_manual_certificate_expires": "Expiration date",
+    "firmapass_manual_certificate_attach": "Attach .p12/.pfx file",
+    "firmapass_manual_certificate_file_ready": "File ready",
+    "firmapass_manual_certificate_submit": "Save certificate",
+    "firmapass_manual_certificate_success": "Certificate uploaded successfully."
   }
 }

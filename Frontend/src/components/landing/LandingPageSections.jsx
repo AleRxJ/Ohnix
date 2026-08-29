@@ -1022,7 +1022,7 @@ export const ContactSection = ({ heading, primaryCta, secondaryCta, onPrimary, o
     </ContentSection>
 );
 
-export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) => {
+export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect, billingToggle }) => {
     const [ref, visible] = useScrollReveal(0.06);
     return (
     <ContentSection id="pricing">
@@ -1031,6 +1031,8 @@ export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) 
             title={heading.title}
             description={heading.description}
         />
+
+        {billingToggle && <div className="mt-8 flex justify-center">{billingToggle}</div>}
 
         <div ref={ref} className="mt-14 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {plans.map((plan, i) => (
@@ -1087,6 +1089,10 @@ export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect }) 
                             </span>
                         )}
                     </div>
+
+                    {plan.savings && (
+                        <p className="mt-1.5 text-[11px] font-semibold text-[#44F3F0]">{plan.savings}</p>
+                    )}
 
                     {/* Description */}
                     <p className="mt-3 text-[12px] leading-relaxed text-[#8A9BA8]">{plan.description}</p>

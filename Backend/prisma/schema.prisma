@@ -33,6 +33,18 @@ enum UpgradeRequestStatus {
   closed
 }
 
+// MONTHLY is the only cycle that has ever existed - every row predating this
+// enum defaults here on migration, which is also literally what those rows
+// mean (every historical checkout was a 30-day cycle, see
+// closeApprovedRequestAndActivatePlan). ANNUAL means "paga 10 meses, lleva
+// 12" - the charged amount is 10x the monthly price (computed in
+// payment.service.js/epayco.service.js, never stored as a separate price),
+// and the period it grants is 365 days instead of 30.
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+}
+
 enum ProductStatus {
   draft
   active
@@ -347,6 +359,14 @@ model Company {
   // design, so each company needs its own here.
   itcycleCompanyId                 String?           @map("itcycle_company_id")
   itcycleApiKeyCiphertext          String?           @map("itcycle_api_key_ciphertext") @db.Text
+  // Set only while this company's own DIAN "habilitación" (software propio)
+  // is still "En proceso" - the DIAN sandbox rejects every send() unless it
+  // carries this exact testSetId with method "SendTestSetAsync" (dian-kit's
+  // default is the production method, SendBillSync, which the sandbox
+  // refuses outright until DIAN approves the software). Null once DIAN
+  // approves the habilitación - clear it then so issuance falls back to the
+  // production method automatically.
+  itcycleTestSetId                 String?           @map("itcycle_test_set_id")
   // FirmaPass validation UUID this company has claimed (via order-number
   // lookup or pasting the UUID FirmaPass gave them directly) - set once, on
   // first successful self-service action against a UUID, and enforced on
@@ -451,7 +471,22 @@ model PlanUpgradeRequest {
   // just assumed from today's env config, since that can flip between when
   // a request was created and when its payment actually resolved.
   isTestPayment    Boolean?             @map("is_test_payment")
+  // What this specific request is billing for - drives both the checkout
+  // amount (getAmountForPlanAndCurrency multiplies by 10 for ANNUAL) and the
+  // period length closeApprovedRequestAndActivatePlan grants (30 vs 365
+  // days). Read from the DB row, never trusted from a payment provider's
+  // webhook payload - same "truth lives here, not in the callback" pattern
+  // already used for targetPlan.
+  billingCycle     BillingCycle         @default(MONTHLY) @map("billing_cycle")
   paidAt           DateTime?            @map("paid_at")
+  // What was actually charged for this request, captured only once
+  // paymentStatus becomes "paid" (alongside periodStartsAt/periodEndsAt
+  // below). Amounts aren't stored anywhere else in this schema - every
+  // checkout recomputes from the live STRIPE_AMOUNT_*/EPAYCO_AMOUNT_* env
+  // vars - so without this snapshot, support has no way to reconstruct what
+  // a customer actually paid once those env vars move on to a new price.
+  paidAmount       Int?                 @map("paid_amount")
+  paidCurrency     String?              @map("paid_currency")
   // Snapshot of the subscription period THIS request activated, taken at
   // the moment it did - the Subscription's own `endsAt` gets overwritten on
   // every renewal, so without this a closed/paid request from a few
@@ -496,6 +531,13 @@ model Subscription {
   // one. Mutually exclusive with a full cancellation in intent, not in
   // storage - see downgradeMySubscription/undoMyDowngrade.
   scheduledPlan     PlanType?          @map("scheduled_plan")
+  // Current billing cycle - MONTHLY (30-day periods, default/legacy) or
+  // ANNUAL ("paga 10, lleva 12", 365-day periods, amount = monthly x10).
+  // This is the account's *standing* cycle (used by createRenewalCheckout to
+  // decide what the next auto-renewal should charge/grant), separate from
+  // PlanUpgradeRequest.billingCycle which is what one specific request billed
+  // for - kept in sync on every activation in closeApprovedRequestAndActivatePlan.
+  billingCycle      BillingCycle       @default(MONTHLY) @map("billing_cycle")
   // Account-wide low-stock alert threshold (Escala+ feature, gated the same
   // way as Product.lowStockThreshold below) - null means "no override, fall
   // back to the platform-wide SystemSetting.lowStockDefaultThreshold". This

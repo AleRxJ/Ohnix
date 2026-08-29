@@ -16,6 +16,7 @@ import {
     resolveMyFirmaPassOrderNumber,
     updateMyCompany,
     updateMyCompanyLogo,
+    uploadMyCertificate,
     uploadMyFirmaPassArchivo,
     uploadMyFirmaPassRut,
 } from "../controllers/companySelf.controller.js";
@@ -41,5 +42,6 @@ router.route("/me/itcycle/firmapass/validations/:validationUuid/rut").post(uploa
 router.route("/me/itcycle/firmapass/validations/:validationUuid/archivos").post(uploadMyFirmaPassArchivo);
 router.route("/me/itcycle/firmapass/validations/:validationUuid/confirmar").post(confirmMyFirmaPassValidation);
 router.route("/me/itcycle/firmapass/status").get(getMyFirmaPassStatus);
+router.route("/me/itcycle/certificates").post(idempotent("company.itcycle.certificate"), uploadMyCertificate);
 
 export default router;

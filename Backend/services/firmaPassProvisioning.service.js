@@ -9,6 +9,7 @@ import {
     confirmItcycleFirmaPassValidation,
     getItcycleFirmaPassStatus,
     getItcycleDianReadiness,
+    uploadItcycleCertificate,
     ItcycleDianError,
     isItcycleConfigured,
 } from "./itcycleDian.service.js";
@@ -175,6 +176,26 @@ export const getCompanyFirmaPassStatus = async ({ companyId }) => {
     const company = await requireItcycleProvisionedCompany({ companyId });
     try {
         return await getItcycleFirmaPassStatus({ companyId: company.itcycleCompanyId });
+    } catch (error) {
+        rethrowAsApiError(error);
+    }
+};
+
+// Alternative entry point to the FirmaPass self-service wizard above: a
+// company that already bought/received a digital certificate somewhere else
+// (a different reseller, or a FirmaPass certificate obtained outside this
+// coupon flow) can hand Ohnix the finished .p12/.pfx directly instead of
+// walking rut -> archivos -> confirmar. itcycle-api-dian's certificate
+// upload is already provider-agnostic (see uploadItcycleCertificate /
+// registerCompanyWithItcycle's one-shot `certificate` param) - this just
+// exposes that same call as an independent, self-service, post-provisioning
+// step, since registerCompanyWithItcycle only accepts it once, at initial
+// itcycle setup.
+export const uploadCompanyCertificate = async ({ companyId, provider, certificateIdentifier, p12Base64, password, expiresAt }) => {
+    const company = await requireItcycleProvisionedCompany({ companyId });
+    if (!p12Base64) throw new ApiError(422, "El archivo del certificado (.p12/.pfx) es obligatorio.");
+    try {
+        return await uploadItcycleCertificate({ companyId: company.itcycleCompanyId, provider, certificateIdentifier, p12Base64, password, expiresAt });
     } catch (error) {
         rethrowAsApiError(error);
     }

@@ -41,6 +41,7 @@ import useI18n from "../hooks/useI18n";
 import useIsMobile from "../hooks/useIsMobile";
 import useCountUp from "../hooks/useCountUp";
 import { resolveApiErrorMessage } from "../utils/apiError";
+import { getElectronicInvoicingProviderLabel } from "../utils/electronicInvoicingProvider";
 
 // ensureElectronicInvoicingPlan (Backend/services/electronicInvoicing.service.js)
 // throws an English dev-facing message by design - see the same constant in
@@ -513,7 +514,7 @@ const InvoiceDetailDrawer = ({
                 <div className="relative overflow-hidden rounded-3xl border border-[#29D8D5]/25 bg-[radial-gradient(circle_at_90%_0%,rgba(41,216,213,.22),transparent_45%),var(--ohnix-line-1)] p-5">
                     <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full border border-[#44F3F0]/20 animate-glow-pulse" />
                     <div className="mb-2 inline-flex items-center gap-2 text-[10px] font-bold tracking-[.22em] text-[#44F3F0]">
-                        <QrcodeOutlined /> FACTUS · DIAN
+                        <QrcodeOutlined /> {getElectronicInvoicingProviderLabel(invoice.provider)} · DIAN
                     </div>
                     <div className="text-2xl font-bold text-[var(--ohnix-text-primary)]">{invoice.invoiceNumber || invoice.referenceCode}</div>
                     <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">{t("electronic_invoices.table.order_prefix")} {invoice.order?.invoiceNo || "—"}</div>
@@ -808,7 +809,9 @@ const ElectronicInvoices = () => {
                         </span>
                         <div className="min-w-0">
                             <div className="truncate font-semibold text-[var(--ohnix-text-primary)]">{row.invoiceNumber || row.referenceCode}</div>
-                            <div className="text-xs text-[var(--ohnix-text-dim)]">{t("electronic_invoices.table.order_prefix")} {row.order?.invoiceNo || "—"}</div>
+                            <div className="text-xs text-[var(--ohnix-text-dim)]">
+                                {t("electronic_invoices.table.order_prefix")} {row.order?.invoiceNo || "—"} · {getElectronicInvoicingProviderLabel(row.provider)}
+                            </div>
                         </div>
                     </div>
                 ),
@@ -1065,7 +1068,9 @@ const ElectronicInvoices = () => {
                                             </span>
                                             <div>
                                                 <div className="font-semibold text-[var(--ohnix-text-primary)]">{row.invoiceNumber || row.referenceCode}</div>
-                                                <div className="text-xs text-[var(--ohnix-text-muted)]">{row.order?.customerName || "—"}</div>
+                                                <div className="text-xs text-[var(--ohnix-text-muted)]">
+                                                    {row.order?.customerName || "—"} · {getElectronicInvoicingProviderLabel(row.provider)}
+                                                </div>
                                             </div>
                                         </div>
                                         <StatusPill status={row.status} />
