@@ -324,6 +324,25 @@ export const refreshItcycleDocumentStatus = async ({ companyId, documentType, id
     });
 };
 
+// Every invoice/credit-note/debit-note/support-document itcycle-api-dian has
+// sent for this company, optionally narrowed to one habilitación round
+// (testSetId) - see that repo's admin.service.ts#listTestSubmissions for why
+// this doesn't hardcode DIAN's own required-scenarios checklist itself. Lets
+// an admin pull "here's everything we've actually submitted under this
+// testSetId, and its outcome" to cross-check by hand against DIAN's own
+// habilitación portal.
+export const listItcycleTestSubmissions = async ({ companyId, testSetId }) => {
+    requireAdminConfigured();
+    const query = new URLSearchParams();
+    if (testSetId) query.set("testSetId", testSetId);
+    const qs = query.toString();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/test-submissions${qs ? `?${qs}` : ""}`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
 // ---------------------------------------------------------------------------
 // Documents (per-company API key - see Company.itcycleApiKeyCiphertext).
 // ---------------------------------------------------------------------------
