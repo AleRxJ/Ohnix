@@ -593,19 +593,50 @@ export const buildItcycleLines = (orderDetails) => orderDetails.map((item, index
 // is already derived purely from `lines`, so payableAmount now just reuses
 // that instead of taking a second, inconsistent value from `order` - self-
 // consistent for both callers (a full invoice's lines already sum to
-// order.total anyway). `percent` was also hardcoded to 19 regardless of the
-// lines' actual rate(s) - now the effective blended rate, correct for 0%/5%/
-// 19%/exempt lines alike.
+// order.total anyway).
+//
+// Tax subtotals are grouped by (taxScheme.code, percent) instead of blended
+// into one fake "effective rate" - DIAN validates TaxAmount = TaxableAmount x
+// Percent against its own rate catalog per cac:TaxSubtotal, so an order
+// mixing 19% and 5% lines used to produce one invented ~12% subtotal that
+// fails that check outright (and silently fed a wrong value into the CUFE
+// input too, since only taxTotals[0] is used there). One cac:TaxTotal per
+// distinct tax code (IVA/INC/ICA), each holding one cac:TaxSubtotal per
+// distinct rate within that code - correct for the common single-rate case
+// and for any future multi-rate/multi-tax-type order alike.
 export const buildItcycleTotals = (lines) => {
     const lineExtensionAmount = toNumber(lines.reduce((sum, l) => sum + l.lineExtensionAmount, 0));
-    const taxTotal = toNumber(lines.reduce((sum, l) => sum + (l.taxTotals[0]?.taxAmount || 0), 0));
+
+    const subtotalsByCode = new Map();
+    for (const line of lines) {
+        for (const subtotal of line.taxTotals[0]?.subtotals || []) {
+            const code = subtotal.taxScheme.code;
+            const key = `${code}|${subtotal.percent}`;
+            const existing = subtotalsByCode.get(key);
+            if (existing) {
+                existing.taxableAmount = toNumber(existing.taxableAmount + subtotal.taxableAmount);
+                existing.taxAmount = toNumber(existing.taxAmount + subtotal.taxAmount);
+            } else {
+                subtotalsByCode.set(key, { ...subtotal });
+            }
+        }
+    }
+
+    const byCode = new Map();
+    for (const subtotal of subtotalsByCode.values()) {
+        const code = subtotal.taxScheme.code;
+        if (!byCode.has(code)) byCode.set(code, []);
+        byCode.get(code).push(subtotal);
+    }
+    const taxTotals = [...byCode.values()].map((subtotals) => ({
+        taxAmount: toNumber(subtotals.reduce((sum, s) => sum + s.taxAmount, 0)),
+        subtotals,
+    }));
+    const taxTotal = toNumber(taxTotals.reduce((sum, t) => sum + t.taxAmount, 0));
     const taxInclusiveAmount = toNumber(lineExtensionAmount + taxTotal);
-    const effectiveRate = taxTotal > 0 && lineExtensionAmount > 0 ? toNumber((taxTotal / lineExtensionAmount) * 100) : 0;
+
     return {
-        taxTotals: taxTotal > 0 ? [{
-            taxAmount: taxTotal,
-            subtotals: [{ taxableAmount: lineExtensionAmount, taxAmount: taxTotal, percent: effectiveRate, taxScheme: { code: "01" } }],
-        }] : [],
+        taxTotals,
         legalMonetaryTotal: {
             lineExtensionAmount,
             taxExclusiveAmount: lineExtensionAmount,

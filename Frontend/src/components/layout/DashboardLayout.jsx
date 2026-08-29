@@ -43,25 +43,36 @@ const PAGE_TITLE_KEYS = {
     "admin-firmapass-validations": "common.admin_firmapass_validations",
 };
 
-const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false }) => (
+// hasNeverHadPlan: a Negocio/Escala signup whose payment never completed
+// (registerUser creates that subscription as status: paused with no trial
+// ever granted, see Backend/controllers/user.controller.js) - distinct from
+// isRenewal (a real trial or paid plan that lapsed), since this account
+// never had a trial or a paid period to begin with.
+const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false, hasNeverHadPlan = false }) => (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] gap-6 px-6 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10">
             <WarningOutlined className="text-4xl text-red-400" />
         </div>
         <div className="max-w-md">
             <h2 className="text-2xl font-bold text-[var(--ohnix-text-primary)] mb-2">
-                {isRenewal
-                    ? (lang === "es" ? "Tu plan ha vencido" : "Your plan has expired")
-                    : (lang === "es" ? "Tu prueba gratuita ha terminado" : "Your free trial has ended")}
+                {hasNeverHadPlan
+                    ? (lang === "es" ? "Completa tu pago para activar tu plan" : "Complete your payment to activate your plan")
+                    : isRenewal
+                        ? (lang === "es" ? "Tu plan ha vencido" : "Your plan has expired")
+                        : (lang === "es" ? "Tu prueba gratuita ha terminado" : "Your free trial has ended")}
             </h2>
             <p className="text-[var(--ohnix-text-muted)] text-sm leading-relaxed">
-                {isRenewal
+                {hasNeverHadPlan
                     ? (lang === "es"
-                        ? "Tu período de gracia terminó. Renueva tu plan para recuperar el acceso completo a tu inventario, ventas y reportes."
-                        : "Your grace period has ended. Renew your plan to restore full access to your inventory, sales, and reports.")
-                    : (lang === "es"
-                        ? "Tu período de prueba de 14 días ha concluido. Contrata un plan para seguir gestionando tu inventario, ventas y reportes sin interrupciones."
-                        : "Your 14-day trial has ended. Subscribe to a plan to keep managing your inventory, sales, and reports without interruption.")}
+                        ? "Tu cuenta esta creada, pero ese plan no incluye periodo de prueba. Completa el pago para activarlo, o comienza gratis con Emprendedor mientras decides."
+                        : "Your account is created, but that plan doesn't include a trial. Complete payment to activate it, or start free with Starter while you decide.")
+                    : isRenewal
+                        ? (lang === "es"
+                            ? "Tu período de gracia terminó. Renueva tu plan para recuperar el acceso completo a tu inventario, ventas y reportes."
+                            : "Your grace period has ended. Renew your plan to restore full access to your inventory, sales, and reports.")
+                        : (lang === "es"
+                            ? "Tu período de prueba de 14 días ha concluido. Contrata un plan para seguir gestionando tu inventario, ventas y reportes sin interrupciones."
+                            : "Your 14-day trial has ended. Subscribe to a plan to keep managing your inventory, sales, and reports without interruption.")}
             </p>
         </div>
         <Button
@@ -70,9 +81,11 @@ const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false }) => (
             onClick={onGoToBilling}
             className="bg-[#29D8D5] border-[#29D8D5] text-[#021314] font-semibold hover:bg-[#44F3F0] hover:border-[#44F3F0] px-8"
         >
-            {isRenewal
-                ? (lang === "es" ? "Renovar mi plan" : "Renew my plan")
-                : (lang === "es" ? "Ver planes y contratar" : "See plans and subscribe")}
+            {hasNeverHadPlan
+                ? (lang === "es" ? "Completar pago" : "Complete payment")
+                : isRenewal
+                    ? (lang === "es" ? "Renovar mi plan" : "Renew my plan")
+                    : (lang === "es" ? "Ver planes y contratar" : "See plans and subscribe")}
         </Button>
     </div>
 );
@@ -304,6 +317,10 @@ const DashboardLayout = () => {
     // would have actually blocked them.
     const isBlocked = subscription?.status === "paused" && user?.role !== "admin" && currentPage !== "billing";
     const isRenewalBlock = isBlocked && !isStarterPlan;
+    // A Negocio/Escala signup whose payment never completed - the account
+    // was never on a trial and never paid for anything (see registerUser),
+    // so the usual "trial ended"/"plan expired" copy is wrong for it.
+    const hasNeverHadPlan = isBlocked && !planEndsAt && !trialEndsAt;
 
     // Trial ended but still inside the backend's grace period - informational
     // banner only, access isn't actually blocked yet (isBlocked above).
@@ -413,7 +430,7 @@ const DashboardLayout = () => {
                         }}
                     >
                         {isBlocked
-                            ? <TrialExpiredScreen lang={lang} onGoToBilling={() => navigate("/billing")} isRenewal={isRenewalBlock} />
+                            ? <TrialExpiredScreen lang={lang} onGoToBilling={() => navigate("/billing")} isRenewal={isRenewalBlock} hasNeverHadPlan={hasNeverHadPlan} />
                             : <Outlet />
                         }
                     </div>

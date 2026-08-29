@@ -55,41 +55,85 @@ const toJsonOrNull = async (response) => {
 
 const buildAbsoluteUrl = (baseUrl, path) => `${baseUrl}${path.startsWith("/") ? "" : "/"}${path}`;
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+
+// itcycle-api-dian's Render free-tier instance sleeps after ~15min idle and
+// takes 30-60s to cold-start, during which Render's own edge (not our app
+// code) bounces requests with a bare 429 (no JSON body). A short retry
+// budget gives up long before the instance finishes waking up, so 429s get a
+// much longer retry budget than a plain network failure (wrong host/refused
+// connection, which should still fail fast).
+const NETWORK_ERROR_RETRY_ATTEMPTS = 3;
+const RATE_LIMIT_RETRY_ATTEMPTS = 6;
+const MAX_ATTEMPTS = Math.max(NETWORK_ERROR_RETRY_ATTEMPTS, RATE_LIMIT_RETRY_ATTEMPTS);
+const RETRY_DELAY_CAP_MS = 15000;
+
+const getRetryDelayMs = (response, attempt) => {
+    const retryAfterHeader = response?.headers?.get?.("retry-after");
+    const retryAfterSeconds = Number(retryAfterHeader);
+    if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0) {
+        return retryAfterSeconds * 1000;
+    }
+    return Math.min(1000 * 2 ** attempt, RETRY_DELAY_CAP_MS);
+};
+
 const request = async ({ method, path, body, authHeader }) => {
     const config = getItcycleConfig();
     const hasBody = body !== undefined;
+    let lastError;
 
-    const response = await withTimeout(
-        (signal) =>
-            fetch(buildAbsoluteUrl(config.baseUrl, path), {
-                method,
-                headers: {
-                    ...authHeader,
-                    // Only declare a JSON content-type when a body is actually
-                    // sent - itcycle-api-dian (Fastify) rejects any request that
-                    // carries this header with no body ("Body cannot be empty
-                    // when content-type is set to 'application/json'"), which
-                    // broke every bodyless POST here: retry-send for
-                    // invoices/credit-notes/support-documents and refresh-status.
-                    ...(hasBody ? { "Content-Type": "application/json" } : {}),
-                    Accept: "application/json",
-                },
-                body: hasBody ? JSON.stringify(body) : undefined,
-                signal,
-            }),
-        config.timeoutMs
-    );
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+        let response;
+        try {
+            response = await withTimeout(
+                (signal) =>
+                    fetch(buildAbsoluteUrl(config.baseUrl, path), {
+                        method,
+                        headers: {
+                            ...authHeader,
+                            // Only declare a JSON content-type when a body is actually
+                            // sent - itcycle-api-dian (Fastify) rejects any request that
+                            // carries this header with no body ("Body cannot be empty
+                            // when content-type is set to 'application/json'"), which
+                            // broke every bodyless POST here: retry-send for
+                            // invoices/credit-notes/support-documents and refresh-status.
+                            ...(hasBody ? { "Content-Type": "application/json" } : {}),
+                            Accept: "application/json",
+                        },
+                        body: hasBody ? JSON.stringify(body) : undefined,
+                        signal,
+                    }),
+                config.timeoutMs
+            );
+        } catch (error) {
+            lastError = error;
+            if (attempt < NETWORK_ERROR_RETRY_ATTEMPTS - 1) {
+                await sleep(getRetryDelayMs(null, attempt));
+                continue;
+            }
+            throw error;
+        }
 
-    const raw = await toJsonOrNull(response);
+        const raw = await toJsonOrNull(response);
 
-    if (!response.ok) {
-        throw new ItcycleDianError(
-            raw?.message || raw?.error || `itcycle-api-dian request failed with HTTP ${response.status}`,
-            { status: response.status, payload: raw }
-        );
+        if (!response.ok) {
+            lastError = new ItcycleDianError(
+                raw?.message || raw?.error || `itcycle-api-dian request failed with HTTP ${response.status}`,
+                { status: response.status, payload: raw }
+            );
+
+            if (response.status === 429 && attempt < RATE_LIMIT_RETRY_ATTEMPTS - 1) {
+                await sleep(getRetryDelayMs(response, attempt));
+                continue;
+            }
+
+            throw lastError;
+        }
+
+        return raw;
     }
 
-    return raw;
+    throw lastError || new Error(`itcycle-api-dian request failed for ${path}`);
 };
 
 const requireAdminConfigured = () => {

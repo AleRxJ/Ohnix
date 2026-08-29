@@ -275,6 +275,7 @@ const Billing = () => {
     const [adminModalOpen, setAdminModalOpen] = useState(false);
     const [adminSubmitting, setAdminSubmitting] = useState(false);
     const [checkoutLoadingRequestId, setCheckoutLoadingRequestId] = useState("");
+    const [startingTrial, setStartingTrial] = useState(false);
     const [cancelTargetRequest, setCancelTargetRequest] = useState(null);
     const [cancellingRequestId, setCancellingRequestId] = useState("");
     const [checkoutMethodsByCountry, setCheckoutMethodsByCountry] = useState({});
@@ -642,6 +643,27 @@ const Billing = () => {
         }
     };
 
+    // Fallback for a Negocio/Escala signup whose payment never completed
+    // (see registerUser in Backend/controllers/user.controller.js) - lets
+    // them start the Starter trial instead, without repeating signup. Only
+    // eligible for an account that never had a trial and never paid for
+    // anything (mirrors startMyStarterTrial's own guard on the backend).
+    const eligibleForTrialFallback =
+        currentPlan === "starter" && !subscription?.trialEndsAt && !subscription?.endsAt;
+
+    const handleStartFreeTrial = async () => {
+        try {
+            setStartingTrial(true);
+            await subscriptionService.startTrial();
+            toast.success(t("auth.request_status.trial_started_toast"));
+            await handleRefreshSubscription();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setStartingTrial(false);
+        }
+    };
+
     const handlePause = async () => {
         try {
             await subscriptionService.pauseMySubscription();
@@ -1005,6 +1027,28 @@ const Billing = () => {
                         onRenew={handleRenew}
                         isAdmin={isAdmin}
                     />
+
+                    {eligibleForTrialFallback && !pageBusy ? (
+                        <div className="mt-4 rounded-2xl border border-[#44F3F0]/20 bg-[#44F3F0]/8 p-4 sm:p-5">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex-1 min-w-0">
+                                    <Text className="block text-sm font-semibold text-[var(--ohnix-text-primary)]">
+                                        {t("auth.request_status.start_trial_cta")}
+                                    </Text>
+                                    <Text className="block text-xs text-[var(--ohnix-text-muted)]">
+                                        {t("auth.request_status.start_trial_helper")}
+                                    </Text>
+                                </div>
+                                <Button
+                                    loading={startingTrial}
+                                    onClick={handleStartFreeTrial}
+                                    className="!bg-[#29D8D5] !text-[#021314] !font-semibold !border-0 hover:!bg-[#44F3F0] sm:!w-auto"
+                                >
+                                    {t("auth.request_status.start_trial_cta")}
+                                </Button>
+                            </div>
+                        </div>
+                    ) : null}
 
                     <PlanComparisonCard
                         currentPlan={

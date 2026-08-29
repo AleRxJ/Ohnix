@@ -11,7 +11,7 @@ import { subscriptionService } from "../../services/subscriptionService";
 import { pricingService } from "../../services/pricingService";
 import { formatCurrency } from "../../utils/currency";
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 const PLAN_SLA_KEY = {
     enterprise: "auth.request_status.sla_enterprise",
