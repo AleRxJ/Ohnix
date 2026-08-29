@@ -275,4 +275,12 @@ export const subscriptionService = {
         const response = await api.post("/subscriptions/me/renew", payload);
         return response.data;
     },
+
+    // Fallback for a Negocio/Escala signup that didn't complete payment -
+    // starts the Starter trial instead, without repeating registration. See
+    // startMyStarterTrial in Backend/controllers/subscription.controller.js.
+    async startTrial() {
+        const response = await api.post("/subscriptions/me/start-trial", {});
+        return response.data;
+    },
 };

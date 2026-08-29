@@ -1645,6 +1645,97 @@ export const cancelMyUpgradeRequest = asyncHandler(async (req, res, next) => {
         .json(new ApiResponse(200, cancelledRequest, "Upgrade request cancelled"));
 });
 
+// Fallback offered when a Negocio/Escala signup doesn't go through with
+// payment (see registerUser in user.controller.js, which creates the
+// subscription as a paused "no plan yet" placeholder for those signups
+// instead of granting a trial) - lets that account start the Starter trial
+// instead of forcing the customer through registration a second time.
+//
+// Eligibility is intentionally strict and mirrors registerUser's own
+// starter-trial branch: only an account that has NEVER had a trial or a
+// paid period (trialEndsAt AND endsAt both still null) qualifies. This is
+// what stops the endpoint from being used to reset an already-used trial or
+// to escape a lapsed paid subscription for free - once either date is ever
+// set, it's set for good (closeApprovedRequestAndActivatePlan only clears
+// trialEndsAt on activation, it never re-nulls endsAt).
+export const startMyStarterTrial = asyncHandler(async (req, res, next) => {
+    const subscription = await ensureUserSubscription(req.user.prismaId);
+
+    if (subscription.plan !== "starter" || subscription.trialEndsAt || subscription.endsAt) {
+        return next(
+            new ApiError(
+                409,
+                "This account already has a plan or has already used its free trial."
+            )
+        );
+    }
+
+    const pendingRequest = await prisma.planUpgradeRequest.findFirst({
+        where: {
+            userId: req.user.prismaId,
+            status: { in: ["open", "reviewing", "approved"] },
+        },
+        select: { id: true, status: true, paymentStatus: true },
+    });
+
+    // Same protection cancelMyUpgradeRequest applies - a payment that's
+    // still being verified might actually have succeeded, so don't let the
+    // customer grab a free trial (and close the request out from under it)
+    // while that's still unresolved.
+    if (pendingRequest?.status === "approved" && pendingRequest.paymentStatus === "pending") {
+        return next(
+            new ApiError(
+                409,
+                "A payment for your pending request is still being verified. Please wait for it to complete before starting the free trial."
+            )
+        );
+    }
+
+    const TRIAL_DAYS = 14;
+    const updated = await prisma.subscription.update({
+        where: { userId: req.user.prismaId },
+        data: {
+            status: "active",
+            trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
+        },
+        select: {
+            plan: true,
+            status: true,
+            trialEndsAt: true,
+            endsAt: true,
+            cancelAtPeriodEnd: true,
+            scheduledPlan: true,
+            lowStockThreshold: true,
+        },
+    });
+
+    if (pendingRequest) {
+        await prisma.planUpgradeRequest.updateMany({
+            where: { id: pendingRequest.id, status: pendingRequest.status },
+            data: { status: "closed" },
+        });
+    }
+
+    const effectivePlan = getEffectivePlan(updated);
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                plan: updated.plan,
+                effectivePlan,
+                status: updated.status,
+                trialEndsAt: updated.trialEndsAt,
+                endsAt: updated.endsAt ?? null,
+                cancelAtPeriodEnd: updated.cancelAtPeriodEnd ?? false,
+                scheduledPlan: updated.scheduledPlan ?? null,
+                limits: getPlanLimits(effectivePlan),
+                lowStockThreshold: updated.lowStockThreshold ?? null,
+            },
+            "Starter trial started successfully"
+        )
+    );
+});
+
 export const getCheckoutPaymentMethods = asyncHandler(async (req, res) => {
     const methodsByCountry = getSupportedPaymentMethodsByCountry();
 

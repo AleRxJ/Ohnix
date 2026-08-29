@@ -32,6 +32,7 @@ import {
     reportEpaycoTransactionReference,
     reverifyAdminPayment,
     shortenUserSubscriptionAdmin,
+    startMyStarterTrial,
     uncancelUserSubscriptionAdmin,
     undoMyDowngrade,
     updateUpgradeRequestAdmin,
@@ -70,6 +71,9 @@ router.route("/me/checkout-payment-methods").get(requireModulePermission("billin
 router.route("/me/upgrade-requests")
     .get(requireModulePermission("billing", "view"), getMyUpgradeRequests)
     .post(requireModulePermission("billing", "edit"), createUpgradeRequest);
+// Fallback for a Negocio/Escala signup that never completed payment - starts
+// the Starter trial instead (see registerUser / startMyStarterTrial).
+router.route("/me/start-trial").post(requireModulePermission("billing", "edit"), startMyStarterTrial);
 
 // Billing mutations: require edit-level billing access.
 router.route("/me/upgrade-requests/:id/cancel").patch(requireModulePermission("billing", "edit"), cancelMyUpgradeRequest);

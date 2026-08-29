@@ -10,6 +10,7 @@ import { prisma } from "../db/prisma.js";
 import { notifyAdminsUpgradeRequestCreated, notifyUserEmailVerified, notifyAdminsNewUserRegistered } from "../utils/upgradeRequestNotifications.js";
 import { clearActiveSession, isSessionValid } from "../utils/sessionStore.js";
 import { issueAuthTokens, userLookupByTokenId, AUTH_COOKIE_OPTIONS } from "../utils/authTokens.js";
+import { shouldRouteToManualReview } from "./subscription.controller.js";
 
 // ─── Bilingual OTP email builder ─────────────────────────────────────────────
 const buildOtpEmail = ({ username, otp, locale, context }) => {
@@ -166,10 +167,34 @@ const registerUser = asyncHandler(async (req, res, next) => {
     // Only create an upgrade request when the user picked a paid plan above starter.
     // Registering with ?plan=starter (or no plan) must NOT create a pending request.
     const shouldCreateUpgradeRequest = normalizedDesiredPlan && normalizedDesiredPlan !== "starter";
-    const signupRequestStatus = shouldCreateUpgradeRequest ? "approved" : null;
 
+    // The 14-day free trial is a Starter-only benefit (see getEffectivePlan's
+    // comment in pricing.middleware.js) - picking Negocio/Escala/Enterprise
+    // at signup must NOT grant free access to anything. Those accounts get a
+    // subscription "placeholder" (status: paused, no trial) that blocks the
+    // whole app via ensureActiveSubscription exactly like a lapsed account,
+    // until closeApprovedRequestAndActivatePlan flips it to active on a
+    // confirmed payment (or the user explicitly falls back to the Starter
+    // trial via startMyStarterTrial). Enterprise never has a fixed checkout
+    // price, so it's routed to manual review (shouldRouteToManualReview)
+    // instead of being auto-approved into a checkout that could never work.
     const TRIAL_DAYS = 14;
-    const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+    const subscriptionData = shouldCreateUpgradeRequest
+        ? { plan: "starter", status: "paused", trialEndsAt: null }
+        : {
+              plan: "starter",
+              status: "active",
+              trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
+          };
+
+    const requiresManualReview = shouldCreateUpgradeRequest
+        ? shouldRouteToManualReview({ targetPlan: normalizedDesiredPlan, requiresManualReview: false })
+        : false;
+    const signupRequestStatus = shouldCreateUpgradeRequest
+        ? requiresManualReview
+            ? "open"
+            : "approved"
+        : null;
 
     const user = await prisma.user.create({
         data: {
@@ -179,11 +204,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
             username: normalizedUsername,
             preferredLanguage: normalizedPreferredLanguage,
             subscription: {
-                create: {
-                    plan: "starter",
-                    status: "active",
-                    trialEndsAt,
-                },
+                create: subscriptionData,
             },
             ...(shouldCreateUpgradeRequest
                 ? {
@@ -199,7 +220,7 @@ const registerUser = asyncHandler(async (req, res, next) => {
                               // subscription.controller.js for the same
                               // fix). "Requested during signup" wasn't
                               // useful customer-facing info anyway.
-                              paymentStatus: "awaiting_checkout",
+                              paymentStatus: requiresManualReview ? null : "awaiting_checkout",
                           },
                       },
                   }

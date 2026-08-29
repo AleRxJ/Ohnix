@@ -46,8 +46,10 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Login function
-    const login = async (credentials) => {
+    // Login function. `silent` skips the success/error toasts - used right
+    // after registration (Signup.jsx) to authenticate a brand-new account
+    // without a redundant "logged in" toast on top of "account created".
+    const login = async (credentials, { silent = false } = {}) => {
         try {
             const response = await api.post("/users/login", credentials);
             const data = response.data;
@@ -61,16 +63,16 @@ export const AuthProvider = ({ children }) => {
                     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
                 }
                 setAuthenticated(true);
-                toast.success(t("auth.login_success"));
+                if (!silent) toast.success(t("auth.login_success"));
                 return { success: true };
             } else {
-                toast.error(data.message || t("auth.login_failed"));
+                if (!silent) toast.error(data.message || t("auth.login_failed"));
                 return { success: false, message: data.message };
             }
         } catch (error) {
             const errorMessage =
                 error.response?.data?.message || t("common.error");
-            toast.error(errorMessage);
+            if (!silent) toast.error(errorMessage);
             return { success: false, message: errorMessage };
         }
     };
