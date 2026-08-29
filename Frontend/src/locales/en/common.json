@@ -2791,6 +2791,7 @@
             "reports": "Basic dashboard + stock report",
             "pdf": "Standard order PDF",
             "alerts": "Low-stock indicator in the dashboard (no automatic alerts)",
+            "invoicing": "DIAN electronic invoicing included up to 60 orders/month",
             "support": "Email & WhatsApp support"
           },
           "cta": "Start free trial"

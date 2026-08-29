@@ -2785,6 +2785,7 @@
             "reports": "Dashboard básico + reporte de stock",
             "pdf": "PDF de pedidos estándar",
             "alerts": "Indicador de stock bajo en el panel (sin alertas automáticas)",
+            "invoicing": "Facturación electrónica DIAN incluida hasta 60 pedidos/mes",
             "support": "Soporte por correo y WhatsApp"
           },
           "cta": "Empezar prueba gratis"
