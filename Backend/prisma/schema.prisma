@@ -347,6 +347,15 @@ model Company {
   // design, so each company needs its own here.
   itcycleCompanyId                 String?           @map("itcycle_company_id")
   itcycleApiKeyCiphertext          String?           @map("itcycle_api_key_ciphertext") @db.Text
+  // FirmaPass validation UUID this company has claimed (via order-number
+  // lookup or pasting the UUID FirmaPass gave them directly) - set once, on
+  // first successful self-service action against a UUID, and enforced on
+  // every later one. Without this, any authenticated company could read or
+  // drive ANY other company's FirmaPass validation just by knowing/guessing
+  // its UUID, since FirmaPass's own API has no per-company scoping at all
+  // (see firmaPassProvisioning.service.js - this is a security boundary
+  // Ohnix has to enforce itself, not one FirmaPass provides).
+  firmaPassValidationUuid          String?           @unique @map("firmapass_validation_uuid")
   // Order PDF branding (Negocio+): logo + legal data replace the generic
   // template. pdfFooterText is the Escala+ "personalizable" extra.
   logoUrl                          String?           @map("logo_url") @db.Text

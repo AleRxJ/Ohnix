@@ -22,7 +22,7 @@ import {
     confirmCompanyFirmaPassValidation,
     getCompanyFirmaPassStatus,
     getCompanyDianReadiness,
-    getFirmaPassValidationDetail,
+    getCompanyFirmaPassValidationDetail,
     resolveCompanyFirmaPassOrderNumber,
     uploadCompanyFirmaPassArchivo,
     uploadCompanyFirmaPassRut,
@@ -242,14 +242,13 @@ export const resolveMyFirmaPassOrderNumber = asyncHandler(async (req, res) => {
 // pending_documents/uploaded_documents on a validation tell the client
 // exactly what's left (rut, cc, ccio, etc. - each with its own label from
 // FirmaPass, not a generic "additional document" guess) - see
-// FirmaPassSelfService.jsx. `company` isn't otherwise used, but keeping the
-// same ownership check as every other FirmaPass self-service action here
-// (rather than only requiring a valid session) means a suspended/removed
-// company can't keep polling this after losing access.
+// FirmaPassSelfService.jsx. Uses the company-scoped service function (not
+// the admin one), which enforces that this validationUuid actually belongs
+// to the caller's own company - FirmaPass's API has no such scoping itself.
 export const getMyFirmaPassValidationDetail = asyncHandler(async (req, res) => {
-    await getOwnedCompanyOrThrow(req.user.prismaId);
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     await ensureElectronicInvoicingPlan(req.user.prismaId);
-    const data = await getFirmaPassValidationDetail({ validationUuid: req.params.validationUuid });
+    const data = await getCompanyFirmaPassValidationDetail({ companyId: company.id, validationUuid: req.params.validationUuid });
     return res.status(200).json(new ApiResponse(200, data, "Validación de FirmaPass obtenida"));
 });
 

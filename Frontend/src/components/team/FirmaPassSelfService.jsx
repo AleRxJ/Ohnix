@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Input, Space, Tag, Typography, Upload } from "antd";
 import { CheckCircleOutlined, CopyOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined, SearchOutlined, UploadOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
@@ -38,8 +38,11 @@ const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
 // A pending/uploaded document entry can be a bare string (older RUT-upload
 // response shape) or a richer object with FirmaPass's own label/description
 // (list/detail response shape, confirmed against the real sandbox API) -
-// normalize both so the step list below never has to branch on shape twice.
-const docType = (doc) => (typeof doc === "string" ? doc : doc?.type);
+// normalize once to a consistent shape so nothing downstream has to branch
+// on which one it got.
+const normalizeDoc = (doc) => (typeof doc === "string"
+    ? { type: doc, label: doc, description: null, accept: ".pdf,.png,.jpg,.jpeg" }
+    : { type: doc?.type, label: doc?.label || doc?.type, description: doc?.description || null, accept: doc?.accept || ".pdf,.png,.jpg,.jpeg" });
 
 // FirmaPass creates the identity-validation request outside Ohnix. This UI
 // keeps that boundary explicit, then lets the company owner complete every
@@ -84,26 +87,38 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
 
     useEffect(() => { refresh(true); }, []);
 
+    // Tracks the uuid the most-recently-started fetch was FOR, so a slower
+    // earlier response (e.g. for a uuid the user has since changed away
+    // from) can't overwrite state with data for the wrong validation once it
+    // finally arrives out of order.
+    const latestUuidRef = useRef("");
+
     // itcycle-api-dian's getValidationDetail is a raw passthrough of
     // FirmaPass's own {message, data} envelope, on top of Ohnix's own
     // ApiResponse envelope - hence the double `.data.data`.
     const refreshValidationDetail = async (uuid) => {
         try {
             const response = await companyService.getMyFirmaPassValidation(uuid);
+            if (latestUuidRef.current !== uuid) return;
             setValidationDetail(response?.data?.data || null);
         } catch {
             // A lookup failure here (bad/unknown uuid, transient error) just
             // means the step list falls back to "upload the RUT" below -
             // nothing to surface as a toast for what's essentially a status refresh.
-            setValidationDetail(null);
+            if (latestUuidRef.current === uuid) setValidationDetail(null);
         }
     };
 
     // Fires for BOTH lookup paths (order-number resolution and manually
     // pasting a UUID) since both just end up setting `validationUuid` -
     // one effect instead of duplicating the fetch in two click handlers.
+    // Also resets any attached-but-unsent files: they were picked for
+    // whatever validation was showing before, and silently carrying them
+    // over to a different uuid would upload the wrong company's document.
     useEffect(() => {
         const trimmed = validationUuid.trim();
+        latestUuidRef.current = trimmed;
+        setDocFiles({});
         if (trimmed && isValidUuid(trimmed)) {
             refreshValidationDetail(trimmed);
         } else {
@@ -188,7 +203,7 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
     // against the real sandbox API: {"rut": {type, label, uploaded_at}}),
     // not an array like pending_documents - Object.values handles both that
     // and a plain array fallback (Object.values of an array is itself).
-    const uploadedTypes = new Set(Object.values(validationDetail?.uploaded_documents || {}).map(docType).filter(Boolean));
+    const uploadedTypes = new Set(Object.values(validationDetail?.uploaded_documents || {}).map((doc) => normalizeDoc(doc).type).filter(Boolean));
     const pendingFromApi = Array.isArray(validationDetail?.pending_documents) ? validationDetail.pending_documents : null;
     const remainingDocs = pendingFromApi ?? (uploadedTypes.has("rut") ? [] : [{ type: "rut", label: t("fiscal_setup.firmapass_rut") }]);
     const readyToConfirm = Boolean(validationDetail) && remainingDocs.length === 0;
@@ -347,11 +362,8 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
                         <div className="space-y-3">
                             <label className="mb-0 block text-sm font-medium text-[var(--ohnix-text-primary)]">{t("fiscal_setup.firmapass_steps_title")}</label>
 
-                            {remainingDocs.map((doc) => {
-                                const type = docType(doc);
-                                const label = typeof doc === "object" && doc.label ? doc.label : type;
-                                const description = typeof doc === "object" ? doc.description : null;
-                                const accept = (typeof doc === "object" && doc.accept) || ".pdf,.png,.jpg,.jpeg";
+                            {remainingDocs.map((rawDoc) => {
+                                const { type, label, description, accept } = normalizeDoc(rawDoc);
                                 return (
                                     <div key={type} className="rounded-xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-line-1)] p-3">
                                         <div className="mb-1 text-sm font-semibold text-[var(--ohnix-text-primary)]">{label}</div>
