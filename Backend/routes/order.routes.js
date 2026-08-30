@@ -11,6 +11,7 @@ import {
     getOrderShippingPayload,
 } from "../controllers/order.controller.js";
 import {
+    downloadOrderElectronicInvoicePdf,
     getOrderElectronicInvoice,
     issueOrderElectronicInvoice,
     syncOrderElectronicInvoice,
@@ -44,6 +45,7 @@ router.route("/:id/returns").post(requireModulePermission("orders", "edit"), ide
 router.route("/:id/shipping-payload").get(requireModulePermission("orders", "view"), getOrderShippingPayload);
 router.route("/:id/invoice").get(requireModulePermission("orders", "view"), generateInvoice);
 router.route("/:id/electronic-invoice").get(requireModulePermission("orders", "view"), getOrderElectronicInvoice);
+router.route("/:id/electronic-invoice/pdf").get(requireModulePermission("orders", "view"), downloadOrderElectronicInvoicePdf);
 router.route("/:id/electronic-invoice/issue").post(requireModulePermission("orders", "edit"), issueOrderElectronicInvoice);
 router.route("/:id/electronic-invoice/sync").post(requireModulePermission("orders", "edit"), syncOrderElectronicInvoice);
 router.route("/:id/electronic-invoice/credit-notes")

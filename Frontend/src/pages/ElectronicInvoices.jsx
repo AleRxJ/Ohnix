@@ -177,9 +177,13 @@ const InfoCard = ({ label, value, mono = false }) => (
     </div>
 );
 
-const SupportButton = ({ url, kind, size = "large" }) => {
+// `onClick` (a downloader that fetches with credentials, e.g. itcycle's
+// on-demand representación gráfica) is an alternative to `url` (a plain,
+// already-hosted link, e.g. Factus/Alanube's own pdfUrl) - present whenever
+// either is given, never both at once for the same invoice.
+const SupportButton = ({ url, onClick, loading, kind, size = "large" }) => {
     const { t } = useI18n();
-    const present = Boolean(url);
+    const present = Boolean(url || onClick);
     const isPdf = kind === "pdf";
     const label = isPdf ? t("electronic_invoices.support.download_pdf") : t("electronic_invoices.support.view_xml");
     const icon = isPdf ? <DownloadOutlined /> : <FileTextOutlined />;
@@ -197,8 +201,10 @@ const SupportButton = ({ url, kind, size = "large" }) => {
     return (
         <Button
             icon={icon}
-            href={url}
-            target="_blank"
+            href={onClick ? undefined : url}
+            target={onClick ? undefined : "_blank"}
+            onClick={onClick}
+            loading={loading}
             size={size}
             className={`${baseClass} ${colorClass}`}
         >
@@ -482,9 +488,26 @@ const InvoiceDetailDrawer = ({
 }) => {
     const { t } = useI18n();
     const isMobile = useIsMobile();
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
     if (!invoice) return null;
     const issuedAt = invoice.issuedAt ? new Date(invoice.issuedAt) : null;
     const events = Array.isArray(invoice.events) ? invoice.events : [];
+
+    // itcycle never populates pdfUrl (see electronicInvoicePdf.service.js's
+    // module comment) - its "representación gráfica" is generated on demand
+    // instead, only once the invoice actually has a CUFE/number to show
+    // (draft/error/rejected-with-no-number states have nothing to render).
+    const canGenerateItcyclePdf = invoice.provider === "itcycle" && Boolean(invoice.cufe) && Boolean(invoice.invoiceNumber);
+    const handleDownloadItcyclePdf = async () => {
+        setDownloadingPdf(true);
+        try {
+            await electronicInvoiceService.downloadPdf(invoice.orderId, invoice.invoiceNumber);
+        } catch {
+            message.error(t("electronic_invoices.support.pdf_download_error"));
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
 
     return (
         <Drawer
@@ -574,7 +597,12 @@ const InvoiceDetailDrawer = ({
                 />
 
                 <div className="grid grid-cols-2 gap-3">
-                    <SupportButton kind="pdf" url={invoice.pdfUrl} />
+                    <SupportButton
+                        kind="pdf"
+                        url={invoice.pdfUrl}
+                        onClick={!invoice.pdfUrl && canGenerateItcyclePdf ? handleDownloadItcyclePdf : undefined}
+                        loading={downloadingPdf}
+                    />
                     <SupportButton kind="xml" url={invoice.xmlUrl} />
                 </div>
 

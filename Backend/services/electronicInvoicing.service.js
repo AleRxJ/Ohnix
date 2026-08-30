@@ -918,6 +918,24 @@ export const getElectronicInvoiceForOrder = async ({ orderId, requesterUserId, r
     return { orderId: order.id, invoiceNo: order.invoiceNo, companyCountryCode: normalizeCountryCode(order.createdBy?.company?.countryCode), electronicInvoice: serialize(order.electronicInvoice) };
 };
 
+// Everything electronicInvoicePdf.service.js's renderElectronicInvoicePdf
+// needs, pre-authorized. itcycle-only for now: Alanube/Factus never
+// populated a local pdfUrl either, but per project decision those two are
+// legacy/never-launched (see project memory) - not worth building this for.
+export const getElectronicInvoicePdfContext = async ({ orderId, requesterUserId, requesterRole }) => {
+    const order = await getOrderWithRelations(orderId);
+    if (!order) throw new ApiError(404, "Order not found");
+    if (!canManageOrder(order, requesterUserId, requesterRole)) throw new ApiError(403, "You are not authorized to access this order");
+    const invoice = order.electronicInvoice;
+    if (!invoice || invoice.provider !== ITCYCLE_PROVIDER) {
+        throw new ApiError(404, "This order has no itcycle-api-dian electronic invoice");
+    }
+    if (!invoice.cufe || !invoice.invoiceNumber) {
+        throw new ApiError(409, "This invoice has not been assigned a CUFE/number yet - it cannot be represented graphically");
+    }
+    return { order, invoice, company: order.createdBy.company };
+};
+
 export const listElectronicInvoices = async ({ requesterUserId, requesterRole, status, search }) => {
     const requester = await prisma.user.findUnique({
         where: { id: requesterUserId },

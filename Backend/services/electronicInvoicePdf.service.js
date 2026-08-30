@@ -74,14 +74,23 @@ export const buildElectronicInvoiceQrContent = ({ order, invoice, company }) => 
 // order.controller.js already uses for company.logoUrl. A transient
 // itcycle-api-dian failure degrades to an omitted legend line, not a failed
 // PDF - the invoice/CUFE/QR are already fully known locally regardless.
-const loadResolutionLegend = async (company) => {
+const loadResolutionLegend = async (company, invoice) => {
     if (!company.itcycleCompanyId) return null;
     try {
         const readiness = await getItcycleDianReadiness({ companyId: company.itcycleCompanyId });
-        const resolution = (readiness?.resolutions || []).find((r) => r.documentType === CUFE_DOCUMENT_TYPE);
+        const candidates = (readiness?.resolutions || []).filter((r) => r.documentType === CUFE_DOCUMENT_TYPE);
+        // Prefer the resolution whose prefix actually produced this invoice's
+        // number - a company can have more than one over time (e.g. after a
+        // renewal), and the most recently provisioned one isn't necessarily
+        // the one this specific, possibly older, invoice was issued under.
+        const resolution = candidates.find((r) => invoice.invoiceNumber?.startsWith(r.prefix)) || candidates[0];
         if (!resolution) return null;
+        // getDianReadiness's resolutions only carry id/documentType/prefix/
+        // resolutionNumber/startDate/endDate/status/isCurrent - no numeric
+        // range (startNumber/endNumber aren't projected there), so the
+        // legend states what's actually available rather than guessing.
         const formatDate = (value) => new Date(value).toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" });
-        return `Autorización de numeración DIAN No. ${resolution.resolutionNumber} de ${formatDate(resolution.startDate)}, prefijo ${resolution.prefix}, rango ${resolution.startNumber} a ${resolution.endNumber}, vigente hasta ${formatDate(resolution.endDate)}.`;
+        return `Autorización de numeración DIAN No. ${resolution.resolutionNumber} de ${formatDate(resolution.startDate)}, prefijo ${resolution.prefix}, vigente hasta ${formatDate(resolution.endDate)}.`;
     } catch {
         return null;
     }
@@ -98,7 +107,7 @@ const loadResolutionLegend = async (company) => {
 export const renderElectronicInvoicePdf = async (res, { order, invoice, company }) => {
     const qrContent = buildElectronicInvoiceQrContent({ order, invoice, company });
     const qrImageBuffer = await QRCode.toBuffer(qrContent, { margin: 1, width: 220 });
-    const resolutionLegend = await loadResolutionLegend(company);
+    const resolutionLegend = await loadResolutionLegend(company, invoice);
 
     const lines = buildItcycleLines(order.orderDetails);
     const { taxTotals, legalMonetaryTotal } = buildItcycleTotals(lines);
@@ -229,13 +238,24 @@ export const renderElectronicInvoicePdf = async (res, { order, invoice, company 
     doc.fontSize(21).fillColor(inkTeal).font("Helvetica-Bold").text(`$${legalMonetaryTotal.taxInclusiveAmount.toFixed(2)}`, totalsX, totalPanelY + 24, { width: totalsWidth - 16, align: "right" });
 
     // --- Legal footer --------------------------------------------------------
+    // Explicit y bookkeeping throughout this section instead of doc.y - every
+    // call above this point positions text at absolute x/y (two side-by-side
+    // columns), so doc.y after those calls reflects whichever column's text
+    // call happened to run last, not "the bottom of the page so far".
     const footerY = Math.max(totalPanelY + 80, summaryY + 145);
     hairline(footerY);
+    doc.fontSize(7.5).fillColor(mutedColor).font("Helvetica");
+    let legalY = footerY + 12;
     if (resolutionLegend) {
-        doc.fontSize(7.5).fillColor(mutedColor).font("Helvetica").text(resolutionLegend, PAGE_LEFT, footerY + 12, { width: PAGE_WIDTH, align: "center" });
+        doc.text(resolutionLegend, PAGE_LEFT, legalY, { width: PAGE_WIDTH, align: "center" });
+        legalY += doc.heightOfString(resolutionLegend, { width: PAGE_WIDTH, align: "center" }) + 6;
     }
-    doc.fontSize(7.5).fillColor(mutedColor).font("Helvetica")
-        .text("Esta es una representación gráfica de la factura electrónica de venta. Documento generado por Ohnix (software propio de facturación electrónica).", PAGE_LEFT, doc.y + 6, { width: PAGE_WIDTH, align: "center" });
+    doc.text(
+        "Esta es una representación gráfica de la factura electrónica de venta. Documento generado por Ohnix (software propio de facturación electrónica).",
+        PAGE_LEFT,
+        legalY,
+        { width: PAGE_WIDTH, align: "center" }
+    );
 
     const pageCount = doc.bufferedPageCount;
     for (let i = 0; i < pageCount; i++) {

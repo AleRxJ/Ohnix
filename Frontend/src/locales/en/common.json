@@ -3072,7 +3072,8 @@
     "support": {
       "download_pdf": "Download PDF",
       "view_xml": "View XML",
-      "not_available": "{{kind}} not available"
+      "not_available": "{{kind}} not available",
+      "pdf_download_error": "Could not generate the invoice PDF."
     },
     "drawer": {
       "title": "Document detail",

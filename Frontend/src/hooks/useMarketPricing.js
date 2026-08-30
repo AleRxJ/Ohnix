@@ -15,7 +15,24 @@ const DETECTED_COUNTRY_SESSION_KEY = "ohnix_pricing_detected_country";
 // + fetch pipeline from scratch, so a single slow/blocked request anywhere
 // in that chain would flash the (now COP) static fallback again even after
 // the real market price had already been resolved once this session.
-const MARKET_PRICING_SESSION_KEY = "ohnix_market_pricing";
+//
+// Versioned ("_v2") because the response shape changed when monthly/annual
+// billing shipped (plain `amount` -> `monthlyAmount`/`annualAmount`). A tab
+// that cached the old shape earlier in its session would otherwise keep
+// serving it for the rest of that session - the annual toggle would look
+// permanently stuck on the monthly price with no way to recover short of a
+// hard refresh, since isValidMarketPricing below never got a chance to run
+// against it. Bump this suffix again the next time the shape changes.
+const MARKET_PRICING_SESSION_KEY = "ohnix_market_pricing_v2";
+
+// Guards against exactly that scenario for any *future* shape change too:
+// a cached blob is only trusted if every plan that has a monthly amount also
+// has an annual one - a partial/stale cache is treated as a miss and
+// re-fetched, rather than silently breaking the toggle for the rest of the
+// browser session.
+const isValidMarketPricing = (data) =>
+    Array.isArray(data?.plans) &&
+    data.plans.every((plan) => plan.monthlyAmount == null || plan.annualAmount !== undefined);
 
 const getSessionDetectedCountry = () => {
     if (typeof window === "undefined") return null;
@@ -39,7 +56,9 @@ const getSessionMarketPricing = () => {
     if (typeof window === "undefined") return null;
     try {
         const raw = window.sessionStorage.getItem(MARKET_PRICING_SESSION_KEY);
-        return raw ? JSON.parse(raw) : null;
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return isValidMarketPricing(parsed) ? parsed : null;
     } catch {
         return null;
     }
@@ -103,7 +122,7 @@ export const useMarketPricing = () => {
 
             try {
                 const response = await pricingService.getPublicPricing(countryCode);
-                if (active && response?.data) {
+                if (active && isValidMarketPricing(response?.data)) {
                     setMarketPricing(response.data);
                     setSessionMarketPricing(response.data);
                 }

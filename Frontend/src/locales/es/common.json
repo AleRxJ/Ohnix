@@ -3066,7 +3066,8 @@
     "support": {
       "download_pdf": "Descargar PDF",
       "view_xml": "Ver XML",
-      "not_available": "{{kind}} no disponible"
+      "not_available": "{{kind}} no disponible",
+      "pdf_download_error": "No fue posible generar el PDF de la factura."
     },
     "drawer": {
       "title": "Detalle del documento",

@@ -2,12 +2,14 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import {
     getElectronicInvoiceForOrder,
+    getElectronicInvoicePdfContext,
     issueElectronicInvoiceForOrder,
     syncElectronicInvoiceStatus,
     listElectronicInvoices,
     issueCreditNoteForInvoice,
     listCreditNotesForInvoice,
 } from "../services/electronicInvoicing.service.js";
+import { renderElectronicInvoicePdf } from "../services/electronicInvoicePdf.service.js";
 
 export const getOrderElectronicInvoice = asyncHandler(async (req, res) => {
     const { id } = req.params;
@@ -84,6 +86,18 @@ export const getOrderCreditNotes = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(new ApiResponse(200, data, "Credit notes fetched successfully"));
+});
+
+export const downloadOrderElectronicInvoicePdf = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const context = await getElectronicInvoicePdfContext({
+        orderId: id,
+        requesterUserId: req.user.prismaId,
+        requesterRole: req.user.role,
+    });
+
+    await renderElectronicInvoicePdf(res, context);
 });
 
 export const getElectronicInvoices = asyncHandler(async (req, res) => {
