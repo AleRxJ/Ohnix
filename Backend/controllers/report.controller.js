@@ -1303,8 +1303,8 @@ const getVatReport = asyncHandler(async (req, res, next) => {
 // (remaining non-returned detail base+tax minus payments already
 // registered - see orderPayment.service.js/purchasePayment.service.js for
 // the same derivation used at write time) plus a per-customer/per-supplier
-// rollup and days-overdue, counted from orderDate/purchaseDate since neither
-// model has a separate due-date field yet.
+// rollup and aging. Purchases use their negotiated due date; legacy rows
+// without one remain "unscheduled" instead of being falsely marked overdue.
 const getCarteraReport = asyncHandler(async (req, res, next) => {
     const { start_date, end_date } = req.query;
     const userId = req.user.prismaId;
@@ -1340,8 +1340,10 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
                     legacyMongoId: true,
                     purchaseNo: true,
                     purchaseDate: true,
+                    dueDate: true,
                     supplier: { select: { id: true, legacyMongoId: true, name: true } },
                     purchaseDetails: { select: { quantity: true, returnedQuantity: true, total: true, taxAmount: true } },
+                    retentions: { select: { withheldAmount: true, returnedWithheldAmount: true } },
                 },
             }),
         ]);
@@ -1396,20 +1398,27 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
 
         const payablesDocuments = purchases
             .map((purchase) => {
-                const total = purchase.purchaseDetails.reduce((acc, detail) => {
+                const grossAfterReturns = purchase.purchaseDetails.reduce((acc, detail) => {
                     const net = netFiscalDetail(detail);
                     return acc + net.base + net.taxAmount;
                 }, 0);
+                const withholding = purchase.retentions.reduce((sum, retention) => sum + Number(retention.withheldAmount) - Number(retention.returnedWithheldAmount), 0);
+                const total = Math.max(round2(grossAfterReturns - withholding), 0);
                 const paid = purchasePaidMap.get(purchase.id) || 0;
+                const dueDate = purchase.dueDate ? new Date(purchase.dueDate) : null;
+                const rawDays = dueDate ? Math.floor((now - dueDate) / 86400000) : null;
                 return {
                     _id: toExternalId(purchase),
                     purchase_no: purchase.purchaseNo,
                     document_date: purchase.purchaseDate,
+                    due_date: purchase.dueDate,
                     supplier: purchase.supplier ? { _id: toExternalId(purchase.supplier), name: purchase.supplier.name } : null,
                     total: round2(total),
                     paid: round2(paid),
                     pending: round2(total - paid),
-                    days_overdue: daysOverdue(purchase.purchaseDate),
+                    days_overdue: rawDays === null ? null : Math.max(0, rawDays),
+                    days_until_due: rawDays === null ? null : Math.max(0, -rawDays),
+                    aging_status: rawDays === null ? "unscheduled" : rawDays > 0 ? "overdue" : rawDays >= -7 ? "due_soon" : "current",
                 };
             })
             .filter((row) => row.pending > 0.001);
@@ -1442,7 +1451,15 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
             payables: {
                 summary: { totalPending: sumPending(payablesDocuments), documentCount: payablesDocuments.length },
                 bySupplier: groupByParty(payablesDocuments, "supplier"),
-                byDocument: [...payablesDocuments].sort((a, b) => b.days_overdue - a.days_overdue),
+                byDocument: [...payablesDocuments].sort((a, b) => (b.days_overdue ?? -1) - (a.days_overdue ?? -1)),
+                aging: {
+                    current: sumPending(payablesDocuments.filter((d) => d.aging_status === "current")),
+                    dueSoon: sumPending(payablesDocuments.filter((d) => d.aging_status === "due_soon")),
+                    overdue1To30: sumPending(payablesDocuments.filter((d) => d.days_overdue >= 1 && d.days_overdue <= 30)),
+                    overdue31To60: sumPending(payablesDocuments.filter((d) => d.days_overdue >= 31 && d.days_overdue <= 60)),
+                    overdue61Plus: sumPending(payablesDocuments.filter((d) => d.days_overdue >= 61)),
+                    unscheduled: sumPending(payablesDocuments.filter((d) => d.aging_status === "unscheduled")),
+                },
             },
         };
 

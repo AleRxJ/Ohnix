@@ -85,7 +85,7 @@ const findPurchaseByAnyId = async (id) =>
 
 class PurchaseService {
     async createPurchase(purchaseData, userId, userRole, pointOfSaleId) {
-        const { supplier_id, purchase_no, purchase_status, details, is_tutorial_data, source_quotation_id, withholding_concept_ids } = purchaseData;
+        const { supplier_id, purchase_no, purchase_status, due_date, details, is_tutorial_data, source_quotation_id, withholding_concept_ids } = purchaseData;
 
         if (
             !supplier_id ||
@@ -156,6 +156,8 @@ class PurchaseService {
         }
 
         const shouldAddStock = initialStatus === "completed";
+        const dueDate = due_date ? new Date(due_date) : null;
+        if (dueDate && Number.isNaN(dueDate.getTime())) throw new ApiError(400, "Fecha de vencimiento inválida.");
 
         // Same lookup order.service.js#createOrder does for the sales side -
         // whether this purchase's IVA can be credited depends on the
@@ -174,6 +176,7 @@ class PurchaseService {
                         pointOfSaleId,
                         purchaseNo: String(purchase_no).trim(),
                         purchaseStatus: initialStatus,
+                        dueDate,
                         isTutorialData: is_tutorial_data === true,
                         createdById: userId,
                         updatedById: userId,
@@ -298,6 +301,7 @@ class PurchaseService {
                 _id: toExternalId(purchase),
                 purchase_no: purchase.purchaseNo,
                 purchase_date: purchase.purchaseDate,
+                due_date: purchase.dueDate,
                 purchase_status: purchase.purchaseStatus,
                 supplier_id,
                 created_by: userId,

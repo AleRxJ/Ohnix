@@ -21,7 +21,7 @@ export const MANUAL_LANGUAGE_KEY = "language_manual";
 // Skipping auto-detection for known crawlers keeps the indexed content on
 // the site's default language (Spanish) instead of flipping to English.
 const BOT_USER_AGENT_PATTERN =
-    /bot|crawl|spider|slurp|mediapartners|facebookexternalhit|whatsapp|preview/i;
+    /bot|crawl|spider|slurp|mediapartners|facebookexternalhit|whatsapp|preview|lighthouse/i;
 
 export function isLikelyBot() {
     if (typeof navigator === "undefined" || !navigator.userAgent) return false;

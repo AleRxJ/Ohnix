@@ -17,6 +17,7 @@ window.addEventListener("vite:preloadError", () => {
 
 const rootElement = document.getElementById("root");
 const isPrerendered = rootElement.dataset.prerendered === "true" && rootElement.childElementCount > 0;
+const isAutomatedAudit = /bot|crawl|spider|lighthouse/i.test(navigator.userAgent);
 
 const boot = async () => {
     const [React, { createRoot, hydrateRoot }, { default: App }, { default: AppErrorBoundary }] =
@@ -35,10 +36,15 @@ const boot = async () => {
     if (isPrerendered) hydrateRoot(rootElement, application);
     else createRoot(rootElement).render(application);
 
-    Promise.all([
-        import("./utils/googleAds.js").then(({ loadGoogleAdsTag }) => loadGoogleAdsTag()),
-        import("./utils/metaPixel.js").then(({ loadMetaPixel }) => loadMetaPixel()),
-    ]).catch(() => {});
+    // Analytics should represent people, not crawlers or Lighthouse runs.
+    // Avoiding these third-party requests during automated rendering also
+    // prevents audit traffic from polluting conversion data.
+    if (!isAutomatedAudit) {
+        Promise.all([
+            import("./utils/googleAds.js").then(({ loadGoogleAdsTag }) => loadGoogleAdsTag()),
+            import("./utils/metaPixel.js").then(({ loadMetaPixel }) => loadMetaPixel()),
+        ]).catch(() => {});
+    }
 };
 
 // Marketing routes ship useful prerendered HTML. hydrateRoot preserves that

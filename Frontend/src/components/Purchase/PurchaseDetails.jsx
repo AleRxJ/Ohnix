@@ -175,6 +175,9 @@ const PurchaseDetails = ({
                         <Descriptions.Item label={t("purchases.purchase_date")}>
                             <Text className="text-[var(--ohnix-text-soft)]">{dayjs(purchase.purchase_date).format("DD/MM/YYYY")}</Text>
                         </Descriptions.Item>
+                        <Descriptions.Item label={t("purchases.due_date")}>
+                            {purchase.due_date ? <Tag color={dayjs(purchase.due_date).isBefore(dayjs(), "day") ? "error" : "cyan"}>{dayjs(purchase.due_date).format("DD/MM/YYYY")}</Tag> : <Text type="secondary">{t("reports.advanced.cartera_unscheduled")}</Text>}
+                        </Descriptions.Item>
                         <Descriptions.Item label={t("common.status")}>
                             <Tag
                                 color={getStatusColor(purchase.purchase_status)}

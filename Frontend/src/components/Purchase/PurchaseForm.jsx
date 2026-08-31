@@ -9,6 +9,7 @@ import {
     Divider,
     Button,
     Card,
+    DatePicker,
 } from "antd";
 import {
     PlusOutlined,
@@ -86,6 +87,7 @@ const PurchaseForm = ({
             pointOfSaleId: values.pointOfSaleId,
             purchase_no: values.purchase_no,
             purchase_status: values.purchase_status || "pending",
+            due_date: values.due_date ? values.due_date.endOf("day").toISOString() : null,
             details: values.details.map((detail) => ({
                 product_id: detail.product_id,
                 quantity: detail.quantity,
@@ -205,6 +207,11 @@ const PurchaseForm = ({
                                         </Option>
                                     ))}
                                 </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="due_date" label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("purchases.due_date")}</span>} extra={t("purchases.due_date_hint")}>
+                                <DatePicker className="w-full" size="large" placeholder={t("purchases.due_date_placeholder")} />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>

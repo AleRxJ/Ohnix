@@ -11,6 +11,7 @@ const mapPurchase = (purchase) => ({
     _id: toExternalId(purchase),
     purchase_no: purchase.purchaseNo,
     purchase_date: purchase.purchaseDate,
+    due_date: purchase.dueDate,
     purchase_status: purchase.purchaseStatus,
     supplier_id: purchase.supplier
         ? {

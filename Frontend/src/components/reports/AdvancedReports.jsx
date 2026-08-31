@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { Card, DatePicker, Button, Tabs, Table, Row, Col } from "antd";
+import { Card, DatePicker, Button, Tabs, Table, Row, Col, Tag, Alert } from "antd";
 import {
     BarChart,
     Bar,
@@ -126,12 +126,13 @@ const AdvancedReports = () => {
         { title: partyTitle, dataIndex: partyKey, key: partyKey, render: (v) => v?.name || t("common.na"), ellipsis: true },
         { title: t("common.total"), dataIndex: "total", key: "total", render: (v) => formatCurrency(v), width: 120, responsive: ["sm"] },
         { title: t("finance.pending_balance_label"), dataIndex: "pending", key: "pending", render: (v) => <span className="font-semibold text-[#f5222d]">{formatCurrency(v)}</span>, width: 130 },
+        { title: t("reports.advanced.cartera_due_date_column"), dataIndex: "due_date", key: "due_date", width: 125, render: (v) => v ? dayjs(v).format("DD/MM/YYYY") : <Tag>{t("reports.advanced.cartera_unscheduled")}</Tag> },
         {
             title: t("reports.advanced.cartera_days_overdue_column"),
             dataIndex: "days_overdue",
             key: "days_overdue",
             width: 110,
-            render: (v) => <span className={v > 30 ? "text-red-500 font-semibold" : v > 0 ? "text-amber-500" : ""}>{v}</span>,
+            render: (v) => v === null || v === undefined ? "—" : <span className={v > 30 ? "text-red-500 font-semibold" : v > 0 ? "text-amber-500" : ""}>{v}</span>,
         },
     ];
 
@@ -372,6 +373,7 @@ const AdvancedReports = () => {
                             scroll={{ x: 500 }}
                         />
                     </Card>
+                    {carteraData.payables.aging && <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.cartera_aging_title")}><Alert type="info" showIcon className="dark-alert dark-alert-teal mb-4" message={t("reports.advanced.cartera_aging_help")} /><Row gutter={[12, 12]}>{[["current", "cartera_aging_current"], ["dueSoon", "cartera_aging_due_soon"], ["overdue1To30", "cartera_aging_1_30"], ["overdue31To60", "cartera_aging_31_60"], ["overdue61Plus", "cartera_aging_61_plus"], ["unscheduled", "cartera_aging_unscheduled"]].map(([key, label]) => <Col xs={12} md={8} key={key}><div className="withholding-report-kpi"><span>{t(`reports.advanced.${label}`)}</span><strong>{formatCurrency(carteraData.payables.aging[key])}</strong></div></Col>)}</Row></Card>}
                     <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("reports.advanced.cartera_by_document_payable")}>
                         <Table
                             columns={carteraDocumentColumns("purchase_no", t("reports.advanced.cartera_document_column"), "supplier", t("reports.advanced.cartera_supplier_column"))}

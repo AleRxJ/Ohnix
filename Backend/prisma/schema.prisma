@@ -1064,6 +1064,7 @@ model Purchase {
   id             String         @id @default(cuid())
   legacyMongoId  String?        @unique @map("legacy_mongo_id")
   purchaseDate   DateTime       @default(now()) @map("purchase_date")
+  dueDate        DateTime?      @map("due_date")
   purchaseNo     String         @unique @map("purchase_no")
   supplierId     String         @map("supplier_id")
   // Which location received this stock - see Order.pointOfSaleId.
