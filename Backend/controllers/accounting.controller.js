@@ -8,6 +8,7 @@ import * as financialStatementsService from "../services/financialStatements.ser
 import * as manualVoucherService from "../services/manualJournalVoucher.service.js";
 import * as thirdPartyLedgerService from "../services/thirdPartyLedger.service.js";
 import * as withholdingConceptService from "../services/withholdingConcept.service.js";
+import * as withholdingReportService from "../services/withholdingReport.service.js";
 
 // `to`/`as_of` always arrives as a plain "YYYY-MM-DD" string (every date
 // picker on the frontend sends dayjs().format("YYYY-MM-DD")), which
@@ -339,4 +340,24 @@ export const setWithholdingConceptActive = asyncHandler(async (req, res) => {
 export const previewWithholdings = asyncHandler(async (req, res) => {
     const preview = await withholdingConceptService.previewWithholdings(req.user.prismaId, req.body || {});
     return res.status(200).json(new ApiResponse(200, preview, "Retenciones calculadas."));
+});
+
+export const getWithholdingReport = asyncHandler(async (req, res) => {
+    const report = await withholdingReportService.getWithholdingReport({
+        accountId: req.user.prismaId,
+        from: req.query.from ? new Date(req.query.from) : undefined,
+        to: endOfDay(req.query.to),
+        taxType: req.query.tax_type,
+        supplierId: req.query.supplier_id,
+    });
+    return res.status(200).json(new ApiResponse(200, report, "Auxiliar de retenciones consultado."));
+});
+
+export const getWithholdingCertificate = asyncHandler(async (req, res) => {
+    const certificate = await withholdingReportService.getWithholdingCertificate({
+        accountId: req.user.prismaId,
+        supplierId: req.params.supplierId,
+        year: req.query.year,
+    });
+    return res.status(200).json(new ApiResponse(200, certificate, "Certificado de retenciones consultado."));
 });

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { isSingleEntrySource } from "../services/journalEntry.service.js";
 import { buildAccountingThirdParty, calculatePurchaseReturnValues, getLineCostBasis } from "../services/accountingPosting.service.js";
 import { calculateRetentionReturn, calculateWithholdingAmount } from "../services/withholdingConcept.service.js";
+import { summarizeWithholdingRows } from "../services/withholdingReport.service.js";
 
 test("one-to-one accounting sources are idempotent when they have a source id", () => {
     for (const sourceType of [
@@ -33,6 +34,19 @@ test("partial returns remain repeatable for the same business document", () => {
 test("sources without an identity are not treated as idempotent", () => {
     assert.equal(isSingleEntrySource("manual_expense", null), false);
     assert.equal(isSingleEntrySource("order_sale", ""), false);
+});
+
+test("withholding report separates caused, reversed and current balances", () => {
+    const report = summarizeWithholdingRows([
+        { tax_type: "income", base_amount: 1000, withheld_amount: 25, returned_withheld_amount: 5 },
+        { tax_type: "income", base_amount: 500, withheld_amount: 12.5, returned_withheld_amount: 0 },
+        { tax_type: "ica", base_amount: 1000, withheld_amount: 6.9, returned_withheld_amount: 6.9 },
+    ]);
+    assert.deepEqual(report.totals, { base: 2500, withheld: 44.4, reversed: 11.9, net: 32.5 });
+    assert.deepEqual(report.by_type, [
+        { tax_type: "income", base: 1500, withheld: 37.5, reversed: 5, net: 32.5, documents: 2 },
+        { tax_type: "ica", base: 1000, withheld: 6.9, reversed: 6.9, net: 0, documents: 1 },
+    ]);
 });
 
 test("a return keeps the frozen sale cost after the product cost changes", () => {

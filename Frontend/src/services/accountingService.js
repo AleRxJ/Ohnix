@@ -122,6 +122,18 @@ export const accountingService = {
         return response.data;
     },
 
+    async getWithholdingReport({ from, to, taxType, supplierId } = {}) {
+        const response = await api.get("/accounting/reports/withholdings", {
+            params: { ...(from ? { from } : {}), ...(to ? { to } : {}), ...(taxType ? { tax_type: taxType } : {}), ...(supplierId ? { supplier_id: supplierId } : {}) },
+        });
+        return response.data;
+    },
+
+    async getWithholdingCertificate(supplierId, year) {
+        const response = await api.get(`/accounting/reports/withholdings/certificates/${encodeURIComponent(supplierId)}`, { params: { year } });
+        return response.data;
+    },
+
     async listAccountingPeriods() {
         const response = await api.get("/accounting/periods");
         return response.data;

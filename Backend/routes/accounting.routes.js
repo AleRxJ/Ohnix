@@ -28,6 +28,8 @@ import {
     createWithholdingConcept,
     setWithholdingConceptActive,
     previewWithholdings,
+    getWithholdingReport,
+    getWithholdingCertificate,
 } from "../controllers/accounting.controller.js";
 
 const router = Router();
@@ -70,6 +72,10 @@ router.route("/withholding-concepts/preview")
     .post(requireModulePermission("accounting", "edit"), previewWithholdings);
 router.route("/withholding-concepts/:id/active")
     .patch(requireModulePermission("accounting", "admin"), setWithholdingConceptActive);
+router.route("/reports/withholdings")
+    .get(requireModulePermission("accounting", "view"), getWithholdingReport);
+router.route("/reports/withholdings/certificates/:supplierId")
+    .get(requireModulePermission("accounting", "view"), getWithholdingCertificate);
 
 router.route("/reports/income-statement").get(requireModulePermission("accounting", "view"), getIncomeStatement);
 router.route("/reports/balance-sheet").get(requireModulePermission("accounting", "view"), getBalanceSheet);
