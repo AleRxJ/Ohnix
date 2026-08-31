@@ -134,6 +134,18 @@ export const accountingService = {
         return response.data;
     },
 
+    async downloadWithholdingCertificate(supplierId, year, document) {
+        const response = await api.get(`/accounting/reports/withholdings/certificates/${encodeURIComponent(supplierId)}/pdf`, { params: { year }, responseType: "blob" });
+        const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+        const link = window.document.createElement("a");
+        link.href = url;
+        link.download = `certificado-retenciones-${document || supplierId}-${year}.pdf`;
+        window.document.body.appendChild(link);
+        link.click();
+        window.document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    },
+
     async listAccountingPeriods() {
         const response = await api.get("/accounting/periods");
         return response.data;

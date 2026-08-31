@@ -30,6 +30,7 @@ import {
     previewWithholdings,
     getWithholdingReport,
     getWithholdingCertificate,
+    downloadWithholdingCertificate,
 } from "../controllers/accounting.controller.js";
 
 const router = Router();
@@ -76,6 +77,8 @@ router.route("/reports/withholdings")
     .get(requireModulePermission("accounting", "view"), getWithholdingReport);
 router.route("/reports/withholdings/certificates/:supplierId")
     .get(requireModulePermission("accounting", "view"), getWithholdingCertificate);
+router.route("/reports/withholdings/certificates/:supplierId/pdf")
+    .get(requireModulePermission("accounting", "view"), downloadWithholdingCertificate);
 
 router.route("/reports/income-statement").get(requireModulePermission("accounting", "view"), getIncomeStatement);
 router.route("/reports/balance-sheet").get(requireModulePermission("accounting", "view"), getBalanceSheet);

@@ -1,5 +1,6 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
+import PDFDocument from "pdfkit";
 
 const TAX_TYPES = ["income", "vat", "ica"];
 const round2 = (value) => Number(Number(value).toFixed(2));
@@ -85,6 +86,68 @@ export const getWithholdingCertificate = async ({ accountId, supplierId, year })
     if (!supplier) throw new ApiError(404, "Proveedor no encontrado.");
     const from = new Date(Date.UTC(numericYear, 0, 1));
     const to = new Date(Date.UTC(numericYear + 1, 0, 1) - 1);
+    const account = await prisma.user.findUnique({
+        where: { id: accountId },
+        select: { company: { select: { name: true, legalName: true, taxIdentification: true, taxIdentificationDv: true, contactEmail: true, phone: true } } },
+    });
     const report = await getWithholdingReport({ accountId, supplierId, from, to });
-    return { year: numericYear, supplier, generated_at: new Date(), ...report };
+    return { year: numericYear, supplier, company: account?.company || null, generated_at: new Date(), ...report };
+};
+
+export const renderWithholdingCertificatePdf = (res, certificate) => {
+    const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
+    const company = certificate.company || {};
+    const companyName = company.legalName || company.name || "Empresa sin razón social configurada";
+    const nit = company.taxIdentification ? `${company.taxIdentification}${company.taxIdentificationDv ? `-${company.taxIdentificationDv}` : ""}` : "No configurado";
+    const money = (value) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 2 }).format(Number(value || 0));
+    const teal = "#0B7A78";
+    const ink = "#111827";
+    const muted = "#6B7280";
+    const line = "#E5E7EB";
+    const safeDocument = `${certificate.supplier.identification || certificate.supplier.id}`.replace(/[^a-zA-Z0-9_-]/g, "-");
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=certificado-retenciones-${safeDocument}-${certificate.year}.pdf`);
+    doc.pipe(res);
+
+    const gradient = doc.linearGradient(0, 0, 595, 118).stop(0, "#0B0F19").stop(1, "#0E302E");
+    doc.rect(0, 0, 595, 118).fill(gradient);
+    doc.font("Helvetica-Bold").fontSize(19).fillColor("#29D8D5").text("OHNIX", 50, 30, { characterSpacing: 2 });
+    doc.fontSize(8).fillColor("#A7B0BC").text("TRAZABILIDAD CONTABLE", 50, 55, { characterSpacing: 1 });
+    doc.fontSize(9).fillColor("#29D8D5").text("CERTIFICADO DE RETENCIONES", 300, 30, { width: 245, align: "right" });
+    doc.fontSize(22).fillColor("#FFFFFF").text(`${certificate.year}`, 300, 48, { width: 245, align: "right" });
+    doc.rect(0, 115, 595, 3).fill("#29D8D5");
+
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(muted).text("AGENTE RETENEDOR", 50, 145);
+    doc.fontSize(14).fillColor(ink).text(companyName, 50, 162, { width: 495 });
+    doc.font("Helvetica").fontSize(9).fillColor(muted).text(`NIT ${nit}`, 50, 184);
+    if (company.contactEmail || company.phone) doc.text([company.contactEmail, company.phone].filter(Boolean).join("  ·  "), 50, 199);
+
+    doc.moveTo(50, 224).lineTo(545, 224).strokeColor(line).stroke();
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(muted).text("SUJETO DE RETENCIÓN", 50, 245);
+    doc.fontSize(14).fillColor(ink).text(certificate.supplier.name, 50, 262);
+    doc.font("Helvetica").fontSize(9).fillColor(muted).text(`Documento ${certificate.supplier.identification || "No configurado"}`, 50, 283);
+    doc.text(`Periodo certificado: 1 de enero a 31 de diciembre de ${certificate.year}`, 50, 304);
+
+    let y = 345;
+    doc.rect(50, y, 495, 28).fill("#F0FDFA");
+    doc.font("Helvetica-Bold").fontSize(8).fillColor(teal).text("TIPO DE RETENCIÓN", 62, y + 10);
+    doc.text("DOCUMENTOS", 280, y + 10, { width: 80, align: "right" });
+    doc.text("VALOR NETO", 395, y + 10, { width: 135, align: "right" });
+    y += 38;
+    const labels = { income: "Retención en la fuente", vat: "Retención de IVA", ica: "Retención de ICA" };
+    for (const item of certificate.by_type) {
+        doc.font("Helvetica-Bold").fontSize(10).fillColor(ink).text(labels[item.tax_type] || item.tax_type, 62, y);
+        doc.font("Helvetica").fillColor(muted).text(String(item.documents), 280, y, { width: 80, align: "right" });
+        doc.font("Helvetica-Bold").fillColor(teal).text(money(item.net), 395, y, { width: 135, align: "right" });
+        y += 25;
+        doc.moveTo(50, y - 8).lineTo(545, y - 8).strokeColor(line).stroke();
+    }
+    doc.roundedRect(315, y + 12, 230, 58, 8).fill("#0E302E");
+    doc.font("Helvetica-Bold").fontSize(8).fillColor("#9FE7E5").text("TOTAL NETO CERTIFICADO", 330, y + 27);
+    doc.fontSize(17).fillColor("#FFFFFF").text(money(certificate.totals.net), 330, y + 41, { width: 200, align: "right" });
+
+    doc.font("Helvetica").fontSize(8).fillColor(muted).text("Este certificado se genera con las compras y devoluciones registradas en Ohnix. Debe ser revisado por el responsable contable antes de su entrega o uso tributario.", 50, 690, { width: 495, align: "center" });
+    doc.text(`Generado: ${new Date(certificate.generated_at).toLocaleString("es-CO")}`, 50, 724, { width: 495, align: "center" });
+    doc.end();
 };

@@ -1415,6 +1415,7 @@ const WithholdingReportCard = () => {
     const [loading, setLoading] = useState(false);
     const [certificate, setCertificate] = useState(null);
     const [certificateLoadingId, setCertificateLoadingId] = useState(null);
+    const [pdfLoading, setPdfLoading] = useState(false);
 
     const load = async () => {
         setLoading(true);
@@ -1449,6 +1450,16 @@ const WithholdingReportCard = () => {
         { title: "", fixed: "right", width: 125, render: (_, row) => <Button size="small" icon={<SafetyCertificateOutlined />} loading={certificateLoadingId === row.id} onClick={() => showCertificate(row)}>{t("accounting.withholding_certificate_view")}</Button> },
     ];
 
+    const downloadCertificate = async () => {
+        setPdfLoading(true);
+        try {
+            await accountingService.downloadWithholdingCertificate(certificate.supplier.id, certificate.year, certificate.supplier.identification);
+            toast.success(t("accounting.withholding_certificate_downloaded"));
+        } catch (error) {
+            toast.error(error?.response?.data?.message || t("accounting.failed"));
+        } finally { setPdfLoading(false); }
+    };
+
     return <>
         <Card className="module-shell withholding-report-card border border-[var(--ohnix-line-4)]" title={<span className="flex items-center gap-2"><BarChartOutlined className="text-[var(--ohnix-accent)]" />{t("accounting.withholding_report_title")}</span>}>
             <div className="withholding-report-intro"><div><span>{t("accounting.withholding_report_eyebrow")}</span><h3>{t("accounting.withholding_report_heading")}</h3><p>{t("accounting.withholding_report_desc")}</p></div><SafetyCertificateOutlined /></div>
@@ -1456,8 +1467,8 @@ const WithholdingReportCard = () => {
             <Row gutter={[12, 12]} className="mb-5">{[["base", "withholding_report_total_base"], ["withheld", "withholding_report_caused"], ["reversed", "withholding_report_reversed"], ["net", "withholding_report_current"]].map(([key, label]) => <Col xs={12} lg={6} key={key}><div className={`withholding-report-kpi withholding-report-kpi--${key}`}><span>{t(`accounting.${label}`)}</span><strong>{formatCurrency(report.totals?.[key] || 0)}</strong></div></Col>)}</Row>
             <Table className="module-dark-table" loading={loading} rowKey="id" columns={columns} dataSource={report.rows || []} scroll={{ x: 1180 }} pagination={{ pageSize: 8, hideOnSinglePage: true }} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<div><strong>{t("accounting.withholding_report_empty_title")}</strong><p>{t("accounting.withholding_report_empty_desc")}</p></div>} /> }} />
         </Card>
-        <Drawer className="accounting-drawer withholding-certificate-drawer" width={isMobile ? "100%" : 620} open={Boolean(certificate)} onClose={() => setCertificate(null)} title={t("accounting.withholding_certificate_title")} extra={<Button icon={<FileTextOutlined />} onClick={() => window.print()}>{t("accounting.withholding_certificate_print")}</Button>}>
-            {certificate && <div className="withholding-certificate" id="withholding-certificate-print"><div className="withholding-certificate__brand"><span>OHNIX</span><small>{t("accounting.withholding_certificate_generated")}</small></div><h2>{t("accounting.withholding_certificate_heading")}</h2><p>{t("accounting.withholding_certificate_period", { year: certificate.year })}</p><div className="withholding-certificate__party"><span>{t("accounting.withholding_report_supplier")}</span><strong>{certificate.supplier.name}</strong><small>{certificate.supplier.identification || "—"}</small></div><Row gutter={[12, 12]}>{certificate.by_type.map((item) => <Col span={24} key={item.tax_type}><div className="withholding-certificate__line"><div><strong>{t(`accounting.withholding_type_${item.tax_type}`)}</strong><small>{t("accounting.withholding_certificate_documents", { count: item.documents })}</small></div><div><span>{t("accounting.withholding_report_current")}</span><strong>{formatCurrency(item.net)}</strong></div></div></Col>)}</Row><div className="withholding-certificate__total"><span>{t("accounting.withholding_certificate_total")}</span><strong>{formatCurrency(certificate.totals.net || 0)}</strong></div><Alert className="dark-alert dark-alert-teal mt-5" type="info" showIcon message={t("accounting.withholding_certificate_notice")} /></div>}
+        <Drawer className="accounting-drawer withholding-certificate-drawer" width={isMobile ? "100%" : 620} open={Boolean(certificate)} onClose={() => setCertificate(null)} title={t("accounting.withholding_certificate_title")} extra={<Button type="primary" icon={<FileTextOutlined />} loading={pdfLoading} onClick={downloadCertificate}>{t("accounting.withholding_certificate_download")}</Button>}>
+            {certificate && <div className="withholding-certificate" id="withholding-certificate-print"><div className="withholding-certificate__brand"><span>OHNIX</span><small>{t("accounting.withholding_certificate_generated")}</small></div><h2>{t("accounting.withholding_certificate_heading")}</h2><p>{t("accounting.withholding_certificate_period", { year: certificate.year })}</p><div className="withholding-certificate__party"><span>{t("accounting.withholding_certificate_withholder")}</span><strong>{certificate.company?.legalName || certificate.company?.name || t("accounting.withholding_certificate_company_missing")}</strong><small>{certificate.company?.taxIdentification ? `NIT ${certificate.company.taxIdentification}${certificate.company.taxIdentificationDv ? `-${certificate.company.taxIdentificationDv}` : ""}` : t("accounting.withholding_certificate_nit_missing")}</small></div><div className="withholding-certificate__party"><span>{t("accounting.withholding_report_supplier")}</span><strong>{certificate.supplier.name}</strong><small>{certificate.supplier.identification || "—"}</small></div><Row gutter={[12, 12]}>{certificate.by_type.map((item) => <Col span={24} key={item.tax_type}><div className="withholding-certificate__line"><div><strong>{t(`accounting.withholding_type_${item.tax_type}`)}</strong><small>{t("accounting.withholding_certificate_documents", { count: item.documents })}</small></div><div><span>{t("accounting.withholding_report_current")}</span><strong>{formatCurrency(item.net)}</strong></div></div></Col>)}</Row><div className="withholding-certificate__total"><span>{t("accounting.withholding_certificate_total")}</span><strong>{formatCurrency(certificate.totals.net || 0)}</strong></div>{!certificate.company?.taxIdentification && <Alert className="dark-alert dark-alert-amber mt-5" type="warning" showIcon message={t("accounting.withholding_certificate_complete_company")} />}<Alert className="dark-alert dark-alert-teal mt-5" type="info" showIcon message={t("accounting.withholding_certificate_notice")} /></div>}
         </Drawer>
     </>;
 };

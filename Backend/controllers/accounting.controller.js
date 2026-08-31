@@ -361,3 +361,8 @@ export const getWithholdingCertificate = asyncHandler(async (req, res) => {
     });
     return res.status(200).json(new ApiResponse(200, certificate, "Certificado de retenciones consultado."));
 });
+
+export const downloadWithholdingCertificate = asyncHandler(async (req, res) => {
+    const certificate = await withholdingReportService.getWithholdingCertificate({ accountId: req.user.prismaId, supplierId: req.params.supplierId, year: req.query.year });
+    withholdingReportService.renderWithholdingCertificatePdf(res, certificate);
+});

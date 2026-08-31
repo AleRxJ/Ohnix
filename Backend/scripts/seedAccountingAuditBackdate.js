@@ -10,7 +10,7 @@ import { prisma } from "../db/prisma.js";
 // together, since those must stay consistent) rather than trying to fake it
 // through the API.
 
-const EMAIL = "alejandrovallejo10@outlook.com";
+const EMAIL = (process.argv[2] || "alejandrovallejo10@outlook.com").trim().toLowerCase();
 
 const run = async () => {
     await prisma.$connect();
