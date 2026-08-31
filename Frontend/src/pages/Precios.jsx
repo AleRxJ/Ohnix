@@ -157,7 +157,7 @@ const Precios = () => {
           }, {})
         : { starter: 45000, growth: 129000, scale: 259000 };
 
-    const productSchemaImage = "https://ohnix.co/Ohnix_FullLogo.png";
+    const productSchemaImage = "https://ohnix.co/Ohnix_FullLogo_Optimized.png";
     const offerValidFrom = "2026-01-01";
     const worldwideRegion = {
         "@type": "DefinedRegion",

@@ -102,7 +102,7 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                 >
                     <div className="flex items-center gap-1.5">
                         <img
-                            src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon.svg"}
+                            src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Optimized.png"}
                             alt="Ohnix icon"
                             className="h-14 w-14 object-contain"
                         />

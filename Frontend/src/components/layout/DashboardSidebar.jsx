@@ -106,13 +106,13 @@ const SidebarLogo = ({ collapsed, isLite, onClick }) => (
     >
         {collapsed ? (
             <img
-                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon.svg"}
+                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Optimized.png"}
                 alt="Ohnix icon"
                 className="h-16 w-16 shrink-0 scale-125 object-contain transition-transform duration-200 group-hover:scale-[1.35] drop-shadow-lg"
             />
         ) : (
             <img
-                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon.svg"}
+                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Optimized.png"}
                 alt="Ohnix logo"
                 className="h-28 w-28 object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
             />

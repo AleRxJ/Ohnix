@@ -19,7 +19,7 @@ const Footer = () => {
                 <div className="flex flex-col items-start gap-12 md:flex-row md:items-center md:justify-between">
                     <div>
                         <img
-                            src="/Ohnix_FullLogo.svg"
+                            src="/Ohnix_FullLogo_Optimized.png"
                             alt="Ohnix logo"
                             width="160"
                             height="40"
@@ -67,26 +67,26 @@ const Footer = () => {
                 <hr className="my-10 border-white/8 opacity-40" />
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <p className="text-sm text-[#6F7A81]">
+                    <p className="text-sm text-[#8B969C]">
                         © {new Date().getFullYear()} iTcycle. {t("landing.footer.copyright")}
                     </p>
                     <div className="flex gap-8 text-sm">
-                        <Link to="/" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        <Link to="/#home" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.nav.home")}
                         </Link>
-                        <Link to="/software-inventario-pymes" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        <Link to="/software-inventario-pymes" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.pymes")}
                         </Link>
-                        <Link to="/colaboracion-en-equipo" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        <Link to="/colaboracion-en-equipo" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.team")}
                         </Link>
-                        <Link to="/precios" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        <Link to="/precios" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.pricing")}
                         </Link>
-                        <Link to="/comparativa/ohnix-vs-alegra" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        <Link to="/comparativa/ohnix-vs-alegra" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.comparison")}
                         </Link>
-                        <Link to="/blog" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        <Link to="/blog" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.blog")}
                         </Link>
                     </div>

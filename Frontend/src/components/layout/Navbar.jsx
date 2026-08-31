@@ -121,7 +121,7 @@ const Navbar = () => {
                     className="flex items-center gap-3 text-left"
                 >
                     <img
-                        src="/Ohnix_Icon.svg"
+                        src="/Ohnix_Icon_Optimized.png"
                         alt="Ohnix logo"
                         width="44"
                         height="44"
@@ -248,7 +248,7 @@ const Navbar = () => {
                             style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
                         >
                             <img
-                                src="/Ohnix_FullLogo.svg"
+                                src="/Ohnix_FullLogo_Optimized.png"
                                 alt="Ohnix logo"
                                 width="144"
                                 height="36"

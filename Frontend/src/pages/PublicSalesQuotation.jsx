@@ -59,7 +59,7 @@ const PublicSalesQuotation = () => {
             <article className="public-sales-quotation-document">
                 <header className="public-sales-quotation-hero">
                     <div>
-                        <div className="public-sales-quotation-brand"><img src="/Ohnix_Icon.svg" alt="Ohnix" /><span>OHNIX</span></div>
+                        <div className="public-sales-quotation-brand"><img src="/Ohnix_Icon_Optimized.png" alt="Ohnix" /><span>OHNIX</span></div>
                         <p className="public-sales-quotation-eyebrow"><FileTextOutlined /> {t("sales_quotations.public_title")}</p>
                         <Title level={1}>{t("sales_quotations.public_title")}</Title>
                         <p className="public-sales-quotation-number">{t("sales_quotations.number")}: <strong>#{quotation.quotation_no}</strong></p>

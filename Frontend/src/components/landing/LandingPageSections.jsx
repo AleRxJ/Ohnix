@@ -77,7 +77,11 @@ const AnimatedStat = ({ value, active }) => {
 /* ── Typewriter cycling word ────────────────────────────────────────── */
 const TypewriterWord = ({ words }) => {
     const [idx, setIdx] = useState(0);
-    const [text, setText] = useState("");
+    // Deterministic first render is essential for the prerendered marketing
+    // HTML: an empty client value used to mismatch the saved word, forcing
+    // React to rebuild the hero after the large app bundle arrived and making
+    // that late repaint the page's LCP.
+    const [text, setText] = useState(() => words[0] ?? "");
     const [phase, setPhase] = useState("typing");
 
     useEffect(() => {
@@ -486,7 +490,7 @@ export const OrbitalHero = ({
     cyclingWords = [],
     heroVisual = null,
     footerNote = "Traceability on every movement",
-    productImage = "/Ohnix_FullLogo.svg",
+    productImage = "/Ohnix_FullLogo_Optimized.png",
     productImageAlt = "Ohnix inventory dashboard",
 }) => {
     const [pointer, setPointer] = useState({ x: 50, y: 40 });
@@ -564,7 +568,8 @@ export const OrbitalHero = ({
                                 className="mt-3 text-4xl font-semibold tracking-tight md:text-6xl animate-fade-up"
                                 style={{ animationDelay: "0.15s" }}
                             >
-                                <TypewriterWord words={cyclingWords} />
+                                <span className="md:hidden">{cyclingWords[0]}</span>
+                                <span className="hidden md:inline"><TypewriterWord words={cyclingWords} /></span>
                             </div>
                         )}
 
