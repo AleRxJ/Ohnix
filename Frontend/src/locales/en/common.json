@@ -1846,6 +1846,8 @@
     "purchase_number": "Purchase Number",
     "purchase_date": "Purchase Date",
     "supplier": "Supplier",
+    "withholding_concepts": "Applicable withholdings",
+    "withholding_concepts_hint": "Select only the concepts confirmed for this transaction. Ohnix will freeze the rate and calculate the net payable when saved.",
     "purchase_status": "Purchase Status",
     "purchase_total": "Purchase Total",
     "create_purchase": "Create Purchase",

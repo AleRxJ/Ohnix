@@ -4,18 +4,24 @@ import { recordCashMovement, claimCashAccount } from "./cashMovement.service.js"
 import { buildAccountingThirdParty, postPurchasePaymentJournalEntry } from "./accountingPosting.service.js";
 
 // Cartera (accounts payable): what's owed to the supplier is the tax-inclusive
-// total of every line (PurchaseDetail.total + taxAmount), minus SUM(PurchasePayment.amount).
+// total of every line, net of purchase returns and withholding tax snapshots,
+// minus payments. Every component is frozen on the purchase; live tax or
+// concept configuration never rewrites this balance.
 // Purchase has no stored total (see purchase.controller.js#mapPurchase) - it's
 // always derived from its details, same here.
 export const getPurchasePendingBalance = async (purchaseId, db = prisma) => {
-    const [purchase, detailsAgg, paidAgg] = await Promise.all([
+    const [purchase, details, paidAgg, retentionAgg] = await Promise.all([
         db.purchase.findUnique({ where: { id: purchaseId }, select: { id: true, purchaseNo: true, purchaseStatus: true } }),
-        db.purchaseDetail.aggregate({ where: { purchaseId }, _sum: { total: true, taxAmount: true } }),
+        db.purchaseDetail.findMany({ where: { purchaseId }, select: { total: true, taxAmount: true, refundAmount: true, returnedTaxAmount: true } }),
         db.purchasePayment.aggregate({ where: { purchaseId }, _sum: { amount: true } }),
+        db.purchaseRetention.aggregate({ where: { purchaseId }, _sum: { withheldAmount: true, returnedWithheldAmount: true } }),
     ]);
     if (!purchase) throw new ApiError(404, "Compra no encontrada.");
 
-    const total = Number(detailsAgg._sum.total || 0) + Number(detailsAgg._sum.taxAmount || 0);
+    const gross = details.reduce((sum, detail) => sum + Number(detail.total) + Number(detail.taxAmount), 0);
+    const returnedGross = details.reduce((sum, detail) => sum + Number(detail.refundAmount) + Number(detail.returnedTaxAmount), 0);
+    const withholdingOutstanding = Number(retentionAgg._sum.withheldAmount || 0) - Number(retentionAgg._sum.returnedWithheldAmount || 0);
+    const total = Number((gross - returnedGross - withholdingOutstanding).toFixed(2));
     const paid = Number(paidAgg._sum.amount || 0);
     const pending = total - paid;
     return { purchase, total, paid, pending };

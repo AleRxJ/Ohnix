@@ -100,6 +100,28 @@ export const accountingService = {
         return response.data;
     },
 
+    async listWithholdingConcepts({ activeAt } = {}) {
+        const response = await api.get("/accounting/withholding-concepts", {
+            params: activeAt ? { active_at: activeAt } : undefined,
+        });
+        return response.data;
+    },
+
+    async createWithholdingConcept(payload) {
+        const response = await api.post("/accounting/withholding-concepts", payload);
+        return response.data;
+    },
+
+    async setWithholdingConceptActive(id, isActive) {
+        const response = await api.patch(`/accounting/withholding-concepts/${id}/active`, { is_active: isActive });
+        return response.data;
+    },
+
+    async previewWithholdings(payload) {
+        const response = await api.post("/accounting/withholding-concepts/preview", payload);
+        return response.data;
+    },
+
     async listAccountingPeriods() {
         const response = await api.get("/accounting/periods");
         return response.data;

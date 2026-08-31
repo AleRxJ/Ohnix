@@ -1086,11 +1086,45 @@ model Purchase {
   // this Purchase was created by approving a quotation, never on a purchase
   // created directly.
   sourceQuotation         PurchaseQuotation?
+  retentions              PurchaseRetention[]
 
   @@index([createdById])
   @@index([supplierId])
   @@index([pointOfSaleId])
   @@map("purchases")
+}
+
+// Immutable tax snapshot attached to the business document. The concept may
+// later be deactivated or superseded, but this row preserves exactly what the
+// purchase used. Returned amounts are running totals, mirroring
+// PurchaseDetail.returnedQuantity/refundAmount for partial returns.
+model PurchaseRetention {
+  id                     String              @id @default(cuid())
+  purchaseId             String              @map("purchase_id")
+  conceptId              String?             @map("concept_id")
+  conceptCode            String              @map("concept_code")
+  conceptName            String              @map("concept_name")
+  taxType                WithholdingTaxType  @map("tax_type")
+  baseType               WithholdingBaseType @map("base_type")
+  ratePercent            Decimal             @map("rate_percent") @db.Decimal(8, 4)
+  minimumBaseAmount      Decimal             @map("minimum_base_amount") @db.Decimal(14, 2)
+  baseAmount             Decimal             @map("base_amount") @db.Decimal(14, 2)
+  withheldAmount         Decimal             @map("withheld_amount") @db.Decimal(14, 2)
+  returnedBaseAmount     Decimal             @default(0) @map("returned_base_amount") @db.Decimal(14, 2)
+  returnedWithheldAmount Decimal             @default(0) @map("returned_withheld_amount") @db.Decimal(14, 2)
+  municipalityCode       String?             @map("municipality_code")
+  chartAccountId         String              @map("chart_account_id")
+  createdAt              DateTime            @default(now()) @map("created_at")
+
+  purchase     Purchase            @relation(fields: [purchaseId], references: [id])
+  concept      WithholdingConcept? @relation(fields: [conceptId], references: [id], onDelete: SetNull)
+  chartAccount ChartAccount        @relation(fields: [chartAccountId], references: [id])
+
+  @@unique([purchaseId, conceptCode])
+  @@index([purchaseId])
+  @@index([conceptId])
+  @@index([chartAccountId])
+  @@map("purchase_retentions")
 }
 
 model PurchaseDetail {
@@ -1122,6 +1156,7 @@ model PurchaseDetail {
   returnDate          DateTime?           @map("return_date")
   returnedQuantity    Int                 @default(0) @map("returned_quantity")
   refundAmount        Decimal             @default(0) @map("refund_amount") @db.Decimal(12, 2)
+  returnedTaxAmount   Decimal             @default(0) @map("returned_tax_amount") @db.Decimal(12, 2)
   createdAt           DateTime            @default(now()) @map("created_at")
   updatedAt           DateTime            @updatedAt @map("updated_at")
 
@@ -1888,6 +1923,7 @@ model ChartAccount {
   journalEntryLines   JournalEntryLine[]
   manualVoucherLines  ManualJournalVoucherLine[]
   withholdingConcepts WithholdingConcept[]
+  purchaseRetentions  PurchaseRetention[]
 
   @@unique([createdById, code])
   @@index([createdById])
@@ -1912,7 +1948,8 @@ model WithholdingConcept {
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
 
-  chartAccount ChartAccount @relation(fields: [chartAccountId], references: [id])
+  chartAccount       ChartAccount        @relation(fields: [chartAccountId], references: [id])
+  purchaseRetentions PurchaseRetention[]
 
   @@unique([accountId, code, effectiveFrom])
   @@index([accountId, isActive, effectiveFrom])

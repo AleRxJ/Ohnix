@@ -27,6 +27,54 @@ export const calculateWithholdingAmount = (concept, totals) => {
     };
 };
 
+export const calculateRetentionReturn = (retention, returnedBaseNow) => {
+    const baseAmount = round2(retention.baseAmount);
+    const withheldAmount = round2(retention.withheldAmount);
+    const returnedBaseAmount = round2(retention.returnedBaseAmount || 0);
+    const returnedWithheldAmount = round2(retention.returnedWithheldAmount || 0);
+    const baseNow = Math.min(round2(Math.max(Number(returnedBaseNow) || 0, 0)), round2(baseAmount - returnedBaseAmount));
+    const newReturnedBase = round2(returnedBaseAmount + baseNow);
+    const cumulativeTarget = baseAmount > 0
+        ? (newReturnedBase >= baseAmount ? withheldAmount : round2((withheldAmount * newReturnedBase) / baseAmount))
+        : 0;
+    return {
+        baseNow,
+        withheldNow: Math.min(round2(Math.max(cumulativeTarget - returnedWithheldAmount, 0)), round2(withheldAmount - returnedWithheldAmount)),
+    };
+};
+
+export const buildPurchaseRetentionSnapshots = async (db, { accountId, conceptIds, transactionDate, totals }) => {
+    const ids = [...new Set(Array.isArray(conceptIds) ? conceptIds.filter(Boolean) : [])];
+    if (ids.length === 0) return [];
+    const concepts = await db.withholdingConcept.findMany({
+        where: {
+            id: { in: ids }, accountId, isActive: true,
+            effectiveFrom: { lte: transactionDate },
+            OR: [{ effectiveTo: null }, { effectiveTo: { gte: transactionDate } }],
+        },
+    });
+    if (concepts.length !== ids.length) throw new ApiError(400, "Uno o más conceptos de retención no existen o no están vigentes para la fecha de la compra.");
+    if (new Set(concepts.map((concept) => concept.code)).size !== concepts.length) {
+        throw new ApiError(400, "No se pueden aplicar dos versiones del mismo concepto a una compra.");
+    }
+    return concepts.map((concept) => {
+        const calculation = calculateWithholdingAmount(concept, totals);
+        return {
+            conceptId: concept.id,
+            conceptCode: concept.code,
+            conceptName: concept.name,
+            taxType: concept.taxType,
+            baseType: concept.baseType,
+            ratePercent: concept.ratePercent,
+            minimumBaseAmount: concept.minimumBaseAmount,
+            baseAmount: calculation.baseAmount,
+            withheldAmount: calculation.withheldAmount,
+            municipalityCode: concept.municipalityCode,
+            chartAccountId: concept.chartAccountId,
+        };
+    });
+};
+
 const serialize = (concept) => ({
     id: concept.id,
     code: concept.code,

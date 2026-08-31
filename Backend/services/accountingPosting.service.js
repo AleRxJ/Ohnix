@@ -109,10 +109,13 @@ export const postOrderSaleJournalEntry = async (tx, { accountId, createdById, or
     });
 };
 
-export const postPurchaseJournalEntry = async (tx, { accountId, createdById, purchase, totals, thirdParty }) => {
+export const postPurchaseJournalEntry = async (tx, { accountId, createdById, purchase, totals, retentions = [], thirdParty }) => {
     const coa = await getChartAccountMap(tx, accountId);
     const total = Number(totals.total || 0);
     const taxAmount = Number(totals.taxAmount || 0);
+    const withheldTotal = round2(retentions.reduce((sum, retention) => sum + Number(retention.withheldAmount || 0), 0));
+    const payable = round2(total + taxAmount - withheldTotal);
+    if (payable < 0) throw new Error("Purchase withholdings cannot exceed the gross purchase total");
 
     return recordJournalEntry(tx, {
         accountId,
@@ -124,7 +127,13 @@ export const postPurchaseJournalEntry = async (tx, { accountId, createdById, pur
         lines: withThirdParty([
             { chartAccountId: coa.get("1435").id, debit: total, credit: 0 },
             { chartAccountId: coa.get("240810").id, debit: taxAmount, credit: 0 },
-            { chartAccountId: coa.get("2205").id, debit: 0, credit: total + taxAmount },
+            { chartAccountId: coa.get("2205").id, debit: 0, credit: payable },
+            ...retentions.filter((retention) => Number(retention.withheldAmount) > 0).map((retention) => ({
+                chartAccountId: retention.chartAccountId,
+                debit: 0,
+                credit: Number(retention.withheldAmount),
+                description: `${retention.conceptCode} - ${retention.conceptName}`,
+            })),
         ], thirdParty, coa.get("2205").id),
     });
 };
@@ -211,10 +220,12 @@ export const postOrderReturnJournalEntry = async (tx, { accountId, createdById, 
 // cost-of-sale concept. Mirror-flip of postPurchaseJournalEntry: Dr
 // Proveedores (reduce what's owed) / Cr Inventarios (goods out) / Cr IVA
 // descontable (reduce credit claimed).
-export const postPurchaseReturnJournalEntry = async (tx, { accountId, createdById, sourceId, entryDate, description, lines, thirdParty }) => {
+export const postPurchaseReturnJournalEntry = async (tx, { accountId, createdById, sourceId, entryDate, description, lines, retentionReturns = [], thirdParty }) => {
     const coa = await getChartAccountMap(tx, accountId);
 
     const { refundBase: total, taxTotal, inventoryTotal, variance } = calculatePurchaseReturnValues(lines);
+    const withholdingReversal = round2(retentionReturns.reduce((sum, retention) => sum + Number(retention.withheldNow || 0), 0));
+    const supplierDebit = round2(total + taxTotal - withholdingReversal);
 
     return recordJournalEntry(tx, {
         accountId,
@@ -224,7 +235,13 @@ export const postPurchaseReturnJournalEntry = async (tx, { accountId, createdByI
         sourceType: "purchase_return",
         sourceId,
         lines: withThirdParty([
-            { chartAccountId: coa.get("2205").id, debit: total + taxTotal, credit: 0 },
+            { chartAccountId: coa.get("2205").id, debit: supplierDebit, credit: 0 },
+            ...retentionReturns.filter((retention) => Number(retention.withheldNow) > 0).map((retention) => ({
+                chartAccountId: retention.chartAccountId,
+                debit: Number(retention.withheldNow),
+                credit: 0,
+                description: `Reversa ${retention.conceptCode} - ${retention.conceptName}`,
+            })),
             { chartAccountId: coa.get("1435").id, debit: 0, credit: inventoryTotal },
             { chartAccountId: coa.get("240810").id, debit: 0, credit: taxTotal },
             ...(variance > 0

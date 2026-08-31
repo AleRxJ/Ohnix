@@ -6,6 +6,7 @@ import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
 import { buildAccountingThirdParty, postPurchaseJournalEntry, postPurchaseReturnJournalEntry } from "./accountingPosting.service.js";
 import { issueSupportDocumentForPurchase } from "./purchaseSupportDocument.service.js";
+import { buildPurchaseRetentionSnapshots, calculateRetentionReturn } from "./withholdingConcept.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -84,7 +85,7 @@ const findPurchaseByAnyId = async (id) =>
 
 class PurchaseService {
     async createPurchase(purchaseData, userId, userRole, pointOfSaleId) {
-        const { supplier_id, purchase_no, purchase_status, details, is_tutorial_data, source_quotation_id } = purchaseData;
+        const { supplier_id, purchase_no, purchase_status, details, is_tutorial_data, source_quotation_id, withholding_concept_ids } = purchaseData;
 
         if (
             !supplier_id ||
@@ -161,7 +162,7 @@ class PurchaseService {
         // company's VAT responsibility, not on anything about the supplier.
         const owner = await prisma.user.findUnique({
             where: { id: userId },
-            select: { company: { select: { vatResponsible: true } } },
+            select: { company: { select: { vatResponsible: true, isWithholdingAgent: true, withholdingAgentEffectiveFrom: true } } },
         });
         const companyCollectsVat = owner?.company?.vatResponsible !== "not_responsible";
 
@@ -258,12 +259,31 @@ class PurchaseService {
                     purchaseTaxAmount += itemTax.amount;
                 }
 
+                const retentionSnapshots = await buildPurchaseRetentionSnapshots(tx, {
+                    accountId: userId,
+                    conceptIds: withholding_concept_ids,
+                    transactionDate: createdPurchase.purchaseDate,
+                    totals: { subtotal: purchaseTotal, vat: purchaseTaxAmount },
+                });
+                const hasIncomeWithholding = retentionSnapshots.some((retention) => retention.taxType === "income" && Number(retention.withheldAmount) > 0);
+                const incomeAgentEffective = owner?.company?.isWithholdingAgent === true &&
+                    (!owner.company.withholdingAgentEffectiveFrom || owner.company.withholdingAgentEffectiveFrom <= createdPurchase.purchaseDate);
+                if (hasIncomeWithholding && !incomeAgentEffective) {
+                    throw new ApiError(400, "La empresa no figura como agente retenedor vigente para aplicar retención en la fuente a esta compra.");
+                }
+                if (retentionSnapshots.length > 0) {
+                    await tx.purchaseRetention.createMany({
+                        data: retentionSnapshots.map((snapshot) => ({ purchaseId: createdPurchase.id, ...snapshot })),
+                    });
+                }
+
                 if (shouldAddStock) {
                     await postPurchaseJournalEntry(tx, {
                         accountId: userId,
                         createdById: userId,
                         purchase: createdPurchase,
                         totals: { total: purchaseTotal, taxAmount: purchaseTaxAmount },
+                        retentions: retentionSnapshots,
                         thirdParty: buildAccountingThirdParty("supplier", supplier),
                     });
                 }
@@ -385,11 +405,13 @@ class PurchaseService {
                 const purchaseTotal = purchaseDetails.reduce((sum, d) => sum + Number(d.total), 0);
                 const purchaseTaxAmount = purchaseDetails.reduce((sum, d) => sum + Number(d.taxAmount), 0);
                 const updatedPurchaseRow = await tx.purchase.findUniqueOrThrow({ where: { id: purchase.id } });
+                const retentions = await tx.purchaseRetention.findMany({ where: { purchaseId: purchase.id } });
                 await postPurchaseJournalEntry(tx, {
                     accountId: purchase.createdById,
                     createdById: userId,
                     purchase: updatedPurchaseRow,
                     totals: { total: purchaseTotal, taxAmount: purchaseTaxAmount },
+                    retentions,
                     thirdParty: buildAccountingThirdParty("supplier", purchase.supplier),
                 });
                 return updatedPurchaseRow;
@@ -542,6 +564,9 @@ class PurchaseService {
         const { results, purchaseFullyReturned } = await prisma.$transaction(async (tx) => {
             const results = [];
             const journalLines = [];
+            let returnedSubtotalNow = 0;
+            let returnedVatNow = 0;
+            const purchaseRetentions = await tx.purchaseRetention.findMany({ where: { purchaseId: purchase.id } });
 
             for (const line of lines) {
                 const detail = detailById.get(line.purchase_detail_id);
@@ -582,6 +607,10 @@ class PurchaseService {
                 });
 
                 const refundNow = quantity * Number(detail.unitcost);
+                const taxRemaining = Math.max(Number(detail.taxAmount) - Number(detail.returnedTaxAmount), 0);
+                const returnedTaxNow = detail.returnedQuantity + quantity === detail.quantity
+                    ? Number(taxRemaining.toFixed(2))
+                    : Math.min(Number(((refundNow * Number(detail.taxRateApplied)) / 100).toFixed(2)), Number(taxRemaining.toFixed(2)));
 
                 // Same claim idiom as the product stock update just above:
                 // the returnedQuantity read that fed the insufficientItems
@@ -596,6 +625,7 @@ class PurchaseService {
                         returnDate: new Date(),
                         returnedQuantity: { increment: quantity },
                         refundAmount: { increment: refundNow },
+                        returnedTaxAmount: { increment: returnedTaxNow },
                     },
                 });
 
@@ -630,6 +660,32 @@ class PurchaseService {
                     taxRateApplied: detail.taxRateApplied,
                     inventoryCostApplied: -costing.valueDelta,
                 });
+                returnedSubtotalNow += refundNow;
+                returnedVatNow += returnedTaxNow;
+            }
+
+            const returnBases = {
+                subtotal: Number(returnedSubtotalNow.toFixed(2)),
+                vat: Number(returnedVatNow.toFixed(2)),
+                total: Number((returnedSubtotalNow + returnedVatNow).toFixed(2)),
+            };
+            const retentionReturns = [];
+            for (const retention of purchaseRetentions) {
+                const calculated = calculateRetentionReturn(retention, returnBases[retention.baseType]);
+                if (calculated.baseNow <= 0) continue;
+                const claim = await tx.purchaseRetention.updateMany({
+                    where: {
+                        id: retention.id,
+                        returnedBaseAmount: retention.returnedBaseAmount,
+                        returnedWithheldAmount: retention.returnedWithheldAmount,
+                    },
+                    data: {
+                        returnedBaseAmount: { increment: calculated.baseNow },
+                        returnedWithheldAmount: { increment: calculated.withheldNow },
+                    },
+                });
+                if (claim.count === 0) throw new ApiError(409, "Las retenciones de esta compra fueron actualizadas por otra devolución. Actualiza e intenta de nuevo.");
+                retentionReturns.push({ ...retention, ...calculated });
             }
 
             const allDetails = await tx.purchaseDetail.findMany({
@@ -654,6 +710,7 @@ class PurchaseService {
                 entryDate: new Date(),
                 description: "Devolución de compra",
                 lines: journalLines,
+                retentionReturns,
                 thirdParty: buildAccountingThirdParty("supplier", purchase.supplier),
             });
 

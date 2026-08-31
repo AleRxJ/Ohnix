@@ -61,6 +61,7 @@ const mapPurchaseDetail = (detail) => ({
     returned_quantity: detail.returnedQuantity,
     pending_quantity: detail.quantity - detail.returnedQuantity,
     refund_amount: Number(detail.refundAmount),
+    returned_tax_amount: Number(detail.returnedTaxAmount),
     fully_returned: detail.returnedQuantity === detail.quantity,
     createdAt: detail.createdAt,
     updatedAt: detail.updatedAt,

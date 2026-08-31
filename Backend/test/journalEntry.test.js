@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { isSingleEntrySource } from "../services/journalEntry.service.js";
 import { buildAccountingThirdParty, calculatePurchaseReturnValues, getLineCostBasis } from "../services/accountingPosting.service.js";
-import { calculateWithholdingAmount } from "../services/withholdingConcept.service.js";
+import { calculateRetentionReturn, calculateWithholdingAmount } from "../services/withholdingConcept.service.js";
 
 test("one-to-one accounting sources are idempotent when they have a source id", () => {
     for (const sourceType of [
@@ -102,5 +102,25 @@ test("withholding below its configured minimum base does not apply", () => {
             { subtotal: 1000, vat: 190 }
         ),
         { baseAmount: 1190, minimumBaseAmount: 2000, applies: false, withheldAmount: 0 }
+    );
+});
+
+test("partial retention returns use the original frozen amount proportionally", () => {
+    assert.deepEqual(
+        calculateRetentionReturn(
+            { baseAmount: 1000, withheldAmount: 25, returnedBaseAmount: 0, returnedWithheldAmount: 0 },
+            400
+        ),
+        { baseNow: 400, withheldNow: 10 }
+    );
+});
+
+test("final retention return absorbs rounding and never exceeds the original", () => {
+    assert.deepEqual(
+        calculateRetentionReturn(
+            { baseAmount: 333.33, withheldAmount: 8.33, returnedBaseAmount: 111.11, returnedWithheldAmount: 2.78 },
+            999
+        ),
+        { baseNow: 222.22, withheldNow: 5.55 }
     );
 });

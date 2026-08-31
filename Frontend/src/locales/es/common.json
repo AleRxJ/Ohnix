@@ -1846,6 +1846,8 @@
     "purchase_number": "Número de compra",
     "purchase_date": "Fecha de compra",
     "supplier": "Proveedor",
+    "withholding_concepts": "Retenciones aplicables",
+    "withholding_concepts_hint": "Selecciona únicamente los conceptos confirmados para esta operación. Ohnix congelará la tarifa y calculará el neto por pagar al guardar.",
     "purchase_status": "Estado de compra",
     "purchase_total": "Total de compra",
     "create_purchase": "Crear compra",

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal } from "antd";
-import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
@@ -108,6 +108,7 @@ const AccountLedgerDrawer = ({ account, onClose }) => {
 
     return (
         <Drawer
+            rootClassName="accounting-drawer"
             open={Boolean(account)}
             onClose={onClose}
             width={isMobile ? "100vw" : 720}
@@ -204,6 +205,7 @@ const NewAccountModal = ({ open, accounts, onClose, onCreated }) => {
 
     return (
         <Modal
+            className="accounting-modal"
             open={open}
             onCancel={onClose}
             title={t("accounting.new_account_title")}
@@ -452,7 +454,7 @@ const ThirdPartyLedgerTab = () => {
                     { title: "", render: (_, party) => <Button size="small" icon={<EyeOutlined />} onClick={() => openDetail(party)}>{t("accounting.ledger_view_button")}</Button> },
                 ]}
             />
-            <Drawer open={Boolean(detail)} onClose={() => setDetail(null)} width={760} title={detail?.thirdParty?.name || t("accounting.tab_third_parties")}>
+            <Drawer rootClassName="accounting-drawer" open={Boolean(detail)} onClose={() => setDetail(null)} width={760} title={detail?.thirdParty?.name || t("accounting.tab_third_parties")}>
                 <Row gutter={12} className="mb-4">
                     <Col span={12}><StatCard title={t("accounting.ledger_opening_balance")} value={detail?.openingBalance || 0} formatter={formatCurrency} /></Col>
                     <Col span={12}><StatCard title={t("accounting.ledger_closing_balance")} value={detail?.closingBalance || 0} formatter={formatCurrency} /></Col>
@@ -562,6 +564,7 @@ const ManualVouchersTab = () => {
     const voidVoucher = (voucher) => {
         let reason = "";
         Modal.confirm({
+            className: "accounting-modal",
             title: t("accounting.voucher_void_title"),
             content: <Input.TextArea rows={3} placeholder={t("accounting.voucher_void_reason")} onChange={(event) => { reason = event.target.value; }} />,
             okText: t("accounting.voucher_void"),
@@ -634,7 +637,7 @@ const ManualVouchersTab = () => {
                     ),
                 }}
             />
-            <Modal title={editing ? t("accounting.voucher_edit") : t("accounting.voucher_new")} open={open} onCancel={() => setOpen(false)} onOk={save} confirmLoading={saving} width={980} destroyOnHidden>
+            <Modal className="accounting-modal" title={editing ? t("accounting.voucher_edit") : t("accounting.voucher_new")} open={open} onCancel={() => setOpen(false)} onOk={save} confirmLoading={saving} width={980} destroyOnHidden>
                 <Form form={form} layout="vertical">
                     <Row gutter={16}>
                         <Col xs={24} md={8}><Form.Item name="entry_date" label={t("accounting.col_date")} rules={[{ required: true }]}><DatePicker className="w-full" /></Form.Item></Col>
@@ -840,6 +843,7 @@ const PeriodsTab = () => {
         let reason = "";
         let durationHours = 24;
         Modal.confirm({
+            className: "accounting-modal",
             title: t("accounting.reopen_period_title"),
             content: (
                 <div className="space-y-3 mt-4">
@@ -1028,13 +1032,13 @@ const FinancialStatementsTab = () => {
                     <>
                         <Row gutter={[16, 16]} className="mb-4">
                             <Col xs={24} sm={8}>
-                                <StatCard title={t("accounting.total_revenue")} value={income.total_revenue} formatter={formatCurrency} valueStyle={{ color: "#52c41a" }} />
+                                <StatCard title={t("accounting.total_revenue")} value={income.total_revenue} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-success)" }} />
                             </Col>
                             <Col xs={24} sm={8}>
-                                <StatCard title={t("accounting.total_costs")} value={income.total_costs} formatter={formatCurrency} valueStyle={{ color: "#f97316" }} />
+                                <StatCard title={t("accounting.total_costs")} value={income.total_costs} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-warning)" }} />
                             </Col>
                             <Col xs={24} sm={8}>
-                                <StatCard title={t("accounting.gross_profit")} value={income.gross_profit} formatter={formatCurrency} valueStyle={{ color: "#1890ff", fontWeight: 700 }} />
+                                <StatCard title={t("accounting.gross_profit")} value={income.gross_profit} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-info)", fontWeight: 700 }} />
                             </Col>
                         </Row>
                         <Row gutter={[16, 16]}>
@@ -1070,13 +1074,13 @@ const FinancialStatementsTab = () => {
                         )}
                         <Row gutter={[16, 16]} className="mb-4">
                             <Col xs={24} sm={8}>
-                                <StatCard title={t("accounting.total_assets")} value={balance.total_assets} formatter={formatCurrency} valueStyle={{ color: "#1890ff" }} />
+                                <StatCard title={t("accounting.total_assets")} value={balance.total_assets} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-info)" }} />
                             </Col>
                             <Col xs={24} sm={8}>
-                                <StatCard title={t("accounting.total_liabilities")} value={balance.total_liabilities} formatter={formatCurrency} valueStyle={{ color: "#f97316" }} />
+                                <StatCard title={t("accounting.total_liabilities")} value={balance.total_liabilities} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-warning)" }} />
                             </Col>
                             <Col xs={24} sm={8}>
-                                <StatCard title={t("accounting.total_equity")} value={balance.total_equity} formatter={formatCurrency} valueStyle={{ color: "#52c41a", fontWeight: 700 }} />
+                                <StatCard title={t("accounting.total_equity")} value={balance.total_equity} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-success)", fontWeight: 700 }} />
                             </Col>
                         </Row>
                         <Row gutter={[16, 16]}>
@@ -1153,13 +1157,13 @@ const OverviewTab = () => {
             <p className="text-sm text-[var(--ohnix-text-muted)]">{t("accounting.tab_overview_caption")}</p>
             <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} lg={6}>
-                    <StatCard title={t("accounting.overview_gross_profit")} value={income?.gross_profit || 0} formatter={formatCurrency} loading={loading} valueStyle={{ color: "#1890ff", fontWeight: 700 }} />
+                    <StatCard title={t("accounting.overview_gross_profit")} value={income?.gross_profit || 0} formatter={formatCurrency} loading={loading} valueStyle={{ color: "var(--ohnix-status-info)", fontWeight: 700 }} />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
-                    <StatCard title={t("accounting.overview_total_assets")} value={balance?.total_assets || 0} formatter={formatCurrency} loading={loading} valueStyle={{ color: "#52c41a" }} />
+                    <StatCard title={t("accounting.overview_total_assets")} value={balance?.total_assets || 0} formatter={formatCurrency} loading={loading} valueStyle={{ color: "var(--ohnix-status-success)" }} />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
-                    <StatCard title={t("accounting.overview_total_liabilities")} value={balance?.total_liabilities || 0} formatter={formatCurrency} loading={loading} valueStyle={{ color: "#f97316" }} />
+                    <StatCard title={t("accounting.overview_total_liabilities")} value={balance?.total_liabilities || 0} formatter={formatCurrency} loading={loading} valueStyle={{ color: "var(--ohnix-status-warning)" }} />
                 </Col>
                 <Col xs={24} sm={12} lg={6}>
                     <StatCard
@@ -1167,7 +1171,7 @@ const OverviewTab = () => {
                         value={Math.abs(netVat)}
                         formatter={formatCurrency}
                         loading={loading}
-                        valueStyle={{ color: netVat >= 0 ? "#f5222d" : "#52c41a", fontWeight: 700 }}
+                        valueStyle={{ color: netVat >= 0 ? "var(--ohnix-status-danger)" : "var(--ohnix-status-success)", fontWeight: 700 }}
                     />
                 </Col>
             </Row>
@@ -1437,20 +1441,21 @@ const Accounting = () => {
             .catch(() => setStatus(null));
     }, [hasAccounting]);
 
+    const tabLabel = (icon, key) => <span className="accounting-tab-label">{icon}<span>{t(key)}</span></span>;
     const tabItems = [
-        { key: "overview", label: t("accounting.tab_overview"), children: <OverviewTab /> },
-        { key: "chart", label: t("accounting.tab_chart_of_accounts"), children: <ChartOfAccountsTab /> },
-        { key: "journal", label: t("accounting.tab_journal"), children: <JournalTab /> },
-        { key: "vouchers", label: t("accounting.tab_vouchers"), children: <ManualVouchersTab /> },
-        { key: "third_parties", label: t("accounting.tab_third_parties"), children: <ThirdPartyLedgerTab /> },
-        { key: "trial_balance", label: t("accounting.tab_trial_balance"), children: <TrialBalanceTab /> },
-        { key: "periods", label: t("accounting.tab_periods"), children: <PeriodsTab /> },
-        { key: "statements", label: t("accounting.tab_financial_statements"), children: <FinancialStatementsTab /> },
-        { key: "taxes", label: t("accounting.tab_taxes"), children: <TaxesTab /> },
+        { key: "overview", label: tabLabel(<DashboardOutlined />, "accounting.tab_overview"), children: <OverviewTab /> },
+        { key: "chart", label: tabLabel(<ApartmentOutlined />, "accounting.tab_chart_of_accounts"), children: <ChartOfAccountsTab /> },
+        { key: "journal", label: tabLabel(<UnorderedListOutlined />, "accounting.tab_journal"), children: <JournalTab /> },
+        { key: "vouchers", label: tabLabel(<FileTextOutlined />, "accounting.tab_vouchers"), children: <ManualVouchersTab /> },
+        { key: "third_parties", label: tabLabel(<TeamOutlined />, "accounting.tab_third_parties"), children: <ThirdPartyLedgerTab /> },
+        { key: "trial_balance", label: tabLabel(<CalculatorOutlined />, "accounting.tab_trial_balance"), children: <TrialBalanceTab /> },
+        { key: "periods", label: tabLabel(<LockOutlined />, "accounting.tab_periods"), children: <PeriodsTab /> },
+        { key: "statements", label: tabLabel(<BarChartOutlined />, "accounting.tab_financial_statements"), children: <FinancialStatementsTab /> },
+        { key: "taxes", label: tabLabel(<SafetyCertificateOutlined />, "accounting.tab_taxes"), children: <TaxesTab /> },
     ];
 
     return (
-        <div className="min-h-screen bg-transparent text-[var(--ohnix-text-primary)]">
+        <div className="accounting-page min-h-screen bg-transparent text-[var(--ohnix-text-primary)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                 <div className="space-y-6">
                     <PageHeader title={t("accounting.page_title")} subtitle={t("accounting.page_subtitle")} icon={<BookOutlined />} />
@@ -1479,8 +1484,8 @@ const Accounting = () => {
                                     description={t("accounting.onboarding_backfilled_body")}
                                 />
                             )}
-                            <Card className="module-shell border border-[var(--ohnix-line-4)] overflow-hidden">
-                                <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} className="custom-tabs" />
+                            <Card className="accounting-workspace">
+                                <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} className="accounting-tabs" destroyInactiveTabPane={false} />
                             </Card>
                         </>
                     )}

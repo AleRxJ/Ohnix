@@ -19,6 +19,7 @@ import PurchaseFormItem from "./PurchaseFormItem";
 import useI18n from "../../hooks/useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import PointOfSaleField from "../common/PointOfSaleField";
+import { accountingService } from "../../services/accountingService";
 
 const { Option } = Select;
 
@@ -52,6 +53,17 @@ const PurchaseForm = ({
     const isTourCreateStep = isTutorialActive && effectiveSteps[stepIndex]?.id === "create-purchase";
     const isConvertingQuotation = Boolean(initialQuotation);
     const fieldsLocked = isTourCreateStep || isConvertingQuotation;
+    const [withholdingConcepts, setWithholdingConcepts] = React.useState([]);
+
+    React.useEffect(() => {
+        if (!visible || isTourCreateStep) return;
+        accountingService.listWithholdingConcepts({ activeAt: new Date().toISOString() })
+            .then((response) => setWithholdingConcepts(response?.data || []))
+            // Purchases exist on plans without Accounting; in that case the
+            // accounting-gated endpoint correctly returns 403 and this
+            // optional field simply stays hidden.
+            .catch(() => setWithholdingConcepts([]));
+    }, [visible, isTourCreateStep]);
 
     const handleProductChange = (productId, fieldName) => {
         const product = products.find((p) => p._id === productId);
@@ -79,6 +91,7 @@ const PurchaseForm = ({
                 quantity: detail.quantity,
                 unitcost: detail.unitcost,
             })),
+            withholding_concept_ids: values.withholding_concept_ids || [],
             ...(isConvertingQuotation && { source_quotation_id: initialQuotation.id }),
         };
         onSubmit(purchaseData);
@@ -216,6 +229,23 @@ const PurchaseForm = ({
                             </Form.Item>
                         </Col>
                     </Row>
+                    {withholdingConcepts.length > 0 && (
+                        <Form.Item
+                            name="withholding_concept_ids"
+                            label={t("purchases.withholding_concepts")}
+                            extra={t("purchases.withholding_concepts_hint")}
+                        >
+                            <Select
+                                mode="multiple"
+                                allowClear
+                                optionFilterProp="label"
+                                options={withholdingConcepts.map((concept) => ({
+                                    value: concept.id,
+                                    label: `${concept.code} · ${concept.name} (${concept.rate_percent}%)`,
+                                }))}
+                            />
+                        </Form.Item>
+                    )}
                 </Card>
 
                 <Form.List name="details">
