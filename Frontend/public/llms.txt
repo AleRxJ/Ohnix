@@ -1,0 +1,19 @@
+# Ohnix
+
+> Ohnix es un software web de inventario y operaciones para pymes, creado por iTcycle.
+
+## Contenido principal
+
+- [Inicio](https://ohnix.co/): descripción general de la plataforma.
+- [Software de inventario para pymes](https://ohnix.co/software-inventario-pymes): funciones de inventario, compras y ventas.
+- [Planes y precios](https://ohnix.co/precios): planes disponibles y sus características.
+- [Colaboración en equipo](https://ohnix.co/colaboracion-en-equipo): permisos, equipos y puntos de venta.
+- [Comparativa Ohnix vs. Alegra](https://ohnix.co/comparativa/ohnix-vs-alegra): comparación de enfoques y funciones.
+- [Blog](https://ohnix.co/blog): guías sobre inventario y operación de pymes.
+
+## Información
+
+- Idiomas: español e inglés.
+- Contacto: info@itcycle.com
+- Sitio canónico: https://ohnix.co/
+- Sitemap: https://ohnix.co/sitemap.xml

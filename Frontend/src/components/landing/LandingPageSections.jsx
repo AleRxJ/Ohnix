@@ -637,6 +637,8 @@ export const OrbitalHero = ({
                                         <img
                                             src={productImage}
                                             alt={productImageAlt}
+                                            width="1200"
+                                            height="760"
                                             className="block w-full select-none"
                                         />
                                     )}

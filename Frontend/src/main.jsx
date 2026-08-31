@@ -1,14 +1,5 @@
 // import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
 import "./index.css";
-import "./i18n/config.js";
-import App from "./App.jsx";
-import AppErrorBoundary from "./components/error/AppErrorBoundary.jsx";
-import { loadGoogleAdsTag } from "./utils/googleAds.js";
-import { loadMetaPixel } from "./utils/metaPixel.js";
-
-loadGoogleAdsTag();
-loadMetaPixel();
 
 // A production deploy deletes the old build's hashed chunk files (e.g.
 // Login-B-Fjz8gK.js) - a tab that's had the app open since before that
@@ -24,8 +15,35 @@ window.addEventListener("vite:preloadError", () => {
     }
 });
 
-createRoot(document.getElementById("root")).render(
-    <AppErrorBoundary>
-        <App />
-    </AppErrorBoundary>
-);
+const rootElement = document.getElementById("root");
+const isPrerendered = rootElement.dataset.prerendered === "true" && rootElement.childElementCount > 0;
+
+const boot = async () => {
+    const [React, { createRoot, hydrateRoot }, { default: App }, { default: AppErrorBoundary }] =
+        await Promise.all([
+            import("react"),
+            import("react-dom/client"),
+            import("./App.jsx"),
+            import("./components/error/AppErrorBoundary.jsx"),
+        ]);
+    const application = React.createElement(
+        AppErrorBoundary,
+        null,
+        React.createElement(App)
+    );
+
+    if (isPrerendered) hydrateRoot(rootElement, application);
+    else createRoot(rootElement).render(application);
+
+    Promise.all([
+        import("./utils/googleAds.js").then(({ loadGoogleAdsTag }) => loadGoogleAdsTag()),
+        import("./utils/metaPixel.js").then(({ loadMetaPixel }) => loadMetaPixel()),
+    ]).catch(() => {});
+};
+
+// Marketing routes ship useful prerendered HTML. hydrateRoot preserves that
+// first paint while the application graph downloads; unlike createRoot it
+// never clears the page to show the Suspense fallback. Start immediately so
+// controls become interactive as soon as their code is available and no first
+// click can be swallowed by a deferred bootstrap.
+boot();

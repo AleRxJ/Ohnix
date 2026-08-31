@@ -123,6 +123,8 @@ const Navbar = () => {
                     <img
                         src="/Ohnix_Icon.svg"
                         alt="Ohnix logo"
+                        width="44"
+                        height="44"
                         className="h-10 w-auto md:h-11"
                     />
                 </button>
@@ -248,6 +250,8 @@ const Navbar = () => {
                             <img
                                 src="/Ohnix_FullLogo.svg"
                                 alt="Ohnix logo"
+                                width="144"
+                                height="36"
                                 className="h-9 w-auto"
                             />
                             <button

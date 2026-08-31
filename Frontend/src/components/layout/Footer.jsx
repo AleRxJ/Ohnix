@@ -21,6 +21,8 @@ const Footer = () => {
                         <img
                             src="/Ohnix_FullLogo.svg"
                             alt="Ohnix logo"
+                            width="160"
+                            height="40"
                             className="mb-4 h-10 w-auto"
                         />
                         <p className="max-w-md text-sm leading-relaxed text-[#A9B3B8]">

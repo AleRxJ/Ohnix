@@ -68,6 +68,47 @@
 .accounting-tabs > .ant-tabs-content-holder { padding: clamp(16px, 2.5vw, 28px); }
 .accounting-tab-label { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .accounting-tab-label .anticon { color: var(--ohnix-accent); opacity: .9; }
+.accounting-section-guide {
+  margin-bottom: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(41,216,213,.18);
+  border-radius: 15px;
+  background: linear-gradient(120deg, rgba(41,216,213,.07), rgba(124,106,247,.035) 58%, transparent);
+}
+.accounting-section-guide__summary { display: flex; align-items: flex-start; gap: 12px; padding: 15px 16px 11px; }
+.accounting-section-guide__icon { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border: 1px solid rgba(41,216,213,.25); border-radius: 10px; background: rgba(41,216,213,.10); color: var(--ohnix-accent); }
+.accounting-section-guide__summary strong { display: block; margin-bottom: 2px; color: var(--ohnix-text-primary); font-size: 14px; }
+.accounting-section-guide__summary p { margin: 0; color: var(--ohnix-text-muted); font-size: 12px; line-height: 1.55; }
+.accounting-section-guide .ant-collapse { border-top: 1px solid var(--ohnix-line-3); }
+.accounting-section-guide .ant-collapse-header { min-height: 38px; padding: 9px 16px !important; color: var(--ohnix-text-muted) !important; }
+.accounting-section-guide .ant-collapse-content-box { padding: 2px 16px 16px !important; }
+.accounting-section-guide__toggle { display: inline-flex; align-items: center; gap: 7px; color: var(--ohnix-text-soft); font-size: 12px; font-weight: 600; }
+.accounting-section-guide__content { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.accounting-section-guide__content > div > span { display: block; margin-bottom: 7px; color: var(--ohnix-text-dim); font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.accounting-section-guide__content ol { display: grid; gap: 5px; margin: 0; padding-left: 18px; color: var(--ohnix-text-soft); font-size: 12px; }
+.accounting-section-guide__result { padding: 11px 13px; border: 1px solid var(--ohnix-line-3); border-radius: 11px; background: var(--ohnix-surface-card-soft); }
+.accounting-section-guide__result p { margin: 0; color: var(--ohnix-text-soft); font-size: 12px; line-height: 1.5; }
+.accounting-section-guide__concepts { grid-column: 1 / -1; }
+.accounting-section-guide__concepts .ant-tag { margin-bottom: 5px; cursor: help; }
+.accounting-quick-start.ant-card {
+  overflow: hidden;
+  border: 1px solid rgba(41,216,213,.23) !important;
+  border-radius: 18px !important;
+  background: radial-gradient(circle at 90% 0, rgba(41,216,213,.14), transparent 30%), linear-gradient(130deg, rgba(124,106,247,.07), transparent 52%), var(--ohnix-surface-card) !important;
+  box-shadow: var(--ohnix-shadow-card);
+}
+.accounting-quick-start__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.accounting-quick-start__heading span { color: var(--ohnix-accent); font-size: 10px; font-weight: 800; letter-spacing: .14em; }
+.accounting-quick-start__heading h3 { margin: 4px 0; color: var(--ohnix-text-primary); font-size: 20px; }
+.accounting-quick-start__heading p { max-width: 720px; margin: 0; color: var(--ohnix-text-muted); font-size: 12px; }
+.accounting-quick-start__steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+.accounting-quick-start__steps > * { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 13px; border: 1px solid var(--ohnix-line-4); border-radius: 13px; background: var(--ohnix-surface-4); color: inherit; text-align: left; cursor: pointer; transition: border-color .2s ease, transform .2s ease, background .2s ease; }
+.accounting-quick-start__steps > *:hover { border-color: rgba(41,216,213,.42); background: rgba(41,216,213,.065); transform: translateY(-2px); }
+.accounting-quick-start__steps b { display: grid; place-items: center; height: 30px; border-radius: 9px; background: rgba(41,216,213,.12); color: var(--ohnix-accent); }
+.accounting-quick-start__steps span { display: grid; gap: 2px; }
+.accounting-quick-start__steps strong { color: var(--ohnix-text-primary); font-size: 12px; }
+.accounting-quick-start__steps small { color: var(--ohnix-text-muted); font-size: 10px; line-height: 1.35; }
+.accounting-quick-start__steps .anticon { color: var(--ohnix-text-dim); }
 .accounting-page .module-shell.ant-card {
   border-radius: 16px !important;
   background: var(--ohnix-surface-card) !important;
@@ -171,15 +212,50 @@
 }
 .withholding-concepts-count strong { color: var(--ohnix-accent); font-size: 34px; line-height: 1; }
 .withholding-concepts-count span { color: var(--ohnix-text-muted); font-size: 11px; line-height: 1.2; }
+.purchase-accounting-breakdown {
+  margin-top: 22px;
+  padding: clamp(18px, 3vw, 26px);
+  border: 1px solid rgba(41,216,213,.22);
+  border-radius: 19px;
+  background:
+    radial-gradient(circle at 95% 0, rgba(41,216,213,.13), transparent 28%),
+    linear-gradient(135deg, rgba(124,106,247,.055), transparent 45%),
+    var(--ohnix-surface-card);
+  box-shadow: var(--ohnix-shadow-soft);
+}
+.purchase-accounting-breakdown__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
+.purchase-accounting-breakdown__heading span:first-child { color: var(--ohnix-accent); font-size: 10px; font-weight: 800; letter-spacing: .14em; }
+.purchase-accounting-breakdown__heading h3 { margin: 4px 0; color: var(--ohnix-text-primary); font-size: 19px; }
+.purchase-accounting-breakdown__heading p { max-width: 650px; margin: 0; color: var(--ohnix-text-muted); font-size: 12px; }
+.purchase-accounting-breakdown__totals { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; }
+.purchase-accounting-breakdown__totals > div { display: grid; gap: 5px; padding: 14px; border: 1px solid var(--ohnix-line-4); border-radius: 13px; background: var(--ohnix-surface-4); }
+.purchase-accounting-breakdown__totals span { color: var(--ohnix-text-muted); font-size: 11px; }
+.purchase-accounting-breakdown__totals strong { color: var(--ohnix-text-primary); font-size: clamp(15px,2vw,19px); overflow-wrap: anywhere; }
+.purchase-accounting-breakdown__totals .purchase-accounting-breakdown__net { border-color: rgba(41,216,213,.35); background: rgba(41,216,213,.075); }
+.purchase-accounting-breakdown__totals .purchase-accounting-breakdown__net strong { color: var(--ohnix-accent); }
+.purchase-retention-list { display: grid; gap: 8px; margin-top: 14px; }
+.purchase-retention-item { display: grid; grid-template-columns: minmax(180px,1.2fr) minmax(180px,1fr) auto; align-items: center; gap: 12px; padding: 11px 13px; border-bottom: 1px solid var(--ohnix-line-3); }
+.purchase-retention-item > div { display: flex; align-items: center; gap: 8px; color: var(--ohnix-text-soft); }
+.purchase-retention-item small { color: var(--ohnix-text-muted); }
+.purchase-retention-item > div:last-child { justify-content: flex-end; }
+.purchase-retention-item > div:last-child span { color: var(--ohnix-text-muted); font-size: 12px; }
+.purchase-retention-item > div:last-child strong { color: var(--ohnix-text-primary); }
 @media (max-width: 640px) {
   .accounting-workspace.ant-card { border-radius: 17px !important; }
   .accounting-tabs > .ant-tabs-nav { padding: 10px 10px 0; }
   .accounting-tabs .ant-tabs-tab { padding: 8px 10px !important; font-size: 12px; }
   .accounting-tabs > .ant-tabs-content-holder { padding: 14px 10px 18px; }
+  .accounting-section-guide__content { grid-template-columns: 1fr; }
+  .accounting-quick-start__heading { flex-direction: column; }
+  .accounting-quick-start__steps { grid-template-columns: 1fr; }
   .withholding-concepts-card .ant-card-head { align-items: flex-start; gap: 10px; }
   .withholding-concepts-card .ant-card-extra .ant-btn { padding-inline: 10px; }
   .withholding-concepts-hero { align-items: stretch; flex-direction: column; }
   .withholding-concepts-count { display: flex; justify-content: center; gap: 8px; flex-basis: auto; min-height: 64px; }
+  .purchase-accounting-breakdown__heading { flex-direction: column; }
+  .purchase-accounting-breakdown__totals { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .purchase-retention-item { grid-template-columns: 1fr; gap: 6px; }
+  .purchase-retention-item > div:last-child { justify-content: space-between; }
 }
 
 html {

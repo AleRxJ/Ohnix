@@ -13,7 +13,7 @@ import {
 } from "antd";
 import { WalletOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { getStatusColor } from "../../utils/purchaseUtils";
+import { calculatePurchaseFinancials, getStatusColor } from "../../utils/purchaseUtils";
 import { getStatusIconPurchase } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -38,6 +38,7 @@ const PurchaseDetails = ({
     const { formatCurrency } = useCurrency();
     const { user } = useContext(AuthContext);
     const { team } = useTeam();
+    const financials = calculatePurchaseFinancials(details, purchase?.retentions || [], purchasePayments);
     // View-only presence, same reasoning as OrderDetailsDrawer.
     const { viewers } = useResourcePresence({
         resourceType: "purchase",
@@ -73,7 +74,7 @@ const PurchaseDetails = ({
             dataIndex: "quantity",
             key: "quantity",
             render: (quantity) => (
-                <div className="text-center font-medium text-[#44F3F0]">
+                <div className="text-center font-medium text-[var(--ohnix-accent)]">
                     {quantity}
                 </div>
             ),
@@ -85,7 +86,7 @@ const PurchaseDetails = ({
             dataIndex: "unitcost",
             key: "unitcost",
             render: (cost) => (
-                <div className="font-medium text-[#44F3F0]">
+                <div className="font-medium text-[var(--ohnix-accent)]">
                     {formatCurrency(cost)}
                 </div>
             ),
@@ -124,7 +125,7 @@ const PurchaseDetails = ({
                             {record.pending_quantity > 0 && (
                                 <div>
                                     {t("purchases.return_col_pending")}:{" "}
-                                    <span className="font-medium text-[#44F3F0]">{record.pending_quantity}</span>
+                                    <span className="font-medium text-[var(--ohnix-accent)]">{record.pending_quantity}</span>
                                 </div>
                             )}
                             <div>
@@ -241,15 +242,43 @@ const PurchaseDetails = ({
                 }}
             />
 
+            <div className="purchase-accounting-breakdown">
+                <div className="purchase-accounting-breakdown__heading">
+                    <div>
+                        <span>{t("purchases.accounting_breakdown_eyebrow")}</span>
+                        <h3>{t("purchases.accounting_breakdown_title")}</h3>
+                        <p>{t("purchases.accounting_breakdown_desc")}</p>
+                    </div>
+                    <Tag color={(purchase?.retentions || []).length > 0 ? "cyan" : "default"}>
+                        {(purchase?.retentions || []).length > 0 ? t("purchases.withholdings_applied") : t("purchases.withholdings_none")}
+                    </Tag>
+                </div>
+                <div className="purchase-accounting-breakdown__totals">
+                    <div><span>{t("purchases.gross_total")}</span><strong>{formatCurrency(financials.grossTotal)}</strong></div>
+                    <div><span>{t("purchases.returns_total")}</span><strong className="text-[var(--ohnix-status-danger)]">− {formatCurrency(financials.returnedTotal)}</strong></div>
+                    <div><span>{t("purchases.withholding_total")}</span><strong className="text-[var(--ohnix-status-warning)]">− {formatCurrency(financials.outstandingWithholding)}</strong></div>
+                    <div className="purchase-accounting-breakdown__net"><span>{t("purchases.net_payable")}</span><strong>{formatCurrency(financials.netPayable)}</strong></div>
+                </div>
+                {(purchase?.retentions || []).length > 0 && (
+                    <div className="purchase-retention-list">
+                        {purchase.retentions.map((retention) => (
+                            <div key={retention._id} className="purchase-retention-item">
+                                <div><Tag color="cyan">{retention.concept_code}</Tag><span>{retention.concept_name}</span></div>
+                                <small>{retention.chart_account ? `${retention.chart_account.code} · ${retention.chart_account.name}` : t("common.na")}</small>
+                                <div><span>{retention.rate_percent}%</span><strong>{formatCurrency(Number(retention.withheld_amount) - Number(retention.returned_withheld_amount))}</strong></div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             {purchase && (
                 <>
                     <Divider orientation="left" className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
                         {t("finance.payments_section_title")}
                     </Divider>
                     {(() => {
-                        const total = details.reduce((sum, d) => sum + (d.total || 0) + (d.tax_amount || 0), 0);
-                        const paidAmount = purchasePayments.reduce((sum, p) => sum + p.amount, 0);
-                        const pendingBalance = Math.max(0, total - paidAmount);
+                        const { paidAmount, pendingBalance } = financials;
                         const paymentColumns = [
                             {
                                 title: t("finance.col_date"),
@@ -262,7 +291,7 @@ const PurchaseDetails = ({
                                 dataIndex: "amount",
                                 key: "amount",
                                 align: "right",
-                                render: (v) => <span className="font-medium text-[#44F3F0]">{formatCurrency(v)}</span>,
+                                render: (v) => <span className="font-medium text-[var(--ohnix-accent)]">{formatCurrency(v)}</span>,
                             },
                             {
                                 title: t("finance.cash_account_label"),
@@ -293,7 +322,7 @@ const PurchaseDetails = ({
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-[var(--ohnix-text-muted)]">{t("finance.pending_balance_label")}</span>
-                                        <span className={`text-sm font-semibold ${pendingBalance > 0 ? "text-[#44F3F0]" : "text-green-500"}`}>
+                                        <span className="text-sm font-semibold" style={{ color: pendingBalance > 0 ? "var(--ohnix-accent)" : "var(--ohnix-status-success)" }}>
                                             {pendingBalance > 0 ? formatCurrency(pendingBalance) : t("finance.fully_paid")}
                                         </span>
                                     </div>

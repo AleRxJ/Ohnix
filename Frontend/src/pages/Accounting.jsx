@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal } from "antd";
-import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
@@ -22,6 +22,69 @@ const VAT_GENERATED_CODE = "240805";
 const VAT_DEDUCTIBLE_CODE = "240810";
 
 const { RangePicker } = DatePicker;
+
+const AccountingSectionGuide = ({ sectionKey, title, summary, steps = [], result, concepts = [] }) => {
+    const { t } = useI18n();
+    const storageKey = `ohnix:accounting-guide:${sectionKey}`;
+    const [openKeys, setOpenKeys] = useState(() => {
+        try { return localStorage.getItem(storageKey) ? [] : ["guide"]; }
+        catch { return ["guide"]; }
+    });
+    const handleChange = (keys) => {
+        const normalized = Array.isArray(keys) ? keys : [keys].filter(Boolean);
+        setOpenKeys(normalized);
+        try { localStorage.setItem(storageKey, "seen"); } catch { /* browser storage may be disabled */ }
+    };
+    return (
+        <div className="accounting-section-guide">
+            <div className="accounting-section-guide__summary">
+                <span className="accounting-section-guide__icon"><BulbOutlined /></span>
+                <div><strong>{title}</strong><p>{summary}</p></div>
+            </div>
+            <Collapse
+                ghost
+                activeKey={openKeys}
+                onChange={handleChange}
+                expandIconPosition="end"
+                items={[{
+                    key: "guide",
+                    label: <span className="accounting-section-guide__toggle"><QuestionCircleOutlined />{t("accounting.guide_how_it_works")}</span>,
+                    children: (
+                        <div className="accounting-section-guide__content">
+                            {steps.length > 0 && <div><span>{t("accounting.guide_what_to_do")}</span><ol>{steps.map((step, index) => <li key={index}>{step}</li>)}</ol></div>}
+                            {result && <div className="accounting-section-guide__result"><span>{t("accounting.guide_result")}</span><p>{result}</p></div>}
+                            {concepts.length > 0 && <div className="accounting-section-guide__concepts"><span>{t("accounting.guide_key_concepts")}</span><div>{concepts.map((concept) => <Tooltip key={concept.label} title={concept.help}><Tag icon={<InfoCircleOutlined />}>{concept.label}</Tag></Tooltip>)}</div></div>}
+                        </div>
+                    ),
+                }]}
+            />
+        </div>
+    );
+};
+
+const ContextLabel = ({ children, help }) => (
+    <span className="inline-flex items-center gap-1.5">
+        {children}
+        <Tooltip title={help}><QuestionCircleOutlined className="text-[var(--ohnix-text-dim)] cursor-help" /></Tooltip>
+    </span>
+);
+
+const AccountingQuickStart = ({ onOpenTab }) => {
+    const { t } = useI18n();
+    return (
+        <Card className="accounting-quick-start">
+            <div className="accounting-quick-start__heading">
+                <div><span>{t("accounting.quick_start_eyebrow")}</span><h3>{t("accounting.onboarding_new_title")}</h3><p>{t("accounting.onboarding_new_body")}</p></div>
+                <Tag color="cyan">{t("accounting.quick_start_time")}</Tag>
+            </div>
+            <div className="accounting-quick-start__steps">
+                <button type="button" onClick={() => onOpenTab("chart")}><b>1</b><span><strong>{t("accounting.quick_start_chart")}</strong><small>{t("accounting.quick_start_chart_help")}</small></span><ArrowRightOutlined /></button>
+                <Link to="/purchases"><b>2</b><span><strong>{t("accounting.quick_start_operation")}</strong><small>{t("accounting.quick_start_operation_help")}</small></span><ArrowRightOutlined /></Link>
+                <button type="button" onClick={() => onOpenTab("journal")}><b>3</b><span><strong>{t("accounting.quick_start_journal")}</strong><small>{t("accounting.quick_start_journal_help")}</small></span><ArrowRightOutlined /></button>
+            </div>
+        </Card>
+    );
+};
 
 const ACCOUNT_TYPE_LABEL_KEYS = {
     asset: "accounting.account_type_asset",
@@ -101,8 +164,8 @@ const AccountLedgerDrawer = ({ account, onClose }) => {
             key: "source_type",
             render: (v) => <Tag>{t(SOURCE_TYPE_LABEL_KEYS[v] || v)}</Tag>,
         },
-        { title: t("accounting.lines_col_debit"), dataIndex: "debit", key: "debit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
-        { title: t("accounting.lines_col_credit"), dataIndex: "credit", key: "credit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
+        { title: <ContextLabel help={t("accounting.guide_debit_help")}>{t("accounting.lines_col_debit")}</ContextLabel>, dataIndex: "debit", key: "debit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
+        { title: <ContextLabel help={t("accounting.guide_credit_help")}>{t("accounting.lines_col_credit")}</ContextLabel>, dataIndex: "credit", key: "credit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
         { title: t("accounting.ledger_col_running_balance"), dataIndex: "running_balance", key: "running_balance", align: "right", render: (v) => formatCurrency(v) },
     ];
 
@@ -316,8 +379,9 @@ const ChartOfAccountsTab = () => {
 
     return (
         <>
+            <AccountingSectionGuide sectionKey="chart" title={t("accounting.guide_chart_title")} summary={t("accounting.tab_chart_of_accounts_caption")} steps={[t("accounting.guide_chart_step_1"), t("accounting.guide_chart_step_2"), t("accounting.guide_chart_step_3")]} result={t("accounting.guide_chart_result")} concepts={[{ label: t("accounting.col_type"), help: t("accounting.guide_chart_type_help") }, { label: t("accounting.ledger_view_button"), help: t("accounting.guide_ledger_help") }]} />
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
-                <p className="text-sm text-[var(--ohnix-text-muted)] m-0">{t("accounting.tab_chart_of_accounts_caption")}</p>
+                <span />
                 <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewAccountOpen(true)} className="shrink-0">
                     {t("accounting.new_account_button")}
                 </Button>
@@ -326,7 +390,7 @@ const ChartOfAccountsTab = () => {
                 loading ? (
                     <div className="text-center py-8 text-[var(--ohnix-text-muted)]">{t("common.loading")}</div>
                 ) : accounts.length === 0 ? (
-                    <EmptyState title={t("accounting.no_chart_accounts")} />
+                    <EmptyState title={t("accounting.no_chart_accounts")} subtitle={t("accounting.empty_chart_help")} action={<Button type="primary" icon={<PlusOutlined />} onClick={() => setNewAccountOpen(true)}>{t("accounting.new_account_button")}</Button>} />
                 ) : (
                     <div className="space-y-2">
                         {accounts.map((acc) => {
@@ -378,7 +442,7 @@ const ChartOfAccountsTab = () => {
                         pagination={false}
                         className="module-dark-table"
                         scroll={{ x: "max-content" }}
-                        locale={{ emptyText: t("accounting.no_chart_accounts") }}
+                        locale={{ emptyText: <EmptyState compact title={t("accounting.no_chart_accounts")} subtitle={t("accounting.empty_chart_help")} action={<Button type="primary" icon={<PlusOutlined />} onClick={() => setNewAccountOpen(true)}>{t("accounting.new_account_button")}</Button>} /> }}
                     />
                 </Card>
             )}
@@ -429,7 +493,7 @@ const ThirdPartyLedgerTab = () => {
 
     return (
         <>
-            <p className="mb-4 text-sm text-[var(--ohnix-text-muted)]">{t("accounting.tab_third_parties_caption")}</p>
+            <AccountingSectionGuide sectionKey="third-parties" title={t("accounting.guide_third_parties_title")} summary={t("accounting.tab_third_parties_caption")} steps={[t("accounting.guide_third_step_1"), t("accounting.guide_third_step_2")]} result={t("accounting.guide_third_result")} concepts={[{ label: t("accounting.ledger_opening_balance"), help: t("accounting.guide_opening_help") }, { label: t("accounting.ledger_closing_balance"), help: t("accounting.guide_closing_help") }]} />
             <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
                 <div className="flex flex-col sm:flex-row gap-3">
                     <RangePicker value={dateRange} onChange={(dates) => dates && setDateRange(dates)} allowClear={false} />
@@ -447,6 +511,7 @@ const ThirdPartyLedgerTab = () => {
                 dataSource={rows}
                 loading={loading}
                 pagination={{ pageSize: 15 }}
+                locale={{ emptyText: <EmptyState compact title={t("accounting.empty_third_title")} subtitle={t("accounting.empty_third_help")} /> }}
                 columns={[
                     { title: t("accounting.third_party_name"), dataIndex: "name" },
                     { title: t("accounting.third_party_document"), dataIndex: "document" },
@@ -607,8 +672,9 @@ const ManualVouchersTab = () => {
 
     return (
         <>
+            <AccountingSectionGuide sectionKey="vouchers" title={t("accounting.guide_vouchers_title")} summary={t("accounting.tab_vouchers_caption")} steps={[t("accounting.guide_voucher_step_1"), t("accounting.guide_voucher_step_2"), t("accounting.guide_voucher_step_3")]} result={t("accounting.guide_voucher_result")} concepts={[{ label: t("accounting.voucher_status_draft"), help: t("accounting.guide_draft_help") }, { label: t("accounting.voucher_status_posted"), help: t("accounting.guide_posted_help") }]} />
             <div className="flex items-center justify-between gap-3 mb-4">
-                <p className="text-sm text-[var(--ohnix-text-muted)] m-0">{t("accounting.tab_vouchers_caption")}</p>
+                <span />
                 {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.voucher_new")}</Button>}
             </div>
             <Table
@@ -619,6 +685,7 @@ const ManualVouchersTab = () => {
                 loading={loading}
                 scroll={{ x: "max-content" }}
                 pagination={{ pageSize: 15 }}
+                locale={{ emptyText: <EmptyState compact title={t("accounting.empty_vouchers_title")} subtitle={t("accounting.empty_vouchers_help")} action={canEdit ? <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.voucher_new")}</Button> : null} /> }}
                 expandable={{
                     expandedRowRender: (voucher) => (
                         <div className="space-y-3">
@@ -731,7 +798,7 @@ const JournalTab = () => {
 
     return (
         <>
-            <p className="mb-4 text-sm text-[var(--ohnix-text-muted)]">{t("accounting.tab_journal_caption")}</p>
+            <AccountingSectionGuide sectionKey="journal" title={t("accounting.guide_journal_title")} summary={t("accounting.tab_journal_caption")} steps={[t("accounting.guide_journal_step_1"), t("accounting.guide_journal_step_2")]} result={t("accounting.guide_journal_result")} concepts={[{ label: t("accounting.lines_col_debit"), help: t("accounting.guide_debit_help") }, { label: t("accounting.lines_col_credit"), help: t("accounting.guide_credit_help") }]} />
             <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <RangePicker value={dateRange} onChange={(dates) => dates && setDateRange(dates)} format="YYYY-MM-DD" allowClear={false} />
@@ -752,7 +819,7 @@ const JournalTab = () => {
                 loading ? (
                     <div className="text-center py-8 text-[var(--ohnix-text-muted)]">{t("common.loading")}</div>
                 ) : entries.length === 0 ? (
-                    <EmptyState title={t("accounting.no_entries")} />
+                    <EmptyState title={t("accounting.no_entries")} subtitle={t("accounting.empty_journal_help")} />
                 ) : (
                     <Collapse
                         expandIconPosition="end"
@@ -797,7 +864,7 @@ const JournalTab = () => {
                         pagination={{ pageSize: 15 }}
                         className="module-dark-table"
                         scroll={{ x: "max-content" }}
-                        locale={{ emptyText: t("accounting.no_entries") }}
+                        locale={{ emptyText: <EmptyState compact title={t("accounting.no_entries")} subtitle={t("accounting.empty_journal_help")} /> }}
                         expandable={{
                             expandedRowRender: (entry) => <Table className="module-dark-table" columns={linesColumns} dataSource={entry.lines} rowKey="_id" pagination={false} size="small" scroll={{ x: "max-content" }} />,
                         }}
@@ -914,7 +981,7 @@ const PeriodsTab = () => {
 
     return (
         <>
-            <p className="mb-4 text-sm text-[var(--ohnix-text-muted)]">{t("accounting.tab_periods_caption")}</p>
+            <AccountingSectionGuide sectionKey="periods" title={t("accounting.guide_periods_title")} summary={t("accounting.tab_periods_caption")} steps={[t("accounting.guide_period_step_1"), t("accounting.guide_period_step_2"), t("accounting.guide_period_step_3")]} result={t("accounting.guide_period_result")} concepts={[{ label: t("accounting.close_period"), help: t("accounting.guide_close_help") }, { label: t("accounting.reopen_period"), help: t("accounting.guide_reopen_help") }]} />
             <Card className="module-shell border border-[var(--ohnix-line-4)]">
                 <Table
                     columns={columns}
@@ -924,7 +991,7 @@ const PeriodsTab = () => {
                     pagination={false}
                     className="module-dark-table"
                     scroll={{ x: "max-content" }}
-                    locale={{ emptyText: t("accounting.no_periods") }}
+                    locale={{ emptyText: <EmptyState compact title={t("accounting.no_periods")} subtitle={t("accounting.empty_periods_help")} /> }}
                     expandable={{
                         rowExpandable: (period) => period.reopenings?.length > 0,
                         expandedRowRender: (period) => (
@@ -1014,6 +1081,7 @@ const FinancialStatementsTab = () => {
 
     return (
         <div className="space-y-8">
+            <AccountingSectionGuide sectionKey="statements" title={t("accounting.guide_statements_title")} summary={t("accounting.guide_statements_summary")} steps={[t("accounting.guide_statements_step_1"), t("accounting.guide_statements_step_2")]} result={t("accounting.guide_statements_result")} concepts={[{ label: t("accounting.income_statement_title"), help: t("accounting.guide_income_help") }, { label: t("accounting.balance_sheet_title"), help: t("accounting.guide_balance_help") }]} />
             <div>
                 <h3 className="text-base font-semibold text-[var(--ohnix-text-primary)] mb-3">{t("accounting.income_statement_title")}</h3>
                 <Alert
@@ -1157,7 +1225,7 @@ const OverviewTab = () => {
 
     return (
         <div className="space-y-6">
-            <p className="text-sm text-[var(--ohnix-text-muted)]">{t("accounting.tab_overview_caption")}</p>
+            <AccountingSectionGuide sectionKey="overview" title={t("accounting.guide_overview_title")} summary={t("accounting.tab_overview_caption")} steps={[t("accounting.guide_overview_step_1"), t("accounting.guide_overview_step_2")]} result={t("accounting.guide_overview_result")} concepts={[{ label: t("accounting.overview_gross_profit"), help: t("accounting.guide_profit_help") }, { label: t("accounting.overview_net_vat_payable"), help: t("accounting.guide_vat_help") }]} />
             <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} lg={6}>
                     <StatCard title={t("accounting.overview_gross_profit")} value={income?.gross_profit || 0} formatter={formatCurrency} loading={loading} valueStyle={{ color: "var(--ohnix-status-info)", fontWeight: 700 }} />
@@ -1435,7 +1503,7 @@ const TaxesTab = () => {
     const { t } = useI18n();
     return (
         <div className="space-y-6">
-            <p className="text-sm text-[var(--ohnix-text-muted)]">{t("accounting.tab_taxes_caption")}</p>
+            <AccountingSectionGuide sectionKey="taxes" title={t("accounting.guide_taxes_title")} summary={t("accounting.tab_taxes_caption")} steps={[t("accounting.guide_taxes_step_1"), t("accounting.guide_taxes_step_2"), t("accounting.guide_taxes_step_3")]} result={t("accounting.guide_taxes_result")} concepts={[{ label: t("accounting.taxes_vat_title"), help: t("accounting.guide_tax_vat_help") }, { label: t("accounting.withholding_concepts_title"), help: t("accounting.guide_withholding_help") }]} />
             <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.taxes_vat_title")}>
                 <p className="text-sm text-[var(--ohnix-text-muted)] mb-3">{t("accounting.taxes_vat_desc")}</p>
                 <Link to="/reports">
@@ -1491,15 +1559,15 @@ const TrialBalanceTab = () => {
     const columns = [
         { title: t("accounting.col_code"), dataIndex: "code", key: "code", width: 100 },
         { title: t("accounting.col_name"), dataIndex: "name", key: "name" },
-        { title: t("accounting.trial_balance_col_opening"), dataIndex: "opening_balance", key: "opening_balance", align: "right", render: (v) => formatCurrency(v) },
-        { title: t("accounting.lines_col_debit"), dataIndex: "debit", key: "debit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
-        { title: t("accounting.lines_col_credit"), dataIndex: "credit", key: "credit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
-        { title: t("accounting.trial_balance_col_closing"), dataIndex: "closing_balance", key: "closing_balance", align: "right", render: (v) => <strong>{formatCurrency(v)}</strong> },
+        { title: <ContextLabel help={t("accounting.guide_opening_help")}>{t("accounting.trial_balance_col_opening")}</ContextLabel>, dataIndex: "opening_balance", key: "opening_balance", align: "right", render: (v) => formatCurrency(v) },
+        { title: <ContextLabel help={t("accounting.guide_debit_help")}>{t("accounting.lines_col_debit")}</ContextLabel>, dataIndex: "debit", key: "debit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
+        { title: <ContextLabel help={t("accounting.guide_credit_help")}>{t("accounting.lines_col_credit")}</ContextLabel>, dataIndex: "credit", key: "credit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
+        { title: <ContextLabel help={t("accounting.guide_closing_help")}>{t("accounting.trial_balance_col_closing")}</ContextLabel>, dataIndex: "closing_balance", key: "closing_balance", align: "right", render: (v) => <strong>{formatCurrency(v)}</strong> },
     ];
 
     return (
         <>
-            <p className="mb-4 text-sm text-[var(--ohnix-text-muted)]">{t("accounting.tab_trial_balance_caption")}</p>
+            <AccountingSectionGuide sectionKey="trial-balance" title={t("accounting.guide_trial_title")} summary={t("accounting.tab_trial_balance_caption")} steps={[t("accounting.guide_trial_step_1"), t("accounting.guide_trial_step_2")]} result={t("accounting.guide_trial_result")} concepts={[{ label: t("accounting.trial_balance_col_opening"), help: t("accounting.guide_opening_help") }, { label: t("accounting.trial_balance_col_closing"), help: t("accounting.guide_closing_help") }]} />
             <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <RangePicker value={dateRange} onChange={(dates) => dates && setDateRange(dates)} format="YYYY-MM-DD" allowClear={false} className="w-full sm:w-auto" />
@@ -1573,14 +1641,7 @@ const Accounting = () => {
                     ) : (
                         <>
                             {status && !status.has_journal_entries && (
-                                <Alert
-                                    className="dark-alert dark-alert-purple"
-                                    type="info"
-                                    showIcon
-                                    icon={<InfoCircleOutlined />}
-                                    message={t("accounting.onboarding_new_title")}
-                                    description={t("accounting.onboarding_new_body")}
-                                />
+                                <AccountingQuickStart onOpenTab={setActiveTab} />
                             )}
                             {status && status.has_journal_entries && status.has_backfilled_entries && (
                                 <Alert

@@ -89,12 +89,19 @@ const run = async () => {
 
         for (const route of ROUTES) {
             const page = await browser.newPage();
-            const url = `${HOST}${route}`;
+            const url = `${HOST}${route}?ohnix-prerender=1`;
             console.log(`[prerender] Rendering ${route}`);
             await page.goto(url, { waitUntil: "networkidle0", timeout: 30000 });
             // Give SeoHead's useEffect (title/meta/structured data) and any
             // lazy-loaded route chunk a beat to settle after network idle.
             await new Promise((resolve) => setTimeout(resolve, 300));
+            await page.evaluate(() => {
+                document.querySelector("#root").dataset.prerendered = "true";
+                // Vite adds these while the build-time browser hydrates. Keeping
+                // them in the saved HTML would make real visitors eagerly fetch
+                // the 800+ KiB authenticated-app vendor graph again.
+                document.querySelectorAll('link[rel="modulepreload"]').forEach((link) => link.remove());
+            });
             const html = await page.content();
             await page.close();
 
