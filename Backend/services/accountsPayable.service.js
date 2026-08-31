@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 const round2 = (value) => Number(Number(value).toFixed(2));
 
 export const buildPayablePlan = ({ purchases, availableCash, now = new Date() }) => {
+    const normalizedCash = Math.max(round2(availableCash), 0);
     const documents = purchases.map((purchase) => {
         const gross = purchase.purchaseDetails.reduce((sum, row) => sum + Number(row.total) + Number(row.taxAmount) - Number(row.refundAmount) - Number(row.returnedTaxAmount), 0);
         const withheld = purchase.retentions.reduce((sum, row) => sum + Number(row.withheldAmount) - Number(row.returnedWithheldAmount), 0);
@@ -19,14 +20,14 @@ export const buildPayablePlan = ({ purchases, availableCash, now = new Date() })
 
     const rank = { overdue: 0, due_soon: 1, current: 2, unscheduled: 3 };
     documents.sort((a, b) => rank[a.status] - rank[b.status] || new Date(a.due_date || a.document_date) - new Date(b.due_date || b.document_date));
-    let cashRemaining = Math.max(round2(availableCash), 0);
+    let cashRemaining = normalizedCash;
     const planned = documents.map((row) => {
         const suggested = Math.min(row.pending, cashRemaining);
         cashRemaining = round2(cashRemaining - suggested);
         return { ...row, suggested_payment: round2(suggested), coverage: suggested >= row.pending ? "full" : suggested > 0 ? "partial" : "unfunded" };
     });
     const totalPending = round2(planned.reduce((sum, row) => sum + row.pending, 0));
-    return { summary: { available_cash: round2(availableCash), total_pending: totalPending, planned_payment: round2(Math.min(totalPending, availableCash)), remaining_cash: cashRemaining, funding_gap: round2(Math.max(totalPending - availableCash, 0)), document_count: planned.length }, documents: planned };
+    return { summary: { available_cash: normalizedCash, total_pending: totalPending, planned_payment: round2(Math.min(totalPending, normalizedCash)), remaining_cash: cashRemaining, funding_gap: round2(Math.max(totalPending - normalizedCash, 0)), document_count: planned.length }, documents: planned };
 };
 
 export const getAccountsPayablePlan = async ({ accountId, posScopeAll, posScopeIds }) => {
