@@ -49,6 +49,12 @@ import { getElectronicInvoicingProviderLabel } from "../utils/electronicInvoicin
 // lapses or gets downgraded after invoices already exist can still hit this
 // gate here (retry/sync/credit-note), so it needs the same translation.
 const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
+const CREDIT_NOTE_CODE_MESSAGES = {
+    ...PLAN_GATE_CODE_MESSAGES,
+    credit_note_amount_exceeds_remaining_base: "electronic_invoices.credit_note.amount_exceeds_remaining_base",
+    credit_note_history_requires_reconciliation: "electronic_invoices.credit_note.history_requires_reconciliation",
+    credit_note_already_processing: "electronic_invoices.credit_note.already_processing",
+};
 
 const STATUS_COLORS = {
     accepted: "var(--ohnix-accent-2)",
@@ -485,6 +491,8 @@ const InvoiceDetailDrawer = ({
     syncing,
     creditNotes,
     creditNotesLoading,
+    onRetryCreditNoteLocalEffect,
+    retryingCreditNoteId,
 }) => {
     const { t } = useI18n();
     const isMobile = useIsMobile();
@@ -660,8 +668,25 @@ const InvoiceDetailDrawer = ({
                                                 ? new Date(note.issuedAt).toLocaleString("es-CO")
                                                 : t("electronic_invoices.drawer.pending")}
                                         </div>
+                                        {note.status === "accepted" && note.localEffectStatus && note.localEffectStatus !== "not_applicable" && (
+                                            <div className={`mt-1 text-xs ${note.localEffectStatus === "applied" ? "text-emerald-400" : "text-amber-300"}`}>
+                                                {t(`electronic_invoices.credit_note.local_effect_${note.localEffectStatus}`)}
+                                            </div>
+                                        )}
                                     </div>
-                                    <StatusPill status={note.status} />
+                                    <div className="flex shrink-0 flex-col items-end gap-2">
+                                        <StatusPill status={note.status} />
+                                        {note.status === "accepted" && ["pending", "failed"].includes(note.localEffectStatus) && (
+                                            <Button
+                                                size="small"
+                                                icon={<ReloadOutlined />}
+                                                loading={retryingCreditNoteId === note.id}
+                                                onClick={() => onRetryCreditNoteLocalEffect(invoice.orderId, note.id)}
+                                            >
+                                                {t("electronic_invoices.credit_note.retry_local_effect")}
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             ))
                         )}
@@ -703,6 +728,7 @@ const ElectronicInvoices = () => {
     const [creditNotesLoading, setCreditNotesLoading] = useState(false);
     const [creditNoteModalOpen, setCreditNoteModalOpen] = useState(false);
     const [creditNoteSubmitting, setCreditNoteSubmitting] = useState(false);
+    const [retryingCreditNoteId, setRetryingCreditNoteId] = useState(null);
     const { formatCurrency } = useCurrency();
     // `items` is the full, unpaginated list (the desktop table below pages
     // it client-side) - the mobile card list used to render every single
@@ -807,9 +833,22 @@ const ElectronicInvoices = () => {
             setCreditNoteModalOpen(false);
             await loadCreditNotes(selected.orderId);
         } catch (error) {
-            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "electronic_invoices.credit_note.error"));
+            message.error(resolveApiErrorMessage(error, t, CREDIT_NOTE_CODE_MESSAGES, "electronic_invoices.credit_note.error"));
         } finally {
             setCreditNoteSubmitting(false);
+        }
+    };
+
+    const handleRetryCreditNoteLocalEffect = async (orderId, creditNoteId) => {
+        setRetryingCreditNoteId(creditNoteId);
+        try {
+            await electronicInvoiceService.retryCreditNoteLocalEffect(orderId, creditNoteId);
+            message.success(t("electronic_invoices.credit_note.retry_local_effect_success"));
+            await loadCreditNotes(orderId);
+        } catch (error) {
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "electronic_invoices.credit_note.retry_local_effect_error"));
+        } finally {
+            setRetryingCreditNoteId(null);
         }
     };
 
@@ -1133,6 +1172,8 @@ const ElectronicInvoices = () => {
                 syncing={Boolean(selected && syncingId === selected.orderId)}
                 creditNotes={creditNotes}
                 creditNotesLoading={creditNotesLoading}
+                onRetryCreditNoteLocalEffect={handleRetryCreditNoteLocalEffect}
+                retryingCreditNoteId={retryingCreditNoteId}
             />
 
             <CreditNoteModal

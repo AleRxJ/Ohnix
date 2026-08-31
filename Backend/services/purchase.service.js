@@ -1,7 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { recordStockMovement } from "./stockMovement.service.js";
-import { claimLocationStock, creditLocationStock } from "./productLocationStock.service.js";
+import { claimLocationStockWithCost, creditLocationStockWithCost } from "./productLocationStock.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
 import { postPurchaseJournalEntry, postPurchaseReturnJournalEntry } from "./accountingPosting.service.js";
@@ -231,10 +231,11 @@ class PurchaseService {
                     });
 
                     if (shouldAddStock) {
-                        const locationBalance = await creditLocationStock(tx, {
+                        const costing = await creditLocationStockWithCost(tx, {
                             productId: mappedProduct.id,
                             pointOfSaleId,
                             quantity: Number(detail.quantity),
+                            incomingUnitCost: Number(detail.unitcost),
                         });
 
                         await recordStockMovement(tx, {
@@ -242,7 +243,10 @@ class PurchaseService {
                             accountId: mappedProduct.createdById,
                             pointOfSaleId,
                             delta: Number(detail.quantity),
-                            balanceAfter: locationBalance,
+                            balanceAfter: costing.balanceAfter,
+                            unitCostApplied: costing.unitCostApplied,
+                            valueDelta: costing.valueDelta,
+                            valueBalanceAfter: costing.valueBalanceAfter,
                             sourceType: "purchase",
                             sourceId: createdPurchase.id,
                             createdById: userId,
@@ -346,6 +350,7 @@ class PurchaseService {
                     select: {
                         productId: true,
                         quantity: true,
+                        unitcost: true,
                         total: true,
                         taxAmount: true,
                         product: { select: { createdById: true } },
@@ -353,10 +358,11 @@ class PurchaseService {
                 });
 
                 for (const detail of purchaseDetails) {
-                    const locationBalance = await creditLocationStock(tx, {
+                    const costing = await creditLocationStockWithCost(tx, {
                         productId: detail.productId,
                         pointOfSaleId: purchase.pointOfSaleId,
                         quantity: detail.quantity,
+                        incomingUnitCost: Number(detail.unitcost),
                     });
 
                     await recordStockMovement(tx, {
@@ -364,7 +370,10 @@ class PurchaseService {
                         accountId: detail.product.createdById,
                         pointOfSaleId: purchase.pointOfSaleId,
                         delta: detail.quantity,
-                        balanceAfter: locationBalance,
+                        balanceAfter: costing.balanceAfter,
+                        unitCostApplied: costing.unitCostApplied,
+                        valueDelta: costing.valueDelta,
+                        valueBalanceAfter: costing.valueBalanceAfter,
                         sourceType: "purchase",
                         sourceId: purchase.id,
                         createdById: userId,
@@ -542,13 +551,13 @@ class PurchaseService {
                 // this transaction, so it can't by itself stop a concurrent
                 // sale/adjustment from taking the same location's stock in
                 // between.
-                const locationBalance = await claimLocationStock(tx, {
+                const costing = await claimLocationStockWithCost(tx, {
                     productId: detail.product.id,
                     pointOfSaleId: purchase.pointOfSaleId,
                     quantity,
                 });
 
-                if (locationBalance === null) {
+                if (costing === null) {
                     throw new ApiError(
                         409,
                         `Not enough stock left to return "${detail.product.productName}". Please refresh and try again.`
@@ -560,7 +569,10 @@ class PurchaseService {
                     accountId: detail.product.createdById,
                     pointOfSaleId: purchase.pointOfSaleId,
                     delta: -quantity,
-                    balanceAfter: locationBalance,
+                    balanceAfter: costing.balanceAfter,
+                    unitCostApplied: costing.unitCostApplied,
+                    valueDelta: costing.valueDelta,
+                    valueBalanceAfter: costing.valueBalanceAfter,
                     sourceType: "purchase_return",
                     sourceId: purchase.id,
                     createdById: userId,

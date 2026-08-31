@@ -16,8 +16,8 @@ const balanceForType = (accountType, debit, credit) =>
 // ChartAccount that actually has activity in range - mirrors
 // journalEntry.service.js#listJournalEntries's tenant filter
 // (period.createdById), the only place tenant scope lives for this ledger.
-const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate, excludeSourceTypes, periodIds }) => {
-    const rows = await prisma.journalEntryLine.groupBy({
+const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate, excludeSourceTypes, periodIds, db = prisma }) => {
+    const rows = await db.journalEntryLine.groupBy({
         by: ["chartAccountId"],
         where: {
             chartAccount: { accountType: { in: accountTypes }, createdById: accountId },
@@ -34,7 +34,7 @@ const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate,
     });
     if (rows.length === 0) return [];
 
-    const chartAccounts = await prisma.chartAccount.findMany({
+    const chartAccounts = await db.chartAccount.findMany({
         where: { id: { in: rows.map((r) => r.chartAccountId) } },
         select: { id: true, code: true, name: true, accountType: true },
     });
@@ -100,11 +100,19 @@ export const getIncomeStatement = async ({ accountId, startDate, endDate }) => {
 // Once a period IS closed (accountingPeriod.service.js), its result moves
 // into a real "Utilidades acumuladas" equity balance instead, so it must
 // drop out of this set or it would be counted twice.
-const getUnclosedPeriodIds = async (accountId) => {
+const getUnclosedPeriodIds = async (accountId, asOfDate) => {
     const periods = await prisma.accountingPeriod.findMany({ where: { createdById: accountId }, select: { id: true } });
     if (periods.length === 0) return [];
     const closingEntries = await prisma.journalEntry.findMany({
-        where: { sourceType: "period_close", periodId: { in: periods.map((p) => p.id) } },
+        where: {
+            sourceType: "period_close",
+            periodId: { in: periods.map((p) => p.id) },
+            // Historical snapshots before a closing entry's effective date
+            // must still derive that period's earnings. Ignoring asOfDate
+            // here made earnings disappear from mid-period historical
+            // balance sheets after the period was later closed.
+            ...(asOfDate ? { entryDate: { lte: asOfDate } } : {}),
+        },
         select: { periodId: true },
     });
     const closedIds = new Set(closingEntries.map((e) => e.periodId));
@@ -127,7 +135,7 @@ export const getBalanceSheet = async ({ accountId, asOfDate }) => {
     const totalLiabilities = round2(sumAmounts(liabilities));
     const totalEquityAccounts = round2(sumAmounts(equity));
 
-    const unclosedPeriodIds = await getUnclosedPeriodIds(accountId);
+    const unclosedPeriodIds = await getUnclosedPeriodIds(accountId, asOfDate);
     const currentEarnings = unclosedPeriodIds.length
         ? (await (async () => {
               const nominalRows = await aggregateByAccount({
@@ -167,13 +175,14 @@ export const getBalanceSheet = async ({ accountId, asOfDate }) => {
 // the balancing amount that closeAccountingPeriod posts to retained
 // earnings. Returns amounts only (Number, not Decimal) - accountingPeriod.
 // service.js decides where they get posted; this function never writes.
-export const getPeriodClosingPlan = async ({ accountId, startDate, endDate }) => {
+export const getPeriodClosingPlan = async ({ accountId, startDate, endDate, db = prisma }) => {
     const rows = await aggregateByAccount({
         accountId,
         accountTypes: ["revenue", "cost", "expense"],
         startDate,
         endDate,
         excludeSourceTypes: ["period_close"],
+        db,
     });
 
     // Revenue is credit-normal (amount = credit - debit): a positive balance

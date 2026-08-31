@@ -3121,6 +3121,15 @@
       "success": "Credit note sent",
       "stock_restock_applied": "Inventory was restocked automatically.",
       "stock_restock_failed": "The credit note was issued successfully, but inventory couldn't be updated automatically. Adjust it manually.",
+      "local_effect_pending": "Local effect pending",
+      "local_effect_failed": "Local effect failed",
+      "local_effect_applied": "Inventory and accounting applied",
+      "retry_local_effect": "Retry application",
+      "retry_local_effect_success": "The credit note local effect was applied successfully.",
+      "retry_local_effect_error": "The credit note local effect could not be applied.",
+      "amount_exceeds_remaining_base": "The amount exceeds the remaining creditable balance for that VAT rate.",
+      "history_requires_reconciliation": "This invoice has historical credit notes that must be reconciled before issuing another one.",
+      "already_processing": "Another credit note is already being processed for this invoice.",
       "error": "Could not issue the credit note"
     }
   },

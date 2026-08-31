@@ -315,7 +315,7 @@ model Company {
   // fully wired (see factus.service.js) even though Alanube is the default
   // for new companies - kept dormant per-company rather than removed so it
   // can be switched back without re-integrating from scratch.
-  electronicInvoicingProvider      String            @default("alanube") @map("electronic_invoicing_provider")
+  electronicInvoicingProvider      String            @default("itcycle") @map("electronic_invoicing_provider")
   factusNumberingRangeId           String?           @map("factus_numbering_range_id")
   // Factus requires a distinct numbering range per document type (invoices
   // are document code 21, credit notes are 22) - they cannot share a range.
@@ -903,6 +903,8 @@ model ProductLocationStock {
   productId     String   @map("product_id")
   pointOfSaleId String   @map("point_of_sale_id")
   stock         Int      @default(0)
+  averageUnitCost Decimal @default(0) @map("average_unit_cost") @db.Decimal(14, 4)
+  inventoryValue Decimal @default(0) @map("inventory_value") @db.Decimal(16, 2)
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
@@ -1010,6 +1012,9 @@ model StockMovement {
   variantId     String?                 @map("variant_id")
   delta         Int
   balanceAfter  Int                     @map("balance_after")
+  unitCostApplied Decimal?              @map("unit_cost_applied") @db.Decimal(14, 4)
+  valueDelta      Decimal?              @map("value_delta") @db.Decimal(16, 2)
+  valueBalanceAfter Decimal?            @map("value_balance_after") @db.Decimal(16, 2)
   sourceType    StockMovementSourceType @map("source_type")
   sourceId      String?                 @map("source_id")
   reason        String?                 @db.Text
@@ -1345,6 +1350,11 @@ model OrderDetail {
   taxTreatmentApplied     ProductTaxTreatment @default(taxed) @map("tax_treatment_applied")
   taxRateApplied          Decimal             @default(0) @map("tax_rate_applied") @db.Decimal(5, 2)
   taxAmount               Decimal             @default(0) @map("tax_amount") @db.Decimal(12, 2)
+  // Per-unit inventory cost frozen when stock is actually deducted for the
+  // sale. Pending/processing orders keep this null until completion. Every
+  // later cancellation, return, credit note and profit report must reuse it
+  // instead of reading the editable Product.buyingPrice.
+  costBasisApplied        Decimal?            @map("cost_basis_applied") @db.Decimal(12, 2)
   // Running totals across every partial return event for this line - same
   // pattern as PurchaseDetail (see its schema comment): StockMovement
   // (sourceType "order_return", sourceId = this order's id) is the
@@ -1435,6 +1445,14 @@ model ElectronicCreditNote {
   rawRequest            Json?                   @map("raw_request")
   rawResponse           Json?                   @map("raw_response")
   errorMessage          String?                 @map("error_message") @db.Text
+  // The DIAN document and its local inventory/accounting effect are two
+  // distinct commits. Persist the second one's state so an accepted fiscal
+  // note can never fail locally with only a console log as evidence.
+  localEffectStatus     String                  @default("pending") @map("local_effect_status")
+  localEffectPayload    Json?                   @map("local_effect_payload")
+  localEffectError      String?                 @map("local_effect_error") @db.Text
+  localEffectAttempts   Int                     @default(0) @map("local_effect_attempts")
+  localEffectAppliedAt  DateTime?               @map("local_effect_applied_at")
   issuedAt              DateTime?               @map("issued_at")
   createdAt             DateTime                @default(now()) @map("created_at")
   updatedAt             DateTime                @updatedAt @map("updated_at")
@@ -1442,6 +1460,7 @@ model ElectronicCreditNote {
   invoice ElectronicInvoice @relation(fields: [invoiceId], references: [id])
 
   @@index([invoiceId, createdAt])
+  @@index([localEffectStatus, createdAt])
   @@map("electronic_credit_notes")
 }
 

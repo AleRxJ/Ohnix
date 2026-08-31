@@ -38,8 +38,22 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
     const startDate = new Date(Date.UTC(period.year, period.month - 1, 1));
     const endDate = new Date(Date.UTC(period.year, period.month, 0, 23, 59, 59, 999));
 
-    return prisma.$transaction(async (tx) => {
-        const { reversalLines, netIncome } = await getPeriodClosingPlan({ accountId, startDate, endDate });
+    try {
+        return await prisma.$transaction(async (tx) => {
+        // Re-read this exact period under a row lock. The earlier lookup is
+        // useful for validation and date calculation, but cannot by itself
+        // stop two concurrent requests from both observing "open".
+        const lockedRows = await tx.$queryRaw`
+            SELECT id, status
+            FROM accounting_periods
+            WHERE id = ${periodId} AND created_by = ${accountId}
+            FOR UPDATE
+        `;
+        const lockedPeriod = lockedRows[0];
+        if (!lockedPeriod) throw new ApiError(404, "Periodo contable no encontrado.");
+        if (lockedPeriod.status === "closed") throw new ApiError(400, "Este periodo ya está cerrado.");
+
+        const { reversalLines, netIncome } = await getPeriodClosingPlan({ accountId, startDate, endDate, db: tx });
 
         if (reversalLines.length > 0 || netIncome !== 0) {
             const retainedEarnings = await ensureRetainedEarningsAccount(tx, accountId);
@@ -67,5 +81,11 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
             where: { id: periodId },
             data: { status: "closed", closedAt: new Date(), closedById: actorId },
         });
-    });
+        }, { isolationLevel: "Serializable" });
+    } catch (error) {
+        if (error?.code === "P2034") {
+            throw new ApiError(409, "El periodo fue modificado por otra operación concurrente. Actualiza e intenta de nuevo.");
+        }
+        throw error;
+    }
 };

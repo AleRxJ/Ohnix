@@ -3115,6 +3115,15 @@
       "success": "Nota crédito enviada",
       "stock_restock_applied": "El inventario se repuso automáticamente.",
       "stock_restock_failed": "La nota de crédito se emitió correctamente, pero no se pudo actualizar el inventario automáticamente. Ajústalo manualmente.",
+      "local_effect_pending": "Aplicación local pendiente",
+      "local_effect_failed": "Falló la aplicación local",
+      "local_effect_applied": "Inventario y contabilidad aplicados",
+      "retry_local_effect": "Reintentar aplicación",
+      "retry_local_effect_success": "El efecto local de la nota crédito se aplicó correctamente.",
+      "retry_local_effect_error": "No se pudo aplicar el efecto local de la nota crédito.",
+      "amount_exceeds_remaining_base": "El monto supera el saldo disponible para acreditar con esa tarifa de IVA.",
+      "history_requires_reconciliation": "Esta factura tiene notas crédito históricas que deben conciliarse antes de emitir otra.",
+      "already_processing": "Ya hay una nota crédito en proceso para esta factura.",
       "error": "No se pudo emitir la nota crédito"
     }
   },

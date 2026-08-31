@@ -64,11 +64,10 @@ const CompanyFormModal = ({
     form,
     editingCompany,
     onUploadLogo,
-    onRegisterAlanube,
 }) => {
     const { t } = useI18n();
     const selectedCountry = Form.useWatch("countryCode", form);
-    const selectedProvider = Form.useWatch("electronicInvoicingProvider", form) || "alanube";
+    const selectedProvider = "itcycle";
 
     return (
         <Modal
@@ -213,14 +212,16 @@ const CompanyFormModal = ({
                             </Form.Item>
                         )}
 
-                        <Form.Item name="electronicInvoicingProvider" label={t("admin.dian_provider")} initialValue="alanube">
+                        <Form.Item
+                            name="electronicInvoicingProvider"
+                            label={t("admin.dian_provider")}
+                            initialValue="itcycle"
+                            getValueProps={() => ({ value: "itcycle" })}
+                        >
                             <Select
                                 size="large"
-                                options={[
-                                    { value: "alanube", label: "Alanube" },
-                                    { value: "factus", label: "Factus" },
-                                    { value: "itcycle", label: "ITCycle (software propio)" },
-                                ]}
+                                disabled
+                                options={[{ value: "itcycle", label: "ITCycle (software propio)" }]}
                             />
                         </Form.Item>
 
@@ -302,9 +303,6 @@ const CompanyFormModal = ({
                                                 ? t("admin.alanube_registered_status", { id: editingCompany.alanubeCompanyId })
                                                 : t("admin.alanube_not_registered_status")}
                                         </Tag>
-                                        <Button size="small" onClick={() => onRegisterAlanube?.(editingCompany.id)}>
-                                            {editingCompany.alanubeCompanyId ? t("admin.alanube_reregister") : t("admin.alanube_register")}
-                                        </Button>
                                     </div>
                                 )}
 

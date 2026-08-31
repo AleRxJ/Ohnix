@@ -16,6 +16,7 @@
     "db:reconcile:upgrades:apply": "node scripts/reconcileUpgradeRequests.js --apply",
     "db:backfill:accounting": "node scripts/backfillAccountingHistory.js",
     "db:backfill:accounting:apply": "node scripts/backfillAccountingHistory.js --apply",
+    "db:audit:accounting": "node scripts/auditAccountingIntegrity.js",
     "db:seed:test-user": "node scripts/createTestUser.js",
     "db:migrate:mongo-to-pg": "node scripts/migrateMongoToPostgres.js"
   },

@@ -196,18 +196,9 @@ export const registerMyCompanyWithItcycle = asyncHandler(async (req, res) => {
     if (company.itcycleCompanyId) {
         throw new ApiError(409, "Tu empresa ya está configurada para facturar. Agrega una resolución por separado si la necesitas.");
     }
-    // electronicInvoicingProvider defaults to "alanube" for every company
-    // (see schema.prisma), so its mere presence isn't a signal an admin
-    // deliberately chose it - only electronicInvoicingEnabled=true means the
-    // admin actually turned on live invoicing under that other provider.
-    // Without this guard, this self-service itcycle wizard would silently
-    // flip a company already live on Alanube/Factus over to itcycle.
-    if (company.electronicInvoicingEnabled && company.electronicInvoicingProvider !== "itcycle") {
-        throw new ApiError(
-            409,
-            "Tu empresa ya tiene facturacion electronica activa con otro proveedor configurado por el administrador. Contacta a soporte si necesitas cambiar de proveedor."
-        );
-    }
+    // Legacy provider values may remain until the normalization migration is
+    // deployed. They never block provisioning: itcycle is Ohnix's only
+    // operational issuer and registration normalizes the company to it.
     await ensureElectronicInvoicingPlan(req.user.prismaId);
     const { dianConfiguration, supplierProfile, numberingResolutions, certificate } = req.body || {};
     assertValidDianConfiguration(dianConfiguration);

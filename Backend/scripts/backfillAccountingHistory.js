@@ -72,7 +72,7 @@ async function collectOrderCandidates() {
                 where: { orderId: order.id },
                 include: { product: { select: { buyingPrice: true } } },
             });
-            const cogs = details.reduce((sum, d) => sum + d.quantity * toNumber(d.product.buyingPrice), 0);
+            const cogs = details.reduce((sum, d) => sum + d.quantity * toNumber(d.costBasisApplied ?? d.product.buyingPrice), 0);
             sale.push({ order, cogs });
         } else {
             tally.alreadyPostedSale += 1;

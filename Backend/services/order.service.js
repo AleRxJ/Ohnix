@@ -5,7 +5,7 @@ import { issueElectronicInvoiceForOrder } from "./electronicInvoicing.service.js
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { getLowStockDefaultThreshold } from "../utils/systemSettings.js";
 import { recordStockMovement } from "./stockMovement.service.js";
-import { claimLocationStock, creditLocationStock, getLocationStock } from "./productLocationStock.service.js";
+import { claimLocationStockWithCost, creditLocationStockWithCost, getLocationStock } from "./productLocationStock.service.js";
 import { claimVariantStock, creditVariantStock } from "./variant.service.js";
 import { enqueueWebhookEvent } from "./webhookDispatch.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
@@ -326,7 +326,7 @@ class OrderService {
 
             for (const [index, item] of resolvedItems.entries()) {
                 const itemTax = itemTaxes[index];
-                await tx.orderDetail.create({
+                const createdDetail = await tx.orderDetail.create({
                     data: {
                         orderId: createdOrder.id,
                         productId: item.product.id,
@@ -337,6 +337,7 @@ class OrderService {
                         taxTreatmentApplied: itemTax.treatment,
                         taxRateApplied: itemTax.rate,
                         taxAmount: itemTax.amount,
+                        costBasisApplied: null,
                         weightApplied: item.product.weightValue !== null ? Number(item.product.weightValue) : null,
                         volumetricWeightApplied:
                             item.product.volumetricWeight !== null ? Number(item.product.volumetricWeight) : null,
@@ -352,13 +353,13 @@ class OrderService {
                     // same location's stock in between. See
                     // productLocationStock.service.js#claimLocationStock for
                     // why this is still atomic.
-                    const locationBalance = await claimLocationStock(tx, {
+                    const costing = await claimLocationStockWithCost(tx, {
                         productId: item.product.id,
                         pointOfSaleId,
                         quantity: item.quantity,
                     });
 
-                    if (locationBalance === null) {
+                    if (costing === null) {
                         const available = await getLocationStock(item.product.id, pointOfSaleId);
                         throw new ApiError(
                             422,
@@ -381,7 +382,10 @@ class OrderService {
                         accountId: item.product.createdById,
                         pointOfSaleId,
                         delta: -item.quantity,
-                        balanceAfter: locationBalance,
+                        balanceAfter: costing.balanceAfter,
+                        unitCostApplied: costing.unitCostApplied,
+                        valueDelta: costing.valueDelta,
+                        valueBalanceAfter: costing.valueBalanceAfter,
                         sourceType: "order",
                         sourceId: createdOrder.id,
                         createdById: userId,
@@ -569,6 +573,7 @@ class OrderService {
                     quantity: true,
                     unitcost: true,
                     taxRateApplied: true,
+                    costBasisApplied: true,
                     returnedQuantity: true,
                     productId: true,
                     variantId: true,
@@ -662,7 +667,7 @@ class OrderService {
                         quantity: pending,
                         unitcost: detail.unitcost,
                         taxRateApplied: detail.taxRateApplied,
-                        buyingPrice: detail.product.buyingPrice,
+                        costBasisApplied: detail.costBasisApplied ?? detail.product.buyingPrice,
                     });
                 }
 
@@ -800,6 +805,16 @@ class OrderService {
                         sourceType: "order",
                         sourceId: order.id,
                         createdById: userId,
+                    });
+
+                    await tx.orderDetail.update({
+                        where: { id: createdDetail.id },
+                        data: { costBasisApplied: costing.unitCostApplied },
+                    });
+
+                    await tx.orderDetail.update({
+                        where: { id: detail.id },
+                        data: { costBasisApplied: Number(detail.product.buyingPrice) },
                     });
 
                     if (detail.variantId) {
@@ -1074,7 +1089,7 @@ class OrderService {
                     quantity,
                     unitcost: detail.unitcost,
                     taxRateApplied: detail.taxRateApplied,
-                    buyingPrice: detail.product.buyingPrice,
+                    costBasisApplied: detail.costBasisApplied ?? detail.product.buyingPrice,
                 });
             }
 

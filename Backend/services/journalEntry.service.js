@@ -1,6 +1,23 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 
+// These business records can own exactly one journal entry. Granular
+// order_return/purchase_return events intentionally stay out: several valid
+// partial-return postings may share the same order/purchase sourceId.
+export const SINGLE_ENTRY_SOURCE_TYPES = new Set([
+    "order_sale",
+    "purchase",
+    "order_payment",
+    "purchase_payment",
+    "order_cancellation",
+    "credit_note_restock",
+    "credit_note_financial",
+    "period_close",
+]);
+
+export const isSingleEntrySource = (sourceType, sourceId) =>
+    Boolean(sourceId) && SINGLE_ENTRY_SOURCE_TYPES.has(sourceType);
+
 // Lazily creates the (tenant, year, month) AccountingPeriod a journal entry
 // needs to post into - same "created on first use" idiom as
 // pointOfSale.service.js#ensureDefaultPointOfSale. Always called from inside
@@ -36,6 +53,17 @@ export const recordJournalEntry = async (
 ) => {
     const nonZeroLines = lines.filter((l) => Number(l.debit || 0) !== 0 || Number(l.credit || 0) !== 0);
     if (nonZeroLines.length === 0) return null;
+
+    // Safe retries should return the already-posted entry instead of writing
+    // a duplicate. The partial unique index added with this change is the
+    // concurrency backstop; this read handles the normal lost-response/retry
+    // path without turning it into an error.
+    if (isSingleEntrySource(sourceType, sourceId)) {
+        const existing = await tx.journalEntry.findFirst({
+            where: { sourceType, sourceId, period: { createdById: accountId } },
+        });
+        if (existing) return existing;
+    }
 
     // Compare cents as integers, not Decimal/Number, to avoid float drift -
     // every amount reaching here is already .toFixed(2)-rounded upstream, so

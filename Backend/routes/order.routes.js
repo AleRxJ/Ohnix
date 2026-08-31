@@ -17,6 +17,7 @@ import {
     syncOrderElectronicInvoice,
     issueOrderCreditNote,
     getOrderCreditNotes,
+    retryOrderCreditNoteLocalEffect,
 } from "../controllers/electronicInvoice.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
@@ -50,7 +51,13 @@ router.route("/:id/electronic-invoice/issue").post(requireModulePermission("orde
 router.route("/:id/electronic-invoice/sync").post(requireModulePermission("orders", "edit"), syncOrderElectronicInvoice);
 router.route("/:id/electronic-invoice/credit-notes")
     .get(requireModulePermission("orders", "view"), getOrderCreditNotes)
-    .post(requireModulePermission("orders", "edit"), issueOrderCreditNote);
+    .post(requireModulePermission("orders", "edit"), idempotent("credit-note.issue"), issueOrderCreditNote);
+router.post(
+    "/:id/electronic-invoice/credit-notes/:creditNoteId/retry-local-effect",
+    requireModulePermission("orders", "edit"),
+    idempotent("credit-note.local-effect"),
+    retryOrderCreditNoteLocalEffect
+);
 
 // Admin-only routes
 router.get("/all", isAdmin, getAllOrdersAdmin);

@@ -1,6 +1,8 @@
 import { getChartAccountMap, resolveCashAccountChartAccount } from "./chartOfAccounts.service.js";
 import { recordJournalEntry } from "./journalEntry.service.js";
 
+export const getLineCostBasis = (line) => Number(line.costBasisApplied ?? line.buyingPrice ?? 0);
+
 // The only file that knows "which PUC account, which side" for each of the
 // 4 events this phase covers - order.service.js/purchase.service.js/
 // orderPayment.service.js/purchasePayment.service.js each just make one
@@ -100,7 +102,7 @@ export const postOrderReturnJournalEntry = async (tx, { accountId, createdById, 
         const lineRefund = line.quantity * Number(line.unitcost);
         refundTotal += lineRefund;
         taxTotal += Number(((lineRefund * Number(line.taxRateApplied)) / 100).toFixed(2));
-        cogsTotal += line.quantity * Number(line.buyingPrice);
+        cogsTotal += line.quantity * getLineCostBasis(line);
     }
     refundTotal = Number(refundTotal.toFixed(2));
     taxTotal = Number(taxTotal.toFixed(2));

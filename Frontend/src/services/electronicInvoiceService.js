@@ -41,6 +41,15 @@ export const electronicInvoiceService = {
         return response.data;
     },
 
+    async retryCreditNoteLocalEffect(orderId, creditNoteId) {
+        const response = await api.post(
+            `/orders/${orderId}/electronic-invoice/credit-notes/${creditNoteId}/retry-local-effect`,
+            undefined,
+            { headers: { "Idempotency-Key": `credit-note-local-effect-${creditNoteId}` } }
+        );
+        return response.data;
+    },
+
     // itcycle-provider invoices never get a stored pdfUrl (itcycle-api-dian
     // keeps the signed XML internally, no public URLs - see
     // mapItcycleResponse in electronicInvoicing.service.js) - this generates

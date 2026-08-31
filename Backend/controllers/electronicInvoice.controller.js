@@ -8,6 +8,7 @@ import {
     listElectronicInvoices,
     issueCreditNoteForInvoice,
     listCreditNotesForInvoice,
+    retryCreditNoteLocalEffect,
 } from "../services/electronicInvoicing.service.js";
 import { renderElectronicInvoicePdf } from "../services/electronicInvoicePdf.service.js";
 
@@ -86,6 +87,19 @@ export const getOrderCreditNotes = asyncHandler(async (req, res) => {
     return res
         .status(200)
         .json(new ApiResponse(200, data, "Credit notes fetched successfully"));
+});
+
+export const retryOrderCreditNoteLocalEffect = asyncHandler(async (req, res) => {
+    const data = await retryCreditNoteLocalEffect({
+        orderId: req.params.id,
+        creditNoteId: req.params.creditNoteId,
+        requesterUserId: req.user.prismaId,
+        requesterRole: req.user.role,
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, data, "Credit note local effect applied successfully"));
 });
 
 export const downloadOrderElectronicInvoicePdf = asyncHandler(async (req, res) => {

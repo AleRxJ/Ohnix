@@ -25,11 +25,6 @@ export const adminService = {
         return response.data;
     },
 
-    async registerCompanyWithAlanube(companyId) {
-        const response = await api.post(`/companies/admin/${companyId}/alanube/register`);
-        return response.data;
-    },
-
     // itcycle-api-dian registration/numbering/FirmaPass rut/archivos/confirmar
     // steps are self-service now (see Frontend/src/services/companyService.js's
     // /company/me/itcycle/* calls) - this stays for Ohnix admin support

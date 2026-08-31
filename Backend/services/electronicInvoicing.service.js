@@ -1,18 +1,12 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import {
-    createFactusInvoice,
     createFactusCreditNote,
-    getFactusInvoiceStatus,
     FactusError,
     isFactusConfigured,
 } from "./factus.service.js";
 import {
-    createAlanubeCompany,
-    createAlanubeTestSet,
-    createAlanubeInvoice,
     createAlanubeCreditNote,
-    getAlanubeInvoiceStatus,
     AlanubeError,
     isAlanubeConfigured,
 } from "./alanube.service.js";
@@ -66,16 +60,12 @@ const ALANUBE_PROVIDER = "alanube";
 // itcycleDian.service.js) - unlike Factus/Alanube, this is a proveedor
 // tecnológico Ohnix's own company built and operates, not a third party.
 const ITCYCLE_PROVIDER = "itcycle";
-// Sandbox test-set id published in Alanube's onboarding guide - swap for the
-// real DIAN-issued id once habilitación is completed in production.
-const ALANUBE_SANDBOX_TEST_SET_ID = "a70562e0-631e-4ceb-aa65-36887b57dc17";
 const TERMINAL_STATUSES = ["accepted", "cancelled"];
 
-const providerFor = (company) => {
-    if (company?.electronicInvoicingProvider === FACTUS_PROVIDER) return FACTUS_PROVIDER;
-    if (company?.electronicInvoicingProvider === ITCYCLE_PROVIDER) return ITCYCLE_PROVIDER;
-    return ALANUBE_PROVIDER;
-};
+// Ohnix operates exclusively as DIAN "software propio". Provider values on
+// old invoices remain useful historical metadata, but company configuration
+// can no longer route new documents to a third party.
+const providerFor = () => ITCYCLE_PROVIDER;
 
 // DIAN's standard correction-concept catalog for credit notes. Verify these
 // codes against the Factus sandbox response/docs before relying on them in
@@ -201,6 +191,8 @@ const serializeCreditNote = (note) => !note ? null : ({
     referenceCode: note.referenceCode, status: note.status, externalId: note.externalId,
     creditNoteNumber: note.creditNoteNumber, cufe: note.cufe, pdfUrl: note.pdfUrl, xmlUrl: note.xmlUrl,
     observation: note.observation, errorMessage: note.errorMessage, issuedAt: note.issuedAt,
+    localEffectStatus: note.localEffectStatus, localEffectError: note.localEffectError,
+    localEffectAttempts: note.localEffectAttempts, localEffectAppliedAt: note.localEffectAppliedAt,
     createdAt: note.createdAt, updatedAt: note.updatedAt,
 });
 
@@ -1002,32 +994,14 @@ export const issueElectronicInvoiceForOrder = async ({ orderId, requesterUserId,
     const company = order.createdBy.company;
     const provider = providerFor(company);
 
-    let claim;
-    let submit;
-    if (provider === FACTUS_PROVIDER) {
-        if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
-        const payload = buildFactusPayload(order);
-        claim = await claimInvoice({ order, payload, provider });
-        submit = () => createFactusInvoice({ payload }).then(mapFactusResponse);
-    } else if (provider === ITCYCLE_PROVIDER) {
-        if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian integration is not configured for this environment");
-        if (!text(company.itcycleCompanyId) || !text(company.itcycleApiKeyCiphertext)) {
-            throw new ApiError(422, "This company has not been provisioned with itcycle-api-dian yet");
-        }
-        const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
-        const invoice = buildItcyclePayload(order);
-        claim = await claimInvoice({ order, payload: invoice, provider });
-        submit = () => createItcycleInvoice({ apiKey, internalReference: order.invoiceNo, invoice, send: buildItcycleSendOptions(company) }).then(mapItcycleResponse);
-    } else {
-        if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");
-        const resolution = company.alanubeInvoiceResolution;
-        const number = await prisma.$transaction((tx) =>
-            claimAlanubeNumber(tx, { companyId: company.id, counterField: "alanubeNextInvoiceNumber", resolution })
-        );
-        const payload = buildAlanubePayload(order, { number });
-        claim = await claimInvoice({ order, payload, provider });
-        submit = () => createAlanubeInvoice({ payload }).then(mapAlanubeResponse);
+    if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian integration is not configured for this environment");
+    if (!text(company.itcycleCompanyId) || !text(company.itcycleApiKeyCiphertext)) {
+        throw new ApiError(422, "This company has not been provisioned with itcycle-api-dian yet");
     }
+    const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
+    const invoicePayload = buildItcyclePayload(order);
+    const claim = await claimInvoice({ order, payload: invoicePayload, provider });
+    const submit = () => createItcycleInvoice({ apiKey, internalReference: order.invoiceNo, invoice: invoicePayload, send: buildItcycleSendOptions(company) }).then(mapItcycleResponse);
 
     if (!claim.claimed) return { reused: true, trigger, countryCode: "CO", invoice: serialize(claim.invoice) };
     try {
@@ -1062,33 +1036,19 @@ export const syncElectronicInvoiceStatus = async ({ orderId, requesterUserId, re
         throw new ApiError(409, `Electronic invoice status "${invoice.status}" cannot be synced`);
     }
     const provider = invoice.provider;
+    if (provider !== ITCYCLE_PROVIDER) {
+        throw new ApiError(409, "Los documentos históricos de proveedores heredados son de solo lectura.", [], "", "unsupported_legacy_einvoicing_provider");
+    }
 
     try {
-        let mapped;
-        if (provider === FACTUS_PROVIDER) {
-            if (!invoice.invoiceNumber) throw new ApiError(409, "This invoice does not have a provider invoice number yet");
-            if (!isFactusConfigured()) throw new ApiError(503, "Factus integration is not configured for this environment");
-            mapped = mapFactusResponse(await getFactusInvoiceStatus({ invoiceNumber: invoice.invoiceNumber }));
-        } else if (provider === ITCYCLE_PROVIDER) {
-            if (!invoice.externalId) throw new ApiError(409, "This invoice does not have a provider id yet");
-            if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian integration is not configured for this environment");
-            const company = order.createdBy.company;
-            if (!text(company.itcycleApiKeyCiphertext)) throw new ApiError(422, "This company has not been provisioned with itcycle-api-dian yet");
-            const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
-            // GET only ever returns the last stored status - it never
-            // re-attempts a send, so it can never resolve a CONTINGENCY
-            // document (see itcycleDian.service.js#retryItcycleInvoiceSend).
-            // "Sync" therefore means two different things depending on
-            // status: for CONTINGENCY it's a real retry; otherwise it's a
-            // status poll, same as Factus/Alanube above.
-            mapped = invoice.status === "contingency"
-                ? mapItcycleResponse(await retryItcycleInvoiceSend({ apiKey, id: invoice.externalId, send: buildItcycleSendOptions(company) }))
-                : mapItcycleResponse(await getItcycleInvoiceStatus({ apiKey, id: invoice.externalId }));
-        } else {
-            if (!invoice.externalId) throw new ApiError(409, "This invoice does not have a provider id yet");
-            if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");
-            mapped = mapAlanubeResponse(await getAlanubeInvoiceStatus({ invoiceId: invoice.externalId }));
-        }
+        if (!invoice.externalId) throw new ApiError(409, "This invoice does not have a provider id yet");
+        if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian integration is not configured for this environment");
+        const company = order.createdBy.company;
+        if (!text(company.itcycleApiKeyCiphertext)) throw new ApiError(422, "This company has not been provisioned with itcycle-api-dian yet");
+        const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
+        const mapped = invoice.status === "contingency"
+            ? mapItcycleResponse(await retryItcycleInvoiceSend({ apiKey, id: invoice.externalId, send: buildItcycleSendOptions(company) }))
+            : mapItcycleResponse(await getItcycleInvoiceStatus({ apiKey, id: invoice.externalId }));
         const updated = await prisma.$transaction(async (tx) => {
             const updatedInvoice = await tx.electronicInvoice.update({
                 where: { id: invoice.id },
@@ -1238,7 +1198,7 @@ const applyCreditNoteRestock = async ({ order, items, creditNoteId, userId }) =>
                 quantity: qty,
                 unitcost: detail.unitcost,
                 taxRateApplied: detail.taxRateApplied,
-                buyingPrice: detail.product.buyingPrice,
+                costBasisApplied: detail.costBasisApplied ?? detail.product.buyingPrice,
             });
         }
 
@@ -1306,6 +1266,70 @@ const postFinancialCreditNoteJournalEntry = async ({ order, amount, taxRate, cre
     return { applied: true };
 };
 
+export const calculateCreditNoteRemainingBase = ({ orderDetails = [], acceptedCreditNotes = [] }) => {
+    const remainingByRate = new Map();
+    const detailById = new Map(orderDetails.map((detail) => [detail.id, detail]));
+
+    // returnedQuantity is the local source of truth for completed physical
+    // returns, including successfully applied restock credit notes.
+    for (const detail of orderDetails) {
+        const rate = toNumber(detail.taxRateApplied);
+        const remainingQuantity = Math.max(Number(detail.quantity) - Number(detail.returnedQuantity || 0), 0);
+        const base = toNumber(remainingQuantity * Number(detail.unitcost));
+        remainingByRate.set(rate, toNumber((remainingByRate.get(rate) || 0) + base));
+    }
+
+    for (const note of acceptedCreditNotes) {
+        const payload = note.localEffectPayload;
+        if (!payload) continue;
+
+        if (payload.kind === "financial") {
+            const rate = toNumber(payload.taxRate);
+            remainingByRate.set(rate, toNumber(Math.max((remainingByRate.get(rate) || 0) - Number(payload.amount || 0), 0)));
+            continue;
+        }
+
+        // An accepted restock note whose local effect is still pending/failed
+        // has already reduced the fiscal invoice but is not reflected in
+        // returnedQuantity yet. Subtract it here exactly once.
+        if (payload.kind === "restock" && note.localEffectStatus !== "applied") {
+            for (const item of payload.items || []) {
+                const detail = detailById.get(item.orderDetailId);
+                if (!detail) continue;
+                const rate = toNumber(detail.taxRateApplied);
+                const base = toNumber(Number(item.quantity || 0) * Number(detail.unitcost));
+                remainingByRate.set(rate, toNumber(Math.max((remainingByRate.get(rate) || 0) - base, 0)));
+            }
+        }
+    }
+
+    return Object.fromEntries([...remainingByRate.entries()].map(([rate, base]) => [String(rate), base]));
+};
+
+const updateCreditNoteLocalEffect = async (creditNoteId, { status, error = null, appliedAt = null }) => {
+    try {
+        return await prisma.electronicCreditNote.update({
+            where: { id: creditNoteId },
+            data: {
+                localEffectStatus: status,
+                localEffectError: error,
+                localEffectAppliedAt: appliedAt,
+                localEffectAttempts: { increment: 1 },
+            },
+        });
+    } catch (stateError) {
+        // Never let a failure recording the local-effect state fall into the
+        // provider catch below and relabel an already accepted DIAN document
+        // as a fiscal error. A still-pending row remains discoverable/retryable.
+        console.error("[credit-note] failed to persist local effect state:", {
+            creditNoteId,
+            status,
+            message: stateError?.message || stateError,
+        });
+        return null;
+    }
+};
+
 export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requesterRole, conceptCode, observation, items, amount, taxRate }) => {
     if (!text(conceptCode)) throw new ApiError(400, "conceptCode is required to issue a credit note");
 
@@ -1318,6 +1342,20 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
     if (invoice.status !== "accepted") throw new ApiError(409, "A credit note can only be issued for an accepted electronic invoice");
     if (!invoice.invoiceNumber) throw new ApiError(409, "This invoice does not have a provider bill number yet");
     await ensureElectronicInvoicingPlan(order.createdById);
+
+    const acceptedCreditNotes = await prisma.electronicCreditNote.findMany({
+        where: { invoiceId: invoice.id, status: "accepted" },
+        select: { localEffectPayload: true, localEffectStatus: true },
+    });
+    if (acceptedCreditNotes.some((note) => !note.localEffectPayload)) {
+        throw new ApiError(
+            409,
+            "This invoice has historical credit notes without a normalized balance payload and requires reconciliation before another note can be issued",
+            [],
+            "",
+            "credit_note_history_requires_reconciliation"
+        );
+    }
 
     // Validated before anything is sent to the provider - a doomed-to-fail
     // restock should never let a real DIAN document go out first. Only
@@ -1344,6 +1382,17 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
         }
 
         const detailById = new Map(order.orderDetails.map((d) => [d.id, d]));
+        const fiscallyCreditedPendingByDetail = new Map();
+        for (const note of acceptedCreditNotes) {
+            const payload = note.localEffectPayload;
+            if (payload?.kind !== "restock" || note.localEffectStatus === "applied") continue;
+            for (const line of payload.items || []) {
+                fiscallyCreditedPendingByDetail.set(
+                    line.orderDetailId,
+                    Number(fiscallyCreditedPendingByDetail.get(line.orderDetailId) || 0) + Number(line.quantity || 0)
+                );
+            }
+        }
         const insufficientItems = [];
         for (const line of items) {
             const detail = detailById.get(line.orderDetailId);
@@ -1354,7 +1403,7 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
             if (!Number.isInteger(quantity) || quantity < 1) {
                 throw new ApiError(400, "Quantity must be a positive integer for every credit note item");
             }
-            const pending = detail.quantity - detail.returnedQuantity;
+            const pending = detail.quantity - detail.returnedQuantity - Number(fiscallyCreditedPendingByDetail.get(detail.id) || 0);
             if (quantity > pending) {
                 insufficientItems.push({
                     order_detail_id: detail.id,
@@ -1374,18 +1423,48 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
                 insufficientItems
             );
         }
-    } else if (!(Number(amount) > 0)) {
-        throw new ApiError(
-            400,
-            "A positive amount is required for this credit note concept",
-            [],
-            "",
-            "credit_note_amount_required"
-        );
+    } else {
+        const normalizedAmount = Number(amount);
+        const normalizedTaxRate = Number(taxRate || 0);
+        if (!(normalizedAmount > 0)) {
+            throw new ApiError(400, "A positive amount is required for this credit note concept", [], "", "credit_note_amount_required");
+        }
+        if (!Number.isFinite(normalizedTaxRate) || normalizedTaxRate < 0 || normalizedTaxRate > 100) {
+            throw new ApiError(400, "taxRate must be between 0 and 100", [], "", "credit_note_tax_rate_invalid");
+        }
+
+        const remainingByRate = calculateCreditNoteRemainingBase({
+            orderDetails: order.orderDetails,
+            acceptedCreditNotes,
+        });
+        const availableBase = Number(remainingByRate[String(toNumber(normalizedTaxRate))] || 0);
+        if (toNumber(normalizedAmount) > availableBase) {
+            throw new ApiError(
+                422,
+                "The financial credit note exceeds the remaining creditable base for this tax rate",
+                [{ tax_rate: toNumber(normalizedTaxRate), requested_base: toNumber(normalizedAmount), available_base: availableBase }],
+                "",
+                "credit_note_amount_exceeds_remaining_base"
+            );
+        }
     }
 
     const company = order.createdBy.company;
     const provider = invoice.provider;
+
+    // Ohnix is registered and operated exclusively as software propio through
+    // itcycle-api-dian. Legacy provider rows may still exist in old databases,
+    // but no new fiscal document may branch into those dormant integrations.
+    if (provider !== ITCYCLE_PROVIDER) {
+        throw new ApiError(409, "Ohnix solo admite notas crédito mediante software propio (itcycle-api-dian).", [], "", "unsupported_legacy_einvoicing_provider");
+    }
+
+    const localEffectPayload = RESTOCK_CONCEPT_CODES.includes(conceptCode)
+        ? {
+              kind: "restock",
+              items: items.map((item) => ({ orderDetailId: item.orderDetailId, quantity: Number(item.quantity) })),
+          }
+        : { kind: "financial", amount: toNumber(amount), taxRate: toNumber(taxRate || 0) };
 
     let payload;
     let submit;
@@ -1426,23 +1505,37 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
         submit = () => createAlanubeCreditNote({ payload }).then(mapAlanubeCreditNoteResponse);
     }
 
-    const draft = await prisma.electronicCreditNote.create({
-        data: {
-            invoiceId: invoice.id,
-            correctionConceptCode: conceptCode,
-            referenceCode: payload.reference_code || payload.referenceCode || `${invoice.referenceCode}-CN-${payload.number}`,
-            status: "issuing",
-            observation: payload.observation || observation,
-            rawRequest: payload,
-        },
-    });
+    let draft;
+    try {
+        draft = await prisma.electronicCreditNote.create({
+            data: {
+                invoiceId: invoice.id,
+                correctionConceptCode: conceptCode,
+                referenceCode: payload.reference_code || payload.referenceCode || `${invoice.referenceCode}-CN-${payload.number}`,
+                status: "issuing",
+                observation: payload.observation || observation,
+                rawRequest: payload,
+                localEffectPayload,
+            },
+        });
+    } catch (error) {
+        if (error?.code === "P2002") {
+            throw new ApiError(409, "Another credit note for this invoice is already being processed", [], "", "credit_note_already_processing");
+        }
+        throw error;
+    }
 
     try {
         const mapped = await submit();
         const updated = await prisma.$transaction(async (tx) => {
             const updatedNote = await tx.electronicCreditNote.update({
                 where: { id: draft.id },
-                data: { ...mapped, errorMessage: null, issuedAt: mapped.status === "accepted" ? new Date() : null },
+                data: {
+                    ...mapped,
+                    errorMessage: null,
+                    issuedAt: mapped.status === "accepted" ? new Date() : null,
+                    localEffectStatus: mapped.status === "accepted" ? "pending" : "not_applicable",
+                },
             });
             await tx.electronicInvoiceEvent.create({
                 data: { electronicInvoiceId: invoice.id, eventType: "credit_note_issued", status: invoice.status, payload: { creditNoteId: updatedNote.id, ...mapped.rawResponse } },
@@ -1465,6 +1558,7 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
                     creditNoteId: updated.id,
                     userId: requesterUserId,
                 });
+                await updateCreditNoteLocalEffect(updated.id, { status: "applied", appliedAt: new Date() });
             } catch (restockError) {
                 console.error("[credit-note] stock restock failed after successful issuance:", {
                     creditNoteId: updated.id,
@@ -1472,6 +1566,7 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
                     message: restockError?.message || restockError,
                 });
                 stockRestock = { applied: false, reason: restockError?.message || "unknown_error" };
+                await updateCreditNoteLocalEffect(updated.id, { status: "failed", error: restockError?.message || "unknown_error" });
             }
         } else if (mapped.status === "accepted") {
             // Financial-only concept (discount/price_adjustment/other) - no
@@ -1486,16 +1581,19 @@ export const issueCreditNoteForInvoice = async ({ orderId, requesterUserId, requ
                     creditNoteId: updated.id,
                     userId: requesterUserId,
                 });
+                await updateCreditNoteLocalEffect(updated.id, { status: "applied", appliedAt: new Date() });
             } catch (postingError) {
                 console.error("[credit-note] financial journal posting failed after successful issuance:", {
                     creditNoteId: updated.id,
                     orderId: order.id,
                     message: postingError?.message || postingError,
                 });
+                await updateCreditNoteLocalEffect(updated.id, { status: "failed", error: postingError?.message || "unknown_error" });
             }
         }
 
-        return { creditNote: serializeCreditNote(updated), stock_restock: stockRestock };
+        const finalNote = await prisma.electronicCreditNote.findUniqueOrThrow({ where: { id: updated.id } });
+        return { creditNote: serializeCreditNote(finalNote), stock_restock: stockRestock };
     } catch (error) {
         const providerPayload = error instanceof FactusError || error instanceof AlanubeError || error instanceof ItcycleDianError ? error.payload : null;
         const updated = await prisma.$transaction(async (tx) => {
@@ -1528,69 +1626,83 @@ export const listCreditNotesForInvoice = async ({ orderId, requesterUserId, requ
     return { creditNotes: creditNotes.map(serializeCreditNote) };
 };
 
-// Step 1+2 of Alanube's company onboarding in one call: registers the
-// company (POST /companies) and immediately enables it for invoice emission
-// against a test set (POST /test-sets). Uses Alanube/Alegra's shared digital
-// certificate (useAlegraCertificate: true) so client companies don't need to
-// buy or upload their own. Admin-only since it writes company.alanubeCompanyId.
-export const registerCompanyWithAlanube = async ({ companyId, requesterRole }) => {
-    if (requesterRole !== "admin") throw new ApiError(403, "Only admins can register a company with Alanube");
-    if (!isAlanubeConfigured()) throw new ApiError(503, "Alanube integration is not configured for this environment");
-
-    const company = await prisma.company.findUnique({ where: { id: companyId } });
-    if (!company) throw new ApiError(404, "Company not found");
-    if (!text(company.taxIdentification)) {
-        throw new ApiError(422, "company.taxIdentification (NIT) is required before registering with Alanube");
+export const retryCreditNoteLocalEffect = async ({ orderId, creditNoteId, requesterUserId, requesterRole }) => {
+    const order = await getOrderWithRelations(orderId);
+    if (!order) throw new ApiError(404, "Order not found");
+    if (!canManageOrder(order, requesterUserId, requesterRole)) {
+        throw new ApiError(403, "You are not authorized to retry this credit note");
     }
 
-    const dv = text(company.taxIdentificationDv) || computeNitCheckDigit(company.taxIdentification);
-
-    let created;
-    try {
-        created = await createAlanubeCompany({
-            payload: {
-                name: company.legalName || company.name,
-                tradeName: company.name,
-                identification: company.taxIdentification,
-                dv,
-                useAlegraCertificate: true,
-            },
-        });
-    } catch (error) {
-        const providerPayload = error instanceof AlanubeError ? error.payload : null;
-        throw new ApiError(502, error.message || "Failed to register company with Alanube", providerPayload ? [providerPayload] : undefined);
+    const invoice = order.electronicInvoice;
+    if (!invoice) throw new ApiError(404, "This order has no electronic invoice");
+    if (invoice.provider !== ITCYCLE_PROVIDER) {
+        throw new ApiError(409, "Ohnix solo admite esta recuperación mediante software propio (itcycle-api-dian).", [], "", "unsupported_legacy_einvoicing_provider");
     }
 
-    const alanubeCompanyId = text(created?.id || created?.data?.id);
-    if (!alanubeCompanyId) throw new ApiError(502, "Alanube did not return a company id");
-
-    const testSetId = text(company.alanubeTestSetId) || ALANUBE_SANDBOX_TEST_SET_ID;
-    try {
-        await createAlanubeTestSet({ companyId: alanubeCompanyId, type: "invoices", governmentId: testSetId });
-    } catch (error) {
-        const providerPayload = error instanceof AlanubeError ? error.payload : null;
-        throw new ApiError(502, error.message || "Company was created in Alanube but enabling the invoice test set failed", providerPayload ? [providerPayload] : undefined);
+    const creditNote = await prisma.electronicCreditNote.findFirst({
+        where: { id: creditNoteId, invoiceId: invoice.id },
+    });
+    if (!creditNote) throw new ApiError(404, "Credit note not found for this order");
+    if (creditNote.status !== "accepted") {
+        throw new ApiError(409, "Only an accepted credit note can apply a local effect");
+    }
+    if (creditNote.localEffectStatus === "not_applicable") {
+        throw new ApiError(409, "This credit note has no applicable local effect");
     }
 
-    const updated = await prisma.company.update({
-        where: { id: companyId },
-        data: { taxIdentificationDv: dv, alanubeCompanyId, alanubeTestSetId: testSetId },
+    const payload = creditNote.localEffectPayload;
+    if (!payload || !["restock", "financial"].includes(payload.kind)) {
+        throw new ApiError(422, "This credit note has no recoverable local-effect payload", [], "", "credit_note_local_effect_payload_missing");
+    }
+
+    const sourceType = payload.kind === "restock" ? "credit_note_restock" : "credit_note_financial";
+    const existingEntry = await prisma.journalEntry.findFirst({
+        where: {
+            sourceType,
+            sourceId: creditNote.id,
+            period: { createdById: order.createdById },
+        },
+        select: { id: true },
     });
 
-    return {
-        companyId: updated.id,
-        alanubeCompanyId: updated.alanubeCompanyId,
-        alanubeTestSetId: updated.alanubeTestSetId,
-        taxIdentificationDv: updated.taxIdentificationDv,
-    };
+    // The stock/detail changes and their journal entry commit in one
+    // transaction. Therefore an existing entry proves the complete local
+    // effect already committed; only its tracking row may have failed.
+    if (existingEntry || creditNote.localEffectStatus === "applied") {
+        if (creditNote.localEffectStatus !== "applied") {
+            await updateCreditNoteLocalEffect(creditNote.id, { status: "applied", appliedAt: new Date() });
+        }
+        const current = await prisma.electronicCreditNote.findUniqueOrThrow({ where: { id: creditNote.id } });
+        return { creditNote: serializeCreditNote(current), local_effect: { applied: true, already_applied: true } };
+    }
+
+    try {
+        const localEffect = payload.kind === "restock"
+            ? await applyCreditNoteRestock({
+                  order,
+                  items: payload.items,
+                  creditNoteId: creditNote.id,
+                  userId: requesterUserId,
+              })
+            : await postFinancialCreditNoteJournalEntry({
+                  order,
+                  amount: Number(payload.amount),
+                  taxRate: Number(payload.taxRate || 0),
+                  creditNoteId: creditNote.id,
+                  userId: requesterUserId,
+              });
+
+        await updateCreditNoteLocalEffect(creditNote.id, { status: "applied", appliedAt: new Date() });
+        const current = await prisma.electronicCreditNote.findUniqueOrThrow({ where: { id: creditNote.id } });
+        return { creditNote: serializeCreditNote(current), local_effect: localEffect };
+    } catch (error) {
+        await updateCreditNoteLocalEffect(creditNote.id, { status: "failed", error: error?.message || "unknown_error" });
+        if (error instanceof ApiError) throw error;
+        throw new ApiError(500, "The credit note is accepted, but its local effect could not be applied", [], "", "credit_note_local_effect_failed");
+    }
 };
 
-// Removed processFactusWebhook/validateFactusWebhookSecret on 2026-08-04:
-// the official Factus V2 Postman collection has no webhook/event-push
-// endpoints anywhere, and every document creation call ("Crear y validar")
-// responds synchronously with the final validation result in the same HTTP
-// response body (handled by issueElectronicInvoiceForOrder/
-// issueCreditNoteForInvoice already). Status can also be re-checked on
-// demand via syncElectronicInvoiceStatus (GET /v2/bills/:number). If Factus
-// support ever confirms a real async webhook feature exists, reintroduce
-// this pair of functions plus the app.js route and FACTUS_WEBHOOK_SECRET.
+// Factus/Alanube implementation helpers above are retained temporarily only
+// to interpret historical payload shapes while the legacy code is retired.
+// No route, company setting, issuance or synchronization path can invoke
+// either provider; Ohnix emits exclusively through itcycle-api-dian.

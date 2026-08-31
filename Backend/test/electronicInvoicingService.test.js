@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildItcycleTotals } from "../services/electronicInvoicing.service.js";
+import { buildItcycleTotals, calculateCreditNoteRemainingBase } from "../services/electronicInvoicing.service.js";
 
 // Regression test for a real bug found 2026-08-29: buildItcycleTotals used
 // to blend every line into a single invented "effective rate" tax subtotal
@@ -49,4 +49,47 @@ test("buildItcycleTotals returns no tax totals for a fully tax-exempt order", ()
 
     assert.deepEqual(taxTotals, []);
     assert.equal(legalMonetaryTotal.taxInclusiveAmount, 30000);
+});
+
+test("calculateCreditNoteRemainingBase separates available revenue by frozen tax rate", () => {
+    const result = calculateCreditNoteRemainingBase({
+        orderDetails: [
+            { id: "a", quantity: 2, returnedQuantity: 0, unitcost: 100, taxRateApplied: 19 },
+            { id: "b", quantity: 3, returnedQuantity: 1, unitcost: 50, taxRateApplied: 5 },
+            { id: "c", quantity: 1, returnedQuantity: 0, unitcost: 40, taxRateApplied: 0 },
+        ],
+    });
+
+    assert.deepEqual(result, { "0": 40, "5": 100, "19": 200 });
+});
+
+test("calculateCreditNoteRemainingBase discounts prior financial notes", () => {
+    const result = calculateCreditNoteRemainingBase({
+        orderDetails: [{ id: "a", quantity: 2, returnedQuantity: 0, unitcost: 100, taxRateApplied: 19 }],
+        acceptedCreditNotes: [
+            { localEffectStatus: "applied", localEffectPayload: { kind: "financial", amount: 75, taxRate: 19 } },
+        ],
+    });
+
+    assert.equal(result["19"], 125);
+});
+
+test("calculateCreditNoteRemainingBase discounts an accepted restock still pending locally exactly once", () => {
+    const result = calculateCreditNoteRemainingBase({
+        orderDetails: [{ id: "a", quantity: 3, returnedQuantity: 1, unitcost: 100, taxRateApplied: 19 }],
+        acceptedCreditNotes: [
+            {
+                localEffectStatus: "failed",
+                localEffectPayload: { kind: "restock", items: [{ orderDetailId: "a", quantity: 1 }] },
+            },
+            {
+                localEffectStatus: "applied",
+                localEffectPayload: { kind: "restock", items: [{ orderDetailId: "a", quantity: 1 }] },
+            },
+        ],
+    });
+
+    // returnedQuantity already includes the applied note; only the failed
+    // note needs an additional fiscal subtraction.
+    assert.equal(result["19"], 100);
 });

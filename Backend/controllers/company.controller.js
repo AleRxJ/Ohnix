@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
-import { registerCompanyWithAlanube, registerCompanyWithItcycle, addItcycleNumberingResolutionForCompany } from "../services/electronicInvoicing.service.js";
+import { registerCompanyWithItcycle, addItcycleNumberingResolutionForCompany } from "../services/electronicInvoicing.service.js";
 import {
     listPendingFirmaPassValidations,
     getNextPendingFirmaPassValidation,
@@ -64,58 +64,13 @@ const normalizeVatResponsible = (body, currentValue) => {
     return config;
 };
 
-const normalizeFactusConfig = (body) => {
+const normalizeElectronicInvoicingIdentity = (body) => {
     const config = {};
-    if (body.factusNumberingRangeId !== undefined) {
-        config.factusNumberingRangeId = `${body.factusNumberingRangeId || ""}`.trim() || null;
-    }
-    if (body.factusCreditNoteNumberingRangeId !== undefined) {
-        config.factusCreditNoteNumberingRangeId = `${body.factusCreditNoteNumberingRangeId || ""}`.trim() || null;
-    }
-    for (const [input, field] of [
-        ["factusDocumentType", "factusDocumentType"],
-        ["factusOperationType", "factusOperationType"],
-        ["factusPaymentForm", "factusPaymentForm"],
-        ["factusPaymentMethodCode", "factusPaymentMethodCode"],
-    ]) {
-        if (body[input] !== undefined && `${body[input]}`.trim()) {
-            config[field] = `${body[input]}`.trim();
-        }
-    }
-    // The issuing flag is intentionally not configurable from the Ohnix
-    // platform-admin company form. For itcycle-api-dian it is set only by
-    // the company owner's activation endpoint after an active certificate
-    // has been confirmed. Keeping it out of this generic updater prevents
-    // support staff from accidentally enabling a non-signable company.
-    return config;
-};
-
-const normalizeAlanubeConfig = (body) => {
-    const config = {};
-    if (body.electronicInvoicingProvider !== undefined) {
-        const provider = `${body.electronicInvoicingProvider || ""}`.trim().toLowerCase();
-        // ITCycle is self-service: a platform administrator may inspect its
-        // status but cannot assign it or move a customer away from it through
-        // the generic company editor. Legacy Factus/Alanube administration
-        // remains available for companies that already use those providers.
-        if (["factus", "alanube"].includes(provider)) {
-            config.electronicInvoicingProvider = provider;
-        }
-    }
     if (body.taxIdentification !== undefined) {
         config.taxIdentification = `${body.taxIdentification || ""}`.trim() || null;
     }
     if (body.taxIdentificationDv !== undefined) {
         config.taxIdentificationDv = `${body.taxIdentificationDv || ""}`.trim() || null;
-    }
-    if (body.alanubeTestSetId !== undefined) {
-        config.alanubeTestSetId = `${body.alanubeTestSetId || ""}`.trim() || null;
-    }
-    if (body.alanubeInvoiceResolution !== undefined) {
-        config.alanubeInvoiceResolution = body.alanubeInvoiceResolution || null;
-    }
-    if (body.alanubeCreditNoteResolution !== undefined) {
-        config.alanubeCreditNoteResolution = body.alanubeCreditNoteResolution || null;
     }
     return config;
 };
@@ -196,8 +151,8 @@ export const createCompanyAdmin = asyncHandler(async (req, res, next) => {
             contactEmail: normalizedContactEmail,
             phone: phone?.trim() || null,
             ...vatResponsibleConfig,
-            ...normalizeFactusConfig(req.body),
-            ...normalizeAlanubeConfig(req.body),
+            electronicInvoicingProvider: "itcycle",
+            ...normalizeElectronicInvoicingIdentity(req.body),
             isActive: true,
         },
         select: {
@@ -285,8 +240,7 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
             ...(pdfFooterText !== undefined ? { pdfFooterText: pdfFooterText?.trim() || null } : {}),
             ...(pdfAccentColor !== undefined ? { pdfAccentColor: trimmedAccentColor || null } : {}),
             ...vatResponsibleConfig,
-            ...normalizeFactusConfig(req.body),
-            ...normalizeAlanubeConfig(req.body),
+            ...normalizeElectronicInvoicingIdentity(req.body),
         },
         select: {
             id: true,
@@ -308,19 +262,6 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
     return res
         .status(200)
         .json(new ApiResponse(200, company, "Company updated successfully"));
-});
-
-export const registerCompanyWithAlanubeAdmin = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-
-    const data = await registerCompanyWithAlanube({
-        companyId,
-        requesterRole: req.user.role,
-    });
-
-    return res
-        .status(200)
-        .json(new ApiResponse(200, data, "Company registered with Alanube successfully"));
 });
 
 export const registerCompanyWithItcycleAdmin = asyncHandler(async (req, res) => {
