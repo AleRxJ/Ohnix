@@ -442,6 +442,7 @@ const ThirdPartyLedgerTab = () => {
                 </div>
             </Card>
             <Table
+                className="module-dark-table"
                 rowKey={(row) => `${row.type}:${row.id}`}
                 dataSource={rows}
                 loading={loading}
@@ -459,7 +460,7 @@ const ThirdPartyLedgerTab = () => {
                     <Col span={12}><StatCard title={t("accounting.ledger_opening_balance")} value={detail?.openingBalance || 0} formatter={formatCurrency} /></Col>
                     <Col span={12}><StatCard title={t("accounting.ledger_closing_balance")} value={detail?.closingBalance || 0} formatter={formatCurrency} /></Col>
                 </Row>
-                <Table loading={detailLoading} rowKey="id" pagination={false} dataSource={detail?.movements || []} columns={[
+                <Table className="module-dark-table" scroll={{ x: 760 }} loading={detailLoading} rowKey="id" pagination={false} dataSource={detail?.movements || []} columns={[
                     { title: t("accounting.col_date"), dataIndex: "date", render: (value) => dayjs(value).format("DD/MM/YYYY") },
                     { title: t("accounting.lines_col_account"), dataIndex: "chartAccount", render: (account) => `${account.code} · ${account.name}` },
                     { title: t("accounting.lines_col_debit"), dataIndex: "debit", align: "right", render: (value) => value ? formatCurrency(value) : "" },
@@ -611,6 +612,7 @@ const ManualVouchersTab = () => {
                 {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.voucher_new")}</Button>}
             </div>
             <Table
+                className="module-dark-table"
                 columns={columns}
                 dataSource={vouchers}
                 rowKey="_id"
@@ -622,6 +624,7 @@ const ManualVouchersTab = () => {
                         <div className="space-y-3">
                             {voucher.support_url && <a href={voucher.support_url} target="_blank" rel="noreferrer">{t("accounting.voucher_open_support")}</a>}
                             <Table
+                                className="module-dark-table"
                                 size="small"
                                 pagination={false}
                                 rowKey="_id"
@@ -796,7 +799,7 @@ const JournalTab = () => {
                         scroll={{ x: "max-content" }}
                         locale={{ emptyText: t("accounting.no_entries") }}
                         expandable={{
-                            expandedRowRender: (entry) => <Table columns={linesColumns} dataSource={entry.lines} rowKey="_id" pagination={false} size="small" scroll={{ x: "max-content" }} />,
+                            expandedRowRender: (entry) => <Table className="module-dark-table" columns={linesColumns} dataSource={entry.lines} rowKey="_id" pagination={false} size="small" scroll={{ x: "max-content" }} />,
                         }}
                     />
                 </Card>
@@ -925,7 +928,7 @@ const PeriodsTab = () => {
                     expandable={{
                         rowExpandable: (period) => period.reopenings?.length > 0,
                         expandedRowRender: (period) => (
-                            <Table size="small" pagination={false} rowKey="_id" dataSource={period.reopenings} columns={[
+                            <Table className="module-dark-table" size="small" pagination={false} rowKey="_id" dataSource={period.reopenings} columns={[
                                 { title: t("accounting.reopen_period_reason"), dataIndex: "reason" },
                                 { title: t("accounting.reopened_at"), dataIndex: "reopened_at", render: (value) => dayjs(value).format("DD/MM/YYYY HH:mm") },
                                 { title: t("accounting.reopened_until"), dataIndex: "expires_at", render: (value) => dayjs(value).format("DD/MM/YYYY HH:mm") },
@@ -1225,6 +1228,111 @@ const ComingSoonTaxCard = ({ titleKey, descKey }) => {
 // Saving this now just means the company doesn't have to re-enter it once
 // that engine ships, and gives their accountant something concrete to
 // review ahead of time.
+const WithholdingConceptsCard = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const { hasPermission } = useTeam();
+    const canAdmin = hasPermission("accounting", "admin");
+    const [form] = Form.useForm();
+    const [concepts, setConcepts] = useState([]);
+    const [liabilityAccounts, setLiabilityAccounts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [open, setOpen] = useState(false);
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const [conceptResponse, accountResponse] = await Promise.all([
+                accountingService.listWithholdingConcepts(),
+                accountingService.listChartOfAccounts(),
+            ]);
+            setConcepts(conceptResponse?.data || []);
+            setLiabilityAccounts((accountResponse?.data || []).filter((account) => account.account_type === "liability" && account.is_active));
+        } catch (error) {
+            toast.error(error?.response?.data?.message || t("accounting.failed"));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const showCreate = () => {
+        form.resetFields();
+        form.setFieldsValue({ tax_type: "income", base_type: "subtotal", effective_from: dayjs(), minimum_base_amount: 0 });
+        setOpen(true);
+    };
+
+    const save = async () => {
+        const values = await form.validateFields();
+        setSaving(true);
+        try {
+            await accountingService.createWithholdingConcept({
+                ...values,
+                effective_from: values.effective_from.startOf("day").toISOString(),
+                effective_to: values.effective_to?.endOf("day").toISOString() || null,
+            });
+            toast.success(t("accounting.withholding_created"));
+            setOpen(false);
+            await load();
+        } catch (error) {
+            toast.error(error?.response?.data?.message || t("accounting.failed"));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const toggle = async (concept) => {
+        try {
+            await accountingService.setWithholdingConceptActive(concept.id, !concept.is_active);
+            toast.success(t("accounting.withholding_status_updated"));
+            await load();
+        } catch (error) {
+            toast.error(error?.response?.data?.message || t("accounting.failed"));
+        }
+    };
+
+    const activeCount = concepts.filter((concept) => concept.is_active).length;
+    const columns = [
+        { title: t("accounting.withholding_code"), dataIndex: "code", width: 110, render: (value) => <Tag color="cyan">{value}</Tag> },
+        { title: t("accounting.withholding_concept"), dataIndex: "name", width: 210 },
+        { title: t("accounting.col_type"), dataIndex: "tax_type", render: (value) => t(`accounting.withholding_type_${value}`) },
+        { title: t("accounting.withholding_rate"), dataIndex: "rate_percent", align: "right", render: (value) => `${value}%` },
+        { title: t("accounting.withholding_minimum_base"), dataIndex: "minimum_base_amount", align: "right", render: formatCurrency },
+        { title: t("accounting.lines_col_account"), dataIndex: "chart_account", width: 210, render: (account) => account ? `${account.code} · ${account.name}` : "—" },
+        { title: t("common.status"), dataIndex: "is_active", render: (active) => <Tag color={active ? "success" : "default"}>{t(active ? "common.active" : "common.inactive")}</Tag> },
+        ...(canAdmin ? [{ title: "", fixed: "right", width: 105, render: (_, concept) => <Button size="small" onClick={() => toggle(concept)}>{t(concept.is_active ? "accounting.deactivate_account" : "accounting.activate_account")}</Button> }] : []),
+    ];
+
+    return (
+        <>
+            <Card className="module-shell withholding-concepts-card border border-[var(--ohnix-line-4)]" title={<span className="flex items-center gap-2"><SafetyCertificateOutlined className="text-[var(--ohnix-accent)]" />{t("accounting.withholding_concepts_title")}</span>} extra={canAdmin && <Button type="primary" icon={<PlusOutlined />} onClick={showCreate}>{t("accounting.withholding_new")}</Button>}>
+                <div className="withholding-concepts-hero">
+                    <div><span>{t("accounting.withholding_engine_label")}</span><strong>{t("accounting.withholding_engine_active")}</strong><p>{t("accounting.withholding_concepts_desc")}</p></div>
+                    <div className="withholding-concepts-count"><strong>{activeCount}</strong><span>{t("accounting.withholding_active_count")}</span></div>
+                </div>
+                <Table className="module-dark-table" loading={loading} rowKey="id" columns={columns} dataSource={concepts} scroll={{ x: 1100 }} pagination={{ pageSize: 8, hideOnSinglePage: true }} locale={{ emptyText: <Empty description={t("accounting.withholding_empty")} /> }} />
+            </Card>
+            <Modal className="accounting-modal" open={open} onCancel={() => setOpen(false)} onOk={save} confirmLoading={saving} title={t("accounting.withholding_new_title")} width={760} destroyOnHidden>
+                <Alert className="dark-alert dark-alert-teal mb-5" showIcon type="info" message={t("accounting.withholding_immutable_notice")} />
+                <Form form={form} layout="vertical"><Row gutter={16}>
+                    <Col xs={24} sm={8}><Form.Item name="code" label={t("accounting.withholding_code")} rules={[{ required: true }]}><Input maxLength={30} /></Form.Item></Col>
+                    <Col xs={24} sm={16}><Form.Item name="name" label={t("accounting.withholding_concept")} rules={[{ required: true }]}><Input maxLength={120} /></Form.Item></Col>
+                    <Col xs={24} sm={8}><Form.Item name="tax_type" label={t("accounting.col_type")} rules={[{ required: true }]}><Select options={["income", "vat", "ica"].map((value) => ({ value, label: t(`accounting.withholding_type_${value}`) }))} /></Form.Item></Col>
+                    <Col xs={24} sm={8}><Form.Item name="base_type" label={t("accounting.withholding_base_type")} rules={[{ required: true }]}><Select options={["subtotal", "vat", "total"].map((value) => ({ value, label: t(`accounting.withholding_base_${value}`) }))} /></Form.Item></Col>
+                    <Col xs={24} sm={8}><Form.Item name="rate_percent" label={t("accounting.withholding_rate")} rules={[{ required: true }]}><InputNumber className="w-full" min={0.0001} max={100} precision={4} addonAfter="%" /></Form.Item></Col>
+                    <Col xs={24} sm={12}><Form.Item name="minimum_base_amount" label={t("accounting.withholding_minimum_base")} rules={[{ required: true }]}><InputNumber className="w-full" min={0} precision={2} /></Form.Item></Col>
+                    <Col xs={24} sm={12}><Form.Item name="chart_account_id" label={t("accounting.withholding_liability_account")} rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={liabilityAccounts.map((account) => ({ value: account._id, label: `${account.code} · ${account.name}` }))} /></Form.Item></Col>
+                    <Col xs={24} sm={12}><Form.Item name="effective_from" label={t("accounting.withholding_effective_from")} rules={[{ required: true }]}><DatePicker className="w-full" /></Form.Item></Col>
+                    <Col xs={24} sm={12}><Form.Item name="effective_to" label={t("accounting.withholding_effective_to")}><DatePicker className="w-full" /></Form.Item></Col>
+                    <Form.Item noStyle shouldUpdate={(prev, next) => prev.tax_type !== next.tax_type}>{({ getFieldValue }) => getFieldValue("tax_type") === "ica" && <Col span={24}><Form.Item name="municipality_code" label={t("accounting.taxes_ica_municipality_label")} rules={[{ required: true }, { pattern: /^\d{5}$/, message: t("accounting.taxes_ica_municipality_error") }]}><Input maxLength={5} placeholder="11001" /></Form.Item></Col>}</Form.Item>
+                </Row></Form>
+            </Modal>
+        </>
+    );
+};
+
 const WithholdingConfigCard = () => {
     const { t } = useI18n();
     const [form] = Form.useForm();
@@ -1270,7 +1378,7 @@ const WithholdingConfigCard = () => {
         <Card
             className="module-shell border border-[var(--ohnix-line-4)]"
             title={t("accounting.taxes_withholding_config_title")}
-            extra={<Tag icon={<ClockCircleOutlined />} color="default">{t("accounting.taxes_coming_soon_badge")}</Tag>}
+            extra={<Tag icon={<CheckCircleOutlined />} color="success">{t("accounting.withholding_engine_active")}</Tag>}
             loading={loading}
         >
             <p className="text-sm text-[var(--ohnix-text-muted)] mb-4">{t("accounting.taxes_withholding_config_desc")}</p>
@@ -1335,6 +1443,7 @@ const TaxesTab = () => {
                 </Link>
             </Card>
             <WithholdingConfigCard />
+            <WithholdingConceptsCard />
             <ComingSoonTaxCard titleKey="accounting.taxes_renta_title" descKey="accounting.taxes_renta_desc" />
             <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.taxes_professional_review_notice")} />
         </div>
