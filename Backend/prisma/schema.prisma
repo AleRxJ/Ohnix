@@ -699,9 +699,12 @@ model Customer {
   // sale amount; reteIva is applied to the IVA amount itself (its usual
   // legal base), not the sale amount - see buildItcycleWithholdingTotals in
   // electronicInvoicing.service.js.
-  reteFuentePercent          Decimal? @map("rete_fuente_percent") @db.Decimal(5, 2)
-  reteIcaPercent             Decimal? @map("rete_ica_percent") @db.Decimal(5, 2)
-  reteIvaPercent             Decimal? @map("rete_iva_percent") @db.Decimal(5, 2)
+  // 3 decimal places, not 2: real Colombian ICA rates routinely need this
+  // precision (e.g. 0.966%, 0.414%) - Decimal(5,2) silently rounded 0.966 to
+  // 0.97 (a real, different rate) the first time this was tested for real.
+  reteFuentePercent          Decimal? @map("rete_fuente_percent") @db.Decimal(6, 3)
+  reteIcaPercent             Decimal? @map("rete_ica_percent") @db.Decimal(6, 3)
+  reteIvaPercent             Decimal? @map("rete_iva_percent") @db.Decimal(6, 3)
   isTutorialData             Boolean  @default(false) @map("is_tutorial_data")
   createdById                String   @map("created_by")
   // See Supplier.pointOfSaleId - same "assigned at creation" rule.

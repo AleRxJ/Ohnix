@@ -728,10 +728,9 @@ const buildItcyclePayload = (order) => {
     const lines = buildItcycleLines(order.orderDetails);
     const { taxTotals, legalMonetaryTotal } = buildItcycleTotals(lines);
     const withholdingTaxTotals = buildItcycleWithholdingTotals(order.customer, legalMonetaryTotal, taxTotals);
-    console.error("[DEBUG withholdingTaxTotals]", JSON.stringify(withholdingTaxTotals));
     const now = new Date();
 
-    const payload = {
+    return {
         issueDate: now.toISOString(),
         issueTime: now.toISOString(),
         customer: buildItcycleCustomerParty(order.customer),
@@ -743,8 +742,6 @@ const buildItcyclePayload = (order) => {
         // buildAlanubePayments already sends for company.factusPaymentMethodCode.
         paymentMeans: { paymentForm: "1", paymentMethod: order.createdBy.company.factusPaymentMethodCode || "10" },
     };
-    console.error("[DEBUG payload keys]", Object.keys(payload));
-    return payload;
 };
 
 // itcycle-api-dian's own Invoice.status values (see its Invoice model):
