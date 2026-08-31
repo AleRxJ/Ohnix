@@ -194,7 +194,7 @@ const run = async () => {
         accountId: user.id,
         actorId: user.id,
         purchaseId: purchase._id,
-        amount: Math.round(purchaseTotal * 0.5 * 100) / 100,
+        amount: Math.round(purchaseTotal * 0.25 * 100) / 100,
         cashAccountId: cashAccount.id,
         method: "cash",
         reference: "Abono a proveedor auditoria",
