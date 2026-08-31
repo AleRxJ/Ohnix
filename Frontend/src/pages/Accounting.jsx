@@ -279,13 +279,14 @@ const NewAccountModal = ({ open, accounts, onClose, onCreated }) => {
             destroyOnClose
         >
             <Form form={form} layout="vertical" onFinish={handleSubmit}>
-                <Form.Item name="code" label={t("accounting.col_code")} rules={[{ required: true, message: t("accounting.new_account_code_required") }]}>
+                <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("accounting.new_account_guidance")} />
+                <Form.Item name="code" label={t("accounting.col_code")} extra={t("accounting.new_account_code_hint")} rules={[{ required: true, message: t("accounting.new_account_code_required") }]}>
                     <Input placeholder="5105" />
                 </Form.Item>
                 <Form.Item name="name" label={t("accounting.col_name")} rules={[{ required: true, message: t("accounting.new_account_name_required") }]}>
                     <Input placeholder="Arrendamientos" />
                 </Form.Item>
-                <Form.Item name="accountType" label={t("accounting.col_type")} rules={[{ required: true, message: t("accounting.new_account_type_required") }]}>
+                <Form.Item name="accountType" label={t("accounting.col_type")} extra={t("accounting.new_account_type_hint")} rules={[{ required: true, message: t("accounting.new_account_type_required") }]}>
                     <Select options={Object.entries(ACCOUNT_TYPE_LABEL_KEYS).map(([value, key]) => ({ value, label: t(key) }))} />
                 </Form.Item>
                 <Form.Item name="parentId" label={t("accounting.new_account_parent_label")} extra={t("accounting.new_account_parent_hint")}>
@@ -709,11 +710,13 @@ const ManualVouchersTab = () => {
             />
             <Modal className="accounting-modal" title={editing ? t("accounting.voucher_edit") : t("accounting.voucher_new")} open={open} onCancel={() => setOpen(false)} onOk={save} confirmLoading={saving} width={980} destroyOnHidden>
                 <Form form={form} layout="vertical">
+                    <Alert className="dark-alert dark-alert-purple mb-4" type="info" showIcon message={t("accounting.voucher_editor_guidance")} />
                     <Row gutter={16}>
                         <Col xs={24} md={8}><Form.Item name="entry_date" label={t("accounting.col_date")} rules={[{ required: true }]}><DatePicker className="w-full" /></Form.Item></Col>
                         <Col xs={24} md={16}><Form.Item name="description" label={t("accounting.col_description")} rules={[{ required: true }]}><Input /></Form.Item></Col>
                     </Row>
-                    <Form.Item name="support_url" label={t("accounting.voucher_support_url")}><Input type="url" /></Form.Item>
+                    <Form.Item name="support_url" label={t("accounting.voucher_support_url")} extra={t("accounting.voucher_support_hint")}><Input type="url" /></Form.Item>
+                    <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("accounting.voucher_third_party_guidance")} />
                     <Form.List name="lines">
                         {(fields, { add, remove }) => (
                             <div className="space-y-3">
@@ -912,11 +915,12 @@ const PeriodsTab = () => {
     const handleReopen = (period) => {
         let reason = "";
         let durationHours = 24;
-        Modal.confirm({
+                        Modal.confirm({
             className: "accounting-modal",
             title: t("accounting.reopen_period_title"),
             content: (
                 <div className="space-y-3 mt-4">
+                    <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.reopen_period_guidance")} />
                     <Input.TextArea rows={3} placeholder={t("accounting.reopen_period_reason")} onChange={(event) => { reason = event.target.value; }} />
                     <InputNumber min={1} max={168} defaultValue={24} addonAfter={t("accounting.hours")} onChange={(value) => { durationHours = value; }} />
                 </div>
@@ -1387,11 +1391,11 @@ const WithholdingConceptsCard = () => {
                 <Form form={form} layout="vertical"><Row gutter={16}>
                     <Col xs={24} sm={8}><Form.Item name="code" label={t("accounting.withholding_code")} rules={[{ required: true }]}><Input maxLength={30} /></Form.Item></Col>
                     <Col xs={24} sm={16}><Form.Item name="name" label={t("accounting.withholding_concept")} rules={[{ required: true }]}><Input maxLength={120} /></Form.Item></Col>
-                    <Col xs={24} sm={8}><Form.Item name="tax_type" label={t("accounting.col_type")} rules={[{ required: true }]}><Select options={["income", "vat", "ica"].map((value) => ({ value, label: t(`accounting.withholding_type_${value}`) }))} /></Form.Item></Col>
-                    <Col xs={24} sm={8}><Form.Item name="base_type" label={t("accounting.withholding_base_type")} rules={[{ required: true }]}><Select options={["subtotal", "vat", "total"].map((value) => ({ value, label: t(`accounting.withholding_base_${value}`) }))} /></Form.Item></Col>
-                    <Col xs={24} sm={8}><Form.Item name="rate_percent" label={t("accounting.withholding_rate")} rules={[{ required: true }]}><InputNumber className="w-full" min={0.0001} max={100} precision={4} addonAfter="%" /></Form.Item></Col>
-                    <Col xs={24} sm={12}><Form.Item name="minimum_base_amount" label={t("accounting.withholding_minimum_base")} rules={[{ required: true }]}><InputNumber className="w-full" min={0} precision={2} /></Form.Item></Col>
-                    <Col xs={24} sm={12}><Form.Item name="chart_account_id" label={t("accounting.withholding_liability_account")} rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={liabilityAccounts.map((account) => ({ value: account._id, label: `${account.code} · ${account.name}` }))} /></Form.Item></Col>
+                    <Col xs={24} sm={8}><Form.Item name="tax_type" label={t("accounting.col_type")} extra={t("accounting.withholding_type_hint")} rules={[{ required: true }]}><Select options={["income", "vat", "ica"].map((value) => ({ value, label: t(`accounting.withholding_type_${value}`) }))} /></Form.Item></Col>
+                    <Col xs={24} sm={8}><Form.Item name="base_type" label={t("accounting.withholding_base_type")} extra={t("accounting.withholding_base_hint")} rules={[{ required: true }]}><Select options={["subtotal", "vat", "total"].map((value) => ({ value, label: t(`accounting.withholding_base_${value}`) }))} /></Form.Item></Col>
+                    <Col xs={24} sm={8}><Form.Item name="rate_percent" label={t("accounting.withholding_rate")} extra={t("accounting.withholding_rate_hint")} rules={[{ required: true }]}><InputNumber className="w-full" min={0.0001} max={100} precision={4} addonAfter="%" /></Form.Item></Col>
+                    <Col xs={24} sm={12}><Form.Item name="minimum_base_amount" label={t("accounting.withholding_minimum_base")} extra={t("accounting.withholding_minimum_hint")} rules={[{ required: true }]}><InputNumber className="w-full" min={0} precision={2} /></Form.Item></Col>
+                    <Col xs={24} sm={12}><Form.Item name="chart_account_id" label={t("accounting.withholding_liability_account")} extra={t("accounting.withholding_account_hint")} rules={[{ required: true }]}><Select showSearch optionFilterProp="label" options={liabilityAccounts.map((account) => ({ value: account._id, label: `${account.code} · ${account.name}` }))} /></Form.Item></Col>
                     <Col xs={24} sm={12}><Form.Item name="effective_from" label={t("accounting.withholding_effective_from")} rules={[{ required: true }]}><DatePicker className="w-full" /></Form.Item></Col>
                     <Col xs={24} sm={12}><Form.Item name="effective_to" label={t("accounting.withholding_effective_to")}><DatePicker className="w-full" /></Form.Item></Col>
                     <Form.Item noStyle shouldUpdate={(prev, next) => prev.tax_type !== next.tax_type}>{({ getFieldValue }) => getFieldValue("tax_type") === "ica" && <Col span={24}><Form.Item name="municipality_code" label={t("accounting.taxes_ica_municipality_label")} rules={[{ required: true }, { pattern: /^\d{5}$/, message: t("accounting.taxes_ica_municipality_error") }]}><Input maxLength={5} placeholder="11001" /></Form.Item></Col>}</Form.Item>
