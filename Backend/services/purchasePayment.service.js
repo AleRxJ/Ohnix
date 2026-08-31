@@ -1,7 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { recordCashMovement, claimCashAccount } from "./cashMovement.service.js";
-import { postPurchasePaymentJournalEntry } from "./accountingPosting.service.js";
+import { buildAccountingThirdParty, postPurchasePaymentJournalEntry } from "./accountingPosting.service.js";
 
 // Cartera (accounts payable): what's owed to the supplier is the tax-inclusive
 // total of every line (PurchaseDetail.total + taxAmount), minus SUM(PurchasePayment.amount).
@@ -38,7 +38,10 @@ export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, 
         throw new ApiError(400, "El monto del pago debe ser mayor a cero.");
     }
 
-    const purchase = await prisma.purchase.findFirst({ where: { id: purchaseId, createdById: accountId } });
+    const purchase = await prisma.purchase.findFirst({
+        where: { id: purchaseId, createdById: accountId },
+        include: { supplier: { select: { id: true, name: true, identification: true } } },
+    });
     if (!purchase) throw new ApiError(404, "Compra no encontrada.");
 
     const cashAccount = await prisma.cashAccount.findFirst({
@@ -85,6 +88,7 @@ export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, 
             payment,
             cashAccount,
             purchase,
+            thirdParty: buildAccountingThirdParty("supplier", purchase.supplier),
         });
 
         return payment;

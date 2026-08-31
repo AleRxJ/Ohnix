@@ -51,6 +51,55 @@ export const accountingService = {
         return response.data;
     },
 
+    async listManualVouchers({ status } = {}) {
+        const response = await api.get("/accounting/manual-vouchers", {
+            params: status ? { status } : undefined,
+        });
+        return response.data;
+    },
+
+    async getManualVoucher(id) {
+        const response = await api.get(`/accounting/manual-vouchers/${id}`);
+        return response.data;
+    },
+
+    async createManualVoucher(payload) {
+        const response = await api.post("/accounting/manual-vouchers", payload);
+        return response.data;
+    },
+
+    async updateManualVoucher(id, payload) {
+        const response = await api.put(`/accounting/manual-vouchers/${id}`, payload);
+        return response.data;
+    },
+
+    async postManualVoucher(id) {
+        const response = await api.post(`/accounting/manual-vouchers/${id}/post`);
+        return response.data;
+    },
+
+    async voidManualVoucher(id, { reason, entryDate } = {}) {
+        const response = await api.post(`/accounting/manual-vouchers/${id}/void`, {
+            reason,
+            ...(entryDate ? { entry_date: entryDate } : {}),
+        });
+        return response.data;
+    },
+
+    async listThirdPartyBalances({ from, to, type } = {}) {
+        const response = await api.get("/accounting/third-parties", {
+            params: { ...(from ? { from } : {}), ...(to ? { to } : {}), ...(type ? { type } : {}) },
+        });
+        return response.data;
+    },
+
+    async getThirdPartyMovements(type, id, { from, to } = {}) {
+        const response = await api.get(`/accounting/third-parties/${type}/${encodeURIComponent(id)}`, {
+            params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+        });
+        return response.data;
+    },
+
     async listAccountingPeriods() {
         const response = await api.get("/accounting/periods");
         return response.data;
@@ -58,6 +107,14 @@ export const accountingService = {
 
     async closeAccountingPeriod(id) {
         const response = await api.post(`/accounting/periods/${id}/close`);
+        return response.data;
+    },
+
+    async reopenAccountingPeriod(id, { reason, durationHours }) {
+        const response = await api.post(`/accounting/periods/${id}/reopen`, {
+            reason,
+            duration_hours: durationHours,
+        });
         return response.data;
     },
 

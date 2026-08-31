@@ -10,7 +10,7 @@ import { claimVariantStock, creditVariantStock } from "./variant.service.js";
 import { enqueueWebhookEvent } from "./webhookDispatch.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
-import { postOrderSaleJournalEntry, postOrderReturnJournalEntry } from "./accountingPosting.service.js";
+import { buildAccountingThirdParty, postOrderSaleJournalEntry, postOrderReturnJournalEntry } from "./accountingPosting.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -120,6 +120,7 @@ const findOrderByAnyId = async (id) =>
             orderStatus: true,
             pointOfSaleId: true,
             electronicInvoice: { select: { status: true } },
+            customer: { select: { id: true, name: true, identification: true } },
         },
     });
 
@@ -324,6 +325,7 @@ class OrderService {
                 }
             }
 
+            let cogs = 0;
             for (const [index, item] of resolvedItems.entries()) {
                 const itemTax = itemTaxes[index];
                 const createdDetail = await tx.orderDetail.create({
@@ -391,6 +393,12 @@ class OrderService {
                         createdById: userId,
                     });
 
+                    await tx.orderDetail.update({
+                        where: { id: createdDetail.id },
+                        data: { costBasisApplied: costing.unitCostApplied },
+                    });
+                    cogs += -costing.valueDelta;
+
                     // Parallel, best-effort bookkeeping decrement of the
                     // variant's own stock cache (see ProductVariant's schema
                     // comment) - guarded the same way the product-level
@@ -433,11 +441,7 @@ class OrderService {
             }
 
             if (shouldDeductStock) {
-                const cogs = resolvedItems.reduce(
-                    (sum, item) => sum + item.quantity * Number(item.product.buyingPrice),
-                    0
-                );
-                await postOrderSaleJournalEntry(tx, { accountId: userId, createdById: userId, order: createdOrder, cogs });
+                await postOrderSaleJournalEntry(tx, { accountId: userId, createdById: userId, order: createdOrder, cogs, thirdParty: buildAccountingThirdParty("customer", customer) });
             }
 
             return createdOrder;
@@ -609,10 +613,11 @@ class OrderService {
                     const pending = detail.quantity - detail.returnedQuantity;
                     if (pending <= 0) continue;
 
-                    const locationBalance = await creditLocationStock(tx, {
+                    const costing = await creditLocationStockWithCost(tx, {
                         productId: detail.productId,
                         pointOfSaleId: order.pointOfSaleId,
                         quantity: pending,
+                        incomingUnitCost: Number(detail.costBasisApplied ?? detail.product.buyingPrice),
                     });
 
                     await recordStockMovement(tx, {
@@ -620,7 +625,10 @@ class OrderService {
                         accountId: detail.product.createdById,
                         pointOfSaleId: order.pointOfSaleId,
                         delta: pending,
-                        balanceAfter: locationBalance,
+                        balanceAfter: costing.balanceAfter,
+                        unitCostApplied: costing.unitCostApplied,
+                        valueDelta: costing.valueDelta,
+                        valueBalanceAfter: costing.valueBalanceAfter,
                         sourceType: "order_cancellation",
                         sourceId: order.id,
                         createdById: userId,
@@ -680,6 +688,7 @@ class OrderService {
                         entryDate: new Date(),
                         description: `Cancelación de pedido`,
                         lines: journalLines,
+                        thirdParty: buildAccountingThirdParty("customer", order.customer),
                     });
                 }
 
@@ -765,6 +774,7 @@ class OrderService {
                     );
                 }
 
+                let cogs = 0;
                 for (const detail of details) {
                     // Same guarded claim as createOrder, against the
                     // location now instead of the product's account-wide
@@ -772,13 +782,13 @@ class OrderService {
                     // so a concurrent completion of another order for the
                     // same product/location could otherwise race past this
                     // check and oversell.
-                    const locationBalance = await claimLocationStock(tx, {
+                    const costing = await claimLocationStockWithCost(tx, {
                         productId: detail.product.id,
                         pointOfSaleId: order.pointOfSaleId,
                         quantity: detail.quantity,
                     });
 
-                    if (locationBalance === null) {
+                    if (costing === null) {
                         const available = await getLocationStock(detail.product.id, order.pointOfSaleId);
                         throw new ApiError(
                             422,
@@ -801,21 +811,20 @@ class OrderService {
                         accountId: detail.product.createdById,
                         pointOfSaleId: order.pointOfSaleId,
                         delta: -detail.quantity,
-                        balanceAfter: locationBalance,
+                        balanceAfter: costing.balanceAfter,
+                        unitCostApplied: costing.unitCostApplied,
+                        valueDelta: costing.valueDelta,
+                        valueBalanceAfter: costing.valueBalanceAfter,
                         sourceType: "order",
                         sourceId: order.id,
                         createdById: userId,
                     });
 
                     await tx.orderDetail.update({
-                        where: { id: createdDetail.id },
+                        where: { id: detail.id },
                         data: { costBasisApplied: costing.unitCostApplied },
                     });
-
-                    await tx.orderDetail.update({
-                        where: { id: detail.id },
-                        data: { costBasisApplied: Number(detail.product.buyingPrice) },
-                    });
+                    cogs += -costing.valueDelta;
 
                     if (detail.variantId) {
                         const variantBalance = await claimVariantStock(tx, { variantId: detail.variantId, quantity: detail.quantity });
@@ -838,15 +847,12 @@ class OrderService {
 
                 const updatedOrder = await tx.order.findUniqueOrThrow({ where: { id: order.id } });
 
-                const cogs = details.reduce(
-                    (sum, detail) => sum + detail.quantity * Number(detail.product.buyingPrice),
-                    0
-                );
                 await postOrderSaleJournalEntry(tx, {
                     accountId: order.createdById,
                     createdById: userId,
                     order: updatedOrder,
                     cogs,
+                    thirdParty: buildAccountingThirdParty("customer", order.customer),
                 });
 
                 return updatedOrder;
@@ -1011,10 +1017,11 @@ class OrderService {
                 const detail = detailById.get(line.order_detail_id);
                 const quantity = Number(line.quantity);
 
-                const locationBalance = await creditLocationStock(tx, {
+                const costing = await creditLocationStockWithCost(tx, {
                     productId: detail.product.id,
                     pointOfSaleId: order.pointOfSaleId,
                     quantity,
+                    incomingUnitCost: Number(detail.costBasisApplied ?? detail.product.buyingPrice),
                 });
 
                 await recordStockMovement(tx, {
@@ -1022,7 +1029,10 @@ class OrderService {
                     accountId: detail.product.createdById,
                     pointOfSaleId: order.pointOfSaleId,
                     delta: quantity,
-                    balanceAfter: locationBalance,
+                    balanceAfter: costing.balanceAfter,
+                    unitCostApplied: costing.unitCostApplied,
+                    valueDelta: costing.valueDelta,
+                    valueBalanceAfter: costing.valueBalanceAfter,
                     sourceType: "order_return",
                     sourceId: order.id,
                     createdById: userId,
@@ -1116,6 +1126,7 @@ class OrderService {
                 entryDate: new Date(),
                 description: `Devolución de pedido`,
                 lines: journalLines,
+                thirdParty: buildAccountingThirdParty("customer", order.customer),
             });
 
             return { results, orderFullyReturned };

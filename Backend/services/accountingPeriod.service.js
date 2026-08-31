@@ -7,6 +7,7 @@ import { recordJournalEntry } from "./journalEntry.service.js";
 export const listAccountingPeriods = async (accountId) =>
     prisma.accountingPeriod.findMany({
         where: { createdById: accountId },
+        include: { reopenings: { orderBy: { reopenedAt: "desc" } } },
         orderBy: [{ year: "desc" }, { month: "desc" }],
     });
 
@@ -44,7 +45,7 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
         // useful for validation and date calculation, but cannot by itself
         // stop two concurrent requests from both observing "open".
         const lockedRows = await tx.$queryRaw`
-            SELECT id, status
+            SELECT id, status, reopened_until
             FROM accounting_periods
             WHERE id = ${periodId} AND created_by = ${accountId}
             FOR UPDATE
@@ -53,6 +54,10 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
         if (!lockedPeriod) throw new ApiError(404, "Periodo contable no encontrado.");
         if (lockedPeriod.status === "closed") throw new ApiError(400, "Este periodo ya está cerrado.");
 
+        const activeReopening = await tx.accountingPeriodReopening.findFirst({
+            where: { periodId, reclosedAt: null },
+            orderBy: { reopenedAt: "desc" },
+        });
         const { reversalLines, netIncome } = await getPeriodClosingPlan({ accountId, startDate, endDate, db: tx });
 
         if (reversalLines.length > 0 || netIncome !== 0) {
@@ -71,15 +76,21 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
                 createdById: actorId,
                 entryDate: endDate,
                 description: `Cierre del periodo ${String(period.month).padStart(2, "0")}/${period.year}`,
-                sourceType: "period_close",
-                sourceId: period.id,
+                sourceType: activeReopening ? "period_reclose" : "period_close",
+                sourceId: activeReopening?.id || period.id,
                 lines,
             });
         }
 
+        if (activeReopening) {
+            await tx.accountingPeriodReopening.update({
+                where: { id: activeReopening.id },
+                data: { reclosedAt: new Date(), reclosedById: actorId },
+            });
+        }
         return tx.accountingPeriod.update({
             where: { id: periodId },
-            data: { status: "closed", closedAt: new Date(), closedById: actorId },
+            data: { status: "closed", closedAt: new Date(), closedById: actorId, reopenedUntil: null },
         });
         }, { isolationLevel: "Serializable" });
     } catch (error) {
@@ -88,4 +99,58 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
         }
         throw error;
     }
+};
+
+export const reopenAccountingPeriod = async ({ accountId, actorId, periodId, reason, durationHours = 24 }) => {
+    const trimmedReason = String(reason || "").trim();
+    const hours = Number(durationHours);
+    if (!trimmedReason) throw new ApiError(400, "El motivo de reapertura es obligatorio.");
+    if (!Number.isInteger(hours) || hours < 1 || hours > 168) {
+        throw new ApiError(400, "La ventana de reapertura debe estar entre 1 y 168 horas.");
+    }
+
+    return prisma.$transaction(async (tx) => {
+        const rows = await tx.$queryRaw`
+            SELECT id, status, year, month
+            FROM accounting_periods
+            WHERE id = ${periodId} AND created_by = ${accountId}
+            FOR UPDATE
+        `;
+        const period = rows[0];
+        if (!period) throw new ApiError(404, "Periodo contable no encontrado.");
+        if (period.status !== "closed") throw new ApiError(409, "Solo se puede reabrir un periodo cerrado.");
+
+        const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
+        const reopening = await tx.accountingPeriodReopening.create({
+            data: { periodId, reason: trimmedReason, reopenedById: actorId, expiresAt },
+        });
+        await tx.accountingPeriod.update({ where: { id: periodId }, data: { status: "open", reopenedUntil: expiresAt } });
+
+        const latestClosingEntry = await tx.journalEntry.findFirst({
+            where: { periodId, sourceType: { in: ["period_close", "period_reclose"] } },
+            include: { lines: true },
+            orderBy: { createdAt: "desc" },
+        });
+        if (latestClosingEntry) {
+            const endDate = new Date(Date.UTC(Number(period.year), Number(period.month), 0, 23, 59, 59, 999));
+            await recordJournalEntry(tx, {
+                accountId,
+                createdById: actorId,
+                entryDate: endDate,
+                description: `Reapertura del periodo ${String(period.month).padStart(2, "0")}/${period.year}: ${trimmedReason}`,
+                sourceType: "period_reopen",
+                sourceId: reopening.id,
+                lines: latestClosingEntry.lines.map((line) => ({
+                    chartAccountId: line.chartAccountId,
+                    debit: Number(line.credit),
+                    credit: Number(line.debit),
+                    description: line.description,
+                })),
+            });
+        }
+        return tx.accountingPeriod.findUniqueOrThrow({
+            where: { id: periodId },
+            include: { reopenings: { orderBy: { reopenedAt: "desc" } } },
+        });
+    }, { isolationLevel: "Serializable" });
 };

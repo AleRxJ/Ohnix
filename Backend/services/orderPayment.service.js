@@ -1,7 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { recordCashMovement, creditCashAccount } from "./cashMovement.service.js";
-import { postOrderPaymentJournalEntry } from "./accountingPosting.service.js";
+import { buildAccountingThirdParty, postOrderPaymentJournalEntry } from "./accountingPosting.service.js";
 
 // Cartera (accounts receivable): order.total - SUM(OrderPayment.amount) for
 // that order. Deliberately not netted against OrderDetail.refundAmount here -
@@ -36,7 +36,10 @@ export const registerOrderPayment = async ({ accountId, actorId, orderId, amount
         throw new ApiError(400, "El monto del pago debe ser mayor a cero.");
     }
 
-    const order = await prisma.order.findFirst({ where: { id: orderId, createdById: accountId } });
+    const order = await prisma.order.findFirst({
+        where: { id: orderId, createdById: accountId },
+        include: { customer: { select: { id: true, name: true, identification: true } } },
+    });
     if (!order) throw new ApiError(404, "Pedido no encontrado.");
     if (order.orderStatus === "cancelled") {
         throw new ApiError(400, "No se pueden registrar pagos sobre un pedido cancelado.");
@@ -83,6 +86,7 @@ export const registerOrderPayment = async ({ accountId, actorId, orderId, amount
             payment,
             cashAccount,
             order,
+            thirdParty: buildAccountingThirdParty("customer", order.customer),
         });
 
         return payment;

@@ -13,6 +13,12 @@ export const SINGLE_ENTRY_SOURCE_TYPES = new Set([
     "credit_note_restock",
     "credit_note_financial",
     "period_close",
+    "period_reopen",
+    "period_reclose",
+    "inventory_adjustment",
+    "transfer_discrepancy",
+    "manual_journal",
+    "manual_journal_reversal",
 ]);
 
 export const isSingleEntrySource = (sourceType, sourceId) =>
@@ -93,6 +99,15 @@ export const recordJournalEntry = async (
             "accounting_period_closed"
         );
     }
+    if (period.reopenedUntil && period.reopenedUntil <= new Date() && sourceType !== "period_reclose") {
+        throw new ApiError(
+            409,
+            "La ventana autorizada de reapertura del periodo venció. Debe cerrarse o autorizarse una nueva reapertura.",
+            [],
+            "",
+            "accounting_period_reopening_expired"
+        );
+    }
 
     const entry = await tx.journalEntry.create({
         data: {
@@ -112,6 +127,10 @@ export const recordJournalEntry = async (
             debit: l.debit || 0,
             credit: l.credit || 0,
             description: l.description ?? null,
+            thirdPartyType: l.thirdPartyType ?? null,
+            thirdPartyId: l.thirdPartyId ?? null,
+            thirdPartyName: l.thirdPartyName ?? null,
+            thirdPartyDocument: l.thirdPartyDocument ?? null,
         })),
     });
 

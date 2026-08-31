@@ -154,25 +154,29 @@ const getDashboardMetrics = asyncHandler(async (req, res, next) => {
             .filter((p) => p.stock < (p.lowStockThreshold ?? defaultThreshold))
             .slice(0, 10);
 
-        const productsForValue = await prisma.product.findMany({
-            where: productWhere,
-            select: {
-                stock: true,
-                buyingPrice: true,
-            },
-        });
-
-        const inventoryValue = productsForValue.reduce(
-            (sum, p) => sum + p.stock * Number(p.buyingPrice),
+        const [inventoryValueAgg, inTransitRows] = await Promise.all([
+            prisma.productLocationStock.aggregate({
+                where: { product: productWhere },
+                _sum: { inventoryValue: true },
+            }),
+            prisma.stockTransfer.findMany({
+                where: { status: "in_transit", ...(isAdmin ? {} : { accountId: userId }) },
+                select: { quantitySent: true, unitCostApplied: true },
+            }),
+        ]);
+        const inTransitValue = inTransitRows.reduce(
+            (sum, transfer) => sum + transfer.quantitySent * Number(transfer.unitCostApplied || 0),
             0
         );
+        const inTransitUnits = inTransitRows.reduce((sum, transfer) => sum + transfer.quantitySent, 0);
+        const inventoryValue = Number(inventoryValueAgg._sum.inventoryValue || 0) + inTransitValue;
 
         const metrics = {
             totalSales: Number(totalSalesAgg._sum.total || 0),
             totalPurchase: Number(totalPurchaseAgg._sum.total || 0),
             inventoryValue,
             totalProducts: inventoryAgg._count.id || 0,
-            totalStock: inventoryAgg._sum.stock || 0,
+            totalStock: (inventoryAgg._sum.stock || 0) + inTransitUnits,
             outOfStockCount,
             lowStockProducts: lowStockProducts.map((p) => ({
                 _id: toExternalId(p),
@@ -230,6 +234,11 @@ const getStockReport = asyncHandler(async (req, res, next) => {
                         unitName: true,
                     },
                 },
+                locationStock: { select: { inventoryValue: true } },
+                transfers: {
+                    where: { status: "in_transit" },
+                    select: { quantitySent: true, unitCostApplied: true },
+                },
             },
             orderBy: { stock: "asc" },
         });
@@ -250,8 +259,14 @@ const getStockReport = asyncHandler(async (req, res, next) => {
                 unit_name: p.unit?.unitName || "N/A",
                 buying_price: Number(p.buyingPrice),
                 selling_price: Number(p.sellingPrice),
-                stock: p.stock,
-                inventory_value: p.stock * Number(p.buyingPrice),
+                stock: p.stock + p.transfers.reduce((sum, transfer) => sum + transfer.quantitySent, 0),
+                inventory_value: p.locationStock.reduce(
+                    (sum, location) => sum + Number(location.inventoryValue),
+                    0
+                ) + p.transfers.reduce(
+                    (sum, transfer) => sum + transfer.quantitySent * Number(transfer.unitCostApplied || 0),
+                    0
+                ),
                 status,
             };
         });

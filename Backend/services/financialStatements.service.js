@@ -72,7 +72,7 @@ export const getIncomeStatement = async ({ accountId, startDate, endDate }) => {
         accountTypes: ["revenue", "cost", "expense"],
         startDate,
         endDate,
-        excludeSourceTypes: ["period_close"],
+        excludeSourceTypes: ["period_close", "period_reopen", "period_reclose"],
     });
     const revenue = rows.filter((r) => r.account_type === "revenue");
     const costs = rows.filter((r) => r.account_type === "cost");
@@ -103,9 +103,9 @@ export const getIncomeStatement = async ({ accountId, startDate, endDate }) => {
 const getUnclosedPeriodIds = async (accountId, asOfDate) => {
     const periods = await prisma.accountingPeriod.findMany({ where: { createdById: accountId }, select: { id: true } });
     if (periods.length === 0) return [];
-    const closingEntries = await prisma.journalEntry.findMany({
+    const lifecycleEntries = await prisma.journalEntry.findMany({
         where: {
-            sourceType: "period_close",
+            sourceType: { in: ["period_close", "period_reopen", "period_reclose"] },
             periodId: { in: periods.map((p) => p.id) },
             // Historical snapshots before a closing entry's effective date
             // must still derive that period's earnings. Ignoring asOfDate
@@ -113,9 +113,11 @@ const getUnclosedPeriodIds = async (accountId, asOfDate) => {
             // balance sheets after the period was later closed.
             ...(asOfDate ? { entryDate: { lte: asOfDate } } : {}),
         },
-        select: { periodId: true },
+        select: { periodId: true, sourceType: true },
+        orderBy: { createdAt: "asc" },
     });
-    const closedIds = new Set(closingEntries.map((e) => e.periodId));
+    const latestByPeriod = new Map(lifecycleEntries.map((entry) => [entry.periodId, entry.sourceType]));
+    const closedIds = new Set([...latestByPeriod.entries()].filter(([, sourceType]) => sourceType !== "period_reopen").map(([periodId]) => periodId));
     return periods.filter((p) => !closedIds.has(p.id)).map((p) => p.id);
 };
 
@@ -142,7 +144,7 @@ export const getBalanceSheet = async ({ accountId, asOfDate }) => {
                   accountId,
                   accountTypes: ["revenue", "cost", "expense"],
                   endDate: asOfDate,
-                  excludeSourceTypes: ["period_close"],
+                  excludeSourceTypes: ["period_close", "period_reopen", "period_reclose"],
                   periodIds: unclosedPeriodIds,
               });
               const revenue = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "revenue")));
@@ -181,7 +183,7 @@ export const getPeriodClosingPlan = async ({ accountId, startDate, endDate, db =
         accountTypes: ["revenue", "cost", "expense"],
         startDate,
         endDate,
-        excludeSourceTypes: ["period_close"],
+        excludeSourceTypes: ["period_close", "period_reopen", "period_reclose"],
         db,
     });
 

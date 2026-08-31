@@ -6,9 +6,10 @@ import { prisma } from "../db/prisma.js";
 import { normalizeCountryCode } from "../services/companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { recordStockMovement } from "../services/stockMovement.service.js";
+import { postInventoryAdjustmentJournalEntry } from "../services/accountingPosting.service.js";
 import {
-    claimLocationStock,
-    creditLocationStock,
+    claimLocationStockWithCost,
+    creditLocationStockWithCost,
     getLocationStockSummary,
     scopedStockForProducts,
 } from "../services/productLocationStock.service.js";
@@ -1032,20 +1033,21 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
             // a decrease, credit (unconditional) for an increase - both
             // against this location's stock, not the product's account-wide
             // total.
-            const locationBalance =
+            const costing =
                 parsedDelta < 0
-                    ? await claimLocationStock(tx, {
+                    ? await claimLocationStockWithCost(tx, {
                           productId: existingProduct.id,
                           pointOfSaleId,
                           quantity: -parsedDelta,
                       })
-                    : await creditLocationStock(tx, {
+                    : await creditLocationStockWithCost(tx, {
                           productId: existingProduct.id,
                           pointOfSaleId,
                           quantity: parsedDelta,
+                          incomingUnitCost: existingProduct.buyingPrice,
                       });
 
-            if (locationBalance === null) {
+            if (costing === null) {
                 throw new ApiError(
                     409,
                     "Not enough stock to apply this adjustment"
@@ -1068,16 +1070,28 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
                 },
             });
 
-            await recordStockMovement(tx, {
+            const movement = await recordStockMovement(tx, {
                 productId: existingProduct.id,
                 accountId: existingProduct.createdById,
                 pointOfSaleId,
                 delta: parsedDelta,
-                balanceAfter: locationBalance,
+                balanceAfter: costing.balanceAfter,
+                unitCostApplied: costing.unitCostApplied,
+                valueDelta: costing.valueDelta,
+                valueBalanceAfter: costing.valueBalanceAfter,
                 sourceType: "adjustment",
                 sourceId: null,
                 reason: String(reason).trim(),
                 createdById: req.user.prismaId,
+            });
+
+            await postInventoryAdjustmentJournalEntry(tx, {
+                accountId: existingProduct.createdById,
+                createdById: req.user.prismaId,
+                movementId: movement.id,
+                valueDelta: costing.valueDelta,
+                reason: String(reason).trim(),
+                entryDate: movement.createdAt,
             });
 
             return updated;

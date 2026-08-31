@@ -11,10 +11,23 @@ import {
     getJournalEntry,
     listAccountingPeriods,
     closeAccountingPeriod,
+    reopenAccountingPeriod,
     getIncomeStatement,
     getBalanceSheet,
     getTrialBalance,
     getAccountingStatus,
+    createManualVoucher,
+    updateManualVoucher,
+    listManualVouchers,
+    getManualVoucher,
+    postManualVoucher,
+    voidManualVoucher,
+    listThirdPartyBalances,
+    getThirdPartyMovements,
+    listWithholdingConcepts,
+    createWithholdingConcept,
+    setWithholdingConceptActive,
+    previewWithholdings,
 } from "../controllers/accounting.controller.js";
 
 const router = Router();
@@ -36,6 +49,28 @@ router.route("/status").get(requireModulePermission("accounting", "view"), getAc
 router.route("/journal-entries").get(requireModulePermission("accounting", "view"), listJournalEntries);
 router.route("/journal-entries/:id").get(requireModulePermission("accounting", "view"), getJournalEntry);
 
+router.route("/manual-vouchers")
+    .get(requireModulePermission("accounting", "view"), listManualVouchers)
+    .post(requireModulePermission("accounting", "edit"), createManualVoucher);
+router.route("/manual-vouchers/:id")
+    .get(requireModulePermission("accounting", "view"), getManualVoucher)
+    .put(requireModulePermission("accounting", "edit"), updateManualVoucher);
+router.route("/manual-vouchers/:id/post")
+    .post(requireModulePermission("accounting", "edit"), postManualVoucher);
+router.route("/manual-vouchers/:id/void")
+    .post(requireModulePermission("accounting", "admin"), voidManualVoucher);
+
+router.route("/third-parties").get(requireModulePermission("accounting", "view"), listThirdPartyBalances);
+router.route("/third-parties/:type/:id").get(requireModulePermission("accounting", "view"), getThirdPartyMovements);
+
+router.route("/withholding-concepts")
+    .get(requireModulePermission("accounting", "view"), listWithholdingConcepts)
+    .post(requireModulePermission("accounting", "admin"), createWithholdingConcept);
+router.route("/withholding-concepts/preview")
+    .post(requireModulePermission("accounting", "edit"), previewWithholdings);
+router.route("/withholding-concepts/:id/active")
+    .patch(requireModulePermission("accounting", "admin"), setWithholdingConceptActive);
+
 router.route("/reports/income-statement").get(requireModulePermission("accounting", "view"), getIncomeStatement);
 router.route("/reports/balance-sheet").get(requireModulePermission("accounting", "view"), getBalanceSheet);
 router.route("/reports/trial-balance").get(requireModulePermission("accounting", "view"), getTrialBalance);
@@ -45,5 +80,6 @@ router.route("/periods").get(requireModulePermission("accounting", "view"), list
 // postings into that month), not routine data entry - gated at "admin"
 // rather than "edit", unlike the rest of this module's read-only surface.
 router.route("/periods/:id/close").post(requireModulePermission("accounting", "admin"), closeAccountingPeriod);
+router.route("/periods/:id/reopen").post(requireModulePermission("accounting", "admin"), reopenAccountingPeriod);
 
 export default router;

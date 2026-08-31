@@ -17,6 +17,8 @@ const DEFAULT_ACCOUNTS = [
     { code: "240810", name: "IVA descontable", accountType: "liability" },
     { code: "4135", name: "Ingresos por ventas", accountType: "revenue" },
     { code: "6135", name: "Costo de ventas", accountType: "cost" },
+    { code: "4295", name: "Ingresos por ajustes de inventario", accountType: "revenue" },
+    { code: "5195", name: "Pérdidas y ajustes de inventario", accountType: "expense" },
 ];
 
 // Lazily seeds the default chart the first time a tenant needs one - same
@@ -37,6 +39,11 @@ export const ensureDefaultChartOfAccounts = async (db, accountId) => {
 
 export const getChartAccountMap = async (db, accountId) => {
     const accounts = await ensureDefaultChartOfAccounts(db, accountId);
+    for (const account of DEFAULT_ACCOUNTS) {
+        if (!accounts.some((existing) => existing.code === account.code)) {
+            accounts.push(await db.chartAccount.create({ data: { ...account, createdById: accountId } }));
+        }
+    }
     return new Map(accounts.map((a) => [a.code, a]));
 };
 

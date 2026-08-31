@@ -28,8 +28,8 @@ import { computeNitCheckDigit } from "../utils/nit.util.js";
 import { normalizeCountryCode } from "./companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { recordStockMovement } from "./stockMovement.service.js";
-import { postOrderReturnJournalEntry } from "./accountingPosting.service.js";
-import { creditLocationStock } from "./productLocationStock.service.js";
+import { buildAccountingThirdParty, postOrderReturnJournalEntry } from "./accountingPosting.service.js";
+import { creditLocationStockWithCost } from "./productLocationStock.service.js";
 
 const toExternalId = (entity) => entity?.legacyMongoId || entity?.id;
 
@@ -1152,10 +1152,11 @@ const applyCreditNoteRestock = async ({ order, items, creditNoteId, userId }) =>
             const detail = detailById.get(orderDetailId);
             const qty = Number(quantity);
 
-            const locationBalance = await creditLocationStock(tx, {
+            const costing = await creditLocationStockWithCost(tx, {
                 productId: detail.product.id,
                 pointOfSaleId: order.pointOfSaleId,
                 quantity: qty,
+                incomingUnitCost: Number(detail.costBasisApplied ?? detail.product.buyingPrice),
             });
 
             await recordStockMovement(tx, {
@@ -1163,7 +1164,10 @@ const applyCreditNoteRestock = async ({ order, items, creditNoteId, userId }) =>
                 accountId: detail.product.createdById,
                 pointOfSaleId: order.pointOfSaleId,
                 delta: qty,
-                balanceAfter: locationBalance,
+                balanceAfter: costing.balanceAfter,
+                unitCostApplied: costing.unitCostApplied,
+                valueDelta: costing.valueDelta,
+                valueBalanceAfter: costing.valueBalanceAfter,
                 sourceType: "credit_note_restock",
                 sourceId: creditNoteId,
                 createdById: userId,
@@ -1229,6 +1233,7 @@ const applyCreditNoteRestock = async ({ order, items, creditNoteId, userId }) =>
             entryDate: new Date(),
             description: "Nota crédito con devolución de mercancía",
             lines: journalLines,
+            thirdParty: buildAccountingThirdParty("customer", order.customer),
         });
 
         return { lines, orderFullyReturned };
@@ -1261,6 +1266,7 @@ const postFinancialCreditNoteJournalEntry = async ({ order, amount, taxRate, cre
             entryDate: new Date(),
             description: "Nota crédito financiera",
             lines: [{ quantity: 1, unitcost: amount, taxRateApplied: taxRate || 0 }],
+            thirdParty: buildAccountingThirdParty("customer", order.customer),
         })
     );
     return { applied: true };

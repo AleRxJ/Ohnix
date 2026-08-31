@@ -1,5 +1,5 @@
 ALTER TABLE "order_details"
-  ADD COLUMN "cost_basis_applied" DECIMAL(12, 2);
+  ADD COLUMN "cost_basis_applied" DECIMAL(14, 4);
 
 -- Baseline for rows that predate accounting or have no recoverable sale
 -- entry. Freezing even this estimate is safer than allowing every future
@@ -38,7 +38,7 @@ SET "cost_basis_applied" = ROUND(
     WHEN lw.total_quantity > 0 THEN sc.total_cost / lw.total_quantity
     ELSE 0
   END,
-  2
+  4
 )
 FROM line_weight lw
 JOIN sale_cost sc ON sc.order_id = lw."order_id"

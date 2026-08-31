@@ -5,6 +5,9 @@ import * as chartOfAccountsService from "../services/chartOfAccounts.service.js"
 import * as journalEntryService from "../services/journalEntry.service.js";
 import * as accountingPeriodService from "../services/accountingPeriod.service.js";
 import * as financialStatementsService from "../services/financialStatements.service.js";
+import * as manualVoucherService from "../services/manualJournalVoucher.service.js";
+import * as thirdPartyLedgerService from "../services/thirdPartyLedger.service.js";
+import * as withholdingConceptService from "../services/withholdingConcept.service.js";
 
 // `to`/`as_of` always arrives as a plain "YYYY-MM-DD" string (every date
 // picker on the frontend sends dayjs().format("YYYY-MM-DD")), which
@@ -41,6 +44,12 @@ const mapJournalEntry = (e) => ({
         debit: Number(l.debit),
         credit: Number(l.credit),
         description: l.description,
+        third_party: l.thirdPartyType ? {
+            type: l.thirdPartyType,
+            _id: l.thirdPartyId,
+            name: l.thirdPartyName,
+            document: l.thirdPartyDocument,
+        } : null,
     })),
 });
 
@@ -50,6 +59,126 @@ const mapPeriod = (p) => ({
     month: p.month,
     status: p.status,
     closed_at: p.closedAt,
+    reopened_until: p.reopenedUntil,
+    reopenings: (p.reopenings || []).map((reopening) => ({
+        _id: reopening.id,
+        reason: reopening.reason,
+        reopened_at: reopening.reopenedAt,
+        expires_at: reopening.expiresAt,
+        reclosed_at: reopening.reclosedAt,
+    })),
+});
+
+const mapManualVoucher = (voucher) => ({
+    _id: voucher.id,
+    status: voucher.status,
+    entry_date: voucher.entryDate,
+    description: voucher.description,
+    support_url: voucher.supportUrl,
+    posted_entry_id: voucher.postedEntryId,
+    reversal_entry_id: voucher.reversalEntryId,
+    posted_at: voucher.postedAt,
+    voided_at: voucher.voidedAt,
+    void_reason: voucher.voidReason,
+    created_at: voucher.createdAt,
+    updated_at: voucher.updatedAt,
+    lines: voucher.lines.map((line) => ({
+        _id: line.id,
+        chart_account: {
+            _id: line.chartAccount.id,
+            code: line.chartAccount.code,
+            name: line.chartAccount.name,
+        },
+        debit: Number(line.debit),
+        credit: Number(line.credit),
+        description: line.description,
+        position: line.position,
+        third_party: line.thirdPartyType ? {
+            type: line.thirdPartyType,
+            id: line.thirdPartyId,
+            name: line.thirdPartyName,
+            document: line.thirdPartyDocument,
+        } : null,
+    })),
+});
+
+const voucherPayload = (body = {}) => ({
+    entryDate: body.entry_date,
+    description: body.description,
+    supportUrl: body.support_url,
+    lines: body.lines,
+});
+
+export const createManualVoucher = asyncHandler(async (req, res) => {
+    const voucher = await manualVoucherService.createDraft({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        ...voucherPayload(req.body),
+    });
+    return res.status(201).json(new ApiResponse(201, mapManualVoucher(voucher), "Comprobante creado como borrador."));
+});
+
+export const updateManualVoucher = asyncHandler(async (req, res) => {
+    const voucher = await manualVoucherService.updateDraft({
+        accountId: req.user.prismaId,
+        id: req.params.id,
+        ...voucherPayload(req.body),
+    });
+    return res.status(200).json(new ApiResponse(200, mapManualVoucher(voucher), "Borrador actualizado."));
+});
+
+export const listManualVouchers = asyncHandler(async (req, res) => {
+    const vouchers = await manualVoucherService.listVouchers({
+        accountId: req.user.prismaId,
+        status: req.query.status || undefined,
+    });
+    return res.status(200).json(new ApiResponse(200, vouchers.map(mapManualVoucher), "Comprobantes obtenidos."));
+});
+
+export const getManualVoucher = asyncHandler(async (req, res) => {
+    const voucher = await manualVoucherService.getVoucher({ accountId: req.user.prismaId, id: req.params.id });
+    return res.status(200).json(new ApiResponse(200, mapManualVoucher(voucher), "Comprobante obtenido."));
+});
+
+export const postManualVoucher = asyncHandler(async (req, res) => {
+    const voucher = await manualVoucherService.postDraft({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        id: req.params.id,
+    });
+    return res.status(200).json(new ApiResponse(200, mapManualVoucher(voucher), "Comprobante contabilizado."));
+});
+
+export const voidManualVoucher = asyncHandler(async (req, res) => {
+    const voucher = await manualVoucherService.voidPosted({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        id: req.params.id,
+        reason: req.body?.reason,
+        entryDate: req.body?.entry_date || new Date(),
+    });
+    return res.status(200).json(new ApiResponse(200, mapManualVoucher(voucher), "Comprobante anulado mediante contraasiento."));
+});
+
+export const listThirdPartyBalances = asyncHandler(async (req, res) => {
+    const rows = await thirdPartyLedgerService.listThirdPartyBalances({
+        accountId: req.user.prismaId,
+        startDate: req.query.from ? new Date(req.query.from) : undefined,
+        endDate: endOfDay(req.query.to),
+        type: req.query.type || undefined,
+    });
+    return res.status(200).json(new ApiResponse(200, rows, "Auxiliares por tercero obtenidos."));
+});
+
+export const getThirdPartyMovements = asyncHandler(async (req, res) => {
+    const result = await thirdPartyLedgerService.getThirdPartyMovements({
+        accountId: req.user.prismaId,
+        type: req.params.type,
+        id: req.params.id,
+        startDate: req.query.from ? new Date(req.query.from) : undefined,
+        endDate: endOfDay(req.query.to),
+    });
+    return res.status(200).json(new ApiResponse(200, result, "Movimientos del tercero obtenidos."));
 });
 
 export const listChartOfAccounts = asyncHandler(async (req, res) => {
@@ -173,4 +302,41 @@ export const closeAccountingPeriod = asyncHandler(async (req, res, next) => {
         periodId: req.params.id,
     });
     return res.status(200).json(new ApiResponse(200, mapPeriod(period), "Accounting period closed successfully"));
+});
+
+export const reopenAccountingPeriod = asyncHandler(async (req, res) => {
+    const period = await accountingPeriodService.reopenAccountingPeriod({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        periodId: req.params.id,
+        reason: req.body?.reason,
+        durationHours: req.body?.duration_hours ?? 24,
+    });
+    return res.status(200).json(new ApiResponse(200, mapPeriod(period), "Periodo reabierto temporalmente."));
+});
+
+export const listWithholdingConcepts = asyncHandler(async (req, res) => {
+    const concepts = await withholdingConceptService.listWithholdingConcepts(req.user.prismaId, {
+        activeAt: req.query.active_at,
+    });
+    return res.status(200).json(new ApiResponse(200, concepts, "Conceptos de retención consultados."));
+});
+
+export const createWithholdingConcept = asyncHandler(async (req, res) => {
+    const concept = await withholdingConceptService.createWithholdingConcept(req.user.prismaId, req.body || {});
+    return res.status(201).json(new ApiResponse(201, concept, "Concepto de retención creado."));
+});
+
+export const setWithholdingConceptActive = asyncHandler(async (req, res) => {
+    const concept = await withholdingConceptService.setWithholdingConceptActive(
+        req.user.prismaId,
+        req.params.id,
+        req.body?.is_active
+    );
+    return res.status(200).json(new ApiResponse(200, concept, "Estado del concepto actualizado."));
+});
+
+export const previewWithholdings = asyncHandler(async (req, res) => {
+    const preview = await withholdingConceptService.previewWithholdings(req.user.prismaId, req.body || {});
+    return res.status(200).json(new ApiResponse(200, preview, "Retenciones calculadas."));
 });

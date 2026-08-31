@@ -51,6 +51,12 @@ const SOURCE_TYPE_LABEL_KEYS = {
     credit_note_restock: "accounting.source_credit_note_restock",
     credit_note_financial: "accounting.source_credit_note_financial",
     period_close: "accounting.source_period_close",
+    period_reopen: "accounting.source_period_reopen",
+    period_reclose: "accounting.source_period_reclose",
+    inventory_adjustment: "accounting.source_inventory_adjustment",
+    transfer_discrepancy: "accounting.source_transfer_discrepancy",
+    manual_journal: "accounting.source_manual_journal",
+    manual_journal_reversal: "accounting.source_manual_journal_reversal",
     manual_expense: "accounting.source_manual_expense",
 };
 
@@ -388,6 +394,282 @@ const ChartOfAccountsTab = () => {
     );
 };
 
+const ThirdPartyLedgerTab = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const [dateRange, setDateRange] = useState([dayjs().startOf("year"), dayjs()]);
+    const [type, setType] = useState(undefined);
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [detail, setDetail] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+
+    const params = () => ({ from: dateRange[0].format("YYYY-MM-DD"), to: dateRange[1].format("YYYY-MM-DD") });
+    const load = async () => {
+        setLoading(true);
+        try {
+            const response = await accountingService.listThirdPartyBalances({ ...params(), type });
+            setRows(response?.data || []);
+        } catch { toast.error(t("accounting.failed")); }
+        finally { setLoading(false); }
+    };
+    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const openDetail = async (party) => {
+        setDetailLoading(true);
+        setDetail({ thirdParty: party, movements: [] });
+        try {
+            const response = await accountingService.getThirdPartyMovements(party.type, party.id, params());
+            setDetail(response?.data || null);
+        } catch { toast.error(t("accounting.failed")); }
+        finally { setDetailLoading(false); }
+    };
+
+    return (
+        <>
+            <p className="mb-4 text-sm text-[var(--ohnix-text-muted)]">{t("accounting.tab_third_parties_caption")}</p>
+            <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <RangePicker value={dateRange} onChange={(dates) => dates && setDateRange(dates)} allowClear={false} />
+                    <Select allowClear value={type} onChange={setType} placeholder={t("accounting.third_party_all_types")} options={[
+                        { value: "customer", label: t("accounting.third_party_customer") },
+                        { value: "supplier", label: t("accounting.third_party_supplier") },
+                        { value: "other", label: t("accounting.third_party_other") },
+                    ]} className="w-full sm:w-48" />
+                    <Button type="primary" onClick={load} loading={loading}>{t("reports.refresh_report")}</Button>
+                </div>
+            </Card>
+            <Table
+                rowKey={(row) => `${row.type}:${row.id}`}
+                dataSource={rows}
+                loading={loading}
+                pagination={{ pageSize: 15 }}
+                columns={[
+                    { title: t("accounting.third_party_name"), dataIndex: "name" },
+                    { title: t("accounting.third_party_document"), dataIndex: "document" },
+                    { title: t("accounting.col_type"), dataIndex: "type", render: (value) => t(`accounting.third_party_${value}`) },
+                    { title: t("accounting.ledger_closing_balance"), dataIndex: "balance", align: "right", render: formatCurrency },
+                    { title: "", render: (_, party) => <Button size="small" icon={<EyeOutlined />} onClick={() => openDetail(party)}>{t("accounting.ledger_view_button")}</Button> },
+                ]}
+            />
+            <Drawer open={Boolean(detail)} onClose={() => setDetail(null)} width={760} title={detail?.thirdParty?.name || t("accounting.tab_third_parties")}>
+                <Row gutter={12} className="mb-4">
+                    <Col span={12}><StatCard title={t("accounting.ledger_opening_balance")} value={detail?.openingBalance || 0} formatter={formatCurrency} /></Col>
+                    <Col span={12}><StatCard title={t("accounting.ledger_closing_balance")} value={detail?.closingBalance || 0} formatter={formatCurrency} /></Col>
+                </Row>
+                <Table loading={detailLoading} rowKey="id" pagination={false} dataSource={detail?.movements || []} columns={[
+                    { title: t("accounting.col_date"), dataIndex: "date", render: (value) => dayjs(value).format("DD/MM/YYYY") },
+                    { title: t("accounting.lines_col_account"), dataIndex: "chartAccount", render: (account) => `${account.code} · ${account.name}` },
+                    { title: t("accounting.lines_col_debit"), dataIndex: "debit", align: "right", render: (value) => value ? formatCurrency(value) : "" },
+                    { title: t("accounting.lines_col_credit"), dataIndex: "credit", align: "right", render: (value) => value ? formatCurrency(value) : "" },
+                    { title: t("accounting.ledger_col_running_balance"), dataIndex: "runningBalance", align: "right", render: formatCurrency },
+                ]} />
+            </Drawer>
+        </>
+    );
+};
+
+const ManualVouchersTab = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("accounting", "edit");
+    const canAdmin = hasPermission("accounting", "admin");
+    const [form] = Form.useForm();
+    const [vouchers, setVouchers] = useState([]);
+    const [accounts, setAccounts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [open, setOpen] = useState(false);
+    const [editing, setEditing] = useState(null);
+    const watchedLines = Form.useWatch("lines", form) || [];
+    const totalDebit = watchedLines.reduce((sum, line) => sum + Number(line?.debit || 0), 0);
+    const totalCredit = watchedLines.reduce((sum, line) => sum + Number(line?.credit || 0), 0);
+    const balanced = Math.round(totalDebit * 100) === Math.round(totalCredit * 100) && totalDebit > 0;
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const [voucherRes, accountRes] = await Promise.all([
+                accountingService.listManualVouchers(),
+                accountingService.listChartOfAccounts(),
+            ]);
+            setVouchers(voucherRes?.data || []);
+            setAccounts((accountRes?.data || []).filter((account) => account.is_active));
+        } catch {
+            toast.error(t("accounting.failed"));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const showEditor = (voucher = null) => {
+        setEditing(voucher);
+        form.setFieldsValue({
+            entry_date: voucher ? dayjs(voucher.entry_date) : dayjs(),
+            description: voucher?.description || "",
+            support_url: voucher?.support_url || "",
+            lines: voucher?.lines?.map((line) => ({
+                chart_account_id: line.chart_account._id,
+                debit: line.debit || undefined,
+                credit: line.credit || undefined,
+                description: line.description || "",
+                third_party: line.third_party || undefined,
+            })) || [{ debit: undefined, credit: undefined }, { debit: undefined, credit: undefined }],
+        });
+        setOpen(true);
+    };
+
+    const save = async () => {
+        const values = await form.validateFields();
+        setSaving(true);
+        try {
+            const payload = {
+                ...values,
+                entry_date: values.entry_date.format("YYYY-MM-DD"),
+                lines: values.lines.map((line) => ({
+                    ...line,
+                    debit: Number(line.debit || 0),
+                    credit: Number(line.credit || 0),
+                })),
+            };
+            if (editing) await accountingService.updateManualVoucher(editing._id, payload);
+            else await accountingService.createManualVoucher(payload);
+            toast.success(t("accounting.voucher_saved"));
+            setOpen(false);
+            form.resetFields();
+            await load();
+        } catch (error) {
+            if (error?.errorFields) return;
+            toast.error(error?.response?.data?.message || t("accounting.failed"));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const post = async (voucher) => {
+        try {
+            await accountingService.postManualVoucher(voucher._id);
+            toast.success(t("accounting.voucher_posted"));
+            await load();
+        } catch (error) {
+            toast.error(error?.response?.data?.message || t("accounting.failed"));
+        }
+    };
+
+    const voidVoucher = (voucher) => {
+        let reason = "";
+        Modal.confirm({
+            title: t("accounting.voucher_void_title"),
+            content: <Input.TextArea rows={3} placeholder={t("accounting.voucher_void_reason")} onChange={(event) => { reason = event.target.value; }} />,
+            okText: t("accounting.voucher_void"),
+            okButtonProps: { danger: true },
+            onOk: async () => {
+                if (!reason.trim()) throw new Error(t("accounting.voucher_void_reason_required"));
+                await accountingService.voidManualVoucher(voucher._id, { reason });
+                toast.success(t("accounting.voucher_voided"));
+                await load();
+            },
+        });
+    };
+
+    const statusTag = (status) => ({
+        draft: <Tag>{t("accounting.voucher_status_draft")}</Tag>,
+        posted: <Tag color="green">{t("accounting.voucher_status_posted")}</Tag>,
+        voided: <Tag color="red">{t("accounting.voucher_status_voided")}</Tag>,
+    }[status]);
+
+    const columns = [
+        { title: t("accounting.col_date"), dataIndex: "entry_date", key: "date", render: (value) => dayjs(value).format("DD/MM/YYYY") },
+        { title: t("accounting.col_description"), dataIndex: "description", key: "description", ellipsis: true },
+        { title: t("accounting.col_status"), dataIndex: "status", key: "status", render: statusTag },
+        { title: t("accounting.col_total"), key: "total", align: "right", render: (_, voucher) => formatCurrency(voucher.lines.reduce((sum, line) => sum + line.debit, 0)) },
+        {
+            title: t("common.actions"), key: "actions", render: (_, voucher) => (
+                <div className="flex gap-2">
+                    {voucher.status === "draft" && canEdit && <Button size="small" onClick={() => showEditor(voucher)}>{t("common.edit")}</Button>}
+                    {voucher.status === "draft" && canEdit && (
+                        <Popconfirm title={t("accounting.voucher_post_confirm")} onConfirm={() => post(voucher)}>
+                            <Button size="small" type="primary">{t("accounting.voucher_post")}</Button>
+                        </Popconfirm>
+                    )}
+                    {voucher.status === "posted" && canAdmin && <Button size="small" danger onClick={() => voidVoucher(voucher)}>{t("accounting.voucher_void")}</Button>}
+                </div>
+            ),
+        },
+    ];
+
+    return (
+        <>
+            <div className="flex items-center justify-between gap-3 mb-4">
+                <p className="text-sm text-[var(--ohnix-text-muted)] m-0">{t("accounting.tab_vouchers_caption")}</p>
+                {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.voucher_new")}</Button>}
+            </div>
+            <Table
+                columns={columns}
+                dataSource={vouchers}
+                rowKey="_id"
+                loading={loading}
+                scroll={{ x: "max-content" }}
+                pagination={{ pageSize: 15 }}
+                expandable={{
+                    expandedRowRender: (voucher) => (
+                        <div className="space-y-3">
+                            {voucher.support_url && <a href={voucher.support_url} target="_blank" rel="noreferrer">{t("accounting.voucher_open_support")}</a>}
+                            <Table
+                                size="small"
+                                pagination={false}
+                                rowKey="_id"
+                                dataSource={voucher.lines}
+                                columns={[
+                                    { title: t("accounting.lines_col_account"), render: (_, line) => `${line.chart_account.code} · ${line.chart_account.name}` },
+                                    { title: t("accounting.lines_col_debit"), dataIndex: "debit", align: "right", render: (value) => value ? formatCurrency(value) : "" },
+                                    { title: t("accounting.lines_col_credit"), dataIndex: "credit", align: "right", render: (value) => value ? formatCurrency(value) : "" },
+                                ]}
+                            />
+                            {voucher.void_reason && <Alert type="error" showIcon message={voucher.void_reason} />}
+                        </div>
+                    ),
+                }}
+            />
+            <Modal title={editing ? t("accounting.voucher_edit") : t("accounting.voucher_new")} open={open} onCancel={() => setOpen(false)} onOk={save} confirmLoading={saving} width={980} destroyOnHidden>
+                <Form form={form} layout="vertical">
+                    <Row gutter={16}>
+                        <Col xs={24} md={8}><Form.Item name="entry_date" label={t("accounting.col_date")} rules={[{ required: true }]}><DatePicker className="w-full" /></Form.Item></Col>
+                        <Col xs={24} md={16}><Form.Item name="description" label={t("accounting.col_description")} rules={[{ required: true }]}><Input /></Form.Item></Col>
+                    </Row>
+                    <Form.Item name="support_url" label={t("accounting.voucher_support_url")}><Input type="url" /></Form.Item>
+                    <Form.List name="lines">
+                        {(fields, { add, remove }) => (
+                            <div className="space-y-3">
+                                {fields.map(({ key, name }) => (
+                                    <div key={key} className="border-b border-[var(--ohnix-line-3)] pb-2">
+                                        <Row gutter={8} align="middle">
+                                            <Col xs={24} md={9}><Form.Item name={[name, "chart_account_id"]} rules={[{ required: true }]}><Select showSearch optionFilterProp="label" placeholder={t("accounting.lines_col_account")} options={accounts.map((account) => ({ value: account._id, label: `${account.code} · ${account.name}` }))} /></Form.Item></Col>
+                                            <Col xs={10} md={5}><Form.Item name={[name, "debit"]}><InputNumber min={0} precision={2} className="w-full" placeholder={t("accounting.lines_col_debit")} /></Form.Item></Col>
+                                            <Col xs={10} md={5}><Form.Item name={[name, "credit"]}><InputNumber min={0} precision={2} className="w-full" placeholder={t("accounting.lines_col_credit")} /></Form.Item></Col>
+                                            <Col xs={4} md={5}><Button danger disabled={fields.length <= 2} onClick={() => remove(name)}>{t("common.delete")}</Button></Col>
+                                        </Row>
+                                        <Row gutter={8}>
+                                            <Col xs={24} md={5}><Form.Item name={[name, "third_party", "type"]}><Select allowClear placeholder={t("accounting.col_type")} options={[{ value: "customer", label: t("accounting.third_party_customer") }, { value: "supplier", label: t("accounting.third_party_supplier") }, { value: "other", label: t("accounting.third_party_other") }]} /></Form.Item></Col>
+                                            <Col xs={24} md={10}><Form.Item name={[name, "third_party", "name"]}><Input placeholder={t("accounting.third_party_name")} /></Form.Item></Col>
+                                            <Col xs={24} md={9}><Form.Item name={[name, "third_party", "document"]}><Input placeholder={t("accounting.third_party_document")} /></Form.Item></Col>
+                                        </Row>
+                                    </div>
+                                ))}
+                                <Button onClick={() => add({})} icon={<PlusOutlined />}>{t("accounting.voucher_add_line")}</Button>
+                            </div>
+                        )}
+                    </Form.List>
+                    <Alert className="mt-4" type={balanced ? "success" : "warning"} showIcon message={`${t("accounting.lines_col_debit")}: ${formatCurrency(totalDebit)} · ${t("accounting.lines_col_credit")}: ${formatCurrency(totalCredit)}`} description={balanced ? t("accounting.voucher_balanced") : t("accounting.voucher_unbalanced")} />
+                </Form>
+            </Modal>
+        </>
+    );
+};
+
 const JournalTab = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -554,6 +836,27 @@ const PeriodsTab = () => {
         }
     };
 
+    const handleReopen = (period) => {
+        let reason = "";
+        let durationHours = 24;
+        Modal.confirm({
+            title: t("accounting.reopen_period_title"),
+            content: (
+                <div className="space-y-3 mt-4">
+                    <Input.TextArea rows={3} placeholder={t("accounting.reopen_period_reason")} onChange={(event) => { reason = event.target.value; }} />
+                    <InputNumber min={1} max={168} defaultValue={24} addonAfter={t("accounting.hours")} onChange={(value) => { durationHours = value; }} />
+                </div>
+            ),
+            okText: t("accounting.reopen_period"),
+            onOk: async () => {
+                if (!reason.trim()) throw new Error(t("accounting.reopen_period_reason_required"));
+                await accountingService.reopenAccountingPeriod(period._id, { reason, durationHours });
+                toast.success(t("accounting.period_reopened"));
+                await load();
+            },
+        });
+    };
+
     const columns = [
         {
             title: t("accounting.col_period"),
@@ -564,13 +867,23 @@ const PeriodsTab = () => {
             title: t("accounting.col_status"),
             dataIndex: "status",
             key: "status",
-            render: (v) => (v === "closed" ? <Tag color="default">{t("accounting.status_closed")}</Tag> : <Tag color="green">{t("accounting.status_open")}</Tag>),
+            render: (v, p) => v === "closed"
+                ? <Tag color="default">{t("accounting.status_closed")}</Tag>
+                : p.reopened_until
+                  ? <Tag color={dayjs(p.reopened_until).isAfter(dayjs()) ? "orange" : "red"}>{t(dayjs(p.reopened_until).isAfter(dayjs()) ? "accounting.status_reopened" : "accounting.status_reopening_expired")}</Tag>
+                  : <Tag color="green">{t("accounting.status_open")}</Tag>,
         },
         {
             title: t("accounting.col_closed_at"),
             dataIndex: "closed_at",
             key: "closed_at",
             render: (v) => (v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "—"),
+        },
+        {
+            title: t("accounting.reopened_until"),
+            dataIndex: "reopened_until",
+            key: "reopened_until",
+            render: (value) => value ? dayjs(value).format("DD/MM/YYYY HH:mm") : "—",
         },
         {
             title: "",
@@ -586,6 +899,8 @@ const PeriodsTab = () => {
                     >
                         <Button size="small">{t("accounting.close_period")}</Button>
                     </Popconfirm>
+                ) : p.status === "closed" && canClose ? (
+                    <Button size="small" onClick={() => handleReopen(p)}>{t("accounting.reopen_period")}</Button>
                 ) : null,
         },
     ];
@@ -603,6 +918,17 @@ const PeriodsTab = () => {
                     className="module-dark-table"
                     scroll={{ x: "max-content" }}
                     locale={{ emptyText: t("accounting.no_periods") }}
+                    expandable={{
+                        rowExpandable: (period) => period.reopenings?.length > 0,
+                        expandedRowRender: (period) => (
+                            <Table size="small" pagination={false} rowKey="_id" dataSource={period.reopenings} columns={[
+                                { title: t("accounting.reopen_period_reason"), dataIndex: "reason" },
+                                { title: t("accounting.reopened_at"), dataIndex: "reopened_at", render: (value) => dayjs(value).format("DD/MM/YYYY HH:mm") },
+                                { title: t("accounting.reopened_until"), dataIndex: "expires_at", render: (value) => dayjs(value).format("DD/MM/YYYY HH:mm") },
+                                { title: t("accounting.reclosed_at"), dataIndex: "reclosed_at", render: (value) => value ? dayjs(value).format("DD/MM/YYYY HH:mm") : "—" },
+                            ]} />
+                        ),
+                    }}
                 />
             </Card>
         </>
@@ -1115,6 +1441,8 @@ const Accounting = () => {
         { key: "overview", label: t("accounting.tab_overview"), children: <OverviewTab /> },
         { key: "chart", label: t("accounting.tab_chart_of_accounts"), children: <ChartOfAccountsTab /> },
         { key: "journal", label: t("accounting.tab_journal"), children: <JournalTab /> },
+        { key: "vouchers", label: t("accounting.tab_vouchers"), children: <ManualVouchersTab /> },
+        { key: "third_parties", label: t("accounting.tab_third_parties"), children: <ThirdPartyLedgerTab /> },
         { key: "trial_balance", label: t("accounting.tab_trial_balance"), children: <TrialBalanceTab /> },
         { key: "periods", label: t("accounting.tab_periods"), children: <PeriodsTab /> },
         { key: "statements", label: t("accounting.tab_financial_statements"), children: <FinancialStatementsTab /> },

@@ -25,3 +25,13 @@ ALTER TABLE "stock_movements"
     CHECK ("unit_cost_applied" IS NULL OR "unit_cost_applied" >= 0),
   ADD CONSTRAINT "stock_movements_value_balance_nonnegative"
     CHECK ("value_balance_after" IS NULL OR "value_balance_after" >= 0);
+
+ALTER TABLE "stock_transfers"
+  ADD COLUMN "unit_cost_applied" DECIMAL(14, 4);
+
+UPDATE "stock_transfers" st
+SET "unit_cost_applied" = p."buying_price"
+FROM "products" p
+WHERE p.id = st."product_id"
+  AND st."status" = 'in_transit'
+  AND st."unit_cost_applied" IS NULL;

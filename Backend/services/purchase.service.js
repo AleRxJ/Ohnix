@@ -4,7 +4,7 @@ import { recordStockMovement } from "./stockMovement.service.js";
 import { claimLocationStockWithCost, creditLocationStockWithCost } from "./productLocationStock.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
-import { postPurchaseJournalEntry, postPurchaseReturnJournalEntry } from "./accountingPosting.service.js";
+import { buildAccountingThirdParty, postPurchaseJournalEntry, postPurchaseReturnJournalEntry } from "./accountingPosting.service.js";
 import { issueSupportDocumentForPurchase } from "./purchaseSupportDocument.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
@@ -78,6 +78,7 @@ const findPurchaseByAnyId = async (id) =>
             purchaseStatus: true,
             createdById: true,
             pointOfSaleId: true,
+            supplier: { select: { id: true, name: true, identification: true } },
         },
     });
 
@@ -263,6 +264,7 @@ class PurchaseService {
                         createdById: userId,
                         purchase: createdPurchase,
                         totals: { total: purchaseTotal, taxAmount: purchaseTaxAmount },
+                        thirdParty: buildAccountingThirdParty("supplier", supplier),
                     });
                 }
 
@@ -388,6 +390,7 @@ class PurchaseService {
                     createdById: userId,
                     purchase: updatedPurchaseRow,
                     totals: { total: purchaseTotal, taxAmount: purchaseTaxAmount },
+                    thirdParty: buildAccountingThirdParty("supplier", purchase.supplier),
                 });
                 return updatedPurchaseRow;
             }
@@ -625,6 +628,7 @@ class PurchaseService {
                     quantity,
                     unitcost: detail.unitcost,
                     taxRateApplied: detail.taxRateApplied,
+                    inventoryCostApplied: -costing.valueDelta,
                 });
             }
 
@@ -650,6 +654,7 @@ class PurchaseService {
                 entryDate: new Date(),
                 description: "Devolución de compra",
                 lines: journalLines,
+                thirdParty: buildAccountingThirdParty("supplier", purchase.supplier),
             });
 
             return { results, purchaseFullyReturned };

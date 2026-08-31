@@ -899,14 +899,14 @@ model ProductImage {
 // (productId, pointOfSaleId) means 0, not "unknown" - see
 // productLocationStock.service.js#getOrCreate.
 model ProductLocationStock {
-  id            String   @id @default(cuid())
-  productId     String   @map("product_id")
-  pointOfSaleId String   @map("point_of_sale_id")
-  stock         Int      @default(0)
-  averageUnitCost Decimal @default(0) @map("average_unit_cost") @db.Decimal(14, 4)
-  inventoryValue Decimal @default(0) @map("inventory_value") @db.Decimal(16, 2)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(cuid())
+  productId       String   @map("product_id")
+  pointOfSaleId   String   @map("point_of_sale_id")
+  stock           Int      @default(0)
+  averageUnitCost Decimal  @default(0) @map("average_unit_cost") @db.Decimal(14, 4)
+  inventoryValue  Decimal  @default(0) @map("inventory_value") @db.Decimal(16, 2)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   product     Product     @relation(fields: [productId], references: [id])
   pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
@@ -953,6 +953,7 @@ model StockTransfer {
   fromPointOfSaleId String              @map("from_point_of_sale_id")
   toPointOfSaleId   String              @map("to_point_of_sale_id")
   quantitySent      Int                 @map("quantity_sent")
+  unitCostApplied   Decimal?            @map("unit_cost_applied") @db.Decimal(14, 4)
   // Null until received - filled in from the caller's count at receipt
   // time, which is allowed to differ from quantitySent (see the model
   // comment's "discrepancy" note). Never defaults to quantitySent on
@@ -995,31 +996,31 @@ model StockTransfer {
 // createdById (the team/account scope, see teamContext.js) so history
 // queries don't need to join through Product for tenant filtering.
 model StockMovement {
-  id            String                  @id @default(cuid())
-  productId     String                  @map("product_id")
-  accountId     String                  @map("account_id")
+  id                String                  @id @default(cuid())
+  productId         String                  @map("product_id")
+  accountId         String                  @map("account_id")
   // Which location this movement happened at - see Order.pointOfSaleId.
   // Stock itself (Product.stock) is not yet partitioned by location (that's
   // a later phase); this column only attributes history, so it can seed
   // per-location balances later without re-deriving them from scratch.
-  pointOfSaleId String                  @map("point_of_sale_id")
+  pointOfSaleId     String                  @map("point_of_sale_id")
   // Set only when this movement is also (or exclusively, for a channel-sync
   // correction with no matching POS sale) tracking one variant's own stock
   // cache - see ProductVariant's schema comment. delta/balanceAfter always
   // describe whichever of Product.stock/ProductVariant.stock this specific
   // row is about; a variant-level order line writes two rows (one product-
   // scoped, one variant-scoped), not one row with both deltas mixed.
-  variantId     String?                 @map("variant_id")
-  delta         Int
-  balanceAfter  Int                     @map("balance_after")
-  unitCostApplied Decimal?              @map("unit_cost_applied") @db.Decimal(14, 4)
-  valueDelta      Decimal?              @map("value_delta") @db.Decimal(16, 2)
-  valueBalanceAfter Decimal?            @map("value_balance_after") @db.Decimal(16, 2)
-  sourceType    StockMovementSourceType @map("source_type")
-  sourceId      String?                 @map("source_id")
-  reason        String?                 @db.Text
-  createdById   String                  @map("created_by")
-  createdAt     DateTime                @default(now()) @map("created_at")
+  variantId         String?                 @map("variant_id")
+  delta             Int
+  balanceAfter      Int                     @map("balance_after")
+  unitCostApplied   Decimal?                @map("unit_cost_applied") @db.Decimal(14, 4)
+  valueDelta        Decimal?                @map("value_delta") @db.Decimal(16, 2)
+  valueBalanceAfter Decimal?                @map("value_balance_after") @db.Decimal(16, 2)
+  sourceType        StockMovementSourceType @map("source_type")
+  sourceId          String?                 @map("source_id")
+  reason            String?                 @db.Text
+  createdById       String                  @map("created_by")
+  createdAt         DateTime                @default(now()) @map("created_at")
 
   product     Product         @relation(fields: [productId], references: [id])
   variant     ProductVariant? @relation(fields: [variantId], references: [id])
@@ -1354,7 +1355,7 @@ model OrderDetail {
   // sale. Pending/processing orders keep this null until completion. Every
   // later cancellation, return, credit note and profit report must reuse it
   // instead of reading the editable Product.buyingPrice.
-  costBasisApplied        Decimal?            @map("cost_basis_applied") @db.Decimal(12, 2)
+  costBasisApplied        Decimal?            @map("cost_basis_applied") @db.Decimal(14, 4)
   // Running totals across every partial return event for this line - same
   // pattern as PurchaseDetail (see its schema comment): StockMovement
   // (sourceType "order_return", sourceId = this order's id) is the
@@ -1851,6 +1852,21 @@ enum AccountingAccountType {
   cost
 }
 
+// Effective-dated tenant configuration. Rates are data, never hard-coded
+// legislation. `ratePercent` always uses percent units: a ReteICA rate of
+// 11 per thousand is stored as 1.1.
+enum WithholdingTaxType {
+  income
+  vat
+  ica
+}
+
+enum WithholdingBaseType {
+  subtotal
+  vat
+  total
+}
+
 model ChartAccount {
   id          String                @id @default(cuid())
   code        String
@@ -1865,16 +1881,43 @@ model ChartAccount {
   createdAt   DateTime              @default(now()) @map("created_at")
   updatedAt   DateTime              @updatedAt @map("updated_at")
 
-  parent            ChartAccount?      @relation("ChartAccountHierarchy", fields: [parentId], references: [id])
-  children          ChartAccount[]     @relation("ChartAccountHierarchy")
-  createdBy         User               @relation(fields: [createdById], references: [id])
-  cashAccounts      CashAccount[]
-  journalEntryLines JournalEntryLine[]
+  parent              ChartAccount?              @relation("ChartAccountHierarchy", fields: [parentId], references: [id])
+  children            ChartAccount[]             @relation("ChartAccountHierarchy")
+  createdBy           User                       @relation(fields: [createdById], references: [id])
+  cashAccounts        CashAccount[]
+  journalEntryLines   JournalEntryLine[]
+  manualVoucherLines  ManualJournalVoucherLine[]
+  withholdingConcepts WithholdingConcept[]
 
   @@unique([createdById, code])
   @@index([createdById])
   @@index([parentId])
   @@map("chart_accounts")
+}
+
+model WithholdingConcept {
+  id                String              @id @default(cuid())
+  accountId         String              @map("account_id")
+  code              String
+  name              String
+  taxType           WithholdingTaxType  @map("tax_type")
+  baseType          WithholdingBaseType @map("base_type")
+  ratePercent       Decimal             @map("rate_percent") @db.Decimal(8, 4)
+  minimumBaseAmount Decimal             @default(0) @map("minimum_base_amount") @db.Decimal(14, 2)
+  effectiveFrom     DateTime            @map("effective_from")
+  effectiveTo       DateTime?           @map("effective_to")
+  municipalityCode  String?             @map("municipality_code")
+  chartAccountId    String              @map("chart_account_id")
+  isActive          Boolean             @default(true) @map("is_active")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+
+  chartAccount ChartAccount @relation(fields: [chartAccountId], references: [id])
+
+  @@unique([accountId, code, effectiveFrom])
+  @@index([accountId, isActive, effectiveFrom])
+  @@index([chartAccountId])
+  @@map("withholding_concepts")
 }
 
 enum AccountingPeriodStatus {
@@ -1889,23 +1932,41 @@ enum AccountingPeriodStatus {
 // accountingPeriod.service.js#closeAccountingPeriod for why only past
 // months (never the current one) can be closed.
 model AccountingPeriod {
-  id          String                 @id @default(cuid())
-  createdById String                 @map("created_by")
-  year        Int
-  month       Int
-  status      AccountingPeriodStatus @default(open)
-  closedAt    DateTime?              @map("closed_at")
-  closedById  String?                @map("closed_by")
-  createdAt   DateTime               @default(now()) @map("created_at")
-  updatedAt   DateTime               @updatedAt @map("updated_at")
+  id            String                 @id @default(cuid())
+  createdById   String                 @map("created_by")
+  year          Int
+  month         Int
+  status        AccountingPeriodStatus @default(open)
+  closedAt      DateTime?              @map("closed_at")
+  closedById    String?                @map("closed_by")
+  reopenedUntil DateTime?              @map("reopened_until")
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
 
-  createdBy      User           @relation("AccountingPeriodCreatedBy", fields: [createdById], references: [id])
-  closedBy       User?          @relation("AccountingPeriodClosedBy", fields: [closedById], references: [id])
+  createdBy      User                        @relation("AccountingPeriodCreatedBy", fields: [createdById], references: [id])
+  closedBy       User?                       @relation("AccountingPeriodClosedBy", fields: [closedById], references: [id])
   journalEntries JournalEntry[]
+  reopenings     AccountingPeriodReopening[]
 
   @@unique([createdById, year, month])
   @@index([createdById, status])
   @@map("accounting_periods")
+}
+
+model AccountingPeriodReopening {
+  id           String    @id @default(cuid())
+  periodId     String    @map("period_id")
+  reason       String    @db.Text
+  reopenedById String    @map("reopened_by")
+  reopenedAt   DateTime  @default(now()) @map("reopened_at")
+  expiresAt    DateTime  @map("expires_at")
+  reclosedById String?   @map("reclosed_by")
+  reclosedAt   DateTime? @map("reclosed_at")
+
+  period AccountingPeriod @relation(fields: [periodId], references: [id])
+
+  @@index([periodId, reopenedAt])
+  @@map("accounting_period_reopenings")
 }
 
 enum JournalSourceType {
@@ -1931,7 +1992,65 @@ enum JournalSourceType {
   // closed period's own P&L still reads correctly) but included normally
   // in the balance sheet's equity aggregation - see closeAccountingPeriod.
   period_close
+  period_reopen
+  period_reclose
+  inventory_adjustment
+  transfer_discrepancy
+  manual_journal
+  manual_journal_reversal
   manual_expense
+}
+
+enum ManualVoucherStatus {
+  draft
+  posted
+  voided
+}
+
+model ManualJournalVoucher {
+  id              String              @id @default(cuid())
+  accountId       String              @map("account_id")
+  status          ManualVoucherStatus @default(draft)
+  entryDate       DateTime            @map("entry_date")
+  description     String              @db.Text
+  supportUrl      String?             @map("support_url") @db.Text
+  postedEntryId   String?             @unique @map("posted_entry_id")
+  reversalEntryId String?             @unique @map("reversal_entry_id")
+  createdById     String              @map("created_by")
+  postedById      String?             @map("posted_by")
+  postedAt        DateTime?           @map("posted_at")
+  voidedById      String?             @map("voided_by")
+  voidedAt        DateTime?           @map("voided_at")
+  voidReason      String?             @map("void_reason") @db.Text
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  lines ManualJournalVoucherLine[]
+
+  @@index([accountId, status, entryDate])
+  @@map("manual_journal_vouchers")
+}
+
+model ManualJournalVoucherLine {
+  id                 String                    @id @default(cuid())
+  voucherId          String                    @map("voucher_id")
+  chartAccountId     String                    @map("chart_account_id")
+  debit              Decimal                   @default(0) @db.Decimal(14, 2)
+  credit             Decimal                   @default(0) @db.Decimal(14, 2)
+  description        String?                   @db.Text
+  thirdPartyType     AccountingThirdPartyType? @map("third_party_type")
+  thirdPartyId       String?                   @map("third_party_id")
+  thirdPartyName     String?                   @map("third_party_name")
+  thirdPartyDocument String?                   @map("third_party_document")
+  position           Int
+
+  voucher      ManualJournalVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  chartAccount ChartAccount         @relation(fields: [chartAccountId], references: [id])
+
+  @@index([voucherId, position])
+  @@index([chartAccountId])
+  @@index([thirdPartyType, thirdPartyId])
+  @@map("manual_journal_voucher_lines")
 }
 
 // Append-only double-entry ledger header - mirrors StockMovement/CashMovement's
@@ -1969,20 +2088,31 @@ model JournalEntry {
 // balance is derived at report time by summing debit - credit per
 // chartAccountId.
 model JournalEntryLine {
-  id             String   @id @default(cuid())
-  journalEntryId String   @map("journal_entry_id")
-  chartAccountId String   @map("chart_account_id")
-  debit          Decimal  @default(0) @db.Decimal(14, 2)
-  credit         Decimal  @default(0) @db.Decimal(14, 2)
-  description    String?  @db.Text
-  createdAt      DateTime @default(now()) @map("created_at")
+  id                 String                    @id @default(cuid())
+  journalEntryId     String                    @map("journal_entry_id")
+  chartAccountId     String                    @map("chart_account_id")
+  debit              Decimal                   @default(0) @db.Decimal(14, 2)
+  credit             Decimal                   @default(0) @db.Decimal(14, 2)
+  description        String?                   @db.Text
+  thirdPartyType     AccountingThirdPartyType? @map("third_party_type")
+  thirdPartyId       String?                   @map("third_party_id")
+  thirdPartyName     String?                   @map("third_party_name")
+  thirdPartyDocument String?                   @map("third_party_document")
+  createdAt          DateTime                  @default(now()) @map("created_at")
 
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   chartAccount ChartAccount @relation(fields: [chartAccountId], references: [id])
 
   @@index([journalEntryId])
   @@index([chartAccountId])
+  @@index([thirdPartyType, thirdPartyId])
   @@map("journal_entry_lines")
+}
+
+enum AccountingThirdPartyType {
+  customer
+  supplier
+  other
 }
 
 model TeamInvitation {
