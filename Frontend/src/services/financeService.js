@@ -58,6 +58,16 @@ export const financeService = {
         return response.data;
     },
 
+    async getAccountsPayablePlan() {
+        const response = await api.get("/finance/accounts-payable");
+        return response.data;
+    },
+
+    async updatePurchaseDueDate(purchaseId, dueDate) {
+        const response = await api.patch(`/finance/purchases/${purchaseId}/due-date`, { due_date: dueDate });
+        return response.data;
+    },
+
     async createStatementEntries(cashAccountId, entries) {
         const response = await api.post("/finance/reconciliation/statement-entries", {
             cash_account_id: cashAccountId,

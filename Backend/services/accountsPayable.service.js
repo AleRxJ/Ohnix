@@ -1,0 +1,56 @@
+import { prisma } from "../db/prisma.js";
+import { ApiError } from "../utils/ApiError.js";
+
+const round2 = (value) => Number(Number(value).toFixed(2));
+
+export const buildPayablePlan = ({ purchases, availableCash, now = new Date() }) => {
+    const documents = purchases.map((purchase) => {
+        const gross = purchase.purchaseDetails.reduce((sum, row) => sum + Number(row.total) + Number(row.taxAmount) - Number(row.refundAmount) - Number(row.returnedTaxAmount), 0);
+        const withheld = purchase.retentions.reduce((sum, row) => sum + Number(row.withheldAmount) - Number(row.returnedWithheldAmount), 0);
+        const paid = purchase.payments.reduce((sum, row) => sum + Number(row.amount), 0);
+        const total = Math.max(round2(gross - withheld), 0);
+        const pending = Math.max(round2(total - paid), 0);
+        const due = purchase.dueDate ? new Date(purchase.dueDate) : null;
+        const rawDays = due ? Math.floor((now - due) / 86400000) : null;
+        const daysOverdue = rawDays === null ? null : Math.max(rawDays, 0);
+        const status = rawDays === null ? "unscheduled" : rawDays > 0 ? "overdue" : rawDays >= -7 ? "due_soon" : "current";
+        return { id: purchase.id, number: purchase.purchaseNo, document_date: purchase.purchaseDate, due_date: purchase.dueDate, supplier: purchase.supplier, total, paid: round2(paid), pending, days_overdue: daysOverdue, status };
+    }).filter((row) => row.pending > 0.001);
+
+    const rank = { overdue: 0, due_soon: 1, current: 2, unscheduled: 3 };
+    documents.sort((a, b) => rank[a.status] - rank[b.status] || new Date(a.due_date || a.document_date) - new Date(b.due_date || b.document_date));
+    let cashRemaining = Math.max(round2(availableCash), 0);
+    const planned = documents.map((row) => {
+        const suggested = Math.min(row.pending, cashRemaining);
+        cashRemaining = round2(cashRemaining - suggested);
+        return { ...row, suggested_payment: round2(suggested), coverage: suggested >= row.pending ? "full" : suggested > 0 ? "partial" : "unfunded" };
+    });
+    const totalPending = round2(planned.reduce((sum, row) => sum + row.pending, 0));
+    return { summary: { available_cash: round2(availableCash), total_pending: totalPending, planned_payment: round2(Math.min(totalPending, availableCash)), remaining_cash: cashRemaining, funding_gap: round2(Math.max(totalPending - availableCash, 0)), document_count: planned.length }, documents: planned };
+};
+
+export const getAccountsPayablePlan = async ({ accountId, posScopeAll, posScopeIds }) => {
+    const posWhere = posScopeAll ? {} : { pointOfSaleId: { in: posScopeIds || [] } };
+    const [purchases, cashAccounts] = await Promise.all([
+        prisma.purchase.findMany({
+            where: { createdById: accountId, ...posWhere, purchaseStatus: { in: ["completed", "returned"] } },
+            select: {
+                id: true, purchaseNo: true, purchaseDate: true, dueDate: true,
+                supplier: { select: { id: true, name: true, identification: true } },
+                purchaseDetails: { select: { total: true, taxAmount: true, refundAmount: true, returnedTaxAmount: true } },
+                retentions: { select: { withheldAmount: true, returnedWithheldAmount: true } },
+                payments: { select: { amount: true } },
+            },
+        }),
+        prisma.cashAccount.findMany({ where: { createdById: accountId, isActive: true, ...(posScopeAll ? {} : { OR: [{ pointOfSaleId: null }, { pointOfSaleId: { in: posScopeIds || [] } }] }) }, select: { balance: true } }),
+    ]);
+    return buildPayablePlan({ purchases, availableCash: cashAccounts.reduce((sum, row) => sum + Number(row.balance), 0) });
+};
+
+export const updatePurchaseDueDate = async ({ accountId, purchaseId, dueDate }) => {
+    const parsed = dueDate ? new Date(dueDate) : null;
+    if (parsed && Number.isNaN(parsed.getTime())) throw new ApiError(400, "Fecha de vencimiento inválida.");
+    const purchase = await prisma.purchase.findFirst({ where: { createdById: accountId, OR: [{ id: purchaseId }, { legacyMongoId: purchaseId }] }, select: { id: true } });
+    if (!purchase) throw new ApiError(404, "Compra no encontrada.");
+    return prisma.purchase.update({ where: { id: purchase.id }, data: { dueDate: parsed }, select: { id: true, dueDate: true } });
+};

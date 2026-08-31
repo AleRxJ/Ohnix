@@ -4,6 +4,7 @@ import { isSingleEntrySource } from "../services/journalEntry.service.js";
 import { buildAccountingThirdParty, calculatePurchaseReturnValues, getLineCostBasis } from "../services/accountingPosting.service.js";
 import { calculateRetentionReturn, calculateWithholdingAmount } from "../services/withholdingConcept.service.js";
 import { summarizeWithholdingRows } from "../services/withholdingReport.service.js";
+import { buildPayablePlan } from "../services/accountsPayable.service.js";
 
 test("one-to-one accounting sources are idempotent when they have a source id", () => {
     for (const sourceType of [
@@ -47,6 +48,14 @@ test("withholding report separates caused, reversed and current balances", () =>
         { tax_type: "income", base: 1500, withheld: 37.5, reversed: 5, net: 32.5, documents: 2 },
         { tax_type: "ica", base: 1000, withheld: 6.9, reversed: 6.9, net: 0, documents: 1 },
     ]);
+});
+
+test("payable planner uses returns, withholdings, payments and cash in one balance", () => {
+    const plan = buildPayablePlan({ availableCash: 80, now: new Date("2026-08-31T12:00:00Z"), purchases: [{ id: "p1", purchaseNo: "C-1", purchaseDate: new Date("2026-08-01"), dueDate: new Date("2026-08-20"), supplier: { id: "s1", name: "Proveedor" }, purchaseDetails: [{ total: 100, taxAmount: 19, refundAmount: 10, returnedTaxAmount: 1.9 }], retentions: [{ withheldAmount: 2.5, returnedWithheldAmount: 0.5 }], payments: [{ amount: 25 }] }] });
+    assert.equal(plan.documents[0].pending, 80.1);
+    assert.equal(plan.documents[0].suggested_payment, 80);
+    assert.equal(plan.documents[0].coverage, "partial");
+    assert.equal(plan.summary.funding_gap, 0.1);
 });
 
 test("a return keeps the frozen sale cost after the product cost changes", () => {

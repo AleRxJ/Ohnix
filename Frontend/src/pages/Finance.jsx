@@ -9,6 +9,7 @@ import { pointOfSaleService } from "../services/pointOfSaleService";
 import { useCurrency } from "../context/CurrencyContext";
 import { useTeam } from "../context/TeamContext";
 import useI18n from "../hooks/useI18n";
+import AccountsPayablePlanner from "../components/finance/AccountsPayablePlanner";
 
 const ACCOUNT_TYPE_ICON = { cash: WalletOutlined, bank: BankOutlined };
 
@@ -179,6 +180,7 @@ const Finance = () => {
                             })}
                         </div>
                     )}
+                    <AccountsPayablePlanner canEdit={canEdit} />
                 </div>
             </div>
 

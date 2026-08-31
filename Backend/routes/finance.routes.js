@@ -17,6 +17,8 @@ import {
     listUnmatchedStatementEntries,
     listUnmatchedMovements,
     matchStatementEntry,
+    getAccountsPayablePlan,
+    updatePurchaseDueDate,
 } from "../controllers/finance.controller.js";
 
 const router = Router();
@@ -47,6 +49,10 @@ router.route("/orders/:orderId/payments")
 router.route("/purchases/:purchaseId/payments")
     .get(requireModulePermission("finance", "view"), listPurchasePayments)
     .post(requireModulePermission("finance", "edit"), registerPurchasePayment);
+router.route("/accounts-payable")
+    .get(requireModulePermission("finance", "view"), getAccountsPayablePlan);
+router.route("/purchases/:purchaseId/due-date")
+    .patch(requireModulePermission("finance", "edit"), updatePurchaseDueDate);
 
 router.route("/reconciliation/statement-entries")
     .post(requireModulePermission("finance", "edit"), createStatementEntries);

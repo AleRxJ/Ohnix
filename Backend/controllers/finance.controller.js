@@ -7,6 +7,7 @@ import * as orderPaymentService from "../services/orderPayment.service.js";
 import * as purchasePaymentService from "../services/purchasePayment.service.js";
 import * as reconciliationService from "../services/bankReconciliation.service.js";
 import * as manualExpenseService from "../services/manualExpense.service.js";
+import * as accountsPayableService from "../services/accountsPayable.service.js";
 
 const scope = (req) => ({
     accountId: req.user.prismaId,
@@ -177,6 +178,16 @@ export const registerPurchasePayment = asyncHandler(async (req, res, next) => {
         reference,
     });
     return res.status(201).json(new ApiResponse(201, mapPayment(payment), "Purchase payment registered successfully"));
+});
+
+export const getAccountsPayablePlan = asyncHandler(async (req, res) => {
+    const plan = await accountsPayableService.getAccountsPayablePlan(scope(req));
+    return res.status(200).json(new ApiResponse(200, plan, "Plan de cuentas por pagar consultado."));
+});
+
+export const updatePurchaseDueDate = asyncHandler(async (req, res) => {
+    const purchase = await accountsPayableService.updatePurchaseDueDate({ accountId: req.user.prismaId, purchaseId: req.params.purchaseId, dueDate: req.body?.due_date || null });
+    return res.status(200).json(new ApiResponse(200, { _id: purchase.id, due_date: purchase.dueDate }, "Vencimiento actualizado."));
 });
 
 // --- Bank reconciliation ---
