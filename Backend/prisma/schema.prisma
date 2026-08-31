@@ -689,22 +689,28 @@ model Customer {
   tributeCode                String?  @map("tribute_code")
   municipalityCode           String?  @map("municipality_code")
   countryCode                String?  @map("country_code")
-  // Fixed withholding rates (retenciones) applied to this customer's DIAN
-  // invoices - set only when the customer is a known self-withholding agent
-  // ("agente autorretenedor"), typically only for B2B buyers, never for
-  // walk-in/regular retail customers. Null means "no retention" - this is
-  // deliberately a flat configured rate, not an automatic DIAN concept/UVT
-  // rules engine (those depend on transaction concept and thresholds this
-  // system doesn't model). reteFuente/reteIca are applied to the pre-tax
-  // sale amount; reteIva is applied to the IVA amount itself (its usual
-  // legal base), not the sale amount - see buildItcycleWithholdingTotals in
-  // electronicInvoicing.service.js.
+  // Fixed withholding rates (retenciones) this customer applies when paying
+  // Ohnix's DIAN invoices - set only when the customer is a known
+  // self-withholding agent ("agente autorretenedor"), typically only for B2B
+  // buyers, never for walk-in/regular retail customers. Null means "no
+  // retention" - this is deliberately a flat configured rate, not an
+  // automatic DIAN concept/UVT rules engine (those depend on transaction
+  // concept and thresholds this system doesn't model). Named after
+  // WithholdingTaxType (income/vat/ica) for consistency with
+  // PurchaseRetention/WithholdingConcept below - same tax mechanism, the
+  // opposite direction (what a customer withholds paying Ohnix, not what
+  // Ohnix withholds paying a supplier), so no ChartAccount/journal entry of
+  // Ohnix's own is needed here - that's the customer's own bookkeeping.
+  // withholdingIncomePercent/withholdingIcaPercent apply to the pre-tax sale
+  // amount (WithholdingBaseType.subtotal); withholdingVatPercent applies to
+  // the IVA amount itself (WithholdingBaseType.vat), not the sale amount -
+  // see buildItcycleWithholdingTotals in electronicInvoicing.service.js.
   // 3 decimal places, not 2: real Colombian ICA rates routinely need this
   // precision (e.g. 0.966%, 0.414%) - Decimal(5,2) silently rounded 0.966 to
   // 0.97 (a real, different rate) the first time this was tested for real.
-  reteFuentePercent          Decimal? @map("rete_fuente_percent") @db.Decimal(6, 3)
-  reteIcaPercent             Decimal? @map("rete_ica_percent") @db.Decimal(6, 3)
-  reteIvaPercent             Decimal? @map("rete_iva_percent") @db.Decimal(6, 3)
+  withholdingIncomePercent   Decimal? @map("withholding_income_percent") @db.Decimal(6, 3)
+  withholdingIcaPercent      Decimal? @map("withholding_ica_percent") @db.Decimal(6, 3)
+  withholdingVatPercent      Decimal? @map("withholding_vat_percent") @db.Decimal(6, 3)
   isTutorialData             Boolean  @default(false) @map("is_tutorial_data")
   createdById                String   @map("created_by")
   // See Supplier.pointOfSaleId - same "assigned at creation" rule.
@@ -1417,6 +1423,7 @@ model OrderDetail {
   returnDate              DateTime?           @map("return_date")
   returnedQuantity        Int                 @default(0) @map("returned_quantity")
   refundAmount            Decimal             @default(0) @map("refund_amount") @db.Decimal(12, 2)
+  returnedTaxAmount       Decimal             @default(0) @map("returned_tax_amount") @db.Decimal(12, 2)
   // Frozen at order creation (order.service.js#createOrder), same reasoning
   // as taxRateApplied above: the per-unit weight/volumetric weight the
   // product actually had when it was sold, in grams, so a later edit to the

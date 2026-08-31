@@ -76,6 +76,11 @@ export const adminService = {
         return response.data;
     },
 
+    async setUserPassword(userId, password) {
+        const response = await api.patch(`/users/admin/users/${userId}/password`, { password });
+        return response.data;
+    },
+
     // Runs the DIAN habilitación "set de pruebas" (30 facturas, 10 notas
     // débito, 10 notas crédito) for a company already provisioned with
     // itcycle-api-dian - see Backend/services/dianTestMatrix.service.js.

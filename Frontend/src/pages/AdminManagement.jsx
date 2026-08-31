@@ -14,6 +14,8 @@ import {
     CompanyFormModal,
     UserFormModal,
     AssignCompanyModal,
+    UserTeamModal,
+    SetUserPasswordModal,
 } from "../components/admin";
 
 const AdminManagement = () => {
@@ -31,10 +33,14 @@ const AdminManagement = () => {
     const [userSubmitting, setUserSubmitting] = useState(false);
     const [assignmentUser, setAssignmentUser] = useState(null);
     const [assignmentSubmitting, setAssignmentSubmitting] = useState(false);
+    const [teamContextUser, setTeamContextUser] = useState(null);
+    const [passwordUser, setPasswordUser] = useState(null);
+    const [passwordSubmitting, setPasswordSubmitting] = useState(false);
 
     const [companyForm] = Form.useForm();
     const [userForm] = Form.useForm();
     const [assignmentForm] = Form.useForm();
+    const [passwordForm] = Form.useForm();
 
     const isAdmin = user?.role === "admin";
 
@@ -185,6 +191,24 @@ const AdminManagement = () => {
         }
     };
 
+    const closePasswordModal = () => {
+        setPasswordUser(null);
+        passwordForm.resetFields();
+    };
+
+    const handleSetPassword = async ({ password }) => {
+        try {
+            setPasswordSubmitting(true);
+            await adminService.setUserPassword(passwordUser.id, password);
+            toast.success(t("admin.password_updated"));
+            closePasswordModal();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setPasswordSubmitting(false);
+        }
+    };
+
     if (!isAdmin) {
         return (
             <div className="p-6 sm:p-8">
@@ -228,6 +252,8 @@ const AdminManagement = () => {
                                     onAdd={() => setUserModalOpen(true)}
                                     onAssignCompany={openCompanyAssignment}
                                     onToggleVerification={toggleUserVerification}
+                                    onViewTeam={setTeamContextUser}
+                                    onSetPassword={setPasswordUser}
                                 />
                             ),
                         },
@@ -266,6 +292,16 @@ const AdminManagement = () => {
                 submitting={assignmentSubmitting}
                 form={assignmentForm}
                 companyOptions={companyOptions}
+            />
+
+            <UserTeamModal user={teamContextUser} onCancel={() => setTeamContextUser(null)} />
+
+            <SetUserPasswordModal
+                user={passwordUser}
+                onCancel={closePasswordModal}
+                onSubmit={handleSetPassword}
+                submitting={passwordSubmitting}
+                form={passwordForm}
             />
         </div>
     );

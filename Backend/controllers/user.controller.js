@@ -11,6 +11,7 @@ import { notifyAdminsUpgradeRequestCreated, notifyUserEmailVerified, notifyAdmin
 import { clearActiveSession, isSessionValid } from "../utils/sessionStore.js";
 import { issueAuthTokens, userLookupByTokenId, AUTH_COOKIE_OPTIONS } from "../utils/authTokens.js";
 import { shouldRouteToManualReview } from "./subscription.controller.js";
+import { logAdminAction } from "../utils/adminAudit.js";
 
 // ─── Bilingual OTP email builder ─────────────────────────────────────────────
 const buildOtpEmail = ({ username, otp, locale, context }) => {
@@ -824,6 +825,55 @@ const updateUserAdmin = asyncHandler(async (req, res, next) => {
         .json(new ApiResponse(200, updated, "User updated successfully"));
 });
 
+// Admin-initiated password set - the admin already passed the isAdmin gate,
+// so unlike changeCurrentPassword this skips the old-password/OTP checks.
+// Kept as its own route (not folded into updateUserAdmin) so this
+// security-sensitive action stays unambiguous in the route list and audit
+// log rather than a stray `password` key silently accepted by the general
+// profile-edit endpoint.
+const setUserPasswordAdmin = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+    const { password } = req.body || {};
+
+    if (!password || password.length < 8) {
+        return next(new ApiError(400, "Password must be at least 8 characters long"));
+    }
+
+    const existing = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+    });
+
+    if (!existing) {
+        return next(new ApiError(404, "User not found"));
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await prisma.user.update({
+        where: { id: userId },
+        data: {
+            password: hashedPassword,
+            // Same session-invalidation as changeCurrentPassword - anyone
+            // logged in as this user before the reset must be signed out
+            // everywhere, not just have their refresh token revoked.
+            refreshToken: null,
+            tokenVersion: { increment: 1 },
+        },
+    });
+
+    await logAdminAction({
+        adminId: req.user.prismaId,
+        action: "reset_user_password",
+        targetType: "user",
+        targetId: userId,
+        targetUserId: userId,
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, {}, "Password updated successfully"));
+});
+
 // Send verification otp to users email
 const sendVerifyOtp = asyncHandler(async (req, res, next) => {
     try {
@@ -1252,6 +1302,7 @@ export {
     listUsersAdmin,
     createUserAdmin,
     updateUserAdmin,
+    setUserPasswordAdmin,
     sendVerifyOtp,
     verifyEmail,
     isAuthenticated,

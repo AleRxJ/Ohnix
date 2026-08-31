@@ -53,15 +53,15 @@ test("buildItcycleTotals returns no tax totals for a fully tax-exempt order", ()
 
 test("buildItcycleWithholdingTotals returns nothing for a customer with no configured rates", () => {
     const result = buildItcycleWithholdingTotals(
-        { reteFuentePercent: null, reteIcaPercent: null, reteIvaPercent: null },
+        { withholdingIncomePercent: null, withholdingIcaPercent: null, withholdingVatPercent: null },
         { lineExtensionAmount: 100000 },
         [{ taxAmount: 19000, subtotals: [{ taxScheme: { code: "01" } }] }]
     );
     assert.deepEqual(result, []);
 });
 
-test("buildItcycleWithholdingTotals applies reteFuente/reteIca to the pre-tax sale amount and reteIva to the IVA amount", () => {
-    const customer = { reteFuentePercent: 2.5, reteIcaPercent: 0.966, reteIvaPercent: 15 };
+test("buildItcycleWithholdingTotals applies income/ica to the pre-tax sale amount and vat to the IVA amount", () => {
+    const customer = { withholdingIncomePercent: 2.5, withholdingIcaPercent: 0.966, withholdingVatPercent: 15 };
     const legalMonetaryTotal = { lineExtensionAmount: 100000 };
     const taxTotals = [{ taxAmount: 19000, subtotals: [{ taxableAmount: 100000, taxAmount: 19000, percent: 19, taxScheme: { code: "01" } }] }];
 
@@ -78,7 +78,7 @@ test("buildItcycleWithholdingTotals applies reteFuente/reteIca to the pre-tax sa
 
 test("buildItcycleWithholdingTotals only includes the withholding types the customer actually has configured", () => {
     const result = buildItcycleWithholdingTotals(
-        { reteFuentePercent: 4, reteIcaPercent: null, reteIvaPercent: null },
+        { withholdingIncomePercent: 4, withholdingIcaPercent: null, withholdingVatPercent: null },
         { lineExtensionAmount: 50000 },
         []
     );

@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { Table, Button, Input, Select, Tag, Switch, Popconfirm, Card, Empty, Avatar } from "antd";
-import { PlusOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { PlusOutlined, SearchOutlined, UserOutlined, TeamOutlined, LockOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
 const tableShellClass = "rounded-xl shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)]";
 
-const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, t }) => (
+const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, onViewTeam, onSetPassword, t }) => (
     <Card className="mb-4 module-shell overflow-hidden hover-lift" styles={{ body: { padding: 16 } }}>
         <div className="flex items-start gap-3">
             <Avatar size={44} icon={<UserOutlined />} className="flex-shrink-0" />
@@ -40,12 +40,20 @@ const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, t }) => (
                         <Switch checked={user.isVerified} />
                     </Popconfirm>
                 </div>
+                <div className="mt-2 flex items-center gap-3">
+                    <Button type="text" size="small" className="!px-0 !text-[var(--ohnix-text-muted)]" icon={<TeamOutlined />} onClick={() => onViewTeam(user)}>
+                        {t("admin.view_team")}
+                    </Button>
+                    <Button type="text" size="small" className="!px-0 !text-[var(--ohnix-text-muted)]" icon={<LockOutlined />} onClick={() => onSetPassword(user)}>
+                        {t("admin.set_password")}
+                    </Button>
+                </div>
             </div>
         </div>
     </Card>
 );
 
-const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleVerification }) => {
+const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleVerification, onViewTeam, onSetPassword }) => {
     const { t } = useI18n();
     const [search, setSearch] = useState("");
     const [companyFilter, setCompanyFilter] = useState(null);
@@ -139,12 +147,16 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
         {
             title: t("common.actions"),
             key: "actions",
-            width: 140,
+            width: 220,
             fixed: "right",
             render: (_, record) => (
-                <Button type="text" className="!text-[#44F3F0]" onClick={() => onAssignCompany(record)}>
-                    {t("admin.assign_company_button")}
-                </Button>
+                <div className="flex flex-wrap items-center gap-1">
+                    <Button type="text" size="small" className="!text-[#44F3F0]" onClick={() => onAssignCompany(record)}>
+                        {t("admin.assign_company_button")}
+                    </Button>
+                    <Button type="text" size="small" icon={<TeamOutlined />} title={t("admin.view_team")} onClick={() => onViewTeam(record)} />
+                    <Button type="text" size="small" icon={<LockOutlined />} title={t("admin.set_password")} onClick={() => onSetPassword(record)} />
+                </div>
             ),
         },
     ];
@@ -192,6 +204,8 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
                             user={user}
                             onAssignCompany={onAssignCompany}
                             onToggleVerification={onToggleVerification}
+                            onViewTeam={onViewTeam}
+                            onSetPassword={onSetPassword}
                             t={t}
                         />
                     ))

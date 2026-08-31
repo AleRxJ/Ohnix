@@ -680,29 +680,36 @@ export const buildItcycleSendOptions = (company) =>
     text(company?.itcycleTestSetId) ? { method: "SendTestSetAsync", testSetId: company.itcycleTestSetId } : undefined;
 
 // Retenciones (ReteFuente/ReteICA/ReteIVA - TaxCode 06/07/05) - a flat rate
-// configured per customer (Customer.reteFuentePercent/reteIcaPercent/
-// reteIvaPercent), set only for known self-withholding-agent buyers
-// ("agente autorretenedor"); most customers have none configured, in which
-// case this returns an empty array and the document carries no withholding
-// at all. Deliberately a flat configured rate, not an automatic DIAN
-// concept/UVT-threshold engine - those depend on transaction concept and
-// per-period thresholds this system doesn't model.
+// configured per customer (Customer.withholdingIncomePercent/
+// withholdingIcaPercent/withholdingVatPercent - named after
+// WithholdingTaxType.income/ica/vat, the same enum PurchaseRetention/
+// WithholdingConcept use for the opposite direction: what Ohnix withholds
+// paying a supplier, vs. this - what a customer withholds paying Ohnix), set
+// only for known self-withholding-agent buyers ("agente autorretenedor");
+// most customers have none configured, in which case this returns an empty
+// array and the document carries no withholding at all. Deliberately a flat
+// configured rate, not an automatic DIAN concept/UVT-threshold engine -
+// those depend on transaction concept and per-period thresholds this system
+// doesn't model, and unlike PurchaseRetention this never posts a ChartAccount
+// journal entry of Ohnix's own - what the customer withholds is the
+// customer's bookkeeping, not Ohnix's.
 //
-// reteFuente/reteIca are applied to the pre-tax sale amount (lineExtensionAmount);
-// reteIva is applied to the IVA amount itself (its usual legal base), not
-// the sale amount - see itcycleFiscalErrors' sibling comment for why these
-// three live on Customer rather than Order (a rate is a property of WHO
-// you're selling to, not of any one sale).
+// withholdingIncome/withholdingIca apply to the pre-tax sale amount
+// (lineExtensionAmount, i.e. WithholdingBaseType.subtotal); withholdingVat
+// applies to the IVA amount itself (WithholdingBaseType.vat), not the sale
+// amount - see itcycleFiscalErrors' sibling comment for why these three live
+// on Customer rather than Order (a rate is a property of WHO you're selling
+// to, not of any one sale).
 export const buildItcycleWithholdingTotals = (customer, legalMonetaryTotal, taxTotals) => {
     // Plain Number(), not toNumber() - toNumber truncates to 2 decimals for
     // MONEY amounts, but a real ICA rate is routinely more precise than that
     // (e.g. 0.966%, 0.414%) - rounding the rate itself would silently change
     // it to a different, wrong percentage before it's ever multiplied by
     // anything.
-    const reteFuentePercent = customer?.reteFuentePercent != null ? Number(customer.reteFuentePercent) : null;
-    const reteIcaPercent = customer?.reteIcaPercent != null ? Number(customer.reteIcaPercent) : null;
-    const reteIvaPercent = customer?.reteIvaPercent != null ? Number(customer.reteIvaPercent) : null;
-    if (!reteFuentePercent && !reteIcaPercent && !reteIvaPercent) return [];
+    const incomePercent = customer?.withholdingIncomePercent != null ? Number(customer.withholdingIncomePercent) : null;
+    const icaPercent = customer?.withholdingIcaPercent != null ? Number(customer.withholdingIcaPercent) : null;
+    const vatPercent = customer?.withholdingVatPercent != null ? Number(customer.withholdingVatPercent) : null;
+    if (!incomePercent && !icaPercent && !vatPercent) return [];
 
     const saleBase = legalMonetaryTotal.lineExtensionAmount;
     const ivaBase = taxTotals
@@ -715,9 +722,9 @@ export const buildItcycleWithholdingTotals = (customer, legalMonetaryTotal, taxT
         const amount = toNumber(base * (percent / 100));
         withholdingTotals.push({ taxAmount: amount, subtotals: [{ taxableAmount: base, taxAmount: amount, percent, taxScheme: { code, name } }] });
     };
-    addWithholding(reteFuentePercent, "06", "ReteRenta", saleBase);
-    addWithholding(reteIcaPercent, "07", "ReteICA", saleBase);
-    addWithholding(reteIvaPercent, "05", "ReteIVA", ivaBase);
+    addWithholding(incomePercent, "06", "ReteRenta", saleBase);
+    addWithholding(icaPercent, "07", "ReteICA", saleBase);
+    addWithholding(vatPercent, "05", "ReteIVA", ivaBase);
     return withholdingTotals;
 };
 

@@ -31,6 +31,9 @@ const mapCustomer = (customer) => ({
     tribute_code: customer.tributeCode,
     municipality_code: customer.municipalityCode,
     country_code: customer.countryCode,
+    withholding_income_percent: customer.withholdingIncomePercent != null ? Number(customer.withholdingIncomePercent) : null,
+    withholding_ica_percent: customer.withholdingIcaPercent != null ? Number(customer.withholdingIcaPercent) : null,
+    withholding_vat_percent: customer.withholdingVatPercent != null ? Number(customer.withholdingVatPercent) : null,
     photo: customer.photo,
     created_by: {
         _id: toExternalId(customer.createdBy),
@@ -75,6 +78,40 @@ const fiscalCustomerData = (body) => {
                 `${body[input] || ""}`.trim().toUpperCase() || null,
             ])
     );
+};
+
+// Customer.withholdingIncomePercent/withholdingIcaPercent/withholdingVatPercent -
+// see the schema comment on Customer for what these mean (rates a known
+// self-withholding-agent buyer applies when paying Ohnix's DIAN invoices,
+// consumed by buildItcycleWithholdingTotals in electronicInvoicing.service.js).
+// Not required for a regular/walk-in customer, so every key is optional and
+// an empty value clears it back to "no retention" rather than erroring.
+const WITHHOLDING_CUSTOMER_FIELDS = {
+    withholding_income_percent: "withholdingIncomePercent",
+    withholding_ica_percent: "withholdingIcaPercent",
+    withholding_vat_percent: "withholdingVatPercent",
+};
+
+const isValidWithholdingPercent = (value) => {
+    const num = Number(value);
+    return Number.isFinite(num) && num >= 0 && num <= 100;
+};
+
+const withholdingCustomerData = (body) => {
+    const data = {};
+    for (const [input, field] of Object.entries(WITHHOLDING_CUSTOMER_FIELDS)) {
+        if (body[input] === undefined) continue;
+        const raw = body[input];
+        if (raw === null || raw === "") {
+            data[field] = null;
+            continue;
+        }
+        if (!isValidWithholdingPercent(raw)) {
+            throw new ApiError(400, `${input} debe ser un porcentaje entre 0 y 100.`);
+        }
+        data[field] = Number(raw);
+    }
+    return data;
 };
 
 const createCustomer = asyncHandler(async (req, res, next) => {
@@ -137,6 +174,7 @@ const createCustomer = asyncHandler(async (req, res, next) => {
                 createdById: req.user.prismaId,
                 pointOfSaleId,
                 ...fiscalCustomerData(req.body),
+                ...withholdingCustomerData(req.body),
             },
             include: {
                 createdBy: {
@@ -287,6 +325,7 @@ const updateCustomer = asyncHandler(async (req, res, next) => {
                 }),
                 ...(updateData.photo !== undefined && { photo: updateData.photo }),
                 ...fiscalCustomerData(updateData),
+                ...withholdingCustomerData(updateData),
             },
             include: {
                 createdBy: {

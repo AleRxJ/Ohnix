@@ -338,7 +338,7 @@ VITE_BACKEND_URL=https://ohnix.onrender.com
 
 ## Contact
 
-**GitHub**: [AleRxJ/Ohnix](https://github.com/AleRxJ/Ohnix)
+**GitHub**: [AleRxJ/Ohnix](https://github.com/AleRxJ/Ohnix)  
 **Email**: info@itcycle.co
 
 <p align="center">

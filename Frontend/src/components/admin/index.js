@@ -5,3 +5,5 @@ export { default as ColombiaTaxSettingsTab } from "./ColombiaTaxSettingsTab";
 export { default as CompanyFormModal } from "./CompanyFormModal";
 export { default as UserFormModal } from "./UserFormModal";
 export { default as AssignCompanyModal } from "./AssignCompanyModal";
+export { default as UserTeamModal } from "./UserTeamModal";
+export { default as SetUserPasswordModal } from "./SetUserPasswordModal";

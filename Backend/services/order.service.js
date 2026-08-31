@@ -13,6 +13,7 @@ import { assertPosAccess } from "../middleware/pos.permissions.js";
 import { buildAccountingThirdParty, postOrderSaleJournalEntry, postOrderReturnJournalEntry } from "./accountingPosting.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
+const roundMoney = (value) => Number(Number(value).toFixed(2));
 
 const generateInvoiceNo = () => {
     const ts = Date.now().toString(36).toUpperCase();
@@ -581,9 +582,11 @@ class OrderService {
                     id: true,
                     quantity: true,
                     unitcost: true,
+                    taxAmount: true,
                     taxRateApplied: true,
                     costBasisApplied: true,
                     returnedQuantity: true,
+                    returnedTaxAmount: true,
                     productId: true,
                     variantId: true,
                     product: { select: { createdById: true, buyingPrice: true } },
@@ -657,12 +660,17 @@ class OrderService {
                     // Same optimistic claim as processReturn: guards against a
                     // concurrent granular return on this same line changing
                     // returnedQuantity between the read above and this write.
+                    const taxRemaining = Math.max(Number(detail.taxAmount) - Number(detail.returnedTaxAmount), 0);
+                    const returnedTaxNow = detail.returnedQuantity + pending === detail.quantity
+                        ? taxRemaining
+                        : Math.min(roundMoney(pending * Number(detail.unitcost) * Number(detail.taxRateApplied) / 100), taxRemaining);
                     const detailClaim = await tx.orderDetail.updateMany({
                         where: { id: detail.id, returnedQuantity: detail.returnedQuantity },
                         data: {
                             returnDate: new Date(),
                             returnedQuantity: { increment: pending },
                             refundAmount: { increment: pending * Number(detail.unitcost) },
+                            returnedTaxAmount: { increment: returnedTaxNow },
                         },
                     });
 
@@ -1059,6 +1067,10 @@ class OrderService {
                 }
 
                 const refundNow = quantity * Number(detail.unitcost);
+                const taxRemaining = Math.max(Number(detail.taxAmount) - Number(detail.returnedTaxAmount), 0);
+                const returnedTaxNow = detail.returnedQuantity + quantity === detail.quantity
+                    ? taxRemaining
+                    : Math.min(roundMoney(quantity * Number(detail.unitcost) * Number(detail.taxRateApplied) / 100), taxRemaining);
 
                 // Same claim idiom as purchase.service.js#processReturn: the
                 // returnedQuantity read that fed the insufficientItems check
@@ -1071,6 +1083,7 @@ class OrderService {
                         returnDate: new Date(),
                         returnedQuantity: { increment: quantity },
                         refundAmount: { increment: refundNow },
+                        returnedTaxAmount: { increment: returnedTaxNow },
                     },
                 });
 
@@ -1083,7 +1096,7 @@ class OrderService {
 
                 const updatedDetail = await tx.orderDetail.findUniqueOrThrow({
                     where: { id: detail.id },
-                    select: { returnedQuantity: true, refundAmount: true },
+                    select: { returnedQuantity: true, refundAmount: true, returnedTaxAmount: true },
                 });
 
                 results.push({
@@ -1091,8 +1104,10 @@ class OrderService {
                     product_id: toExternalId(detail.product),
                     returned_now: quantity,
                     refund_now: refundNow,
+                    returned_tax_now: returnedTaxNow,
                     returned_quantity: updatedDetail.returnedQuantity,
                     refund_amount: Number(updatedDetail.refundAmount),
+                    returned_tax_amount: Number(updatedDetail.returnedTaxAmount),
                     pending_quantity: detail.quantity - updatedDetail.returnedQuantity,
                     fully_returned: updatedDetail.returnedQuantity === detail.quantity,
                 });

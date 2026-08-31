@@ -16,9 +16,14 @@ import {
     listUsersAdmin,
     createUserAdmin,
     updateUserAdmin,
+    setUserPasswordAdmin,
     sendChangePasswordOtp,
     verifyChangePasswordOtp,
 } from "../controllers/user.controller.js";
+import {
+    getUserTeamContextAdmin,
+    updateUserTeamMemberAdmin,
+} from "../controllers/adminTeam.controller.js";
 import { upload } from "../middleware/multer.middleware.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
@@ -61,6 +66,9 @@ router
     .get(verifyJWT, isAdmin, listUsersAdmin)
     .post(verifyJWT, isAdmin, createUserAdmin);
 router.route("/admin/users/:userId").patch(verifyJWT, isAdmin, updateUserAdmin);
+router.route("/admin/users/:userId/password").patch(verifyJWT, isAdmin, setUserPasswordAdmin);
+router.route("/admin/users/:userId/team").get(verifyJWT, isAdmin, getUserTeamContextAdmin);
+router.route("/admin/users/:userId/team/member").patch(verifyJWT, isAdmin, updateUserTeamMemberAdmin);
 
 router.route("/send-verify-otp").post(verifyJWT, otpRequestRateLimiter, sendVerifyOtp);
 router.route("/verify-email").post(verifyJWT, otpVerifyRateLimiter, verifyEmail);

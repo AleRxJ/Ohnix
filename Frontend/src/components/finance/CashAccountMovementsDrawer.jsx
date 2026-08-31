@@ -39,8 +39,6 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
         matchEntry,
     } = useCashAccountMovements(account?._id);
 
-    if (!account) return null;
-
     const handleAddEntry = async (values) => {
         const success = await addStatementEntry({
             entry_date: values.entry_date.toISOString(),
@@ -67,6 +65,8 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
             .filter((movement) => Math.abs(Number(movement.delta) - Number(matchTarget.amount)) < 0.005)
             .sort((a, b) => Math.abs(dayjs(a.createdAt).diff(dayjs(matchTarget.entry_date), "minute")) - Math.abs(dayjs(b.createdAt).diff(dayjs(matchTarget.entry_date), "minute")));
     }, [matchTarget, unmatchedMovements]);
+
+    if (!account) return null;
 
     const movementColumns = [
         {
