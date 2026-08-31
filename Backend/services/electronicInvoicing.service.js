@@ -679,25 +679,72 @@ const itcycleFiscalErrors = (order) => {
 export const buildItcycleSendOptions = (company) =>
     text(company?.itcycleTestSetId) ? { method: "SendTestSetAsync", testSetId: company.itcycleTestSetId } : undefined;
 
+// Retenciones (ReteFuente/ReteICA/ReteIVA - TaxCode 06/07/05) - a flat rate
+// configured per customer (Customer.reteFuentePercent/reteIcaPercent/
+// reteIvaPercent), set only for known self-withholding-agent buyers
+// ("agente autorretenedor"); most customers have none configured, in which
+// case this returns an empty array and the document carries no withholding
+// at all. Deliberately a flat configured rate, not an automatic DIAN
+// concept/UVT-threshold engine - those depend on transaction concept and
+// per-period thresholds this system doesn't model.
+//
+// reteFuente/reteIca are applied to the pre-tax sale amount (lineExtensionAmount);
+// reteIva is applied to the IVA amount itself (its usual legal base), not
+// the sale amount - see itcycleFiscalErrors' sibling comment for why these
+// three live on Customer rather than Order (a rate is a property of WHO
+// you're selling to, not of any one sale).
+export const buildItcycleWithholdingTotals = (customer, legalMonetaryTotal, taxTotals) => {
+    // Plain Number(), not toNumber() - toNumber truncates to 2 decimals for
+    // MONEY amounts, but a real ICA rate is routinely more precise than that
+    // (e.g. 0.966%, 0.414%) - rounding the rate itself would silently change
+    // it to a different, wrong percentage before it's ever multiplied by
+    // anything.
+    const reteFuentePercent = customer?.reteFuentePercent != null ? Number(customer.reteFuentePercent) : null;
+    const reteIcaPercent = customer?.reteIcaPercent != null ? Number(customer.reteIcaPercent) : null;
+    const reteIvaPercent = customer?.reteIvaPercent != null ? Number(customer.reteIvaPercent) : null;
+    if (!reteFuentePercent && !reteIcaPercent && !reteIvaPercent) return [];
+
+    const saleBase = legalMonetaryTotal.lineExtensionAmount;
+    const ivaBase = taxTotals
+        .filter((t) => t.subtotals.some((s) => s.taxScheme.code === "01"))
+        .reduce((sum, t) => sum + t.taxAmount, 0);
+
+    const withholdingTotals = [];
+    const addWithholding = (percent, code, name, base) => {
+        if (!percent || !base) return;
+        const amount = toNumber(base * (percent / 100));
+        withholdingTotals.push({ taxAmount: amount, subtotals: [{ taxableAmount: base, taxAmount: amount, percent, taxScheme: { code, name } }] });
+    };
+    addWithholding(reteFuentePercent, "06", "ReteRenta", saleBase);
+    addWithholding(reteIcaPercent, "07", "ReteICA", saleBase);
+    addWithholding(reteIvaPercent, "05", "ReteIVA", ivaBase);
+    return withholdingTotals;
+};
+
 const buildItcyclePayload = (order) => {
     const errors = itcycleFiscalErrors(order);
     if (errors.length) throw new ApiError(422, "Fiscal data is incomplete for itcycle-api-dian", errors);
 
     const lines = buildItcycleLines(order.orderDetails);
     const { taxTotals, legalMonetaryTotal } = buildItcycleTotals(lines);
+    const withholdingTaxTotals = buildItcycleWithholdingTotals(order.customer, legalMonetaryTotal, taxTotals);
+    console.error("[DEBUG withholdingTaxTotals]", JSON.stringify(withholdingTaxTotals));
     const now = new Date();
 
-    return {
+    const payload = {
         issueDate: now.toISOString(),
         issueTime: now.toISOString(),
         customer: buildItcycleCustomerParty(order.customer),
         lines,
         taxTotals,
+        ...(withholdingTaxTotals.length ? { withholdingTaxTotals } : {}),
         legalMonetaryTotal,
         // "10" = Contado, "30" = Transferencia - same values Alanube's
         // buildAlanubePayments already sends for company.factusPaymentMethodCode.
         paymentMeans: { paymentForm: "1", paymentMethod: order.createdBy.company.factusPaymentMethodCode || "10" },
     };
+    console.error("[DEBUG payload keys]", Object.keys(payload));
+    return payload;
 };
 
 // itcycle-api-dian's own Invoice.status values (see its Invoice model):
@@ -741,6 +788,7 @@ const buildItcycleCreditNotePayload = (order, { conceptCode, observation, items,
 
     const lines = buildItcycleLines(sourceDetails);
     const { taxTotals, legalMonetaryTotal } = buildItcycleTotals(lines);
+    const withholdingTaxTotals = buildItcycleWithholdingTotals(order.customer, legalMonetaryTotal, taxTotals);
     const now = new Date();
 
     return {
@@ -750,6 +798,7 @@ const buildItcycleCreditNotePayload = (order, { conceptCode, observation, items,
             customer: buildItcycleCustomerParty(order.customer),
             lines,
             taxTotals,
+            ...(withholdingTaxTotals.length ? { withholdingTaxTotals } : {}),
             legalMonetaryTotal,
             paymentMeans: { paymentForm: "1", paymentMethod: order.createdBy.company.factusPaymentMethodCode || "10" },
             notes: observation ? [observation] : undefined,

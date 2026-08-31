@@ -689,6 +689,19 @@ model Customer {
   tributeCode                String?  @map("tribute_code")
   municipalityCode           String?  @map("municipality_code")
   countryCode                String?  @map("country_code")
+  // Fixed withholding rates (retenciones) applied to this customer's DIAN
+  // invoices - set only when the customer is a known self-withholding agent
+  // ("agente autorretenedor"), typically only for B2B buyers, never for
+  // walk-in/regular retail customers. Null means "no retention" - this is
+  // deliberately a flat configured rate, not an automatic DIAN concept/UVT
+  // rules engine (those depend on transaction concept and thresholds this
+  // system doesn't model). reteFuente/reteIca are applied to the pre-tax
+  // sale amount; reteIva is applied to the IVA amount itself (its usual
+  // legal base), not the sale amount - see buildItcycleWithholdingTotals in
+  // electronicInvoicing.service.js.
+  reteFuentePercent          Decimal? @map("rete_fuente_percent") @db.Decimal(5, 2)
+  reteIcaPercent             Decimal? @map("rete_ica_percent") @db.Decimal(5, 2)
+  reteIvaPercent             Decimal? @map("rete_iva_percent") @db.Decimal(5, 2)
   isTutorialData             Boolean  @default(false) @map("is_tutorial_data")
   createdById                String   @map("created_by")
   // See Supplier.pointOfSaleId - same "assigned at creation" rule.
@@ -1322,6 +1335,7 @@ model Order {
   // before this column became NOT NULL.
   pointOfSaleId        String      @map("point_of_sale_id")
   orderDate            DateTime    @default(now()) @map("order_date")
+  dueDate              DateTime?   @map("due_date")
   orderStatus          OrderStatus @default(pending) @map("order_status")
   totalProducts        Int         @map("total_products")
   subTotal             Decimal     @map("sub_total") @db.Decimal(12, 2)

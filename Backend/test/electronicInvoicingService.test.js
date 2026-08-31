@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildItcycleTotals, calculateCreditNoteRemainingBase } from "../services/electronicInvoicing.service.js";
+import { buildItcycleTotals, buildItcycleWithholdingTotals, calculateCreditNoteRemainingBase } from "../services/electronicInvoicing.service.js";
 
 // Regression test for a real bug found 2026-08-29: buildItcycleTotals used
 // to blend every line into a single invented "effective rate" tax subtotal
@@ -49,6 +49,42 @@ test("buildItcycleTotals returns no tax totals for a fully tax-exempt order", ()
 
     assert.deepEqual(taxTotals, []);
     assert.equal(legalMonetaryTotal.taxInclusiveAmount, 30000);
+});
+
+test("buildItcycleWithholdingTotals returns nothing for a customer with no configured rates", () => {
+    const result = buildItcycleWithholdingTotals(
+        { reteFuentePercent: null, reteIcaPercent: null, reteIvaPercent: null },
+        { lineExtensionAmount: 100000 },
+        [{ taxAmount: 19000, subtotals: [{ taxScheme: { code: "01" } }] }]
+    );
+    assert.deepEqual(result, []);
+});
+
+test("buildItcycleWithholdingTotals applies reteFuente/reteIca to the pre-tax sale amount and reteIva to the IVA amount", () => {
+    const customer = { reteFuentePercent: 2.5, reteIcaPercent: 0.966, reteIvaPercent: 15 };
+    const legalMonetaryTotal = { lineExtensionAmount: 100000 };
+    const taxTotals = [{ taxAmount: 19000, subtotals: [{ taxableAmount: 100000, taxAmount: 19000, percent: 19, taxScheme: { code: "01" } }] }];
+
+    const result = buildItcycleWithholdingTotals(customer, legalMonetaryTotal, taxTotals);
+
+    assert.equal(result.length, 3);
+    const byCode = Object.fromEntries(result.map((t) => [t.subtotals[0].taxScheme.code, t]));
+    assert.equal(byCode["06"].taxAmount, 2500); // ReteRenta: 2.5% of 100000
+    assert.equal(byCode["06"].subtotals[0].taxableAmount, 100000);
+    assert.equal(byCode["07"].taxAmount, 966); // ReteICA: 0.966% of 100000
+    assert.equal(byCode["05"].taxAmount, 2850); // ReteIVA: 15% of the 19000 IVA, not the sale amount
+    assert.equal(byCode["05"].subtotals[0].taxableAmount, 19000);
+});
+
+test("buildItcycleWithholdingTotals only includes the withholding types the customer actually has configured", () => {
+    const result = buildItcycleWithholdingTotals(
+        { reteFuentePercent: 4, reteIcaPercent: null, reteIvaPercent: null },
+        { lineExtensionAmount: 50000 },
+        []
+    );
+    assert.equal(result.length, 1);
+    assert.equal(result[0].subtotals[0].taxScheme.code, "06");
+    assert.equal(result[0].taxAmount, 2000);
 });
 
 test("calculateCreditNoteRemainingBase separates available revenue by frozen tax rate", () => {

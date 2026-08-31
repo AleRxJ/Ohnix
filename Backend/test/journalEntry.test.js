@@ -5,6 +5,8 @@ import { buildAccountingThirdParty, calculatePurchaseReturnValues, getLineCostBa
 import { calculateRetentionReturn, calculateWithholdingAmount } from "../services/withholdingConcept.service.js";
 import { summarizeWithholdingRows } from "../services/withholdingReport.service.js";
 import { buildPayablePlan } from "../services/accountsPayable.service.js";
+import { buildReceivablePlan } from "../services/accountsReceivable.service.js";
+import { isReconciliationAmountMatch } from "../services/bankReconciliation.service.js";
 
 test("one-to-one accounting sources are idempotent when they have a source id", () => {
     for (const sourceType of [
@@ -56,6 +58,20 @@ test("payable planner uses returns, withholdings, payments and cash in one balan
     assert.equal(plan.documents[0].suggested_payment, 80);
     assert.equal(plan.documents[0].coverage, "partial");
     assert.equal(plan.summary.funding_gap, 0.1);
+});
+
+test("receivable planner prioritizes overdue net balances after returns, credit notes and payments", () => {
+    const plan = buildReceivablePlan({ now: new Date("2026-08-31T12:00:00Z"), orders: [{ id: "o1", invoiceNo: "F-1", orderDate: new Date("2026-08-01"), dueDate: new Date("2026-08-15"), customer: { id: "c1", name: "Cliente" }, financialCreditReduction: 5, orderDetails: [{ total: 100, taxAmount: 19, refundAmount: 20, returnedTaxAmount: 3.8 }], payments: [{ amount: 40 }] }] });
+    assert.equal(plan.documents[0].pending, 50.2);
+    assert.equal(plan.documents[0].status, "overdue");
+    assert.equal(plan.summary.overdue, 50.2);
+});
+
+test("bank reconciliation requires the same amount and sign", () => {
+    assert.equal(isReconciliationAmountMatch(100, 100), true);
+    assert.equal(isReconciliationAmountMatch(-100, -100), true);
+    assert.equal(isReconciliationAmountMatch(100, -100), false);
+    assert.equal(isReconciliationAmountMatch(100, 99.99), false);
 });
 
 test("a return keeps the frozen sale cost after the product cost changes", () => {

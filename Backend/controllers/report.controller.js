@@ -1325,6 +1325,7 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
                     legacyMongoId: true,
                     invoiceNo: true,
                     orderDate: true,
+                    dueDate: true,
                     orderDetails: { select: { quantity: true, returnedQuantity: true, total: true, taxAmount: true } },
                     customer: { select: { id: true, legacyMongoId: true, name: true } },
                 },
@@ -1372,8 +1373,6 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
                 round2((financialCreditByOrder.get(adjustment.orderId) || 0) + adjustment.receivableReduction)
             );
         }
-        const daysOverdue = (date) => Math.max(0, Math.floor((now - new Date(date)) / 86400000));
-
         const receivablesDocuments = orders
             .map((order) => {
                 const paid = orderPaidMap.get(order.id) || 0;
@@ -1383,15 +1382,18 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
                 }, 0);
                 const creditNotes = financialCreditByOrder.get(order.id) || 0;
                 const total = Math.max(round2(detailTotal - creditNotes), 0);
+                const dueDate = order.dueDate ? new Date(order.dueDate) : null;
+                const rawDays = dueDate ? Math.floor((now - dueDate) / 86400000) : null;
                 return {
                     _id: toExternalId(order),
                     invoice_no: order.invoiceNo,
                     document_date: order.orderDate,
+                    due_date: order.dueDate,
                     customer: order.customer ? { _id: toExternalId(order.customer), name: order.customer.name } : null,
                     total: round2(total),
                     paid: round2(paid),
                     pending: round2(total - paid),
-                    days_overdue: daysOverdue(order.orderDate),
+                    days_overdue: rawDays === null ? null : Math.max(0, rawDays),
                 };
             })
             .filter((row) => row.pending > 0.001);

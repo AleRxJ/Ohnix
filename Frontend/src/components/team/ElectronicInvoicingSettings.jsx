@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, DatePicker, Form, Input, Select, Typography } from "antd";
+import { Alert, Button, Card, DatePicker, Form, Input, Select, Tag, Tooltip, Typography } from "antd";
 import {
     ArrowLeftOutlined,
     ArrowRightOutlined,
@@ -10,6 +10,7 @@ import {
     FileProtectOutlined,
     IdcardOutlined,
     KeyOutlined,
+    LockOutlined,
     MailOutlined,
     PlusOutlined,
     RocketOutlined,
@@ -151,6 +152,168 @@ const SupportDocumentResolution = ({ onAdded }) => {
                     {t("fiscal_setup.add_support_document_resolution")}
                 </Button>
             </Form>
+        </Card>
+    );
+};
+
+// Same 3 codes getCompanyDianReadiness can ever return (see
+// companySelf.controller.js) - shared here so both the top status alert
+// (electronicInvoicingAtRisk) and FirmaPassSelfService's own missing-fields
+// message translate them identically instead of drifting apart.
+const MISSING_READINESS_LABEL_KEYS = {
+    dian_configuration: "fiscal_setup.missing_dian_configuration",
+    invoice_resolution_01: "fiscal_setup.missing_invoice_resolution_01",
+    active_certificate: "fiscal_setup.missing_active_certificate",
+};
+
+// Read-only recap of what registerMyCompanyWithItcycle actually submitted -
+// before this, the wizard above simply vanished once status.provisioned was
+// true and nothing ever showed the owner what they'd filled in again.
+// legalName/taxIdentification/environment are locked here (not just styled
+// that way - companySelf.controller.js's updateMyCompany rejects a changed
+// value once itcycleCompanyId exists) because they're frozen into
+// itcycle-api-dian's own DianConfiguration.supplierProfile at provisioning
+// time and never resent per invoice - editing them here would only change
+// what Ohnix displays, not what DIAN actually has on file. vatResponsible is
+// the one field from the original wizard that's both safe to change later
+// (see updateMyCompany's vatResponsibleEffectiveFrom tracking) and had no
+// edit path left once the wizard disappeared - so it gets its own inline
+// editor instead of just being displayed.
+const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
+    const { t } = useI18n();
+    const [vatResponsible, setVatResponsible] = useState(company?.vatResponsible === "unset" ? undefined : company?.vatResponsible);
+    const [savingVat, setSavingVat] = useState(false);
+
+    useEffect(() => {
+        setVatResponsible(company?.vatResponsible === "unset" ? undefined : company?.vatResponsible);
+    }, [company?.vatResponsible]);
+
+    const saveVat = async () => {
+        if (!vatResponsible || vatResponsible === company?.vatResponsible) return;
+        try {
+            setSavingVat(true);
+            const response = await companyService.updateMyCompany({ vatResponsible });
+            onCompanyChanged?.(response?.data);
+            toast.success(t("fiscal_setup.config_vat_saved"));
+        } catch (error) {
+            toast.error(resolveApiErrorMessage(error, t, {}, "fiscal_setup.status_load_error"));
+        } finally {
+            setSavingVat(false);
+        }
+    };
+
+    const resolutions = readiness?.resolutions || [];
+    const documentTypeLabel = (documentType) => {
+        if (documentType === "01") return t("fiscal_setup.document_type_invoice");
+        if (documentType === "05") return t("fiscal_setup.document_type_support");
+        return documentType;
+    };
+
+    return (
+        <Card className="mt-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)]">
+            <Title level={5} className="m-0 text-[var(--ohnix-text-primary)]">{t("fiscal_setup.config_summary_title")}</Title>
+            <Text className="text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_summary_hint")}</Text>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_legal_name")}</Text>
+                    <div className="flex items-center gap-2">
+                        <Text className="text-sm font-medium text-[var(--ohnix-text-primary)]">{company?.legalName || "-"}</Text>
+                        <Tooltip title={t("fiscal_setup.config_locked_hint")}>
+                            <LockOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
+                        </Tooltip>
+                    </div>
+                </div>
+                <div>
+                    <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_nit")}</Text>
+                    <div className="flex items-center gap-2">
+                        <Text className="text-sm font-medium text-[var(--ohnix-text-primary)]">
+                            {company?.taxIdentification ? `${company.taxIdentification}-${company.taxIdentificationDv ?? ""}` : "-"}
+                        </Text>
+                        <Tooltip title={t("fiscal_setup.config_locked_hint")}>
+                            <LockOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
+                        </Tooltip>
+                    </div>
+                </div>
+                <div>
+                    <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_email")}</Text>
+                    <Text className="text-sm font-medium text-[var(--ohnix-text-primary)]">{company?.contactEmail || "-"}</Text>
+                </div>
+                <div>
+                    <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_environment")}</Text>
+                    <div className="flex items-center gap-2">
+                        <Text className="text-sm font-medium text-[var(--ohnix-text-primary)]">{readiness?.environment || "-"}</Text>
+                        <Tooltip title={t("fiscal_setup.config_locked_hint")}>
+                            <LockOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
+                        </Tooltip>
+                    </div>
+                </div>
+                <div className="sm:col-span-2">
+                    <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_vat")}</Text>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Select
+                            size="middle"
+                            className="w-56"
+                            value={vatResponsible}
+                            placeholder={t("fiscal_setup.config_vat_unset")}
+                            onChange={setVatResponsible}
+                            options={[
+                                { value: "responsible", label: t("fiscal_setup.vat_responsible") },
+                                { value: "not_responsible", label: t("fiscal_setup.vat_not_responsible") },
+                            ]}
+                        />
+                        <Button
+                            size="middle"
+                            type="primary"
+                            loading={savingVat}
+                            disabled={!vatResponsible || vatResponsible === company?.vatResponsible}
+                            onClick={saveVat}
+                        >
+                            {t("fiscal_setup.config_vat_save")}
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-5">
+                <Text className="block text-xs font-semibold uppercase tracking-wide text-[var(--ohnix-text-muted)]">
+                    {t("fiscal_setup.resolutions_title")}
+                </Text>
+                {resolutions.length === 0 ? (
+                    <Text className="mt-2 block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.resolutions_empty")}</Text>
+                ) : (
+                    <div className="mt-2 overflow-x-auto">
+                        <table className="w-full min-w-[520px] text-left text-xs">
+                            <thead>
+                                <tr className="text-[var(--ohnix-text-muted)]">
+                                    <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_document_type")}</th>
+                                    <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_prefix")}</th>
+                                    <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_number")}</th>
+                                    <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_validity")}</th>
+                                    <th className="pb-2 font-medium">{t("fiscal_setup.resolutions_col_status")}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {resolutions.map((resolution) => (
+                                    <tr key={resolution.id} className="border-t border-[var(--ohnix-line-4)]">
+                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{documentTypeLabel(resolution.documentType)}</td>
+                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{resolution.prefix}</td>
+                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{resolution.resolutionNumber}</td>
+                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">
+                                            {new Date(resolution.startDate).toLocaleDateString()} – {new Date(resolution.endDate).toLocaleDateString()}
+                                        </td>
+                                        <td className="py-2">
+                                            <Tag color={resolution.isCurrent ? "green" : "default"}>
+                                                {resolution.isCurrent ? t("fiscal_setup.resolutions_current") : t("fiscal_setup.resolutions_not_current")}
+                                            </Tag>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
         </Card>
     );
 };
@@ -354,16 +517,25 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
             {status?.provisioned ? (
                 <>
                     <Alert
-                        className={`dark-alert ${status.electronicInvoicingEnabled ? "dark-alert-teal" : "dark-alert-purple"}`}
-                        type={status.electronicInvoicingEnabled ? "success" : "info"}
+                        className={`dark-alert ${status.electronicInvoicingAtRisk ? "dark-alert-amber" : status.electronicInvoicingEnabled ? "dark-alert-teal" : "dark-alert-purple"}`}
+                        type={status.electronicInvoicingAtRisk ? "warning" : status.electronicInvoicingEnabled ? "success" : "info"}
                         showIcon
-                        message={status.electronicInvoicingEnabled ? t("fiscal_setup.status_active") : t("fiscal_setup.status_dian_complete")}
-                        description={status.electronicInvoicingEnabled ? t("fiscal_setup.status_active_hint") : t("fiscal_setup.status_pending_hint")}
+                        message={status.electronicInvoicingAtRisk ? t("fiscal_setup.status_at_risk") : status.electronicInvoicingEnabled ? t("fiscal_setup.status_active") : t("fiscal_setup.status_dian_complete")}
+                        description={
+                            status.electronicInvoicingAtRisk
+                                ? t("fiscal_setup.status_at_risk_hint", { items: (status.readiness?.missing || []).map((code) => t(MISSING_READINESS_LABEL_KEYS[code] || code)).join(", ") })
+                                : status.electronicInvoicingEnabled ? t("fiscal_setup.status_active_hint") : t("fiscal_setup.status_pending_hint")
+                        }
                     />
                     {status.readinessError && (
                         <Alert className="mt-3 dark-alert dark-alert-amber" type="warning" showIcon message={t("fiscal_setup.readiness_unavailable")} description={t("fiscal_setup.readiness_unavailable_hint")} />
                     )}
-                    <FirmaPassSelfService electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)} onActivated={onCompanyChanged} />
+                    <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} />
+                    <FirmaPassSelfService
+                        electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)}
+                        electronicInvoicingAtRisk={Boolean(status.electronicInvoicingAtRisk)}
+                        onActivated={onCompanyChanged}
+                    />
                     {!hasSupportDocumentResolution && <SupportDocumentResolution onAdded={refresh} />}
                 </>
             ) : otherProviderActive ? (

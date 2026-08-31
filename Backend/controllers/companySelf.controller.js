@@ -154,11 +154,26 @@ export const getMyItcycleStatus = asyncHandler(async (req, res) => {
         }
     }
 
+    // company.electronicInvoicingEnabled is a one-way flag flipped by
+    // activateMyItcycleElectronicInvoicing and never revisited afterward - if
+    // the certificate later expires/is revoked, or a resolution runs out of
+    // range, `readiness` (fetched live above) stops matching it. Surfacing
+    // that divergence here is the only way the settings screen can warn
+    // instead of showing a stale "activa" success message next to a
+    // FirmaPass card that's live-checking the same certificate and already
+    // says "Pendiente". Only meaningful when readiness was actually fetched -
+    // a transient itcycle-api-dian failure (readinessError set) must not be
+    // read as "at risk", it's just unknown for now.
+    const electronicInvoicingAtRisk = Boolean(
+        company.electronicInvoicingEnabled && readiness && !readiness.canIssueInvoices
+    );
+
     return res.status(200).json(
         new ApiResponse(200, {
             provisioned: Boolean(company.itcycleCompanyId),
             itcycleCompanyId: company.itcycleCompanyId,
             electronicInvoicingEnabled: company.electronicInvoicingEnabled,
+            electronicInvoicingAtRisk,
             electronicInvoicingProvider: company.electronicInvoicingProvider,
             readiness,
             readinessError,
@@ -403,10 +418,29 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
             companyId: true,
             username: true,
             company: (trimmedTaxId && !hasExplicitCountry) || normalizedVatResponsible !== undefined || isWithholdingAgent !== undefined
-                ? { select: { countryCode: true, vatResponsible: true, isWithholdingAgent: true } }
-                : undefined,
+                ? { select: { countryCode: true, vatResponsible: true, isWithholdingAgent: true, itcycleCompanyId: true, legalName: true, taxIdentification: true } }
+                : { select: { itcycleCompanyId: true, legalName: true, taxIdentification: true } },
         },
     });
+
+    // legalName/taxIdentification are frozen into itcycle-api-dian's own
+    // DianConfiguration.supplierProfile the moment registerMyCompanyWithItcycle
+    // runs (see that function's comment: the supplier/emisor party is never
+    // resent per invoice, only built once at provisioning time). Letting this
+    // endpoint silently accept a new value afterward would desync Ohnix's
+    // display from what DIAN actually has on file for that NIT - every future
+    // invoice would keep printing the OLD name/NIT forever with no visible
+    // sign anything is wrong. A real correction needs a human to also push
+    // the change to itcycle-api-dian (and possibly re-register resolutions),
+    // so this stays a support-mediated action, not self-service. Compared
+    // against the stored value (not just "was the field present") because
+    // SettingsTab's branding card always resubmits legalName as part of its
+    // payload even when the owner only touched an unrelated field like phone.
+    const legalNameChanged = legalName !== undefined && (legalName?.trim() || null) !== (user?.company?.legalName || null);
+    const taxIdentificationChanged = trimmedTaxId !== undefined && (trimmedTaxId || null) !== (user?.company?.taxIdentification || null);
+    if (user?.company?.itcycleCompanyId && (legalNameChanged || taxIdentificationChanged)) {
+        return next(new ApiError(409, "La razón social y el NIT ya quedaron registrados ante la DIAN a través de itcycle-api-dian. Para corregirlos contacta a soporte."));
+    }
 
     // The DIAN check digit only means anything for a Colombian NIT. If this
     // request didn't also (re-)state countryCode, fall back to the

@@ -119,7 +119,12 @@ const SettingsTab = () => {
         try {
             const payload = {
                 name: companyForm.name.trim(),
-                legalName: companyForm.legalName,
+                // Once itcycleCompanyId exists, legalName is frozen into
+                // itcycle-api-dian's own supplierProfile and the backend
+                // rejects a changed value (see companySelf.controller.js) -
+                // omit it entirely so an unrelated save (phone, email) never
+                // trips that guard just because this field is still in state.
+                ...(company?.itcycleCompanyId ? {} : { legalName: companyForm.legalName }),
                 contactEmail: companyForm.contactEmail,
                 phone: companyForm.phone,
             };
@@ -212,13 +217,21 @@ const SettingsTab = () => {
                     </div>
                     <div>
                         <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_legal_name_label")}</Text>
-                        <Input
-                            size="large"
-                            className="auth-ohnix-input"
-                            value={companyForm.legalName}
-                            onChange={handleCompanyFieldChange("legalName")}
-                            maxLength={160}
-                        />
+                        {company?.itcycleCompanyId ? (
+                            <Tooltip title={t("team.company_legal_name_locked")}>
+                                <span>
+                                    <Input size="large" className="auth-ohnix-input" value={companyForm.legalName} disabled suffix={<LockOutlined />} />
+                                </span>
+                            </Tooltip>
+                        ) : (
+                            <Input
+                                size="large"
+                                className="auth-ohnix-input"
+                                value={companyForm.legalName}
+                                onChange={handleCompanyFieldChange("legalName")}
+                                maxLength={160}
+                            />
+                        )}
                     </div>
                     <div>
                         <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_contact_email_label")}</Text>

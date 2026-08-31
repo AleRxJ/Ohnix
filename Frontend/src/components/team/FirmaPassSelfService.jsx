@@ -48,7 +48,7 @@ const normalizeDoc = (doc) => (typeof doc === "string"
 // keeps that boundary explicit, then lets the company owner complete every
 // remaining step without an Ohnix platform administrator handling documents
 // or credentials.
-const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
+const FirmaPassSelfService = ({ electronicInvoicingEnabled, electronicInvoicingAtRisk, onActivated }) => {
     const { t } = useI18n();
     // Two ways to identify the validation FirmaPass created when the client
     // bought with the coupon: the order number FirmaPass's own checkout gives
@@ -313,7 +313,17 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, onActivated }) => {
             )}
 
             {electronicInvoicingEnabled ? (
-                <Alert className="mt-4 dark-alert dark-alert-teal" type="success" showIcon message={t("fiscal_setup.firmapass_active_alert")} />
+                electronicInvoicingAtRisk ? (
+                    // getMyItcycleStatus's electronicInvoicingAtRisk means the
+                    // enabled flag and the live certificate/resolution check
+                    // (activeCertificate above) have diverged - showing the plain
+                    // success alert here at the same time the Tag above says
+                    // "Pendiente" is exactly the contradiction this was built to
+                    // avoid, so this state gets its own honest warning instead.
+                    <Alert className="mt-4 dark-alert dark-alert-amber" type="warning" showIcon message={t("fiscal_setup.status_at_risk")} description={t("fiscal_setup.firmapass_pending")} />
+                ) : (
+                    <Alert className="mt-4 dark-alert dark-alert-teal" type="success" showIcon message={t("fiscal_setup.firmapass_active_alert")} />
+                )
             ) : (
                 <Space direction="vertical" size="middle" className="mt-4 w-full">
                     <Alert

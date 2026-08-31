@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Drawer, Table, Tag, Divider, Form, DatePicker, Input, InputNumber, Button, Modal, Select, Spin } from "antd";
-import { CloseOutlined, PlusOutlined, WalletOutlined } from "@ant-design/icons";
+import { useMemo, useState } from "react";
+import { Alert, Drawer, Table, Tag, Divider, Form, DatePicker, Input, InputNumber, Button, Modal, Select, Spin } from "antd";
+import { BulbOutlined, CloseOutlined, PlusOutlined, WalletOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -60,6 +60,13 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
         const success = await matchEntry(matchTarget._id, matchMovementId);
         if (success) setMatchTarget(null);
     };
+
+    const compatibleMovements = useMemo(() => {
+        if (!matchTarget) return [];
+        return unmatchedMovements
+            .filter((movement) => Math.abs(Number(movement.delta) - Number(matchTarget.amount)) < 0.005)
+            .sort((a, b) => Math.abs(dayjs(a.createdAt).diff(dayjs(matchTarget.entry_date), "minute")) - Math.abs(dayjs(b.createdAt).diff(dayjs(matchTarget.entry_date), "minute")));
+    }, [matchTarget, unmatchedMovements]);
 
     const movementColumns = [
         {
@@ -212,6 +219,7 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
                     <h3 className="text-sm font-medium text-[var(--ohnix-text-muted)] mb-4 uppercase tracking-wide">
                         {t("finance.reconciliation_title")}
                     </h3>
+                    <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon icon={<BulbOutlined />} message={t("finance.reconciliation_help_title")} description={t("finance.reconciliation_help_desc")} />
 
                     <Form form={entryForm} layout="vertical" onFinish={handleAddEntry} className="mb-6">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -279,15 +287,16 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
                             placeholder={t("finance.match_select_movement_placeholder")}
                             value={matchMovementId}
                             onChange={setMatchMovementId}
-                            notFoundContent={t("finance.no_unmatched_movements")}
+                            notFoundContent={t("finance.no_compatible_movements")}
                         >
-                            {unmatchedMovements.map((m) => (
+                            {compatibleMovements.map((m) => (
                                 <Option key={m._id} value={m._id}>
                                     {dayjs(m.createdAt).format("DD/MM/YYYY")} · {m.delta >= 0 ? "+" : ""}
                                     {formatCurrency(m.delta)} · {m.reason || t(SOURCE_LABEL_KEYS[m.source_type] || m.source_type)}
                                 </Option>
                             ))}
                         </Select>
+                        {compatibleMovements.length === 0 && <Alert type="warning" showIcon message={t("finance.reconciliation_no_match_help")} />}
                     </div>
                 )}
             </Modal>

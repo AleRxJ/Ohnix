@@ -114,6 +114,7 @@ export const useOrderOperations = (refreshOrders) => {
             const orderData = {
                 customer_id: values.customer_id,
                 order_status: values.order_status || "pending",
+                due_date: values.due_date ? values.due_date.endOf("day").toISOString() : null,
                 orderItems: values.orderItems.map((item) => ({
                     product_id: item.product_id,
                     quantity: item.quantity,

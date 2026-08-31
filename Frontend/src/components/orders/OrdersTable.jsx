@@ -65,6 +65,10 @@ const OrdersTable = ({
             render: (date) => <span className="text-[var(--ohnix-text-muted)] text-sm">{dayjs(date).format("MMM DD, YYYY")}</span>,
         },
         {
+            title: t("orders.due_date"), dataIndex: "due_date", key: "due_date", width: 135, responsive: ["md"],
+            render: (date) => date ? <Tag color={dayjs(date).isBefore(dayjs(), "day") ? "error" : "cyan"}>{dayjs(date).format("DD/MM/YYYY")}</Tag> : "—",
+        },
+        {
             title: t("orders.order_status"),
             dataIndex: "order_status",
             key: "order_status",

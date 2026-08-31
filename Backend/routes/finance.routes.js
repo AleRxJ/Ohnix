@@ -19,6 +19,8 @@ import {
     matchStatementEntry,
     getAccountsPayablePlan,
     updatePurchaseDueDate,
+    getAccountsReceivablePlan,
+    updateOrderDueDate,
 } from "../controllers/finance.controller.js";
 
 const router = Router();
@@ -53,6 +55,10 @@ router.route("/accounts-payable")
     .get(requireModulePermission("finance", "view"), getAccountsPayablePlan);
 router.route("/purchases/:purchaseId/due-date")
     .patch(requireModulePermission("finance", "edit"), updatePurchaseDueDate);
+router.route("/accounts-receivable")
+    .get(requireModulePermission("finance", "view"), getAccountsReceivablePlan);
+router.route("/orders/:orderId/due-date")
+    .patch(requireModulePermission("finance", "edit"), updateOrderDueDate);
 
 router.route("/reconciliation/statement-entries")
     .post(requireModulePermission("finance", "edit"), createStatementEntries);

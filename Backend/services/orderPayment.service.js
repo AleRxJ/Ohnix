@@ -3,20 +3,24 @@ import { ApiError } from "../utils/ApiError.js";
 import { recordCashMovement, creditCashAccount } from "./cashMovement.service.js";
 import { buildAccountingThirdParty, postOrderPaymentJournalEntry } from "./accountingPosting.service.js";
 
-// Cartera (accounts receivable): order.total - SUM(OrderPayment.amount) for
-// that order. Deliberately not netted against OrderDetail.refundAmount here -
-// a return is its own separate flow (stock/refund), not a payment; the
-// cartera report can layer that in later if needed.
+// Single receivable balance used by payment validation and the planning UI:
+// frozen sale base/tax, less returns and financial credit notes, less cash
+// already collected. This prevents collecting more than the accounting
+// receivable after a post-sale adjustment.
 export const getOrderPendingBalance = async (orderId, db = prisma) => {
-    const [order, paidAgg] = await Promise.all([
-        db.order.findUnique({ where: { id: orderId }, select: { id: true, total: true, orderStatus: true } }),
+    const [order, paidAgg, notes] = await Promise.all([
+        db.order.findUnique({ where: { id: orderId }, select: { id: true, total: true, orderStatus: true, orderDetails: { select: { total: true, taxAmount: true, refundAmount: true, returnedTaxAmount: true } } } }),
         db.orderPayment.aggregate({ where: { orderId }, _sum: { amount: true } }),
+        db.electronicCreditNote.findMany({ where: { invoice: { orderId } }, select: { id: true } }),
     ]);
     if (!order) throw new ApiError(404, "Pedido no encontrado.");
-
+    const entries = notes.length ? await db.journalEntry.findMany({ where: { sourceType: "credit_note_financial", sourceId: { in: notes.map((note) => note.id) } }, select: { lines: { where: { chartAccount: { code: "1305" } }, select: { credit: true } } } }) : [];
+    const operationalTotal = order.orderDetails.reduce((sum, row) => sum + Number(row.total) + Number(row.taxAmount) - Number(row.refundAmount) - Number(row.returnedTaxAmount), 0);
+    const creditReduction = entries.reduce((sum, entry) => sum + entry.lines.reduce((lineSum, line) => lineSum + Number(line.credit), 0), 0);
+    const total = Math.max(Number((operationalTotal - creditReduction).toFixed(2)), 0);
     const paid = paidAgg._sum.amount || 0;
-    const pending = Number(order.total) - Number(paid);
-    return { order, paid: Number(paid), pending };
+    const pending = Number((total - Number(paid)).toFixed(2));
+    return { order, total, paid: Number(paid), pending };
 };
 
 export const listOrderPayments = async ({ accountId, orderId }) => {

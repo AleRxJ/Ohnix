@@ -10,6 +10,7 @@ import { useCurrency } from "../context/CurrencyContext";
 import { useTeam } from "../context/TeamContext";
 import useI18n from "../hooks/useI18n";
 import AccountsPayablePlanner from "../components/finance/AccountsPayablePlanner";
+import AccountsReceivablePlanner from "../components/finance/AccountsReceivablePlanner";
 
 const ACCOUNT_TYPE_ICON = { cash: WalletOutlined, bank: BankOutlined };
 
@@ -181,6 +182,7 @@ const Finance = () => {
                         </div>
                     )}
                     <AccountsPayablePlanner canEdit={canEdit} />
+                    <AccountsReceivablePlanner canEdit={canEdit} />
                 </div>
             </div>
 

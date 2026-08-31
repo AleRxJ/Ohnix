@@ -235,6 +235,10 @@ const OrderDetailsDrawer = ({
                             )}
                         </p>
                     </div>
+                    <div>
+                        <div className="flex items-center space-x-2 mb-2"><CalendarOutlined className="text-[var(--ohnix-text-dim)]" /><span className="text-xs font-medium text-[var(--ohnix-text-muted)] uppercase">{t("orders.due_date")}</span></div>
+                        {selectedOrder.due_date ? <Tag color={dayjs(selectedOrder.due_date).isBefore(dayjs(), "day") ? "error" : "cyan"}>{dayjs(selectedOrder.due_date).format("MMMM DD, YYYY")}</Tag> : <span className="text-sm text-[var(--ohnix-text-dim)]">{t("finance.payables_status_unscheduled")}</span>}
+                    </div>
                 </div>
 
                 <Divider style={{ margin: "24px 0" }} />

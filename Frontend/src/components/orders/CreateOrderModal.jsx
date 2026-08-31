@@ -1,4 +1,4 @@
-import { Modal, Form, Row, Col, Select, Button, Divider, Card } from "antd";
+import { Modal, Form, Row, Col, Select, Button, Divider, Card, DatePicker } from "antd";
 import { PlusOutlined, ShoppingCartOutlined, FileTextOutlined } from "@ant-design/icons";
 import OrderFormItems from "./OrderFormItems";
 import useI18n from "../../hooks/useI18n";
@@ -117,6 +117,11 @@ const CreateOrderModal = ({
                                         </Option>
                                     ))}
                                 </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="due_date" label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("orders.due_date")}</span>} extra={t("orders.due_date_hint")}>
+                                <DatePicker className="w-full" size="large" placeholder={t("orders.due_date_placeholder")} />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>

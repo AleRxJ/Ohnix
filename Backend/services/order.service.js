@@ -143,6 +143,7 @@ class OrderService {
     async createOrder(orderData, userId, userRole, pointOfSaleId) {
         const {
             customer_id,
+            due_date,
             order_status,
             orderItems,
             is_tutorial_data,
@@ -215,6 +216,8 @@ class OrderService {
         }
 
         const initialStatus = order_status || "pending";
+        const dueDate = due_date ? new Date(due_date) : null;
+        if (dueDate && Number.isNaN(dueDate.getTime())) throw new ApiError(400, "Fecha de vencimiento inválida.");
         const shouldDeductStock = initialStatus === "completed";
 
         const resolvedItems = [];
@@ -300,6 +303,7 @@ class OrderService {
                     customerId: customer.id,
                     pointOfSaleId,
                     orderDate: new Date(),
+                    dueDate,
                     orderStatus: initialStatus,
                     totalProducts: orderItems.length,
                     subTotal,
@@ -508,6 +512,7 @@ class OrderService {
             _id: toExternalId(order),
             customer_id,
             order_date: order.orderDate,
+            due_date: order.dueDate,
             order_status: order.orderStatus,
             total_products: order.totalProducts,
             sub_total: Number(order.subTotal),
