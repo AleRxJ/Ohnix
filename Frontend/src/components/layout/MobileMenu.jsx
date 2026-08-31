@@ -121,7 +121,10 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
                                 items={getMenuItems(
                                     t,
                                     user?.role,
-                                    ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO",
+                                    // Same gate as DashboardSidebar.jsx - only once
+                                    // the company actually activated invoicing, not
+                                    // just for being Colombian.
+                                    ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && Boolean(user?.company?.electronicInvoicingEnabled),
                                     showTeam,
                                     hasPermission,
                                     ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",

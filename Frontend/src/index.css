@@ -1537,13 +1537,20 @@ textarea.ant-input[disabled] {
   box-shadow: var(--ohnix-shadow-elevated);
 }
 
-/* Thin themed scrollbar for drawer bodies */
-.dian-drawer .ant-drawer-body::-webkit-scrollbar { width: 6px; }
-.dian-drawer .ant-drawer-body::-webkit-scrollbar-thumb {
+/* Thin themed scrollbar for every drawer's body - mirrors the .ant-modal-body
+   rule below so every Drawer in the app gets it automatically regardless of
+   which feature added it, instead of only the ones explicitly tagged
+   .dian-drawer (the previous scope, kept working via this same selector). */
+.ant-drawer-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ohnix-scrollbar-thumb) transparent;
+}
+.ant-drawer-body::-webkit-scrollbar { width: 6px; }
+.ant-drawer-body::-webkit-scrollbar-thumb {
   background: var(--ohnix-scrollbar-thumb);
   border-radius: 999px;
 }
-.dian-drawer .ant-drawer-body::-webkit-scrollbar-track { background: transparent; }
+.ant-drawer-body::-webkit-scrollbar-track { background: transparent; }
 
 /* Thin themed scrollbar for every modal's scrollable body - antd applies
    .ant-modal-body to all of them regardless of the per-modal `styles.body`

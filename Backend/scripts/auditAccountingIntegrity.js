@@ -128,15 +128,15 @@ const checks = [
         requiresColumn: { table: "product_location_stock", column: "inventory_value" },
         query: `
             WITH owners AS (
-                SELECT DISTINCT created_by_id AS account_id FROM products
+                SELECT DISTINCT created_by AS account_id FROM products
                 UNION
-                SELECT DISTINCT created_by_id AS account_id FROM chart_accounts
+                SELECT DISTINCT created_by AS account_id FROM chart_accounts
             ), subledger AS (
-                SELECT p.created_by_id AS account_id,
+                SELECT p.created_by AS account_id,
                        COALESCE(SUM(pls.inventory_value), 0) AS available_value
                 FROM products p
                 LEFT JOIN product_location_stock pls ON pls.product_id = p.id
-                GROUP BY p.created_by_id
+                GROUP BY p.created_by
             ), transit AS (
                 SELECT account_id,
                        COALESCE(SUM(quantity_sent * COALESCE(unit_cost_applied, 0)), 0) AS transit_value
@@ -144,12 +144,12 @@ const checks = [
                 WHERE status = 'in_transit'
                 GROUP BY account_id
             ), ledger AS (
-                SELECT ca.created_by_id AS account_id,
+                SELECT ca.created_by AS account_id,
                        COALESCE(SUM(jel.debit - jel.credit), 0) AS ledger_value
                 FROM chart_accounts ca
                 LEFT JOIN journal_entry_lines jel ON jel.chart_account_id = ca.id
                 WHERE ca.code = '1435'
-                GROUP BY ca.created_by_id
+                GROUP BY ca.created_by
             )
             SELECT o.account_id,
                    ROUND(COALESCE(s.available_value, 0) + COALESCE(t.transit_value, 0), 2)::text AS subledger_value,

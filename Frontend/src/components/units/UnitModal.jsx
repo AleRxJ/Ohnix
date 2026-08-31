@@ -179,7 +179,7 @@ const UnitModal = ({ visible, onClose, onSubmit, editingUnit, form, submitting }
                                         <label className="text-sm font-medium text-[var(--ohnix-text-muted)] block mb-3">
                                             {t("units.common_units")}
                                         </label>
-                                        <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto bg-[var(--ohnix-line-1)] p-3 rounded-md border border-[var(--ohnix-line-4)]">
+                                        <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto ohnix-scrollbar-thin bg-[var(--ohnix-line-1)] p-3 rounded-md border border-[var(--ohnix-line-4)]">
                                             {commonUnitsInCategory.map((unit) => (
                                                 <button
                                                     key={unit.id}

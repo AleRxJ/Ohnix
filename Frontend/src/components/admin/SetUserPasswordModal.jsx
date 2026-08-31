@@ -2,6 +2,7 @@ import React from "react";
 import { Modal, Form, Input, Alert } from "antd";
 import { LockOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import useIsMobile from "../../hooks/useIsMobile";
 
 const darkModalStyles = {
     mask: { backgroundColor: "rgba(0,0,0,0.55)" },
@@ -21,9 +22,11 @@ const darkModalStyles = {
 
 const SetUserPasswordModal = ({ user, onCancel, onSubmit, submitting, form }) => {
     const { t } = useI18n();
+    const isMobile = useIsMobile();
 
     return (
         <Modal
+            width={isMobile ? "92%" : undefined}
             title={
                 <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">

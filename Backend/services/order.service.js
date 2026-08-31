@@ -11,9 +11,9 @@ import { enqueueWebhookEvent } from "./webhookDispatch.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
 import { buildAccountingThirdParty, postOrderSaleJournalEntry, postOrderReturnJournalEntry } from "./accountingPosting.service.js";
+import { calculateExpectedReturnedTax } from "../utils/orderReturnTax.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
-const roundMoney = (value) => Number(Number(value).toFixed(2));
 
 const generateInvoiceNo = () => {
     const ts = Date.now().toString(36).toUpperCase();
@@ -660,10 +660,11 @@ class OrderService {
                     // Same optimistic claim as processReturn: guards against a
                     // concurrent granular return on this same line changing
                     // returnedQuantity between the read above and this write.
-                    const taxRemaining = Math.max(Number(detail.taxAmount) - Number(detail.returnedTaxAmount), 0);
-                    const returnedTaxNow = detail.returnedQuantity + pending === detail.quantity
-                        ? taxRemaining
-                        : Math.min(roundMoney(pending * Number(detail.unitcost) * Number(detail.taxRateApplied) / 100), taxRemaining);
+                    const expectedReturnedTax = calculateExpectedReturnedTax({
+                        ...detail,
+                        returnedQuantity: detail.returnedQuantity + pending,
+                    });
+                    const returnedTaxNow = Math.max(expectedReturnedTax - Number(detail.returnedTaxAmount), 0);
                     const detailClaim = await tx.orderDetail.updateMany({
                         where: { id: detail.id, returnedQuantity: detail.returnedQuantity },
                         data: {
@@ -1067,10 +1068,11 @@ class OrderService {
                 }
 
                 const refundNow = quantity * Number(detail.unitcost);
-                const taxRemaining = Math.max(Number(detail.taxAmount) - Number(detail.returnedTaxAmount), 0);
-                const returnedTaxNow = detail.returnedQuantity + quantity === detail.quantity
-                    ? taxRemaining
-                    : Math.min(roundMoney(quantity * Number(detail.unitcost) * Number(detail.taxRateApplied) / 100), taxRemaining);
+                const expectedReturnedTax = calculateExpectedReturnedTax({
+                    ...detail,
+                    returnedQuantity: detail.returnedQuantity + quantity,
+                });
+                const returnedTaxNow = Math.max(expectedReturnedTax - Number(detail.returnedTaxAmount), 0);
 
                 // Same claim idiom as purchase.service.js#processReturn: the
                 // returnedQuantity read that fed the insufficientItems check

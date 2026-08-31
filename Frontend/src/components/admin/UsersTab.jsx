@@ -40,7 +40,7 @@ const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, onViewTea
                         <Switch checked={user.isVerified} />
                     </Popconfirm>
                 </div>
-                <div className="mt-2 flex items-center gap-3">
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[var(--ohnix-line-4)] pt-2">
                     <Button type="text" size="small" className="!px-0 !text-[var(--ohnix-text-muted)]" icon={<TeamOutlined />} onClick={() => onViewTeam(user)}>
                         {t("admin.view_team")}
                     </Button>
@@ -191,8 +191,11 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
                 </Button>
             </div>
 
-            {/* Mobile */}
-            <div className="block md:hidden">
+            {/* Mobile/tablet card list - the "Acciones" column now carries 3
+            actions (assign company, view team, set password), which no
+            longer fits legibly in the table at tablet widths, so the
+            card-list breakpoint moved from md (768px) to lg (1024px). */}
+            <div className="block lg:hidden">
                 {loading ? (
                     [1, 2, 3].map((i) => <Card key={i} loading className="mb-4 module-shell" />)
                 ) : filteredUsers.length === 0 ? (
@@ -213,7 +216,7 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
             </div>
 
             {/* Desktop */}
-            <div className={`hidden md:block ${tableShellClass}`}>
+            <div className={`hidden lg:block ${tableShellClass}`}>
                 <Table
                     columns={columns}
                     dataSource={filteredUsers}

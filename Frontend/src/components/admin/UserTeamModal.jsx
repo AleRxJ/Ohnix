@@ -3,6 +3,7 @@ import { Modal, Empty, Tag } from "antd";
 import { TeamOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
+import useIsMobile from "../../hooks/useIsMobile";
 import { adminTeamService } from "../../services/adminTeamService";
 import AdminTeamMembersTable from "./AdminTeamMembersTable";
 import MemberScopeModal from "../team/MemberScopeModal";
@@ -27,8 +28,13 @@ const darkModalStyles = {
 // owner, roster, roles, and lets the platform admin reassign a member's
 // role/POS scope or remove them - reusing team.service.js's own business
 // rules on the backend (see adminTeam.service.js), not reimplementing them.
+// A centered Modal (not a full-height Drawer) - a team's roster is usually
+// just a handful of rows, and a viewport-height side panel left most of the
+// screen empty below it. AdminTeamMembersTable already switches to a card
+// list on narrow screens on its own, so the Modal only needs to adapt width.
 const UserTeamModal = ({ user, onCancel }) => {
     const { t } = useI18n();
+    const isMobile = useIsMobile();
     const [loading, setLoading] = useState(true);
     const [context, setContext] = useState(null);
     const [scopeModalFor, setScopeModalFor] = useState(null);
@@ -100,7 +106,7 @@ const UserTeamModal = ({ user, onCancel }) => {
             open={Boolean(user)}
             onCancel={onCancel}
             footer={null}
-            width={800}
+            width={isMobile ? "94%" : 880}
             destroyOnClose
             styles={darkModalStyles}
         >
@@ -114,15 +120,17 @@ const UserTeamModal = ({ user, onCancel }) => {
                             <Tag className="border-[#29D8D5]/40 bg-[#29D8D5]/10 text-[#44F3F0]">{context.team.name}</Tag>
                         </div>
                     )}
-                    <AdminTeamMembersTable
-                        members={context?.members || []}
-                        roles={context?.roles || []}
-                        pointsOfSale={context?.pointsOfSale || []}
-                        loading={loading}
-                        onRoleChange={handleRoleChange}
-                        onEditScope={setScopeModalFor}
-                        onRemove={handleRemove}
-                    />
+                    <div className="max-h-[65vh] overflow-y-auto ohnix-scrollbar-thin">
+                        <AdminTeamMembersTable
+                            members={context?.members || []}
+                            roles={context?.roles || []}
+                            pointsOfSale={context?.pointsOfSale || []}
+                            loading={loading}
+                            onRoleChange={handleRoleChange}
+                            onEditScope={setScopeModalFor}
+                            onRemove={handleRemove}
+                        />
+                    </div>
                 </>
             )}
 

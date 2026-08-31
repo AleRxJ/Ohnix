@@ -125,12 +125,6 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <ShoppingCartOutlined />,
             label: <Link to="/orders">{t("common.orders")}</Link>,
         },
-        ...(showElectronicInvoicing ? [{
-            key: "electronic-invoices",
-            moduleKey: "orders",
-            icon: <FileTextOutlined />,
-            label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
-        }] : []),
         {
             key: "customers",
             moduleKey: "customers",
@@ -175,6 +169,16 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
                     )}
                 </Link>
             ),
+        }] : []),
+        // Placed right after Configuración DIAN (fiscal-setup), not next to
+        // Pedidos - this is the DIAN document tracker (invoices/credit
+        // notes actually issued), so it only makes sense grouped with the
+        // rest of the fiscal cluster, after setup and before Reportes.
+        ...(showElectronicInvoicing ? [{
+            key: "electronic-invoices",
+            moduleKey: "orders",
+            icon: <FileTextOutlined />,
+            label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
         }] : []),
         {
             key: "reports",

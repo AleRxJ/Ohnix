@@ -77,7 +77,15 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                         items={getMenuItems(
                             t,
                             user?.role,
-                            ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO",
+                            // Documentos electrónicos tracks DIAN invoices/credit
+                            // notes actually issued - showing it as soon as the
+                            // company is merely Colombian (regardless of whether
+                            // fiscal-setup was ever completed) sent brand-new
+                            // companies to a confusing always-empty page. Gate on
+                            // electronicInvoicingEnabled instead, same milestone
+                            // ElectronicInvoicingSettings.jsx treats as "actually
+                            // organized" (see fiscal_setup.status_active there).
+                            ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && Boolean(user?.company?.electronicInvoicingEnabled),
                             showTeam,
                             hasPermission,
                             ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
