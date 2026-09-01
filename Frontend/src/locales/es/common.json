@@ -670,6 +670,40 @@
     "reconciliation_matched": "Filas conciliadas",
     "reconciliation_pending": "Filas pendientes",
     "reconciliation_pending_value": "Valor por revisar",
+    "reconciliation_report_cta": "Ver informe de conciliación",
+    "reconciliation_report_title": "Informe de conciliación bancaria",
+    "reconciliation_report_help_title": "Trazabilidad del extracto frente a Ohnix",
+    "reconciliation_report_help_desc": "Consulta qué líneas del banco ya tienen un movimiento interno asociado y cuáles siguen pendientes. Filtra el periodo antes de exportar.",
+    "reconciliation_report_status": "Estado",
+    "reconciliation_report_reconciled_at": "Conciliado el",
+    "reconciliation_report_total": "Líneas del periodo",
+    "reconciliation_report_sheet": "Conciliación",
+    "reconciliation_report_empty": "No hay líneas de extracto para este periodo y estado. Cambia los filtros o importa un extracto.",
+    "reconciliation_report_failed": "No se pudo cargar el informe de conciliación",
+    "reconciliation_status_all": "Todos los estados",
+    "reconciliation_status_matched": "Conciliado",
+    "reconciliation_status_unmatched": "Pendiente",
+    "bank_charge_cta": "Registrar cargo",
+    "bank_charge_title": "Registrar y conciliar cargo bancario",
+    "bank_charge_help_title": "Esto sí modifica la contabilidad",
+    "bank_charge_help_desc": "Ohnix registrará un gasto por {{amount}}, disminuirá el banco y conciliará esta línea en una sola operación.",
+    "bank_charge_account": "Cuenta contable del gasto",
+    "bank_charge_account_placeholder": "Selecciona dónde clasificar el cargo",
+    "bank_charge_default": "Cargo bancario",
+    "bank_charge_confirm": "Registrar y conciliar",
+    "bank_charge_success": "Cargo bancario registrado y conciliado",
+    "bank_charge_failed": "No se pudo registrar el cargo bancario",
+    "bank_income_cta": "Registrar ingreso",
+    "bank_income_title": "Registrar y conciliar ingreso bancario",
+    "bank_income_help_title": "Ohnix creará el asiento automáticamente",
+    "bank_income_help_desc": "Ohnix aumentará el banco en {{amount}}, reconocerá el ingreso y conciliará esta línea en una sola operación.",
+    "bank_income_account": "Cuenta contable del ingreso",
+    "bank_income_account_placeholder": "Selecciona dónde clasificar el ingreso",
+    "bank_income_default": "Ingreso bancario",
+    "bank_income_confirm": "Registrar y conciliar",
+    "bank_income_success": "Ingreso bancario registrado y conciliado",
+    "bank_income_failed": "No se pudo registrar el ingreso bancario",
+    "bank_income_load_accounts_failed": "No fue posible cargar las cuentas de ingreso. Intenta de nuevo.",
     "match_cta": "Conciliar",
     "match_modal_title": "Conciliar entrada de extracto",
     "match_select_movement_label": "Selecciona el movimiento correspondiente",
@@ -2968,15 +3002,15 @@
         },
         "sales": {
           "title": "Ventas y pedidos",
-          "description": "Crea órdenes, descuenta inventario de forma segura y exporta facturas en PDF."
+          "description": "Crea órdenes con descuento seguro de inventario, exporta facturas en PDF y comparte cotizaciones por un enlace público que tu cliente acepta sin crear cuenta."
         },
         "reports": {
           "title": "Reportes y alertas",
-          "description": "Supervisa ventas, compras y stock bajo antes de que se conviertan en problemas."
+          "description": "Supervisa ventas, compras y stock bajo, con reportes de IVA y cartera para no perder el hilo fiscal ni financiero."
         },
         "finance": {
           "title": "Finanzas y contabilidad",
-          "description": "Caja, bancos, conciliación y contabilidad de partida doble—asientos, plan de cuentas y cierres, sin hojas de cálculo aparte."
+          "description": "Caja, bancos y conciliación con sugerencia automática de movimientos, más contabilidad de partida doble—asientos, cierres y estados financieros, sin hojas de cálculo aparte."
         },
         "compliance": {
           "title": "Facturación electrónica DIAN",
@@ -2991,11 +3025,11 @@
       "items": {
         "dian": {
           "title": "Software propio ante la DIAN",
-          "description": "Cada empresa se habilita directamente ante la DIAN con tecnología propia de Ohnix—no revendemos la facturación de un tercero."
+          "description": "Cada empresa se habilita directamente ante la DIAN con tecnología propia de Ohnix—factura de venta y Documento Soporte de compras, sin revender la facturación de un tercero."
         },
         "assistant": {
           "title": "Asistente con IA en toda la plataforma",
-          "description": "Resuelve dudas sobre tu operación, tu contabilidad y tu facturación DIAN sin salir de Ohnix ni abrir un ticket de soporte."
+          "description": "Responde tus preguntas sobre la operación, la contabilidad y la facturación DIAN con base en la documentación oficial de Ohnix, sin que tengas que abrir un ticket de soporte."
         },
         "integrations": {
           "title": "Conectada con tu tienda online",

@@ -122,6 +122,33 @@ export const getReconciliationSummary = async ({ accountId, cashAccountId }) => 
     };
 };
 
+export const getReconciliationReport = async ({ accountId, cashAccountId, dateFrom, dateTo, status = "all" }) => {
+    await assertCashAccountOwned(accountId, cashAccountId);
+    if (!['all', 'matched', 'unmatched'].includes(status)) throw new ApiError(400, "Estado de conciliación no válido.");
+    const entryDate = {};
+    if (dateFrom) {
+        const parsed = new Date(dateFrom);
+        if (Number.isNaN(parsed.getTime())) throw new ApiError(400, "La fecha inicial no es válida.");
+        entryDate.gte = parsed;
+    }
+    if (dateTo) {
+        const parsed = new Date(dateTo);
+        if (Number.isNaN(parsed.getTime())) throw new ApiError(400, "La fecha final no es válida.");
+        entryDate.lte = parsed;
+    }
+    const rows = await prisma.bankStatementEntry.findMany({
+        where: {
+            cashAccountId,
+            ...(Object.keys(entryDate).length ? { entryDate } : {}),
+            ...(status === "matched" ? { matchedMovementId: { not: null } } : status === "unmatched" ? { matchedMovementId: null } : {}),
+        },
+        include: { matchedMovement: { select: { id: true, delta: true, sourceType: true, sourceId: true, reason: true, reconciledAt: true, createdAt: true } } },
+        orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
+        take: 5000,
+    });
+    return rows;
+};
+
 export const matchEntry = async ({ accountId, cashAccountId, entryId, movementId }) => {
     await assertCashAccountOwned(accountId, cashAccountId);
 

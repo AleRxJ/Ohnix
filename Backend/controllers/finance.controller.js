@@ -7,6 +7,7 @@ import * as orderPaymentService from "../services/orderPayment.service.js";
 import * as purchasePaymentService from "../services/purchasePayment.service.js";
 import * as reconciliationService from "../services/bankReconciliation.service.js";
 import * as manualExpenseService from "../services/manualExpense.service.js";
+import * as manualIncomeService from "../services/manualIncome.service.js";
 import * as accountsPayableService from "../services/accountsPayable.service.js";
 import * as accountsReceivableService from "../services/accountsReceivable.service.js";
 
@@ -258,6 +259,26 @@ export const matchStatementEntry = asyncHandler(async (req, res, next) => {
     return res.status(200).json(new ApiResponse(200, mapStatementEntry(entry), "Entry matched successfully"));
 });
 
+export const registerManualIncome = asyncHandler(async (req, res, next) => {
+    const { amount, revenue_account_id, cash_account_id, description, income_date, statement_entry_id } = req.body || {};
+    if (!revenue_account_id || !cash_account_id) return next(new ApiError(400, "revenue_account_id y cash_account_id son obligatorios"));
+    const result = await manualIncomeService.registerManualIncome({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        amount,
+        revenueAccountId: revenue_account_id,
+        cashAccountId: cash_account_id,
+        description,
+        incomeDate: income_date,
+        statementEntryId: statement_entry_id || null,
+    });
+    return res.status(201).json(new ApiResponse(201, {
+        journal_entry_id: result.entry.id,
+        cash_movement_id: result.movement.id,
+        balance_after: Number(result.movement.balanceAfter),
+    }, "Manual income registered successfully"));
+});
+
 export const suggestStatementMatches = asyncHandler(async (req, res, next) => {
     const { cash_account_id } = req.query;
     if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
@@ -270,4 +291,15 @@ export const getReconciliationSummary = asyncHandler(async (req, res, next) => {
     if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
     const summary = await reconciliationService.getReconciliationSummary({ accountId: req.user.prismaId, cashAccountId: cash_account_id });
     return res.status(200).json(new ApiResponse(200, summary, "Reconciliation summary fetched successfully"));
+});
+
+export const getReconciliationReport = asyncHandler(async (req, res, next) => {
+    const { cash_account_id, date_from, date_to, status } = req.query;
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
+    const rows = await reconciliationService.getReconciliationReport({ accountId: req.user.prismaId, cashAccountId: cash_account_id, dateFrom: date_from, dateTo: date_to, status });
+    return res.status(200).json(new ApiResponse(200, rows.map((row) => ({
+        ...mapStatementEntry(row),
+        status: row.matchedMovementId ? "matched" : "unmatched",
+        movement: row.matchedMovement ? mapCashMovement({ ...row.matchedMovement, cashAccountId: row.cashAccountId, createdById: row.createdById }) : null,
+    })), "Reconciliation report fetched successfully"));
 });

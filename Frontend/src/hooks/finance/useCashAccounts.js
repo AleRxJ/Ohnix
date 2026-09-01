@@ -182,6 +182,32 @@ export const useCashAccountMovements = (cashAccountId) => {
         finally { setSubmitting(false); }
     };
 
+    const registerStatementExpense = async (payload) => {
+        setSubmitting(true);
+        try {
+            await financeService.registerManualExpense(payload);
+            toast.success(t("finance.bank_charge_success"));
+            await load();
+            return true;
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("finance.bank_charge_failed"));
+            return false;
+        } finally { setSubmitting(false); }
+    };
+
+    const registerStatementIncome = async (payload) => {
+        setSubmitting(true);
+        try {
+            await financeService.registerManualIncome(payload);
+            toast.success(t("finance.bank_income_success"));
+            await load();
+            return true;
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("finance.bank_income_failed"));
+            return false;
+        } finally { setSubmitting(false); }
+    };
+
     return {
         movements,
         unmatchedMovements,
@@ -194,5 +220,7 @@ export const useCashAccountMovements = (cashAccountId) => {
         matchEntry,
         getSuggestions,
         matchEntries,
+        registerStatementExpense,
+        registerStatementIncome,
     };
 };

@@ -9,6 +9,7 @@ import {
     deactivateCashAccount,
     listCashAccountMovements,
     registerManualExpense,
+    registerManualIncome,
     listOrderPayments,
     registerOrderPayment,
     listPurchasePayments,
@@ -19,6 +20,7 @@ import {
     matchStatementEntry,
     suggestStatementMatches,
     getReconciliationSummary,
+    getReconciliationReport,
     getAccountsPayablePlan,
     updatePurchaseDueDate,
     getAccountsReceivablePlan,
@@ -45,6 +47,9 @@ router.route("/cash-accounts/:id/movements")
 
 router.route("/expenses")
     .post(requireModulePermission("finance", "edit"), registerManualExpense);
+
+router.route("/income")
+    .post(requireModulePermission("finance", "edit"), registerManualIncome);
 
 router.route("/orders/:orderId/payments")
     .get(requireModulePermission("finance", "view"), listOrderPayments)
@@ -77,5 +82,7 @@ router.route("/reconciliation/suggestions")
     .get(requireModulePermission("finance", "view"), suggestStatementMatches);
 router.route("/reconciliation/summary")
     .get(requireModulePermission("finance", "view"), getReconciliationSummary);
+router.route("/reconciliation/report")
+    .get(requireModulePermission("finance", "view"), getReconciliationReport);
 
 export default router;

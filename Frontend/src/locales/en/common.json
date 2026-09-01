@@ -670,6 +670,40 @@
     "reconciliation_matched": "Matched rows",
     "reconciliation_pending": "Pending rows",
     "reconciliation_pending_value": "Value to review",
+    "reconciliation_report_cta": "View reconciliation report",
+    "reconciliation_report_title": "Bank reconciliation report",
+    "reconciliation_report_help_title": "Statement-to-Ohnix traceability",
+    "reconciliation_report_help_desc": "Review which bank rows have an associated internal movement and which remain pending. Filter the period before exporting.",
+    "reconciliation_report_status": "Status",
+    "reconciliation_report_reconciled_at": "Reconciled at",
+    "reconciliation_report_total": "Rows in period",
+    "reconciliation_report_sheet": "Reconciliation",
+    "reconciliation_report_empty": "No statement rows match this period and status. Change the filters or import a statement.",
+    "reconciliation_report_failed": "The reconciliation report could not be loaded",
+    "reconciliation_status_all": "All statuses",
+    "reconciliation_status_matched": "Reconciled",
+    "reconciliation_status_unmatched": "Pending",
+    "bank_charge_cta": "Record charge",
+    "bank_charge_title": "Record and reconcile bank charge",
+    "bank_charge_help_title": "This changes your accounting records",
+    "bank_charge_help_desc": "Ohnix will record a {{amount}} expense, decrease the bank balance and reconcile this row in one operation.",
+    "bank_charge_account": "Expense account",
+    "bank_charge_account_placeholder": "Choose how to classify the charge",
+    "bank_charge_default": "Bank charge",
+    "bank_charge_confirm": "Record and reconcile",
+    "bank_charge_success": "Bank charge recorded and reconciled",
+    "bank_charge_failed": "Could not record the bank charge",
+    "bank_income_cta": "Record income",
+    "bank_income_title": "Record and reconcile bank income",
+    "bank_income_help_title": "Ohnix will create the journal entry automatically",
+    "bank_income_help_desc": "Ohnix will increase the bank balance by {{amount}}, recognize the income and reconcile this row in one operation.",
+    "bank_income_account": "Revenue account",
+    "bank_income_account_placeholder": "Choose how to classify the income",
+    "bank_income_default": "Bank income",
+    "bank_income_confirm": "Record and reconcile",
+    "bank_income_success": "Bank income recorded and reconciled",
+    "bank_income_failed": "Could not record the bank income",
+    "bank_income_load_accounts_failed": "Revenue accounts could not be loaded. Please try again.",
     "match_cta": "Reconcile",
     "match_modal_title": "Reconcile statement entry",
     "match_select_movement_label": "Select the matching movement",
@@ -2974,15 +3008,15 @@
         },
         "sales": {
           "title": "Sales & orders",
-          "description": "Create orders, deduct inventory safely, and export professional invoice PDFs."
+          "description": "Create orders with safe inventory deduction, export professional invoice PDFs, and share quotes through a public link your customer can accept without an account."
         },
         "reports": {
           "title": "Reports & alerts",
-          "description": "Monitor sales, purchases, and low-stock signals to decide before problems appear."
+          "description": "Monitor sales, purchases, and low-stock signals, plus VAT and accounts-receivable reports to keep the fiscal and financial picture in view."
         },
         "finance": {
           "title": "Finance & accounting",
-          "description": "Cash, banks, reconciliation, and full double-entry accounting—journal entries, chart of accounts, and period closes, without a separate spreadsheet."
+          "description": "Cash, banks, and reconciliation with automatic match suggestions, plus full double-entry accounting—journal entries, period closes, and financial statements, without a separate spreadsheet."
         },
         "compliance": {
           "title": "DIAN electronic invoicing",
@@ -2997,7 +3031,7 @@
       "items": {
         "dian": {
           "title": "Its own technology before the DIAN",
-          "description": "Every company is enabled directly with the DIAN through Ohnix's own technology—we don't resell a third party's invoicing."
+          "description": "Every company is enabled directly with the DIAN through Ohnix's own technology—sales invoices and the purchase-side Documento Soporte, without reselling a third party's invoicing."
         },
         "assistant": {
           "title": "An AI assistant across the whole platform",
