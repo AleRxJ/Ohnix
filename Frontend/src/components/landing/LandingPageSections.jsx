@@ -1201,7 +1201,7 @@ export const OrbitalHero = ({
                         </div>
 
                         <h1
-                            className="mt-6 max-w-3xl text-[2.65rem] font-semibold leading-[1.02] tracking-tight text-white sm:text-5xl md:mt-7 md:text-4xl md:leading-[1.08] lg:text-5xl lg:leading-[1.04] animate-fade-up"
+                            className="mt-6 max-w-3xl text-[2.65rem] font-semibold leading-[1.02] tracking-tight text-white sm:text-5xl sm:leading-[1.05] md:mt-7 animate-fade-up"
                             style={{ animationDelay: "0.1s" }}
                         >
                             {title}
@@ -1209,7 +1209,7 @@ export const OrbitalHero = ({
 
                         {cyclingWords.length > 0 && (
                             <div
-                                className="mt-3 text-4xl font-semibold tracking-tight md:text-3xl lg:text-4xl animate-fade-up"
+                                className="mt-3 text-4xl font-semibold tracking-tight animate-fade-up"
                                 style={{ animationDelay: "0.15s" }}
                             >
                                 <span className="md:hidden">{cyclingWords[0]}</span>
@@ -2003,7 +2003,7 @@ export const FeatureHubSection = ({ heading }) => {
                                     {f.label}
                                 </span>
 
-                                <h3 className="text-2xl font-bold text-white mb-3">{f.title}</h3>
+                                <h3 className="text-2xl font-semibold tracking-tight text-white mb-3">{f.title}</h3>
                                 <p className="text-sm text-[#A9B3B8] leading-relaxed mb-6">{f.description}</p>
 
                                 {/* Highlights como pills */}
