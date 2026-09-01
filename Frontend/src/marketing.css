@@ -34,6 +34,17 @@ body {
   scrollbar-color: rgba(41, 216, 213, 0.3) transparent;
 }
 
+@keyframes ohnixFlowTravelDot {
+  0% { left: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+
+.animate-flow-travel-dot {
+  animation: ohnixFlowTravelDot 2.8s ease-in-out infinite;
+}
+
 @media (max-width: 767px), (prefers-reduced-motion: reduce) {
   .animate-glow-pulse,
   .animate-blob-float,
@@ -45,7 +56,8 @@ body {
   .animate-orbit-mid,
   .animate-orbit-slow,
   .animate-ripple,
-  .animate-ripple-delay {
+  .animate-ripple-delay,
+  .animate-flow-travel-dot {
     animation: none !important;
   }
 }

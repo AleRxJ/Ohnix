@@ -300,6 +300,8 @@ model User {
 
   dianTestMatrixRunsRequested DianTestMatrixRun[]
 
+  chatConversations ChatConversation[]
+
   @@map("users")
 }
 
@@ -2478,4 +2480,92 @@ model DianTestMatrixDocument {
   @@index([runId, status])
   @@index([runId, documentType])
   @@map("dian_test_matrix_documents")
+}
+
+// In-app help assistant (Ohnix Asistente) - read-only, documentation-grounded.
+// See services/assistant.service.js for the retrieval + guardrail logic that
+// keeps answers scoped to AssistantKnowledgeChunk content instead of letting
+// the model free-generate on DIAN/tax/accounting topics.
+model AssistantKnowledgeChunk {
+  id     String  @id @default(cuid())
+  // Matches middleware/team.permissions.js MODULE_KEYS where applicable, plus
+  // "general" for cross-module/onboarding content not tied to one screen.
+  module String
+  locale String  @default("es")
+  title  String
+  body   String  @db.Text
+  tags   String[] @default([])
+  // guide | faq | concept | dian - purely informational, no behavior differs
+  // by type today; kept so the KB can be filtered/reported on later.
+  sourceType String  @default("guide") @map("source_type")
+  // Starts false on every seeded entry - a human must review and flip this
+  // before the assistant can ever cite it, since this is the only thing
+  // standing between "the model answers from curated Ohnix content" and
+  // "the model improvises," especially for DIAN/impuestos/contabilidad.
+  isPublished Boolean @default(false) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([module, locale, title])
+  @@index([module, locale, isPublished])
+  @@map("assistant_knowledge_chunks")
+}
+
+model ChatConversation {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  // First user message, truncated - shown in a future history list. Not
+  // required for Fase 1's single-thread widget but costs nothing to store.
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId, updatedAt])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  role           ChatMessageRole
+  content        String   @db.Text
+  // Route/module the user was on when this message was sent - context only,
+  // never used to grant access to anything.
+  module         String?
+  // Knowledge chunk ids/titles the assistant grounded this reply on, so the
+  // frontend can show "fuentes" links. Null for user messages and for the
+  // fixed no-match fallback (nothing was actually retrieved).
+  sources        Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  feedback     ChatFeedback?
+
+  @@index([conversationId, createdAt])
+  @@map("chat_messages")
+}
+
+enum ChatMessageRole {
+  user
+  assistant
+}
+
+model ChatFeedback {
+  id        String        @id @default(cuid())
+  messageId String        @unique @map("message_id")
+  rating    ChatFeedbackRating
+  comment   String?
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("chat_feedback")
+}
+
+enum ChatFeedbackRating {
+  up
+  down
 }

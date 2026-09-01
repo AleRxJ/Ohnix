@@ -14,6 +14,7 @@ import useI18n from "../../hooks/useI18n";
 import { useTheme } from "../../context/ThemeContext";
 import InventoryTour from "../inventoryTour/InventoryTour";
 import InventoryTourFab from "../inventoryTour/InventoryTourFab";
+import AssistantWidget from "../assistant/AssistantWidget";
 
 const { Content } = Layout;
 
@@ -401,6 +402,7 @@ const DashboardLayout = () => {
         <Layout className="dashboard-app min-h-screen relative overflow-x-hidden">
             <InventoryTour />
             <InventoryTourFab />
+            <AssistantWidget />
             <div className="pointer-events-none absolute inset-0 opacity-70 section-glow" />
             <DashboardSidebar
                 collapsed={collapsed}

@@ -152,6 +152,7 @@ import contactRouter from "./routes/contact.routes.js";
 import integrationRouter from "./routes/integration.routes.js";
 import webhookEndpointRouter from "./routes/webhookEndpoint.routes.js";
 import apiDocsRouter from "./routes/apiDocs.routes.js";
+import assistantRouter from "./routes/assistant.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -194,6 +195,7 @@ app.use("/api/v1/tutorial-data", tutorialDataRouter);
 app.use("/api/v1/system-settings", systemSettingsRouter);
 app.use("/api/v1/finance", financeRouter);
 app.use("/api/v1/accounting", accountingRouter);
+app.use("/api/v1/assistant", assistantRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________

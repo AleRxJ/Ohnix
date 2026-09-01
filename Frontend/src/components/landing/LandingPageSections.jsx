@@ -194,9 +194,11 @@ export const HeroDashboard = () => {
                             </div>
                         ))}
                     </div>
-                    <div className="mt-auto flex flex-col items-center rounded-2xl border border-[#29D8D5]/15 bg-[#29D8D5]/[0.05] px-1 py-2.5">
-                        <div className="text-sm font-semibold text-white">48</div>
-                        <div className="mt-0.5 h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_8px_#29D8D5]" />
+                    <div className="mt-auto flex items-center justify-center py-3" aria-label={t("landing.hero_dashboard.all_systems_label")}>
+                        <span className="relative flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#29D8D5] opacity-45" />
+                            <span className="relative h-2 w-2 rounded-full bg-[#29D8D5] shadow-[0_0_10px_#29D8D5]" />
+                        </span>
                     </div>
                 </aside>
                 <div className="min-w-0 flex-1 overflow-hidden rounded-[30px] border border-white/[0.055] bg-black/20">
@@ -611,6 +613,281 @@ export const OhnixFlowField = () => {
     );
 };
 
+const ROTATE_MS = 4300;
+
+/* Instagram-stories-style segment: fills while active, snaps full once passed, empties on the next lap. */
+const WorkspaceProgress = ({ isActive, isPast, duration }) => {
+    const [filled, setFilled] = useState(false);
+    useEffect(() => {
+        if (!isActive) { setFilled(false); return; }
+        setFilled(false);
+        const raf = requestAnimationFrame(() => setFilled(true));
+        return () => cancelAnimationFrame(raf);
+    }, [isActive]);
+    return (
+        <span className="absolute inset-x-3 -bottom-1 block h-[3px] overflow-hidden rounded-full bg-white/10">
+            <span
+                className="block h-full rounded-full bg-[#29D8D5] shadow-[0_0_8px_#29D8D5]"
+                style={{
+                    width: isActive ? (filled ? "100%" : "0%") : isPast ? "100%" : "0%",
+                    transition: isActive ? `width ${duration}ms linear` : "none",
+                }}
+            />
+        </span>
+    );
+};
+
+export const OhnixCommandCanvas = () => {
+    const { t } = useI18n();
+    const [active, setActive] = useState(0);
+    const canvasRef = useRef(null);
+    const spotlightRef = useRef(null);
+    const tiltRef = useRef(null);
+    const [liveOps, setLiveOps] = useState(3421);
+
+    useEffect(() => {
+        const iv = setInterval(() => setLiveOps((v) => v + Math.floor(Math.random() * 5) + 1), 2600);
+        return () => clearInterval(iv);
+    }, []);
+
+    const handlePointerMove = useCallback((e) => {
+        const el = canvasRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width;
+        const py = (e.clientY - rect.top) / rect.height;
+        if (spotlightRef.current) {
+            spotlightRef.current.style.opacity = "1";
+            spotlightRef.current.style.background = `radial-gradient(560px circle at ${px * 100}% ${py * 100}%, rgba(41,216,213,0.14), transparent 62%)`;
+        }
+        if (tiltRef.current) {
+            const rx = (0.5 - py) * 3.2;
+            const ry = (px - 0.5) * 3.2;
+            tiltRef.current.style.transform = `perspective(1400px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+        }
+    }, []);
+
+    const handlePointerLeave = useCallback(() => {
+        if (spotlightRef.current) spotlightRef.current.style.opacity = "0";
+        if (tiltRef.current) tiltRef.current.style.transform = "perspective(1400px) rotateX(0deg) rotateY(0deg)";
+    }, []);
+
+    const spaces = [
+        {
+            id: "operations",
+            label: t("landing.hero_dashboard.suite_operations"),
+            detail: t("landing.hero_dashboard.suite_operations_detail"),
+            flow: [
+                [t("landing.hero_dashboard.module_inventory"), t("landing.hero_dashboard.node_stock")],
+                [t("landing.hero_dashboard.locations_label"), t("landing.hero_dashboard.badge_multisite")],
+                [t("landing.hero_dashboard.module_reports"), t("landing.hero_dashboard.badge_realtime")],
+            ],
+            kpis: [
+                ["24,860", t("landing.hero_dashboard.products_label")],
+                ["12", t("landing.hero_dashboard.locations_label")],
+                ["99.8%", t("landing.hero_dashboard.kpi_uptime_label")],
+            ],
+        },
+        {
+            id: "commerce",
+            label: t("landing.hero_dashboard.suite_commerce"),
+            detail: t("landing.hero_dashboard.suite_commerce_detail"),
+            flow: [
+                [t("landing.hero_dashboard.flow_quote"), t("landing.hero_dashboard.node_orders")],
+                [t("landing.hero_dashboard.module_sales"), t("landing.hero_dashboard.flow_order")],
+                [t("landing.hero_dashboard.module_invoicing"), t("landing.hero_dashboard.node_dian")],
+            ],
+            kpis: [
+                ["3,421", t("landing.hero_dashboard.kpi_orders_label")],
+                ["1,204", t("landing.hero_dashboard.kpi_invoices_label")],
+                ["480+", t("landing.hero_dashboard.kpi_clients_label")],
+            ],
+        },
+        {
+            id: "finance",
+            label: t("landing.hero_dashboard.suite_finance"),
+            detail: t("landing.hero_dashboard.suite_finance_detail"),
+            flow: [
+                [t("landing.hero_dashboard.module_finance"), t("landing.hero_dashboard.node_cash")],
+                [t("landing.hero_dashboard.flow_payment"), t("landing.hero_dashboard.auto_collections")],
+                [t("landing.hero_dashboard.module_accounting"), t("landing.hero_dashboard.node_taxes")],
+            ],
+            kpis: [
+                ["$2.8M", t("landing.hero_dashboard.kpi_portfolio_label")],
+                ["98.4%", t("landing.hero_dashboard.kpi_reconciled_label")],
+                ["32", t("landing.hero_dashboard.kpi_dso_label")],
+            ],
+        },
+        {
+            id: "connect",
+            label: t("landing.hero_dashboard.suite_connect"),
+            detail: t("landing.hero_dashboard.suite_connect_detail"),
+            flow: [
+                [t("landing.hero_dashboard.team_label"), t("landing.hero_dashboard.badge_rbac")],
+                [t("landing.hero_dashboard.module_integrations"), t("landing.hero_dashboard.badge_api")],
+                [t("landing.hero_dashboard.badge_webhooks"), t("landing.hero_dashboard.badge_realtime")],
+            ],
+            kpis: [
+                ["18", t("landing.hero_dashboard.kpi_integrations_label")],
+                ["120K", t("landing.hero_dashboard.kpi_webhooks_label")],
+                ["24/7", t("landing.hero_dashboard.kpi_support_label")],
+            ],
+        },
+    ];
+
+    /* The real module map behind Ohnix — surfaced here so the canvas reads as
+       the actual product, not a four-tile highlight reel. */
+    const modules = [
+        { icon: "◫", label: t("landing.hero_dashboard.module_overview"), suite: 0 },
+        { icon: "◈", label: t("landing.hero_dashboard.module_inventory"), suite: 0 },
+        { icon: "↗", label: t("landing.hero_dashboard.module_reports"), suite: 0 },
+        { icon: "⇄", label: t("landing.hero_dashboard.module_sales"), suite: 1 },
+        { icon: "⌁", label: t("landing.hero_dashboard.module_purchases"), suite: 1 },
+        { icon: "✓", label: t("landing.hero_dashboard.module_invoicing"), suite: 1 },
+        { icon: "$", label: t("landing.hero_dashboard.module_finance"), suite: 2 },
+        { icon: "▤", label: t("landing.hero_dashboard.module_accounting"), suite: 2 },
+        { icon: "⚙", label: t("landing.hero_dashboard.module_integrations"), suite: 3 },
+    ];
+
+    useEffect(() => {
+        const timer = setTimeout(() => setActive((value) => (value + 1) % spaces.length), ROTATE_MS);
+        return () => clearTimeout(timer);
+    }, [active, spaces.length]);
+
+    const current = spaces[active];
+    const activeModules = modules.filter((m) => m.suite === active);
+
+    return (
+        <div
+            ref={canvasRef}
+            onMouseMove={handlePointerMove}
+            onMouseLeave={handlePointerLeave}
+            className="relative min-h-[540px] overflow-hidden rounded-[46px] border border-[#29D8D5]/15 bg-[#030707] text-white shadow-[0_45px_150px_rgba(0,0,0,0.78),0_0_90px_rgba(41,216,213,0.07)]"
+        >
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_16%,rgba(41,216,213,0.13),transparent_24%),radial-gradient(circle_at_18%_88%,rgba(68,243,240,0.07),transparent_27%),linear-gradient(140deg,#071110,#020505_58%,#060808)]" />
+            <div className="pointer-events-none absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(41,216,213,0.075)_1px,transparent_1px),linear-gradient(90deg,rgba(41,216,213,0.075)_1px,transparent_1px)] [background-size:36px_36px] [mask-image:linear-gradient(to_bottom,black,transparent_88%)]" />
+            <div ref={spotlightRef} className="pointer-events-none absolute inset-0 z-10 opacity-0 transition-opacity duration-500 hidden sm:block" />
+            <div className="pointer-events-none absolute left-[18%] right-[8%] top-[73px] h-px overflow-hidden bg-white/[0.045]">
+                <span className="block h-full w-1/3 animate-marquee bg-gradient-to-r from-transparent via-[#29D8D5] to-transparent shadow-[0_0_12px_#29D8D5]" />
+            </div>
+
+            <div ref={tiltRef} className="relative transition-transform duration-300 ease-out" style={{ transformStyle: "preserve-3d" }}>
+            <header className="relative z-20 flex items-center gap-3 px-4 pb-3 pt-4 sm:px-5">
+                <div className="flex items-center gap-2.5">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-[16px] border border-[#29D8D5]/20 bg-[#29D8D5]/[0.055] shadow-[inset_0_0_18px_rgba(41,216,213,0.06)]">
+                        <img src="/Ohnix_Icon_Transparent.png" alt="Ohnix" className="h-7 w-7 object-contain" />
+                    </div>
+                    <div>
+                        <div className="text-[10px] font-semibold tracking-[0.16em] text-[#bdc9c7]">{t("landing.hero_dashboard.command_center")}</div>
+                        <div className="mt-0.5 flex items-center gap-1.5 text-[8px] uppercase tracking-[0.16em] text-[#93a6a1]">
+                            <span className="relative flex h-1 w-1 shrink-0">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#29D8D5] opacity-50" />
+                                <span className="relative h-1 w-1 rounded-full bg-[#29D8D5] shadow-[0_0_7px_#29D8D5]" />
+                            </span>
+                            <span className="font-mono tabular-nums text-[#dbe7e5]">{liveOps.toLocaleString()}</span>
+                            {t("landing.hero_dashboard.live_ops_label")}
+                        </div>
+                    </div>
+                </div>
+
+                <nav className="ml-auto hidden items-center gap-1 rounded-full border border-white/[0.055] bg-black/25 p-1.5 backdrop-blur-xl sm:flex">
+                    {spaces.map((space, index) => (
+                        <button key={space.id} type="button" onClick={() => setActive(index)} className={`relative rounded-full px-3.5 py-2.5 text-[9px] uppercase tracking-[0.12em] transition-all duration-500 ${active === index ? "bg-[#29D8D5]/12 text-[#29D8D5]" : "text-[#a3b6b1] hover:text-white"}`}>
+                            {space.label}
+                            <WorkspaceProgress isActive={active === index} isPast={index < active} duration={ROTATE_MS} />
+                        </button>
+                    ))}
+                </nav>
+                <div className="ml-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.025] text-[11px] text-[#a3b6b1] sm:ml-0">⌕</div>
+            </header>
+
+            <div className="relative z-10 flex gap-2 px-2 pb-3 sm:px-3 sm:pb-4">
+                <aside className="hidden w-[64px] shrink-0 flex-col items-center rounded-[26px] border border-white/[0.055] bg-black/30 px-2.5 py-3 backdrop-blur-2xl md:flex">
+                    <div className="space-y-2">
+                        {modules.map((module, index) => (
+                            <button
+                                key={`${module.label}-${index}`}
+                                type="button"
+                                title={module.label}
+                                onClick={() => setActive(module.suite)}
+                                className={`flex h-10 w-10 items-center justify-center rounded-xl border text-sm transition-all duration-300 ${module.suite === active ? "border-[#29D8D5]/30 bg-[#29D8D5]/12 text-[#29D8D5] shadow-[0_0_16px_rgba(41,216,213,0.1)]" : "border-transparent text-[#829990] hover:border-white/[0.06] hover:bg-white/[0.03] hover:text-white"}`}
+                            >
+                                {module.icon}
+                            </button>
+                        ))}
+                    </div>
+                    <span className="mt-auto h-2 w-2 rounded-full bg-[#29D8D5] shadow-[0_0_10px_#29D8D5] animate-pulse" />
+                </aside>
+
+                <main className="min-w-0 flex-1 overflow-hidden rounded-[32px] border border-white/[0.06] bg-white/[0.018] backdrop-blur-xl">
+                    <div className="grid grid-cols-2 gap-1 border-b border-white/[0.05] p-2 sm:hidden">
+                        {spaces.map((space, index) => (
+                            <button key={space.id} type="button" onClick={() => setActive(index)} className={`rounded-2xl border px-3.5 py-3 text-left text-[10px] transition-all ${active === index ? "border-[#29D8D5]/25 bg-[#29D8D5]/10 text-[#29D8D5]" : "border-white/[0.045] bg-black/15 text-[#a3b6b1]"}`}>
+                                <span className="mr-2 font-mono text-[7px] opacity-55">0{index + 1}</span>{space.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div key={current.id} className="animate-fade-in px-5 pb-5 pt-6 sm:px-6 sm:pb-6 sm:pt-7">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <div className="font-mono text-[9px] tracking-[0.22em] text-[#29D8D5]">WORKSPACE / 0{active + 1}</div>
+                                <h3 className="mt-2 text-[28px] font-semibold tracking-tight text-white sm:text-4xl">{current.label}</h3>
+                                <p className="mt-2 max-w-lg text-[11px] leading-5 text-[#748480] sm:text-[13px] sm:leading-6">{current.detail}</p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-2 text-[8px] uppercase tracking-[0.13em] text-[#93a6a1]">
+                                <span className="rounded-full border border-[#29D8D5]/12 px-3 py-1.5">{t("landing.hero_dashboard.badge_realtime")}</span>
+                                <span className="rounded-full border border-[#29D8D5]/12 px-3 py-1.5">{t("landing.hero_dashboard.connected_note")}</span>
+                            </div>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                            <span className="mr-0.5 text-[8px] uppercase tracking-[0.14em] text-[#7c8f8b]">{t("landing.hero_dashboard.modules_included_label")}</span>
+                            {activeModules.map((module) => (
+                                <span key={module.label} className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 text-[9px] text-[#a9b6b3]">
+                                    <span className="text-[#29D8D5]">{module.icon}</span>
+                                    {module.label}
+                                </span>
+                            ))}
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                            {current.kpis.map(([value, label]) => (
+                                <div key={label} className="rounded-[18px] border border-white/[0.05] bg-black/20 px-3.5 py-3.5">
+                                    <div className="truncate text-lg font-semibold tabular-nums text-white sm:text-xl">{value}</div>
+                                    <div className="mt-1 truncate text-[8px] uppercase tracking-[0.1em] text-[#93a6a1]">{label}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <section className="relative mt-3 overflow-hidden rounded-[28px] border border-[#29D8D5]/10 bg-[linear-gradient(115deg,rgba(41,216,213,0.055),rgba(255,255,255,0.012))] px-3 py-5 sm:px-5 sm:py-7">
+                            <div className="pointer-events-none absolute left-[12%] right-[12%] top-1/2 hidden h-px bg-gradient-to-r from-transparent via-[#29D8D5]/35 to-transparent sm:block">
+                                <span key={current.id} className="absolute top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-[#29D8D5] shadow-[0_0_10px_#29D8D5] animate-flow-travel-dot" />
+                            </div>
+                            <div className="relative grid gap-2 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-center">
+                                {current.flow.map(([label, meta], index) => (
+                                    <React.Fragment key={label}>
+                                        <div className="group relative rounded-[22px] border border-white/[0.07] bg-black/25 p-5 transition-all duration-500 hover:-translate-y-1 hover:border-[#29D8D5]/25 hover:bg-[#29D8D5]/[0.045]">
+                                            <div className="flex items-center justify-between">
+                                                <span className="h-2 w-2 rounded-full bg-[#29D8D5] shadow-[0_0_9px_#29D8D5]" />
+                                                <span className="font-mono text-[8px] text-[#7c8f8b]">NODE / 0{index + 1}</span>
+                                            </div>
+                                            <div className="mt-7 truncate text-[12px] font-semibold text-[#d4ddda]">{label}</div>
+                                            <div className="mt-1 truncate text-[8px] uppercase tracking-[0.1em] text-[#93a6a1]">{meta}</div>
+                                        </div>
+                                        {index < current.flow.length - 1 && <span className="hidden text-sm text-[#29D8D5]/50 sm:block">›</span>}
+                                    </React.Fragment>
+                                ))}
+                            </div>
+                        </section>
+                    </div>
+                </main>
+            </div>
+            </div>
+        </div>
+    );
+};
+
 /* ── Page-wide orbital background layer ────────────────────────────── */
 /* ── Page-wide orbital background layer (mouse + scroll parallax) ─── */
 export const PageOrbitalLayer = () => {
@@ -909,7 +1186,7 @@ export const OrbitalHero = ({
                     <div className="absolute bottom-24 left-1/3 h-48 w-48 rounded-full bg-[#29D8D5]/5 blur-[55px] animate-float-slow" />
                 </div>
 
-                <div className="grid items-center gap-14 lg:grid-cols-[0.82fr_1.18fr] lg:gap-12">
+                <div className="grid items-center gap-14 lg:grid-cols-[0.76fr_1.24fr] lg:gap-12">
                     <div className="relative z-10">
                         {/* ── Eyebrow with live pulse dot ─── */}
                         <div className="animate-fade-up inline-flex items-center gap-3 rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#29D8D5] md:border-white/10 md:text-[11px] md:tracking-[0.35em]">
@@ -987,7 +1264,7 @@ export const OrbitalHero = ({
                         </div>
                     </div>
 
-                    <div className="relative mx-auto w-full max-w-[780px] lg:-mr-12 animate-fade-up" style={{ animationDelay: "0.2s" }}>
+                    <div className="relative mx-auto w-full max-w-[860px] lg:-mr-12 animate-fade-up" style={{ animationDelay: "0.2s" }}>
                         <div className="absolute -inset-10 rounded-[48px] bg-[radial-gradient(circle_at_center,rgba(41,216,213,0.26),transparent_65%)] blur-2xl" />
 
                         <div className="relative transition-transform duration-500 hover:-translate-y-1 animate-float">

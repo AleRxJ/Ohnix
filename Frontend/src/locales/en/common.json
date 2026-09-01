@@ -3352,7 +3352,19 @@
       "node_api": "API and webhooks",
       "command_center": "Ohnix command center",
       "all_systems_label": "All systems connected",
-      "search_label": "Search Ohnix"
+      "search_label": "Search Ohnix",
+      "kpi_uptime_label": "Uptime",
+      "kpi_orders_label": "Orders per month",
+      "kpi_invoices_label": "DIAN documents",
+      "kpi_clients_label": "Active clients",
+      "kpi_portfolio_label": "Receivables",
+      "kpi_reconciled_label": "Reconciled",
+      "kpi_dso_label": "Days of receivables",
+      "kpi_integrations_label": "Active integrations",
+      "kpi_webhooks_label": "Webhooks per month",
+      "kpi_support_label": "Support",
+      "modules_included_label": "Modules in this space",
+      "live_ops_label": "ops today"
     },
     "contact_form": {
       "name_label": "Name",
@@ -3805,5 +3817,21 @@
     "resolutions_col_status": "Status",
     "resolutions_current": "Current",
     "resolutions_not_current": "Not current"
+  },
+  "assistant": {
+    "fab_label": "Ohnix Assistant",
+    "panel_title": "Ohnix Assistant",
+    "panel_subtitle": "Ask me how to use Ohnix",
+    "input_placeholder": "Type your question...",
+    "send": "Send",
+    "empty_state": "How can I help you today? I can explain how each section of Ohnix works and guide you step by step.",
+    "thinking": "Thinking...",
+    "error_generic": "Something went wrong sending your message. Please try again.",
+    "feedback_prompt": "Was this helpful?",
+    "feedback_thanks": "Thanks for the feedback!",
+    "sources_label": "Sources",
+    "new_conversation": "New conversation",
+    "disclaimer": "This assistant only provides general information about Ohnix and doesn't replace accounting, tax, or legal advice.",
+    "close": "Close"
   }
 }

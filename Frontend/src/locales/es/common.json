@@ -3346,7 +3346,19 @@
       "node_api": "API y webhooks",
       "command_center": "Centro de control Ohnix",
       "all_systems_label": "Todos los sistemas conectados",
-      "search_label": "Buscar en Ohnix"
+      "search_label": "Buscar en Ohnix",
+      "kpi_uptime_label": "Disponibilidad",
+      "kpi_orders_label": "Pedidos al mes",
+      "kpi_invoices_label": "Documentos DIAN",
+      "kpi_clients_label": "Clientes activos",
+      "kpi_portfolio_label": "Cartera",
+      "kpi_reconciled_label": "Conciliado",
+      "kpi_dso_label": "Días de cartera",
+      "kpi_integrations_label": "Integraciones activas",
+      "kpi_webhooks_label": "Webhooks al mes",
+      "kpi_support_label": "Soporte",
+      "modules_included_label": "Módulos en este espacio",
+      "live_ops_label": "operaciones hoy"
     },
     "contact_form": {
       "name_label": "Nombre",
@@ -3799,5 +3811,21 @@
     "resolutions_col_status": "Estado",
     "resolutions_current": "Vigente",
     "resolutions_not_current": "No vigente"
+  },
+  "assistant": {
+    "fab_label": "Asistente Ohnix",
+    "panel_title": "Asistente Ohnix",
+    "panel_subtitle": "Pregúntame cómo usar Ohnix",
+    "input_placeholder": "Escribe tu pregunta...",
+    "send": "Enviar",
+    "empty_state": "¿En qué puedo ayudarte hoy? Puedo explicarte cómo funciona cada sección de Ohnix y guiarte paso a paso.",
+    "thinking": "Pensando...",
+    "error_generic": "Ocurrió un error al enviar tu mensaje. Intenta de nuevo.",
+    "feedback_prompt": "¿Te sirvió esta respuesta?",
+    "feedback_thanks": "¡Gracias por tu opinión!",
+    "sources_label": "Fuentes",
+    "new_conversation": "Nueva conversación",
+    "disclaimer": "Este asistente solo brinda información general sobre Ohnix y no reemplaza asesoría contable, tributaria o legal.",
+    "close": "Cerrar"
   }
 }

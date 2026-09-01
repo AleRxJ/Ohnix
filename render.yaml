@@ -88,3 +88,9 @@ services:
         sync: false
       - key: FACTUS_PASSWORD
         sync: false
+      # In-app assistant (Ohnix Asistente) - see Backend/.env.example for the
+      # full explanation. Free Groq tier by default.
+      - key: ASSISTANT_MODEL_PROVIDER
+        value: groq
+      - key: GROQ_API_KEY
+        sync: false

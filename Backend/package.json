@@ -23,6 +23,7 @@
     "db:audit:accounting": "node scripts/auditAccountingIntegrity.js",
     "db:diagnose:inventory-ledger": "node scripts/diagnoseInventoryLedger.js",
     "db:seed:test-user": "node scripts/createTestUser.js",
+    "db:seed:assistant-knowledge": "node --env-file=.env scripts/seedAssistantKnowledge.js",
     "db:migrate:mongo-to-pg": "node scripts/migrateMongoToPostgres.js"
   },
   "keywords": [],

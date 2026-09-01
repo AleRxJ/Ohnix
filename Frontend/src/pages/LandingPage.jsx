@@ -22,7 +22,7 @@ import {
     brandIcons,
     VideoModal,
     MarqueeStrip,
-    HeroDashboard,
+    OhnixCommandCanvas,
     PageOrbitalLayer,
     FeatureHubSection,
     WhatsAppSupportButton,
@@ -392,7 +392,7 @@ const LandingPage = () => {
                     orbitLabels={orbitLabels}
                     footerNote={t("landing.hero.footer_note")}
                     productImageAlt={t("landing.hero.product_image_alt")}
-                    heroVisual={<HeroDashboard />}
+                    heroVisual={<OhnixCommandCanvas />}
                     cyclingWords={[
                         t("landing.hero.cycling_words.one"),
                         t("landing.hero.cycling_words.two"),
