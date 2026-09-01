@@ -2964,19 +2964,19 @@
       "title": "Everything you need to run and account for your business day to day.",
       "description": "Modular tools that work together: configure your catalog, move stock, keep your books, and invoice the DIAN from one dashboard.",
       "items": {
-        "lifecycle": {
+        "products": {
           "title": "Products & catalog",
           "description": "Manage SKUs, categories, units, prices, and images—including bulk import from CSV."
         },
-        "assets": {
+        "purchases": {
           "title": "Purchases & stock in",
           "description": "Register supplier purchases, track statuses, and increase stock with full traceability."
         },
-        "sustainability": {
+        "sales": {
           "title": "Sales & orders",
           "description": "Create orders, deduct inventory safely, and export professional invoice PDFs."
         },
-        "circular": {
+        "reports": {
           "title": "Reports & alerts",
           "description": "Monitor sales, purchases, and low-stock signals to decide before problems appear."
         },
@@ -2993,7 +2993,7 @@
     "differentiators": {
       "eyebrow": "Why Ohnix",
       "title": "What you won't find in a plain inventory system.",
-      "description": "Two capabilities of our own that most tools for small businesses don't build in.",
+      "description": "Three capabilities of our own that most tools for small businesses don't build in.",
       "items": {
         "dian": {
           "title": "Its own technology before the DIAN",
@@ -3002,6 +3002,10 @@
         "assistant": {
           "title": "An AI assistant across the whole platform",
           "description": "Get answers about your operation, your accounting, and your DIAN invoicing without leaving Ohnix or opening a support ticket."
+        },
+        "integrations": {
+          "title": "Connected to your online store",
+          "description": "Sync products and orders with Shopify or WooCommerce, or plug in your own systems with Ohnix's REST API and webhooks."
         }
       }
     },
@@ -3038,17 +3042,17 @@
           "label": "Access",
           "description": "Work from the cloud whenever your business needs it."
         },
-        "recovery": {
+        "unifiedOps": {
           "value": "1 hub",
           "label": "Unified ops",
           "description": "Purchases, sales, and catalog in one connected flow."
         },
-        "optimization": {
+        "manualWork": {
           "value": "Less",
           "label": "Manual work",
           "description": "Automated alerts, PDFs, and structured workflows replace ad-hoc spreadsheets."
         },
-        "adoption": {
+        "accessControl": {
           "value": "RBAC",
           "label": "Team control",
           "description": "Roles and verified accounts keep data scoped to the right people."
@@ -3161,7 +3165,6 @@
             "reports": "Basic dashboard + stock report",
             "pdf": "Standard order PDF",
             "alerts": "Low-stock indicator in the dashboard (no automatic alerts)",
-            "invoicing": "DIAN electronic invoicing included up to 60 orders/month",
             "support": "Email & WhatsApp support"
           },
           "cta": "Start free trial"
@@ -3241,6 +3244,7 @@
         "team": "Team collaboration",
         "pricing": "Pricing",
         "comparison": "Ohnix vs Alegra",
+        "integrations": "Integrations",
         "blog": "Blog"
       }
     },
@@ -3431,6 +3435,10 @@
       "comparison": {
         "title": "Ohnix vs Alegra comparison",
         "description": "Evaluate differences by operational approach."
+      },
+      "integrations": {
+        "title": "Integrations & API",
+        "description": "Connect your Shopify or WooCommerce store, or your own systems."
       }
     }
   },

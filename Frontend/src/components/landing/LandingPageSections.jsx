@@ -618,22 +618,54 @@ export const OhnixFlowField = () => {
 
 const ROTATE_MS = 4300;
 
-/* Instagram-stories-style segment: fills while active, snaps full once passed, empties on the next lap. */
-const WorkspaceProgress = ({ isActive, isPast, duration }) => {
+/* Fixed-size, absolutely-positioned decorative trend line — deliberately never
+   participates in flex/grid sizing, since a content-driven width here is what
+   caused the KPI panel to resize between tabs before. */
+const KpiSparkline = ({ data }) => {
+    if (!data || data.length < 2) return null;
+    const W = 72;
+    const H = 28;
+    const max = Math.max(...data);
+    const min = Math.min(...data);
+    const range = max - min || 1;
+    const pts = data.map((v, i) => `${(i / (data.length - 1)) * W},${H - ((v - min) / range) * H}`).join(" ");
+    return (
+        <svg
+            aria-hidden="true"
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"
+            className="pointer-events-none absolute bottom-0 right-0 h-7 w-[72px] opacity-60"
+        >
+            <defs>
+                <linearGradient id="kpiSparkFade" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#29D8D5" stopOpacity="0" />
+                    <stop offset="100%" stopColor="#29D8D5" stopOpacity="0.35" />
+                </linearGradient>
+            </defs>
+            <polygon points={`0,${H} ${pts} ${W},${H}`} fill="url(#kpiSparkFade)" />
+            <polyline points={pts} fill="none" stroke="#29D8D5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
+};
+
+/* Instagram-stories-style segment: fills while active, snaps full once passed, empties on the next lap.
+   Skips the filling animation under prefers-reduced-motion, since it never reaches 100% on its own
+   there (auto-rotation is paused) - it would otherwise look like a stuck, half-loaded bar. */
+const WorkspaceProgress = ({ isActive, isPast, duration, reducedMotion }) => {
     const [filled, setFilled] = useState(false);
     useEffect(() => {
-        if (!isActive) { setFilled(false); return; }
+        if (!isActive || reducedMotion) { setFilled(false); return; }
         setFilled(false);
         const raf = requestAnimationFrame(() => setFilled(true));
         return () => cancelAnimationFrame(raf);
-    }, [isActive]);
+    }, [isActive, reducedMotion]);
     return (
         <span className="absolute inset-x-3 -bottom-1 block h-[3px] overflow-hidden rounded-full bg-white/10">
             <span
                 className="block h-full rounded-full bg-[#29D8D5] shadow-[0_0_8px_#29D8D5]"
                 style={{
-                    width: isActive ? (filled ? "100%" : "0%") : isPast ? "100%" : "0%",
-                    transition: isActive ? `width ${duration}ms linear` : "none",
+                    width: isActive ? (reducedMotion || filled ? "100%" : "0%") : isPast ? "100%" : "0%",
+                    transition: isActive && !reducedMotion ? `width ${duration}ms linear` : "none",
                 }}
             />
         </span>
@@ -656,6 +688,7 @@ export const OhnixCommandCanvas = () => {
     const handlePointerMove = useCallback((e) => {
         const el = canvasRef.current;
         if (!el) return;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
         const rect = el.getBoundingClientRect();
         const px = (e.clientX - rect.left) / rect.width;
         const py = (e.clientY - rect.top) / rect.height;
@@ -690,6 +723,7 @@ export const OhnixCommandCanvas = () => {
                 ["12", t("landing.hero_dashboard.locations_label")],
                 ["99.8%", t("landing.hero_dashboard.kpi_uptime_label")],
             ],
+            spark: [40, 55, 48, 62, 58, 74, 68, 82],
         },
         {
             id: "commerce",
@@ -705,6 +739,7 @@ export const OhnixCommandCanvas = () => {
                 ["1,204", t("landing.hero_dashboard.kpi_invoices_label")],
                 ["480+", t("landing.hero_dashboard.kpi_clients_label")],
             ],
+            spark: [30, 45, 38, 52, 60, 55, 70, 78],
         },
         {
             id: "finance",
@@ -720,6 +755,7 @@ export const OhnixCommandCanvas = () => {
                 ["98.4%", t("landing.hero_dashboard.kpi_reconciled_label")],
                 ["32", t("landing.hero_dashboard.kpi_dso_label")],
             ],
+            spark: [50, 46, 58, 52, 64, 60, 72, 69],
         },
         {
             id: "connect",
@@ -735,6 +771,7 @@ export const OhnixCommandCanvas = () => {
                 ["120K", t("landing.hero_dashboard.kpi_webhooks_label")],
                 ["24/7", t("landing.hero_dashboard.kpi_support_label")],
             ],
+            spark: [35, 50, 44, 60, 56, 68, 62, 80],
         },
     ];
 
@@ -752,10 +789,13 @@ export const OhnixCommandCanvas = () => {
         { icon: "⚙", label: t("landing.hero_dashboard.module_integrations"), suite: 3 },
     ];
 
+    const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     useEffect(() => {
+        if (reducedMotion) return;
         const timer = setTimeout(() => setActive((value) => (value + 1) % spaces.length), ROTATE_MS);
         return () => clearTimeout(timer);
-    }, [active, spaces.length]);
+    }, [active, spaces.length, reducedMotion]);
 
     const current = spaces[active];
     const activeModules = modules.filter((m) => m.suite === active);
@@ -795,9 +835,9 @@ export const OhnixCommandCanvas = () => {
 
                 <nav className="ml-auto hidden items-center gap-1 rounded-full border border-white/[0.055] bg-black/25 p-1.5 backdrop-blur-xl sm:flex">
                     {spaces.map((space, index) => (
-                        <button key={space.id} type="button" onClick={() => setActive(index)} className={`relative rounded-full px-3.5 py-2.5 text-[9px] uppercase tracking-[0.12em] transition-all duration-500 ${active === index ? "bg-[#29D8D5]/12 text-[#29D8D5]" : "text-[#a3b6b1] hover:text-white"}`}>
+                        <button key={space.id} type="button" onClick={() => setActive(index)} className={`relative w-[88px] shrink-0 truncate rounded-full py-2.5 text-center text-[9px] uppercase tracking-[0.06em] transition-colors duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#29D8D5] focus-visible:ring-offset-2 focus-visible:ring-offset-black ${active === index ? "bg-[#29D8D5]/12 text-[#29D8D5]" : "text-[#a3b6b1] hover:text-white"}`}>
                             {space.label}
-                            <WorkspaceProgress isActive={active === index} isPast={index < active} duration={ROTATE_MS} />
+                            <WorkspaceProgress isActive={active === index} isPast={index < active} duration={ROTATE_MS} reducedMotion={reducedMotion} />
                         </button>
                     ))}
                 </nav>
@@ -813,7 +853,7 @@ export const OhnixCommandCanvas = () => {
                                 type="button"
                                 title={module.label}
                                 onClick={() => setActive(module.suite)}
-                                className={`flex h-10 w-10 items-center justify-center rounded-xl border text-sm transition-all duration-300 ${module.suite === active ? "border-[#29D8D5]/30 bg-[#29D8D5]/12 text-[#29D8D5] shadow-[0_0_16px_rgba(41,216,213,0.1)]" : "border-transparent text-[#829990] hover:border-white/[0.06] hover:bg-white/[0.03] hover:text-white"}`}
+                                className={`flex h-10 w-10 items-center justify-center rounded-xl border text-sm transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#29D8D5] focus-visible:ring-offset-2 focus-visible:ring-offset-black ${module.suite === active ? "border-[#29D8D5]/30 bg-[#29D8D5]/12 text-[#29D8D5] shadow-[0_0_16px_rgba(41,216,213,0.1)]" : "border-transparent text-[#829990] hover:border-white/[0.06] hover:bg-white/[0.03] hover:text-white"}`}
                             >
                                 {module.icon}
                             </button>
@@ -825,7 +865,7 @@ export const OhnixCommandCanvas = () => {
                 <main className="min-w-0 flex-1 overflow-hidden rounded-[32px] border border-white/[0.06] bg-white/[0.018] backdrop-blur-xl">
                     <div className="grid grid-cols-2 gap-1 border-b border-white/[0.05] p-2 sm:hidden">
                         {spaces.map((space, index) => (
-                            <button key={space.id} type="button" onClick={() => setActive(index)} className={`rounded-2xl border px-3.5 py-3 text-left text-[10px] transition-all ${active === index ? "border-[#29D8D5]/25 bg-[#29D8D5]/10 text-[#29D8D5]" : "border-white/[0.045] bg-black/15 text-[#a3b6b1]"}`}>
+                            <button key={space.id} type="button" onClick={() => setActive(index)} className={`rounded-2xl border px-3.5 py-3 text-left text-[10px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#29D8D5] focus-visible:ring-offset-2 focus-visible:ring-offset-black ${active === index ? "border-[#29D8D5]/25 bg-[#29D8D5]/10 text-[#29D8D5]" : "border-white/[0.045] bg-black/15 text-[#a3b6b1]"}`}>
                                 <span className="mr-2 font-mono text-[7px] opacity-55">0{index + 1}</span>{space.label}
                             </button>
                         ))}
@@ -836,7 +876,7 @@ export const OhnixCommandCanvas = () => {
                             <div>
                                 <div className="font-mono text-[9px] tracking-[0.22em] text-[#29D8D5]">WORKSPACE / 0{active + 1}</div>
                                 <h3 className="mt-2 text-[28px] font-semibold tracking-tight text-white sm:text-4xl">{current.label}</h3>
-                                <p className="mt-2 max-w-lg text-[11px] leading-5 text-[#748480] sm:text-[13px] sm:leading-6">{current.detail}</p>
+                                <p className="mt-2 line-clamp-2 min-h-[40px] max-w-lg text-[11px] leading-5 text-[#748480] sm:min-h-[48px] sm:text-[13px] sm:leading-6">{current.detail}</p>
                             </div>
                             <div className="flex shrink-0 items-center gap-2 text-[8px] uppercase tracking-[0.13em] text-[#93a6a1]">
                                 <span className="rounded-full border border-[#29D8D5]/12 px-3 py-1.5">{t("landing.hero_dashboard.badge_realtime")}</span>
@@ -844,21 +884,22 @@ export const OhnixCommandCanvas = () => {
                             </div>
                         </div>
 
-                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                        <div className="mt-3 flex min-h-[61px] flex-wrap items-center gap-1.5">
                             <span className="mr-0.5 text-[8px] uppercase tracking-[0.14em] text-[#7c8f8b]">{t("landing.hero_dashboard.modules_included_label")}</span>
                             {activeModules.map((module) => (
-                                <span key={module.label} className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 text-[9px] text-[#a9b6b3]">
-                                    <span className="text-[#29D8D5]">{module.icon}</span>
-                                    {module.label}
+                                <span key={module.label} className="inline-flex max-w-[150px] items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 text-[9px] text-[#a9b6b3]">
+                                    <span className="shrink-0 text-[#29D8D5]">{module.icon}</span>
+                                    <span className="truncate">{module.label}</span>
                                 </span>
                             ))}
                         </div>
 
                         <div className="mt-3 grid grid-cols-3 gap-2">
-                            {current.kpis.map(([value, label]) => (
-                                <div key={label} className="rounded-[18px] border border-white/[0.05] bg-black/20 px-2.5 py-3 sm:px-3.5 sm:py-3.5">
-                                    <div className="truncate text-lg font-semibold tabular-nums text-white sm:text-xl">{value}</div>
-                                    <div className="mt-1 truncate text-[7px] uppercase tracking-[0.1em] text-[#93a6a1] sm:text-[8px]">{label}</div>
+                            {current.kpis.map(([value, label], index) => (
+                                <div key={label} className="relative overflow-hidden rounded-[18px] border border-white/[0.05] bg-black/20 px-2.5 py-3 sm:px-3.5 sm:py-3.5">
+                                    {index === 0 && <KpiSparkline data={current.spark} />}
+                                    <div className="relative truncate text-lg font-semibold tabular-nums text-white sm:text-xl">{value}</div>
+                                    <div className="relative mt-1 truncate text-[7px] uppercase tracking-[0.1em] text-[#93a6a1] sm:text-[8px]">{label}</div>
                                 </div>
                             ))}
                         </div>
@@ -1236,14 +1277,16 @@ export const OrbitalHero = ({
                                 {primaryCta}
                                 <ArrowRightOutlined className="transition-transform duration-300 group-hover:translate-x-1" />
                             </button>
-                            <button
-                                type="button"
-                                onClick={onSecondary}
-                                className="group inline-flex items-center justify-center gap-3 rounded-full border border-white/12 bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-[#29D8D5]/40 hover:bg-white/[0.06]"
-                            >
-                                <PlayCircleOutlined className="text-[#29D8D5] transition-transform duration-300 group-hover:scale-110" />
-                                {secondaryCta}
-                            </button>
+                            {secondaryCta && (
+                                <button
+                                    type="button"
+                                    onClick={onSecondary}
+                                    className="group inline-flex items-center justify-center gap-3 rounded-full border border-white/12 bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-[#29D8D5]/40 hover:bg-white/[0.06]"
+                                >
+                                    <PlayCircleOutlined className="text-[#29D8D5] transition-transform duration-300 group-hover:scale-110" />
+                                    {secondaryCta}
+                                </button>
+                            )}
                         </div>
 
                         <div
@@ -1267,7 +1310,7 @@ export const OrbitalHero = ({
                         </div>
                     </div>
 
-                    <div className="relative mx-auto w-full max-w-[780px] animate-fade-up" style={{ animationDelay: "0.2s" }}>
+                    <div className="relative mx-auto w-full min-w-0 max-w-[780px] animate-fade-up" style={{ animationDelay: "0.2s" }}>
                         <div className="absolute -inset-14 rounded-[52px] bg-[radial-gradient(circle_at_center,rgba(41,216,213,0.4),transparent_68%)] blur-[42px]" />
 
                         <div className="relative transition-transform duration-500 hover:-translate-y-1 animate-float">
@@ -1474,13 +1517,15 @@ export const MobileStickyCta = ({ primaryCta, secondaryCta, onPrimary, onSeconda
         style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}
     >
         <div className="mx-auto flex max-w-lg gap-3">
-            <button
-                type="button"
-                onClick={onSecondary}
-                className="flex-1 rounded-full border border-white/15 bg-white/[0.04] px-4 py-3.5 text-sm font-semibold text-white transition-all active:scale-95 hover:border-[#29D8D5]/30"
-            >
-                {secondaryCta}
-            </button>
+            {secondaryCta && (
+                <button
+                    type="button"
+                    onClick={onSecondary}
+                    className="flex-1 rounded-full border border-white/15 bg-white/[0.04] px-4 py-3.5 text-sm font-semibold text-white transition-all active:scale-95 hover:border-[#29D8D5]/30"
+                >
+                    {secondaryCta}
+                </button>
+            )}
             <button
                 type="button"
                 onClick={onPrimary}

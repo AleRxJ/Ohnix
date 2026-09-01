@@ -86,6 +86,9 @@ const Footer = () => {
                         <Link to="/comparativa/ohnix-vs-alegra" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.comparison")}
                         </Link>
+                        <Link to="/integraciones" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
+                            {t("landing.footer.links.integrations")}
+                        </Link>
                         <Link to="/blog" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.blog")}
                         </Link>

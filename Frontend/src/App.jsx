@@ -38,6 +38,7 @@ const SoftwareInventarioPymes = lazy(() => import("./pages/SoftwareInventarioPym
 const FacturacionElectronica = lazy(() => import("./pages/FacturacionElectronica"));
 const OhnixVsAlegra = lazy(() => import("./pages/OhnixVsAlegra"));
 const ColaboracionEquipo = lazy(() => import("./pages/ColaboracionEquipo"));
+const Integraciones = lazy(() => import("./pages/Integraciones"));
 const ProfilePage = lazy(() => import("./components/ProfilePage"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DashboardLayout = lazy(() => import("./components/layout/DashboardLayout"));
@@ -222,6 +223,7 @@ function App() {
                             )}
                             <Route path="/comparativa/ohnix-vs-alegra" element={<OhnixVsAlegra />} />
                             <Route path="/colaboracion-en-equipo" element={<ColaboracionEquipo />} />
+                            <Route path="/integraciones" element={<Integraciones />} />
                             <Route path="/demo" element={<Demo />} />
 
                             {/* Everything below uses antd components (Form, Table, etc.) */}

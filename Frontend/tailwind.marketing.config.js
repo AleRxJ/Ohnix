@@ -11,6 +11,7 @@ export default {
     "./src/pages/FacturacionElectronica.jsx",
     "./src/pages/OhnixVsAlegra.jsx",
     "./src/pages/ColaboracionEquipo.jsx",
+    "./src/pages/Integraciones.jsx",
     "./src/pages/Blog.jsx",
     "./src/pages/BlogPost.jsx",
     "./src/components/landing/**/*.jsx",

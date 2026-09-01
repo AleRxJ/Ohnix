@@ -61,3 +61,25 @@ body {
     animation: none !important;
   }
 }
+
+/* Entrance transitions and looping micro-animations are still fine on mobile
+   (they run once, or are cheap) - but a person who has asked their OS to
+   reduce motion should get none of it, anywhere on the marketing site. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-reveal-up,
+  .animate-slide-from-left,
+  .animate-slide-from-right,
+  .animate-scale-in,
+  .animate-slide-up,
+  .animate-marquee,
+  .animate-blink,
+  .animate-shimmer,
+  .animate-sweep,
+  .animate-spin-slow,
+  .animate-ping,
+  .animate-pulse {
+    animation: none !important;
+  }
+}

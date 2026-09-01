@@ -1,4 +1,4 @@
-import { ArrowRightOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, PlayCircleOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
@@ -51,13 +51,20 @@ const Demo = () => {
 
                     <div className="mt-10 overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
                         <div className="aspect-video overflow-hidden rounded-[22px] border border-white/8 bg-[#0a0a0a]">
-                            <iframe
-                                title={t("landing.demo.video_title")}
-                                className="h-full w-full"
-                                src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                            />
+                            {/* placeholder while there's no real product video — same pattern as VideoModal */}
+                            <div className="flex h-full w-full flex-col items-center justify-center gap-6 px-6 text-center">
+                                <div className="relative flex h-24 w-24 items-center justify-center">
+                                    <span className="absolute h-full w-full rounded-full bg-[#29D8D5]/20 animate-ripple" />
+                                    <span className="absolute h-full w-full rounded-full bg-[#29D8D5]/15 animate-ripple-delay" />
+                                    <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-[#29D8D5]/40 bg-[#29D8D5]/10 text-[#29D8D5]">
+                                        <PlayCircleOutlined className="text-4xl" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-lg font-semibold text-white">{t("landing.video_modal.coming_soon_title")}</p>
+                                    <p className="mt-2 text-sm text-[#A9B3B8]">{t("landing.video_modal.coming_soon_description")}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

@@ -20,6 +20,7 @@ export const MARKETING_ROUTES = [
     "/facturacion-electronica-dian",
     "/comparativa/ohnix-vs-alegra",
     "/colaboracion-en-equipo",
+    "/integraciones",
     "/blog",
     ...BLOG_SLUGS.map((slug) => `/blog/${slug}`),
 ];

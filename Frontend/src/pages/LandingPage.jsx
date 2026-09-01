@@ -20,7 +20,6 @@ import {
     SectionHeading,
     ContentSection,
     brandIcons,
-    VideoModal,
     MarqueeStrip,
     OhnixCommandCanvas,
     PageOrbitalLayer,
@@ -32,7 +31,6 @@ import {
 const LandingPage = () => {
     const navigate = useNavigate();
     const { t, currentLanguage } = useI18n();
-    const [showDemo, setShowDemo] = useState(false);
     // Shared with Precios.jsx so the landing pricing teaser and the full
     // pricing page never disagree (previously this section always showed
     // the static USD-labeled locale strings regardless of visitor country).
@@ -67,21 +65,17 @@ const LandingPage = () => {
         navigate("/signup");
     };
 
-    const handleWatchDemo = () => {
-        setShowDemo(true);
-    };
-
     const marqueeItems = [
         t("landing.hero.orbit.nodeOne"),
         t("landing.hero.orbit.nodeTwo"),
         t("landing.hero.orbit.nodeThree"),
-        t("landing.solutions.items.lifecycle.title"),
-        t("landing.solutions.items.assets.title"),
-        t("landing.solutions.items.sustainability.title"),
-        t("landing.solutions.items.circular.title"),
+        t("landing.solutions.items.products.title"),
+        t("landing.solutions.items.purchases.title"),
+        t("landing.solutions.items.sales.title"),
+        t("landing.solutions.items.reports.title"),
         t("landing.impact.metrics.uptime.label"),
-        t("landing.impact.metrics.recovery.label"),
-        t("landing.impact.metrics.optimization.label"),
+        t("landing.impact.metrics.unifiedOps.label"),
+        t("landing.impact.metrics.manualWork.label"),
     ];
 
     const handlePlanCta = (planKey) => {
@@ -120,41 +114,41 @@ const LandingPage = () => {
             description: t("landing.impact.metrics.uptime.description"),
         },
         {
-            value: t("landing.impact.metrics.recovery.value"),
-            label: t("landing.impact.metrics.recovery.label"),
-            description: t("landing.impact.metrics.recovery.description"),
+            value: t("landing.impact.metrics.unifiedOps.value"),
+            label: t("landing.impact.metrics.unifiedOps.label"),
+            description: t("landing.impact.metrics.unifiedOps.description"),
         },
         {
-            value: t("landing.impact.metrics.optimization.value"),
-            label: t("landing.impact.metrics.optimization.label"),
-            description: t("landing.impact.metrics.optimization.description"),
+            value: t("landing.impact.metrics.manualWork.value"),
+            label: t("landing.impact.metrics.manualWork.label"),
+            description: t("landing.impact.metrics.manualWork.description"),
         },
         {
-            value: t("landing.impact.metrics.adoption.value"),
-            label: t("landing.impact.metrics.adoption.label"),
-            description: t("landing.impact.metrics.adoption.description"),
+            value: t("landing.impact.metrics.accessControl.value"),
+            label: t("landing.impact.metrics.accessControl.label"),
+            description: t("landing.impact.metrics.accessControl.description"),
         },
     ];
 
     const featureCards = [
         {
-            title: t("landing.solutions.items.lifecycle.title"),
-            description: t("landing.solutions.items.lifecycle.description"),
+            title: t("landing.solutions.items.products.title"),
+            description: t("landing.solutions.items.products.description"),
             icon: brandIcons.assets,
         },
         {
-            title: t("landing.solutions.items.assets.title"),
-            description: t("landing.solutions.items.assets.description"),
+            title: t("landing.solutions.items.purchases.title"),
+            description: t("landing.solutions.items.purchases.description"),
             icon: brandIcons.connect,
         },
         {
-            title: t("landing.solutions.items.sustainability.title"),
-            description: t("landing.solutions.items.sustainability.description"),
+            title: t("landing.solutions.items.sales.title"),
+            description: t("landing.solutions.items.sales.description"),
             icon: brandIcons.lifecycle,
         },
         {
-            title: t("landing.solutions.items.circular.title"),
-            description: t("landing.solutions.items.circular.description"),
+            title: t("landing.solutions.items.reports.title"),
+            description: t("landing.solutions.items.reports.description"),
             icon: brandIcons.observability,
         },
         {
@@ -179,6 +173,11 @@ const LandingPage = () => {
             title: t("landing.differentiators.items.assistant.title"),
             description: t("landing.differentiators.items.assistant.description"),
             icon: brandIcons.assistant,
+        },
+        {
+            title: t("landing.differentiators.items.integrations.title"),
+            description: t("landing.differentiators.items.integrations.description"),
+            icon: brandIcons.api,
         },
     ];
 
@@ -268,7 +267,6 @@ const LandingPage = () => {
                 t("landing.pricing.plans.starter.features.reports"),
                 t("landing.pricing.plans.starter.features.pdf"),
                 t("landing.pricing.plans.starter.features.alerts"),
-                ELECTRONIC_INVOICING_ENABLED && { text: t("landing.pricing.plans.starter.features.invoicing"), highlight: true },
             ].filter(Boolean),
             cta: t("landing.pricing.plans.starter.cta"),
             note: t("landing.pricing.trial_note"),
@@ -400,15 +398,6 @@ const LandingPage = () => {
                 ]}
             />
             <PageOrbitalLayer />
-            <VideoModal
-                isOpen={showDemo}
-                onClose={() => setShowDemo(false)}
-                /* Replace the src below with your real YouTube URL, e.g:
-                   src="https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
-                   Leave src undefined to show the "coming soon" placeholder */
-                src={undefined}
-                title={t("landing.demo.video_title")}
-            />
             <Navbar />
             <main className="marketing-main bg-[#050505] pb-24 md:pb-0">
                 <OrbitalHero
@@ -416,9 +405,7 @@ const LandingPage = () => {
                     title={t("landing.hero.title")}
                     subtitle={t("landing.hero.subtitle")}
                     primaryCta={t("landing.hero.primary_cta")}
-                    secondaryCta={t("landing.hero.secondary_cta")}
                     onPrimary={handleGetStarted}
-                    onSecondary={handleWatchDemo}
                     stats={heroStats}
                     orbitLabels={orbitLabels}
                     footerNote={t("landing.hero.footer_note")}
@@ -469,7 +456,7 @@ const LandingPage = () => {
                         description={t("landing.differentiators.description")}
                     />
                     <div className="mt-14">
-                        <CardGrid items={differentiatorCards} columns={2} />
+                        <CardGrid items={differentiatorCards} columns={3} />
                     </div>
                 </ContentSection>
 
@@ -554,6 +541,14 @@ const LandingPage = () => {
                                 <span className="block text-sm font-semibold">{t("landing.explore.comparison.title")}</span>
                                 <span className="mt-1 block text-xs text-[#A9B3B8]">{t("landing.explore.comparison.description")}</span>
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/integraciones")}
+                                className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-left text-white hover:border-[#29D8D5]/35"
+                            >
+                                <span className="block text-sm font-semibold">{t("landing.explore.integrations.title")}</span>
+                                <span className="mt-1 block text-xs text-[#A9B3B8]">{t("landing.explore.integrations.description")}</span>
+                            </button>
                         </div>
                     </div>
                 </section>
@@ -565,9 +560,7 @@ const LandingPage = () => {
             </main>
             <MobileStickyCta
                 primaryCta={t("landing.hero.primary_cta")}
-                secondaryCta={t("landing.hero.secondary_cta")}
                 onPrimary={handleGetStarted}
-                onSecondary={handleWatchDemo}
             />
             <Footer />
         </div>

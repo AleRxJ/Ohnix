@@ -70,7 +70,6 @@ const Precios = () => {
                 t("landing.pricing.plans.starter.features.reports"),
                 t("landing.pricing.plans.starter.features.pdf"),
                 t("landing.pricing.plans.starter.features.alerts"),
-                ELECTRONIC_INVOICING_ENABLED && { text: t("landing.pricing.plans.starter.features.invoicing"), highlight: true },
             ].filter(Boolean),
             cta: "Empezar gratis",
         },
