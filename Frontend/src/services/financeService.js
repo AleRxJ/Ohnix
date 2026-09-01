@@ -118,6 +118,14 @@ export const financeService = {
         const response = await api.post("/finance/transfers", payload, idempotencyHeaders());
         return response.data;
     },
+    async adjustCash(payload) {
+        const response = await api.post("/finance/adjustments", payload, idempotencyHeaders());
+        return response.data;
+    },
+    async getCashIntegrity() {
+        const response = await api.get("/finance/integrity");
+        return response.data;
+    },
     async getReconciliationSuggestions(cashAccountId) {
         const response = await api.get("/finance/reconciliation/suggestions", { params: { cash_account_id: cashAccountId } });
         return response.data;

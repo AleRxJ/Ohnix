@@ -58,6 +58,11 @@ const MovementRow = ({ movement: m, currentLanguage }) => {
                     {m.reason && (
                         <Text className="text-xs text-[var(--ohnix-text-muted)] block mt-1">{m.reason}</Text>
                     )}
+                    {isDiscrepancy && (
+                        <Text className="text-xs text-amber-400/80 block mt-1">
+                            {t("products.transfer_discrepancy_accounting_hint")}
+                        </Text>
+                    )}
                     {m.created_by?.username && (
                         <Text className="text-xs text-[var(--ohnix-text-dim)] block mt-0.5">{m.created_by.username}</Text>
                     )}

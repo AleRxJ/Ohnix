@@ -20,6 +20,7 @@ export const SINGLE_ENTRY_SOURCE_TYPES = new Set([
     "manual_journal",
     "manual_journal_reversal",
     "cash_transfer",
+    "cash_adjustment",
 ]);
 
 export const isSingleEntrySource = (sourceType, sourceId) =>

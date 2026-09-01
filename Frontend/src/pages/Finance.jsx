@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Spin, Popconfirm, Tooltip } from "antd";
-import { PlusOutlined, WalletOutlined, BankOutlined, EditOutlined, StopOutlined, SwapOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { AuditOutlined, PlusOutlined, WalletOutlined, BankOutlined, EditOutlined, StopOutlined, SwapOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import PageHeader from "../components/common/PageHeader";
 import CashAccountFormModal from "../components/finance/CashAccountFormModal";
@@ -12,6 +12,8 @@ import { useTeam } from "../context/TeamContext";
 import useI18n from "../hooks/useI18n";
 import AccountsPayablePlanner from "../components/finance/AccountsPayablePlanner";
 import AccountsReceivablePlanner from "../components/finance/AccountsReceivablePlanner";
+import { accountingService } from "../services/accountingService";
+import CashIntegrityPanel from "../components/finance/CashIntegrityPanel";
 
 const ACCOUNT_TYPE_ICON = { cash: WalletOutlined, bank: BankOutlined };
 
@@ -20,19 +22,25 @@ const Finance = () => {
     const { formatCurrency } = useCurrency();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("finance", "edit");
-    const { accounts, loading, submitting, createAccount, updateAccount, deactivateAccount, transferCash } = useCashAccounts();
+    const { accounts, loading, submitting, createAccount, updateAccount, deactivateAccount, transferCash, adjustCash } = useCashAccounts();
     const [pointsOfSale, setPointsOfSale] = useState([]);
+    const [assetAccounts, setAssetAccounts] = useState([]);
     const [modal, setModal] = useState(null); // { mode: "create" | "edit", record? }
     const [movementsAccount, setMovementsAccount] = useState(null);
     const [form] = Form.useForm();
     const [transferOpen, setTransferOpen] = useState(false);
     const [transferForm] = Form.useForm();
+    const [adjustmentAccount, setAdjustmentAccount] = useState(null);
+    const [counterpartAccounts, setCounterpartAccounts] = useState([]);
+    const [adjustmentForm] = Form.useForm();
+    const adjustmentAmount = Form.useWatch("amount", adjustmentForm);
 
     useEffect(() => {
         pointOfSaleService
             .list()
             .then((res) => setPointsOfSale((res?.data || []).filter((pos) => pos.isActive)))
             .catch(() => {});
+        accountingService.listChartOfAccounts().then((res) => setAssetAccounts((res?.data || []).filter((row) => row.account_type === "asset" && row.is_active))).catch(() => {});
     }, []);
 
     const openCreate = () => {
@@ -48,6 +56,7 @@ const Finance = () => {
             point_of_sale_id: record.point_of_sale?._id || undefined,
             bank_name: record.bank_name,
             account_number: record.account_number,
+            chart_account_id: record.chart_account?._id || undefined,
         });
         setModal({ mode: "edit", record });
     };
@@ -66,11 +75,13 @@ const Finance = () => {
                       point_of_sale_id: values.point_of_sale_id || null,
                       bank_name: values.bank_name,
                       account_number: values.account_number,
+                      chart_account_id: values.chart_account_id || null,
                   })
                 : await updateAccount(modal.record._id, {
                       name: values.name.trim(),
                       bank_name: values.bank_name,
                       account_number: values.account_number,
+                      chart_account_id: values.chart_account_id || null,
                   });
         if (success) closeModal();
     };
@@ -82,6 +93,19 @@ const Finance = () => {
     const handleTransfer = async (values) => {
         const success = await transferCash({ from_cash_account_id: values.from_cash_account_id, to_cash_account_id: values.to_cash_account_id, amount: values.amount, description: values.description?.trim() || undefined, transfer_date: values.transfer_date.toISOString() });
         if (success) { setTransferOpen(false); transferForm.resetFields(); }
+    };
+    const openAdjustment = async (record) => {
+        try {
+            const response = await accountingService.listChartOfAccounts();
+            setCounterpartAccounts((response?.data || []).filter((row) => row.is_active));
+            adjustmentForm.resetFields();
+            adjustmentForm.setFieldsValue({ adjustment_date: dayjs() });
+            setAdjustmentAccount(record);
+        } catch { Modal.error({ title: t("finance.adjustment_failed"), content: t("finance.adjustment_accounts_failed") }); }
+    };
+    const handleAdjustment = async (values) => {
+        const success = await adjustCash({ cash_account_id: adjustmentAccount._id, counterpart_account_id: values.counterpart_account_id, amount: values.amount, reason: values.reason.trim(), adjustment_date: values.adjustment_date.toISOString() });
+        if (success) { setAdjustmentAccount(null); adjustmentForm.resetFields(); }
     };
 
     return (
@@ -141,6 +165,7 @@ const Finance = () => {
                                                     <span className="text-xs text-[var(--ohnix-text-muted)]">
                                                         {record.point_of_sale?.name || t("finance.point_of_sale_all_locations")}
                                                     </span>
+                                                    <span className="block text-[11px] text-[#44F3F0] mt-0.5">{record.chart_account ? `${record.chart_account.code} · ${record.chart_account.name}` : t("finance.chart_account_automatic")}</span>
                                                 </div>
                                             </div>
                                             {record.is_active ? (
@@ -170,6 +195,9 @@ const Finance = () => {
                                                 {t("finance.view_movements")}
                                             </Button>
                                             {canEdit && (
+                                                <Tooltip title={t("finance.adjustment_cta")}><Button icon={<AuditOutlined />} onClick={() => openAdjustment(record)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-all duration-200" /></Tooltip>
+                                            )}
+                                            {canEdit && (
                                                 <Button
                                                     icon={<EditOutlined />}
                                                     onClick={() => openEdit(record)}
@@ -196,6 +224,7 @@ const Finance = () => {
                             })}
                         </div>
                     )}
+                    <CashIntegrityPanel />
                     <AccountsPayablePlanner canEdit={canEdit} />
                     <AccountsReceivablePlanner canEdit={canEdit} />
                 </div>
@@ -206,6 +235,7 @@ const Finance = () => {
                 mode={modal?.mode}
                 form={form}
                 pointsOfSale={pointsOfSale}
+                chartAccounts={assetAccounts}
                 submitting={submitting}
                 onCancel={closeModal}
                 onSubmit={handleSubmit}
@@ -223,6 +253,15 @@ const Finance = () => {
                     <Form.Item noStyle shouldUpdate={(before, after) => before.from_cash_account_id !== after.from_cash_account_id}>{({ getFieldValue }) => <Form.Item name="to_cash_account_id" label={t("finance.transfer_to")} rules={[{ required: true, message: t("validation.required_field") }]}><Select showSearch optionFilterProp="label" options={accounts.filter((row) => row.is_active && row._id !== getFieldValue("from_cash_account_id")).map((row) => ({ value: row._id, label: row.name }))} placeholder={t("finance.transfer_to_placeholder")} /></Form.Item>}</Form.Item>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Form.Item name="amount" label={t("finance.transfer_amount")} rules={[{ required: true, message: t("validation.required_field") }]}><InputNumber min={0.01} precision={2} className="w-full" /></Form.Item><Form.Item name="transfer_date" label={t("finance.transfer_date")} rules={[{ required: true, message: t("validation.required_field") }]}><DatePicker className="w-full" /></Form.Item></div>
                     <Form.Item name="description" label={t("finance.transfer_description")}><Input maxLength={200} placeholder={t("finance.transfer_description_placeholder")} /></Form.Item>
+                </Form>
+            </Modal>
+            <Modal title={t("finance.adjustment_title", { name: adjustmentAccount?.name || "" })} open={Boolean(adjustmentAccount)} onCancel={() => setAdjustmentAccount(null)} onOk={() => adjustmentForm.submit()} confirmLoading={submitting} okText={t("finance.adjustment_confirm")}>
+                <Alert className={`dark-alert ${Number(adjustmentAmount) < 0 ? "dark-alert-amber" : "dark-alert-teal"} mb-4`} type={Number(adjustmentAmount) < 0 ? "warning" : "info"} showIcon message={t("finance.adjustment_help_title")} description={t("finance.adjustment_help_desc")} />
+                <Form form={adjustmentForm} layout="vertical" onFinish={handleAdjustment}>
+                    <Form.Item name="amount" label={t("finance.adjustment_amount")} extra={adjustmentAmount ? t("finance.adjustment_balance_preview", { current: formatCurrency(adjustmentAccount?.balance || 0), next: formatCurrency(Number(adjustmentAccount?.balance || 0) + Number(adjustmentAmount || 0)) }) : t("finance.adjustment_amount_help")} rules={[{ required: true, message: t("validation.required_field") }, { validator: (_, value) => Number(value) !== 0 ? Promise.resolve() : Promise.reject(new Error(t("finance.adjustment_nonzero"))) }]}><InputNumber precision={2} className="w-full" placeholder={t("finance.adjustment_amount_placeholder")} /></Form.Item>
+                    <Form.Item name="counterpart_account_id" label={t("finance.adjustment_counterpart")} extra={t("finance.adjustment_counterpart_help")} rules={[{ required: true, message: t("validation.required_field") }]}><Select showSearch optionFilterProp="label" options={counterpartAccounts.map((row) => ({ value: row._id, label: `${row.code} · ${row.name}` }))} placeholder={t("finance.adjustment_counterpart_placeholder")} /></Form.Item>
+                    <Form.Item name="adjustment_date" label={t("finance.adjustment_date")} rules={[{ required: true, message: t("validation.required_field") }]}><DatePicker className="w-full" /></Form.Item>
+                    <Form.Item name="reason" label={t("finance.adjustment_reason")} rules={[{ required: true, whitespace: true, message: t("validation.required_field") }]}><Input.TextArea rows={3} maxLength={300} showCount placeholder={t("finance.adjustment_reason_placeholder")} /></Form.Item>
                 </Form>
             </Modal>
         </div>

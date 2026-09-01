@@ -1792,11 +1792,8 @@ enum CashMovementSourceType {
   purchase_payment
   manual_deposit
   manual_withdrawal
-  // Not wired up to an actual transfer flow yet (see the fiscal audit's
-  // Fase 3 backlog) - kept in the enum now so a future transfer feature
-  // doesn't need a migration just to record its own movements, same
-  // reasoning StockMovementSourceType's transfer_out/transfer_in already
-  // followed.
+  // Internal cash/bank transfers create one outgoing and one incoming
+  // movement atomically; both share the transfer id as sourceId.
   transfer_out
   transfer_in
   adjustment
@@ -2065,6 +2062,9 @@ enum JournalSourceType {
   manual_journal
   manual_journal_reversal
   manual_expense
+  manual_income
+  cash_transfer
+  cash_adjustment
 }
 
 enum ManualVoucherStatus {

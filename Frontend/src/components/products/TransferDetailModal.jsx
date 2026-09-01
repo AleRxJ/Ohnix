@@ -137,6 +137,11 @@ const TransferDetailModal = ({ visible, transfer, product, onCancel }) => {
                         </div>
                     )}
                 </div>
+                {transfer.discrepancy > 0 && (
+                    <Text className="text-xs text-[var(--ohnix-text-dim)] block mt-2">
+                        {t("products.transfer_discrepancy_accounting_hint")}
+                    </Text>
+                )}
             </div>
 
             {transfer.notes && (

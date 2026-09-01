@@ -32,8 +32,8 @@ export const transferCash = async ({ accountId, actorId, fromCashAccountId, toCa
             accountId, createdById: actorId, entryDate, description: reason,
             sourceType: "cash_transfer", sourceId: transferId,
             lines: [
-                { chartAccountId: toChartAccountId, debit: numericAmount, credit: 0 },
-                { chartAccountId: fromChartAccountId, debit: 0, credit: numericAmount },
+                { chartAccountId: toChartAccountId, debit: numericAmount, credit: 0, description: `Entrada a ${to.name}` },
+                { chartAccountId: fromChartAccountId, debit: 0, credit: numericAmount, description: `Salida de ${from.name}` },
             ],
         });
         const [outMovement, inMovement] = await Promise.all([

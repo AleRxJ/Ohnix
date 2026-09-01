@@ -720,6 +720,57 @@
     "transfer_success": "Transferencia registrada correctamente",
     "transfer_failed": "No se pudo registrar la transferencia",
     "transfer_requires_accounts": "Necesitas al menos dos cuentas activas para transferir dinero",
+    "adjustment_cta": "Ajustar saldo",
+    "adjustment_title": "Ajustar {{name}}",
+    "adjustment_help_title": "Este cambio dejará trazabilidad contable",
+    "adjustment_help_desc": "Ingresa la diferencia, no el saldo final. Usa un valor positivo para aumentar o negativo para disminuir; Ohnix creará el movimiento y el asiento correspondiente.",
+    "adjustment_amount": "Diferencia del ajuste",
+    "adjustment_amount_placeholder": "Ej. -25000 o 10000",
+    "adjustment_amount_help": "Positivo aumenta el saldo; negativo lo disminuye.",
+    "adjustment_balance_preview": "Saldo actual: {{current}} · Nuevo saldo: {{next}}",
+    "adjustment_nonzero": "El ajuste debe ser diferente de cero",
+    "adjustment_counterpart": "Cuenta contable de contrapartida",
+    "adjustment_counterpart_help": "Indica dónde se reconocerá contablemente la diferencia.",
+    "adjustment_counterpart_placeholder": "Selecciona la cuenta que explica el ajuste",
+    "adjustment_date": "Fecha contable",
+    "adjustment_reason": "Motivo y soporte",
+    "adjustment_reason_placeholder": "Explica por qué existe la diferencia y qué soporte la respalda",
+    "adjustment_confirm": "Registrar ajuste",
+    "adjustment_success": "Ajuste registrado con trazabilidad contable",
+    "adjustment_failed": "No se pudo registrar el ajuste",
+    "adjustment_accounts_failed": "No fue posible cargar las cuentas contables. Intenta de nuevo.",
+    "chart_account_label": "Cuenta asociada del plan contable",
+    "chart_account_placeholder": "Selecciona una cuenta de activo",
+    "chart_account_help_title": "Define dónde aparecerá este saldo en Contabilidad",
+    "chart_account_help_desc": "Ventas, pagos, transferencias y ajustes utilizarán esta cuenta contable. Si no eliges una, Ohnix asignará automáticamente Caja (1105) o Bancos (1110).",
+    "chart_account_default_help": "Opcional. Ohnix aplicará la cuenta predeterminada según el tipo.",
+    "chart_account_edit_help": "El cambio aplica a movimientos futuros; los asientos históricos no se modifican.",
+    "chart_account_automatic": "Cuenta contable automática",
+    "integrity_title": "Control de integridad financiera",
+    "integrity_subtitle": "Detecta diferencias entre saldos, movimientos y libro mayor",
+    "integrity_refresh": "Volver a comprobar",
+    "integrity_retry": "Reintentar",
+    "integrity_failed": "No fue posible ejecutar el control de integridad.",
+    "integrity_help_title": "Este control no modifica información",
+    "integrity_help_desc": "La primera tabla debe cuadrar exactamente. La comparación contable puede requerir revisión si la cuenta del mayor también recibe asientos manuales o información histórica ajena a estas cajas y bancos.",
+    "integrity_operational_title": "Saldo guardado frente a movimientos",
+    "integrity_accounting_title": "Operación frente al libro mayor",
+    "integrity_account": "Caja o banco",
+    "integrity_stored": "Saldo mostrado",
+    "integrity_movements": "Suma de movimientos",
+    "integrity_difference": "Diferencia",
+    "integrity_status": "Resultado",
+    "integrity_chart_account": "Cuenta contable",
+    "integrity_linked_accounts": "Cajas/bancos asociados",
+    "integrity_operational": "Saldo operativo",
+    "integrity_ledger": "Saldo en mayor",
+    "integrity_ok": "Correcto",
+    "integrity_review": "Revisar",
+    "integrity_cash_accounts": "Cuentas comprobadas",
+    "integrity_operational_alerts": "Diferencias operativas",
+    "integrity_accounting_groups": "Grupos contables",
+    "integrity_accounting_alerts": "Grupos por revisar",
+    "integrity_empty": "No hay cuentas configuradas para comprobar.",
     "match_cta": "Conciliar",
     "match_modal_title": "Conciliar entrada de extracto",
     "match_select_movement_label": "Selecciona el movimiento correspondiente",
@@ -1970,6 +2021,7 @@
     "transfer_quantity_received_label": "Cantidad recibida",
     "transfer_receive_notes_placeholder": "Ej. Caja abierta, unidad dañada...",
     "transfer_discrepancy_label": "Diferencia",
+    "transfer_discrepancy_accounting_hint": "El valor de las unidades faltantes se registró como pérdida en el Libro diario de Contabilidad (cuenta Faltantes en inventario).",
     "transfer_cancel_confirm_title": "¿Cancelar este traslado?",
     "transfer_cancel_confirm_content": "Si ya estaba en tránsito, las unidades vuelven al punto de origen.",
     "transfer_from_to": "{{from}} → {{to}}",
@@ -3053,6 +3105,34 @@
         }
       }
     },
+    "comparisonTeaser": {
+      "eyebrow": "Comparativa",
+      "title": "¿Cómo se compara Ohnix con Alegra?",
+      "description": "Ohnix nace desde el inventario y suma facturación DIAN y contabilidad; Alegra nace desde la facturación y suma inventario. La diferencia se nota en el día a día.",
+      "headers": {
+        "criteria": "Criterio",
+        "ohnix": "Ohnix",
+        "competitor": "Alegra"
+      },
+      "rows": {
+        "first": {
+          "criteria": "Enfoque operativo",
+          "ohnix": "Inventario, compras, pedidos, facturación electrónica DIAN y contabilidad automática en un solo flujo",
+          "competitor": "Suite de facturación y contabilidad con módulo de inventario adicional"
+        },
+        "second": {
+          "criteria": "Facturación electrónica y contabilidad",
+          "ohnix": "Facturación electrónica DIAN con tecnología propia, y contabilidad automática (asientos, plan de cuentas, cierres) desde el plan Escala",
+          "competitor": "Facturación y contabilidad incluidas desde el plan base, con mayor profundidad contable especializada"
+        },
+        "third": {
+          "criteria": "Ruta recomendada para pymes",
+          "ohnix": "Equipos que quieren inventario, facturación DIAN y contabilidad en una sola herramienta, sin duplicar información entre sistemas",
+          "competitor": "Equipos que ya resolvieron su operación aparte y buscan solo el módulo contable/fiscal especializado"
+        }
+      },
+      "cta": "Ver comparativa completa"
+    },
     "timeline": {
       "eyebrow": "Cómo funciona",
       "title": "De la configuración al insight en cuatro pasos.",
@@ -3122,6 +3202,11 @@
           "context": "Multi-sucursal",
           "title": "Traslados de inventario con trazabilidad total",
           "description": "Cada punto de venta ve y vende su propio stock. Cuando falta mercancía en una sede, se solicita un traslado a otra y queda registrado quién lo pidió, aprobó, envió y recibió — sin hojas de cálculo ni WhatsApp."
+        },
+        "fourth": {
+          "context": "Contabilidad y cumplimiento",
+          "title": "Libros al día sin doble digitación",
+          "description": "Cada venta, compra y pago genera su asiento contable automáticamente. Al cierre, tu contador revisa estados financieros y el libro mayor por tercero sin pedirte una hoja de cálculo aparte."
         }
       }
     },

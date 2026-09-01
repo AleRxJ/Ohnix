@@ -9,6 +9,8 @@ import * as reconciliationService from "../services/bankReconciliation.service.j
 import * as manualExpenseService from "../services/manualExpense.service.js";
 import * as manualIncomeService from "../services/manualIncome.service.js";
 import * as cashTransferService from "../services/cashTransfer.service.js";
+import * as cashAdjustmentService from "../services/cashAdjustment.service.js";
+import * as cashIntegrityService from "../services/cashIntegrity.service.js";
 import * as accountsPayableService from "../services/accountsPayable.service.js";
 import * as accountsReceivableService from "../services/accountsReceivable.service.js";
 
@@ -25,6 +27,7 @@ const mapCashAccount = (a) => ({
     point_of_sale: a.pointOfSale ? { _id: a.pointOfSale.id, name: a.pointOfSale.name } : { _id: a.pointOfSaleId },
     bank_name: a.bankName,
     account_number: a.accountNumber,
+    chart_account: a.chartAccount ? { _id: a.chartAccount.id, code: a.chartAccount.code, name: a.chartAccount.name, account_type: a.chartAccount.accountType } : null,
     balance: Number(a.balance),
     is_active: a.isActive,
     createdAt: a.createdAt,
@@ -79,7 +82,7 @@ export const getCashAccount = asyncHandler(async (req, res) => {
 });
 
 export const createCashAccount = asyncHandler(async (req, res) => {
-    const { name, account_type, point_of_sale_id, bank_name, account_number } = req.body || {};
+    const { name, account_type, point_of_sale_id, bank_name, account_number, chart_account_id } = req.body || {};
     const account = await cashAccountService.createCashAccount({
         accountId: req.user.prismaId,
         actorId: req.user.actorId,
@@ -88,18 +91,20 @@ export const createCashAccount = asyncHandler(async (req, res) => {
         pointOfSaleId: point_of_sale_id || null,
         bankName: bank_name,
         accountNumber: account_number,
+        chartAccountId: chart_account_id || null,
     });
     return res.status(201).json(new ApiResponse(201, mapCashAccount(account), "Cash account created successfully"));
 });
 
 export const updateCashAccount = asyncHandler(async (req, res) => {
-    const { name, bank_name, account_number } = req.body || {};
+    const { name, bank_name, account_number, chart_account_id } = req.body || {};
     const account = await cashAccountService.updateCashAccount({
         accountId: req.user.prismaId,
         id: req.params.id,
         name,
         bankName: bank_name,
         accountNumber: account_number,
+        chartAccountId: chart_account_id,
     });
     return res.status(200).json(new ApiResponse(200, mapCashAccount(account), "Cash account updated successfully"));
 });
@@ -284,6 +289,17 @@ export const transferCash = asyncHandler(async (req, res) => {
     const { from_cash_account_id, to_cash_account_id, amount, description, transfer_date } = req.body || {};
     const result = await cashTransferService.transferCash({ accountId: req.user.prismaId, actorId: req.user.actorId, fromCashAccountId: from_cash_account_id, toCashAccountId: to_cash_account_id, amount, description, transferDate: transfer_date });
     return res.status(201).json(new ApiResponse(201, { transfer_id: result.transferId, journal_entry_id: result.entry?.id, from_balance: Number(result.outMovement.balanceAfter), to_balance: Number(result.inMovement.balanceAfter) }, "Cash transfer registered successfully"));
+});
+
+export const adjustCash = asyncHandler(async (req, res) => {
+    const { cash_account_id, counterpart_account_id, amount, reason, adjustment_date } = req.body || {};
+    const result = await cashAdjustmentService.adjustCash({ accountId: req.user.prismaId, actorId: req.user.actorId, cashAccountId: cash_account_id, counterpartAccountId: counterpart_account_id, amount, reason, adjustmentDate: adjustment_date });
+    return res.status(201).json(new ApiResponse(201, { adjustment_id: result.adjustmentId, journal_entry_id: result.entry?.id, cash_movement_id: result.movement.id, balance_after: Number(result.movement.balanceAfter) }, "Cash adjustment registered successfully"));
+});
+
+export const getCashIntegrity = asyncHandler(async (req, res) => {
+    const result = await cashIntegrityService.getCashIntegrity({ accountId: req.user.prismaId });
+    return res.status(200).json(new ApiResponse(200, result, "Cash integrity fetched successfully"));
 });
 
 export const suggestStatementMatches = asyncHandler(async (req, res, next) => {

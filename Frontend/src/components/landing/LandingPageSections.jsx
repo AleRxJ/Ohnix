@@ -1578,7 +1578,7 @@ export const UseCasesSection = ({ heading, useCases }) => (
             description={heading.description}
         />
 
-        <div className="mt-14 grid gap-5 lg:grid-cols-3">
+        <div className="mt-14 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             {useCases.map((useCase) => (
                 <article
                     key={useCase.title}
@@ -1589,6 +1589,44 @@ export const UseCasesSection = ({ heading, useCases }) => (
                     <p className="mt-3 text-sm leading-7 text-[#D4DBDF]">{useCase.description}</p>
                 </article>
             ))}
+        </div>
+    </ContentSection>
+);
+
+export const ComparisonTeaserSection = ({ heading, headers, rows, cta, onCtaClick }) => (
+    <ContentSection id="comparison">
+        <SectionHeading
+            eyebrow={heading.eyebrow}
+            title={heading.title}
+            description={heading.description}
+        />
+
+        <div className="mt-10 overflow-hidden rounded-[24px] border border-white/10">
+            <div className="grid grid-cols-3 bg-white/[0.06] px-5 py-4 text-sm font-semibold text-white">
+                <div>{headers.criteria}</div>
+                <div>{headers.ohnix}</div>
+                <div>{headers.competitor}</div>
+            </div>
+            {rows.map((row) => (
+                <div
+                    key={row.criteria}
+                    className="grid grid-cols-3 gap-4 border-t border-white/10 px-5 py-4 text-sm"
+                >
+                    <div className="text-white">{row.criteria}</div>
+                    <div className="text-[#CFE8E8]">{row.ohnix}</div>
+                    <div className="text-[#A9B3B8]">{row.competitor}</div>
+                </div>
+            ))}
+        </div>
+
+        <div className="mt-8 flex justify-center">
+            <button
+                type="button"
+                onClick={onCtaClick}
+                className="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.03] px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:border-[#29D8D5]/40 hover:bg-white/[0.06]"
+            >
+                {cta}
+            </button>
         </div>
     </ContentSection>
 );

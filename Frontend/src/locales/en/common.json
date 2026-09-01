@@ -720,6 +720,57 @@
     "transfer_success": "Transfer recorded successfully",
     "transfer_failed": "The transfer could not be recorded",
     "transfer_requires_accounts": "You need at least two active accounts to transfer money",
+    "adjustment_cta": "Adjust balance",
+    "adjustment_title": "Adjust {{name}}",
+    "adjustment_help_title": "This change will retain an accounting audit trail",
+    "adjustment_help_desc": "Enter the difference, not the final balance. Use a positive amount to increase it or a negative amount to decrease it; Ohnix will create the movement and journal entry.",
+    "adjustment_amount": "Adjustment difference",
+    "adjustment_amount_placeholder": "E.g. -25000 or 10000",
+    "adjustment_amount_help": "A positive value increases the balance; a negative value decreases it.",
+    "adjustment_balance_preview": "Current balance: {{current}} · New balance: {{next}}",
+    "adjustment_nonzero": "The adjustment must be different from zero",
+    "adjustment_counterpart": "Offsetting ledger account",
+    "adjustment_counterpart_help": "Indicate where the difference should be recognized in the ledger.",
+    "adjustment_counterpart_placeholder": "Choose the account that explains the adjustment",
+    "adjustment_date": "Accounting date",
+    "adjustment_reason": "Reason and supporting information",
+    "adjustment_reason_placeholder": "Explain why the difference exists and what evidence supports it",
+    "adjustment_confirm": "Record adjustment",
+    "adjustment_success": "Adjustment recorded with an accounting audit trail",
+    "adjustment_failed": "The adjustment could not be recorded",
+    "adjustment_accounts_failed": "Ledger accounts could not be loaded. Please try again.",
+    "chart_account_label": "Linked chart-of-accounts account",
+    "chart_account_placeholder": "Choose an asset account",
+    "chart_account_help_title": "Define where this balance appears in Accounting",
+    "chart_account_help_desc": "Sales, payments, transfers and adjustments will use this ledger account. If none is selected, Ohnix automatically assigns Cash (1105) or Banks (1110).",
+    "chart_account_default_help": "Optional. Ohnix will apply the default account for this account type.",
+    "chart_account_edit_help": "The change applies to future movements; historical journal entries are not modified.",
+    "chart_account_automatic": "Automatic ledger account",
+    "integrity_title": "Financial integrity control",
+    "integrity_subtitle": "Detect differences between balances, movements and the general ledger",
+    "integrity_refresh": "Run check again",
+    "integrity_retry": "Retry",
+    "integrity_failed": "The integrity control could not be completed.",
+    "integrity_help_title": "This control does not modify any information",
+    "integrity_help_desc": "The first table must match exactly. The accounting comparison may require review when the ledger account also receives manual entries or historical information unrelated to these cash and bank accounts.",
+    "integrity_operational_title": "Stored balance versus movements",
+    "integrity_accounting_title": "Operations versus general ledger",
+    "integrity_account": "Cash or bank account",
+    "integrity_stored": "Displayed balance",
+    "integrity_movements": "Movement total",
+    "integrity_difference": "Difference",
+    "integrity_status": "Result",
+    "integrity_chart_account": "Ledger account",
+    "integrity_linked_accounts": "Linked cash/bank accounts",
+    "integrity_operational": "Operational balance",
+    "integrity_ledger": "Ledger balance",
+    "integrity_ok": "Correct",
+    "integrity_review": "Review",
+    "integrity_cash_accounts": "Accounts checked",
+    "integrity_operational_alerts": "Operational differences",
+    "integrity_accounting_groups": "Accounting groups",
+    "integrity_accounting_alerts": "Groups to review",
+    "integrity_empty": "There are no configured accounts to check.",
     "match_cta": "Reconcile",
     "match_modal_title": "Reconcile statement entry",
     "match_select_movement_label": "Select the matching movement",
@@ -1970,6 +2021,7 @@
     "transfer_quantity_received_label": "Quantity received",
     "transfer_receive_notes_placeholder": "E.g. Opened box, damaged unit...",
     "transfer_discrepancy_label": "Discrepancy",
+    "transfer_discrepancy_accounting_hint": "The value of the missing units was recorded as a loss in the Accounting journal (Inventory shortage account).",
     "transfer_cancel_confirm_title": "Cancel this transfer?",
     "transfer_cancel_confirm_content": "If it was already in transit, the units go back to the source location.",
     "transfer_from_to": "{{from}} → {{to}}",
@@ -3059,6 +3111,34 @@
         }
       }
     },
+    "comparisonTeaser": {
+      "eyebrow": "Comparison",
+      "title": "How does Ohnix compare to Alegra?",
+      "description": "Ohnix starts from inventory and adds DIAN invoicing and accounting; Alegra starts from invoicing and adds inventory. The difference shows up in the day-to-day.",
+      "headers": {
+        "criteria": "Criteria",
+        "ohnix": "Ohnix",
+        "competitor": "Alegra"
+      },
+      "rows": {
+        "first": {
+          "criteria": "Operational focus",
+          "ohnix": "Inventory, purchases, orders, DIAN electronic invoicing, and automated accounting in one flow",
+          "competitor": "Invoicing and accounting suite with an additional inventory module"
+        },
+        "second": {
+          "criteria": "Electronic invoicing & accounting",
+          "ohnix": "DIAN electronic invoicing with its own technology, plus automated accounting (journal entries, chart of accounts, period closes) from the Scale plan",
+          "competitor": "Invoicing and accounting included from the base plan, with deeper specialized accounting"
+        },
+        "third": {
+          "criteria": "Recommended path for SMBs",
+          "ohnix": "Teams that want inventory, DIAN invoicing, and accounting in one tool, without duplicating data across systems",
+          "competitor": "Teams that already solved their operations separately and just want the specialized accounting/fiscal module"
+        }
+      },
+      "cta": "See the full comparison"
+    },
     "timeline": {
       "eyebrow": "How it works",
       "title": "From setup to insight in four steps.",
@@ -3128,6 +3208,11 @@
           "context": "Multi-branch",
           "title": "Inventory transfers with full traceability",
           "description": "Each point of sale sees and sells its own stock. When one location runs short, a transfer is requested from another — and it's all on record: who asked, who approved, who shipped it, and who received it. No spreadsheets, no WhatsApp."
+        },
+        "fourth": {
+          "context": "Accounting & compliance",
+          "title": "Books that stay current, no double entry",
+          "description": "Every sale, purchase, and payment posts its own journal entry automatically. At close, your accountant reviews financial statements and the per-third-party ledger without asking you for a separate spreadsheet."
         }
       }
     },

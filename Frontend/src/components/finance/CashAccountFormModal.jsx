@@ -1,4 +1,4 @@
-import { Modal, Form, Input, Select } from "antd";
+import { Alert, Modal, Form, Input, Select } from "antd";
 import { WalletOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
@@ -19,7 +19,7 @@ const darkModalStyles = {
 
 // Dual-mode create/edit modal - same shape as PointsOfSaleTab.jsx's modal.
 // `mode` and `form` are owned by the parent (Finance.jsx).
-const CashAccountFormModal = ({ open, mode, form, pointsOfSale, submitting, onCancel, onSubmit }) => {
+const CashAccountFormModal = ({ open, mode, form, pointsOfSale, chartAccounts, submitting, onCancel, onSubmit }) => {
     const { t } = useI18n();
     const accountType = Form.useWatch("account_type", form);
 
@@ -51,12 +51,21 @@ const CashAccountFormModal = ({ open, mode, form, pointsOfSale, submitting, onCa
             </div>
 
             <Form form={form} layout="vertical" onFinish={onSubmit}>
+                <Alert className="dark-alert dark-alert-teal mb-5" type="info" showIcon message={t("finance.chart_account_help_title")} description={t("finance.chart_account_help_desc")} />
                 <Form.Item
                     name="name"
                     label={<span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ohnix-text-muted)]">{t("finance.name_label")}</span>}
                     rules={[{ required: true, message: t("validation.required_field") }]}
                 >
                     <Input size="large" className="auth-ohnix-input" placeholder={t("finance.name_placeholder")} maxLength={80} />
+                </Form.Item>
+
+                <Form.Item
+                    name="chart_account_id"
+                    label={<span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ohnix-text-muted)]">{t("finance.chart_account_label")}</span>}
+                    extra={mode === "edit" ? t("finance.chart_account_edit_help") : t("finance.chart_account_default_help")}
+                >
+                    <Select size="large" allowClear showSearch optionFilterProp="label" placeholder={t("finance.chart_account_placeholder")} options={chartAccounts.map((account) => ({ value: account._id, label: `${account.code} · ${account.name}` }))} />
                 </Form.Item>
 
                 <Form.Item

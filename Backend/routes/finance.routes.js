@@ -12,6 +12,8 @@ import {
     registerManualExpense,
     registerManualIncome,
     transferCash,
+    adjustCash,
+    getCashIntegrity,
     listOrderPayments,
     registerOrderPayment,
     listPurchasePayments,
@@ -54,6 +56,10 @@ router.route("/income")
     .post(requireModulePermission("finance", "edit"), registerManualIncome);
 router.route("/transfers")
     .post(requireModulePermission("finance", "edit"), idempotent("finance.cash-transfer"), transferCash);
+router.route("/adjustments")
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.cash-adjustment"), adjustCash);
+router.route("/integrity")
+    .get(requireModulePermission("finance", "view"), getCashIntegrity);
 
 router.route("/orders/:orderId/payments")
     .get(requireModulePermission("finance", "view"), listOrderPayments)

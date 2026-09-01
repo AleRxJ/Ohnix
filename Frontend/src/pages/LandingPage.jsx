@@ -14,6 +14,7 @@ import {
     CycleTimelineSection,
     ImpactMetricsSection,
     UseCasesSection,
+    ComparisonTeaserSection,
     FaqSection,
     ContactSection,
     MobileStickyCta,
@@ -246,6 +247,11 @@ const LandingPage = () => {
             context: t("landing.useCases.items.third.context"),
             title: t("landing.useCases.items.third.title"),
             description: t("landing.useCases.items.third.description"),
+        },
+        {
+            context: t("landing.useCases.items.fourth.context"),
+            title: t("landing.useCases.items.fourth.title"),
+            description: t("landing.useCases.items.fourth.description"),
         },
     ];
 

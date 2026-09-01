@@ -86,6 +86,18 @@ export const useCashAccounts = () => {
             return false;
         } finally { setSubmitting(false); }
     };
+    const adjustCash = async (values) => {
+        setSubmitting(true);
+        try {
+            await financeService.adjustCash(values);
+            toast.success(t("finance.adjustment_success"));
+            await load();
+            return true;
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("finance.adjustment_failed"));
+            return false;
+        } finally { setSubmitting(false); }
+    };
 
     return {
         accounts,
@@ -96,6 +108,7 @@ export const useCashAccounts = () => {
         updateAccount,
         deactivateAccount,
         transferCash,
+        adjustCash,
     };
 };
 

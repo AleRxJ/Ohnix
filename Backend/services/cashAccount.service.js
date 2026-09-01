@@ -25,20 +25,30 @@ export const listCashAccounts = async ({ accountId, posScopeAll, posScopeIds, in
             ...scopeWhere(accountId, posScopeAll, posScopeIds),
             ...(includeInactive ? {} : { isActive: true }),
         },
-        include: { pointOfSale: { select: { id: true, name: true } } },
+        include: { pointOfSale: { select: { id: true, name: true } }, chartAccount: { select: { id: true, code: true, name: true, accountType: true } } },
         orderBy: [{ isActive: "desc" }, { createdAt: "asc" }],
     });
 
 export const getCashAccountById = async ({ accountId, posScopeAll, posScopeIds, id }) => {
     const cashAccount = await prisma.cashAccount.findFirst({
         where: { id, ...scopeWhere(accountId, posScopeAll, posScopeIds) },
-        include: { pointOfSale: { select: { id: true, name: true } } },
+        include: { pointOfSale: { select: { id: true, name: true } }, chartAccount: { select: { id: true, code: true, name: true, accountType: true } } },
     });
     if (!cashAccount) throw new ApiError(404, "Cuenta de caja/banco no encontrada.");
     return cashAccount;
 };
 
-export const createCashAccount = async ({ accountId, actorId, name, accountType, pointOfSaleId, bankName, accountNumber }) => {
+const resolveSelectedChartAccount = async (accountId, chartAccountId, accountType) => {
+    if (!chartAccountId) {
+        const coa = await getChartAccountMap(prisma, accountId);
+        return coa.get(accountType === "bank" ? "1110" : "1105").id;
+    }
+    const selected = await prisma.chartAccount.findFirst({ where: { id: chartAccountId, createdById: accountId, accountType: "asset", isActive: true } });
+    if (!selected) throw new ApiError(404, "La cuenta contable debe existir, estar activa y ser de tipo activo.");
+    return selected.id;
+};
+
+export const createCashAccount = async ({ accountId, actorId, name, accountType, pointOfSaleId, bankName, accountNumber, chartAccountId: selectedChartAccountId }) => {
     const trimmedName = `${name || ""}`.trim();
     if (!trimmedName) throw new ApiError(400, "El nombre de la cuenta es obligatorio.");
     if (!["cash", "bank"].includes(accountType)) {
@@ -56,8 +66,7 @@ export const createCashAccount = async ({ accountId, actorId, name, accountType,
     // rather than left null, so a brand-new account never needs the lazy
     // backfill path (chartOfAccounts.service.js#resolveCashAccountChartAccount)
     // that only exists for accounts created before this feature shipped.
-    const coa = await getChartAccountMap(prisma, accountId);
-    const chartAccountId = coa.get(accountType === "bank" ? "1110" : "1105").id;
+    const chartAccountId = await resolveSelectedChartAccount(accountId, selectedChartAccountId, accountType);
 
     const cashAccount = await prisma.cashAccount.create({
         data: {
@@ -69,24 +78,26 @@ export const createCashAccount = async ({ accountId, actorId, name, accountType,
             createdById: accountId,
             chartAccountId,
         },
-        include: { pointOfSale: { select: { id: true, name: true } } },
+        include: { pointOfSale: { select: { id: true, name: true } }, chartAccount: { select: { id: true, code: true, name: true, accountType: true } } },
     });
 
     return cashAccount;
 };
 
-export const updateCashAccount = async ({ accountId, id, name, bankName, accountNumber }) => {
+export const updateCashAccount = async ({ accountId, id, name, bankName, accountNumber, chartAccountId }) => {
     const existing = await prisma.cashAccount.findFirst({ where: { id, createdById: accountId } });
     if (!existing) throw new ApiError(404, "Cuenta de caja/banco no encontrada.");
 
+    const validatedChartAccountId = chartAccountId !== undefined ? await resolveSelectedChartAccount(accountId, chartAccountId, existing.accountType) : undefined;
     return prisma.cashAccount.update({
         where: { id },
         data: {
             ...(name !== undefined && { name: `${name}`.trim() || existing.name }),
             ...(existing.accountType === "bank" && bankName !== undefined && { bankName: bankName?.trim() || null }),
             ...(existing.accountType === "bank" && accountNumber !== undefined && { accountNumber: accountNumber?.trim() || null }),
+            ...(validatedChartAccountId !== undefined && { chartAccountId: validatedChartAccountId }),
         },
-        include: { pointOfSale: { select: { id: true, name: true } } },
+        include: { pointOfSale: { select: { id: true, name: true } }, chartAccount: { select: { id: true, code: true, name: true, accountType: true } } },
     });
 };
 
