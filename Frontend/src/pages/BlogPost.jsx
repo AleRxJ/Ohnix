@@ -71,7 +71,7 @@ const BlogPost = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <main className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-24">
                 <ContentSection id={`blog-${post.slug}`} shell={false}>
                     <BreadcrumbNav
                         items={[

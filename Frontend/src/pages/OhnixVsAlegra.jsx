@@ -82,7 +82,7 @@ const OhnixVsAlegra = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <main className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-24">
                 <ContentSection id="comparativa-ohnix-alegra" shell={false}>
                     <SectionHeading
                         as="h1"

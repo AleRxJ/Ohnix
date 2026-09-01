@@ -762,7 +762,7 @@ export const OhnixCommandCanvas = () => {
             ref={canvasRef}
             onMouseMove={handlePointerMove}
             onMouseLeave={handlePointerLeave}
-            className="relative min-h-[540px] overflow-hidden rounded-[46px] border border-[#29D8D5]/15 bg-[#030707] text-white shadow-[0_45px_150px_rgba(0,0,0,0.78),0_0_90px_rgba(41,216,213,0.07)]"
+            className="relative min-h-[540px] overflow-hidden rounded-[46px] border border-[#29D8D5]/30 bg-[#050d0d] text-white shadow-[0_45px_150px_rgba(0,0,0,0.85),0_0_120px_rgba(41,216,213,0.16),inset_0_1px_0_rgba(255,255,255,0.07)] ring-1 ring-white/[0.04]"
         >
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_16%,rgba(41,216,213,0.13),transparent_24%),radial-gradient(circle_at_18%_88%,rgba(68,243,240,0.07),transparent_27%),linear-gradient(140deg,#071110,#020505_58%,#060808)]" />
             <div className="pointer-events-none absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(41,216,213,0.075)_1px,transparent_1px),linear-gradient(90deg,rgba(41,216,213,0.075)_1px,transparent_1px)] [background-size:36px_36px] [mask-image:linear-gradient(to_bottom,black,transparent_88%)]" />
@@ -1178,7 +1178,7 @@ export const OrbitalHero = ({
                 <div className="absolute right-[20%] bottom-[18%] h-64 w-64 rounded-full border border-white/[0.06]" />
             </div>
 
-            <div className="relative mx-auto max-w-7xl px-5 pb-16 pt-24 sm:px-6 md:px-10 md:pb-28 md:pt-28 lg:pt-32">
+            <div className="relative mx-auto max-w-7xl px-5 pb-16 pt-28 sm:px-6 md:px-10 md:pb-28 md:pt-32 lg:pt-36">
                 {/* ── Mobile-only ambient blobs ───────────────────────────────── */}
                 <div className="pointer-events-none absolute inset-0 overflow-hidden md:hidden" aria-hidden="true">
                     <div className="absolute -left-24 top-24 h-80 w-80 rounded-full bg-[#29D8D5]/8 blur-[90px] animate-blob-float" />
@@ -1265,7 +1265,7 @@ export const OrbitalHero = ({
                     </div>
 
                     <div className="relative mx-auto w-full max-w-[860px] lg:w-[790px] lg:max-w-none lg:-mr-16 animate-fade-up" style={{ animationDelay: "0.2s" }}>
-                        <div className="absolute -inset-10 rounded-[48px] bg-[radial-gradient(circle_at_center,rgba(41,216,213,0.26),transparent_65%)] blur-2xl" />
+                        <div className="absolute -inset-14 rounded-[52px] bg-[radial-gradient(circle_at_center,rgba(41,216,213,0.4),transparent_68%)] blur-[42px]" />
 
                         <div className="relative transition-transform duration-500 hover:-translate-y-1 animate-float">
                             <div className="overflow-visible">

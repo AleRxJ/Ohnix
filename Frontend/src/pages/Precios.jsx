@@ -232,7 +232,7 @@ const Precios = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <main className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-24">
                 <ContentSection id="precios" shell={false}>
                     <SectionHeading
                         as="h1"

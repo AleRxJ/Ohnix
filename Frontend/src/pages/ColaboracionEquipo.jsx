@@ -105,7 +105,7 @@ const ColaboracionEquipo = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <main className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-24">
                 <ContentSection id="colaboracion-en-equipo" shell={false}>
                     <SectionHeading
                         as="h1"

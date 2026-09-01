@@ -93,7 +93,7 @@ const FacturacionElectronica = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <main className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-24">
                 <ContentSection id="facturacion-electronica-dian" shell={false}>
                     <SectionHeading
                         as="h1"

@@ -108,7 +108,7 @@ const Navbar = () => {
 
     return (
         <header
-            className={`px-0 flex items-center justify-between h-20 fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
+            className={`px-0 flex items-center justify-between h-24 fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
                 scrolled
                     ? "bg-[#050505]/90 backdrop-blur-xl border-b border-white/8"
                     : "bg-transparent"
@@ -125,7 +125,7 @@ const Navbar = () => {
                         alt="Ohnix logo"
                         width="44"
                         height="44"
-                        className="h-12 w-auto md:h-14"
+                        className="h-[84px] w-auto"
                     />
                 </button>
 
