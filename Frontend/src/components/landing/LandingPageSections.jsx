@@ -853,9 +853,9 @@ export const OhnixCommandCanvas = () => {
 
                         <div className="mt-3 grid grid-cols-3 gap-2">
                             {current.kpis.map(([value, label]) => (
-                                <div key={label} className="rounded-[18px] border border-white/[0.05] bg-black/20 px-3.5 py-3.5">
+                                <div key={label} className="rounded-[18px] border border-white/[0.05] bg-black/20 px-2.5 py-3 sm:px-3.5 sm:py-3.5">
                                     <div className="truncate text-lg font-semibold tabular-nums text-white sm:text-xl">{value}</div>
-                                    <div className="mt-1 truncate text-[8px] uppercase tracking-[0.1em] text-[#93a6a1]">{label}</div>
+                                    <div className="mt-1 truncate text-[7px] uppercase tracking-[0.1em] text-[#93a6a1] sm:text-[8px]">{label}</div>
                                 </div>
                             ))}
                         </div>
@@ -1186,7 +1186,7 @@ export const OrbitalHero = ({
                     <div className="absolute bottom-24 left-1/3 h-48 w-48 rounded-full bg-[#29D8D5]/5 blur-[55px] animate-float-slow" />
                 </div>
 
-                <div className="grid items-center gap-14 lg:grid-cols-[0.76fr_1.24fr] lg:gap-12">
+                <div className="grid items-center gap-14 lg:grid-cols-[0.82fr_1.18fr] lg:gap-12">
                     <div className="relative z-10">
                         {/* ── Eyebrow with live pulse dot ─── */}
                         <div className="animate-fade-up inline-flex items-center gap-3 rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#29D8D5] md:border-white/10 md:text-[11px] md:tracking-[0.35em]">
@@ -1264,7 +1264,7 @@ export const OrbitalHero = ({
                         </div>
                     </div>
 
-                    <div className="relative mx-auto w-full max-w-[860px] lg:-mr-12 animate-fade-up" style={{ animationDelay: "0.2s" }}>
+                    <div className="relative mx-auto w-full max-w-[860px] lg:w-[790px] lg:max-w-none lg:-mr-16 animate-fade-up" style={{ animationDelay: "0.2s" }}>
                         <div className="absolute -inset-10 rounded-[48px] bg-[radial-gradient(circle_at_center,rgba(41,216,213,0.26),transparent_65%)] blur-2xl" />
 
                         <div className="relative transition-transform duration-500 hover:-translate-y-1 animate-float">

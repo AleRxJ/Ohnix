@@ -1,22 +1,20 @@
 // Seeds/updates the assistant's knowledge base (AssistantKnowledgeChunk).
 //
-// IMPORTANT - read before running:
-// Every entry below ships with isPublished: false on purpose. The assistant
-// (services/assistant.service.js) refuses to cite or answer from anything
-// that isn't published - that's the actual control that stops it from
-// improvising on Ohnix's behalf. This first draft was written from the
-// codebase (routes, permissions, services) by an agent that has not used
-// Ohnix's UI and does NOT have DIAN/tax/accounting domain expertise -
-// review and correct the wording (especially every "dian" sourceType entry:
-// electronic invoicing availability differs by plan/company and must not be
-// overstated) before flipping isPublished to true, module by module.
+// Every entry below is published (isPublished: true) on creation by default,
+// per an explicit decision to launch with this first draft as-is rather than
+// hold it for review - including the "dian" sourceType entries. That draft
+// was written from the codebase (routes, permissions, services) by an agent
+// that has not used Ohnix's UI and does NOT have DIAN/tax/accounting domain
+// expertise, so treat it as a starting point to correct in place (edit the
+// text below and re-run) rather than as reviewed fact, especially anything
+// about electronic invoicing availability, which differs by plan/company.
+// To hold a specific entry back, add `isPublished: false` to its object.
 //
 // Usage:
 //   node --env-file=.env scripts/seedAssistantKnowledge.js
 // Safe to re-run: upserts on the (module, locale, title) unique key, so
 // editing the text below and re-running updates existing rows instead of
-// duplicating them. Manually flip isPublished in the database (or edit it
-// here and re-run) once a module's content has been reviewed.
+// duplicating them.
 import dotenv from "dotenv";
 import { prisma } from "../db/prisma.js";
 
@@ -199,7 +197,7 @@ const run = async () => {
                     body: entry.body,
                     tags: entry.tags || [],
                     sourceType: entry.sourceType || "guide",
-                    isPublished: entry.isPublished === true,
+                    isPublished: entry.isPublished !== false,
                 },
                 update: {
                     body: entry.body,
