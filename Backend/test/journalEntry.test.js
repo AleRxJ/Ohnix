@@ -58,6 +58,8 @@ test("payable planner uses returns, withholdings, payments and cash in one balan
     assert.equal(plan.documents[0].suggested_payment, 80);
     assert.equal(plan.documents[0].coverage, "partial");
     assert.equal(plan.summary.funding_gap, 0.1);
+    assert.equal(plan.documents[0].aging_bucket, "days_1_30");
+    assert.equal(plan.summary.aging.days_1_30, 80.1);
 });
 
 test("receivable planner prioritizes overdue net balances after returns, credit notes and payments", () => {
@@ -65,6 +67,8 @@ test("receivable planner prioritizes overdue net balances after returns, credit 
     assert.equal(plan.documents[0].pending, 50.2);
     assert.equal(plan.documents[0].status, "overdue");
     assert.equal(plan.summary.overdue, 50.2);
+    assert.equal(plan.documents[0].aging_bucket, "days_1_30");
+    assert.equal(plan.summary.aging.days_1_30, 50.2);
 });
 
 test("bank reconciliation requires the same amount and sign", () => {

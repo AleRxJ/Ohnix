@@ -1,5 +1,6 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
+import { getAgingBucket, summarizeAging } from "../utils/accountAging.js";
 
 const round2 = (value) => Number(Number(value).toFixed(2));
 
@@ -11,12 +12,12 @@ export const buildReceivablePlan = ({ orders, now = new Date() }) => {
         const due = order.dueDate ? new Date(order.dueDate) : null;
         const rawDays = due ? Math.floor((now - due) / 86400000) : null;
         const status = rawDays === null ? "unscheduled" : rawDays > 0 ? "overdue" : rawDays >= -7 ? "due_soon" : "current";
-        return { id: order.id, number: order.invoiceNo, document_date: order.orderDate, due_date: order.dueDate, customer: order.customer, total, paid, pending, days_overdue: rawDays === null ? null : Math.max(rawDays, 0), status };
+        return { id: order.id, number: order.invoiceNo, document_date: order.orderDate, due_date: order.dueDate, customer: order.customer, total, paid, pending, days_overdue: rawDays === null ? null : Math.max(rawDays, 0), aging_bucket: getAgingBucket(rawDays), status };
     }).filter((row) => row.pending > 0.001);
     const rank = { overdue: 0, due_soon: 1, current: 2, unscheduled: 3 };
     documents.sort((a, b) => rank[a.status] - rank[b.status] || new Date(a.due_date || a.document_date) - new Date(b.due_date || b.document_date));
     const totals = (status) => round2(documents.filter((row) => !status || row.status === status).reduce((sum, row) => sum + row.pending, 0));
-    return { summary: { total_pending: totals(), overdue: totals("overdue"), due_soon: totals("due_soon"), unscheduled: totals("unscheduled"), document_count: documents.length }, documents };
+    return { summary: { total_pending: totals(), overdue: totals("overdue"), due_soon: totals("due_soon"), unscheduled: totals("unscheduled"), document_count: documents.length, aging: summarizeAging(documents) }, documents };
 };
 
 export const getAccountsReceivablePlan = async ({ accountId, posScopeAll, posScopeIds }) => {

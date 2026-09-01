@@ -24,6 +24,7 @@ const AccountsReceivablePlanner = ({ canEdit }) => {
         { title: t("finance.receivables_invoice"), dataIndex: "number", width: 120, render: (value) => <strong>{value}</strong> },
         { title: t("finance.receivables_customer"), dataIndex: ["customer", "name"], ellipsis: true },
         { title: t("finance.payables_due_date"), dataIndex: "due_date", width: 145, render: (value, row) => <Button type="link" disabled={!canEdit} icon={<CalendarOutlined />} onClick={() => openDate(row)}>{value ? dayjs(value).format("DD/MM/YYYY") : t("finance.payables_set_due")}</Button> },
+        { title: t("finance.aging_column"), dataIndex: "aging_bucket", width: 115, render: (value) => <Tag>{t(`finance.aging_${value}`)}</Tag> },
         { title: t("finance.payables_pending"), dataIndex: "pending", width: 135, align: "right", render: (value) => <strong className="text-[var(--ohnix-status-rose)]">{formatCurrency(value)}</strong> },
         { title: "", width: 125, fixed: "right", render: (_, row) => <Button size="small" icon={<WhatsAppOutlined />} onClick={() => remind(row)}>{t("finance.receivables_remind")}</Button> },
     ];
@@ -32,6 +33,9 @@ const AccountsReceivablePlanner = ({ canEdit }) => {
             <div className="withholding-report-intro"><div><span>{t("finance.receivables_eyebrow")}</span><h3>{t("finance.receivables_heading")}</h3><p>{t("finance.receivables_desc")}</p></div><RiseOutlined /></div>
             <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.receivables_explanation")} />
             <Row gutter={[12, 12]} className="mb-5">{[["total_pending", "receivables_total"], ["overdue", "receivables_overdue"], ["due_soon", "receivables_due_soon"], ["unscheduled", "receivables_unscheduled"]].map(([key, label]) => <Col xs={12} lg={6} key={key}><div className={`withholding-report-kpi ${key === "total_pending" ? "withholding-report-kpi--net" : ""}`}><span>{t(`finance.${label}`)}</span><strong>{formatCurrency(plan.summary?.[key] || 0)}</strong></div></Col>)}</Row>
+            <h4 className="text-sm font-semibold text-[var(--ohnix-text-primary)] mb-2">{t("finance.aging_title")}</h4>
+            <p className="text-xs text-[var(--ohnix-text-muted)] mb-3">{t("finance.aging_help")}</p>
+            <Row gutter={[8, 8]} className="mb-5">{["not_due", "days_1_30", "days_31_60", "days_61_90", "over_90", "unscheduled"].map((key) => <Col xs={12} md={8} xl={4} key={key}><div className="withholding-report-kpi"><span>{t(`finance.aging_${key}`)}</span><strong>{formatCurrency(plan.summary?.aging?.[key] || 0)}</strong></div></Col>)}</Row>
             <Table className="module-dark-table" rowKey="id" loading={loading} columns={columns} dataSource={plan.documents || []} scroll={{ x: 850 }} pagination={{ pageSize: 8, hideOnSinglePage: true }} locale={{ emptyText: <Empty description={<div><strong>{t("finance.receivables_empty_title")}</strong><p>{t("finance.receivables_empty_desc")}</p></div>} /> }} />
             {plan.documents?.length > 0 && <div className="flex justify-end mt-4"><Link to="/orders"><Button type="primary">{t("finance.receivables_register_payments")}</Button></Link></div>}
         </Card>

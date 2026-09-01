@@ -1,5 +1,6 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
+import { getAgingBucket, summarizeAging } from "../utils/accountAging.js";
 
 const round2 = (value) => Number(Number(value).toFixed(2));
 
@@ -15,7 +16,7 @@ export const buildPayablePlan = ({ purchases, availableCash, now = new Date() })
         const rawDays = due ? Math.floor((now - due) / 86400000) : null;
         const daysOverdue = rawDays === null ? null : Math.max(rawDays, 0);
         const status = rawDays === null ? "unscheduled" : rawDays > 0 ? "overdue" : rawDays >= -7 ? "due_soon" : "current";
-        return { id: purchase.id, number: purchase.purchaseNo, document_date: purchase.purchaseDate, due_date: purchase.dueDate, supplier: purchase.supplier, total, paid: round2(paid), pending, days_overdue: daysOverdue, status };
+        return { id: purchase.id, number: purchase.purchaseNo, document_date: purchase.purchaseDate, due_date: purchase.dueDate, supplier: purchase.supplier, total, paid: round2(paid), pending, days_overdue: daysOverdue, aging_bucket: getAgingBucket(rawDays), status };
     }).filter((row) => row.pending > 0.001);
 
     const rank = { overdue: 0, due_soon: 1, current: 2, unscheduled: 3 };
@@ -27,7 +28,7 @@ export const buildPayablePlan = ({ purchases, availableCash, now = new Date() })
         return { ...row, suggested_payment: round2(suggested), coverage: suggested >= row.pending ? "full" : suggested > 0 ? "partial" : "unfunded" };
     });
     const totalPending = round2(planned.reduce((sum, row) => sum + row.pending, 0));
-    return { summary: { available_cash: normalizedCash, total_pending: totalPending, planned_payment: round2(Math.min(totalPending, normalizedCash)), remaining_cash: cashRemaining, funding_gap: round2(Math.max(totalPending - normalizedCash, 0)), document_count: planned.length }, documents: planned };
+    return { summary: { available_cash: normalizedCash, total_pending: totalPending, planned_payment: round2(Math.min(totalPending, normalizedCash)), remaining_cash: cashRemaining, funding_gap: round2(Math.max(totalPending - normalizedCash, 0)), document_count: planned.length, aging: summarizeAging(planned) }, documents: planned };
 };
 
 export const getAccountsPayablePlan = async ({ accountId, posScopeAll, posScopeIds }) => {

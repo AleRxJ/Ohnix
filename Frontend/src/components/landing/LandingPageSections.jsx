@@ -31,7 +31,7 @@ import {
 } from "@ant-design/icons";
 
 const sectionShell =
-    "relative overflow-hidden border-t border-white/5 bg-[#050505] text-white";
+    "relative overflow-hidden border-t border-transparent bg-[#050505] text-white md:border-white/5";
 
 /* ── Scroll-reveal hook ──────────────────────────────────────────────── */
 const useScrollReveal = (threshold = 0.12) => {
@@ -292,7 +292,7 @@ export const PageOrbitalLayer = () => {
 
     return (
         <div
-            className="pointer-events-none fixed inset-0 select-none overflow-hidden"
+            className="pointer-events-none fixed inset-0 hidden select-none overflow-hidden md:block"
             style={{ zIndex: 2, mixBlendMode: "screen" }}
             aria-hidden="true"
         >
@@ -425,7 +425,7 @@ export const VideoModal = ({ isOpen, onClose, src, title }) => {
 export const MarqueeStrip = ({ items }) => {
     const doubled = [...items, ...items];
     return (
-        <div className="relative overflow-hidden border-y border-white/[0.04] bg-[#030303] py-4 select-none">
+        <div className="relative overflow-hidden border-y border-transparent bg-[#030303] py-3.5 select-none md:border-white/[0.04] md:py-4">
             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#030303] to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#030303] to-transparent" />
             <div className="flex w-max animate-marquee items-center gap-12">
@@ -458,7 +458,7 @@ export const SectionHeading = ({ eyebrow, title, description, align = "center", 
             className={`flex flex-col gap-4 ${alignment} transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
         >
             {eyebrow ? (
-                <span className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.28em] text-[#29D8D5] shadow-[0_0_0_1px_rgba(41,216,213,0.08)]">
+                <span className="inline-flex items-center gap-3 rounded-full border border-transparent bg-white/[0.035] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#29D8D5] md:border-white/10 md:text-[11px] md:tracking-[0.28em] md:shadow-[0_0_0_1px_rgba(41,216,213,0.08)]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_18px_rgba(41,216,213,0.85)]" />
                     {eyebrow}
                 </span>
@@ -516,7 +516,7 @@ export const OrbitalHero = ({
     return (
         <section
             id="home"
-            className="relative overflow-hidden border-b border-white/5 bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.12),transparent_24%),radial-gradient(circle_at_20%_20%,rgba(68,243,240,0.08),transparent_24%),linear-gradient(180deg,#070707_0%,#050505_36%,#050505_100%)]"
+            className="relative overflow-hidden border-b border-transparent bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.12),transparent_24%),radial-gradient(circle_at_20%_20%,rgba(68,243,240,0.08),transparent_24%),linear-gradient(180deg,#070707_0%,#050505_36%,#050505_100%)] md:border-white/5"
             onPointerMove={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
                 const x = ((event.clientX - rect.left) / rect.width) * 100;
@@ -524,9 +524,9 @@ export const OrbitalHero = ({
                 setPointer({ x, y });
             }}
         >
-            <div className="absolute inset-0 opacity-60 [background-image:linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:72px_72px]" />
+            <div className="absolute inset-0 hidden opacity-60 [background-image:linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:72px_72px] md:block" />
             <div
-                className="pointer-events-none absolute inset-0 opacity-70 transition-transform duration-300"
+                className="pointer-events-none absolute inset-0 hidden opacity-70 transition-transform duration-300 md:block"
                 style={{
                     transform: `translate3d(${(pointer.x - 50) * 0.14}px, ${(pointer.y - 50) * 0.14}px, 0)`,
                 }}
@@ -537,7 +537,7 @@ export const OrbitalHero = ({
                 <div className="absolute right-[20%] bottom-[18%] h-64 w-64 rounded-full border border-white/[0.06]" />
             </div>
 
-            <div className="relative mx-auto max-w-7xl px-6 pb-20 pt-28 md:px-10 md:pb-28 lg:pt-32">
+            <div className="relative mx-auto max-w-7xl px-5 pb-16 pt-24 sm:px-6 md:px-10 md:pb-28 md:pt-28 lg:pt-32">
                 {/* ── Mobile-only ambient blobs ───────────────────────────────── */}
                 <div className="pointer-events-none absolute inset-0 overflow-hidden md:hidden" aria-hidden="true">
                     <div className="absolute -left-24 top-24 h-80 w-80 rounded-full bg-[#29D8D5]/8 blur-[90px] animate-blob-float" />
@@ -548,7 +548,7 @@ export const OrbitalHero = ({
                 <div className="grid items-center gap-14 lg:grid-cols-[1.03fr_0.97fr] lg:gap-20">
                     <div className="relative z-10">
                         {/* ── Eyebrow with live pulse dot ─── */}
-                        <div className="animate-fade-up inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.35em] text-[#29D8D5]">
+                        <div className="animate-fade-up inline-flex items-center gap-3 rounded-full border border-transparent bg-white/[0.035] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#29D8D5] md:border-white/10 md:text-[11px] md:tracking-[0.35em]">
                             <span className="relative flex h-2 w-2">
                                 <span className="absolute inline-flex h-full w-full rounded-full bg-[#29D8D5] opacity-70 animate-ping" />
                                 <span className="relative h-2 w-2 rounded-full bg-[#29D8D5] shadow-[0_0_16px_rgba(41,216,213,0.9)]" />
@@ -557,7 +557,7 @@ export const OrbitalHero = ({
                         </div>
 
                         <h1
-                            className="mt-7 max-w-3xl text-5xl font-semibold tracking-tight text-white md:text-7xl md:leading-[0.94] animate-fade-up"
+                            className="mt-6 max-w-3xl text-[2.65rem] font-semibold leading-[1.02] tracking-tight text-white sm:text-5xl md:mt-7 md:text-7xl md:leading-[0.94] animate-fade-up"
                             style={{ animationDelay: "0.1s" }}
                         >
                             {title}
@@ -603,16 +603,16 @@ export const OrbitalHero = ({
                         </div>
 
                         <div
-                            className="mt-12 grid gap-4 sm:grid-cols-3 animate-fade-up"
+                            className="mt-10 grid grid-cols-3 gap-2 sm:mt-12 sm:gap-4 animate-fade-up"
                             style={{ animationDelay: "0.4s" }}
                         >
                             {stats.map((stat, i) => (
                                 <div
                                     key={stat.label}
-                                    className="rounded-3xl border border-white/8 bg-white/[0.03] px-5 py-5 backdrop-blur-sm transition-all duration-300 hover:border-[#29D8D5]/30 hover:bg-white/[0.05]"
+                                    className="rounded-2xl border border-transparent bg-white/[0.025] px-2.5 py-4 backdrop-blur-sm transition-all duration-300 sm:rounded-3xl sm:px-5 sm:py-5 md:border-white/8 hover:border-[#29D8D5]/30 hover:bg-white/[0.05]"
                                     style={{ animationDelay: `${0.45 + i * 0.08}s` }}
                                 >
-                                    <div className="text-2xl font-semibold tracking-tight text-white md:text-3xl">
+                                    <div className="text-xl font-semibold tracking-tight text-white sm:text-2xl md:text-3xl">
                                         {stat.value}
                                     </div>
                                     <div className="mt-2 text-sm text-[#A9B3B8]">
@@ -670,7 +670,7 @@ export const OrbitalHero = ({
                             {orbitLabels.map((label, i) => (
                                 <span
                                     key={label}
-                                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#0B0B0B]/90 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.18em] text-[#A9B3B8] backdrop-blur-sm animate-fade-in"
+                                    className="inline-flex items-center gap-2 rounded-full border border-transparent bg-[#0B0B0B]/90 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[#A9B3B8] backdrop-blur-sm animate-fade-in md:border-white/10 md:text-[11px] md:tracking-[0.18em]"
                                     style={{ animationDelay: `${0.6 + i * 0.15}s` }}
                                 >
                                     <span className="h-2 w-2 rounded-full bg-[#44F3F0] shadow-[0_0_12px_rgba(68,243,240,0.85)] animate-pulse" />
@@ -679,7 +679,7 @@ export const OrbitalHero = ({
                             ))}
                         </div>
 
-                        <div className="mt-5 flex items-center justify-center gap-3 rounded-full border border-white/10 bg-[#0B0B0B]/90 px-5 py-3 text-xs uppercase tracking-[0.22em] text-[#A9B3B8] backdrop-blur-md">
+                        <div className="mt-5 flex items-center justify-center gap-3 rounded-full border border-transparent bg-[#0B0B0B]/90 px-4 py-3 text-[10px] uppercase tracking-[0.16em] text-[#A9B3B8] backdrop-blur-md md:border-white/10 md:px-5 md:text-xs md:tracking-[0.22em]">
                             <span className="h-2 w-2 rounded-full bg-[#44F3F0] shadow-[0_0_16px_rgba(68,243,240,0.9)]" />
                             {footerNote}
                         </div>
@@ -692,7 +692,7 @@ export const OrbitalHero = ({
 
 export const ContentSection = ({ id, children, className = "", shell = true }) => {
     const content = (
-        <div className={`relative mx-auto max-w-7xl px-6 py-20 md:px-10 md:py-28 animate-fade-up ${className}`}>
+        <div className={`relative mx-auto max-w-7xl px-5 py-16 sm:px-6 md:px-10 md:py-28 animate-fade-up ${className}`}>
             {children}
         </div>
     );
