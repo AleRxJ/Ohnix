@@ -1,4 +1,5 @@
 import { api } from "../api/api";
+import { idempotencyHeaders } from "../utils/idempotency";
 
 // Mirrors Backend/routes/finance.routes.js one to one. Shared across three
 // screens (Finance page, OrderDetailsDrawer, PurchaseDetails) - unlike
@@ -111,6 +112,10 @@ export const financeService = {
 
     async registerManualIncome(payload) {
         const response = await api.post("/finance/income", payload);
+        return response.data;
+    },
+    async transferCash(payload) {
+        const response = await api.post("/finance/transfers", payload, idempotencyHeaders());
         return response.data;
     },
     async getReconciliationSuggestions(cashAccountId) {

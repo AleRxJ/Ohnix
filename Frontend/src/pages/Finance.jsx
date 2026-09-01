@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Button, Form, Spin, Popconfirm, Tooltip } from "antd";
-import { PlusOutlined, WalletOutlined, BankOutlined, EditOutlined, StopOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Spin, Popconfirm, Tooltip } from "antd";
+import { PlusOutlined, WalletOutlined, BankOutlined, EditOutlined, StopOutlined, SwapOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
 import PageHeader from "../components/common/PageHeader";
 import CashAccountFormModal from "../components/finance/CashAccountFormModal";
 import CashAccountMovementsDrawer from "../components/finance/CashAccountMovementsDrawer";
@@ -19,11 +20,13 @@ const Finance = () => {
     const { formatCurrency } = useCurrency();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("finance", "edit");
-    const { accounts, loading, submitting, createAccount, updateAccount, deactivateAccount } = useCashAccounts();
+    const { accounts, loading, submitting, createAccount, updateAccount, deactivateAccount, transferCash } = useCashAccounts();
     const [pointsOfSale, setPointsOfSale] = useState([]);
     const [modal, setModal] = useState(null); // { mode: "create" | "edit", record? }
     const [movementsAccount, setMovementsAccount] = useState(null);
     const [form] = Form.useForm();
+    const [transferOpen, setTransferOpen] = useState(false);
+    const [transferForm] = Form.useForm();
 
     useEffect(() => {
         pointOfSaleService
@@ -71,6 +74,15 @@ const Finance = () => {
                   });
         if (success) closeModal();
     };
+    const openTransfer = () => {
+        transferForm.resetFields();
+        transferForm.setFieldsValue({ transfer_date: dayjs() });
+        setTransferOpen(true);
+    };
+    const handleTransfer = async (values) => {
+        const success = await transferCash({ from_cash_account_id: values.from_cash_account_id, to_cash_account_id: values.to_cash_account_id, amount: values.amount, description: values.description?.trim() || undefined, transfer_date: values.transfer_date.toISOString() });
+        if (success) { setTransferOpen(false); transferForm.resetFields(); }
+    };
 
     return (
         <div className="min-h-screen bg-transparent text-[var(--ohnix-text-primary)]">
@@ -81,7 +93,9 @@ const Finance = () => {
                         subtitle={t("finance.page_subtitle")}
                         icon={<WalletOutlined />}
                         actionButton={
-                            <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
+                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                <Tooltip title={accounts.length < 2 ? t("finance.transfer_requires_accounts") : canEdit ? "" : t("common.no_permission_to_edit")}><span className="w-full sm:w-auto inline-block"><Button icon={<SwapOutlined />} onClick={openTransfer} size="large" className="w-full" disabled={!canEdit || accounts.length < 2}>{t("finance.transfer_cta")}</Button></span></Tooltip>
+                                <Tooltip title={canEdit ? "" : t("common.no_permission_to_edit")}>
                                 <span className="w-full sm:w-auto inline-block">
                                     <Button
                                         type="primary"
@@ -94,7 +108,8 @@ const Finance = () => {
                                         {t("finance.create_cta")}
                                     </Button>
                                 </span>
-                            </Tooltip>
+                                </Tooltip>
+                            </div>
                         }
                     />
 
@@ -201,6 +216,15 @@ const Finance = () => {
                 onClose={() => setMovementsAccount(null)}
                 account={movementsAccount}
             />
+            <Modal title={t("finance.transfer_title")} open={transferOpen} onCancel={() => setTransferOpen(false)} onOk={() => transferForm.submit()} confirmLoading={submitting} okText={t("finance.transfer_confirm")}>
+                <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.transfer_help_title")} description={t("finance.transfer_help_desc")} />
+                <Form form={transferForm} layout="vertical" onFinish={handleTransfer}>
+                    <Form.Item name="from_cash_account_id" label={t("finance.transfer_from")} rules={[{ required: true, message: t("validation.required_field") }]}><Select showSearch optionFilterProp="label" options={accounts.filter((row) => row.is_active).map((row) => ({ value: row._id, label: `${row.name} · ${formatCurrency(row.balance)}` }))} placeholder={t("finance.transfer_from_placeholder")} /></Form.Item>
+                    <Form.Item noStyle shouldUpdate={(before, after) => before.from_cash_account_id !== after.from_cash_account_id}>{({ getFieldValue }) => <Form.Item name="to_cash_account_id" label={t("finance.transfer_to")} rules={[{ required: true, message: t("validation.required_field") }]}><Select showSearch optionFilterProp="label" options={accounts.filter((row) => row.is_active && row._id !== getFieldValue("from_cash_account_id")).map((row) => ({ value: row._id, label: row.name }))} placeholder={t("finance.transfer_to_placeholder")} /></Form.Item>}</Form.Item>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><Form.Item name="amount" label={t("finance.transfer_amount")} rules={[{ required: true, message: t("validation.required_field") }]}><InputNumber min={0.01} precision={2} className="w-full" /></Form.Item><Form.Item name="transfer_date" label={t("finance.transfer_date")} rules={[{ required: true, message: t("validation.required_field") }]}><DatePicker className="w-full" /></Form.Item></div>
+                    <Form.Item name="description" label={t("finance.transfer_description")}><Input maxLength={200} placeholder={t("finance.transfer_description_placeholder")} /></Form.Item>
+                </Form>
+            </Modal>
         </div>
     );
 };

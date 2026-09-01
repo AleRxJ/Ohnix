@@ -74,6 +74,19 @@ export const useCashAccounts = () => {
         }
     };
 
+    const transferCash = async (values) => {
+        setSubmitting(true);
+        try {
+            await financeService.transferCash(values);
+            toast.success(t("finance.transfer_success"));
+            await load();
+            return true;
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("finance.transfer_failed"));
+            return false;
+        } finally { setSubmitting(false); }
+    };
+
     return {
         accounts,
         loading,
@@ -82,6 +95,7 @@ export const useCashAccounts = () => {
         createAccount,
         updateAccount,
         deactivateAccount,
+        transferCash,
     };
 };
 

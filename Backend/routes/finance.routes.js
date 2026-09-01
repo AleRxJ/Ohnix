@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
+import { idempotent } from "../middleware/idempotency.middleware.js";
 import {
     listCashAccounts,
     getCashAccount,
@@ -10,6 +11,7 @@ import {
     listCashAccountMovements,
     registerManualExpense,
     registerManualIncome,
+    transferCash,
     listOrderPayments,
     registerOrderPayment,
     listPurchasePayments,
@@ -50,6 +52,8 @@ router.route("/expenses")
 
 router.route("/income")
     .post(requireModulePermission("finance", "edit"), registerManualIncome);
+router.route("/transfers")
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.cash-transfer"), transferCash);
 
 router.route("/orders/:orderId/payments")
     .get(requireModulePermission("finance", "view"), listOrderPayments)

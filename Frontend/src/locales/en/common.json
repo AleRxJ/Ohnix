@@ -704,6 +704,22 @@
     "bank_income_success": "Bank income recorded and reconciled",
     "bank_income_failed": "Could not record the bank income",
     "bank_income_load_accounts_failed": "Revenue accounts could not be loaded. Please try again.",
+    "transfer_cta": "Transfer money",
+    "transfer_title": "Transfer between accounts",
+    "transfer_help_title": "Money changes location; this is not income or an expense",
+    "transfer_help_desc": "Ohnix will deduct the amount from the source, add it to the destination and create the journal entry and both movements in one operation.",
+    "transfer_from": "Source account",
+    "transfer_from_placeholder": "Choose where the money comes from",
+    "transfer_to": "Destination account",
+    "transfer_to_placeholder": "Choose where the money will go",
+    "transfer_amount": "Amount to transfer",
+    "transfer_date": "Accounting date",
+    "transfer_description": "Optional description",
+    "transfer_description_placeholder": "E.g. Transfer for supplier payments",
+    "transfer_confirm": "Complete transfer",
+    "transfer_success": "Transfer recorded successfully",
+    "transfer_failed": "The transfer could not be recorded",
+    "transfer_requires_accounts": "You need at least two active accounts to transfer money",
     "match_cta": "Reconcile",
     "match_modal_title": "Reconcile statement entry",
     "match_select_movement_label": "Select the matching movement",
@@ -3035,7 +3051,7 @@
         },
         "assistant": {
           "title": "An AI assistant across the whole platform",
-          "description": "Get answers about your operation, your accounting, and your DIAN invoicing without leaving Ohnix or opening a support ticket."
+          "description": "Get answers about your operation, your accounting, and your DIAN invoicing grounded in Ohnix's own documentation, without leaving Ohnix or opening a support ticket."
         },
         "integrations": {
           "title": "Connected to your online store",

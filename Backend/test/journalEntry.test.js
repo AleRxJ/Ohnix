@@ -24,6 +24,7 @@ test("one-to-one accounting sources are idempotent when they have a source id", 
         "manual_journal_reversal",
         "period_reopen",
         "period_reclose",
+        "cash_transfer",
     ]) {
         assert.equal(isSingleEntrySource(sourceType, "source-1"), true, sourceType);
     }

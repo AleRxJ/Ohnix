@@ -8,6 +8,7 @@ import * as purchasePaymentService from "../services/purchasePayment.service.js"
 import * as reconciliationService from "../services/bankReconciliation.service.js";
 import * as manualExpenseService from "../services/manualExpense.service.js";
 import * as manualIncomeService from "../services/manualIncome.service.js";
+import * as cashTransferService from "../services/cashTransfer.service.js";
 import * as accountsPayableService from "../services/accountsPayable.service.js";
 import * as accountsReceivableService from "../services/accountsReceivable.service.js";
 
@@ -277,6 +278,12 @@ export const registerManualIncome = asyncHandler(async (req, res, next) => {
         cash_movement_id: result.movement.id,
         balance_after: Number(result.movement.balanceAfter),
     }, "Manual income registered successfully"));
+});
+
+export const transferCash = asyncHandler(async (req, res) => {
+    const { from_cash_account_id, to_cash_account_id, amount, description, transfer_date } = req.body || {};
+    const result = await cashTransferService.transferCash({ accountId: req.user.prismaId, actorId: req.user.actorId, fromCashAccountId: from_cash_account_id, toCashAccountId: to_cash_account_id, amount, description, transferDate: transfer_date });
+    return res.status(201).json(new ApiResponse(201, { transfer_id: result.transferId, journal_entry_id: result.entry?.id, from_balance: Number(result.outMovement.balanceAfter), to_balance: Number(result.inMovement.balanceAfter) }, "Cash transfer registered successfully"));
 });
 
 export const suggestStatementMatches = asyncHandler(async (req, res, next) => {
