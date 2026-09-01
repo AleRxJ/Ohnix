@@ -123,6 +123,44 @@ const checks = [
         `,
     },
     {
+        key: "cross_account_document_product_references",
+        severity: "blocking",
+        query: `
+            SELECT 'purchase' AS document_type, p.id AS document_id,
+                   pd.id AS detail_id, p.created_by AS document_account_id,
+                   pr.created_by AS product_account_id, pr.id AS product_id
+            FROM purchase_details pd
+            JOIN purchases p ON p.id = pd.purchase_id
+            JOIN products pr ON pr.id = pd.product_id
+            WHERE p.created_by <> pr.created_by
+            UNION ALL
+            SELECT 'order' AS document_type, o.id AS document_id,
+                   od.id AS detail_id, o.created_by AS document_account_id,
+                   pr.created_by AS product_account_id, pr.id AS product_id
+            FROM order_details od
+            JOIN orders o ON o.id = od.order_id
+            JOIN products pr ON pr.id = od.product_id
+            WHERE o.created_by <> pr.created_by
+            ORDER BY document_type, document_id
+        `,
+    },
+    {
+        key: "historical_stock_movements_missing_valuation",
+        severity: "warning",
+        requiresColumn: { table: "stock_movements", column: "value_delta" },
+        query: `
+            SELECT account_id, source_type::text,
+                   COUNT(*)::int AS movement_count,
+                   MIN(created_at) AS first_movement,
+                   MAX(created_at) AS last_movement
+            FROM stock_movements
+            WHERE delta <> 0
+              AND (unit_cost_applied IS NULL OR value_delta IS NULL OR value_balance_after IS NULL)
+            GROUP BY account_id, source_type
+            ORDER BY account_id, source_type
+        `,
+    },
+    {
         key: "inventory_subledger_differs_from_account_1435",
         severity: "blocking",
         requiresColumn: { table: "product_location_stock", column: "inventory_value" },

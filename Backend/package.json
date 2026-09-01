@@ -18,7 +18,10 @@
     "db:backfill:accounting:apply": "node scripts/backfillAccountingHistory.js --apply",
     "db:backfill:order-return-tax": "node scripts/backfillOrderReturnedTax.js",
     "db:backfill:order-return-tax:apply": "node scripts/backfillOrderReturnedTax.js --apply",
+    "db:backfill:accounting-third-parties": "node scripts/backfillAccountingThirdParties.js",
+    "db:backfill:accounting-third-parties:apply": "node scripts/backfillAccountingThirdParties.js --apply",
     "db:audit:accounting": "node scripts/auditAccountingIntegrity.js",
+    "db:diagnose:inventory-ledger": "node scripts/diagnoseInventoryLedger.js",
     "db:seed:test-user": "node scripts/createTestUser.js",
     "db:migrate:mongo-to-pg": "node scripts/migrateMongoToPostgres.js"
   },
