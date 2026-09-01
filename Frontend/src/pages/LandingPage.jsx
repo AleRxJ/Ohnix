@@ -157,6 +157,29 @@ const LandingPage = () => {
             description: t("landing.solutions.items.circular.description"),
             icon: brandIcons.observability,
         },
+        {
+            title: t("landing.solutions.items.finance.title"),
+            description: t("landing.solutions.items.finance.description"),
+            icon: brandIcons.accounting,
+        },
+        {
+            title: t("landing.solutions.items.compliance.title"),
+            description: t("landing.solutions.items.compliance.description"),
+            icon: brandIcons.compliance,
+        },
+    ];
+
+    const differentiatorCards = [
+        {
+            title: t("landing.differentiators.items.dian.title"),
+            description: t("landing.differentiators.items.dian.description"),
+            icon: brandIcons.trust,
+        },
+        {
+            title: t("landing.differentiators.items.assistant.title"),
+            description: t("landing.differentiators.items.assistant.description"),
+            icon: brandIcons.assistant,
+        },
     ];
 
     const timelineSteps = [
@@ -198,6 +221,14 @@ const LandingPage = () => {
         {
             question: t("landing.faq.items.fourth.question"),
             answer: t("landing.faq.items.fourth.answer"),
+        },
+        {
+            question: t("landing.faq.items.fifth.question"),
+            answer: t("landing.faq.items.fifth.answer"),
+        },
+        {
+            question: t("landing.faq.items.sixth.question"),
+            answer: t("landing.faq.items.sixth.answer"),
         },
     ];
 
@@ -427,7 +458,18 @@ const LandingPage = () => {
                         description={t("landing.solutions.description")}
                     />
                     <div className="mt-14">
-                        <CardGrid items={featureCards} columns={4} />
+                        <CardGrid items={featureCards} columns={3} />
+                    </div>
+                </ContentSection>
+
+                <ContentSection id="differentiators">
+                    <SectionHeading
+                        eyebrow={t("landing.differentiators.eyebrow")}
+                        title={t("landing.differentiators.title")}
+                        description={t("landing.differentiators.description")}
+                    />
+                    <div className="mt-14">
+                        <CardGrid items={differentiatorCards} columns={2} />
                     </div>
                 </ContentSection>
 
@@ -482,7 +524,7 @@ const LandingPage = () => {
                 />
 
                 <section className="px-6 pb-16 md:px-10">
-                    <div className="mx-auto max-w-7xl rounded-[24px] border border-white/10 bg-white/[0.03] p-6 md:p-8">
+                    <div className="mx-auto max-w-[1440px] rounded-[24px] border border-white/10 bg-white/[0.03] p-6 md:p-8">
                         <h2 className="text-2xl font-semibold text-white">{t("landing.explore.title")}</h2>
                         <p className="mt-3 text-sm leading-7 text-[#A9B3B8]">
                             {t("landing.explore.description")}

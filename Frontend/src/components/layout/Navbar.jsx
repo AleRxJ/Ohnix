@@ -114,7 +114,7 @@ const Navbar = () => {
                     : "bg-transparent"
             }`}
         >
-            <div className="container mx-auto flex items-center justify-between px-6">
+            <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between px-6">
                 <button
                     type="button"
                     onClick={() => handleNavigation("/")}

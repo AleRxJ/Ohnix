@@ -15,7 +15,7 @@ const Footer = () => {
 
     return (
         <footer className="border-t border-white/5 bg-[#050505] pt-16 pb-8 text-[#A9B3B8]">
-            <div className="container mx-auto max-w-7xl px-6">
+            <div className="container mx-auto max-w-[1440px] px-6">
                 <div className="flex flex-col items-start gap-12 md:flex-row md:items-center md:justify-between">
                     <div>
                         <img

@@ -8,6 +8,7 @@ import {
     ArrowRightOutlined,
     ApiOutlined,
     ApartmentOutlined,
+    BookOutlined,
     CheckCircleOutlined,
     ClockCircleOutlined,
     DatabaseOutlined,
@@ -18,6 +19,7 @@ import {
     PlayCircleOutlined,
     RocketOutlined,
     SafetyOutlined,
+    SafetyCertificateOutlined,
     SyncOutlined,
     ThunderboltOutlined,
     TeamOutlined,
@@ -28,6 +30,7 @@ import {
     CrownOutlined,
     ThunderboltOutlined as BoltOutlined,
     CheckOutlined,
+    MessageOutlined,
 } from "@ant-design/icons";
 
 const sectionShell =
@@ -1123,7 +1126,7 @@ export const SectionHeading = ({ eyebrow, title, description, align = "center", 
                 </span>
             ) : null}
             <div className="max-w-4xl">
-                <HeadingTag className="text-3xl font-semibold tracking-tight md:text-5xl md:leading-[1.05] bg-gradient-to-br from-white via-[#E8EDEE] to-[#29D8D5]/55 bg-clip-text text-transparent">
+                <HeadingTag className="text-2xl font-semibold tracking-tight md:text-4xl md:leading-[1.1] bg-gradient-to-br from-white via-[#E8EDEE] to-[#29D8D5]/55 bg-clip-text text-transparent">
                     {title}
                 </HeadingTag>
                 {description ? (
@@ -1178,7 +1181,7 @@ export const OrbitalHero = ({
                 <div className="absolute right-[20%] bottom-[18%] h-64 w-64 rounded-full border border-white/[0.06]" />
             </div>
 
-            <div className="relative mx-auto max-w-7xl px-5 pb-16 pt-28 sm:px-6 md:px-10 md:pb-28 md:pt-32 lg:pt-36">
+            <div className="relative mx-auto max-w-[1440px] px-5 pb-16 pt-28 sm:px-6 md:px-10 md:pb-20 md:pt-20 lg:pt-24">
                 {/* ── Mobile-only ambient blobs ───────────────────────────────── */}
                 <div className="pointer-events-none absolute inset-0 overflow-hidden md:hidden" aria-hidden="true">
                     <div className="absolute -left-24 top-24 h-80 w-80 rounded-full bg-[#29D8D5]/8 blur-[90px] animate-blob-float" />
@@ -1186,7 +1189,7 @@ export const OrbitalHero = ({
                     <div className="absolute bottom-24 left-1/3 h-48 w-48 rounded-full bg-[#29D8D5]/5 blur-[55px] animate-float-slow" />
                 </div>
 
-                <div className="grid items-center gap-14 lg:grid-cols-[0.82fr_1.18fr] lg:gap-12">
+                <div className="grid items-center gap-14 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
                     <div className="relative z-10">
                         {/* ── Eyebrow with live pulse dot ─── */}
                         <div className="animate-fade-up inline-flex items-center gap-3 rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#29D8D5] md:border-white/10 md:text-[11px] md:tracking-[0.35em]">
@@ -1198,7 +1201,7 @@ export const OrbitalHero = ({
                         </div>
 
                         <h1
-                            className="mt-6 max-w-3xl text-[2.65rem] font-semibold leading-[1.02] tracking-tight text-white sm:text-5xl md:mt-7 md:text-7xl md:leading-[0.94] animate-fade-up"
+                            className="mt-6 max-w-3xl text-[2.65rem] font-semibold leading-[1.02] tracking-tight text-white sm:text-5xl md:mt-7 md:text-4xl md:leading-[1.08] lg:text-5xl lg:leading-[1.04] animate-fade-up"
                             style={{ animationDelay: "0.1s" }}
                         >
                             {title}
@@ -1206,7 +1209,7 @@ export const OrbitalHero = ({
 
                         {cyclingWords.length > 0 && (
                             <div
-                                className="mt-3 text-4xl font-semibold tracking-tight md:text-6xl animate-fade-up"
+                                className="mt-3 text-4xl font-semibold tracking-tight md:text-3xl lg:text-4xl animate-fade-up"
                                 style={{ animationDelay: "0.15s" }}
                             >
                                 <span className="md:hidden">{cyclingWords[0]}</span>
@@ -1264,7 +1267,7 @@ export const OrbitalHero = ({
                         </div>
                     </div>
 
-                    <div className="relative mx-auto w-full max-w-[860px] lg:w-[790px] lg:max-w-none lg:-mr-16 animate-fade-up" style={{ animationDelay: "0.2s" }}>
+                    <div className="relative mx-auto w-full max-w-[780px] animate-fade-up" style={{ animationDelay: "0.2s" }}>
                         <div className="absolute -inset-14 rounded-[52px] bg-[radial-gradient(circle_at_center,rgba(41,216,213,0.4),transparent_68%)] blur-[42px]" />
 
                         <div className="relative transition-transform duration-500 hover:-translate-y-1 animate-float">
@@ -1309,7 +1312,7 @@ export const OrbitalHero = ({
 
 export const ContentSection = ({ id, children, className = "", shell = true }) => {
     const content = (
-        <div className={`relative mx-auto max-w-7xl px-5 py-16 sm:px-6 md:px-10 md:py-28 animate-fade-up ${className}`}>
+        <div className={`relative mx-auto max-w-[1440px] px-5 py-16 sm:px-6 md:px-10 md:py-28 animate-fade-up ${className}`}>
             {children}
         </div>
     );
@@ -2436,4 +2439,7 @@ export const brandIcons = {
     facility: <ApartmentOutlined />,
     pricing: <CrownOutlined />,
     growth: <BoltOutlined />,
+    accounting: <BookOutlined />,
+    compliance: <SafetyCertificateOutlined />,
+    assistant: <MessageOutlined />,
 };

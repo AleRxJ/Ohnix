@@ -2896,9 +2896,9 @@
       "secondary_cta": "Back to home"
     },
     "hero": {
-      "eyebrow": "Ohnix | Inventory & operations",
-      "title": "Inventory, sales, and operations in one place.",
-      "subtitle": "Ohnix centralizes products, stock, purchases, orders, and reports so your team controls every movement with clarity—without spreadsheets or disconnected tools.",
+      "eyebrow": "Ohnix | Inventory, accounting & DIAN",
+      "title": "Inventory, sales, and accounting for your business, in one place.",
+      "subtitle": "Ohnix centralizes products, stock, purchases, orders, accounting, and DIAN electronic invoicing so your team controls every movement with clarity—without spreadsheets or disconnected tools.",
       "primary_cta": "Create free account",
       "secondary_cta": "Watch demo",
       "stats": {
@@ -2920,7 +2920,7 @@
         "nodeTwo": "Stock moves",
         "nodeThree": "Reports"
       },
-      "footer_note": "Traceability on every movement",
+      "footer_note": "Traceability on every movement, from the warehouse to your books.",
       "product_image_alt": "Ohnix inventory dashboard",
       "cycling_words": {
         "one": "Inventory",
@@ -2961,8 +2961,8 @@
     },
     "solutions": {
       "eyebrow": "Features",
-      "title": "Everything you need to run inventory day to day.",
-      "description": "Modular tools that work together: configure your catalog, move stock in and out, and measure performance from one dashboard.",
+      "title": "Everything you need to run and account for your business day to day.",
+      "description": "Modular tools that work together: configure your catalog, move stock, keep your books, and invoice the DIAN from one dashboard.",
       "items": {
         "lifecycle": {
           "title": "Products & catalog",
@@ -2979,6 +2979,29 @@
         "circular": {
           "title": "Reports & alerts",
           "description": "Monitor sales, purchases, and low-stock signals to decide before problems appear."
+        },
+        "finance": {
+          "title": "Finance & accounting",
+          "description": "Cash, banks, reconciliation, and full double-entry accounting—journal entries, chart of accounts, and period closes, without a separate spreadsheet."
+        },
+        "compliance": {
+          "title": "DIAN electronic invoicing",
+          "description": "Issue, validate, and track your invoices with the DIAN using Ohnix's own technology—no third party in between."
+        }
+      }
+    },
+    "differentiators": {
+      "eyebrow": "Why Ohnix",
+      "title": "What you won't find in a plain inventory system.",
+      "description": "Two capabilities of our own that most tools for small businesses don't build in.",
+      "items": {
+        "dian": {
+          "title": "Its own technology before the DIAN",
+          "description": "Every company is enabled directly with the DIAN through Ohnix's own technology—we don't resell a third party's invoicing."
+        },
+        "assistant": {
+          "title": "An AI assistant across the whole platform",
+          "description": "Get answers about your operation, your accounting, and your DIAN invoicing without leaving Ohnix or opening a support ticket."
         }
       }
     },
@@ -3000,8 +3023,8 @@
           "description": "Issue orders, apply secure stock deductions, and share invoices with your customers."
         },
         "regenerate": {
-          "title": "Review & improve",
-          "description": "Use the dashboard and reports to review sales, purchases, and low stock, and decide your next move."
+          "title": "Review and close your books",
+          "description": "Use the dashboard and reports to review sales, purchases, and low stock, and close the accounting period without leaving Ohnix."
         }
       }
     },
@@ -3087,6 +3110,14 @@
         "fourth": {
           "question": "How do I get started?",
           "answer": "Create an account with the primary button, verify your email, and explore the demo video to see the dashboard, products, and order flows in action."
+        },
+        "fifth": {
+          "question": "Does Ohnix replace my accountant or tools like Alegra or Siigo?",
+          "answer": "Ohnix keeps your double-entry accounting (journal entries, chart of accounts, period closes) and invoices the DIAN without leaving the platform, so you can stop duplicating data between your inventory and a separate accounting tool. Your accountant still reviews and signs off on your obligations—Ohnix just gives them clean, traceable data to work with."
+        },
+        "sixth": {
+          "question": "How does DIAN electronic invoicing work in Ohnix?",
+          "answer": "Ohnix invoices with its own technology, enabled directly with the DIAN—it doesn't resell a third party's invoicing. Every invoice comes from a real order, gets its CUFE, and you can track its status (issued, accepted, or rejected) from the document center."
         }
       }
     },

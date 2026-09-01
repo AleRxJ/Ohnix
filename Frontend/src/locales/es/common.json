@@ -2890,9 +2890,9 @@
       "secondary_cta": "Volver al inicio"
     },
     "hero": {
-      "eyebrow": "Ohnix | Inventario y operaciones",
-      "title": "Inventario, ventas y operaciones en un solo lugar.",
-      "subtitle": "Ohnix centraliza productos, existencias, compras, pedidos y reportes para que tu equipo controle cada movimiento con claridad—sin hojas de cálculo ni herramientas desconectadas.",
+      "eyebrow": "Ohnix | Inventario, contabilidad y DIAN",
+      "title": "Inventario, ventas y contabilidad de tu pyme, en un solo lugar.",
+      "subtitle": "Ohnix centraliza productos, existencias, compras, pedidos, contabilidad y facturación electrónica DIAN para que tu equipo controle cada movimiento con claridad—sin hojas de cálculo ni herramientas desconectadas.",
       "primary_cta": "Crear cuenta gratis",
       "secondary_cta": "Ver demo",
       "stats": {
@@ -2914,7 +2914,7 @@
         "nodeTwo": "Movimientos",
         "nodeThree": "Reportes"
       },
-      "footer_note": "Trazabilidad en cada movimiento",
+      "footer_note": "Trazabilidad en cada movimiento, de la bodega a tus libros.",
       "product_image_alt": "Panel de inventario de Ohnix",
       "cycling_words": {
         "one": "Inventario",
@@ -2955,8 +2955,8 @@
     },
     "solutions": {
       "eyebrow": "Características",
-      "title": "Todo lo necesario para operar el inventario día a día.",
-      "description": "Módulos que trabajan juntos: configura tu catálogo, mueve stock y mide resultados desde un panel.",
+      "title": "Todo lo necesario para operar y contabilizar tu pyme día a día.",
+      "description": "Módulos que trabajan juntos: configura tu catálogo, mueve stock, contabiliza y factura ante la DIAN desde un panel.",
       "items": {
         "lifecycle": {
           "title": "Productos y catálogo",
@@ -2973,6 +2973,29 @@
         "circular": {
           "title": "Reportes y alertas",
           "description": "Supervisa ventas, compras y stock bajo antes de que se conviertan en problemas."
+        },
+        "finance": {
+          "title": "Finanzas y contabilidad",
+          "description": "Caja, bancos, conciliación y contabilidad de partida doble—asientos, plan de cuentas y cierres, sin hojas de cálculo aparte."
+        },
+        "compliance": {
+          "title": "Facturación electrónica DIAN",
+          "description": "Emite, valida y da seguimiento a tus facturas ante la DIAN con tecnología propia—sin depender de un tercero."
+        }
+      }
+    },
+    "differentiators": {
+      "eyebrow": "Por qué Ohnix",
+      "title": "Lo que no vas a encontrar en un sistema de inventario cualquiera.",
+      "description": "Dos capacidades propias que la mayoría de herramientas para pymes no traen integradas.",
+      "items": {
+        "dian": {
+          "title": "Software propio ante la DIAN",
+          "description": "Cada empresa se habilita directamente ante la DIAN con tecnología propia de Ohnix—no revendemos la facturación de un tercero."
+        },
+        "assistant": {
+          "title": "Asistente con IA en toda la plataforma",
+          "description": "Resuelve dudas sobre tu operación, tu contabilidad y tu facturación DIAN sin salir de Ohnix ni abrir un ticket de soporte."
         }
       }
     },
@@ -2994,8 +3017,8 @@
           "description": "Emite pedidos, aplica descuentos de stock seguros y comparte facturas con clientes."
         },
         "regenerate": {
-          "title": "Revisa y mejora",
-          "description": "Usa el panel y los reportes para revisar ventas, compras y stock bajo, y decidir tus próximos pasos."
+          "title": "Revisa y cierra tus libros",
+          "description": "Usa el panel y los reportes para revisar ventas, compras y stock bajo, y cierra el período contable sin salir de Ohnix."
         }
       }
     },
@@ -3081,6 +3104,14 @@
         "fourth": {
           "question": "¿Cómo empiezo?",
           "answer": "Crea una cuenta con el botón principal, verifica tu correo y explora la demo para ver panel, productos y flujos de pedidos."
+        },
+        "fifth": {
+          "question": "¿Ohnix reemplaza a mi contador o a herramientas como Alegra o Siigo?",
+          "answer": "Ohnix lleva tu contabilidad de partida doble (asientos, plan de cuentas, cierres) y factura ante la DIAN sin salir de la plataforma, así que puedes dejar de duplicar información entre tu inventario y una herramienta contable aparte. Tu contador sigue siendo quien revisa y firma tus obligaciones—Ohnix le da datos limpios y trazables para trabajar."
+        },
+        "sixth": {
+          "question": "¿Cómo funciona la facturación electrónica ante la DIAN en Ohnix?",
+          "answer": "Ohnix factura con tecnología propia, habilitada directamente ante la DIAN—no revende la facturación de un tercero. Cada factura nace de un pedido real, obtiene su CUFE y puedes seguir su estado (emitida, aceptada o rechazada) desde el centro de documentos."
         }
       }
     },
