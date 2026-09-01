@@ -32,8 +32,8 @@ export default {
           '50%': { transform: 'translateY(-18px)' },
         },
         glowPulse: {
-          '0%, 100%': { boxShadow: '0 0 16px rgba(41,216,213,0.25), 0 0 40px rgba(41,216,213,0.08)' },
-          '50%': { boxShadow: '0 0 36px rgba(41,216,213,0.6), 0 0 80px rgba(41,216,213,0.22)' },
+          '0%, 100%': { transform: 'translateZ(0) scale(1)' },
+          '50%': { transform: 'translateZ(0) scale(1.018)' },
         },
         ripple: {
           '0%': { transform: 'scale(1)', opacity: '0.5' },

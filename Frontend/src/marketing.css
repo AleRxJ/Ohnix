@@ -1,0 +1,51 @@
+@config "../tailwind.marketing.config.js";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  background: #050505;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #050505;
+  color: #fff;
+  font-family: "Space Grotesk", "Manrope", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.marketing-main > section:not(#home) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
+.ohnix-scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(41, 216, 213, 0.3) transparent;
+}
+
+@media (max-width: 767px), (prefers-reduced-motion: reduce) {
+  .animate-glow-pulse,
+  .animate-blob-float,
+  .animate-blob-float-alt,
+  .animate-float,
+  .animate-float-slow,
+  .animate-orbit-xs,
+  .animate-orbit-fast,
+  .animate-orbit-mid,
+  .animate-orbit-slow,
+  .animate-ripple,
+  .animate-ripple-delay {
+    animation: none !important;
+  }
+}

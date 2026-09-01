@@ -108,6 +108,14 @@ export const financeService = {
         });
         return response.data;
     },
+    async getReconciliationSuggestions(cashAccountId) {
+        const response = await api.get("/finance/reconciliation/suggestions", { params: { cash_account_id: cashAccountId } });
+        return response.data;
+    },
+    async getReconciliationSummary(cashAccountId) {
+        const response = await api.get("/finance/reconciliation/summary", { params: { cash_account_id: cashAccountId } });
+        return response.data;
+    },
 
     async getCarteraReport(params) {
         const response = await api.get("/reports/cartera", { params });

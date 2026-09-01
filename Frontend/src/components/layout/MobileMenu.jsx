@@ -84,7 +84,7 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
                     <div className="flex items-center justify-between px-1">
                         <div className="flex items-center gap-2.5">
                             <img
-                                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Optimized.png"}
+                                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Transparent.png"}
                                 alt=""
                                 aria-hidden="true"
                                 className="h-11 w-11 object-contain"

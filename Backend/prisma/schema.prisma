@@ -1887,6 +1887,7 @@ model BankStatementEntry {
   amount            Decimal  @db.Decimal(14, 2)
   matchedMovementId String?  @unique @map("matched_movement_id")
   createdById       String   @map("created_by")
+  importFingerprint String?  @map("import_fingerprint")
   createdAt         DateTime @default(now()) @map("created_at")
 
   cashAccount     CashAccount   @relation(fields: [cashAccountId], references: [id])
@@ -1894,6 +1895,7 @@ model BankStatementEntry {
   createdBy       User          @relation(fields: [createdById], references: [id])
 
   @@index([cashAccountId, entryDate])
+  @@unique([cashAccountId, importFingerprint])
   @@map("bank_statement_entries")
 }
 

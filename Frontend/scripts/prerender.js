@@ -75,10 +75,11 @@ const waitForServer = async (url, attempts = 60) => {
 
 const run = async () => {
     console.log("[prerender] Starting vite preview server...");
-    const server = spawn("npx", ["vite", "preview", "--port", String(PORT), "--strictPort"], {
+    const viteCli = join(rootDir, "node_modules", "vite", "bin", "vite.js");
+    const server = spawn(process.execPath, [viteCli, "preview", "--port", String(PORT), "--strictPort"], {
         cwd: rootDir,
         stdio: "inherit",
-        shell: true,
+        shell: false,
     });
 
     let browser;

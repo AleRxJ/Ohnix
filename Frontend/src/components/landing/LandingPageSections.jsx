@@ -31,7 +31,7 @@ import {
 } from "@ant-design/icons";
 
 const sectionShell =
-    "relative overflow-hidden border-t border-transparent bg-[#050505] text-white md:border-white/5";
+    "relative overflow-hidden border-t border-white/[0.025] bg-[#050505] text-white md:border-white/5";
 
 /* ── Scroll-reveal hook ──────────────────────────────────────────────── */
 const useScrollReveal = (threshold = 0.12) => {
@@ -120,6 +120,7 @@ export const HeroDashboard = () => {
     const [productCount, setProductCount] = useState(0);
     const [valueCount, setValueCount]     = useState(0);
     const [highlightRow, setHighlightRow] = useState(0);
+    const [activeSuite, setActiveSuite]   = useState(0);
 
     useEffect(() => {
         const animCount = (target, setter, duration = 1800) => {
@@ -132,8 +133,8 @@ export const HeroDashboard = () => {
             requestAnimationFrame(tick);
         };
         const t = setTimeout(() => {
-            animCount(1247, setProductCount);
-            animCount(842,  setValueCount);
+            animCount(24860, setProductCount);
+            animCount(2846,  setValueCount);
         }, 350);
         return () => clearTimeout(t);
     }, []);
@@ -143,41 +144,87 @@ export const HeroDashboard = () => {
         return () => clearInterval(iv);
     }, []);
 
+    useEffect(() => {
+        const iv = setInterval(() => setActiveSuite((current) => (current + 1) % 4), 3200);
+        return () => clearInterval(iv);
+    }, []);
+
     const spark = [28, 42, 35, 58, 44, 67, 53, 72, 60, 85, 70, 92];
     const W = 200, H = 44;
     const pts = spark.map((v, i) => `${(i / (spark.length - 1)) * W},${H - (v / 100) * H}`).join(" ");
 
     const rows = [
-        { sku: "SKU-1042", name: "Tornillo M6 A2",  stock: 342, ok: true  },
-        { sku: "SKU-0891", name: "Cable HDMI 2.0",  stock: 12,  ok: false },
-        { sku: "SKU-2314", name: "Sensor DHT22",     stock: 89,  ok: true  },
-        { sku: "SKU-0472", name: "Caja Corrugada",   stock: 5,   ok: false },
+        { location: "BOG-01", name: t("landing.hero_dashboard.location_central"), movements: 842, ok: true },
+        { location: "MED-02", name: t("landing.hero_dashboard.location_north"), movements: 615, ok: true },
+        { location: "CAL-03", name: t("landing.hero_dashboard.location_west"), movements: 498, ok: true },
+        { location: "BAR-04", name: t("landing.hero_dashboard.location_coast"), movements: 367, ok: true },
+    ];
+
+    const suites = [
+        { key: "operations", code: "01", label: t("landing.hero_dashboard.suite_operations"), detail: t("landing.hero_dashboard.suite_operations_detail") },
+        { key: "commerce", code: "02", label: t("landing.hero_dashboard.suite_commerce"), detail: t("landing.hero_dashboard.suite_commerce_detail") },
+        { key: "finance", code: "03", label: t("landing.hero_dashboard.suite_finance"), detail: t("landing.hero_dashboard.suite_finance_detail") },
+        { key: "connect", code: "04", label: t("landing.hero_dashboard.suite_connect"), detail: t("landing.hero_dashboard.suite_connect_detail") },
     ];
 
     return (
-        <div className="w-full overflow-hidden rounded-[18px] border border-white/10 bg-[#080808] text-white">
-            {/* Window chrome */}
-            <div className="flex items-center gap-3 border-b border-white/8 bg-[#0d0d0d] px-4 py-2.5">
-                <div className="flex gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]/80" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]/80" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#28C840]/80" />
+        <div className="relative w-full overflow-hidden rounded-[38px] border border-[#29D8D5]/15 bg-[#070909] text-white shadow-[0_36px_120px_rgba(0,0,0,0.72),0_0_80px_rgba(41,216,213,0.08)]">
+            <div className="pointer-events-none absolute -right-20 -top-28 h-80 w-80 rounded-full bg-[#29D8D5]/10 blur-[90px]" />
+            <div className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-[#44F3F0]/[0.06] blur-[90px]" />
+            <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(41,216,213,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(41,216,213,0.08)_1px,transparent_1px)] [background-size:32px_32px]" />
+            <div className="flex min-h-[520px] gap-2 p-2">
+                <aside className="relative hidden w-[68px] shrink-0 rounded-[28px] border border-white/[0.06] bg-black/45 p-2 backdrop-blur-2xl sm:flex sm:flex-col">
+                    <div className="mb-4 flex items-center justify-center py-2">
+                        <img src="/Ohnix_Icon_Transparent.png" alt="" className="h-8 w-8 object-contain drop-shadow-[0_0_12px_rgba(41,216,213,0.45)]" />
+                    </div>
+                    <div className="space-y-1">
+                        {[
+                            ["◫", t("landing.hero_dashboard.module_overview")],
+                            ["◈", t("landing.hero_dashboard.module_inventory")],
+                            ["⇄", t("landing.hero_dashboard.module_sales")],
+                            ["⌁", t("landing.hero_dashboard.module_purchases")],
+                            ["$", t("landing.hero_dashboard.module_finance")],
+                            ["▤", t("landing.hero_dashboard.module_accounting")],
+                            ["✓", t("landing.hero_dashboard.module_invoicing")],
+                            ["↗", t("landing.hero_dashboard.module_reports")],
+                            ["⚙", t("landing.hero_dashboard.module_integrations")],
+                        ].map(([icon, label], i) => (
+                            <div key={label} title={label} className={`group flex h-9 items-center justify-center rounded-xl border text-[10px] transition-all duration-300 ${i === activeSuite * 2 ? "border-[#29D8D5]/30 bg-[#29D8D5]/12 text-[#29D8D5] shadow-[inset_0_0_18px_rgba(41,216,213,0.06),0_0_18px_rgba(41,216,213,0.08)]" : "border-transparent text-[#65727a] hover:border-white/5 hover:bg-white/[0.04] hover:text-[#A9B3B8]"}`}>
+                                <span className="text-sm">{icon}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-auto flex flex-col items-center rounded-2xl border border-[#29D8D5]/15 bg-[#29D8D5]/[0.05] px-1 py-2.5">
+                        <div className="text-sm font-semibold text-white">48</div>
+                        <div className="mt-0.5 h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_8px_#29D8D5]" />
+                    </div>
+                </aside>
+                <div className="min-w-0 flex-1 overflow-hidden rounded-[30px] border border-white/[0.055] bg-black/20">
+            <div className="flex items-center gap-3 border-b border-white/[0.055] bg-white/[0.018] px-4 py-3 backdrop-blur-xl">
+                <div className="flex h-7 w-7 items-center justify-center rounded-xl border border-[#29D8D5]/15 bg-[#29D8D5]/[0.055]">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_9px_#29D8D5]" />
                 </div>
-                <span className="flex-1 text-center text-[11px] font-medium text-[#555]">
-                    {t("landing.hero_dashboard.window_title")}
-                </span>
+                <div className="min-w-0 flex-1">
+                    <span className="block text-[10px] font-semibold tracking-wide text-[#b5c1c0]">{t("landing.hero_dashboard.command_center")}</span>
+                    <span className="block text-[7px] uppercase tracking-[0.16em] text-[#455351]">{t("landing.hero_dashboard.all_systems_label")}</span>
+                </div>
+                <div className="hidden items-center gap-1 rounded-full border border-white/[0.055] bg-black/25 px-2.5 py-1.5 md:flex">
+                    <span className="text-[8px] text-[#586765]">⌕</span>
+                    <span className="text-[7px] uppercase tracking-wider text-[#465552]">{t("landing.hero_dashboard.search_label")}</span>
+                </div>
                 <div className="flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_8px_rgba(41,216,213,0.9)] animate-pulse" />
-                    <span className="text-[10px] font-semibold text-[#29D8D5]">{t("landing.hero_dashboard.live")}</span>
+                    <span className="text-[8px] font-semibold uppercase tracking-wider text-[#29D8D5]">{t("landing.hero_dashboard.live")}</span>
                 </div>
             </div>
 
             {/* KPI strip */}
-            <div className="grid grid-cols-3 divide-x divide-white/5 border-b border-white/6">
+            <div className="grid grid-cols-2 divide-x divide-y divide-white/5 border-b border-white/6 lg:grid-cols-4 lg:divide-y-0">
                 {[
-                    { label: t("landing.hero_dashboard.products_label"), value: productCount.toLocaleString(), note: "+8.2%",    pos: true  },
-                    { label: t("landing.hero_dashboard.value_label"),    value: `$${(valueCount / 10).toFixed(1)}k`, note: "+5.1%", pos: true  },
-                    { label: t("landing.hero_dashboard.alerts_label"),   value: "3",                           note: t("landing.hero_dashboard.low_stock_note"), pos: false },
+                    { label: t("landing.hero_dashboard.products_label"), value: productCount.toLocaleString(), note: "+18.2%",   pos: true  },
+                    { label: t("landing.hero_dashboard.sales_today_label"), value: `$${(valueCount / 100).toFixed(1)}M`, note: "+12.6%", pos: true },
+                    { label: t("landing.hero_dashboard.locations_label"), value: "12",                         note: t("landing.hero_dashboard.connected_note"), pos: true },
+                    { label: t("landing.hero_dashboard.dian_label"), value: t("landing.hero_dashboard.active_label"), note: t("landing.hero_dashboard.synced_note"), pos: true },
                 ].map((k) => (
                     <div key={k.label} className="bg-[#080808] px-3 py-2.5">
                         <div className="text-[9px] uppercase tracking-widest text-[#444]">{k.label}</div>
@@ -189,41 +236,376 @@ export const HeroDashboard = () => {
                 ))}
             </div>
 
-            {/* Sparkline */}
-            <div className="border-b border-white/6 bg-[#060606] px-3 py-2.5">
-                <div className="flex items-center justify-between">
-                    <span className="text-[9px] uppercase tracking-widest text-[#444]">{t("landing.hero_dashboard.movements_label")}</span>
-                    <span className="text-[9px] font-semibold text-[#29D8D5]">+18.4% ↑</span>
+            <div className="grid border-b border-white/6 bg-[#060606] lg:grid-cols-[1.45fr_0.75fr]">
+                <div className="border-b border-white/6 px-3 py-3 lg:border-b-0 lg:border-r">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[9px] uppercase tracking-widest text-[#444]">{t("landing.hero_dashboard.unified_operation_label")}</span>
+                        <span className="text-[9px] font-semibold text-[#29D8D5]">+18.4% ↑</span>
+                    </div>
+                    <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 w-full" preserveAspectRatio="none" style={{ height: "58px" }}>
+                        <defs>
+                            <linearGradient id="hd-grad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#29D8D5" stopOpacity="0.28" />
+                                <stop offset="100%" stopColor="#29D8D5" stopOpacity="0" />
+                            </linearGradient>
+                        </defs>
+                        <polygon points={`0,${H} ${pts} ${W},${H}`} fill="url(#hd-grad)" />
+                        <polyline points={pts} fill="none" stroke="#29D8D5" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+                        <circle cx={W} cy={H - (spark[spark.length - 1] / 100) * H} r="2.5" fill="#29D8D5" />
+                    </svg>
                 </div>
-                <svg viewBox={`0 0 ${W} ${H}`} className="mt-1.5 w-full" preserveAspectRatio="none" style={{ height: "36px" }}>
-                    <defs>
-                        <linearGradient id="hd-grad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%"   stopColor="#29D8D5" stopOpacity="0.28" />
-                            <stop offset="100%" stopColor="#29D8D5" stopOpacity="0"    />
-                        </linearGradient>
-                    </defs>
-                    <polygon points={`0,${H} ${pts} ${W},${H}`} fill="url(#hd-grad)" />
-                    <polyline points={pts} fill="none" stroke="#29D8D5" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-                    <circle cx={W} cy={H - (spark[spark.length - 1] / 100) * H} r="2.5" fill="#29D8D5" />
-                </svg>
+                <div className="px-3 py-3">
+                    <div className="text-[9px] uppercase tracking-widest text-[#444]">{t("landing.hero_dashboard.automation_label")}</div>
+                    <div className="mt-2 space-y-1.5">
+                        {[t("landing.hero_dashboard.auto_stock"), t("landing.hero_dashboard.auto_accounting"), t("landing.hero_dashboard.auto_collections")].map((label) => (
+                            <div key={label} className="flex items-center gap-2 rounded-md bg-white/[0.025] px-2 py-1.5 text-[9px] text-[#8A9BA8]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_7px_#29D8D5]" />
+                                {label}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="relative grid grid-cols-2 gap-1 border-b border-[#29D8D5]/10 bg-black/20 p-2 md:grid-cols-4">
+                {suites.map((suite, i) => (
+                    <button
+                        key={suite.key}
+                        type="button"
+                        onClick={() => setActiveSuite(i)}
+                        className={`relative overflow-hidden rounded-xl border px-3 py-2 text-left transition-all duration-500 ${activeSuite === i ? "border-[#29D8D5]/35 bg-[#29D8D5]/10" : "border-white/[0.04] bg-white/[0.015] hover:bg-white/[0.04]"}`}
+                    >
+                        {activeSuite === i && <span className="absolute inset-x-0 bottom-0 h-px bg-[#29D8D5] shadow-[0_0_12px_#29D8D5]" />}
+                        <span className={`block font-mono text-[8px] ${activeSuite === i ? "text-[#29D8D5]" : "text-[#46535a]"}`}>{suite.code}</span>
+                        <span className="mt-0.5 block truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-[#A9B3B8]">{suite.label}</span>
+                    </button>
+                ))}
+            </div>
+
+            <div className="flex items-center gap-3 border-b border-white/5 bg-[linear-gradient(90deg,rgba(41,216,213,0.07),transparent)] px-4 py-2">
+                <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#29D8D5] opacity-50" />
+                    <span className="relative h-2 w-2 rounded-full bg-[#29D8D5]" />
+                </span>
+                <span key={suites[activeSuite].key} className="animate-fade-in text-[9px] tracking-wide text-[#829198]">{suites[activeSuite].detail}</span>
             </div>
 
             {/* Rows */}
             <div className="bg-[#080808] px-3 py-2">
-                <div className="mb-1.5 text-[9px] uppercase tracking-widest text-[#444]">{t("landing.hero_dashboard.recent_stock_label")}</div>
+                <div className="mb-1.5 flex items-center justify-between text-[9px] uppercase tracking-widest text-[#444]">
+                    <span>{t("landing.hero_dashboard.location_activity_label")}</span>
+                    <span className="text-[#29D8D5]">3,421 {t("landing.hero_dashboard.today_label")}</span>
+                </div>
                 <div>
                     {rows.map((r, i) => (
                         <div
-                            key={r.sku}
+                            key={r.location}
                             className={`flex items-center gap-2 rounded-md px-1 py-[5px] transition-colors duration-500 ${highlightRow === i ? "bg-white/[0.05]" : ""}`}
                         >
-                            <span className="w-[52px] shrink-0 font-mono text-[9px] text-[#3a4a55]">{r.sku}</span>
+                            <span className="w-[52px] shrink-0 font-mono text-[9px] text-[#3a4a55]">{r.location}</span>
                             <span className="flex-1 truncate text-[11px] text-[#8A9BA8]">{r.name}</span>
-                            <span className="w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums text-white">{r.stock}</span>
+                            <span className="w-8 shrink-0 text-right text-[11px] font-semibold tabular-nums text-white">{r.movements}</span>
                             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${r.ok ? "bg-[#29D8D5]" : "bg-amber-400 animate-pulse"}`} />
                         </div>
                     ))}
                 </div>
+            </div>
+            <div className="border-t border-white/6 bg-[#050505] px-3 py-3">
+                <div className="mb-2 text-[8px] uppercase tracking-[0.2em] text-[#3f4b52]">{t("landing.hero_dashboard.end_to_end_label")}</div>
+                <div className="flex items-center gap-1 overflow-hidden">
+                    {["flow_quote", "flow_order", "flow_stock", "flow_invoice", "flow_payment", "flow_accounting"].map((key, i) => (
+                        <React.Fragment key={key}>
+                            <div className={`min-w-0 flex-1 rounded-lg border px-1.5 py-2 text-center text-[8px] ${i === 5 ? "border-[#29D8D5]/30 bg-[#29D8D5]/10 text-[#29D8D5]" : "border-white/7 bg-white/[0.025] text-[#718089]"}`}>
+                                {t(`landing.hero_dashboard.${key}`)}
+                            </div>
+                            {i < 5 && <span className="text-[9px] text-[#29D8D5]/50">›</span>}
+                        </React.Fragment>
+                    ))}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                    {["badge_realtime", "badge_multisite", "badge_rbac", "badge_api", "badge_webhooks", "badge_exports"].map((key) => (
+                        <span key={key} className="rounded-full border border-[#29D8D5]/10 bg-[#29D8D5]/[0.035] px-2 py-1 text-[7px] uppercase tracking-[0.12em] text-[#63747b]">
+                            {t(`landing.hero_dashboard.${key}`)}
+                        </span>
+                    ))}
+                </div>
+            </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/* Ohnix ecosystem — an orbital product map rather than a conventional app screenshot. */
+export const OhnixEcosystem = () => {
+    const { t } = useI18n();
+    const [active, setActive] = useState(0);
+
+    const ecosystems = [
+        { label: t("landing.hero_dashboard.suite_operations"), detail: t("landing.hero_dashboard.suite_operations_detail") },
+        { label: t("landing.hero_dashboard.suite_commerce"), detail: t("landing.hero_dashboard.suite_commerce_detail") },
+        { label: t("landing.hero_dashboard.suite_finance"), detail: t("landing.hero_dashboard.suite_finance_detail") },
+        { label: t("landing.hero_dashboard.suite_connect"), detail: t("landing.hero_dashboard.suite_connect_detail") },
+    ];
+
+    const modules = [
+        { label: t("landing.hero_dashboard.module_inventory"), meta: t("landing.hero_dashboard.node_stock"), x: 14, y: 19, suite: 0 },
+        { label: t("landing.hero_dashboard.module_purchases"), meta: t("landing.hero_dashboard.node_suppliers"), x: 9, y: 61, suite: 1 },
+        { label: t("landing.hero_dashboard.module_sales"), meta: t("landing.hero_dashboard.node_orders"), x: 39, y: 7, suite: 1 },
+        { label: t("landing.hero_dashboard.module_invoicing"), meta: t("landing.hero_dashboard.node_dian"), x: 72, y: 17, suite: 1 },
+        { label: t("landing.hero_dashboard.module_finance"), meta: t("landing.hero_dashboard.node_cash"), x: 78, y: 55, suite: 2 },
+        { label: t("landing.hero_dashboard.module_accounting"), meta: t("landing.hero_dashboard.node_taxes"), x: 57, y: 78, suite: 2 },
+        { label: t("landing.hero_dashboard.module_integrations"), meta: t("landing.hero_dashboard.node_api"), x: 22, y: 82, suite: 3 },
+    ];
+
+    useEffect(() => {
+        const timer = setInterval(() => setActive((value) => (value + 1) % ecosystems.length), 3400);
+        return () => clearInterval(timer);
+    }, [ecosystems.length]);
+
+    return (
+        <div className="relative min-h-[570px] overflow-hidden rounded-[42px] border border-[#29D8D5]/15 bg-[#030606] text-white shadow-[0_40px_140px_rgba(0,0,0,0.75),0_0_100px_rgba(41,216,213,0.08)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_44%,rgba(41,216,213,0.16),transparent_19%),radial-gradient(circle_at_15%_80%,rgba(68,243,240,0.07),transparent_28%),linear-gradient(145deg,#071010_0%,#030505_48%,#080808_100%)]" />
+            <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(rgba(68,243,240,0.32)_0.7px,transparent_0.7px)] [background-size:22px_22px] [mask-image:radial-gradient(circle_at_center,black,transparent_76%)]" />
+
+            <div className="absolute left-5 top-5 z-30 flex items-center gap-3 rounded-full border border-[#29D8D5]/15 bg-black/35 px-3 py-2 backdrop-blur-xl">
+                <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#29D8D5] opacity-60" />
+                    <span className="relative h-2 w-2 rounded-full bg-[#29D8D5] shadow-[0_0_12px_#29D8D5]" />
+                </span>
+                <span className="text-[8px] font-semibold uppercase tracking-[0.28em] text-[#85a6a5]">Ohnix operational core</span>
+            </div>
+
+            <div className="absolute right-5 top-5 z-30 hidden items-center gap-1.5 sm:flex">
+                {ecosystems.map((item, index) => (
+                    <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => setActive(index)}
+                        className={`rounded-full border px-3 py-1.5 text-[8px] uppercase tracking-[0.12em] transition-all duration-500 ${active === index ? "border-[#29D8D5]/35 bg-[#29D8D5]/12 text-[#29D8D5] shadow-[0_0_20px_rgba(41,216,213,0.1)]" : "border-white/[0.05] bg-black/20 text-[#536266] hover:text-[#91a1a5]"}`}
+                    >
+                        {item.label}
+                    </button>
+                ))}
+            </div>
+
+            <div className="absolute inset-x-0 top-16 hidden h-[430px] sm:block">
+                <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="ecosystem-line" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0" stopColor="#29D8D5" stopOpacity="0.08" />
+                            <stop offset="0.5" stopColor="#44F3F0" stopOpacity="0.48" />
+                            <stop offset="1" stopColor="#29D8D5" stopOpacity="0.08" />
+                        </linearGradient>
+                    </defs>
+                    {modules.map((node) => (
+                        <line key={node.label} x1="49" y1="48" x2={node.x + 5} y2={node.y + 5} stroke="url(#ecosystem-line)" strokeWidth={node.suite === active ? "0.34" : "0.12"} strokeDasharray={node.suite === active ? "2 1" : "1 2"} className="transition-all duration-700" />
+                    ))}
+                    <ellipse cx="49" cy="48" rx="31" ry="37" fill="none" stroke="#29D8D5" strokeOpacity="0.1" strokeWidth="0.18" strokeDasharray="1.5 2.5" />
+                    <ellipse cx="49" cy="48" rx="21" ry="25" fill="none" stroke="#44F3F0" strokeOpacity="0.08" strokeWidth="0.2" />
+                </svg>
+
+                <div className="absolute left-[49%] top-[48%] z-20 -translate-x-1/2 -translate-y-1/2">
+                    <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#29D8D5]/10 animate-orbit-slow" />
+                    <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[#44F3F0]/20 animate-orbit-mid" />
+                    <div className="relative flex h-28 w-28 flex-col items-center justify-center rounded-full border border-[#29D8D5]/40 bg-[radial-gradient(circle_at_35%_30%,rgba(68,243,240,0.28),rgba(5,18,18,0.96)_58%)] shadow-[inset_0_0_28px_rgba(41,216,213,0.16),0_0_65px_rgba(41,216,213,0.28)]">
+                        <img src="/Ohnix_Icon_Transparent.png" alt="Ohnix" className="h-12 w-12 object-contain drop-shadow-[0_0_15px_rgba(41,216,213,0.65)]" />
+                        <span className="mt-1 text-[7px] uppercase tracking-[0.3em] text-[#70a2a0]">Core</span>
+                    </div>
+                </div>
+
+                {modules.map((node, index) => {
+                    const selected = node.suite === active;
+                    return (
+                        <button
+                            key={node.label}
+                            type="button"
+                            onClick={() => setActive(node.suite)}
+                            className={`absolute z-20 w-[112px] -translate-x-1/2 -translate-y-1/2 rounded-[22px] border p-3 text-left backdrop-blur-xl transition-all duration-700 ${selected ? "scale-110 border-[#29D8D5]/40 bg-[#0b2221]/80 shadow-[0_14px_42px_rgba(0,0,0,0.5),0_0_32px_rgba(41,216,213,0.14)]" : "border-white/[0.07] bg-black/45 opacity-65 hover:opacity-100"}`}
+                            style={{ left: `${node.x + 5}%`, top: `${node.y + 5}%`, transitionDelay: `${index * 35}ms` }}
+                        >
+                            <span className={`mb-2 block h-1.5 w-1.5 rounded-full ${selected ? "bg-[#29D8D5] shadow-[0_0_10px_#29D8D5]" : "bg-[#3d4b4f]"}`} />
+                            <span className="block truncate text-[9px] font-semibold text-[#d7e0e0]">{node.label}</span>
+                            <span className="mt-1 block truncate text-[7px] uppercase tracking-[0.12em] text-[#607174]">{node.meta}</span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            <div className="relative z-20 grid gap-2 px-4 pb-4 pt-20 sm:hidden">
+                <div className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-full border border-[#29D8D5]/35 bg-[#29D8D5]/10 shadow-[0_0_50px_rgba(41,216,213,0.22)]">
+                    <img src="/Ohnix_Icon_Transparent.png" alt="Ohnix" className="h-12 w-12 object-contain" />
+                </div>
+                {modules.map((node) => (
+                    <button key={node.label} type="button" onClick={() => setActive(node.suite)} className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left ${node.suite === active ? "border-[#29D8D5]/30 bg-[#29D8D5]/10" : "border-white/[0.06] bg-black/30"}`}>
+                        <span className="text-xs text-[#d7e0e0]">{node.label}</span>
+                        <span className="text-[8px] uppercase tracking-wider text-[#617174]">{node.meta}</span>
+                    </button>
+                ))}
+            </div>
+
+            <div className="absolute inset-x-4 bottom-4 z-30 hidden items-center justify-between gap-4 rounded-[24px] border border-white/[0.07] bg-black/55 px-4 py-3 backdrop-blur-2xl sm:flex">
+                <div key={active} className="min-w-0 animate-fade-in">
+                    <div className="text-[8px] font-semibold uppercase tracking-[0.24em] text-[#29D8D5]">{ecosystems[active].label}</div>
+                    <div className="mt-1 truncate text-[9px] text-[#718184]">{ecosystems[active].detail}</div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 text-[7px] uppercase tracking-[0.12em] text-[#536568]">
+                    <span className="rounded-full border border-[#29D8D5]/15 px-2 py-1">API</span>
+                    <span className="rounded-full border border-[#29D8D5]/15 px-2 py-1">RBAC</span>
+                    <span className="rounded-full border border-[#29D8D5]/15 px-2 py-1">DIAN</span>
+                    <span className="rounded-full border border-[#29D8D5]/15 px-2 py-1">24/7</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/* A calmer companion to the page-wide orbital language: one signal path, one active system. */
+export const OhnixFlowField = () => {
+    const { t } = useI18n();
+    const [active, setActive] = useState(0);
+
+    const systems = [
+        {
+            number: "01",
+            label: t("landing.hero_dashboard.suite_operations"),
+            detail: t("landing.hero_dashboard.suite_operations_detail"),
+            modules: [
+                [t("landing.hero_dashboard.module_inventory"), t("landing.hero_dashboard.node_stock")],
+                [t("landing.hero_dashboard.locations_label"), t("landing.hero_dashboard.connected_note")],
+                [t("landing.hero_dashboard.team_label"), t("landing.hero_dashboard.badge_rbac")],
+            ],
+        },
+        {
+            number: "02",
+            label: t("landing.hero_dashboard.suite_commerce"),
+            detail: t("landing.hero_dashboard.suite_commerce_detail"),
+            modules: [
+                [t("landing.hero_dashboard.module_sales"), t("landing.hero_dashboard.node_orders")],
+                [t("landing.hero_dashboard.module_purchases"), t("landing.hero_dashboard.node_suppliers")],
+                [t("landing.hero_dashboard.module_invoicing"), t("landing.hero_dashboard.node_dian")],
+            ],
+        },
+        {
+            number: "03",
+            label: t("landing.hero_dashboard.suite_finance"),
+            detail: t("landing.hero_dashboard.suite_finance_detail"),
+            modules: [
+                [t("landing.hero_dashboard.module_finance"), t("landing.hero_dashboard.node_cash")],
+                [t("landing.hero_dashboard.module_accounting"), t("landing.hero_dashboard.node_taxes")],
+                [t("landing.hero_dashboard.module_reports"), t("landing.hero_dashboard.badge_exports")],
+            ],
+        },
+        {
+            number: "04",
+            label: t("landing.hero_dashboard.suite_connect"),
+            detail: t("landing.hero_dashboard.suite_connect_detail"),
+            modules: [
+                [t("landing.hero_dashboard.module_integrations"), t("landing.hero_dashboard.node_api")],
+                [t("landing.hero_dashboard.badge_webhooks"), t("landing.hero_dashboard.badge_realtime")],
+                [t("landing.hero_dashboard.badge_rbac"), t("landing.hero_dashboard.team_label")],
+            ],
+        },
+    ];
+
+    useEffect(() => {
+        const timer = setInterval(() => setActive((value) => (value + 1) % systems.length), 4200);
+        return () => clearInterval(timer);
+    }, [systems.length]);
+
+    const current = systems[active];
+
+    return (
+        <div className="relative min-h-[510px] overflow-hidden rounded-[44px] border border-white/[0.055] bg-[linear-gradient(145deg,rgba(7,15,15,0.97),rgba(3,5,5,0.99))] text-white shadow-[0_40px_130px_rgba(0,0,0,0.68)]">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_31%_44%,rgba(41,216,213,0.16),transparent_25%),radial-gradient(circle_at_82%_72%,rgba(68,243,240,0.055),transparent_28%)]" />
+            <div className="pointer-events-none absolute -left-[24%] top-[13%] hidden h-[72%] w-[125%] rotate-[-8deg] rounded-[50%] border border-[#29D8D5]/10 sm:block" />
+            <div className="pointer-events-none absolute -left-[18%] top-[20%] hidden h-[59%] w-[112%] rotate-[-8deg] rounded-[50%] border border-dashed border-white/[0.045] sm:block" />
+
+            <div className="relative z-20 flex items-center justify-between px-5 pt-5 sm:px-7 sm:pt-6">
+                <div className="flex items-center gap-2.5">
+                    <span className="h-2 w-2 rounded-full bg-[#29D8D5] shadow-[0_0_14px_#29D8D5] animate-pulse" />
+                    <span className="text-[8px] font-semibold uppercase tracking-[0.28em] text-[#78908f]">Ohnix · connected operations</span>
+                </div>
+                <span className="hidden rounded-full border border-white/[0.06] bg-black/20 px-3 py-1.5 text-[7px] uppercase tracking-[0.18em] text-[#536563] sm:block">{t("landing.hero_dashboard.badge_realtime")}</span>
+            </div>
+
+            {/* Desktop: the product core and the current system share one broad trajectory. */}
+            <div className="relative z-10 hidden min-h-[390px] sm:block">
+                <div className="absolute left-[31%] top-[47%] -translate-x-1/2 -translate-y-1/2">
+                    <div className="absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#29D8D5]/10 blur-[35px]" />
+                    <div className="relative flex h-32 w-32 items-center justify-center rounded-full border border-[#29D8D5]/30 bg-[radial-gradient(circle_at_35%_30%,rgba(68,243,240,0.24),rgba(3,12,12,0.98)_62%)] shadow-[inset_0_0_30px_rgba(41,216,213,0.12),0_0_52px_rgba(41,216,213,0.2)]">
+                        <img src="/Ohnix_Icon_Transparent.png" alt="Ohnix" className="h-16 w-16 object-contain drop-shadow-[0_0_18px_rgba(41,216,213,0.65)]" />
+                        <span className="absolute -bottom-7 text-[7px] uppercase tracking-[0.32em] text-[#65807e]">Operational core</span>
+                    </div>
+                    <span className="absolute -right-16 top-1/2 h-px w-16 bg-gradient-to-r from-[#29D8D5]/60 to-transparent" />
+                </div>
+
+                <div key={current.number} className="absolute left-[49%] right-[5%] top-[18%] animate-fade-in">
+                    <div className="flex items-end justify-between gap-4">
+                        <div>
+                            <div className="font-mono text-[9px] tracking-[0.24em] text-[#29D8D5]">SYSTEM / {current.number}</div>
+                            <h3 className="mt-2 text-3xl font-semibold tracking-tight text-white">{current.label}</h3>
+                            <p className="mt-2 max-w-sm text-[11px] leading-5 text-[#778785]">{current.detail}</p>
+                        </div>
+                        <div className="mb-1 h-9 w-9 rounded-full border border-[#29D8D5]/20 bg-[#29D8D5]/[0.06] text-center text-xl leading-8 text-[#29D8D5]">↗</div>
+                    </div>
+                    <div className="mt-6 grid grid-cols-3 gap-2">
+                        {current.modules.map(([label, meta], index) => (
+                            <div key={label} className="group rounded-[22px] border border-white/[0.065] bg-white/[0.025] p-3.5 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-[#29D8D5]/25 hover:bg-[#29D8D5]/[0.055]" style={{ animationDelay: `${index * 90}ms` }}>
+                                <div className="mb-5 flex items-center justify-between">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_9px_#29D8D5]" />
+                                    <span className="font-mono text-[7px] text-[#41504f]">0{index + 1}</span>
+                                </div>
+                                <div className="truncate text-[10px] font-semibold text-[#dbe4e3]">{label}</div>
+                                <div className="mt-1 truncate text-[7px] uppercase tracking-[0.1em] text-[#5d6e6c]">{meta}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile: compact control surface instead of a collapsed desktop diagram. */}
+            <div className="relative z-20 px-4 pb-5 pt-7 sm:hidden">
+                <div className="flex items-center gap-4 rounded-[28px] border border-[#29D8D5]/15 bg-[#29D8D5]/[0.045] p-4">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-[#29D8D5]/25 bg-black/35 shadow-[0_0_28px_rgba(41,216,213,0.14)]">
+                        <img src="/Ohnix_Icon_Transparent.png" alt="Ohnix" className="h-10 w-10 object-contain" />
+                    </div>
+                    <div className="min-w-0">
+                        <div className="font-mono text-[8px] tracking-[0.2em] text-[#29D8D5]">SYSTEM / {current.number}</div>
+                        <div className="mt-1 text-xl font-semibold text-white">{current.label}</div>
+                        <div className="mt-1 line-clamp-2 text-[10px] leading-4 text-[#71817f]">{current.detail}</div>
+                    </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                    {systems.map((system, index) => (
+                        <button key={system.number} type="button" onClick={() => setActive(index)} className={`rounded-2xl border px-3 py-3 text-left transition-all ${active === index ? "border-[#29D8D5]/30 bg-[#29D8D5]/10" : "border-white/[0.055] bg-black/25"}`}>
+                            <span className={`font-mono text-[7px] ${active === index ? "text-[#29D8D5]" : "text-[#465654]"}`}>{system.number}</span>
+                            <span className="mt-1 block text-[10px] font-medium text-[#c5cfcd]">{system.label}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div key={`mobile-${current.number}`} className="mt-3 space-y-1.5 animate-fade-in">
+                    {current.modules.map(([label, meta]) => (
+                        <div key={label} className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.045] bg-white/[0.018] px-3.5 py-2.5">
+                            <div className="flex min-w-0 items-center gap-2.5">
+                                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#29D8D5]" />
+                                <span className="truncate text-[10px] text-[#c5cfcd]">{label}</span>
+                            </div>
+                            <span className="shrink-0 text-[7px] uppercase tracking-wide text-[#52615f]">{meta}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="absolute inset-x-6 bottom-5 z-30 hidden items-center gap-2 sm:flex">
+                {systems.map((system, index) => (
+                    <button key={system.number} type="button" onClick={() => setActive(index)} className="group flex flex-1 items-center gap-2 text-left">
+                        <span className={`h-px flex-1 transition-all duration-700 ${active === index ? "bg-[#29D8D5] shadow-[0_0_8px_#29D8D5]" : "bg-white/[0.08] group-hover:bg-white/20"}`} />
+                        <span className={`font-mono text-[7px] transition-colors ${active === index ? "text-[#29D8D5]" : "text-[#455351]"}`}>{system.number}</span>
+                    </button>
+                ))}
             </div>
         </div>
     );
@@ -292,7 +674,7 @@ export const PageOrbitalLayer = () => {
 
     return (
         <div
-            className="pointer-events-none fixed inset-0 hidden select-none overflow-hidden md:block"
+            className="pointer-events-none fixed inset-0 select-none overflow-hidden opacity-40 md:opacity-100"
             style={{ zIndex: 2, mixBlendMode: "screen" }}
             aria-hidden="true"
         >
@@ -308,7 +690,7 @@ export const PageOrbitalLayer = () => {
             </div>
 
             {/* Ring B — medium, centre-left, mid reverse */}
-            <div ref={(el) => { ringRefs.current[1] = el; }} className="absolute -left-52 top-[38%]" style={{ willChange: "transform" }}>
+            <div ref={(el) => { ringRefs.current[1] = el; }} className="absolute -left-52 top-[38%] hidden md:block" style={{ willChange: "transform" }}>
                 <div className="rounded-full animate-orbit-mid" style={{ width: 345, height: 345, border: "1.5px solid rgba(68,243,240,0.25)" }}>
                     <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
                         <div className="absolute inset-0 rounded-full animate-ripple" style={{ width: 24, height: 24, border: pingCyan }} />
@@ -330,7 +712,7 @@ export const PageOrbitalLayer = () => {
             </div>
 
             {/* Ring D — extra-large, lower-left, very slow reverse */}
-            <div ref={(el) => { ringRefs.current[3] = el; }} className="absolute -bottom-96 -left-96" style={{ willChange: "transform" }}>
+            <div ref={(el) => { ringRefs.current[3] = el; }} className="absolute -bottom-96 -left-96 hidden md:block" style={{ willChange: "transform" }}>
                 <div className="rounded-full animate-orbit-slow" style={{ width: 820, height: 820, border: "1.5px solid rgba(41,216,213,0.25)", animationDirection: "reverse" }}>
                     <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
                         <div className="absolute inset-0 rounded-full animate-ripple" style={{ width: 22, height: 22, border: pingTeal }} />
@@ -341,7 +723,7 @@ export const PageOrbitalLayer = () => {
             </div>
 
             {/* Ring E — tiny accent, upper-left, xs reverse */}
-            <div ref={(el) => { ringRefs.current[4] = el; }} className="absolute left-[12%] top-[10%]" style={{ willChange: "transform" }}>
+            <div ref={(el) => { ringRefs.current[4] = el; }} className="absolute left-[12%] top-[10%] hidden md:block" style={{ willChange: "transform" }}>
                 <div className="rounded-full animate-orbit-xs" style={{ width: 131, height: 131, border: "1.5px solid rgba(68,243,240,0.25)" }}>
                     <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
                         <div className="absolute inset-0 rounded-full animate-ripple" style={{ width: 18, height: 18, border: pingCyan }} />
@@ -425,7 +807,7 @@ export const VideoModal = ({ isOpen, onClose, src, title }) => {
 export const MarqueeStrip = ({ items }) => {
     const doubled = [...items, ...items];
     return (
-        <div className="relative overflow-hidden border-y border-transparent bg-[#030303] py-3.5 select-none md:border-white/[0.04] md:py-4">
+        <div className="relative overflow-hidden border-y border-white/[0.025] bg-[#030303] py-3.5 select-none md:border-white/[0.04] md:py-4">
             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#030303] to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#030303] to-transparent" />
             <div className="flex w-max animate-marquee items-center gap-12">
@@ -458,7 +840,7 @@ export const SectionHeading = ({ eyebrow, title, description, align = "center", 
             className={`flex flex-col gap-4 ${alignment} transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
         >
             {eyebrow ? (
-                <span className="inline-flex items-center gap-3 rounded-full border border-transparent bg-white/[0.035] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#29D8D5] md:border-white/10 md:text-[11px] md:tracking-[0.28em] md:shadow-[0_0_0_1px_rgba(41,216,213,0.08)]">
+                <span className="inline-flex items-center gap-3 rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-[#29D8D5] md:border-white/10 md:text-[11px] md:tracking-[0.28em] md:shadow-[0_0_0_1px_rgba(41,216,213,0.08)]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_18px_rgba(41,216,213,0.85)]" />
                     {eyebrow}
                 </span>
@@ -490,33 +872,15 @@ export const OrbitalHero = ({
     cyclingWords = [],
     heroVisual = null,
     footerNote = "Traceability on every movement",
-    productImage = "/Ohnix_FullLogo_Optimized.png",
+    productImage = "/Ohnix_FullLogo_Transparent.png",
     productImageAlt = "Ohnix inventory dashboard",
 }) => {
     const [pointer, setPointer] = useState({ x: 50, y: 40 });
-    const [visual, setVisual] = useState("dash");
-    const [fading, setFading] = useState(false);
-    const swapRef = useRef(null);
-
-    useEffect(() => {
-        if (!heroVisual) return;
-        const iv = setInterval(() => {
-            setFading(true);
-            swapRef.current = setTimeout(() => {
-                setVisual((v) => (v === "dash" ? "logo" : "dash"));
-                setFading(false);
-            }, 520);
-        }, 5500);
-        return () => {
-            clearInterval(iv);
-            clearTimeout(swapRef.current);
-        };
-    }, [heroVisual]);
 
     return (
         <section
             id="home"
-            className="relative overflow-hidden border-b border-transparent bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.12),transparent_24%),radial-gradient(circle_at_20%_20%,rgba(68,243,240,0.08),transparent_24%),linear-gradient(180deg,#070707_0%,#050505_36%,#050505_100%)] md:border-white/5"
+            className="relative overflow-hidden border-b border-white/[0.025] bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.12),transparent_24%),radial-gradient(circle_at_20%_20%,rgba(68,243,240,0.08),transparent_24%),linear-gradient(180deg,#070707_0%,#050505_36%,#050505_100%)] md:border-white/5"
             onPointerMove={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
                 const x = ((event.clientX - rect.left) / rect.width) * 100;
@@ -524,9 +888,9 @@ export const OrbitalHero = ({
                 setPointer({ x, y });
             }}
         >
-            <div className="absolute inset-0 hidden opacity-60 [background-image:linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:72px_72px] md:block" />
+            <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:72px_72px] md:opacity-60" />
             <div
-                className="pointer-events-none absolute inset-0 hidden opacity-70 transition-transform duration-300 md:block"
+                className="pointer-events-none absolute inset-0 opacity-25 transition-transform duration-300 md:opacity-70"
                 style={{
                     transform: `translate3d(${(pointer.x - 50) * 0.14}px, ${(pointer.y - 50) * 0.14}px, 0)`,
                 }}
@@ -545,10 +909,10 @@ export const OrbitalHero = ({
                     <div className="absolute bottom-24 left-1/3 h-48 w-48 rounded-full bg-[#29D8D5]/5 blur-[55px] animate-float-slow" />
                 </div>
 
-                <div className="grid items-center gap-14 lg:grid-cols-[1.03fr_0.97fr] lg:gap-20">
+                <div className="grid items-center gap-14 lg:grid-cols-[0.82fr_1.18fr] lg:gap-12">
                     <div className="relative z-10">
                         {/* ── Eyebrow with live pulse dot ─── */}
-                        <div className="animate-fade-up inline-flex items-center gap-3 rounded-full border border-transparent bg-white/[0.035] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#29D8D5] md:border-white/10 md:text-[11px] md:tracking-[0.35em]">
+                        <div className="animate-fade-up inline-flex items-center gap-3 rounded-full border border-white/[0.06] bg-white/[0.035] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.25em] text-[#29D8D5] md:border-white/10 md:text-[11px] md:tracking-[0.35em]">
                             <span className="relative flex h-2 w-2">
                                 <span className="absolute inline-flex h-full w-full rounded-full bg-[#29D8D5] opacity-70 animate-ping" />
                                 <span className="relative h-2 w-2 rounded-full bg-[#29D8D5] shadow-[0_0_16px_rgba(41,216,213,0.9)]" />
@@ -609,13 +973,13 @@ export const OrbitalHero = ({
                             {stats.map((stat, i) => (
                                 <div
                                     key={stat.label}
-                                    className="rounded-2xl border border-transparent bg-white/[0.025] px-2.5 py-4 backdrop-blur-sm transition-all duration-300 sm:rounded-3xl sm:px-5 sm:py-5 md:border-white/8 hover:border-[#29D8D5]/30 hover:bg-white/[0.05]"
+                                    className="rounded-2xl border border-white/[0.045] bg-white/[0.025] px-2.5 py-4 backdrop-blur-sm transition-all duration-300 sm:rounded-3xl sm:px-5 sm:py-5 md:border-white/8 hover:border-[#29D8D5]/30 hover:bg-white/[0.05]"
                                     style={{ animationDelay: `${0.45 + i * 0.08}s` }}
                                 >
                                     <div className="text-xl font-semibold tracking-tight text-white sm:text-2xl md:text-3xl">
                                         {stat.value}
                                     </div>
-                                    <div className="mt-2 text-sm text-[#A9B3B8]">
+                                    <div className="mt-2 text-[10px] leading-4 text-[#A9B3B8] sm:text-sm sm:leading-normal">
                                         {stat.label}
                                     </div>
                                 </div>
@@ -623,22 +987,13 @@ export const OrbitalHero = ({
                         </div>
                     </div>
 
-                    <div className="relative mx-auto w-full max-w-[620px] animate-fade-up" style={{ animationDelay: "0.2s" }}>
-                        <div className="absolute -inset-6 rounded-[40px] bg-[radial-gradient(circle_at_center,rgba(41,216,213,0.2),transparent_62%)] blur-2xl" />
+                    <div className="relative mx-auto w-full max-w-[780px] lg:-mr-12 animate-fade-up" style={{ animationDelay: "0.2s" }}>
+                        <div className="absolute -inset-10 rounded-[48px] bg-[radial-gradient(circle_at_center,rgba(41,216,213,0.26),transparent_65%)] blur-2xl" />
 
-                        <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.55)] transition-transform duration-300 hover:-translate-y-1 animate-float">
-                            <div className="overflow-hidden rounded-[22px] border border-white/8 bg-[#0a0a0a]">
-                                {/* Cycling visual with fade-swap transition */}
-                                <div
-                                    style={{
-                                        opacity: fading ? 0 : 1,
-                                        transform: fading ? "scale(0.96)" : "scale(1)",
-                                        transition: "opacity 0.52s ease, transform 0.52s ease",
-                                    }}
-                                >
-                                    {heroVisual && visual === "dash" ? (
-                                        heroVisual
-                                    ) : (
+                        <div className="relative transition-transform duration-500 hover:-translate-y-1 animate-float">
+                            <div className="overflow-visible">
+                                <div>
+                                    {heroVisual || (
                                         <img
                                             src={productImage}
                                             alt={productImageAlt}
@@ -651,26 +1006,11 @@ export const OrbitalHero = ({
                             </div>
                         </div>
 
-                        {/* Carousel indicator dots */}
-                        {heroVisual && (
-                            <div className="mt-4 flex justify-center gap-2">
-                                {["dash", "logo"].map((v) => (
-                                    <button
-                                        key={v}
-                                        type="button"
-                                        aria-label={v === "dash" ? "Dashboard" : "Logo"}
-                                        onClick={() => { setFading(true); setTimeout(() => { setVisual(v); setFading(false); }, 520); }}
-                                        className={`h-1.5 rounded-full transition-all duration-400 ${visual === v && !fading ? "w-6 bg-[#29D8D5]" : "w-1.5 bg-white/20 hover:bg-white/40"}`}
-                                    />
-                                ))}
-                            </div>
-                        )}
-
                         <div className="mt-5 flex flex-wrap justify-center gap-2">
                             {orbitLabels.map((label, i) => (
                                 <span
                                     key={label}
-                                    className="inline-flex items-center gap-2 rounded-full border border-transparent bg-[#0B0B0B]/90 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[#A9B3B8] backdrop-blur-sm animate-fade-in md:border-white/10 md:text-[11px] md:tracking-[0.18em]"
+                                    className="inline-flex items-center gap-2 rounded-full border border-white/[0.055] bg-[#0B0B0B]/90 px-3 py-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[#A9B3B8] backdrop-blur-sm animate-fade-in md:border-white/10 md:text-[11px] md:tracking-[0.18em]"
                                     style={{ animationDelay: `${0.6 + i * 0.15}s` }}
                                 >
                                     <span className="h-2 w-2 rounded-full bg-[#44F3F0] shadow-[0_0_12px_rgba(68,243,240,0.85)] animate-pulse" />
@@ -679,7 +1019,7 @@ export const OrbitalHero = ({
                             ))}
                         </div>
 
-                        <div className="mt-5 flex items-center justify-center gap-3 rounded-full border border-transparent bg-[#0B0B0B]/90 px-4 py-3 text-[10px] uppercase tracking-[0.16em] text-[#A9B3B8] backdrop-blur-md md:border-white/10 md:px-5 md:text-xs md:tracking-[0.22em]">
+                        <div className="mt-5 flex items-center justify-center gap-3 rounded-full border border-white/[0.055] bg-[#0B0B0B]/90 px-4 py-3 text-[10px] uppercase tracking-[0.16em] text-[#A9B3B8] backdrop-blur-md md:border-white/10 md:px-5 md:text-xs md:tracking-[0.22em]">
                             <span className="h-2 w-2 rounded-full bg-[#44F3F0] shadow-[0_0_16px_rgba(68,243,240,0.9)]" />
                             {footerNote}
                         </div>

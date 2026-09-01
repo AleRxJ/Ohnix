@@ -92,6 +92,7 @@ export const useCashAccountMovements = (cashAccountId) => {
     const [movements, setMovements] = useState([]);
     const [unmatchedMovements, setUnmatchedMovements] = useState([]);
     const [unmatchedEntries, setUnmatchedEntries] = useState([]);
+    const [reconciliationSummary, setReconciliationSummary] = useState({});
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
@@ -99,14 +100,16 @@ export const useCashAccountMovements = (cashAccountId) => {
         if (!cashAccountId) return;
         setLoading(true);
         try {
-            const [movementsRes, unmatchedMovementsRes, unmatchedEntriesRes] = await Promise.all([
+            const [movementsRes, unmatchedMovementsRes, unmatchedEntriesRes, summaryRes] = await Promise.all([
                 financeService.listCashAccountMovements(cashAccountId),
                 financeService.listUnmatchedMovements(cashAccountId),
                 financeService.listUnmatchedEntries(cashAccountId),
+                financeService.getReconciliationSummary(cashAccountId),
             ]);
             setMovements(movementsRes?.data || []);
             setUnmatchedMovements(unmatchedMovementsRes?.data || []);
             setUnmatchedEntries(unmatchedEntriesRes?.data || []);
+            setReconciliationSummary(summaryRes?.data || {});
         } catch (err) {
             toast.error(err?.response?.data?.message || t("finance.failed"));
         } finally {
@@ -133,6 +136,23 @@ export const useCashAccountMovements = (cashAccountId) => {
         }
     };
 
+    const addStatementEntries = async (entries) => {
+        setSubmitting(true);
+        try {
+            const response = await financeService.createStatementEntries(cashAccountId, entries);
+            const imported = response?.data?.imported_count ?? entries.length;
+            const skipped = response?.data?.skipped_count ?? 0;
+            toast.success(t("finance.import_success", { count: imported, skipped }));
+            await load();
+            return true;
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("finance.import_failed"));
+            return false;
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const matchEntry = async (entryId, movementId) => {
         setSubmitting(true);
         try {
@@ -148,13 +168,31 @@ export const useCashAccountMovements = (cashAccountId) => {
         }
     };
 
+    const getSuggestions = async () => {
+        try { const response = await financeService.getReconciliationSuggestions(cashAccountId); return response?.data || []; }
+        catch (err) { toast.error(err?.response?.data?.message || t("finance.suggestions_failed")); return null; }
+    };
+
+    const matchEntries = async (rows) => {
+        setSubmitting(true); let completed = 0;
+        try {
+            for (const row of rows) { await financeService.matchEntry({ cashAccountId, entryId: row.entry._id, movementId: row.movement._id }); completed += 1; }
+            toast.success(t("finance.suggestions_applied", { count: completed })); await load(); return true;
+        } catch (err) { toast.error(err?.response?.data?.message || t("finance.suggestions_partial", { count: completed })); await load(); return false; }
+        finally { setSubmitting(false); }
+    };
+
     return {
         movements,
         unmatchedMovements,
         unmatchedEntries,
+        reconciliationSummary,
         loading,
         submitting,
         addStatementEntry,
+        addStatementEntries,
         matchEntry,
+        getSuggestions,
+        matchEntries,
     };
 };

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Alert, Drawer, Table, Tag, Divider, Form, DatePicker, Input, InputNumber, Button, Modal, Select, Spin } from "antd";
-import { BulbOutlined, CloseOutlined, PlusOutlined, WalletOutlined } from "@ant-design/icons";
+import { Alert, Checkbox, Drawer, Table, Tag, Divider, Form, DatePicker, Input, InputNumber, Button, Modal, Select, Spin, Upload } from "antd";
+import { BulbOutlined, CloseOutlined, PlusOutlined, ThunderboltOutlined, UploadOutlined, WalletOutlined } from "@ant-design/icons";
+import * as XLSX from "xlsx";
 import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
@@ -28,16 +29,74 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
     const [entryForm] = Form.useForm();
     const [matchTarget, setMatchTarget] = useState(null); // the unmatched entry being reconciled
     const [matchMovementId, setMatchMovementId] = useState(null);
+    const [importPreview, setImportPreview] = useState(null);
+    const [importReading, setImportReading] = useState(false);
+    const [suggestions, setSuggestions] = useState(null);
+    const [selectedSuggestions, setSelectedSuggestions] = useState([]);
 
     const {
         movements,
         unmatchedMovements,
         unmatchedEntries,
+        reconciliationSummary,
         loading,
         submitting,
         addStatementEntry,
+        addStatementEntries,
         matchEntry,
+        getSuggestions,
+        matchEntries,
     } = useCashAccountMovements(account?._id);
+
+    const normalizeHeader = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[\s_-]+/g, "");
+    const pick = (row, names) => {
+        const entries = Object.entries(row);
+        const found = entries.find(([key]) => names.includes(normalizeHeader(key)));
+        return found?.[1];
+    };
+    const parseNumber = (value) => {
+        if (typeof value === "number") return value;
+        const raw = String(value ?? "").trim().replace(/\s/g, "");
+        if (!raw) return 0;
+        const normalized = raw.includes(",") && raw.includes(".")
+            ? (raw.lastIndexOf(",") > raw.lastIndexOf(".") ? raw.replace(/\./g, "").replace(",", ".") : raw.replace(/,/g, ""))
+            : raw.replace(",", ".");
+        return Number(normalized.replace(/[^0-9.-]/g, ""));
+    };
+    const readStatementFile = async (file) => {
+        setImportReading(true);
+        try {
+            const buffer = await file.arrayBuffer();
+            const digest = await crypto.subtle.digest("SHA-256", buffer);
+            const batchKey = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+            const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "", raw: true });
+            if (!rows.length) throw new Error(t("finance.import_empty"));
+            const parsed = rows.map((row, index) => {
+                const rawDate = pick(row, ["fecha", "date", "fechamovimiento", "transactiondate"]);
+                const excelDate = typeof rawDate === "number" ? XLSX.SSF.parse_date_code(rawDate) : null;
+                const date = excelDate ? dayjs(new Date(excelDate.y, excelDate.m - 1, excelDate.d)) : dayjs(rawDate);
+                const direct = pick(row, ["valor", "monto", "importe", "amount"]);
+                const credit = parseNumber(pick(row, ["credito", "credit", "abono", "ingreso"]));
+                const debit = parseNumber(pick(row, ["debito", "debit", "cargo", "salida"]));
+                const amount = direct !== undefined ? parseNumber(direct) : credit - debit;
+                if (!date.isValid() || !Number.isFinite(amount) || amount === 0) throw new Error(t("finance.import_row_invalid", { row: index + 2 }));
+                return { entry_date: date.toISOString(), description: String(pick(row, ["descripcion", "description", "detalle", "concepto", "memo", "referencia"]) || "").trim() || null, amount, import_fingerprint: `${batchKey}:${index}` };
+            });
+            if (parsed.length > 1000) throw new Error(t("finance.import_too_many"));
+            setImportPreview({ fileName: file.name, entries: parsed });
+        } catch (error) {
+            setImportPreview(null);
+            Modal.error({ title: t("finance.import_failed"), content: error.message });
+        } finally { setImportReading(false); }
+        return false;
+    };
+    const confirmImport = async () => {
+        const success = await addStatementEntries(importPreview.entries);
+        if (success) setImportPreview(null);
+    };
+    const openSuggestions = async () => { const rows = await getSuggestions(); if (rows === null) return; setSuggestions(rows); setSelectedSuggestions(rows.filter((row) => !row.ambiguous).map((row) => row.entry._id)); };
+    const confirmSuggestions = async () => { const chosen = suggestions.filter((row) => selectedSuggestions.includes(row.entry._id)); if (await matchEntries(chosen)) setSuggestions(null); };
 
     const handleAddEntry = async (values) => {
         const success = await addStatementEntry({
@@ -220,6 +279,14 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
                         {t("finance.reconciliation_title")}
                     </h3>
                     <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon icon={<BulbOutlined />} message={t("finance.reconciliation_help_title")} description={t("finance.reconciliation_help_desc")} />
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">{[["coverage_percent", "reconciliation_coverage", (v) => `${v || 0}%`], ["matched_count", "reconciliation_matched", (v) => v || 0], ["unmatched_count", "reconciliation_pending", (v) => v || 0], ["unmatched_volume", "reconciliation_pending_value", (v) => formatCurrency(v || 0)]].map(([key, label, render]) => <div key={key} className="rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-3"><span className="block text-xs text-[var(--ohnix-text-muted)]">{t(`finance.${label}`)}</span><strong className="text-base text-[var(--ohnix-text-primary)]">{render(reconciliationSummary[key])}</strong></div>)}</div>
+
+                    <div className="rounded-2xl border border-dashed border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div><strong className="text-[var(--ohnix-text-primary)]">{t("finance.import_title")}</strong><p className="text-xs text-[var(--ohnix-text-muted)] mt-1 mb-0">{t("finance.import_help")}</p></div>
+                        <Upload accept=".csv,.xlsx,.xls" showUploadList={false} beforeUpload={readStatementFile} disabled={submitting || importReading}>
+                            <Button icon={<UploadOutlined />} loading={importReading}>{t("finance.import_cta")}</Button>
+                        </Upload>
+                    </div>
 
                     <Form form={entryForm} layout="vertical" onFinish={handleAddEntry} className="mb-6">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -252,6 +319,7 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
                     <h4 className="text-xs font-semibold text-[var(--ohnix-text-muted)] mb-3 uppercase tracking-wide">
                         {t("finance.unmatched_entries_title")}
                     </h4>
+                    {unmatchedEntries.length > 0 && <Button className="mb-3" icon={<ThunderboltOutlined />} onClick={openSuggestions}>{t("finance.suggestions_cta")}</Button>}
                     {unmatchedEntries.length > 0 ? (
                         <Table
                             dataSource={unmatchedEntries}
@@ -299,6 +367,13 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
                         {compatibleMovements.length === 0 && <Alert type="warning" showIcon message={t("finance.reconciliation_no_match_help")} />}
                     </div>
                 )}
+            </Modal>
+            <Modal title={t("finance.import_preview_title")} open={Boolean(importPreview)} onCancel={() => setImportPreview(null)} onOk={confirmImport} confirmLoading={submitting} okText={t("finance.import_confirm")} width={760}>
+                {importPreview && <><Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.import_preview_summary", { file: importPreview.fileName, count: importPreview.entries.length })} description={t("finance.import_sign_help")} /><Table size="small" rowKey={(_, index) => index} pagination={{ pageSize: 8 }} dataSource={importPreview.entries} columns={[{ title: t("finance.col_date"), dataIndex: "entry_date", render: (v) => dayjs(v).format("DD/MM/YYYY") }, { title: t("finance.entry_description_label"), dataIndex: "description", ellipsis: true, render: (v) => v || t("common.na") }, { title: t("finance.col_amount"), dataIndex: "amount", align: "right", render: (v) => <span className={v > 0 ? "text-green-500" : "text-red-400"}>{v > 0 ? "+" : ""}{formatCurrency(v)}</span> }]} /></>}
+            </Modal>
+            <Modal title={t("finance.suggestions_title")} open={Array.isArray(suggestions)} onCancel={() => setSuggestions(null)} onOk={confirmSuggestions} confirmLoading={submitting} okButtonProps={{ disabled: selectedSuggestions.length === 0 }} okText={t("finance.suggestions_confirm")} width={820}>
+                <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.suggestions_help_title")} description={t("finance.suggestions_help_desc")} />
+                <Table className="module-dark-table" size="small" pagination={false} rowKey={(row) => row.entry._id} dataSource={suggestions || []} locale={{ emptyText: t("finance.suggestions_empty") }} columns={[{ title: "", width: 44, render: (_, row) => <Checkbox checked={selectedSuggestions.includes(row.entry._id)} onChange={(event) => setSelectedSuggestions((current) => event.target.checked ? [...current, row.entry._id] : current.filter((id) => id !== row.entry._id))} /> }, { title: t("finance.suggestions_statement"), render: (_, row) => <div><strong>{dayjs(row.entry.entry_date).format("DD/MM/YYYY")}</strong><small className="block text-[var(--ohnix-text-muted)]">{row.entry.description || t("common.na")}</small></div> }, { title: t("finance.suggestions_internal"), render: (_, row) => <div><strong>{dayjs(row.movement.createdAt).format("DD/MM/YYYY")}</strong><small className="block text-[var(--ohnix-text-muted)]">{row.movement.reason || t(SOURCE_LABEL_KEYS[row.movement.source_type] || row.movement.source_type)}</small></div> }, { title: t("finance.col_amount"), align: "right", render: (_, row) => formatCurrency(row.entry.amount) }, { title: t("finance.suggestions_confidence"), render: (_, row) => <Tag color={row.ambiguous ? "warning" : row.score >= 90 ? "success" : "processing"}>{row.ambiguous ? t("finance.suggestions_ambiguous") : `${row.score}%`}</Tag> }]} />
             </Modal>
         </Drawer>
     );

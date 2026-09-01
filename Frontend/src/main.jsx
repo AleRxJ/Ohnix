@@ -1,5 +1,4 @@
 // import { StrictMode } from "react";
-import "./index.css";
 
 // A production deploy deletes the old build's hashed chunk files (e.g.
 // Login-B-Fjz8gK.js) - a tab that's had the app open since before that
@@ -16,17 +15,36 @@ window.addEventListener("vite:preloadError", () => {
 });
 
 const rootElement = document.getElementById("root");
-const isPrerendered = rootElement.dataset.prerendered === "true" && rootElement.childElementCount > 0;
+const PUBLIC_PATHS = new Set([
+    "/", "/precios", "/demo", "/software-inventario-pymes",
+    "/facturacion-electronica-dian", "/comparativa/ohnix-vs-alegra",
+    "/colaboracion-en-equipo", "/blog",
+]);
+const isPublicPath = PUBLIC_PATHS.has(location.pathname) || location.pathname.startsWith("/blog/");
+const isPrerendered = isPublicPath
+    && rootElement.dataset.prerendered === "true"
+    && rootElement.childElementCount > 0;
+const isBuildPrerender = new URLSearchParams(location.search).has("ohnix-prerender");
 const isAutomatedAudit = /bot|crawl|spider|lighthouse/i.test(navigator.userAgent);
+let stylesReady;
+if (isPrerendered || isBuildPrerender) {
+    stylesReady = import("./marketingStyles.js");
+} else {
+    stylesReady = import("./appStyles.js");
+}
+let hydrationPromise;
+let hydrated = false;
 
 const boot = async () => {
-    const [React, { createRoot, hydrateRoot }, { default: App }, { default: AppErrorBoundary }] =
+    const [styles, React, { createRoot, hydrateRoot }, { default: App }, { default: AppErrorBoundary }] =
         await Promise.all([
+            stylesReady,
             import("react"),
             import("react-dom/client"),
             import("./App.jsx"),
             import("./components/error/AppErrorBoundary.jsx"),
         ]);
+    if (!styles.styleMode) throw new Error("Ohnix styles failed to load");
     const application = React.createElement(
         AppErrorBoundary,
         null,
@@ -35,6 +53,7 @@ const boot = async () => {
 
     if (isPrerendered) hydrateRoot(rootElement, application);
     else createRoot(rootElement).render(application);
+    hydrated = true;
 
     // Analytics should represent people, not crawlers or Lighthouse runs.
     // Avoiding these third-party requests during automated rendering also
@@ -47,9 +66,42 @@ const boot = async () => {
     }
 };
 
-// Marketing routes ship useful prerendered HTML. hydrateRoot preserves that
-// first paint while the application graph downloads; unlike createRoot it
-// never clears the page to show the Suspense fallback. Start immediately so
-// controls become interactive as soon as their code is available and no first
-// click can be swallowed by a deferred bootstrap.
-boot();
+const startBoot = () => {
+    hydrationPromise ??= boot();
+    return hydrationPromise;
+};
+
+if (!isPrerendered) {
+    // Development and private/authenticated routes have no static application
+    // markup, so they must start exactly as before.
+    startBoot();
+} else {
+    // Public production pages already contain complete prerendered content.
+    // Avoid downloading the authenticated app's 800+ KiB vendor graph for a
+    // visitor who only reads the landing page. Scrolling, keyboard focus or
+    // pointer intent starts hydration early, before a typical interaction.
+    ["scroll", "pointerover", "focusin", "touchstart"].forEach((eventName) =>
+        addEventListener(eventName, startBoot, { once: true, passive: true })
+    );
+
+    // A very fast first click can arrive before the dynamic imports finish.
+    // Replay button interactions once React has attached its handlers instead
+    // of silently losing that click. Normal anchors keep native navigation and
+    // never need to wait for hydration.
+    addEventListener("click", (event) => {
+        if (hydrated) return;
+        const control = event.target.closest?.("button, [role='button']");
+        if (!control) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        startBoot().then(() => control.click());
+    }, true);
+
+    addEventListener("submit", (event) => {
+        if (hydrated) return;
+        const form = event.target;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        startBoot().then(() => form.requestSubmit());
+    }, true);
+}

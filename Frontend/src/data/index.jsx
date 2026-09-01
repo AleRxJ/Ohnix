@@ -108,6 +108,24 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: <Link to="/dashboard">{t("common.dashboard")}</Link>,
         },
         {
+            key: "orders",
+            moduleKey: "orders",
+            icon: <ShoppingCartOutlined />,
+            label: <Link to="/orders">{t("common.orders")}</Link>,
+        },
+        {
+            key: "quotations",
+            moduleKey: "purchases",
+            icon: <TagsOutlined />,
+            label: <Link to="/quotations">{t("common.quotations_nav")}</Link>,
+        },
+        {
+            key: "customers",
+            moduleKey: "customers",
+            icon: <TeamOutlined />,
+            label: <Link to="/customers">{t("common.customers")}</Link>,
+        },
+        {
             key: "products",
             moduleKey: "products",
             icon: <AppstoreOutlined />,
@@ -118,24 +136,6 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             moduleKey: "categories",
             icon: <AppstoreOutlined />,
             label: <Link to="/categories">{t("common.categories")}</Link>,
-        },
-        {
-            key: "orders",
-            moduleKey: "orders",
-            icon: <ShoppingCartOutlined />,
-            label: <Link to="/orders">{t("common.orders")}</Link>,
-        },
-        {
-            key: "customers",
-            moduleKey: "customers",
-            icon: <TeamOutlined />,
-            label: <Link to="/customers">{t("common.customers")}</Link>,
-        },
-        {
-            key: "quotations",
-            moduleKey: "purchases",
-            icon: <TagsOutlined />,
-            label: <Link to="/quotations">{t("common.quotations_nav")}</Link>,
         },
         {
             key: "purchases",
@@ -155,6 +155,44 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <UserSwitchOutlined />,
             label: <Link to="/suppliers">{t("common.suppliers")}</Link>,
         },
+        {
+            key: "finance",
+            moduleKey: "finance",
+            icon: <WalletOutlined />,
+            label: <Link to="/finance">{t("common.finance_nav")}</Link>,
+        },
+        {
+            key: "accounting",
+            moduleKey: "accounting",
+            icon: <BookOutlined />,
+            label: <Link to="/accounting">{t("common.accounting_nav")}</Link>,
+        },
+        ...(showElectronicInvoicing ? [{
+            key: "electronic-invoices",
+            moduleKey: "orders",
+            icon: <FileTextOutlined />,
+            label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
+        }] : []),
+        {
+            key: "reports",
+            moduleKey: "reports",
+            icon: <BarChartOutlined />,
+            label: <Link to="/reports">{t("common.reports")}</Link>,
+        },
+        ...(showTeam ? [{
+            key: "team",
+            icon: <UsergroupAddOutlined />,
+            label: <Link to="/team">{t("common.team_nav")}</Link>,
+        }] : []),
+        // Same gate as billing (moduleKey filter below) - API keys/
+        // integrations/webhooks are account-wide, owner-only, same as
+        // billing itself (see App.jsx#RequireBillingAccess).
+        {
+            key: "integrations",
+            moduleKey: "billing",
+            icon: <ApiOutlined />,
+            label: <Link to="/integrations">{t("common.integrations_nav")}</Link>,
+        },
         ...(showFiscalSetup ? [{
             key: "fiscal-setup",
             icon: <SafetyCertificateOutlined />,
@@ -170,53 +208,11 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
                 </Link>
             ),
         }] : []),
-        // Placed right after Configuración DIAN (fiscal-setup), not next to
-        // Pedidos - this is the DIAN document tracker (invoices/credit
-        // notes actually issued), so it only makes sense grouped with the
-        // rest of the fiscal cluster, after setup and before Reportes.
-        ...(showElectronicInvoicing ? [{
-            key: "electronic-invoices",
-            moduleKey: "orders",
-            icon: <FileTextOutlined />,
-            label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
-        }] : []),
-        {
-            key: "reports",
-            moduleKey: "reports",
-            icon: <BarChartOutlined />,
-            label: <Link to="/reports">{t("common.reports")}</Link>,
-        },
-        {
-            key: "finance",
-            moduleKey: "finance",
-            icon: <WalletOutlined />,
-            label: <Link to="/finance">{t("common.finance_nav")}</Link>,
-        },
-        {
-            key: "accounting",
-            moduleKey: "accounting",
-            icon: <BookOutlined />,
-            label: <Link to="/accounting">{t("common.accounting_nav")}</Link>,
-        },
-        ...(showTeam ? [{
-            key: "team",
-            icon: <UsergroupAddOutlined />,
-            label: <Link to="/team">{t("common.team_nav")}</Link>,
-        }] : []),
         {
             key: "billing",
             moduleKey: "billing",
             icon: <CreditCardOutlined />,
             label: <Link to="/billing">{t("common.billing")}</Link>,
-        },
-        // Same gate as billing (moduleKey filter below) - API keys/
-        // integrations/webhooks are account-wide, owner-only, same as
-        // billing itself (see App.jsx#RequireBillingAccess).
-        {
-            key: "integrations",
-            moduleKey: "billing",
-            icon: <ApiOutlined />,
-            label: <Link to="/integrations">{t("common.integrations_nav")}</Link>,
         },
     ]
         .filter((item) => !item.moduleKey || canAccess(item.moduleKey))

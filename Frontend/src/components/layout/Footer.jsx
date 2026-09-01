@@ -19,7 +19,7 @@ const Footer = () => {
                 <div className="flex flex-col items-start gap-12 md:flex-row md:items-center md:justify-between">
                     <div>
                         <img
-                            src="/Ohnix_FullLogo_Optimized.png"
+                            src="/Ohnix_FullLogo_Transparent.png"
                             alt="Ohnix logo"
                             width="160"
                             height="40"

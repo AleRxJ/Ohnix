@@ -114,7 +114,7 @@ export const listCashAccountMovements = asyncHandler(async (req, res) => {
 });
 
 export const registerManualExpense = asyncHandler(async (req, res, next) => {
-    const { amount, expense_account_id, cash_account_id, description, expense_date } = req.body || {};
+    const { amount, expense_account_id, cash_account_id, description, expense_date, statement_entry_id } = req.body || {};
     if (!expense_account_id || !cash_account_id) {
         return next(new ApiError(400, "expense_account_id y cash_account_id son obligatorios"));
     }
@@ -127,6 +127,7 @@ export const registerManualExpense = asyncHandler(async (req, res, next) => {
         cashAccountId: cash_account_id,
         description,
         expenseDate: expense_date,
+        statementEntryId: statement_entry_id || null,
     });
     return res.status(201).json(new ApiResponse(201, {
         journal_entry_id: result.entry.id,
@@ -207,13 +208,17 @@ export const createStatementEntries = asyncHandler(async (req, res, next) => {
     const { cash_account_id, entries } = req.body || {};
     if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
 
-    const unmatched = await reconciliationService.createStatementEntries({
+    const result = await reconciliationService.createStatementEntries({
         accountId: req.user.prismaId,
         actorId: req.user.actorId,
         cashAccountId: cash_account_id,
-        entries: (entries || []).map((e) => ({ entryDate: e.entry_date, description: e.description, amount: e.amount })),
+        entries: (entries || []).map((e) => ({ entryDate: e.entry_date, description: e.description, amount: e.amount, importFingerprint: e.import_fingerprint })),
     });
-    return res.status(201).json(new ApiResponse(201, unmatched.map(mapStatementEntry), "Statement entries created successfully"));
+    return res.status(201).json(new ApiResponse(201, {
+        entries: result.unmatched.map(mapStatementEntry),
+        imported_count: result.importedCount,
+        skipped_count: result.skippedCount,
+    }, "Statement entries created successfully"));
 });
 
 export const listUnmatchedStatementEntries = asyncHandler(async (req, res, next) => {
@@ -251,4 +256,18 @@ export const matchStatementEntry = asyncHandler(async (req, res, next) => {
         movementId: movement_id,
     });
     return res.status(200).json(new ApiResponse(200, mapStatementEntry(entry), "Entry matched successfully"));
+});
+
+export const suggestStatementMatches = asyncHandler(async (req, res, next) => {
+    const { cash_account_id } = req.query;
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
+    const suggestions = await reconciliationService.suggestMatches({ accountId: req.user.prismaId, cashAccountId: cash_account_id });
+    return res.status(200).json(new ApiResponse(200, suggestions.map((row) => ({ entry: mapStatementEntry(row.entry), movement: mapCashMovement(row.movement), score: row.score, ambiguous: row.ambiguous })), "Reconciliation suggestions fetched successfully"));
+});
+
+export const getReconciliationSummary = asyncHandler(async (req, res, next) => {
+    const { cash_account_id } = req.query;
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
+    const summary = await reconciliationService.getReconciliationSummary({ accountId: req.user.prismaId, cashAccountId: cash_account_id });
+    return res.status(200).json(new ApiResponse(200, summary, "Reconciliation summary fetched successfully"));
 });

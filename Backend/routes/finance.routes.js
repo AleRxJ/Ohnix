@@ -17,6 +17,8 @@ import {
     listUnmatchedStatementEntries,
     listUnmatchedMovements,
     matchStatementEntry,
+    suggestStatementMatches,
+    getReconciliationSummary,
     getAccountsPayablePlan,
     updatePurchaseDueDate,
     getAccountsReceivablePlan,
@@ -71,5 +73,9 @@ router.route("/reconciliation/unmatched-movements")
 
 router.route("/reconciliation/match")
     .post(requireModulePermission("finance", "edit"), matchStatementEntry);
+router.route("/reconciliation/suggestions")
+    .get(requireModulePermission("finance", "view"), suggestStatementMatches);
+router.route("/reconciliation/summary")
+    .get(requireModulePermission("finance", "view"), getReconciliationSummary);
 
 export default router;

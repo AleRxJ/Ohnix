@@ -6,7 +6,7 @@ import { calculateRetentionReturn, calculateWithholdingAmount } from "../service
 import { summarizeWithholdingRows } from "../services/withholdingReport.service.js";
 import { buildPayablePlan } from "../services/accountsPayable.service.js";
 import { buildReceivablePlan } from "../services/accountsReceivable.service.js";
-import { isReconciliationAmountMatch } from "../services/bankReconciliation.service.js";
+import { isReconciliationAmountMatch, scoreReconciliationCandidate } from "../services/bankReconciliation.service.js";
 
 test("one-to-one accounting sources are idempotent when they have a source id", () => {
     for (const sourceType of [
@@ -76,6 +76,13 @@ test("bank reconciliation requires the same amount and sign", () => {
     assert.equal(isReconciliationAmountMatch(-100, -100), true);
     assert.equal(isReconciliationAmountMatch(100, -100), false);
     assert.equal(isReconciliationAmountMatch(100, 99.99), false);
+});
+
+test("reconciliation suggestions reject distant or opposite movements", () => {
+    const entry = { amount: 100, entryDate: "2026-08-10", description: "Pago cliente" };
+    assert.equal(scoreReconciliationCandidate(entry, { delta: -100, createdAt: "2026-08-10", reason: "Pago cliente" }), null);
+    assert.equal(scoreReconciliationCandidate(entry, { delta: 100, createdAt: "2026-07-01", reason: "Pago cliente" }), null);
+    assert.ok(scoreReconciliationCandidate(entry, { delta: 100, createdAt: "2026-08-11", reason: "Pago cliente" }) >= 90);
 });
 
 test("a return keeps the frozen sale cost after the product cost changes", () => {

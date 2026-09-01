@@ -6,6 +6,14 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Keep below-the-fold marketing sections out of initial layout/paint work.
+   `auto` preserves each section's measured size after its first reveal, while
+   the intrinsic fallback prevents a zero-height jump before that happens. */
+.marketing-main > section:not(#home) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
 /* Accounting workspace -------------------------------------------------
    A single visual system for every accounting surface. All paint comes
    from theme tokens so Lite and Dark retain the same depth and hierarchy. */

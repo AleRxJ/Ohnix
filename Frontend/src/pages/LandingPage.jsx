@@ -331,7 +331,7 @@ const LandingPage = () => {
         "@type": "Organization",
         name: "Ohnix",
         url: "https://ohnix.co",
-        logo: "https://ohnix.co/Ohnix_FullLogo_Optimized.png",
+        logo: "https://ohnix.co/Ohnix_FullLogo_Transparent.png",
         contactPoint: {
             "@type": "ContactPoint",
             contactType: "sales",
@@ -379,7 +379,7 @@ const LandingPage = () => {
                 title={t("landing.demo.video_title")}
             />
             <Navbar />
-            <main className="bg-[#050505] pb-24 md:pb-0">
+            <main className="marketing-main bg-[#050505] pb-24 md:pb-0">
                 <OrbitalHero
                     eyebrow={t("landing.hero.eyebrow")}
                     title={t("landing.hero.title")}
