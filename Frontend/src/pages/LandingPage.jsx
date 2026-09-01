@@ -255,6 +255,24 @@ const LandingPage = () => {
         },
     ];
 
+    const comparisonRows = [
+        {
+            criteria: t("landing.comparisonTeaser.rows.first.criteria"),
+            ohnix: t("landing.comparisonTeaser.rows.first.ohnix"),
+            competitor: t("landing.comparisonTeaser.rows.first.competitor"),
+        },
+        {
+            criteria: t("landing.comparisonTeaser.rows.second.criteria"),
+            ohnix: t("landing.comparisonTeaser.rows.second.ohnix"),
+            competitor: t("landing.comparisonTeaser.rows.second.competitor"),
+        },
+        {
+            criteria: t("landing.comparisonTeaser.rows.third.criteria"),
+            ohnix: t("landing.comparisonTeaser.rows.third.ohnix"),
+            competitor: t("landing.comparisonTeaser.rows.third.competitor"),
+        },
+    ];
+
     const starterPrice = planPrice("starter", t("landing.pricing.plans.starter.price"));
     const growthPrice = planPrice("growth", t("landing.pricing.plans.growth.price"));
     const scalePrice = planPrice("scale", t("landing.pricing.plans.scale.price"));
@@ -465,6 +483,22 @@ const LandingPage = () => {
                         <CardGrid items={differentiatorCards} columns={3} />
                     </div>
                 </ContentSection>
+
+                <ComparisonTeaserSection
+                    heading={{
+                        eyebrow: t("landing.comparisonTeaser.eyebrow"),
+                        title: t("landing.comparisonTeaser.title"),
+                        description: t("landing.comparisonTeaser.description"),
+                    }}
+                    headers={{
+                        criteria: t("landing.comparisonTeaser.headers.criteria"),
+                        ohnix: t("landing.comparisonTeaser.headers.ohnix"),
+                        competitor: t("landing.comparisonTeaser.headers.competitor"),
+                    }}
+                    rows={comparisonRows}
+                    cta={t("landing.comparisonTeaser.cta")}
+                    onCtaClick={() => navigate("/comparativa/ohnix-vs-alegra")}
+                />
 
                 <CycleTimelineSection
                     heading={{

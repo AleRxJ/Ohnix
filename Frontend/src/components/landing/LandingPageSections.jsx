@@ -852,6 +852,7 @@ export const OhnixCommandCanvas = () => {
                                 key={`${module.label}-${index}`}
                                 type="button"
                                 title={module.label}
+                                aria-label={module.label}
                                 onClick={() => setActive(module.suite)}
                                 className={`flex h-10 w-10 items-center justify-center rounded-xl border text-sm transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#29D8D5] focus-visible:ring-offset-2 focus-visible:ring-offset-black ${module.suite === active ? "border-[#29D8D5]/30 bg-[#29D8D5]/12 text-[#29D8D5] shadow-[0_0_16px_rgba(41,216,213,0.1)]" : "border-transparent text-[#829990] hover:border-white/[0.06] hover:bg-white/[0.03] hover:text-white"}`}
                             >
@@ -884,7 +885,7 @@ export const OhnixCommandCanvas = () => {
                             </div>
                         </div>
 
-                        <div className="mt-3 flex min-h-[61px] flex-wrap items-center gap-1.5">
+                        <div className="mt-3 flex min-h-[61px] flex-wrap items-start gap-1.5">
                             <span className="mr-0.5 text-[8px] uppercase tracking-[0.14em] text-[#7c8f8b]">{t("landing.hero_dashboard.modules_included_label")}</span>
                             {activeModules.map((module) => (
                                 <span key={module.label} className="inline-flex max-w-[150px] items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 text-[9px] text-[#a9b6b3]">

@@ -224,7 +224,7 @@ const Finance = () => {
                             })}
                         </div>
                     )}
-                    <CashIntegrityPanel />
+                    <CashIntegrityPanel onOpenMovements={setMovementsAccount} />
                     <AccountsPayablePlanner canEdit={canEdit} />
                     <AccountsReceivablePlanner canEdit={canEdit} />
                 </div>
