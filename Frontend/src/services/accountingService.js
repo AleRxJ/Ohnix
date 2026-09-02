@@ -203,6 +203,13 @@ export const accountingService = {
         return response.data;
     },
 
+    async getIncomeStatementComparison({ from, to } = {}) {
+        const response = await api.get("/accounting/reports/income-statement/comparison", {
+            params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+        });
+        return response.data;
+    },
+
     async getBalanceSheet({ asOf } = {}) {
         const response = await api.get("/accounting/reports/balance-sheet", {
             params: asOf ? { as_of: asOf } : undefined,

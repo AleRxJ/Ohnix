@@ -1193,6 +1193,9 @@ const FinancialStatementsTab = () => {
     const [balanceLoading, setBalanceLoading] = useState(false);
     const [costCenters, setCostCenters] = useState([]);
     const [incomeCostCenterId, setIncomeCostCenterId] = useState();
+    const [comparisonOpen, setComparisonOpen] = useState(false);
+    const [comparison, setComparison] = useState(null);
+    const [comparisonLoading, setComparisonLoading] = useState(false);
 
     const fetchIncome = async () => {
         setIncomeLoading(true);
@@ -1208,6 +1211,27 @@ const FinancialStatementsTab = () => {
         } finally {
             setIncomeLoading(false);
         }
+    };
+
+    const fetchComparison = async () => {
+        setComparisonLoading(true);
+        try {
+            const res = await accountingService.getIncomeStatementComparison({
+                from: incomeRange[0].format("YYYY-MM-DD"),
+                to: incomeRange[1].format("YYYY-MM-DD"),
+            });
+            setComparison(res?.data || null);
+        } catch {
+            toast.error(t("accounting.failed"));
+        } finally {
+            setComparisonLoading(false);
+        }
+    };
+
+    const toggleComparison = () => {
+        const next = !comparisonOpen;
+        setComparisonOpen(next);
+        if (next) fetchComparison();
     };
 
     const fetchBalance = async () => {
@@ -1272,11 +1296,49 @@ const FinancialStatementsTab = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <RangePicker value={incomeRange} onChange={(dates) => dates && setIncomeRange(dates)} format="YYYY-MM-DD" allowClear={false} />
                         <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={incomeCostCenterId} onChange={setIncomeCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
-                        <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" icon={<CalendarOutlined />} onClick={fetchIncome} loading={incomeLoading}>
+                        <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" icon={<CalendarOutlined />} onClick={() => { fetchIncome(); if (comparisonOpen) fetchComparison(); }} loading={incomeLoading}>
                             {t("reports.refresh_report")}
+                        </Button>
+                        <Button onClick={toggleComparison} loading={comparisonLoading}>
+                            {comparisonOpen ? t("accounting.income_statement_compare_hide") : t("accounting.income_statement_compare_show")}
                         </Button>
                     </div>
                 </Card>
+                {comparisonOpen && (
+                    <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
+                        <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("accounting.income_statement_compare_help")} />
+                        <Table
+                            className="module-dark-table"
+                            loading={comparisonLoading}
+                            rowKey={(row) => row.cost_center?.id || "none"}
+                            dataSource={comparison?.columns || []}
+                            pagination={false}
+                            size="small"
+                            scroll={{ x: "max-content" }}
+                            locale={{ emptyText: t("accounting.empty_cost_centers_title") }}
+                            columns={[
+                                { title: t("accounting.cost_center"), render: (_, row) => (row.cost_center ? `${row.cost_center.code} · ${row.cost_center.name}` : t("accounting.cost_center_none")) },
+                                { title: t("accounting.total_revenue"), dataIndex: "total_revenue", align: "right", render: (v) => formatCurrency(v) },
+                                { title: t("accounting.total_costs"), dataIndex: "total_costs", align: "right", render: (v) => formatCurrency(v) },
+                                { title: t("accounting.gross_profit"), dataIndex: "gross_profit", align: "right", render: (v) => <strong>{formatCurrency(v)}</strong> },
+                                { title: t("accounting.total_expenses"), dataIndex: "total_expenses", align: "right", render: (v) => formatCurrency(v) },
+                                { title: t("accounting.net_income"), dataIndex: "net_income", align: "right", render: (v) => <strong>{formatCurrency(v)}</strong> },
+                            ]}
+                            summary={() =>
+                                comparison?.totals && (
+                                    <Table.Summary.Row>
+                                        <Table.Summary.Cell index={0}><strong>{t("common.total")}</strong></Table.Summary.Cell>
+                                        <Table.Summary.Cell index={1} align="right"><strong>{formatCurrency(comparison.totals.total_revenue)}</strong></Table.Summary.Cell>
+                                        <Table.Summary.Cell index={2} align="right"><strong>{formatCurrency(comparison.totals.total_costs)}</strong></Table.Summary.Cell>
+                                        <Table.Summary.Cell index={3} align="right"><strong>{formatCurrency(comparison.totals.gross_profit)}</strong></Table.Summary.Cell>
+                                        <Table.Summary.Cell index={4} align="right"><strong>{formatCurrency(comparison.totals.total_expenses)}</strong></Table.Summary.Cell>
+                                        <Table.Summary.Cell index={5} align="right"><strong>{formatCurrency(comparison.totals.net_income)}</strong></Table.Summary.Cell>
+                                    </Table.Summary.Row>
+                                )
+                            }
+                        />
+                    </Card>
+                )}
                 {income && (
                     <>
                         <Row gutter={[16, 16]} className="mb-4">

@@ -42,6 +42,20 @@ if ("serviceWorker" in navigator) {
         });
         registration.update().catch(() => {});
     });
+
+    // Once the swap above hands control to the new worker, the network
+    // layer is updated but this tab keeps *executing* the JS it already
+    // loaded - a visitor mid-checkout or mid-form on the real app must never
+    // get yanked into an unannounced window.location.reload() just because
+    // an update finished downloading in the background. Flagging it here
+    // (App.jsx's UpdateToast, mounted once React is running, listens for
+    // this) lets a real, in-page toast offer a manual refresh instead -
+    // same idea sites like Slack/Notion/VS Code use, not a surprise reload.
+    window.__ohnixSwUpdated = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+        window.__ohnixSwUpdated = true;
+        window.dispatchEvent(new Event("ohnix:sw-updated"));
+    });
 }
 
 const rootElement = document.getElementById("root");

@@ -14,6 +14,7 @@ import {
     getAccountingPeriodCloseReadiness,
     reopenAccountingPeriod,
     getIncomeStatement,
+    getIncomeStatementComparison,
     getBalanceSheet,
     getTrialBalance,
     getAccountingStatus,
@@ -96,6 +97,7 @@ router.route("/reports/withholdings/certificates/:supplierId/pdf")
     .get(requireModulePermission("accounting", "view"), downloadWithholdingCertificate);
 
 router.route("/reports/income-statement").get(requireModulePermission("accounting", "view"), getIncomeStatement);
+router.route("/reports/income-statement/comparison").get(requireModulePermission("accounting", "view"), getIncomeStatementComparison);
 router.route("/reports/balance-sheet").get(requireModulePermission("accounting", "view"), getBalanceSheet);
 router.route("/reports/trial-balance").get(requireModulePermission("accounting", "view"), getTrialBalance);
 

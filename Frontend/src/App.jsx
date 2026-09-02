@@ -2,7 +2,8 @@ import React, { Suspense, lazy, useContext, useEffect, useRef, useState } from "
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n/config.js";
-import { Toaster } from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast";
+import useI18n from "./hooks/useI18n";
 import { AuthProvider } from "./context/AuthContext";
 import AuthContext from "./context/AuthContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
@@ -65,6 +66,39 @@ const StyleBundleGate = ({ children }) => {
     }, [pathname]);
 
     return ready ? children : <RouteLoadingFallback />;
+};
+
+// main.jsx flags window.__ohnixSwUpdated (and fires this event) once a new
+// Service Worker has taken control of the tab, instead of reloading on its
+// own - an unannounced window.location.reload() could wipe out whatever the
+// visitor is in the middle of (a half-filled order, an open modal). This
+// shows the same kind of "new version available" toast Slack/Notion/VS Code
+// web use, and only reloads when the visitor actually clicks it.
+const UpdateToast = () => {
+    const { t } = useI18n();
+    useEffect(() => {
+        const showToast = () => {
+            toast((tst) => (
+                <div className="flex items-center gap-3">
+                    <span>{t("common.new_version_available")}</span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            toast.dismiss(tst.id);
+                            window.location.reload();
+                        }}
+                        className="rounded-full bg-[var(--ohnix-accent,#29D8D5)] px-3 py-1 text-xs font-semibold text-black"
+                    >
+                        {t("common.reload")}
+                    </button>
+                </div>
+            ), { duration: Infinity, id: "ohnix-sw-update" });
+        };
+        if (window.__ohnixSwUpdated) showToast();
+        window.addEventListener("ohnix:sw-updated", showToast);
+        return () => window.removeEventListener("ohnix:sw-updated", showToast);
+    }, [t]);
+    return null;
 };
 
 // Lazy: ErrorPage uses antd (Result/Button) - same reasoning as
@@ -238,6 +272,7 @@ function App() {
                     <InventoryTourProvider>
                     <BrowserRouter>
                         <TeamProvider>
+                        <UpdateToast />
                         <Toaster
                             position="top-right"
                             toastOptions={{

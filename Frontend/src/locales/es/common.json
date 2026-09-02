@@ -116,7 +116,8 @@
     "workflow": "Flujo",
     "showing_of_items": "{{start}}-{{end}} de {{total}} elementos",
     "stale_edit_conflict": "Otra persona guardó cambios en esto mientras lo editabas. Recarga para ver la última versión antes de volver a intentarlo.",
-    "reload": "Recargar"
+    "reload": "Recargar",
+    "new_version_available": "Hay una nueva versión disponible."
   },
   "customers": {
     "failed_fetch_customers": "No se pudieron cargar los clientes",
@@ -1057,8 +1058,14 @@
     "total_revenue": "Ingresos totales",
     "total_costs": "Costo de ventas",
     "gross_profit": "Margen bruto",
+    "total_expenses": "Gastos totales",
+    "net_income": "Resultado neto",
     "section_revenue": "Ingresos",
     "section_costs": "Costos",
+    "income_statement_compare_show": "Comparar centros de costo",
+    "income_statement_compare_hide": "Ocultar comparativo",
+    "income_statement_compare_help": "Compara el mismo periodo entre todos los centros de costo activos, uno por columna. La fila Total coincide con el estado de resultados sin filtrar porque cada movimiento cae en un único centro (o en \"Sin centro\" si nunca se clasificó).",
+    "cost_center_none": "Sin centro",
     "as_of_label": "Fecha de corte",
     "total_assets": "Total activos",
     "total_liabilities": "Total pasivos",

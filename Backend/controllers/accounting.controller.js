@@ -318,6 +318,16 @@ export const getIncomeStatement = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, statement, "Income statement fetched successfully"));
 });
 
+export const getIncomeStatementComparison = asyncHandler(async (req, res) => {
+    const { from, to } = req.query;
+    const comparison = await financialStatementsService.getIncomeStatementComparison({
+        accountId: req.user.prismaId,
+        startDate: from ? new Date(from) : undefined,
+        endDate: endOfDay(to),
+    });
+    return res.status(200).json(new ApiResponse(200, comparison, "Estado de resultados comparativo obtenido."));
+});
+
 export const getBalanceSheet = asyncHandler(async (req, res) => {
     const { as_of } = req.query;
     const statement = await financialStatementsService.getBalanceSheet({

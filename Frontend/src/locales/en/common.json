@@ -116,7 +116,8 @@
     "workflow": "Workflow",
     "showing_of_items": "{{start}}-{{end}} of {{total}} items",
     "stale_edit_conflict": "Someone else saved changes to this while you were editing it. Reload to see the latest version before trying again.",
-    "reload": "Reload"
+    "reload": "Reload",
+    "new_version_available": "A new version is available."
   },
   "customers": {
     "failed_fetch_customers": "Failed to load customers",
@@ -1057,8 +1058,14 @@
     "total_revenue": "Total revenue",
     "total_costs": "Cost of sales",
     "gross_profit": "Gross profit",
+    "total_expenses": "Total expenses",
+    "net_income": "Net income",
     "section_revenue": "Revenue",
     "section_costs": "Costs",
+    "income_statement_compare_show": "Compare cost centers",
+    "income_statement_compare_hide": "Hide comparison",
+    "income_statement_compare_help": "Compares the same period across every active cost center, one per column. The Total row matches the unfiltered income statement because each movement falls into exactly one center (or \"No center\" if it was never classified).",
+    "cost_center_none": "No center",
     "as_of_label": "As of",
     "total_assets": "Total assets",
     "total_liabilities": "Total liabilities",

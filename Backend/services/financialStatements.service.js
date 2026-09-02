@@ -97,6 +97,96 @@ export const getIncomeStatement = async ({ accountId, startDate, endDate, costCe
     };
 };
 
+// One column per cost center (plus a "sin centro" column for lines never
+// assigned one) showing the same revenue/cost/expense breakdown as
+// getIncomeStatement, so a multi-sede business can see which centers are
+// actually profitable side by side. `totals` sums every column and must
+// equal what getIncomeStatement returns for the same range with no
+// costCenterId filter - every line lands in exactly one column, so nothing
+// is double-counted or dropped.
+export const getIncomeStatementComparison = async ({ accountId, startDate, endDate }) => {
+    const rows = await prisma.journalEntryLine.groupBy({
+        by: ["chartAccountId", "costCenterId"],
+        where: {
+            chartAccount: { accountType: { in: ["revenue", "cost", "expense"] }, createdById: accountId },
+            journalEntry: {
+                period: { createdById: accountId },
+                sourceType: { notIn: ["period_close", "period_reopen", "period_reclose"] },
+                ...(startDate || endDate
+                    ? { entryDate: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } }
+                    : {}),
+            },
+        },
+        _sum: { debit: true, credit: true },
+    });
+
+    const [chartAccounts, costCenters] = await Promise.all([
+        prisma.chartAccount.findMany({
+            where: { id: { in: [...new Set(rows.map((r) => r.chartAccountId))] } },
+            select: { id: true, accountType: true },
+        }),
+        prisma.costCenter.findMany({ where: { accountId }, orderBy: [{ code: "asc" }] }),
+    ]);
+    const accountTypeById = new Map(chartAccounts.map((a) => [a.id, a.accountType]));
+    const centerById = new Map(costCenters.map((c) => [c.id, c]));
+
+    const buckets = new Map();
+    const ensureBucket = (key) => {
+        if (!buckets.has(key)) buckets.set(key, { revenue: 0, costs: 0, expenses: 0 });
+        return buckets.get(key);
+    };
+    // Every active cost center gets a column even with zero activity in
+    // range, so the comparison makes an idle sede visible instead of just
+    // omitting it.
+    for (const center of costCenters) {
+        if (center.isActive) ensureBucket(center.id);
+    }
+
+    for (const row of rows) {
+        const accountType = accountTypeById.get(row.chartAccountId);
+        const amount = balanceForType(accountType, Number(row._sum.debit || 0), Number(row._sum.credit || 0));
+        const bucket = ensureBucket(row.costCenterId || "none");
+        if (accountType === "revenue") bucket.revenue += amount;
+        else if (accountType === "cost") bucket.costs += amount;
+        else bucket.expenses += amount;
+    }
+
+    const columns = [...buckets.entries()]
+        .map(([key, bucket]) => {
+            const center = key !== "none" ? centerById.get(key) : null;
+            const totalRevenue = round2(bucket.revenue);
+            const totalCosts = round2(bucket.costs);
+            const totalExpenses = round2(bucket.expenses);
+            const grossProfit = round2(totalRevenue - totalCosts);
+            return {
+                cost_center: center ? { id: center.id, code: center.code, name: center.name, is_active: center.isActive } : null,
+                total_revenue: totalRevenue,
+                total_costs: totalCosts,
+                gross_profit: grossProfit,
+                total_expenses: totalExpenses,
+                net_income: round2(grossProfit - totalExpenses),
+            };
+        })
+        .sort((a, b) => {
+            if (!a.cost_center) return 1;
+            if (!b.cost_center) return -1;
+            return a.cost_center.code.localeCompare(b.cost_center.code);
+        });
+
+    const totals = columns.reduce(
+        (acc, col) => ({
+            total_revenue: round2(acc.total_revenue + col.total_revenue),
+            total_costs: round2(acc.total_costs + col.total_costs),
+            gross_profit: round2(acc.gross_profit + col.gross_profit),
+            total_expenses: round2(acc.total_expenses + col.total_expenses),
+            net_income: round2(acc.net_income + col.net_income),
+        }),
+        { total_revenue: 0, total_costs: 0, gross_profit: 0, total_expenses: 0, net_income: 0 }
+    );
+
+    return { start_date: startDate ?? null, end_date: endDate ?? null, columns, totals };
+};
+
 // Periods that don't yet have a posted `period_close` entry - their net
 // result still only exists as the derived `currentEarnings` plug below.
 // Once a period IS closed (accountingPeriod.service.js), its result moves
