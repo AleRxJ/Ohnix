@@ -283,6 +283,14 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
             </Modal>
 
             <div className="mt-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                {/* The button must align with the INPUT specifically, not
+                with "whichever sibling ends up tallest" - the helper text
+                below only appears sometimes (once knownTestSetId is set), so
+                it has to live OUTSIDE this row entirely. Nesting it inside
+                the input's own column made that column taller than the
+                button whenever the text showed, and items-end then aligned
+                the button to the bottom of THAT (taller) column - visibly
+                lower than the input itself, not actually a button-height bug. */}
                 <div className="flex flex-wrap items-end gap-2">
                     <div className="flex-1" style={{ minWidth: 240 }}>
                         <label className="mb-1 block text-sm font-medium text-[var(--ohnix-text-primary)]">{t("fiscal_setup.habilitacion_test_set_id_label")}</label>
@@ -294,9 +302,6 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                             placeholder={t("fiscal_setup.habilitacion_test_set_id_placeholder")}
                             disabled={Boolean(activeRun && ACTIVE_STATUSES.includes(activeRun.status))}
                         />
-                        {knownTestSetId && testSetId === knownTestSetId && (
-                            <Text className="mt-1 block text-xs text-[#44F3F0]">{t("fiscal_setup.habilitacion_test_set_id_known")}</Text>
-                        )}
                     </div>
                     <Popconfirm
                         title={t("fiscal_setup.habilitacion_confirm_title")}
@@ -308,6 +313,7 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                     >
                         <Button
                             type="primary"
+                            size="large"
                             className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]"
                             icon={<ExperimentOutlined />}
                             loading={busy === "start"}
@@ -317,6 +323,9 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                         </Button>
                     </Popconfirm>
                 </div>
+                {knownTestSetId && testSetId === knownTestSetId && (
+                    <Text className="mt-1 block text-xs text-[#44F3F0]">{t("fiscal_setup.habilitacion_test_set_id_known")}</Text>
+                )}
             </div>
 
             {activeRun && (
