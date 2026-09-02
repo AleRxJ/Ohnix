@@ -960,6 +960,16 @@ body {
   background: rgba(41, 216, 213, 0.08) !important;
 }
 
+/* Marks whichever history row's run is the one currently shown above the
+   table (DianHabilitacionPanel.jsx) - a stronger, sticky version of the
+   plain hover tint so it stays visible after the pointer moves away,
+   answering "which one am I looking at" without relying on scroll position
+   or memory of what was just clicked. */
+.module-dark-table .dian-run-row-active > td {
+  background: rgba(41, 216, 213, 0.14) !important;
+  box-shadow: inset 3px 0 0 0 #29d8d5;
+}
+
 /* Table.Summary renders into a <tfoot>, which module-dark-table's
    .ant-table-tbody rules above don't reach - antd paints its own opaque
    white background directly on the <tfoot> itself (not just its cells), so

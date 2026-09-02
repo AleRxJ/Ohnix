@@ -41,7 +41,17 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
     const [activeRun, setActiveRun] = useState(null);
     const [busy, setBusy] = useState("");
     const [whereModalOpen, setWhereModalOpen] = useState(false);
+    // Which history row's "Ver" is mid-fetch - shows a spinner on that
+    // specific button instead of a generic page-wide loading state, so it's
+    // obvious which row's data is about to replace what's shown above.
+    const [viewingRunId, setViewingRunId] = useState(null);
+    // Opened automatically when "Ver" is clicked on a past run - inspecting
+    // exactly what happened (CUFE/error per document) is usually the reason
+    // to look at an old run in the first place, so it shouldn't take an
+    // extra click on top of "Ver" to get there.
+    const [technicalDetailOpen, setTechnicalDetailOpen] = useState(false);
     const pollRef = useRef(null);
+    const activeRunSectionRef = useRef(null);
     // Stable per mount, rotated after a real success - same reasoning as the
     // idempotency keys elsewhere on this page (ElectronicInvoicingSettings.jsx,
     // FirmaPassSelfService.jsx): a genuine retry replays the cached result
@@ -68,11 +78,21 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
         }
     };
 
-    const viewRun = async (runId) => {
+    // `fromHistoryClick` distinguishes an explicit "Ver" click (which needs a
+    // loading spinner on that specific row and a scroll to the section that's
+    // about to change, so it's never ambiguous which run's detail just
+    // replaced what was there) from the automatic initial load/resume (which
+    // needs neither - nothing to disambiguate on first paint).
+    const viewRun = async (runId, { fromHistoryClick = false } = {}) => {
         stopPolling();
+        if (fromHistoryClick) setViewingRunId(runId);
         try {
             const response = await companyService.getMyDianTestMatrixRun(runId);
             setActiveRun(response?.data || null);
+            if (fromHistoryClick) {
+                setTechnicalDetailOpen(true);
+                activeRunSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
             if (response?.data && ACTIVE_STATUSES.includes(response.data.status)) {
                 pollRef.current = setInterval(async () => {
                     try {
@@ -89,6 +109,8 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
             }
         } catch {
             // Run may have just been deleted/inaccessible - leave activeRun as-is.
+        } finally {
+            if (fromHistoryClick) setViewingRunId(null);
         }
     };
 
@@ -215,7 +237,11 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
         {
             title: "",
             key: "actions",
-            render: (_, r) => <Button size="small" onClick={() => viewRun(r.id)}>{t("fiscal_setup.habilitacion_view_run")}</Button>,
+            render: (_, r) => (
+                <Button size="small" loading={viewingRunId === r.id} onClick={() => viewRun(r.id, { fromHistoryClick: true })}>
+                    {t("fiscal_setup.habilitacion_view_run")}
+                </Button>
+            ),
         },
     ];
 
@@ -294,17 +320,25 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
             </div>
 
             {activeRun && (
-                <div className="mt-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
+                <div ref={activeRunSectionRef} className="mt-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                            <Tag color={RUN_STATUS_COLOR[activeRun.status] || "default"}>
-                                {t(`fiscal_setup.habilitacion_status_${activeRun.status}`)}
-                            </Tag>
-                            {activeRun.status === "completed" && (
-                                <Tag color={activeRun.passResult ? "green" : "red"} icon={activeRun.passResult ? <CheckCircleOutlined /> : undefined}>
-                                    {t(activeRun.passResult ? "fiscal_setup.habilitacion_pass_true" : "fiscal_setup.habilitacion_pass_false")}
+                        <div>
+                            {/* Explicit run identity, not just its status - the
+                            history table below can point this whole section at a
+                            different run than the one that just finished, so
+                            without this it's ambiguous which run "Completada ✗"
+                            actually refers to. */}
+                            <Text className="block font-mono text-xs text-[var(--ohnix-text-muted)]">{activeRun.testSetId}</Text>
+                            <div className="mt-1 flex items-center gap-2">
+                                <Tag color={RUN_STATUS_COLOR[activeRun.status] || "default"}>
+                                    {t(`fiscal_setup.habilitacion_status_${activeRun.status}`)}
                                 </Tag>
-                            )}
+                                {activeRun.status === "completed" && (
+                                    <Tag color={activeRun.passResult ? "green" : "red"} icon={activeRun.passResult ? <CheckCircleOutlined /> : undefined}>
+                                        {t(activeRun.passResult ? "fiscal_setup.habilitacion_pass_true" : "fiscal_setup.habilitacion_pass_false")}
+                                    </Tag>
+                                )}
+                            </div>
                         </div>
                         {ACTIVE_STATUSES.includes(activeRun.status) && (
                             <Button size="small" danger icon={<StopOutlined />} loading={busy === "cancel"} onClick={cancelRun}>
@@ -349,12 +383,15 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
 
                     <Collapse
                         className="mt-4"
+                        activeKey={technicalDetailOpen ? ["technical"] : []}
+                        onChange={(keys) => setTechnicalDetailOpen(keys.includes("technical"))}
                         items={[{
                             key: "technical",
                             label: t("fiscal_setup.habilitacion_technical_detail_toggle"),
                             children: (
                                 <div className="overflow-x-auto">
                                     <Table
+                                        className="module-dark-table"
                                         size="small"
                                         rowKey="id"
                                         columns={documentColumns}
@@ -380,12 +417,14 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                 ) : (
                     <div className="overflow-x-auto">
                         <Table
+                            className="module-dark-table"
                             size="small"
                             rowKey="id"
                             loading={loadingRuns}
                             columns={historyColumns}
                             dataSource={runs}
                             pagination={{ pageSize: 5 }}
+                            rowClassName={(record) => (record.id === activeRun?.id ? "dian-run-row-active" : "")}
                         />
                     </div>
                 )}
