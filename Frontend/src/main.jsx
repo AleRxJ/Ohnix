@@ -119,6 +119,22 @@ if (!isPrerendered) {
         addEventListener(eventName, startBoot, { once: true, passive: true })
     );
 
+    // A visitor who never scrolls/moves/taps in the first couple seconds
+    // (reading the hero, or just staring at the screen) was stuck looking
+    // at a static, non-interactive page - the typewriter frozen mid-word,
+    // buttons that don't respond - until they finally did something, at
+    // which point React visibly "snapped" the page to life. Kicking off the
+    // same boot() once the browser is idle (capped at 2s so it can't be
+    // starved forever on a busy tab) keeps the fast-bounce visitor's
+    // bandwidth saving for the common case - it still yields to render work
+    // first - while making that snap imperceptible for everyone else,
+    // instead of depending on them touching the page at all.
+    if ("requestIdleCallback" in window) {
+        requestIdleCallback(startBoot, { timeout: 2000 });
+    } else {
+        setTimeout(startBoot, 1500);
+    }
+
     // A very fast first click can arrive before the dynamic imports finish.
     // Replay button interactions once React has attached its handlers instead
     // of silently losing that click. Normal anchors keep native navigation and

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import useI18n from "../../hooks/useI18n";
 import useScrollLock from "../../hooks/useScrollLock";
+import { isBuildTimePrerender } from "../../i18n/geoLanguage";
 import { api } from "../../api/api";
 import { trackContactFormConversion } from "../../utils/googleAds";
 import { trackContactFormLead } from "../../utils/metaPixel";
@@ -92,6 +93,18 @@ const TypewriterWord = ({ words }) => {
     const [phase, setPhase] = useState("typing");
 
     useEffect(() => {
+        // Matching the initial `text` state above only guarantees the FIRST
+        // render agrees with the prerendered snapshot - this effect then
+        // keeps typing/deleting for as long as the tab stays open, including
+        // through scripts/prerender.js's own build-time capture window. By
+        // the time that pass saves the page's HTML, this has already
+        // advanced well past word[0]'s first character (e.g. frozen
+        // mid-word, showing "Inv" instead of the full word) - a real
+        // visitor's fresh render always starts at the full word[0] and
+        // never catches up to that arbitrary mid-typing snapshot. Freezing
+        // the cycle during that one pass keeps the snapshot exactly at the
+        // matched initial state instead.
+        if (isBuildTimePrerender()) return undefined;
         const word = words[idx];
         let timer;
         if (phase === "typing") {
@@ -139,6 +152,11 @@ export const HeroDashboard = () => {
             };
             requestAnimationFrame(tick);
         };
+        // Same build-time-prerender hazard as TypewriterWord above: left
+        // running, this would bake settled/mid-animation counts into the
+        // static snapshot instead of the 0/0 a real visitor's fresh render
+        // starts at.
+        if (isBuildTimePrerender()) return undefined;
         const t = setTimeout(() => {
             animCount(24860, setProductCount);
             animCount(2846,  setValueCount);
@@ -147,11 +165,13 @@ export const HeroDashboard = () => {
     }, []);
 
     useEffect(() => {
+        if (isBuildTimePrerender()) return undefined;
         const iv = setInterval(() => setHighlightRow((r) => (r + 1) % 4), 1400);
         return () => clearInterval(iv);
     }, []);
 
     useEffect(() => {
+        if (isBuildTimePrerender()) return undefined;
         const iv = setInterval(() => setActiveSuite((current) => (current + 1) % 4), 3200);
         return () => clearInterval(iv);
     }, []);
@@ -368,6 +388,7 @@ export const OhnixEcosystem = () => {
     ];
 
     useEffect(() => {
+        if (isBuildTimePrerender()) return undefined;
         const timer = setInterval(() => setActive((value) => (value + 1) % ecosystems.length), 3400);
         return () => clearInterval(timer);
     }, [ecosystems.length]);
@@ -518,6 +539,7 @@ export const OhnixFlowField = () => {
     ];
 
     useEffect(() => {
+        if (isBuildTimePrerender()) return undefined;
         const timer = setInterval(() => setActive((value) => (value + 1) % systems.length), 4200);
         return () => clearInterval(timer);
     }, [systems.length]);
@@ -685,6 +707,7 @@ export const OhnixCommandCanvas = () => {
     const [liveOps, setLiveOps] = useState(3421);
 
     useEffect(() => {
+        if (isBuildTimePrerender()) return undefined;
         const iv = setInterval(() => setLiveOps((v) => v + Math.floor(Math.random() * 5) + 1), 2600);
         return () => clearInterval(iv);
     }, []);
@@ -812,6 +835,7 @@ export const OhnixCommandCanvas = () => {
 
     useEffect(() => {
         if (reducedMotion) return;
+        if (isBuildTimePrerender()) return undefined;
         const timer = setTimeout(() => setActive((value) => (value + 1) % spaces.length), ROTATE_MS);
         return () => clearTimeout(timer);
     }, [active, spaces.length, reducedMotion]);
