@@ -28,26 +28,6 @@ export function isLikelyBot() {
     return BOT_USER_AGENT_PATTERN.test(navigator.userAgent);
 }
 
-// True only during scripts/prerender.js's own build-time render pass (it
-// tags every URL it visits with this query param - see main.jsx's
-// `isBuildPrerender`). That headless Chromium runs from the build host's
-// network (a US-based Vercel container, not a visitor's), so any async
-// geo-IP lookup started during that pass would resolve against the wrong
-// location entirely - and worse, since prerender.js waits for the network
-// to go idle before saving the page's HTML, a lookup that finishes in time
-// bakes its result into the static snapshot. hydrateRoot() then compares
-// that snapshot against a real visitor's synchronous first render (which
-// never sees a resolved geo-IP result yet, matching the LanguageDetector's
-// localStorage-only order below and useMarketPricing's null initial state)
-// - guaranteed content mismatch, and the exact source of production
-// React error #418/#423 on the prerendered marketing pages. Skipping every
-// geo-IP-driven effect for this one pass keeps the snapshot pinned to the
-// same fallback defaults a fresh real visitor's browser starts with.
-export function isBuildTimePrerender() {
-    if (typeof window === "undefined" || !window.location) return false;
-    return new URLSearchParams(window.location.search).has("ohnix-prerender");
-}
-
 // Timestamp (ms) of the last successful automatic country detection. Used
 // to re-check periodically instead of either "once ever" (misses real
 // location changes) or "every single load" (a network call - and a

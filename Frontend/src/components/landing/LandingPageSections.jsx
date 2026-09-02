@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import useI18n from "../../hooks/useI18n";
 import useScrollLock from "../../hooks/useScrollLock";
-import { isBuildTimePrerender } from "../../i18n/geoLanguage";
 import { api } from "../../api/api";
 import { trackContactFormConversion } from "../../utils/googleAds";
 import { trackContactFormLead } from "../../utils/metaPixel";
@@ -44,40 +43,12 @@ const sectionShell =
 /* ── Scroll-reveal hook ──────────────────────────────────────────────── */
 const useScrollReveal = (threshold = 0.12) => {
     const ref = useRef(null);
-    // Starts visible, not hidden - scripts/prerender.js's headless capture
-    // runs every route's page as a background Chromium tab, where Chromium
-    // throttles rAF/IntersectionObserver to the point they never fire at
-    // all before the page is saved. Starting hidden (the old behavior) so
-    // the observer could "reveal" things on scroll meant every section on
-    // every prerendered page was permanently baked into the static HTML as
-    // opacity-0 - and since main.jsx defers hydrateRoot() on these pages
-    // until the visitor's first scroll/tap/click, nothing was ever around
-    // to flip it back: real visitors saw a blank page until they happened
-    // to interact. Starting visible instead matches that same static
-    // snapshot (still true, since the observer still won't fire during
-    // that pass) *and* a real visitor's first paint - no blank window, and
-    // no hydration mismatch (#418/#423) either, since both sides agree.
-    const [visible, setVisible] = useState(true);
+    const [visible, setVisible] = useState(false);
     useEffect(() => {
         const el = ref.current;
         if (!el) return;
-        // Belt-and-suspenders alongside the `true` default above: even if a
-        // future Chromium/Puppeteer stops throttling background-tab
-        // observers and this fires during the build capture after all,
-        // never let that pass flip anything to hidden - keeps the static
-        // snapshot's guarantee independent of that environment detail.
-        if (isBuildTimePrerender()) return undefined;
-        // Once a real visitor's hydration actually runs, this observer's
-        // first callback reports whatever is genuinely below the fold at
-        // that moment - hide only that (it re-reveals itself normally the
-        // first time they scroll to it) so the fade-in effect still works
-        // for content they haven't reached yet, without ever starting from
-        // a fully-hidden page.
         const obs = new IntersectionObserver(
-            ([e]) => {
-                if (e.isIntersecting) { setVisible(true); obs.unobserve(el); }
-                else setVisible(false);
-            },
+            ([e]) => { if (e.isIntersecting) { setVisible(true); obs.unobserve(el); } },
             { threshold }
         );
         obs.observe(el);
@@ -121,17 +92,6 @@ const TypewriterWord = ({ words }) => {
     const [phase, setPhase] = useState("typing");
 
     useEffect(() => {
-        // Matching the initial `text` state above only guarantees the FIRST
-        // render agrees with the prerendered snapshot - this effect then
-        // keeps typing/deleting for as long as the tab stays open, including
-        // through scripts/prerender.js's own build-time capture window. By
-        // the time that pass saves the page's HTML, this has already
-        // advanced well past word[0]'s first character, which a real
-        // visitor's fresh hydrateRoot() render (always starting at word[0])
-        // can no longer match - hydration mismatch (#418/#423). Freezing the
-        // cycle during that one pass keeps the snapshot exactly at the
-        // matched initial state.
-        if (isBuildTimePrerender()) return undefined;
         const word = words[idx];
         let timer;
         if (phase === "typing") {
@@ -179,11 +139,6 @@ export const HeroDashboard = () => {
             };
             requestAnimationFrame(tick);
         };
-        // Same build-time-prerender hazard as TypewriterWord/liveOps above:
-        // left running, this would bake settled/mid-animation counts into
-        // the static snapshot instead of the 0/0 a real visitor's fresh
-        // render starts at.
-        if (isBuildTimePrerender()) return undefined;
         const t = setTimeout(() => {
             animCount(24860, setProductCount);
             animCount(2846,  setValueCount);
@@ -192,13 +147,11 @@ export const HeroDashboard = () => {
     }, []);
 
     useEffect(() => {
-        if (isBuildTimePrerender()) return undefined;
         const iv = setInterval(() => setHighlightRow((r) => (r + 1) % 4), 1400);
         return () => clearInterval(iv);
     }, []);
 
     useEffect(() => {
-        if (isBuildTimePrerender()) return undefined;
         const iv = setInterval(() => setActiveSuite((current) => (current + 1) % 4), 3200);
         return () => clearInterval(iv);
     }, []);
@@ -415,7 +368,6 @@ export const OhnixEcosystem = () => {
     ];
 
     useEffect(() => {
-        if (isBuildTimePrerender()) return undefined;
         const timer = setInterval(() => setActive((value) => (value + 1) % ecosystems.length), 3400);
         return () => clearInterval(timer);
     }, [ecosystems.length]);
@@ -566,7 +518,6 @@ export const OhnixFlowField = () => {
     ];
 
     useEffect(() => {
-        if (isBuildTimePrerender()) return undefined;
         const timer = setInterval(() => setActive((value) => (value + 1) % systems.length), 4200);
         return () => clearInterval(timer);
     }, [systems.length]);
@@ -734,16 +685,6 @@ export const OhnixCommandCanvas = () => {
     const [liveOps, setLiveOps] = useState(3421);
 
     useEffect(() => {
-        // scripts/prerender.js waits (network-idle + a short settle delay)
-        // before saving this page's DOM as the static snapshot served to
-        // real visitors - long enough for this interval to tick at least
-        // once during that build-time capture. Baking an incremented number
-        // into the snapshot guarantees it disagrees with a real visitor's
-        // fresh hydrateRoot() render, which always starts at the literal
-        // 3421 above - React hydration mismatch (#418/#423). Skipping the
-        // interval during that one pass keeps the snapshot pinned to 3421,
-        // same as a real visitor's first render.
-        if (isBuildTimePrerender()) return undefined;
         const iv = setInterval(() => setLiveOps((v) => v + Math.floor(Math.random() * 5) + 1), 2600);
         return () => clearInterval(iv);
     }, []);
@@ -871,12 +812,6 @@ export const OhnixCommandCanvas = () => {
 
     useEffect(() => {
         if (reducedMotion) return;
-        // Same build-time-prerender hazard as the liveOps interval above:
-        // auto-advancing `active` here would change which suite's whole
-        // flow/KPI content is visible in the captured static snapshot,
-        // disagreeing with a real visitor's fresh render (always starts at
-        // suite 0).
-        if (isBuildTimePrerender()) return;
         const timer = setTimeout(() => setActive((value) => (value + 1) % spaces.length), ROTATE_MS);
         return () => clearTimeout(timer);
     }, [active, spaces.length, reducedMotion]);
@@ -2564,12 +2499,10 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                     <div className={`space-y-6 transition-all duration-500 ${visible ? "translate-x-0 opacity-100" : "-translate-x-8 opacity-0"}`}>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label htmlFor="contact-name" className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.name_label")}</label>
+                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.name_label")}</label>
                                 <input
-                                    id="contact-name"
                                     type="text"
                                     name="name"
-                                    autoComplete="name"
                                     value={formData.name}
                                     onChange={handleInputChange}
                                     placeholder={t("landing.contact_form.name_placeholder")}
@@ -2578,12 +2511,10 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="contact-email" className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.email_label")}</label>
+                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.email_label")}</label>
                                 <input
-                                    id="contact-email"
                                     type="email"
                                     name="email"
-                                    autoComplete="email"
                                     value={formData.email}
                                     onChange={handleInputChange}
                                     placeholder={t("landing.contact_form.email_placeholder")}
@@ -2592,12 +2523,10 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="contact-phone" className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.phone_label")}</label>
+                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.phone_label")}</label>
                                 <input
-                                    id="contact-phone"
                                     type="tel"
                                     name="phone"
-                                    autoComplete="tel"
                                     value={formData.phone}
                                     onChange={handleInputChange}
                                     placeholder={t("landing.contact_form.phone_placeholder")}
@@ -2605,12 +2534,10 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="contact-company" className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.company_label")}</label>
+                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.company_label")}</label>
                                 <input
-                                    id="contact-company"
                                     type="text"
                                     name="company"
-                                    autoComplete="organization"
                                     value={formData.company}
                                     onChange={handleInputChange}
                                     placeholder={t("landing.contact_form.company_placeholder")}
@@ -2618,11 +2545,9 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 />
                             </div>
                             <div>
-                                <label htmlFor="contact-message" className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.message_label")}</label>
+                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.message_label")}</label>
                                 <textarea
-                                    id="contact-message"
                                     name="message"
-                                    autoComplete="off"
                                     value={formData.message}
                                     onChange={handleInputChange}
                                     placeholder={t("landing.contact_form.message_placeholder")}

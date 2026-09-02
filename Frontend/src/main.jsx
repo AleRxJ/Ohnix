@@ -58,7 +58,7 @@ const waitForStylesheets = () =>
     );
 
 const boot = async () => {
-    const [styles, React, { createRoot }, { default: App }, { default: AppErrorBoundary }] =
+    const [styles, React, { createRoot, hydrateRoot }, { default: App }, { default: AppErrorBoundary }] =
         await Promise.all([
             stylesReady,
             import("react"),
@@ -74,20 +74,8 @@ const boot = async () => {
         React.createElement(App)
     );
 
-    // Deliberately createRoot() even on prerendered pages, never
-    // hydrateRoot(). hydrateRoot() demands the DOM match exactly what React
-    // would've rendered server-side, or it throws #418/#423 and falls back
-    // to a full client re-render anyway - so a strict match bought nothing
-    // real users could see, only console errors on any drift between the
-    // build's headless Chromium and a visitor's actual browser/viewport/
-    // locale/scroll position (all genuinely different, always). createRoot()
-    // skips that comparison entirely: it just discards the prerendered
-    // markup and renders fresh, the same recovery hydrateRoot was already
-    // silently doing on mismatch - minus the errors. The prerendered HTML
-    // still does its real job (crawlers and share-preview bots, which never
-    // run this script at all, only ever see that static markup) and still
-    // gives real visitors a fast first paint before this code even runs.
-    createRoot(rootElement).render(application);
+    if (isPrerendered) hydrateRoot(rootElement, application);
+    else createRoot(rootElement).render(application);
     hydrated = true;
 
     // Analytics should represent people, not crawlers or Lighthouse runs.
@@ -123,41 +111,20 @@ if (!isPrerendered) {
     // Replay button interactions once React has attached its handlers instead
     // of silently losing that click. Normal anchors keep native navigation and
     // never need to wait for hydration.
-    //
-    // boot() now mounts with createRoot() (see below), which discards the
-    // prerendered markup entirely and builds a brand-new DOM subtree instead
-    // of reusing it - so `control` here is a reference to a node that no
-    // longer exists in the document by the time boot() resolves. Calling
-    // .click() on it is a no-op: no ancestor to bubble through, and React's
-    // freshly-mounted root only has listeners on the new nodes. Re-locating
-    // whatever real element now sits at the original click's coordinates
-    // works regardless of which DOM nodes got replaced underneath it.
     addEventListener("click", (event) => {
         if (hydrated) return;
         const control = event.target.closest?.("button, [role='button']");
         if (!control) return;
-        const { clientX, clientY } = event;
         event.preventDefault();
         event.stopImmediatePropagation();
-        startBoot().then(() => {
-            document.elementFromPoint(clientX, clientY)?.closest?.("button, [role='button']")?.click();
-        });
+        startBoot().then(() => control.click());
     }, true);
 
     addEventListener("submit", (event) => {
         if (hydrated) return;
-        // Same staleness problem as the click handler above: `event.target`
-        // is the prerendered <form> node, which createRoot() will have
-        // already thrown away by the time this resolves. Forms don't carry
-        // click coordinates, so re-locate it by its position among all
-        // forms on the page instead - stable as long as the freshly-mounted
-        // tree renders the same forms in the same order, which it does
-        // (it's the same component tree, just mounted fresh).
-        const formIndex = Array.prototype.indexOf.call(document.forms, event.target);
+        const form = event.target;
         event.preventDefault();
         event.stopImmediatePropagation();
-        startBoot().then(() => {
-            document.forms[formIndex]?.requestSubmit();
-        });
+        startBoot().then(() => form.requestSubmit());
     }, true);
 }
