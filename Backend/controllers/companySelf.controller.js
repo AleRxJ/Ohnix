@@ -69,6 +69,7 @@ const SELF_SELECT = {
     electronicInvoicingEnabled: true,
     electronicInvoicingProvider: true,
     itcycleCompanyId: true,
+    dianSoftwareId: true,
     vatResponsible: true,
     vatResponsibleEffectiveFrom: true,
     // Tax configuration only - no calculation reads these yet (see the

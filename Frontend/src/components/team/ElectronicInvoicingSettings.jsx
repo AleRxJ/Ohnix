@@ -211,7 +211,12 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
 
     return (
         <Card className="mt-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)]">
-            <Title level={5} className="m-0 text-[var(--ohnix-text-primary)]">{t("fiscal_setup.config_summary_title")}</Title>
+            <div className="flex flex-wrap items-center gap-2">
+                <Title level={5} className="m-0 text-[var(--ohnix-text-primary)]">{t("fiscal_setup.config_summary_title")}</Title>
+                <Tooltip title={t("fiscal_setup.config_modality_hint")}>
+                    <Tag color="cyan" className="m-0">{t("fiscal_setup.config_modality_own_software")}</Tag>
+                </Tooltip>
+            </div>
             <Text className="text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_summary_hint")}</Text>
 
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -243,6 +248,15 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
                     <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_environment")}</Text>
                     <div className="flex items-center gap-2">
                         <Text className="text-sm font-medium text-[var(--ohnix-text-primary)]">{readiness?.environment || "-"}</Text>
+                        <Tooltip title={t("fiscal_setup.config_locked_hint")}>
+                            <LockOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
+                        </Tooltip>
+                    </div>
+                </div>
+                <div>
+                    <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_software_id")}</Text>
+                    <div className="flex items-center gap-2">
+                        <Text className="text-sm font-medium text-[var(--ohnix-text-primary)]">{company?.dianSoftwareId || "-"}</Text>
                         <Tooltip title={t("fiscal_setup.config_locked_hint")}>
                             <LockOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
                         </Tooltip>

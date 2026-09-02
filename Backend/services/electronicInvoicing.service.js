@@ -882,6 +882,7 @@ export const registerCompanyWithItcycle = async ({ companyId, dianConfiguration,
             data: {
                 taxIdentificationDv: dv,
                 itcycleCompanyId: itcycleCompany.id,
+                dianSoftwareId: dianConfiguration.softwareId,
                 itcycleApiKeyCiphertext: encryptSecret(rawApiKey),
                 electronicInvoicingProvider: ITCYCLE_PROVIDER,
                 // Provisioning the DIAN tenant and being able to issue are

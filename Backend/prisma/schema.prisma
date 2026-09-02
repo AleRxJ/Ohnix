@@ -364,6 +364,12 @@ model Company {
   // design, so each company needs its own here.
   itcycleCompanyId                 String?           @map("itcycle_company_id")
   itcycleApiKeyCiphertext          String?           @map("itcycle_api_key_ciphertext") @db.Text
+  // The DIAN-issued Software ID this company's habilitación (software propio)
+  // was registered under - NOT a secret (unlike softwarePin/technicalKey,
+  // which stay solely in itcycle-api-dian's own DianConfiguration and are
+  // never sent back here). Kept only so RegisteredConfigSummary can show the
+  // owner what itcycle-api-dian actually has on file, matching legalName/NIT.
+  dianSoftwareId                   String?           @map("dian_software_id")
   // Set only while this company's own DIAN "habilitación" (software propio)
   // is still "En proceso" - the DIAN sandbox rejects every send() unless it
   // carries this exact testSetId with method "SendTestSetAsync" (dian-kit's
