@@ -256,7 +256,12 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
                 <div>
                     <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_software_id")}</Text>
                     <div className="flex items-center gap-2">
-                        <Text className="text-sm font-medium text-[var(--ohnix-text-primary)]">{company?.dianSoftwareId || "-"}</Text>
+                        {/* readiness.softwareId is itcycle-api-dian's own live DianConfiguration -
+                        the source of truth. company.dianSoftwareId (captured once, at
+                        registerCompanyWithItcycle time - see electronicInvoicing.service.js) is
+                        only a fallback for when readiness couldn't be fetched (see
+                        status.readinessError above). */}
+                        <Text className="text-sm font-medium text-[var(--ohnix-text-primary)]">{readiness?.softwareId || company?.dianSoftwareId || "-"}</Text>
                         <Tooltip title={t("fiscal_setup.config_locked_hint")}>
                             <LockOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
                         </Tooltip>

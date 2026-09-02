@@ -8,6 +8,7 @@ import renewalScheduler from "./utils/subscriptionRenewalScheduler.js";
 import webhookRetryScheduler from "./utils/webhookRetryScheduler.js";
 import firmaPassValidationScheduler from "./utils/firmaPassValidationScheduler.js";
 import recurringExpenseScheduler from "./utils/recurringExpenseScheduler.js";
+import itcycleKeepAliveScheduler from "./utils/itcycleKeepAliveScheduler.js";
 import { reconcileLegacyApprovedRequests, reconcileStuckPendingPayments } from "./utils/subscriptionReconcile.js";
 
 dotenv.config({
@@ -73,6 +74,8 @@ connectDB()
                 firmaPassValidationScheduler.start();
                 console.log("🧾 Starting recurring expense scheduler...");
                 recurringExpenseScheduler.start();
+                console.log("💤 Starting itcycle-api-dian keep-alive scheduler...");
+                itcycleKeepAliveScheduler.start();
             }
         });
     })
@@ -87,6 +90,7 @@ process.on("SIGTERM", () => {
     renewalScheduler.stop();
     webhookRetryScheduler.stop();
     firmaPassValidationScheduler.stop();
+    itcycleKeepAliveScheduler.stop();
     process.exit(0);
 });
 
@@ -96,5 +100,6 @@ process.on("SIGINT", () => {
     renewalScheduler.stop();
     webhookRetryScheduler.stop();
     firmaPassValidationScheduler.stop();
+    itcycleKeepAliveScheduler.stop();
     process.exit(0);
 });
