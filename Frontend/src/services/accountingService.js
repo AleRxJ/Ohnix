@@ -210,9 +210,9 @@ export const accountingService = {
         return response.data;
     },
 
-    async getBalanceSheet({ asOf } = {}) {
+    async getBalanceSheet({ asOf, costCenterId } = {}) {
         const response = await api.get("/accounting/reports/balance-sheet", {
-            params: asOf ? { as_of: asOf } : undefined,
+            params: { ...(asOf ? { as_of: asOf } : {}), ...(costCenterId ? { cost_center_id: costCenterId } : {}) },
         });
         return response.data;
     },

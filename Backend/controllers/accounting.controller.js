@@ -333,6 +333,7 @@ export const getBalanceSheet = asyncHandler(async (req, res) => {
     const statement = await financialStatementsService.getBalanceSheet({
         accountId: req.user.prismaId,
         asOfDate: as_of ? endOfDay(as_of) : new Date(),
+        costCenterId: req.query.cost_center_id || undefined,
     });
     return res.status(200).json(new ApiResponse(200, statement, "Balance sheet fetched successfully"));
 });

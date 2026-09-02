@@ -1079,6 +1079,7 @@
     "current_earnings_row_hint": "Calculated automatically: revenue minus costs and expenses for the period. Not a real ledger account, which is why it has no code.",
     "calculated_row_badge": "Calculated",
     "not_balanced_warning": "The balance sheet doesn't balance - this should never happen. Please report it.",
+    "balance_sheet_cost_center_imbalance_note": "This cost-center-filtered balance sheet may not balance on its own - some operations (like transfers between different sedes' cajas) split their lines across multiple centers. It's not a general-ledger imbalance; clear the filter to check.",
     "col_code": "Code",
     "col_name": "Name",
     "col_type": "Type",

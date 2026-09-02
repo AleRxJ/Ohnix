@@ -1187,6 +1187,7 @@ const FinancialStatementsTab = () => {
     const { formatCurrency } = useCurrency();
     const [incomeRange, setIncomeRange] = useState([dayjs().subtract(30, "days"), dayjs()]);
     const [asOfDate, setAsOfDate] = useState(dayjs());
+    const [balanceCostCenterId, setBalanceCostCenterId] = useState();
     const [income, setIncome] = useState(null);
     const [balance, setBalance] = useState(null);
     const [incomeLoading, setIncomeLoading] = useState(false);
@@ -1237,7 +1238,7 @@ const FinancialStatementsTab = () => {
     const fetchBalance = async () => {
         setBalanceLoading(true);
         try {
-            const res = await accountingService.getBalanceSheet({ asOf: asOfDate.format("YYYY-MM-DD") });
+            const res = await accountingService.getBalanceSheet({ asOf: asOfDate.format("YYYY-MM-DD"), costCenterId: balanceCostCenterId });
             setBalance(res?.data || null);
         } catch {
             toast.error(t("accounting.failed"));
@@ -1386,6 +1387,7 @@ const FinancialStatementsTab = () => {
                 <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <DatePicker value={asOfDate} onChange={(d) => d && setAsOfDate(d)} format="YYYY-MM-DD" allowClear={false} />
+                        <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={balanceCostCenterId} onChange={setBalanceCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
                         <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" icon={<CalendarOutlined />} onClick={fetchBalance} loading={balanceLoading}>
                             {t("reports.refresh_report")}
                         </Button>
@@ -1393,8 +1395,9 @@ const FinancialStatementsTab = () => {
                 </Card>
                 {balance && (
                     <>
-                        {!balance.balanced && (
-                            <Alert message={t("accounting.not_balanced_warning")} type="error" showIcon icon={<WarningOutlined />} className="mb-4 dark-alert dark-alert-rose" />
+                        {!balance.balanced && (balanceCostCenterId
+                            ? <Alert message={t("accounting.balance_sheet_cost_center_imbalance_note")} type="info" showIcon icon={<InfoCircleOutlined />} className="mb-4 dark-alert dark-alert-purple" />
+                            : <Alert message={t("accounting.not_balanced_warning")} type="error" showIcon icon={<WarningOutlined />} className="mb-4 dark-alert dark-alert-rose" />
                         )}
                         <Row gutter={[16, 16]} className="mb-4">
                             <Col xs={24} sm={8}>

@@ -221,8 +221,19 @@ const getUnclosedPeriodIds = async (accountId, asOfDate) => {
 // that haven't been formally closed yet; a closed period's result is a real
 // posted equity balance instead (see getUnclosedPeriodIds above), which
 // `equity` below already picks up like any other account.
-export const getBalanceSheet = async ({ accountId, asOfDate }) => {
-    const rows = await aggregateByAccount({ accountId, accountTypes: ["asset", "liability", "equity"], endDate: asOfDate });
+//
+// costCenterId is accepted here for the same reason getTrialBalance takes
+// it: accountingPosting.service.js's withCostCenter() tags every line of a
+// posting with the same center, asset/liability lines included (e.g. a
+// sale's debit to Clientes carries the selling sede's center, not just its
+// revenue credit). `balanced` is still computed when filtered, but is NOT
+// guaranteed true the way the unfiltered sheet is - a cash transfer between
+// two sedes' cajas keeps each side's own center (see cashTransfer.service.js)
+// deliberately, so one center's half of that entry has no matching line in
+// this filtered set. The caller must not treat that as a real integrity
+// error the way an unfiltered imbalance would be.
+export const getBalanceSheet = async ({ accountId, asOfDate, costCenterId }) => {
+    const rows = await aggregateByAccount({ accountId, accountTypes: ["asset", "liability", "equity"], endDate: asOfDate, costCenterId });
     const assets = rows.filter((r) => r.account_type === "asset");
     const liabilities = rows.filter((r) => r.account_type === "liability");
     const equity = rows.filter((r) => r.account_type === "equity");
@@ -240,6 +251,7 @@ export const getBalanceSheet = async ({ accountId, asOfDate }) => {
                   endDate: asOfDate,
                   excludeSourceTypes: ["period_close", "period_reopen", "period_reclose"],
                   periodIds: unclosedPeriodIds,
+                  costCenterId,
               });
               const revenue = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "revenue")));
               const costs = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "cost")));
@@ -253,14 +265,16 @@ export const getBalanceSheet = async ({ accountId, asOfDate }) => {
 
     return {
         as_of_date: asOfDate,
+        cost_center_id: costCenterId ?? null,
         assets, total_assets: totalAssets,
         liabilities, total_liabilities: totalLiabilities,
         equity, current_earnings: currentEarnings,
         total_equity: totalEquity,
         total_liabilities_and_equity: totalLiabilitiesAndEquity,
-        // Must always be true by construction - every JournalEntry already
-        // balances (recordJournalEntry enforces it), so this is a live
-        // sanity check on the report itself, not just another figure.
+        // Must always be true by construction when unfiltered - every
+        // JournalEntry already balances (recordJournalEntry enforces it), so
+        // this is a live sanity check on the report itself. When costCenterId
+        // is set it's informational only, per the comment above.
         balanced: Math.abs(totalAssets - totalLiabilitiesAndEquity) < 0.01,
     };
 };

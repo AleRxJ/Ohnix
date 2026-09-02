@@ -1079,6 +1079,7 @@
     "current_earnings_row_hint": "Calculado automáticamente: ingresos menos costos y gastos del periodo. No es una cuenta contable real, por eso no tiene código.",
     "calculated_row_badge": "Calculado",
     "not_balanced_warning": "El balance no cuadra — esto no debería pasar nunca. Repórtalo.",
+    "balance_sheet_cost_center_imbalance_note": "Este balance filtrado por centro de costo puede no cuadrar por sí solo — algunas operaciones (como transferencias entre cajas de sedes distintas) reparten sus líneas entre varios centros. No es un descuadre del libro general; quita el filtro para verificarlo.",
     "col_code": "Código",
     "col_name": "Nombre",
     "col_type": "Tipo",
