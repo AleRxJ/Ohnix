@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useEffect, useRef, useState } from "react";
 import { Alert, Button, Card, Collapse, Input, Popconfirm, Table, Tag, Typography } from "antd";
 import { CheckCircleOutlined, ExperimentOutlined, ReloadOutlined, RocketOutlined, StopOutlined } from "@ant-design/icons";
@@ -205,6 +206,15 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
             <Alert className="mt-4 dark-alert dark-alert-purple" type="info" showIcon message={t("fiscal_setup.habilitacion_explainer")} />
             <Alert className="mt-3 dark-alert dark-alert-amber" type="warning" showIcon message={t("fiscal_setup.habilitacion_warning_title")} description={t("fiscal_setup.habilitacion_warning_hint")} />
 
+            <Collapse
+                className="mt-3"
+                items={[{
+                    key: "where",
+                    label: t("fiscal_setup.habilitacion_where_toggle"),
+                    children: <Text className="text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.habilitacion_where_hint")}</Text>,
+                }]}
+            />
+
             <div className="mt-4 flex flex-wrap items-end gap-2">
                 <div className="flex-1" style={{ minWidth: 240 }}>
                     <label className="mb-1 block text-sm font-medium text-[var(--ohnix-text-primary)]">{t("fiscal_setup.habilitacion_test_set_id_label")}</label>
@@ -216,6 +226,9 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                         placeholder={t("fiscal_setup.habilitacion_test_set_id_placeholder")}
                         disabled={Boolean(activeRun && ACTIVE_STATUSES.includes(activeRun.status))}
                     />
+                    {knownTestSetId && testSetId === knownTestSetId && (
+                        <Text className="mt-1 block text-xs text-[#44F3F0]">{t("fiscal_setup.habilitacion_test_set_id_known")}</Text>
+                    )}
                 </div>
                 <Popconfirm
                     title={t("fiscal_setup.habilitacion_confirm_title")}

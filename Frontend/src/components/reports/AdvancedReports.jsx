@@ -323,8 +323,30 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                         <Table columns={vatColumns} dataSource={vatData.byRate} rowKey="rate" loading={loading} pagination={false} className="module-dark-table" scroll={{ x: 400 }} />
                     </Card>
                     {vatData.byRatePurchases?.length > 0 && (
-                        <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("reports.advanced.vat_credited_by_rate")}>
+                        <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.vat_credited_by_rate")}>
                             <Table columns={vatColumns} dataSource={vatData.byRatePurchases} rowKey="rate" loading={loading} pagination={false} className="module-dark-table" scroll={{ x: 400 }} />
+                        </Card>
+                    )}
+                    {vatData.manualAdjustments?.length > 0 && (
+                        <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("reports.advanced.vat_manual_adjustments_title")}>
+                            <div className="mb-3 flex items-start gap-2 rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] p-3 text-xs text-[var(--ohnix-text-muted)]">
+                                <InfoCircleOutlined className="mt-0.5 text-[#44F3F0]" />
+                                <span>{t("reports.advanced.vat_manual_adjustments_help")}</span>
+                            </div>
+                            <Table
+                                columns={[
+                                    { title: t("reports.advanced.vat_manual_adjustments_col_date"), dataIndex: "entryDate", key: "entryDate", width: 110, render: (v) => dayjs(v).format("DD/MM/YYYY") },
+                                    { title: t("reports.advanced.vat_manual_adjustments_col_description"), dataIndex: "description", key: "description", ellipsis: true },
+                                    { title: t("reports.advanced.vat_manual_adjustments_col_generated"), dataIndex: "generatedDelta", key: "generatedDelta", align: "right", width: 150, render: (v) => v ? formatCurrency(v) : "" },
+                                    { title: t("reports.advanced.vat_manual_adjustments_col_deductible"), dataIndex: "deductibleDelta", key: "deductibleDelta", align: "right", width: 150, render: (v) => v ? formatCurrency(v) : "" },
+                                ]}
+                                dataSource={vatData.manualAdjustments}
+                                rowKey="id"
+                                loading={loading}
+                                pagination={false}
+                                className="module-dark-table"
+                                scroll={{ x: 500 }}
+                            />
                         </Card>
                     )}
                 </>

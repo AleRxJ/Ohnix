@@ -1044,6 +1044,49 @@ const loadVatReversalAdjustments = async ({ userId, isAdmin, req, entryDateFilte
     return entries.filter((entry) => allowed.has(entry.sourceId)).map(summarizeVatReversalEntry);
 };
 
+// manualJournalVoucher.service.js can target ANY active chart account,
+// including the VAT liability accounts (240805/240810) - unlike
+// order_sale/purchase and their returns/credit-notes above, a manual line
+// carries no taxRateApplied/base, only a raw debit/credit against whichever
+// account was picked. Without this, a manual correction to those accounts
+// moved the balance sheet's IVA neto (Accounting overview) but stayed
+// invisible in this by-rate/by-period report, which is exactly the kind of
+// silent mismatch a bimestral filing can't afford.
+const loadManualVatAdjustments = async ({ userId, isAdmin, entryDateFilter }) => {
+    const entries = await prisma.journalEntry.findMany({
+        where: {
+            sourceType: { in: ["manual_journal", "manual_journal_reversal"] },
+            ...(isAdmin ? {} : { period: { createdById: userId } }),
+            ...(Object.keys(entryDateFilter).length ? { entryDate: entryDateFilter } : {}),
+            lines: { some: { chartAccount: { code: { in: ["240805", "240810"] } } } },
+        },
+        select: {
+            id: true,
+            entryDate: true,
+            description: true,
+            lines: { select: { debit: true, credit: true, chartAccount: { select: { code: true } } } },
+        },
+    });
+
+    return entries.map((entry) => {
+        const amountForCode = (code, side) =>
+            (entry.lines || [])
+                .filter((line) => line.chartAccount?.code === code)
+                .reduce((sum, line) => sum + Number(line[side] || 0), 0);
+        // 240805 (IVA generado) is credit-normal, same polarity a sale posts
+        // it with - a credit raises it, a debit lowers it. 240810 (IVA
+        // descontable) is the opposite, same polarity a purchase posts it
+        // with - a debit raises it, a credit lowers it.
+        return {
+            id: entry.id,
+            entryDate: entry.entryDate,
+            description: entry.description,
+            generatedDelta: round2(amountForCode("240805", "credit") - amountForCode("240805", "debit")),
+            deductibleDelta: round2(amountForCode("240810", "debit") - amountForCode("240810", "credit")),
+        };
+    });
+};
+
 const getVatReport = asyncHandler(async (req, res, next) => {
     const { start_date, end_date } = req.query;
     const userId = req.user.prismaId;
@@ -1082,7 +1125,7 @@ const getVatReport = asyncHandler(async (req, res, next) => {
         // processing documents have fiscal snapshots already, but no journal
         // entry yet. Reversals are recognized separately by their own journal
         // date below, so a later return never rewrites a closed sales period.
-        const [orderDetails, purchaseDetails, financialCreditNotes, vatReversals] = await Promise.all([
+        const [orderDetails, purchaseDetails, financialCreditNotes, vatReversals, manualVatAdjustments] = await Promise.all([
             prisma.orderDetail.findMany({
                 where: {
                     order: {
@@ -1119,6 +1162,7 @@ const getVatReport = asyncHandler(async (req, res, next) => {
             }),
             loadFinancialCreditNoteAdjustments({ userId, isAdmin, req, entryDateFilter: dateFilter }),
             loadVatReversalAdjustments({ userId, isAdmin, req, entryDateFilter: dateFilter }),
+            loadManualVatAdjustments({ userId, isAdmin, entryDateFilter: dateFilter }),
         ]);
 
         const byTreatmentMap = new Map();
@@ -1139,6 +1183,9 @@ const getVatReport = asyncHandler(async (req, res, next) => {
             financialCreditNoteBase: 0,
             salesReversalBase: 0,
             purchaseReversalBase: 0,
+            manualAdjustmentCount: manualVatAdjustments.length,
+            manualAdjustmentGenerated: 0,
+            manualAdjustmentDeductible: 0,
         };
 
         for (const detail of orderDetails) {
@@ -1260,6 +1307,30 @@ const getVatReport = asyncHandler(async (req, res, next) => {
             }
         }
 
+        // Folded into taxCollected/taxCredited (so netVat reconciles with the
+        // balance sheet even when a manual voucher touched these accounts),
+        // but also kept as their own summary/byPeriod figures and a raw list
+        // below - unlike every other adjustment above, these carry no rate,
+        // so they can't be attributed to byRate/byTreatment.
+        for (const adjustment of manualVatAdjustments) {
+            summary.taxCollected += adjustment.generatedDelta;
+            summary.manualAdjustmentGenerated += adjustment.generatedDelta;
+            summary.taxCredited += adjustment.deductibleDelta;
+            summary.manualAdjustmentDeductible += adjustment.deductibleDelta;
+
+            const periodKey = adjustment.entryDate ? new Date(adjustment.entryDate).toISOString().slice(0, 7) : null;
+            if (periodKey && adjustment.generatedDelta !== 0) {
+                const periodEntry = byPeriodMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+                periodEntry.taxAmount += adjustment.generatedDelta;
+                byPeriodMap.set(periodKey, periodEntry);
+            }
+            if (periodKey && adjustment.deductibleDelta !== 0) {
+                const periodEntry = byPeriodPurchasesMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+                periodEntry.taxAmount += adjustment.deductibleDelta;
+                byPeriodPurchasesMap.set(periodKey, periodEntry);
+            }
+        }
+
         const report = {
             summary: {
                 ...summary,
@@ -1271,10 +1342,19 @@ const getVatReport = asyncHandler(async (req, res, next) => {
                 financialCreditNoteBase: round2(summary.financialCreditNoteBase),
                 salesReversalBase: round2(summary.salesReversalBase),
                 purchaseReversalBase: round2(summary.purchaseReversalBase),
+                manualAdjustmentGenerated: round2(summary.manualAdjustmentGenerated),
+                manualAdjustmentDeductible: round2(summary.manualAdjustmentDeductible),
                 // Positive = owed to the DIAN this period; negative = credit
                 // balance carried forward (ET art. 815 - saldo a favor).
                 netVat: round2(summary.taxCollected - summary.taxCredited),
             },
+            manualAdjustments: manualVatAdjustments.map((a) => ({
+                id: a.id,
+                entryDate: a.entryDate,
+                description: a.description,
+                generatedDelta: round2(a.generatedDelta),
+                deductibleDelta: round2(a.deductibleDelta),
+            })),
             byTreatment: [...byTreatmentMap.values()].map((e) => ({ ...e, base: round2(e.base), taxAmount: round2(e.taxAmount) })),
             byRate: [...byRateMap.values()]
                 .sort((a, b) => a.rate - b.rate)

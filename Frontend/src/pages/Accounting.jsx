@@ -1639,6 +1639,7 @@ const OverviewTab = () => {
                         value={Math.abs(netVat)}
                         formatter={formatCurrency}
                         loading={loading}
+                        description={t("accounting.overview_net_vat_help")}
                         valueStyle={{ color: netVat >= 0 ? "var(--ohnix-status-danger)" : "var(--ohnix-status-success)", fontWeight: 700 }}
                     />
                 </Col>
