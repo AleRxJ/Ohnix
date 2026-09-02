@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import useI18n from "../../hooks/useI18n";
 import useScrollLock from "../../hooks/useScrollLock";
+import { isBuildTimePrerender } from "../../i18n/geoLanguage";
 import { api } from "../../api/api";
 import { trackContactFormConversion } from "../../utils/googleAds";
 import { trackContactFormLead } from "../../utils/metaPixel";
@@ -92,6 +93,17 @@ const TypewriterWord = ({ words }) => {
     const [phase, setPhase] = useState("typing");
 
     useEffect(() => {
+        // Matching the initial `text` state above only guarantees the FIRST
+        // render agrees with the prerendered snapshot - this effect then
+        // keeps typing/deleting for as long as the tab stays open, including
+        // through scripts/prerender.js's own build-time capture window. By
+        // the time that pass saves the page's HTML, this has already
+        // advanced well past word[0]'s first character, which a real
+        // visitor's fresh hydrateRoot() render (always starting at word[0])
+        // can no longer match - hydration mismatch (#418/#423). Freezing the
+        // cycle during that one pass keeps the snapshot exactly at the
+        // matched initial state.
+        if (isBuildTimePrerender()) return undefined;
         const word = words[idx];
         let timer;
         if (phase === "typing") {
@@ -139,6 +151,11 @@ export const HeroDashboard = () => {
             };
             requestAnimationFrame(tick);
         };
+        // Same build-time-prerender hazard as TypewriterWord/liveOps above:
+        // left running, this would bake settled/mid-animation counts into
+        // the static snapshot instead of the 0/0 a real visitor's fresh
+        // render starts at.
+        if (isBuildTimePrerender()) return undefined;
         const t = setTimeout(() => {
             animCount(24860, setProductCount);
             animCount(2846,  setValueCount);
@@ -147,11 +164,13 @@ export const HeroDashboard = () => {
     }, []);
 
     useEffect(() => {
+        if (isBuildTimePrerender()) return undefined;
         const iv = setInterval(() => setHighlightRow((r) => (r + 1) % 4), 1400);
         return () => clearInterval(iv);
     }, []);
 
     useEffect(() => {
+        if (isBuildTimePrerender()) return undefined;
         const iv = setInterval(() => setActiveSuite((current) => (current + 1) % 4), 3200);
         return () => clearInterval(iv);
     }, []);
@@ -368,6 +387,7 @@ export const OhnixEcosystem = () => {
     ];
 
     useEffect(() => {
+        if (isBuildTimePrerender()) return undefined;
         const timer = setInterval(() => setActive((value) => (value + 1) % ecosystems.length), 3400);
         return () => clearInterval(timer);
     }, [ecosystems.length]);
@@ -518,6 +538,7 @@ export const OhnixFlowField = () => {
     ];
 
     useEffect(() => {
+        if (isBuildTimePrerender()) return undefined;
         const timer = setInterval(() => setActive((value) => (value + 1) % systems.length), 4200);
         return () => clearInterval(timer);
     }, [systems.length]);
@@ -685,6 +706,16 @@ export const OhnixCommandCanvas = () => {
     const [liveOps, setLiveOps] = useState(3421);
 
     useEffect(() => {
+        // scripts/prerender.js waits (network-idle + a short settle delay)
+        // before saving this page's DOM as the static snapshot served to
+        // real visitors - long enough for this interval to tick at least
+        // once during that build-time capture. Baking an incremented number
+        // into the snapshot guarantees it disagrees with a real visitor's
+        // fresh hydrateRoot() render, which always starts at the literal
+        // 3421 above - React hydration mismatch (#418/#423). Skipping the
+        // interval during that one pass keeps the snapshot pinned to 3421,
+        // same as a real visitor's first render.
+        if (isBuildTimePrerender()) return undefined;
         const iv = setInterval(() => setLiveOps((v) => v + Math.floor(Math.random() * 5) + 1), 2600);
         return () => clearInterval(iv);
     }, []);
@@ -812,6 +843,12 @@ export const OhnixCommandCanvas = () => {
 
     useEffect(() => {
         if (reducedMotion) return;
+        // Same build-time-prerender hazard as the liveOps interval above:
+        // auto-advancing `active` here would change which suite's whole
+        // flow/KPI content is visible in the captured static snapshot,
+        // disagreeing with a real visitor's fresh render (always starts at
+        // suite 0).
+        if (isBuildTimePrerender()) return;
         const timer = setTimeout(() => setActive((value) => (value + 1) % spaces.length), ROTATE_MS);
         return () => clearTimeout(timer);
     }, [active, spaces.length, reducedMotion]);
