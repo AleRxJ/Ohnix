@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { detectCountryCode } from "../i18n/geoLanguage";
+import { detectCountryCode, isBuildTimePrerender } from "../i18n/geoLanguage";
 import { pricingService } from "../services/pricingService";
 import { formatCurrency } from "../utils/currency";
 
@@ -107,6 +107,15 @@ export const useMarketPricing = () => {
     useEffect(() => {
         // Already resolved earlier this session - nothing to (re-)fetch.
         if (marketPricing) return undefined;
+        // scripts/prerender.js waits for the page's network to go idle
+        // before saving its HTML as the static snapshot served to real
+        // visitors. Resolving this fetch during that pass would bake a
+        // build-host-geo-detected price into that snapshot, which a real
+        // visitor's own first render (marketPricing still null - see the
+        // lazy useState above) would never match - a guaranteed React
+        // hydration mismatch (#418/#423). Skipping it there keeps the
+        // snapshot on the same static fallback price a fresh visitor sees.
+        if (isBuildTimePrerender()) return undefined;
 
         let active = true;
 
