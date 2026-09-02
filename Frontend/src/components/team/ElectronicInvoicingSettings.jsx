@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, DatePicker, Form, Input, Select, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, DatePicker, Form, Input, Modal, Select, Tag, Tooltip, Typography } from "antd";
 import {
     ArrowLeftOutlined,
     ArrowRightOutlined,
     BankOutlined,
     CheckCircleOutlined,
+    EditOutlined,
     EnvironmentOutlined,
     FileProtectOutlined,
     IdcardOutlined,
@@ -18,6 +19,7 @@ import {
     SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
+import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
 import { getElectronicInvoicingProviderLabel } from "../../utils/electronicInvoicingProvider";
@@ -53,7 +55,18 @@ const stepFields = [
 // which the DIAN habilitación test-matrix panel below requires a company to
 // have before it can start - reusing this one parametrized form instead of
 // duplicating it per document type.
-const NumberingResolutionForm = ({ documentType, titleKey, hintKey, buttonKey, onAdded }) => {
+// autoAssignPrefix is set only for "91"/"92": unlike a factura's Resolución
+// de Facturación (DIAN pre-authorizes a specific prefix/range/dates before
+// you can use them), Resolución DIAN 000042 de 2020 only requires notas
+// crédito/débito to follow "un sistema de numeración consecutiva del emisor"
+// - the ISSUER'S OWN consecutive scheme, not one DIAN grants in advance.
+// itcycle-api-dian's own numbering-resolution creation is a plain database
+// insert with no DIAN-side validation either way (confirmed against its
+// admin.service.ts), so there's nothing to look up - only something to pick
+// once and keep using. Pre-filling sensible values here (a distinct 2-letter
+// prefix + a wide, decades-long range) turns "figure out what DIAN wants"
+// into "review these defaults and click Agregar."
+const NumberingResolutionForm = ({ documentType, titleKey, hintKey, buttonKey, onAdded, autoAssignPrefix }) => {
     const { t } = useI18n();
     const [form] = Form.useForm();
     const [adding, setAdding] = useState(false);
@@ -99,17 +112,37 @@ const NumberingResolutionForm = ({ documentType, titleKey, hintKey, buttonKey, o
                     <Text className="text-xs text-[var(--ohnix-text-muted)]">{t(hintKey)}</Text>
                 </div>
             </div>
-            <Form form={form} layout="vertical" className="mt-4">
+            {autoAssignPrefix && (
+                <Alert
+                    className="mt-3 dark-alert dark-alert-purple"
+                    type="info"
+                    showIcon
+                    message={t("fiscal_setup.auto_assign_resolution_hint")}
+                />
+            )}
+            <Form
+                form={form}
+                layout="vertical"
+                className="mt-4"
+                initialValues={autoAssignPrefix ? {
+                    prefix: autoAssignPrefix,
+                    resolutionNumber: "1",
+                    startNumber: 1,
+                    endNumber: 999999,
+                    startDate: dayjs(),
+                    endDate: dayjs().add(10, "year"),
+                } : undefined}
+            >
                 <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                     <Form.Item
                         name="prefix"
                         label={t("fiscal_setup.prefix")}
-                        extra={t("fiscal_setup.prefix_hint")}
+                        extra={t(autoAssignPrefix ? "fiscal_setup.prefix_hint_auto_assign" : "fiscal_setup.prefix_hint")}
                         rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidPrefix, t("fiscal_setup.prefix_invalid"))]}
                     >
                         <Input size="large" maxLength={4} className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} extra={t("fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} extra={t(autoAssignPrefix ? "fiscal_setup.resolution_number_hint_auto_assign" : "fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
                         <Input size="large" className="auth-ohnix-input" />
                     </Form.Item>
                     <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} extra={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
@@ -184,10 +217,16 @@ const MISSING_READINESS_LABEL_KEYS = {
 // (see updateMyCompany's vatResponsibleEffectiveFrom tracking) and had no
 // edit path left once the wizard disappeared - so it gets its own inline
 // editor instead of just being displayed.
-const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
+const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged, onResolutionsChanged }) => {
     const { t } = useI18n();
     const [vatResponsible, setVatResponsible] = useState(company?.vatResponsible === "unset" ? undefined : company?.vatResponsible);
     const [savingVat, setSavingVat] = useState(false);
+    // Only "91"/"92" resolutions are ever editable (see
+    // updateItcycleNumberingResolutionForCompany's comment) - null means the
+    // edit modal is closed.
+    const [editingResolution, setEditingResolution] = useState(null);
+    const [editForm] = Form.useForm();
+    const [savingResolution, setSavingResolution] = useState(false);
 
     useEffect(() => {
         setVatResponsible(company?.vatResponsible === "unset" ? undefined : company?.vatResponsible);
@@ -204,6 +243,40 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
             toast.error(resolveApiErrorMessage(error, t, {}, "fiscal_setup.status_load_error"));
         } finally {
             setSavingVat(false);
+        }
+    };
+
+    const openEditResolution = (resolution) => {
+        setEditingResolution(resolution);
+        editForm.setFieldsValue({
+            prefix: resolution.prefix,
+            resolutionNumber: resolution.resolutionNumber,
+            startNumber: resolution.startNumber,
+            endNumber: resolution.endNumber,
+            startDate: dayjs(resolution.startDate),
+            endDate: dayjs(resolution.endDate),
+        });
+    };
+
+    const submitEditResolution = async () => {
+        try {
+            const values = await editForm.validateFields();
+            setSavingResolution(true);
+            await companyService.updateMyItcycleNumberingResolution(editingResolution.id, {
+                prefix: values.prefix,
+                resolutionNumber: values.resolutionNumber,
+                startNumber: Number(values.startNumber),
+                endNumber: Number(values.endNumber),
+                startDate: values.startDate?.format("YYYY-MM-DD"),
+                endDate: values.endDate?.format("YYYY-MM-DD"),
+            });
+            toast.success(t("fiscal_setup.resolutions_edit_success"));
+            setEditingResolution(null);
+            onResolutionsChanged?.();
+        } catch (error) {
+            if (!error?.errorFields) toast.error(resolveApiErrorMessage(error, t, {}, "fiscal_setup.resolutions_edit_error"));
+        } finally {
+            setSavingResolution(false);
         }
     };
 
@@ -321,30 +394,111 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
                                     <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_prefix")}</th>
                                     <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_number")}</th>
                                     <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_validity")}</th>
-                                    <th className="pb-2 font-medium">{t("fiscal_setup.resolutions_col_status")}</th>
+                                    <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_status")}</th>
+                                    <th className="pb-2 font-medium" />
                                 </tr>
                             </thead>
                             <tbody>
-                                {resolutions.map((resolution) => (
-                                    <tr key={resolution.id} className="border-t border-[var(--ohnix-line-4)]">
-                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{documentTypeLabel(resolution.documentType)}</td>
-                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{resolution.prefix}</td>
-                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{resolution.resolutionNumber}</td>
-                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">
-                                            {new Date(resolution.startDate).toLocaleDateString()} – {new Date(resolution.endDate).toLocaleDateString()}
-                                        </td>
-                                        <td className="py-2">
-                                            <Tag color={resolution.isCurrent ? "green" : "default"}>
-                                                {resolution.isCurrent ? t("fiscal_setup.resolutions_current") : t("fiscal_setup.resolutions_not_current")}
-                                            </Tag>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {resolutions.map((resolution) => {
+                                    // Only "91"/"92" (self-assigned, no DIAN validation) are ever
+                                    // editable, and only before any document has claimed a number
+                                    // from them - see updateItcycleNumberingResolutionForCompany.
+                                    const canEdit = (resolution.documentType === "91" || resolution.documentType === "92")
+                                        && resolution.currentNumber === resolution.startNumber;
+                                    return (
+                                        <tr key={resolution.id} className="border-t border-[var(--ohnix-line-4)]">
+                                            <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{documentTypeLabel(resolution.documentType)}</td>
+                                            <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{resolution.prefix}</td>
+                                            <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{resolution.resolutionNumber}</td>
+                                            <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">
+                                                {new Date(resolution.startDate).toLocaleDateString()} – {new Date(resolution.endDate).toLocaleDateString()}
+                                            </td>
+                                            <td className="py-2 pr-3">
+                                                <Tag color={resolution.isCurrent ? "green" : "default"}>
+                                                    {resolution.isCurrent ? t("fiscal_setup.resolutions_current") : t("fiscal_setup.resolutions_not_current")}
+                                                </Tag>
+                                            </td>
+                                            <td className="py-2">
+                                                {canEdit && (
+                                                    <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEditResolution(resolution)}>
+                                                        {t("fiscal_setup.resolutions_edit")}
+                                                    </Button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
                 )}
             </div>
+
+            <Modal
+                title={t("fiscal_setup.resolutions_edit_title")}
+                open={Boolean(editingResolution)}
+                onCancel={() => setEditingResolution(null)}
+                onOk={submitEditResolution}
+                confirmLoading={savingResolution}
+                okText={t("fiscal_setup.resolutions_edit_save")}
+                cancelText={t("fiscal_setup.habilitacion_confirm_cancel")}
+                destroyOnClose
+            >
+                <Form form={editForm} layout="vertical" className="mt-4">
+                    <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                        <Form.Item
+                            name="prefix"
+                            label={t("fiscal_setup.prefix")}
+                            rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidPrefix, t("fiscal_setup.prefix_invalid"))]}
+                        >
+                            <Input size="large" maxLength={4} className="auth-ohnix-input" />
+                        </Form.Item>
+                        <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
+                            <Input size="large" className="auth-ohnix-input" />
+                        </Form.Item>
+                        <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                            <Input size="large" type="number" min={1} className="auth-ohnix-input" />
+                        </Form.Item>
+                        <Form.Item
+                            name="endNumber"
+                            label={t("fiscal_setup.end_number")}
+                            dependencies={["startNumber"]}
+                            rules={[
+                                { required: true, message: t("fiscal_setup.field_required") },
+                                {
+                                    validator: (_, value) => {
+                                        const startNumber = editForm.getFieldValue("startNumber");
+                                        if (!value || !startNumber) return Promise.resolve();
+                                        return Number(value) > Number(startNumber) ? Promise.resolve() : Promise.reject(new Error(t("fiscal_setup.number_range_invalid")));
+                                    },
+                                },
+                            ]}
+                        >
+                            <Input size="large" type="number" min={1} className="auth-ohnix-input" />
+                        </Form.Item>
+                        <Form.Item name="startDate" label={t("fiscal_setup.start_date")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                            <DatePicker size="large" className="w-full" />
+                        </Form.Item>
+                        <Form.Item
+                            name="endDate"
+                            label={t("fiscal_setup.end_date")}
+                            dependencies={["startDate"]}
+                            rules={[
+                                { required: true, message: t("fiscal_setup.field_required") },
+                                {
+                                    validator: (_, value) => {
+                                        const startDate = editForm.getFieldValue("startDate");
+                                        if (!value || !startDate) return Promise.resolve();
+                                        return value.isAfter(startDate) ? Promise.resolve() : Promise.reject(new Error(t("fiscal_setup.date_range_invalid")));
+                                    },
+                                },
+                            ]}
+                        >
+                            <DatePicker size="large" className="w-full" />
+                        </Form.Item>
+                    </div>
+                </Form>
+            </Modal>
         </Card>
     );
 };
@@ -562,7 +716,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                     {status.readinessError && (
                         <Alert className="mt-3 dark-alert dark-alert-amber" type="warning" showIcon message={t("fiscal_setup.readiness_unavailable")} description={t("fiscal_setup.readiness_unavailable_hint")} />
                     )}
-                    <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} />
+                    <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} onResolutionsChanged={refresh} />
                     <FirmaPassSelfService
                         electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)}
                         electronicInvoicingAtRisk={Boolean(status.electronicInvoicingAtRisk)}
@@ -583,6 +737,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             titleKey="fiscal_setup.credit_note_resolution_title"
                             hintKey="fiscal_setup.credit_note_resolution_hint"
                             buttonKey="fiscal_setup.add_credit_note_resolution"
+                            autoAssignPrefix="NC"
                             onAdded={refresh}
                         />
                     )}
@@ -592,6 +747,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             titleKey="fiscal_setup.debit_note_resolution_title"
                             hintKey="fiscal_setup.debit_note_resolution_hint"
                             buttonKey="fiscal_setup.add_debit_note_resolution"
+                            autoAssignPrefix="ND"
                             onAdded={refresh}
                         />
                     )}

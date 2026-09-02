@@ -122,7 +122,7 @@ export const listCashAccountMovements = asyncHandler(async (req, res) => {
 });
 
 export const registerManualExpense = asyncHandler(async (req, res, next) => {
-    const { amount, expense_account_id, cash_account_id, description, expense_date, statement_entry_id } = req.body || {};
+    const { amount, expense_account_id, cash_account_id, description, expense_date, statement_entry_id, tax_treatment, tax_rate } = req.body || {};
     if (!expense_account_id || !cash_account_id) {
         return next(new ApiError(400, "expense_account_id y cash_account_id son obligatorios"));
     }
@@ -136,6 +136,8 @@ export const registerManualExpense = asyncHandler(async (req, res, next) => {
         description,
         expenseDate: expense_date,
         statementEntryId: statement_entry_id || null,
+        taxTreatment: tax_treatment || "excluded",
+        taxRate: tax_rate || 0,
     });
     return res.status(201).json(new ApiResponse(201, {
         journal_entry_id: result.entry.id,
@@ -272,7 +274,7 @@ export const listCashAccountConfigurationHistory = asyncHandler(async (req, res)
 });
 
 export const registerManualIncome = asyncHandler(async (req, res, next) => {
-    const { amount, revenue_account_id, cash_account_id, description, income_date, statement_entry_id } = req.body || {};
+    const { amount, revenue_account_id, cash_account_id, description, income_date, statement_entry_id, tax_treatment, tax_rate } = req.body || {};
     if (!revenue_account_id || !cash_account_id) return next(new ApiError(400, "revenue_account_id y cash_account_id son obligatorios"));
     const result = await manualIncomeService.registerManualIncome({
         accountId: req.user.prismaId,
@@ -283,6 +285,8 @@ export const registerManualIncome = asyncHandler(async (req, res, next) => {
         description,
         incomeDate: income_date,
         statementEntryId: statement_entry_id || null,
+        taxTreatment: tax_treatment || "excluded",
+        taxRate: tax_rate || 0,
     });
     return res.status(201).json(new ApiResponse(201, {
         journal_entry_id: result.entry.id,

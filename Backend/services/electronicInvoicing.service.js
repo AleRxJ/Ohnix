@@ -14,6 +14,7 @@ import {
     provisionItcycleCompany,
     setItcycleDianConfiguration,
     createItcycleNumberingResolution,
+    updateItcycleNumberingResolution,
     uploadItcycleCertificate,
     createItcycleApiKey,
     createItcycleInvoice,
@@ -23,6 +24,7 @@ import {
     ItcycleDianError,
     isItcycleConfigured,
 } from "./itcycleDian.service.js";
+import { getCompanyDianReadiness } from "./firmaPassProvisioning.service.js";
 import { encryptSecret, decryptSecret } from "../utils/secretEncryption.js";
 import { computeNitCheckDigit } from "../utils/nit.util.js";
 import { normalizeCountryCode } from "./companyCountry.service.js";
@@ -926,6 +928,42 @@ export const addItcycleNumberingResolutionForCompany = async ({ companyId, docum
     } catch (error) {
         const providerPayload = error instanceof ItcycleDianError ? error.payload : null;
         throw new ApiError(502, error.message || "Failed to add numbering resolution with itcycle-api-dian", providerPayload ? [providerPayload] : undefined);
+    }
+};
+
+// Self-service correction, restricted to "91"/"92" (nota crédito/débito) -
+// unlike "01"/"05", DIAN never issues or validates those two, so fixing a
+// typo here can't desync anything DIAN itself has on record (see
+// NumberingResolutionForm's autoAssignPrefix comment in
+// ElectronicInvoicingSettings.jsx). itcycle-api-dian's own
+// updateNumberingResolution additionally refuses this once any document has
+// claimed a number from the resolution - that failure surfaces as-is here.
+export const updateItcycleNumberingResolutionForCompany = async ({ companyId, resolutionId, prefix, resolutionNumber, startNumber, endNumber, startDate, endDate }) => {
+    if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) throw new ApiError(404, "Company not found");
+    if (!text(company.itcycleCompanyId)) {
+        throw new ApiError(422, "Company must be provisioned with itcycle-api-dian before editing a numbering resolution");
+    }
+
+    let readiness;
+    try {
+        readiness = await getCompanyDianReadiness({ companyId });
+    } catch (error) {
+        throw new ApiError(502, error.message || "Failed to verify the numbering resolution with itcycle-api-dian");
+    }
+    const resolution = (readiness?.resolutions || []).find((r) => r.id === resolutionId);
+    if (!resolution) throw new ApiError(404, "Numbering resolution not found");
+    if (resolution.documentType !== "91" && resolution.documentType !== "92") {
+        throw new ApiError(403, "Solo las resoluciones de nota crédito/débito se pueden editar aquí - las de factura o documento soporte quedaron registradas ante la DIAN y requieren soporte.");
+    }
+
+    try {
+        return await updateItcycleNumberingResolution({ companyId: company.itcycleCompanyId, resolutionId, prefix, resolutionNumber, startNumber, endNumber, startDate, endDate });
+    } catch (error) {
+        const providerPayload = error instanceof ItcycleDianError ? error.payload : null;
+        throw new ApiError(502, error.message || "Failed to update numbering resolution with itcycle-api-dian", providerPayload ? [providerPayload] : undefined);
     }
 };
 // ---------------------------------------------------------------------------

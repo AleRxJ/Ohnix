@@ -15,6 +15,7 @@ import {
 } from "../utils/dianValidation.util.js";
 import {
     addItcycleNumberingResolutionForCompany,
+    updateItcycleNumberingResolutionForCompany,
     ensureElectronicInvoicingPlan,
     registerCompanyWithItcycle,
 } from "../services/electronicInvoicing.service.js";
@@ -243,6 +244,24 @@ export const addMyItcycleNumberingResolution = asyncHandler(async (req, res) => 
     assertValidNumberingResolution(req.body || {});
     const data = await addItcycleNumberingResolutionForCompany({ companyId: company.id, ...(req.body || {}) });
     return res.status(201).json(new ApiResponse(201, data, "Resolución agregada correctamente"));
+});
+
+// Correction, not a partial PATCH - the edit form always resends every
+// field (pre-filled with the current values), so this reuses the same
+// full-shape validator as add. updateItcycleNumberingResolutionForCompany
+// itself restricts this to "91"/"92" (nota crédito/débito - see that
+// function's comment) and itcycle-api-dian additionally refuses it once any
+// document has claimed a number from the resolution.
+export const updateMyItcycleNumberingResolution = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    assertValidNumberingResolution(req.body || {});
+    const data = await updateItcycleNumberingResolutionForCompany({
+        companyId: company.id,
+        resolutionId: req.params.resolutionId,
+        ...(req.body || {}),
+    });
+    return res.status(200).json(new ApiResponse(200, data, "Resolución actualizada correctamente"));
 });
 
 export const resolveMyFirmaPassOrderNumber = asyncHandler(async (req, res) => {

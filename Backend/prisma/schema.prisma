@@ -2010,7 +2010,14 @@ model RecurringExpenseTemplate {
   description          String
   expenseAccountId     String    @map("expense_account_id")
   cashAccountId        String    @map("cash_account_id")
+  // The TOTAL paid each period (what actually leaves the cash/bank account),
+  // not a pre-tax base - matches how a business owner actually thinks about
+  // rent/a recurring bill ("I pay $1,500,000/month"), unlike a product's
+  // list price. When taxTreatment is "taxed", generation backs the base and
+  // taxRate-implied VAT out of this total instead of adding VAT on top of it.
   amount               Decimal   @db.Decimal(14, 2)
+  taxTreatment         ProductTaxTreatment @default(excluded) @map("tax_treatment")
+  taxRate              Decimal   @default(0) @map("tax_rate") @db.Decimal(5, 2)
   // 1-28 only (not 29-31) so every calendar month, February included, has an
   // unambiguous matching day - the alternative (clamping 30/31 down to each
   // month's actual last day) would silently shift a template's effective

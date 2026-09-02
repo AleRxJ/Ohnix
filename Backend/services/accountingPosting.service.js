@@ -3,6 +3,19 @@ import { recordJournalEntry } from "./journalEntry.service.js";
 
 export const getLineCostBasis = (line) => Number(line.costBasisApplied ?? line.buyingPrice ?? 0);
 const round2 = (value) => Number(Number(value).toFixed(2));
+
+// Decomposes a TOTAL (what actually left/entered the cash account - already
+// includes VAT, if any) into its pre-tax base and the VAT amount. This is
+// the opposite direction from computePurchaseItemTax (purchase.service.js),
+// which starts from a pre-tax unit price and adds VAT on top - there's no
+// pre-tax "list price" for a manual expense/income or a recurring expense
+// template, only the amount a business owner actually pays or receives, so
+// that's what's entered and this backs the split out of it.
+export const decomposeInclusiveTax = (total, treatment, rate) => {
+    if (treatment !== "taxed" || !rate) return { base: round2(total), taxAmount: 0 };
+    const base = round2(total / (1 + Number(rate) / 100));
+    return { base, taxAmount: round2(total - base) };
+};
 export const buildAccountingThirdParty = (type, entity) => entity ? ({
     type,
     id: entity.id,

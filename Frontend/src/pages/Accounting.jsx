@@ -661,6 +661,12 @@ const RecurringExpensesTab = () => {
     const [editing, setEditing] = useState(null);
     const [open, setOpen] = useState(false);
     const [runningId, setRunningId] = useState(null);
+    const watchedTreatment = Form.useWatch("tax_treatment", form);
+    const watchedAmount = Form.useWatch("amount", form);
+    const watchedRate = Form.useWatch("tax_rate", form);
+    const taxPreview = watchedTreatment === "taxed" && Number(watchedAmount) > 0 && Number(watchedRate) > 0
+        ? { base: Number(watchedAmount) / (1 + Number(watchedRate) / 100), tax: Number(watchedAmount) - Number(watchedAmount) / (1 + Number(watchedRate) / 100) }
+        : null;
 
     const load = async () => {
         setLoading(true);
@@ -686,6 +692,8 @@ const RecurringExpensesTab = () => {
             day_of_month: template?.day_of_month ?? 1,
             expense_account_id: template?.expense_account?._id,
             cash_account_id: template?.cash_account?._id,
+            tax_treatment: template?.tax_treatment || "excluded",
+            tax_rate: template?.tax_rate || 19,
             is_active: template?.is_active ?? true,
         });
         setOpen(true);
@@ -732,6 +740,7 @@ const RecurringExpensesTab = () => {
                 { title: t("accounting.recurring_expense_day_of_month"), dataIndex: "day_of_month", width: 90, align: "center" },
                 { title: t("accounting.section_expenses"), render: (_, row) => row.expense_account ? `${row.expense_account.code} · ${row.expense_account.name}` : "—" },
                 { title: t("accounting.recurring_expense_cash_account"), render: (_, row) => row.cash_account?.name || "—" },
+                { title: t("accounting.recurring_expense_vat_column"), render: (_, row) => row.tax_treatment === "taxed" ? <Tag color="blue">{t("accounting.tax_treatment_taxed")} {row.tax_rate}%</Tag> : <Tag>{t(`accounting.tax_treatment_${row.tax_treatment}`)}</Tag> },
                 {
                     title: t("accounting.col_status"),
                     render: (_, row) => (
@@ -768,7 +777,7 @@ const RecurringExpensesTab = () => {
             <Alert className="dark-alert dark-alert-teal mb-4" showIcon type="info" message={t("accounting.recurring_expense_form_help")} />
             <Form form={form} layout="vertical">
                 <Form.Item name="description" label={t("accounting.col_description")} rules={[{ required: true, max: 160 }]}><Input /></Form.Item>
-                <Form.Item name="amount" label={t("accounting.col_amount")} rules={[{ required: true, type: "number" }]}><InputNumber min={0.01} step={1000} className="w-full" /></Form.Item>
+                <Form.Item name="amount" label={t("accounting.col_amount")} extra={t("accounting.recurring_expense_amount_help")} rules={[{ required: true, type: "number" }]}><InputNumber min={0.01} step={1000} className="w-full" /></Form.Item>
                 <Form.Item name="day_of_month" label={t("accounting.recurring_expense_day_of_month")} extra={t("accounting.recurring_expense_day_of_month_help")} rules={[{ required: true, type: "number", min: 1, max: 28 }]}><InputNumber min={1} max={28} className="w-full" /></Form.Item>
                 <Form.Item name="expense_account_id" label={t("accounting.section_expenses")} rules={[{ required: true }]}>
                     <Select showSearch optionFilterProp="label" options={expenseAccounts.map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))} />
@@ -776,6 +785,32 @@ const RecurringExpensesTab = () => {
                 <Form.Item name="cash_account_id" label={t("accounting.recurring_expense_cash_account")} rules={[{ required: true }]}>
                     <Select showSearch optionFilterProp="label" options={cashAccounts.map((a) => ({ value: a._id, label: a.name }))} />
                 </Form.Item>
+                <Row gutter={12}>
+                    <Col xs={24} sm={taxPreview !== null || watchedTreatment === "taxed" ? 12 : 24}>
+                        <Form.Item name="tax_treatment" label={t("accounting.tax_treatment")} rules={[{ required: true }]}>
+                            <Select options={[
+                                { value: "excluded", label: t("accounting.tax_treatment_excluded") },
+                                { value: "exempt", label: t("accounting.tax_treatment_exempt") },
+                                { value: "taxed", label: t("accounting.tax_treatment_taxed") },
+                            ]} />
+                        </Form.Item>
+                    </Col>
+                    {watchedTreatment === "taxed" && (
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="tax_rate" label={t("accounting.tax_rate")} rules={[{ required: true, type: "number", min: 0.01, max: 100 }]}>
+                                <InputNumber min={0} max={100} precision={2} className="w-full" />
+                            </Form.Item>
+                        </Col>
+                    )}
+                </Row>
+                {taxPreview && (
+                    <Alert
+                        className="dark-alert dark-alert-purple mb-4"
+                        type="info"
+                        showIcon
+                        message={t("accounting.recurring_expense_tax_preview", { base: formatCurrency(taxPreview.base), tax: formatCurrency(taxPreview.tax) })}
+                    />
+                )}
                 {editing && <Form.Item name="is_active" label={t("accounting.col_status")} valuePropName="checked"><Switch /></Form.Item>}
             </Form>
         </Modal>

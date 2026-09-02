@@ -1044,6 +1044,48 @@ const loadVatReversalAdjustments = async ({ userId, isAdmin, req, entryDateFilte
     return entries.filter((entry) => allowed.has(entry.sourceId)).map(summarizeVatReversalEntry);
 };
 
+// manualExpense/manualIncome/recurringExpense.service.js can now post a
+// taxed line (see accountingPosting.service.js#decomposeInclusiveTax) - the
+// base is whatever landed on the expense/revenue account in that same
+// entry, the rate is derived from base vs. the VAT-account line, same as
+// summarizeFinancialCreditNoteEntry above. Untaxed (excluded/exempt) manual
+// entries are NOT returned here: unlike OrderDetail/PurchaseDetail, there's
+// no persisted "detail" row for these, so once posted without a VAT line
+// there's nothing left in the ledger to tell excluded and exempt apart -
+// only the taxed subset survives distinguishably, which is also the only
+// part a bimestral filing's by-rate breakdown actually needs.
+const loadOperationalVatEntries = async ({ userId, isAdmin, entryDateFilter }) => {
+    const entries = await prisma.journalEntry.findMany({
+        where: {
+            sourceType: { in: ["manual_expense", "recurring_expense", "manual_income"] },
+            ...(isAdmin ? {} : { period: { createdById: userId } }),
+            ...(Object.keys(entryDateFilter).length ? { entryDate: entryDateFilter } : {}),
+            lines: { some: { chartAccount: { code: { in: ["240805", "240810"] } } } },
+        },
+        select: {
+            id: true,
+            sourceType: true,
+            entryDate: true,
+            lines: { select: { debit: true, credit: true, chartAccount: { select: { code: true, accountType: true } } } },
+        },
+    });
+
+    return entries.map((entry) => {
+        const isIncome = entry.sourceType === "manual_income";
+        const vatLine = entry.lines.find((line) => line.chartAccount?.code === (isIncome ? "240805" : "240810"));
+        const baseLine = entry.lines.find((line) => line.chartAccount?.accountType === (isIncome ? "revenue" : "expense"));
+        const taxAmount = round2(Number(isIncome ? vatLine?.credit : vatLine?.debit) || 0);
+        const base = round2(Number(isIncome ? baseLine?.credit : baseLine?.debit) || 0);
+        return {
+            kind: isIncome ? "sale" : "purchase",
+            entryDate: entry.entryDate,
+            base,
+            taxAmount,
+            rate: base > 0 ? round2((taxAmount / base) * 100) : 0,
+        };
+    });
+};
+
 // manualJournalVoucher.service.js can target ANY active chart account,
 // including the VAT liability accounts (240805/240810) - unlike
 // order_sale/purchase and their returns/credit-notes above, a manual line
@@ -1125,7 +1167,7 @@ const getVatReport = asyncHandler(async (req, res, next) => {
         // processing documents have fiscal snapshots already, but no journal
         // entry yet. Reversals are recognized separately by their own journal
         // date below, so a later return never rewrites a closed sales period.
-        const [orderDetails, purchaseDetails, financialCreditNotes, vatReversals, manualVatAdjustments] = await Promise.all([
+        const [orderDetails, purchaseDetails, financialCreditNotes, vatReversals, manualVatAdjustments, operationalVatEntries] = await Promise.all([
             prisma.orderDetail.findMany({
                 where: {
                     order: {
@@ -1163,6 +1205,7 @@ const getVatReport = asyncHandler(async (req, res, next) => {
             loadFinancialCreditNoteAdjustments({ userId, isAdmin, req, entryDateFilter: dateFilter }),
             loadVatReversalAdjustments({ userId, isAdmin, req, entryDateFilter: dateFilter }),
             loadManualVatAdjustments({ userId, isAdmin, entryDateFilter: dateFilter }),
+            loadOperationalVatEntries({ userId, isAdmin, entryDateFilter: dateFilter }),
         ]);
 
         const byTreatmentMap = new Map();
@@ -1251,6 +1294,58 @@ const getVatReport = asyncHandler(async (req, res, next) => {
             periodEntry.base += base;
             periodEntry.taxAmount += taxAmount;
             byPeriodPurchasesMap.set(periodKey, periodEntry);
+        }
+
+        // Manual expenses/income and recurring-expense generations that were
+        // posted with a taxed treatment - always "taxed" by construction (see
+        // loadOperationalVatEntries), so no treatment branch is needed the
+        // way orderDetails/purchaseDetails above have one.
+        for (const item of operationalVatEntries) {
+            const periodKey = item.entryDate ? new Date(item.entryDate).toISOString().slice(0, 7) : null;
+            if (item.kind === "sale") {
+                summary.taxCollected += item.taxAmount;
+                summary.taxedBase += item.base;
+
+                const treatmentEntry = byTreatmentMap.get("taxed") || { treatment: "taxed", base: 0, taxAmount: 0, lineCount: 0 };
+                treatmentEntry.base += item.base;
+                treatmentEntry.taxAmount += item.taxAmount;
+                treatmentEntry.lineCount += 1;
+                byTreatmentMap.set("taxed", treatmentEntry);
+
+                const rateEntry = byRateMap.get(item.rate) || { rate: item.rate, base: 0, taxAmount: 0, lineCount: 0 };
+                rateEntry.base += item.base;
+                rateEntry.taxAmount += item.taxAmount;
+                rateEntry.lineCount += 1;
+                byRateMap.set(item.rate, rateEntry);
+
+                if (periodKey) {
+                    const periodEntry = byPeriodMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+                    periodEntry.base += item.base;
+                    periodEntry.taxAmount += item.taxAmount;
+                    byPeriodMap.set(periodKey, periodEntry);
+                }
+            } else {
+                summary.taxCredited += item.taxAmount;
+
+                const treatmentEntry = byTreatmentPurchasesMap.get("taxed") || { treatment: "taxed", base: 0, taxAmount: 0, lineCount: 0 };
+                treatmentEntry.base += item.base;
+                treatmentEntry.taxAmount += item.taxAmount;
+                treatmentEntry.lineCount += 1;
+                byTreatmentPurchasesMap.set("taxed", treatmentEntry);
+
+                const rateEntry = byRatePurchasesMap.get(item.rate) || { rate: item.rate, base: 0, taxAmount: 0, lineCount: 0 };
+                rateEntry.base += item.base;
+                rateEntry.taxAmount += item.taxAmount;
+                rateEntry.lineCount += 1;
+                byRatePurchasesMap.set(item.rate, rateEntry);
+
+                if (periodKey) {
+                    const periodEntry = byPeriodPurchasesMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+                    periodEntry.base += item.base;
+                    periodEntry.taxAmount += item.taxAmount;
+                    byPeriodPurchasesMap.set(periodKey, periodEntry);
+                }
+            }
         }
 
         for (const adjustment of financialCreditNotes) {

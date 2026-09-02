@@ -183,6 +183,21 @@ export const createItcycleNumberingResolution = async ({ companyId, documentType
     });
 };
 
+// Correction-only - itcycle-api-dian rejects this once any document has
+// actually claimed a number from the resolution (currentNumber moved past
+// startNumber). See that repo's updateNumberingResolution for why: at that
+// point the range/prefix are already part of an issued document's permanent
+// record, so a resolution in use needs a new one superseding it, not an edit.
+export const updateItcycleNumberingResolution = async ({ companyId, resolutionId, prefix, resolutionNumber, startNumber, endNumber, startDate, endDate }) => {
+    requireAdminConfigured();
+    return request({
+        method: "PATCH",
+        path: `/api/v1/admin/companies/${companyId}/numbering-resolutions/${resolutionId}`,
+        body: { prefix, resolutionNumber, startNumber, endNumber, startDate, endDate },
+        authHeader: adminAuthHeader(),
+    });
+};
+
 export const uploadItcycleCertificate = async ({ companyId, provider, certificateIdentifier, p12Base64, password, expiresAt }) => {
     requireAdminConfigured();
     return request({

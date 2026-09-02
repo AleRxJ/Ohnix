@@ -5,6 +5,7 @@ import { upload } from "../middleware/multer.middleware.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
 import {
     addMyItcycleNumberingResolution,
+    updateMyItcycleNumberingResolution,
     activateMyItcycleElectronicInvoicing,
     confirmMyFirmaPassValidation,
     deleteMyCompanyLogo,
@@ -36,6 +37,7 @@ router.route("/me/itcycle/status").get(getMyItcycleStatus);
 router.route("/me/itcycle/register").post(idempotent("company.itcycle.register"), registerMyCompanyWithItcycle);
 router.route("/me/itcycle/activate").post(idempotent("company.itcycle.activate"), activateMyItcycleElectronicInvoicing);
 router.route("/me/itcycle/numbering-resolutions").post(idempotent("company.itcycle.numbering-resolution"), addMyItcycleNumberingResolution);
+router.route("/me/itcycle/numbering-resolutions/:resolutionId").patch(updateMyItcycleNumberingResolution);
 router.route("/me/itcycle/firmapass/order/:orderNumber").get(resolveMyFirmaPassOrderNumber);
 router.route("/me/itcycle/firmapass/validations/:validationUuid").get(getMyFirmaPassValidationDetail);
 router.route("/me/itcycle/firmapass/validations/:validationUuid/rut").post(uploadMyFirmaPassRut);

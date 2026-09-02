@@ -47,6 +47,14 @@ export const companyService = {
         return response.data;
     },
 
+    // Only "91"/"92" (nota crédito/débito) can be corrected this way, and
+    // only while unused - see Backend/services/electronicInvoicing.service.js's
+    // updateItcycleNumberingResolutionForCompany for both restrictions.
+    async updateMyItcycleNumberingResolution(resolutionId, payload) {
+        const response = await api.patch(`/company/me/itcycle/numbering-resolutions/${resolutionId}`, payload);
+        return response.data;
+    },
+
     async activateMyItcycleElectronicInvoicing(idempotencyKey) {
         const response = await api.post("/company/me/itcycle/activate", undefined, {
             headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
