@@ -50,7 +50,7 @@
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/:path((?!assets/).*)",
       "destination": "/app.html"
     }
   ]
