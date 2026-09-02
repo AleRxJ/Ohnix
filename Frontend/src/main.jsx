@@ -1,4 +1,5 @@
 // import { StrictMode } from "react";
+import { isPublicMarketingPath } from "./utils/publicPaths.js";
 
 // A production deploy deletes the old build's hashed chunk files (e.g.
 // Login-B-Fjz8gK.js) - a tab that's had the app open since before that
@@ -15,12 +16,7 @@ window.addEventListener("vite:preloadError", () => {
 });
 
 const rootElement = document.getElementById("root");
-const PUBLIC_PATHS = new Set([
-    "/", "/precios", "/demo", "/software-inventario-pymes",
-    "/facturacion-electronica-dian", "/comparativa/ohnix-vs-alegra",
-    "/colaboracion-en-equipo", "/blog",
-]);
-const isPublicPath = PUBLIC_PATHS.has(location.pathname) || location.pathname.startsWith("/blog/");
+const isPublicPath = isPublicMarketingPath(location.pathname);
 const isPrerendered = isPublicPath
     && rootElement.dataset.prerendered === "true"
     && rootElement.childElementCount > 0;

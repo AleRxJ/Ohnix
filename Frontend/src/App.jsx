@@ -1,5 +1,5 @@
-import React, { Suspense, lazy, useContext } from "react";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import React, { Suspense, lazy, useContext, useEffect, useRef } from "react";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n/config.js";
 import { Toaster } from "react-hot-toast";
@@ -11,6 +11,39 @@ import { TeamProvider, useTeam } from "./context/TeamContext";
 import { InventoryTourProvider } from "./context/InventoryTourContext";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
 import { ELECTRONIC_INVOICING_ENABLED } from "./config/features";
+import { isPublicMarketingPath } from "./utils/publicPaths.js";
+
+// main.jsx picks exactly one CSS bundle (marketingStyles.js, no antd, for
+// PUBLIC_PATHS - or the full appStyles.js otherwise) based on whichever URL
+// the tab first loaded, and never revisits that choice - there's no reason
+// to, for a fresh full page load. But react-router's client-side navigation
+// doesn't reload the page or re-run main.jsx, so a visitor who lands on "/"
+// (marketingStyles only) and then clicks through to e.g. "/login" or
+// "/dashboard" keeps running with zero antd CSS loaded - every antd
+// component on that route renders completely unstyled. Watching the route
+// here and lazily loading whichever bundle wasn't picked at boot, the first
+// time the visitor actually crosses into that other zone, fixes it without
+// paying for both bundles up front on every load.
+const loadedStyleBundles = new Set();
+const StyleBundleSync = () => {
+    const { pathname } = useLocation();
+    const isFirstRun = useRef(true);
+    useEffect(() => {
+        if (isFirstRun.current) {
+            // main.jsx already loaded the right bundle for this exact
+            // pathname before React even mounted - nothing to do here yet.
+            isFirstRun.current = false;
+            loadedStyleBundles.add(isPublicMarketingPath(pathname) ? "marketing" : "app");
+            return;
+        }
+        const key = isPublicMarketingPath(pathname) ? "marketing" : "app";
+        if (loadedStyleBundles.has(key)) return;
+        loadedStyleBundles.add(key);
+        if (key === "marketing") import("./marketingStyles.js");
+        else import("./appStyles.js");
+    }, [pathname]);
+    return null;
+};
 
 // Lazy: ErrorPage uses antd (Result/Button) - same reasoning as
 // AntdConfigProvider below, a static import here would defeat the
@@ -182,6 +215,7 @@ function App() {
                     <ThemeProvider>
                     <InventoryTourProvider>
                     <BrowserRouter>
+                        <StyleBundleSync />
                         <TeamProvider>
                         <Toaster
                             position="top-right"
