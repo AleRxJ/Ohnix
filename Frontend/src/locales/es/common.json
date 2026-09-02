@@ -4197,6 +4197,7 @@
     "habilitacion_doc_status_rejected": "Rechazado",
     "habilitacion_doc_status_error": "Error",
     "habilitacion_history_title": "Historial de pruebas",
+    "habilitacion_run_label": "Prueba #{{number}}",
     "habilitacion_history_empty": "Aún no has iniciado ninguna prueba de habilitación.",
     "habilitacion_view_run": "Ver"
   },

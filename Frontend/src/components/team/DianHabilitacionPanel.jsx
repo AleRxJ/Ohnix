@@ -207,6 +207,16 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
     const summaryCounts = (run, type) => run?.summary?.[type] || {};
     const summaryTotal = (run, type) => Object.values(summaryCounts(run, type)).reduce((sum, n) => sum + n, 0);
 
+    // The Test Set ID is identical across every run in one habilitación
+    // round (by design - see habilitacion_where_hint), so it can't tell two
+    // attempts apart on its own. `runs` is sorted newest-first; oldest
+    // attempt is #1, most recent is the highest number - shared here so the
+    // active-run header and the history table always agree on a run's number.
+    const runSequenceNumber = (runId) => {
+        const position = runs.findIndex((run) => run.id === runId);
+        return position === -1 ? null : runs.length - position;
+    };
+
     const documentColumns = [
         { title: t("fiscal_setup.habilitacion_col_sequence"), dataIndex: "sequence", key: "sequence", width: 60 },
         { title: t("fiscal_setup.habilitacion_col_type"), dataIndex: "documentType", key: "documentType", render: (v) => <Tag>{v}</Tag> },
@@ -221,6 +231,12 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
     ];
 
     const historyColumns = [
+        {
+            title: "#",
+            key: "sequence",
+            width: 60,
+            render: (_, r) => runSequenceNumber(r.id) ?? "—",
+        },
         { title: "Test Set ID", dataIndex: "testSetId", key: "testSetId", render: (v) => <span className="font-mono text-xs">{v}</span> },
         { title: t("fiscal_setup.start_date"), dataIndex: "createdAt", key: "createdAt", render: (v) => new Date(v).toLocaleString() },
         {
@@ -342,8 +358,14 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                             history table below can point this whole section at a
                             different run than the one that just finished, so
                             without this it's ambiguous which run "Completada ✗"
-                            actually refers to. */}
-                            <Text className="block font-mono text-xs text-[var(--ohnix-text-muted)]">{activeRun.testSetId}</Text>
+                            actually refers to. Leads with the run's own number
+                            (see runSequenceNumber) since testSetId alone repeats
+                            across every run in the same habilitación round. */}
+                            <Text className="block text-xs text-[var(--ohnix-text-muted)]">
+                                {t("fiscal_setup.habilitacion_run_label", { number: runSequenceNumber(activeRun.id) ?? "—" })}
+                                {" · "}
+                                <span className="font-mono">{activeRun.testSetId}</span>
+                            </Text>
                             <div className="mt-1 flex items-center gap-2">
                                 <Tag color={RUN_STATUS_COLOR[activeRun.status] || "default"}>
                                     {t(`fiscal_setup.habilitacion_status_${activeRun.status}`)}

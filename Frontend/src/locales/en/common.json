@@ -4203,6 +4203,7 @@
     "habilitacion_doc_status_rejected": "Rejected",
     "habilitacion_doc_status_error": "Error",
     "habilitacion_history_title": "Test history",
+    "habilitacion_run_label": "Test #{{number}}",
     "habilitacion_history_empty": "You haven't started any habilitación test yet.",
     "habilitacion_view_run": "View"
   },
