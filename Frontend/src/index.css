@@ -964,9 +964,14 @@ body {
    table (DianHabilitacionPanel.jsx) - a stronger, sticky version of the
    plain hover tint so it stays visible after the pointer moves away,
    answering "which one am I looking at" without relying on scroll position
-   or memory of what was just clicked. */
+   or memory of what was just clicked. The accent bar goes on :first-child
+   only - putting the inset shadow on every <td> (as the tint does, which is
+   meant to span the row) drew one broken segment per column instead of a
+   single clean line down the row's left edge. */
 .module-dark-table .dian-run-row-active > td {
   background: rgba(41, 216, 213, 0.14) !important;
+}
+.module-dark-table .dian-run-row-active > td:first-child {
   box-shadow: inset 3px 0 0 0 #29d8d5;
 }
 
