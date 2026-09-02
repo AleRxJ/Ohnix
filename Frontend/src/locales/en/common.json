@@ -2067,7 +2067,7 @@
     "transfer_quantity_received_label": "Quantity received",
     "transfer_receive_notes_placeholder": "E.g. Opened box, damaged unit...",
     "transfer_discrepancy_label": "Discrepancy",
-    "transfer_discrepancy_accounting_hint": "The value of the missing units was recorded as a loss in the Accounting journal (Inventory shortage account).",
+    "transfer_discrepancy_accounting_hint": "If the product had a purchase cost on record, this difference was already booked as a loss in the journal (Inventory shortage). If it had no cost assigned, no entry is created, but the units were still removed from inventory.",
     "transfer_view_in_accounting": "View in Accounting",
     "transfer_cancel_confirm_title": "Cancel this transfer?",
     "transfer_cancel_confirm_content": "If it was already in transit, the units go back to the source location.",
@@ -3042,7 +3042,8 @@
       "description": "See how Ohnix organizes inventory, purchases, orders, and reports in a single operational experience for SMBs.",
       "video_title": "Ohnix Demo",
       "primary_cta": "Get started",
-      "secondary_cta": "Back to home"
+      "secondary_cta": "Back to home",
+      "contact_cta": "Contact us"
     },
     "hero": {
       "eyebrow": "Ohnix | Inventory, accounting & DIAN",
@@ -3052,16 +3053,16 @@
       "secondary_cta": "Watch demo",
       "stats": {
         "cycles": {
-          "value": "Real-time",
-          "label": "Stock visibility"
+          "value": "Live",
+          "label": "See who's editing each record"
         },
         "assets": {
-          "value": "End-to-end",
-          "label": "Purchase to sale flow"
+          "value": "Own technology",
+          "label": "DIAN invoicing, no middleman"
         },
         "sustainability": {
-          "value": "Secure",
-          "label": "Roles & verified access"
+          "value": "100% traceable",
+          "label": "Every movement, who and when"
         }
       },
       "orbit": {
@@ -3437,8 +3438,8 @@
     },
     "hub": {
       "eyebrow": "ADVANCED CAPABILITIES",
-      "title": "Feature Hub",
-      "description": "Powerful tools to power your business",
+      "title": "How each part of Ohnix actually works.",
+      "description": "Pick a block and see exactly what it does for your business.",
       "features": {
         "teams": {
           "label": "TEAMS",
@@ -3451,13 +3452,13 @@
           }
         },
         "rbac": {
-          "label": "RBAC",
-          "title": "Access Control",
-          "description": "Manage granular permissions by role. Define who can view, create, edit, or delete based on their position in the company — without compromising security.",
+          "label": "PERMISSIONS",
+          "title": "A Different Permission for Every Module",
+          "description": "For each role, decide whether they see nothing, only view, can edit, or have full control—module by module. Your cashier never sees the books; your accountant never deletes an order by mistake.",
           "highlights": {
-            "one": "Custom roles",
-            "two": "Permissions per module",
-            "three": "Access audit trail"
+            "one": "Independent permissions per module",
+            "two": "4 levels: none, view, edit, admin",
+            "three": "Access scoped by location too"
           }
         },
         "analytics": {
@@ -3582,7 +3583,9 @@
       "kpi_webhooks_label": "Webhooks per month",
       "kpi_support_label": "Support",
       "modules_included_label": "Modules in this space",
-      "live_ops_label": "ops today"
+      "live_ops_label": "ops today",
+      "workspace_label": "WORKSPACE",
+      "node_label": "NODE"
     },
     "contact_form": {
       "name_label": "Name",

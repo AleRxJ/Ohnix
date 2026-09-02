@@ -31,6 +31,10 @@ import {
     ThunderboltOutlined as BoltOutlined,
     CheckOutlined,
     MessageOutlined,
+    EyeOutlined,
+    AuditOutlined,
+    ShoppingCartOutlined,
+    DollarOutlined,
 } from "@ant-design/icons";
 
 const sectionShell =
@@ -778,15 +782,15 @@ export const OhnixCommandCanvas = () => {
     /* The real module map behind Ohnix — surfaced here so the canvas reads as
        the actual product, not a four-tile highlight reel. */
     const modules = [
-        { icon: "◫", label: t("landing.hero_dashboard.module_overview"), suite: 0 },
-        { icon: "◈", label: t("landing.hero_dashboard.module_inventory"), suite: 0 },
-        { icon: "↗", label: t("landing.hero_dashboard.module_reports"), suite: 0 },
-        { icon: "⇄", label: t("landing.hero_dashboard.module_sales"), suite: 1 },
-        { icon: "⌁", label: t("landing.hero_dashboard.module_purchases"), suite: 1 },
-        { icon: "✓", label: t("landing.hero_dashboard.module_invoicing"), suite: 1 },
-        { icon: "$", label: t("landing.hero_dashboard.module_finance"), suite: 2 },
-        { icon: "▤", label: t("landing.hero_dashboard.module_accounting"), suite: 2 },
-        { icon: "⚙", label: t("landing.hero_dashboard.module_integrations"), suite: 3 },
+        { icon: <EyeOutlined />, label: t("landing.hero_dashboard.module_overview"), suite: 0 },
+        { icon: <DatabaseOutlined />, label: t("landing.hero_dashboard.module_inventory"), suite: 0 },
+        { icon: <LineChartOutlined />, label: t("landing.hero_dashboard.module_reports"), suite: 0 },
+        { icon: <SyncOutlined />, label: t("landing.hero_dashboard.module_sales"), suite: 1 },
+        { icon: <ShoppingCartOutlined />, label: t("landing.hero_dashboard.module_purchases"), suite: 1 },
+        { icon: <CheckCircleOutlined />, label: t("landing.hero_dashboard.module_invoicing"), suite: 1 },
+        { icon: <DollarOutlined />, label: t("landing.hero_dashboard.module_finance"), suite: 2 },
+        { icon: <BookOutlined />, label: t("landing.hero_dashboard.module_accounting"), suite: 2 },
+        { icon: <ApiOutlined />, label: t("landing.hero_dashboard.module_integrations"), suite: 3 },
     ];
 
     const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -875,7 +879,7 @@ export const OhnixCommandCanvas = () => {
                     <div key={current.id} className="animate-fade-in px-5 pb-5 pt-6 sm:px-6 sm:pb-6 sm:pt-7">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                             <div>
-                                <div className="font-mono text-[9px] tracking-[0.22em] text-[#29D8D5]">WORKSPACE / 0{active + 1}</div>
+                                <div className="font-mono text-[9px] tracking-[0.22em] text-[#29D8D5]">{t("landing.hero_dashboard.workspace_label")} / 0{active + 1}</div>
                                 <h3 className="mt-2 text-[28px] font-semibold tracking-tight text-white sm:text-4xl">{current.label}</h3>
                                 <p className="mt-2 line-clamp-2 min-h-[40px] max-w-lg text-[11px] leading-5 text-[#748480] sm:min-h-[48px] sm:text-[13px] sm:leading-6">{current.detail}</p>
                             </div>
@@ -915,7 +919,7 @@ export const OhnixCommandCanvas = () => {
                                         <div className="group relative rounded-[22px] border border-white/[0.07] bg-black/25 p-5 transition-all duration-500 hover:-translate-y-1 hover:border-[#29D8D5]/25 hover:bg-[#29D8D5]/[0.045]">
                                             <div className="flex items-center justify-between">
                                                 <span className="h-2 w-2 rounded-full bg-[#29D8D5] shadow-[0_0_9px_#29D8D5]" />
-                                                <span className="font-mono text-[8px] text-[#7c8f8b]">NODE / 0{index + 1}</span>
+                                                <span className="font-mono text-[8px] text-[#7c8f8b]">{t("landing.hero_dashboard.node_label")} / 0{index + 1}</span>
                                             </div>
                                             <div className="mt-7 truncate text-[12px] font-semibold text-[#d4ddda]">{label}</div>
                                             <div className="mt-1 truncate text-[8px] uppercase tracking-[0.1em] text-[#93a6a1]">{meta}</div>
@@ -1125,6 +1129,52 @@ export const VideoModal = ({ isOpen, onClose, src, title }) => {
     );
 };
 
+/* Standing "demo coming soon" section for the landing page - unlike VideoModal
+   (only reachable if something opens it, and nothing currently does), this is
+   always visible so visitors don't need a real video to know a demo is on the
+   way and how to ask for a live one. */
+export const DemoTeaserSection = ({ heading, onContactClick }) => {
+    const { t } = useI18n();
+    return (
+        <ContentSection id="demo-preview">
+            <SectionHeading
+                eyebrow={heading.eyebrow}
+                title={heading.title}
+                description={heading.description}
+            />
+
+            <div className="mx-auto mt-14 max-w-4xl overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.03] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+                <div className="aspect-video overflow-hidden rounded-[22px] border border-white/8 bg-[#0a0a0a]">
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-6 px-6 text-center">
+                        <div className="relative flex h-24 w-24 items-center justify-center">
+                            <span className="absolute h-full w-full rounded-full bg-[#29D8D5]/20 animate-ripple" />
+                            <span className="absolute h-full w-full rounded-full bg-[#29D8D5]/15 animate-ripple-delay" />
+                            <div className="relative flex h-20 w-20 items-center justify-center rounded-full border border-[#29D8D5]/40 bg-[#29D8D5]/10 text-[#29D8D5]">
+                                <PlayCircleOutlined className="text-4xl" />
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-lg font-semibold text-white">{t("landing.video_modal.coming_soon_title")}</p>
+                            <p className="mt-2 text-sm text-[#A9B3B8]">{t("landing.video_modal.coming_soon_description")}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="mt-8 flex justify-center">
+                <button
+                    type="button"
+                    onClick={onContactClick}
+                    className="group inline-flex items-center justify-center gap-3 rounded-full bg-[#29D8D5] px-6 py-3.5 text-sm font-semibold text-[#021314] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#44F3F0]"
+                >
+                    {t("landing.demo.contact_cta")}
+                    <ArrowRightOutlined className="transition-transform duration-300 group-hover:translate-x-1" />
+                </button>
+            </div>
+        </ContentSection>
+    );
+};
+
 /* ── Horizontal marquee ticker ──────────────────────────────────────── */
 export const MarqueeStrip = ({ items }) => {
     const doubled = [...items, ...items];
@@ -1297,13 +1347,18 @@ export const OrbitalHero = ({
                             {stats.map((stat, i) => (
                                 <div
                                     key={stat.label}
-                                    className="rounded-2xl border border-white/[0.045] bg-white/[0.025] px-2.5 py-4 backdrop-blur-sm transition-all duration-300 sm:rounded-3xl sm:px-5 sm:py-5 md:border-white/8 hover:border-[#29D8D5]/30 hover:bg-white/[0.05]"
+                                    className="group rounded-2xl border border-white/[0.045] bg-white/[0.025] px-2.5 py-4 backdrop-blur-sm transition-all duration-300 sm:rounded-3xl sm:px-5 sm:py-5 md:border-white/8 hover:border-[#29D8D5]/30 hover:bg-white/[0.05]"
                                     style={{ animationDelay: `${0.45 + i * 0.08}s` }}
                                 >
-                                    <div className="text-xl font-semibold tracking-tight text-white sm:text-2xl md:text-3xl">
+                                    {stat.icon && (
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#29D8D5]/25 bg-[#29D8D5]/10 text-base text-[#44F3F0] transition-transform duration-300 group-hover:scale-110 sm:h-10 sm:w-10 sm:text-lg">
+                                            {stat.icon}
+                                        </div>
+                                    )}
+                                    <div className="mt-3 text-xl font-semibold tracking-tight text-white sm:text-2xl md:text-3xl">
                                         {stat.value}
                                     </div>
-                                    <div className="mt-2 text-[10px] leading-4 text-[#A9B3B8] sm:text-sm sm:leading-normal">
+                                    <div className="mt-1.5 text-[10px] leading-4 text-[#A9B3B8] sm:text-sm sm:leading-normal">
                                         {stat.label}
                                     </div>
                                 </div>
@@ -1433,7 +1488,7 @@ export const MissionVisionSection = ({ heading, mission, vision, valuesTitle, va
                     <div className="mb-4 inline-flex rounded-full border border-[#29D8D5]/20 bg-[#29D8D5]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#44F3F0]">
                         {mission.label}
                     </div>
-                    <h3 className="text-xl font-semibold text-white">{mission.title}</h3>
+                    <h3 className="text-lg font-semibold tracking-tight text-white md:text-xl">{mission.title}</h3>
                     <p className="mt-3 text-sm leading-7 text-[#A9B3B8]">{mission.description}</p>
                 </article>
 
@@ -1441,12 +1496,12 @@ export const MissionVisionSection = ({ heading, mission, vision, valuesTitle, va
                     <div className="mb-4 inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#A9B3B8]">
                         {vision.label}
                     </div>
-                    <h3 className="text-xl font-semibold text-white">{vision.title}</h3>
+                    <h3 className="text-lg font-semibold tracking-tight text-white md:text-xl">{vision.title}</h3>
                     <p className="mt-3 text-sm leading-7 text-[#A9B3B8]">{vision.description}</p>
                 </article>
 
                 <div className="md:col-span-2 rounded-[28px] border border-white/8 bg-white/[0.03] p-6">
-                    <h3 className="text-xl font-semibold text-white">{valuesTitle}</h3>
+                    <h3 className="text-lg font-semibold tracking-tight text-white md:text-xl">{valuesTitle}</h3>
                     <div className="mt-5 grid gap-4 md:grid-cols-3">
                         {values.map((value) => (
                             <div
@@ -1503,7 +1558,7 @@ export const CycleTimelineSection = ({ heading, steps }) => {
                     <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/10 bg-[#29D8D5]/10 text-[#29D8D5] transition-all duration-300 group-hover:bg-[#29D8D5]/20 group-hover:scale-110">
                         {step.icon}
                     </div>
-                    <h3 className="mt-6 text-xl font-semibold text-white">{step.title}</h3>
+                    <h3 className="mt-6 text-lg font-semibold tracking-tight text-white md:text-xl">{step.title}</h3>
                     <p className="mt-3 text-sm leading-7 text-[#A9B3B8]">{step.description}</p>
                 </article>
             ))}
@@ -1586,7 +1641,7 @@ export const UseCasesSection = ({ heading, useCases }) => (
                     className="rounded-[28px] border border-white/8 bg-white/[0.03] p-6 transition-all duration-300 hover:-translate-y-1 hover:border-[#29D8D5]/30"
                 >
                     <div className="text-xs uppercase tracking-[0.3em] text-[#29D8D5]">{useCase.context}</div>
-                    <div className="mt-4 text-lg font-semibold text-white">{useCase.title}</div>
+                    <div className="mt-4 text-lg font-semibold tracking-tight text-white md:text-xl">{useCase.title}</div>
                     <p className="mt-3 text-sm leading-7 text-[#D4DBDF]">{useCase.description}</p>
                 </article>
             ))}
@@ -1667,7 +1722,7 @@ export const FaqSection = ({ heading, items }) => (
                     key={item.question}
                     className="group rounded-[28px] border border-white/8 bg-white/[0.03] p-6 transition-all duration-300 open:border-[#29D8D5]/30 open:bg-white/[0.05]"
                 >
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-lg font-semibold text-white marker:hidden">
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-lg font-semibold tracking-tight text-white marker:hidden md:text-xl">
                         <span>{item.question}</span>
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-[#29D8D5] transition-transform duration-300 group-open:rotate-45">
                             <PlusIcon />
@@ -1772,7 +1827,7 @@ export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect, bi
                             {plan.icon}
                         </div>
                         <div className="min-w-0 flex-1 pt-0.5">
-                            <h3 className="text-lg font-semibold text-white">{plan.name}</h3>
+                            <h3 className="text-lg font-semibold tracking-tight text-white md:text-xl">{plan.name}</h3>
                             <p className="mt-0.5 text-[11px] leading-snug text-[#6B7880]">{plan.subtitle}</p>
                             {plan.featured && (
                                 <span className="mt-2 inline-flex rounded-full border border-[#29D8D5]/30 bg-[#29D8D5]/10 px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-[#44F3F0]">
@@ -2479,7 +2534,7 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                     {/* Información de contacto */}
                     <div className={`space-y-8 transition-all duration-500 ${visible ? "translate-x-0 opacity-100" : "translate-x-8 opacity-0"}`}>
                         <div>
-                            <h3 className="text-2xl font-bold text-white mb-2">{t("landing.contact_form.questions_title")}</h3>
+                            <h3 className="text-2xl font-semibold tracking-tight text-white mb-2">{t("landing.contact_form.questions_title")}</h3>
                             <p className="text-[#A9B3B8]">{t("landing.contact_form.questions_subtitle")}</p>
                         </div>
                         <div className="space-y-4">
@@ -2534,4 +2589,6 @@ export const brandIcons = {
     accounting: <BookOutlined />,
     compliance: <SafetyCertificateOutlined />,
     assistant: <MessageOutlined />,
+    live: <EyeOutlined />,
+    trace: <AuditOutlined />,
 };

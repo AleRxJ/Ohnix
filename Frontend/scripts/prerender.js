@@ -18,7 +18,7 @@
 // meant to be indexed, so it doesn't need prerendering.
 
 import { spawn } from "node:child_process";
-import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -73,11 +73,38 @@ const waitForServer = async (url, attempts = 60) => {
     throw new Error(`Preview server at ${url} never became ready`);
 };
 
+// main.jsx loads the app's CSS (appStyles.js -> index.css) via a dynamic
+// import() so marketing pages never pay for antd/app styles - see
+// PUBLIC_PATHS in main.jsx. But that also means app.html itself ships with
+// no <link rel="stylesheet">: the browser only discovers and fetches that
+// CSS after the main JS chunk has loaded and executed far enough to reach
+// the import() call. On a slow or uncached first load (no cookies, cold
+// CDN edge) there's a real window where /login, /dashboard etc. paint
+// before Tailwind's utility classes exist - e.g. AuthLayout's
+// `absolute top-4 right-4` language switcher falls back to static flow and
+// overlaps the form. Injecting a normal <link> here lets the browser's
+// preload scanner start fetching that CSS in parallel with the JS bundle,
+// straight from the raw HTML, instead of waiting on a JS round trip.
+const linkAppStylesheet = () => {
+    const assetsDir = join(distDir, "assets");
+    const appCssFile = readdirSync(assetsDir).find(
+        (name) => name.startsWith("appStyles-") && name.endsWith(".css")
+    );
+    if (!appCssFile) {
+        throw new Error("[prerender] Could not find built appStyles-*.css in dist/assets");
+    }
+    const appHtmlPath = join(distDir, "app.html");
+    const html = readFileSync(appHtmlPath, "utf8");
+    const link = `<link rel="stylesheet" crossorigin href="/assets/${appCssFile}" />\n    `;
+    writeFileSync(appHtmlPath, html.replace("</head>", `${link}</head>`), "utf8");
+};
+
 const run = async () => {
     // Preserve Vite's clean SPA document before the homepage prerender replaces
     // dist/index.html. Private/deep routes are rewritten to this file in
     // Vercel, so they never inherit the marketing page's HTML or CSS.
     copyFileSync(join(distDir, "index.html"), join(distDir, "app.html"));
+    linkAppStylesheet();
 
     console.log("[prerender] Starting vite preview server...");
     const viteCli = join(rootDir, "node_modules", "vite", "bin", "vite.js");

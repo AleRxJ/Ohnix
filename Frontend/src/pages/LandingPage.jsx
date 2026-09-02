@@ -27,6 +27,7 @@ import {
     FeatureHubSection,
     WhatsAppSupportButton,
     ContactFormSection,
+    DemoTeaserSection,
 } from "../components/landing/LandingPageSections";
 
 const LandingPage = () => {
@@ -66,6 +67,10 @@ const LandingPage = () => {
         navigate("/signup");
     };
 
+    const scrollToSection = (id) => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
     const marqueeItems = [
         t("landing.hero.orbit.nodeOne"),
         t("landing.hero.orbit.nodeTwo"),
@@ -91,14 +96,17 @@ const LandingPage = () => {
         {
             value: t("landing.hero.stats.cycles.value"),
             label: t("landing.hero.stats.cycles.label"),
+            icon: brandIcons.live,
         },
         {
             value: t("landing.hero.stats.assets.value"),
             label: t("landing.hero.stats.assets.label"),
+            icon: brandIcons.compliance,
         },
         {
             value: t("landing.hero.stats.sustainability.value"),
             label: t("landing.hero.stats.sustainability.label"),
+            icon: brandIcons.trace,
         },
     ];
 
@@ -430,6 +438,8 @@ const LandingPage = () => {
                     subtitle={t("landing.hero.subtitle")}
                     primaryCta={t("landing.hero.primary_cta")}
                     onPrimary={handleGetStarted}
+                    secondaryCta={t("landing.hero.secondary_cta")}
+                    onSecondary={() => scrollToSection("demo-preview")}
                     stats={heroStats}
                     orbitLabels={orbitLabels}
                     footerNote={t("landing.hero.footer_note")}
@@ -538,6 +548,15 @@ const LandingPage = () => {
                         description: t("landing.useCases.description"),
                     }}
                     useCases={useCases}
+                />
+
+                <DemoTeaserSection
+                    heading={{
+                        eyebrow: t("landing.demo.eyebrow"),
+                        title: t("landing.demo.title"),
+                        description: t("landing.demo.description"),
+                    }}
+                    onContactClick={() => scrollToSection("contact")}
                 />
 
                 <ContactFormSection

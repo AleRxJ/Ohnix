@@ -2067,7 +2067,7 @@
     "transfer_quantity_received_label": "Cantidad recibida",
     "transfer_receive_notes_placeholder": "Ej. Caja abierta, unidad dañada...",
     "transfer_discrepancy_label": "Diferencia",
-    "transfer_discrepancy_accounting_hint": "El valor de las unidades faltantes se registró como pérdida en el Libro diario de Contabilidad (cuenta Faltantes en inventario).",
+    "transfer_discrepancy_accounting_hint": "Si el producto tenía costo de compra registrado, esta diferencia ya se contabilizó como pérdida en el Libro diario (Faltantes en inventario). Si no tenía costo asignado, no genera asiento, pero las unidades sí quedaron descontadas del inventario.",
     "transfer_view_in_accounting": "Ver en Contabilidad",
     "transfer_cancel_confirm_title": "¿Cancelar este traslado?",
     "transfer_cancel_confirm_content": "Si ya estaba en tránsito, las unidades vuelven al punto de origen.",
@@ -3036,7 +3036,8 @@
       "description": "Conoce como Ohnix organiza inventario, compras, pedidos y reportes en una sola experiencia operativa para pymes.",
       "video_title": "Demo de Ohnix",
       "primary_cta": "Comenzar ahora",
-      "secondary_cta": "Volver al inicio"
+      "secondary_cta": "Volver al inicio",
+      "contact_cta": "Contáctanos"
     },
     "hero": {
       "eyebrow": "Ohnix | Inventario, contabilidad y DIAN",
@@ -3046,16 +3047,16 @@
       "secondary_cta": "Ver demo",
       "stats": {
         "cycles": {
-          "value": "Tiempo real",
-          "label": "Visibilidad de stock"
+          "value": "En vivo",
+          "label": "Ves quién edita cada registro"
         },
         "assets": {
-          "value": "De punta a punta",
-          "label": "Flujo compra → venta"
+          "value": "Software propio",
+          "label": "Factura DIAN sin intermediarios"
         },
         "sustainability": {
-          "value": "Seguro",
-          "label": "Roles y acceso verificado"
+          "value": "100% trazable",
+          "label": "Cada movimiento, con quién y cuándo"
         }
       },
       "orbit": {
@@ -3431,8 +3432,8 @@
     },
     "hub": {
       "eyebrow": "CAPACIDADES AVANZADAS",
-      "title": "Hub de Funcionalidades",
-      "description": "Herramientas poderosas para potenciar tu negocio",
+      "title": "Así funciona cada capacidad de Ohnix.",
+      "description": "Elige un bloque y mira exactamente qué hace por tu negocio.",
       "features": {
         "teams": {
           "label": "TEAMS",
@@ -3445,13 +3446,13 @@
           }
         },
         "rbac": {
-          "label": "RBAC",
-          "title": "Control de Acceso",
-          "description": "Gestiona permisos granulares por rol. Define quién puede ver, crear, editar o eliminar según su posición en la empresa — sin comprometer la seguridad.",
+          "label": "PERMISOS",
+          "title": "Un Permiso Distinto por Cada Módulo",
+          "description": "Para cada rol, decides si no ve nada, solo mira, puede editar o tiene control total—módulo por módulo. Tu cajero nunca ve la contabilidad; tu contador nunca borra un pedido sin querer.",
           "highlights": {
-            "one": "Roles personalizados",
-            "two": "Permisos por módulo",
-            "three": "Auditoría de acceso"
+            "one": "Permisos independientes por módulo",
+            "two": "4 niveles: ninguno, ver, editar, admin",
+            "three": "Acceso también por sede"
           }
         },
         "analytics": {
@@ -3576,7 +3577,9 @@
       "kpi_webhooks_label": "Webhooks al mes",
       "kpi_support_label": "Soporte",
       "modules_included_label": "Módulos en este espacio",
-      "live_ops_label": "operaciones hoy"
+      "live_ops_label": "operaciones hoy",
+      "workspace_label": "ESPACIO",
+      "node_label": "NODO"
     },
     "contact_form": {
       "name_label": "Nombre",
