@@ -793,7 +793,22 @@ export const OhnixCommandCanvas = () => {
         { icon: <ApiOutlined />, label: t("landing.hero_dashboard.module_integrations"), suite: 3 },
     ];
 
-    const reducedMotion = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Starts false (matching what the prerendered HTML always ships, since
+    // the build-time prerender never has a reduced-motion preference set)
+    // and only picks up the visitor's real preference after mount. Reading
+    // matchMedia directly during render would make this page's first client
+    // render disagree with the server-rendered HTML for any visitor whose
+    // OS/browser reduced-motion setting differs from the prerender
+    // environment - a React hydration mismatch (errors #418/#423) that
+    // discards and re-renders the entire page from scratch.
+    const [reducedMotion, setReducedMotion] = useState(false);
+    useEffect(() => {
+        const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+        setReducedMotion(mql.matches);
+        const handleChange = (e) => setReducedMotion(e.matches);
+        mql.addEventListener("change", handleChange);
+        return () => mql.removeEventListener("change", handleChange);
+    }, []);
 
     useEffect(() => {
         if (reducedMotion) return;
