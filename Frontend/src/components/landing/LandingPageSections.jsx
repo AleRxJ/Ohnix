@@ -2547,10 +2547,12 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                     <div className={`space-y-6 transition-all duration-500 ${visible ? "translate-x-0 opacity-100" : "-translate-x-8 opacity-0"}`}>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.name_label")}</label>
+                                <label htmlFor="contact-name" className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.name_label")}</label>
                                 <input
+                                    id="contact-name"
                                     type="text"
                                     name="name"
+                                    autoComplete="name"
                                     value={formData.name}
                                     onChange={handleInputChange}
                                     placeholder={t("landing.contact_form.name_placeholder")}
@@ -2559,10 +2561,12 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.email_label")}</label>
+                                <label htmlFor="contact-email" className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.email_label")}</label>
                                 <input
+                                    id="contact-email"
                                     type="email"
                                     name="email"
+                                    autoComplete="email"
                                     value={formData.email}
                                     onChange={handleInputChange}
                                     placeholder={t("landing.contact_form.email_placeholder")}
@@ -2571,10 +2575,12 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.phone_label")}</label>
+                                <label htmlFor="contact-phone" className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.phone_label")}</label>
                                 <input
+                                    id="contact-phone"
                                     type="tel"
                                     name="phone"
+                                    autoComplete="tel"
                                     value={formData.phone}
                                     onChange={handleInputChange}
                                     placeholder={t("landing.contact_form.phone_placeholder")}
@@ -2582,10 +2588,12 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.company_label")}</label>
+                                <label htmlFor="contact-company" className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.company_label")}</label>
                                 <input
+                                    id="contact-company"
                                     type="text"
                                     name="company"
+                                    autoComplete="organization"
                                     value={formData.company}
                                     onChange={handleInputChange}
                                     placeholder={t("landing.contact_form.company_placeholder")}
@@ -2593,9 +2601,11 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.message_label")}</label>
+                                <label htmlFor="contact-message" className="block text-sm font-medium text-white mb-2">{t("landing.contact_form.message_label")}</label>
                                 <textarea
+                                    id="contact-message"
                                     name="message"
+                                    autoComplete="off"
                                     value={formData.message}
                                     onChange={handleInputChange}
                                     placeholder={t("landing.contact_form.message_placeholder")}
