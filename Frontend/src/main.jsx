@@ -16,6 +16,34 @@ window.addEventListener("vite:preloadError", () => {
     }
 });
 
+// DashboardLayout.jsx is the only place that ever *registers* the offline
+// Service Worker - deliberately, so marketing pages never pay for that
+// bundle. But once any tab has visited the dashboard, that worker controls
+// every page on the origin from then on, including marketing ones - and
+// nothing on those pages ever asks it to check for a newer version, since
+// they never import the registration bundle at all. A visitor who mostly
+// reads the landing page (or a developer testing it in their normal
+// profile) can be stuck for days on whatever deploy was current the last
+// time they happened to open the dashboard - the "only works in incognito"
+// symptom. This runs on every page, marketing included, using only the
+// native serviceWorker API (no vite-plugin-pwa import, so no bundle cost
+// here): it only ever asks an ALREADY-existing registration to check for an
+// update - it never calls .register() itself, so a tab that never visited
+// the dashboard still never gets a worker of its own.
+if ("serviceWorker" in navigator) {
+    const skipWaitingOn = (worker) => worker?.postMessage({ type: "SKIP_WAITING" });
+    navigator.serviceWorker.getRegistration().then((registration) => {
+        if (!registration) return;
+        skipWaitingOn(registration.waiting);
+        registration.addEventListener("updatefound", () => {
+            registration.installing?.addEventListener("statechange", (event) => {
+                if (event.target.state === "installed") skipWaitingOn(registration.waiting);
+            });
+        });
+        registration.update().catch(() => {});
+    });
+}
+
 const rootElement = document.getElementById("root");
 const isPublicPath = isPublicMarketingPath(location.pathname);
 const isPrerendered = isPublicPath

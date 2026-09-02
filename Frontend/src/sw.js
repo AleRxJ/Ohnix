@@ -49,9 +49,22 @@ cleanupOutdatedCaches();
 // registerType: 'autoUpdate' (vite.config.js) makes the client-side
 // registration (virtual:pwa-register) post this message as soon as it finds
 // a waiting worker, instead of prompting the user - mirrors what
-// vite-plugin-pwa's own generateSW output does.
+// vite-plugin-pwa's own generateSW output does. main.jsx's lightweight,
+// registration-only update check (it never calls register() itself - see
+// its comment) posts the same message for tabs that never load the
+// PWA-registration bundle at all (every marketing page).
 self.addEventListener("message", (event) => {
     if (event.data && event.data.type === "SKIP_WAITING") {
         self.skipWaiting();
     }
+});
+
+// Take control of every already-open tab the moment this worker activates,
+// instead of only new navigations from here on. Without this, a tab open
+// from before the update - which is exactly the tab a returning visitor is
+// most likely reloading - keeps talking to the OLD worker (and its stale
+// precache) until it's closed and reopened, even after the new one has
+// fully installed and skipped waiting.
+self.addEventListener("activate", (event) => {
+    event.waitUntil(self.clients.claim());
 });
