@@ -32,6 +32,10 @@ import {
     getWithholdingReport,
     getWithholdingCertificate,
     downloadWithholdingCertificate,
+    listCostCenters,
+    createCostCenter,
+    updateCostCenter,
+    getCostCenterLedger,
 } from "../controllers/accounting.controller.js";
 
 const router = Router();
@@ -49,6 +53,13 @@ router.route("/chart-of-accounts")
 router.route("/chart-of-accounts/:id/ledger").get(requireModulePermission("accounting", "view"), getAccountLedger);
 router.route("/chart-of-accounts/:id/active").patch(requireModulePermission("accounting", "edit"), setChartOfAccountActive);
 router.route("/status").get(requireModulePermission("accounting", "view"), getAccountingStatus);
+router.route("/cost-centers")
+    .get(requireModulePermission("accounting", "view"), listCostCenters)
+    .post(requireModulePermission("accounting", "edit"), createCostCenter);
+router.route("/cost-centers/:id")
+    .patch(requireModulePermission("accounting", "edit"), updateCostCenter);
+router.route("/cost-centers/:id/ledger")
+    .get(requireModulePermission("accounting", "view"), getCostCenterLedger);
 
 router.route("/journal-entries").get(requireModulePermission("accounting", "view"), listJournalEntries);
 router.route("/journal-entries/:id").get(requireModulePermission("accounting", "view"), getJournalEntry);

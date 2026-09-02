@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal } from "antd";
-import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined } from "@ant-design/icons";
+import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined, PartitionOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
@@ -538,6 +538,92 @@ const ThirdPartyLedgerTab = () => {
     );
 };
 
+const CostCentersTab = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("accounting", "edit");
+    const [form] = Form.useForm();
+    const [centers, setCenters] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [editing, setEditing] = useState(null);
+    const [open, setOpen] = useState(false);
+    const [ledger, setLedger] = useState(null);
+    const [ledgerLoading, setLedgerLoading] = useState(false);
+    const [ledgerRange, setLedgerRange] = useState([dayjs().startOf("month"), dayjs()]);
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const response = await accountingService.listCostCenters({ includeInactive: true });
+            setCenters(response?.data || []);
+        } catch { toast.error(t("accounting.failed")); }
+        finally { setLoading(false); }
+    };
+    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const showEditor = (center = null) => {
+        setEditing(center);
+        form.setFieldsValue({ code: center?.code || "", name: center?.name || "", is_active: center?.is_active ?? true });
+        setOpen(true);
+    };
+    const save = async () => {
+        const values = await form.validateFields();
+        setSaving(true);
+        try {
+            if (editing) await accountingService.updateCostCenter(editing._id, values);
+            else await accountingService.createCostCenter(values);
+            toast.success(t(editing ? "accounting.cost_center_updated" : "accounting.cost_center_created"));
+            setOpen(false);
+            form.resetFields();
+            await load();
+        } catch (error) {
+            if (!error?.errorFields) toast.error(error?.response?.data?.message || t("accounting.failed"));
+        } finally { setSaving(false); }
+    };
+    const showLedger = async (center, range = ledgerRange) => {
+        setLedgerLoading(true);
+        setLedger((current) => ({ ...(current || {}), cost_center: center, movements: current?.cost_center?._id === center._id ? current.movements : [] }));
+        try {
+            const response = await accountingService.getCostCenterLedger(center._id, { from: range[0].format("YYYY-MM-DD"), to: range[1].format("YYYY-MM-DD") });
+            setLedger(response?.data || null);
+        } catch { toast.error(t("accounting.failed")); }
+        finally { setLedgerLoading(false); }
+    };
+
+    return <>
+        <AccountingSectionGuide sectionKey="cost-centers" title={t("accounting.guide_cost_centers_title")} summary={t("accounting.tab_cost_centers_caption")} steps={[t("accounting.guide_cost_centers_step_1"), t("accounting.guide_cost_centers_step_2"), t("accounting.guide_cost_centers_step_3")]} result={t("accounting.guide_cost_centers_result")} concepts={[{ label: t("accounting.cost_center"), help: t("accounting.cost_center_help") }]} />
+        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.cost_center_new")}</Button>}</div>
+        <Table className="module-dark-table" loading={loading} rowKey="_id" dataSource={centers} pagination={{ pageSize: 15 }} locale={{ emptyText: <EmptyState compact title={t("accounting.empty_cost_centers_title")} subtitle={t("accounting.empty_cost_centers_help")} action={canEdit ? <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.cost_center_new")}</Button> : null} /> }} columns={[
+            { title: t("accounting.col_code"), dataIndex: "code", width: 150 },
+            { title: t("accounting.col_name"), dataIndex: "name" },
+            { title: t("accounting.col_status"), dataIndex: "is_active", render: (active) => <Tag color={active ? "green" : "default"}>{t(active ? "common.active" : "common.inactive")}</Tag> },
+            { title: t("common.actions"), width: 210, render: (_, center) => <div className="flex gap-2"><Button size="small" icon={<EyeOutlined />} onClick={() => showLedger(center)}>{t("accounting.cost_center_view_ledger")}</Button>{canEdit && <Button size="small" onClick={() => showEditor(center)}>{t("common.edit")}</Button>}</div> },
+        ]} />
+        <Modal className="accounting-modal" title={editing ? t("accounting.cost_center_edit") : t("accounting.cost_center_new")} open={open} onCancel={() => setOpen(false)} onOk={save} confirmLoading={saving} destroyOnHidden>
+            <Alert className="dark-alert dark-alert-teal mb-4" showIcon type="info" message={t("accounting.cost_center_form_help")} />
+            <Form form={form} layout="vertical">
+                <Form.Item name="code" label={t("accounting.col_code")} extra={t("accounting.cost_center_code_help")} rules={[{ required: true, max: 30 }]}><Input /></Form.Item>
+                <Form.Item name="name" label={t("accounting.col_name")} rules={[{ required: true, max: 120 }]}><Input /></Form.Item>
+                {editing && <Form.Item name="is_active" label={t("accounting.col_status")} valuePropName="checked"><Switch /></Form.Item>}
+            </Form>
+        </Modal>
+        <Drawer rootClassName="accounting-drawer" width={900} open={Boolean(ledger)} onClose={() => setLedger(null)} title={ledger?.cost_center ? `${ledger.cost_center.code} · ${ledger.cost_center.name}` : t("accounting.cost_center_ledger_title")}>
+            <Alert className="dark-alert dark-alert-purple mb-4" type="info" showIcon message={t("accounting.cost_center_ledger_help")} />
+            <div className="flex flex-col sm:flex-row gap-3 mb-4"><RangePicker value={ledgerRange} onChange={(dates) => dates && setLedgerRange(dates)} allowClear={false} /><Button type="primary" loading={ledgerLoading} onClick={() => ledger?.cost_center && showLedger(ledger.cost_center)}>{t("reports.refresh_report")}</Button></div>
+            <Row gutter={[16, 16]} className="mb-4"><Col xs={24} sm={12}><StatCard title={t("accounting.lines_col_debit")} value={ledger?.total_debit || 0} formatter={formatCurrency} /></Col><Col xs={24} sm={12}><StatCard title={t("accounting.lines_col_credit")} value={ledger?.total_credit || 0} formatter={formatCurrency} /></Col></Row>
+            <Table className="module-dark-table" loading={ledgerLoading} rowKey="id" dataSource={ledger?.movements || []} pagination={{ pageSize: 15 }} scroll={{ x: 760 }} locale={{ emptyText: <Empty description={t("accounting.cost_center_ledger_empty")} /> }} columns={[
+                { title: t("accounting.col_date"), dataIndex: "date", width: 110, render: (value) => dayjs(value).format("DD/MM/YYYY") },
+                { title: t("accounting.lines_col_account"), dataIndex: "chart_account", render: (account) => `${account.code} · ${account.name}` },
+                { title: t("accounting.col_description"), dataIndex: "description", ellipsis: true },
+                { title: t("accounting.lines_col_debit"), dataIndex: "debit", align: "right", render: (value) => value ? formatCurrency(value) : "" },
+                { title: t("accounting.lines_col_credit"), dataIndex: "credit", align: "right", render: (value) => value ? formatCurrency(value) : "" },
+            ]} />
+        </Drawer>
+    </>;
+};
+
 const ManualVouchersTab = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -547,6 +633,7 @@ const ManualVouchersTab = () => {
     const [form] = Form.useForm();
     const [vouchers, setVouchers] = useState([]);
     const [accounts, setAccounts] = useState([]);
+    const [costCenters, setCostCenters] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [open, setOpen] = useState(false);
@@ -559,12 +646,14 @@ const ManualVouchersTab = () => {
     const load = async () => {
         setLoading(true);
         try {
-            const [voucherRes, accountRes] = await Promise.all([
+            const [voucherRes, accountRes, costCenterRes] = await Promise.all([
                 accountingService.listManualVouchers(),
                 accountingService.listChartOfAccounts(),
+                accountingService.listCostCenters(),
             ]);
             setVouchers(voucherRes?.data || []);
             setAccounts((accountRes?.data || []).filter((account) => account.is_active));
+            setCostCenters(costCenterRes?.data || []);
         } catch {
             toast.error(t("accounting.failed"));
         } finally {
@@ -586,6 +675,7 @@ const ManualVouchersTab = () => {
                 credit: line.credit || undefined,
                 description: line.description || "",
                 third_party: line.third_party || undefined,
+                cost_center_id: line.cost_center?._id || undefined,
             })) || [{ debit: undefined, credit: undefined }, { debit: undefined, credit: undefined }],
         });
         setOpen(true);
@@ -699,6 +789,7 @@ const ManualVouchersTab = () => {
                                 dataSource={voucher.lines}
                                 columns={[
                                     { title: t("accounting.lines_col_account"), render: (_, line) => `${line.chart_account.code} · ${line.chart_account.name}` },
+                                    { title: t("accounting.cost_center"), render: (_, line) => line.cost_center ? `${line.cost_center.code} · ${line.cost_center.name}` : "—" },
                                     { title: t("accounting.lines_col_debit"), dataIndex: "debit", align: "right", render: (value) => value ? formatCurrency(value) : "" },
                                     { title: t("accounting.lines_col_credit"), dataIndex: "credit", align: "right", render: (value) => value ? formatCurrency(value) : "" },
                                 ]}
@@ -729,9 +820,10 @@ const ManualVouchersTab = () => {
                                             <Col xs={4} md={5}><Button danger disabled={fields.length <= 2} onClick={() => remove(name)}>{t("common.delete")}</Button></Col>
                                         </Row>
                                         <Row gutter={8}>
-                                            <Col xs={24} md={5}><Form.Item name={[name, "third_party", "type"]}><Select allowClear placeholder={t("accounting.col_type")} options={[{ value: "customer", label: t("accounting.third_party_customer") }, { value: "supplier", label: t("accounting.third_party_supplier") }, { value: "other", label: t("accounting.third_party_other") }]} /></Form.Item></Col>
-                                            <Col xs={24} md={10}><Form.Item name={[name, "third_party", "name"]}><Input placeholder={t("accounting.third_party_name")} /></Form.Item></Col>
-                                            <Col xs={24} md={9}><Form.Item name={[name, "third_party", "document"]}><Input placeholder={t("accounting.third_party_document")} /></Form.Item></Col>
+                                            <Col xs={24} md={8}><Form.Item name={[name, "cost_center_id"]}><Select allowClear showSearch optionFilterProp="label" placeholder={t("accounting.cost_center_optional")} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} /></Form.Item></Col>
+                                            <Col xs={24} md={4}><Form.Item name={[name, "third_party", "type"]}><Select allowClear placeholder={t("accounting.col_type")} options={[{ value: "customer", label: t("accounting.third_party_customer") }, { value: "supplier", label: t("accounting.third_party_supplier") }, { value: "other", label: t("accounting.third_party_other") }]} /></Form.Item></Col>
+                                            <Col xs={24} md={7}><Form.Item name={[name, "third_party", "name"]}><Input placeholder={t("accounting.third_party_name")} /></Form.Item></Col>
+                                            <Col xs={24} md={5}><Form.Item name={[name, "third_party", "document"]}><Input placeholder={t("accounting.third_party_document")} /></Form.Item></Col>
                                         </Row>
                                     </div>
                                 ))}
@@ -754,6 +846,8 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
     const [sourceType, setSourceType] = useState(initialSourceType);
     const [sourceId, setSourceId] = useState(initialSourceId);
     const [entries, setEntries] = useState([]);
+    const [costCenters, setCostCenters] = useState([]);
+    const [costCenterId, setCostCenterId] = useState();
     const [loading, setLoading] = useState(false);
 
     const fetchEntries = async (overrides = {}) => {
@@ -769,6 +863,7 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
                 to: dateRange[1].format("YYYY-MM-DD"),
                 sourceType: effectiveSourceType,
                 sourceId: effectiveSourceId,
+                costCenterId,
             });
             setEntries(res?.data || []);
         } catch {
@@ -779,6 +874,7 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
     };
 
     useEffect(() => {
+        accountingService.listCostCenters().then((response) => setCostCenters(response?.data || [])).catch(() => {});
         fetchEntries({ sourceType: initialSourceType, sourceId: initialSourceId });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialSourceType, initialSourceId]);
@@ -793,6 +889,7 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
     };
 
     const linesColumns = [
+        { title: t("accounting.cost_center"), key: "cost_center", render: (_, l) => l.cost_center ? `${l.cost_center.code} · ${l.cost_center.name}` : "—" },
         { title: t("accounting.lines_col_account"), key: "account", render: (_, l) => `${l.chart_account.code} · ${l.chart_account.name}` },
         { title: t("accounting.lines_col_debit"), dataIndex: "debit", key: "debit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
         { title: t("accounting.lines_col_credit"), dataIndex: "credit", key: "credit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
@@ -829,6 +926,7 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
                         onChange={handleSourceTypeChange}
                         options={Object.entries(SOURCE_TYPE_LABEL_KEYS).map(([value, key]) => ({ value, label: t(key) }))}
                     />
+                    <Select allowClear showSearch optionFilterProp="label" placeholder={t("accounting.cost_center")} className="w-full sm:w-56" value={costCenterId} onChange={setCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
                     <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={() => fetchEntries()} loading={loading}>
                         {t("reports.refresh_report")}
                     </Button>
@@ -1071,6 +1169,8 @@ const FinancialStatementsTab = () => {
     const [balance, setBalance] = useState(null);
     const [incomeLoading, setIncomeLoading] = useState(false);
     const [balanceLoading, setBalanceLoading] = useState(false);
+    const [costCenters, setCostCenters] = useState([]);
+    const [incomeCostCenterId, setIncomeCostCenterId] = useState();
 
     const fetchIncome = async () => {
         setIncomeLoading(true);
@@ -1078,6 +1178,7 @@ const FinancialStatementsTab = () => {
             const res = await accountingService.getIncomeStatement({
                 from: incomeRange[0].format("YYYY-MM-DD"),
                 to: incomeRange[1].format("YYYY-MM-DD"),
+                costCenterId: incomeCostCenterId,
             });
             setIncome(res?.data || null);
         } catch {
@@ -1100,6 +1201,7 @@ const FinancialStatementsTab = () => {
     };
 
     useEffect(() => {
+        accountingService.listCostCenters().then((response) => setCostCenters(response?.data || [])).catch(() => {});
         fetchIncome();
         fetchBalance();
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1147,6 +1249,7 @@ const FinancialStatementsTab = () => {
                 <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <RangePicker value={incomeRange} onChange={(dates) => dates && setIncomeRange(dates)} format="YYYY-MM-DD" allowClear={false} />
+                        <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={incomeCostCenterId} onChange={setIncomeCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
                         <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" icon={<CalendarOutlined />} onClick={fetchIncome} loading={incomeLoading}>
                             {t("reports.refresh_report")}
                         </Button>
@@ -1652,6 +1755,8 @@ const TrialBalanceTab = () => {
     const [dateRange, setDateRange] = useState([dayjs().startOf("month"), dayjs()]);
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [costCenters, setCostCenters] = useState([]);
+    const [costCenterId, setCostCenterId] = useState();
 
     const fetchRows = async () => {
         setLoading(true);
@@ -1659,6 +1764,7 @@ const TrialBalanceTab = () => {
             const res = await accountingService.getTrialBalance({
                 from: dateRange[0].format("YYYY-MM-DD"),
                 to: dateRange[1].format("YYYY-MM-DD"),
+                costCenterId,
             });
             setRows(res?.data || []);
         } catch {
@@ -1669,6 +1775,7 @@ const TrialBalanceTab = () => {
     };
 
     useEffect(() => {
+        accountingService.listCostCenters().then((response) => setCostCenters(response?.data || [])).catch(() => {});
         fetchRows();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -1693,6 +1800,7 @@ const TrialBalanceTab = () => {
             <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <RangePicker value={dateRange} onChange={(dates) => dates && setDateRange(dates)} format="YYYY-MM-DD" allowClear={false} className="w-full sm:w-auto" />
+                    <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={costCenterId} onChange={setCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
                     <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={fetchRows} loading={loading}>
                         {t("reports.refresh_report")}
                     </Button>
@@ -1749,6 +1857,7 @@ const Accounting = () => {
         { key: "journal", label: tabLabel(<UnorderedListOutlined />, "accounting.tab_journal"), children: <JournalTab initialSourceType={deepLink.sourceType} initialSourceId={deepLink.sourceId} /> },
         { key: "vouchers", label: tabLabel(<FileTextOutlined />, "accounting.tab_vouchers"), children: <ManualVouchersTab /> },
         { key: "third_parties", label: tabLabel(<TeamOutlined />, "accounting.tab_third_parties"), children: <ThirdPartyLedgerTab /> },
+        { key: "cost_centers", label: tabLabel(<PartitionOutlined />, "accounting.tab_cost_centers"), children: <CostCentersTab /> },
         { key: "trial_balance", label: tabLabel(<CalculatorOutlined />, "accounting.tab_trial_balance"), children: <TrialBalanceTab /> },
         { key: "periods", label: tabLabel(<LockOutlined />, "accounting.tab_periods"), children: <PeriodsTab /> },
         { key: "statements", label: tabLabel(<BarChartOutlined />, "accounting.tab_financial_statements"), children: <FinancialStatementsTab /> },

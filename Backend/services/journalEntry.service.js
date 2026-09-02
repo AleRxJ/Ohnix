@@ -133,13 +133,14 @@ export const recordJournalEntry = async (
             thirdPartyId: l.thirdPartyId ?? null,
             thirdPartyName: l.thirdPartyName ?? null,
             thirdPartyDocument: l.thirdPartyDocument ?? null,
+            costCenterId: l.costCenterId ?? null,
         })),
     });
 
     return entry;
 };
 
-export const listJournalEntries = async ({ accountId, startDate, endDate, sourceType, sourceId, periodId }) =>
+export const listJournalEntries = async ({ accountId, startDate, endDate, sourceType, sourceId, periodId, costCenterId }) =>
     prisma.journalEntry.findMany({
         where: {
             period: { createdById: accountId },
@@ -149,9 +150,10 @@ export const listJournalEntries = async ({ accountId, startDate, endDate, source
             ...(sourceType ? { sourceType } : {}),
             ...(sourceId ? { sourceId } : {}),
             ...(periodId ? { periodId } : {}),
+            ...(costCenterId ? { lines: { some: { costCenterId } } } : {}),
         },
         include: {
-            lines: { include: { chartAccount: { select: { id: true, code: true, name: true } } } },
+            lines: { include: { chartAccount: { select: { id: true, code: true, name: true } }, costCenter: true } },
         },
         orderBy: { entryDate: "desc" },
         take: 200,
@@ -238,7 +240,7 @@ export const getJournalEntryById = async ({ accountId, id }) => {
     const entry = await prisma.journalEntry.findFirst({
         where: { id, period: { createdById: accountId } },
         include: {
-            lines: { include: { chartAccount: { select: { id: true, code: true, name: true } } } },
+            lines: { include: { chartAccount: { select: { id: true, code: true, name: true } }, costCenter: true } },
             period: { select: { id: true, year: true, month: true, status: true } },
         },
     });

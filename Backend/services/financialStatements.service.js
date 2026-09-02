@@ -16,11 +16,12 @@ const balanceForType = (accountType, debit, credit) =>
 // ChartAccount that actually has activity in range - mirrors
 // journalEntry.service.js#listJournalEntries's tenant filter
 // (period.createdById), the only place tenant scope lives for this ledger.
-const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate, excludeSourceTypes, periodIds, db = prisma }) => {
+const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate, excludeSourceTypes, periodIds, costCenterId, db = prisma }) => {
     const rows = await db.journalEntryLine.groupBy({
         by: ["chartAccountId"],
         where: {
             chartAccount: { accountType: { in: accountTypes }, createdById: accountId },
+            ...(costCenterId ? { costCenterId } : {}),
             journalEntry: {
                 period: { createdById: accountId },
                 ...(startDate || endDate
@@ -66,13 +67,14 @@ const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate,
 // nominal accounts into retained earnings (see accountingPeriod.service.js),
 // and would otherwise cancel out that same period's real revenue/costs when
 // this function is asked about a range that includes it.
-export const getIncomeStatement = async ({ accountId, startDate, endDate }) => {
+export const getIncomeStatement = async ({ accountId, startDate, endDate, costCenterId }) => {
     const rows = await aggregateByAccount({
         accountId,
         accountTypes: ["revenue", "cost", "expense"],
         startDate,
         endDate,
         excludeSourceTypes: ["period_close", "period_reopen", "period_reclose"],
+        costCenterId,
     });
     const revenue = rows.filter((r) => r.account_type === "revenue");
     const costs = rows.filter((r) => r.account_type === "cost");
@@ -216,14 +218,14 @@ export const getPeriodClosingPlan = async ({ accountId, startDate, endDate, db =
 // movement, and closing balance. Unlike the income statement/balance sheet
 // (which each show one slice of the chart), this is the classic "does
 // everything still tie out" report - useful right before closing a period.
-export const getTrialBalance = async ({ accountId, startDate, endDate }) => {
+export const getTrialBalance = async ({ accountId, startDate, endDate, costCenterId }) => {
     const accounts = await prisma.chartAccount.findMany({ where: { createdById: accountId }, orderBy: { code: "asc" } });
     if (accounts.length === 0) return [];
 
     const priorRows = startDate
         ? await prisma.journalEntryLine.groupBy({
               by: ["chartAccountId"],
-              where: { chartAccount: { createdById: accountId }, journalEntry: { period: { createdById: accountId }, entryDate: { lt: startDate } } },
+              where: { chartAccount: { createdById: accountId }, ...(costCenterId ? { costCenterId } : {}), journalEntry: { period: { createdById: accountId }, entryDate: { lt: startDate } } },
               _sum: { debit: true, credit: true },
           })
         : [];
@@ -233,6 +235,7 @@ export const getTrialBalance = async ({ accountId, startDate, endDate }) => {
         by: ["chartAccountId"],
         where: {
             chartAccount: { createdById: accountId },
+            ...(costCenterId ? { costCenterId } : {}),
             journalEntry: {
                 period: { createdById: accountId },
                 ...(startDate || endDate

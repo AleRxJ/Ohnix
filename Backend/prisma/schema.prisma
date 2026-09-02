@@ -280,6 +280,7 @@ model User {
   accountingPeriodsClosed         AccountingPeriod[]      @relation("AccountingPeriodClosedBy")
   journalEntriesCreated           JournalEntry[]
   accountingConfigAuditsOwned     AccountingConfigAudit[] @relation("AccountingConfigAuditAccount")
+  costCentersOwned                CostCenter[]            @relation("CostCenterAccount")
   accountingConfigAuditsPerformed AccountingConfigAudit[] @relation("AccountingConfigAuditActor")
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
@@ -1959,6 +1960,24 @@ model ChartAccount {
   @@map("chart_accounts")
 }
 
+model CostCenter {
+  id        String   @id @default(cuid())
+  accountId String   @map("account_id")
+  code      String
+  name      String
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  account            User                       @relation("CostCenterAccount", fields: [accountId], references: [id])
+  journalEntryLines  JournalEntryLine[]
+  manualVoucherLines ManualJournalVoucherLine[]
+
+  @@unique([accountId, code])
+  @@index([accountId, isActive])
+  @@map("cost_centers")
+}
+
 model WithholdingConcept {
   id                String              @id @default(cuid())
   accountId         String              @map("account_id")
@@ -2122,6 +2141,7 @@ model ManualJournalVoucherLine {
   id                 String                    @id @default(cuid())
   voucherId          String                    @map("voucher_id")
   chartAccountId     String                    @map("chart_account_id")
+  costCenterId       String?                   @map("cost_center_id")
   debit              Decimal                   @default(0) @db.Decimal(14, 2)
   credit             Decimal                   @default(0) @db.Decimal(14, 2)
   description        String?                   @db.Text
@@ -2133,9 +2153,11 @@ model ManualJournalVoucherLine {
 
   voucher      ManualJournalVoucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
   chartAccount ChartAccount         @relation(fields: [chartAccountId], references: [id])
+  costCenter   CostCenter?          @relation(fields: [costCenterId], references: [id])
 
   @@index([voucherId, position])
   @@index([chartAccountId])
+  @@index([costCenterId])
   @@index([thirdPartyType, thirdPartyId])
   @@map("manual_journal_voucher_lines")
 }
@@ -2178,6 +2200,7 @@ model JournalEntryLine {
   id                 String                    @id @default(cuid())
   journalEntryId     String                    @map("journal_entry_id")
   chartAccountId     String                    @map("chart_account_id")
+  costCenterId       String?                   @map("cost_center_id")
   debit              Decimal                   @default(0) @db.Decimal(14, 2)
   credit             Decimal                   @default(0) @db.Decimal(14, 2)
   description        String?                   @db.Text
@@ -2189,9 +2212,11 @@ model JournalEntryLine {
 
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   chartAccount ChartAccount @relation(fields: [chartAccountId], references: [id])
+  costCenter   CostCenter?  @relation(fields: [costCenterId], references: [id])
 
   @@index([journalEntryId])
   @@index([chartAccountId])
+  @@index([costCenterId])
   @@index([thirdPartyType, thirdPartyId])
   @@map("journal_entry_lines")
 }

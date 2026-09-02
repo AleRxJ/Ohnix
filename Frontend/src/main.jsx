@@ -35,6 +35,28 @@ if (isPrerendered || isBuildPrerender) {
 let hydrationPromise;
 let hydrated = false;
 
+// Vite's dynamic-import CSS loader (behind `stylesReady` above) resolves as
+// soon as it sees a matching <link> already in the document - it does NOT
+// wait for that link to actually finish loading. prerender.js pre-injects
+// exactly such a <link> into app.html so the browser's preload scanner can
+// start fetching it early, which means `stylesReady` above resolves the
+// instant that link exists, regardless of whether the (200+ KiB) stylesheet
+// it points to has downloaded yet. Without this, React could mount and
+// paint the whole tree - including Tailwind's `hidden`/`lg:*` responsive
+// classes - before that CSS was actually in effect, e.g. showing both the
+// desktop and mobile variants of AuthLayout at once on a slow first load.
+const waitForStylesheets = () =>
+    Promise.all(
+        Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map((link) =>
+            link.sheet
+                ? null
+                : new Promise((resolve) => {
+                      link.addEventListener("load", resolve, { once: true });
+                      link.addEventListener("error", resolve, { once: true });
+                  })
+        )
+    );
+
 const boot = async () => {
     const [styles, React, { createRoot, hydrateRoot }, { default: App }, { default: AppErrorBoundary }] =
         await Promise.all([
@@ -45,6 +67,7 @@ const boot = async () => {
             import("./components/error/AppErrorBoundary.jsx"),
         ]);
     if (!styles.styleMode) throw new Error("Ohnix styles failed to load");
+    await waitForStylesheets();
     const application = React.createElement(
         AppErrorBoundary,
         null,

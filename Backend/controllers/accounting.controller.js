@@ -9,6 +9,7 @@ import * as manualVoucherService from "../services/manualJournalVoucher.service.
 import * as thirdPartyLedgerService from "../services/thirdPartyLedger.service.js";
 import * as withholdingConceptService from "../services/withholdingConcept.service.js";
 import * as withholdingReportService from "../services/withholdingReport.service.js";
+import * as costCenterService from "../services/costCenter.service.js";
 
 // `to`/`as_of` always arrives as a plain "YYYY-MM-DD" string (every date
 // picker on the frontend sends dayjs().format("YYYY-MM-DD")), which
@@ -51,6 +52,7 @@ const mapJournalEntry = (e) => ({
             name: l.thirdPartyName,
             document: l.thirdPartyDocument,
         } : null,
+        cost_center: l.costCenter ? { _id: l.costCenter.id, code: l.costCenter.code, name: l.costCenter.name } : null,
     })),
 });
 
@@ -100,6 +102,7 @@ const mapManualVoucher = (voucher) => ({
             name: line.thirdPartyName,
             document: line.thirdPartyDocument,
         } : null,
+        cost_center: line.costCenter ? { _id: line.costCenter.id, code: line.costCenter.code, name: line.costCenter.name } : null,
     })),
 });
 
@@ -207,7 +210,7 @@ export const setChartOfAccountActive = asyncHandler(async (req, res, next) => {
 });
 
 export const listJournalEntries = asyncHandler(async (req, res) => {
-    const { from, to, source_type, source_id, period_id } = req.query;
+    const { from, to, source_type, source_id, period_id, cost_center_id } = req.query;
     const entries = await journalEntryService.listJournalEntries({
         accountId: req.user.prismaId,
         startDate: from ? new Date(from) : undefined,
@@ -215,8 +218,46 @@ export const listJournalEntries = asyncHandler(async (req, res) => {
         sourceType: source_type || undefined,
         sourceId: source_id || undefined,
         periodId: period_id || undefined,
+        costCenterId: cost_center_id || undefined,
     });
     return res.status(200).json(new ApiResponse(200, entries.map(mapJournalEntry), "Journal entries fetched successfully"));
+});
+
+const mapCostCenter = (center) => ({
+    _id: center.id,
+    code: center.code,
+    name: center.name,
+    is_active: center.isActive,
+    created_at: center.createdAt,
+    updated_at: center.updatedAt,
+});
+
+export const listCostCenters = asyncHandler(async (req, res) => {
+    const centers = await costCenterService.listCostCenters(req.user.prismaId, { includeInactive: req.query.include_inactive === "true" });
+    return res.status(200).json(new ApiResponse(200, centers.map(mapCostCenter), "Centros de costo obtenidos."));
+});
+
+export const createCostCenter = asyncHandler(async (req, res) => {
+    const center = await costCenterService.createCostCenter(req.user.prismaId, req.user.actorId, req.body || {});
+    return res.status(201).json(new ApiResponse(201, mapCostCenter(center), "Centro de costo creado."));
+});
+
+export const updateCostCenter = asyncHandler(async (req, res) => {
+    const center = await costCenterService.updateCostCenter(req.user.prismaId, req.user.actorId, req.params.id, req.body || {});
+    return res.status(200).json(new ApiResponse(200, mapCostCenter(center), "Centro de costo actualizado."));
+});
+
+export const getCostCenterLedger = asyncHandler(async (req, res) => {
+    const result = await costCenterService.getCostCenterLedger(req.user.prismaId, req.params.id, {
+        startDate: req.query.from ? new Date(req.query.from) : undefined,
+        endDate: endOfDay(req.query.to),
+    });
+    return res.status(200).json(new ApiResponse(200, {
+        cost_center: mapCostCenter(result.center),
+        total_debit: result.total_debit,
+        total_credit: result.total_credit,
+        movements: result.movements,
+    }, "Auxiliar del centro de costo obtenido."));
 });
 
 export const getJournalEntry = asyncHandler(async (req, res) => {
@@ -259,6 +300,7 @@ export const getIncomeStatement = asyncHandler(async (req, res) => {
         accountId: req.user.prismaId,
         startDate: from ? new Date(from) : undefined,
         endDate: endOfDay(to),
+        costCenterId: req.query.cost_center_id || undefined,
     });
     return res.status(200).json(new ApiResponse(200, statement, "Income statement fetched successfully"));
 });
@@ -278,6 +320,7 @@ export const getTrialBalance = asyncHandler(async (req, res) => {
         accountId: req.user.prismaId,
         startDate: from ? new Date(from) : undefined,
         endDate: endOfDay(to),
+        costCenterId: req.query.cost_center_id || undefined,
     });
     return res.status(200).json(new ApiResponse(200, rows, "Trial balance fetched successfully"));
 });

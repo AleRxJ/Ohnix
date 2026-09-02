@@ -45,6 +45,7 @@ const validateLines = async (tx, accountId, lines, { requireBalanced = false } =
         }
         return {
             chartAccountId: line.chart_account_id,
+            costCenterId: line.cost_center_id || null,
             debit: debit > 0 ? debit : 0,
             credit: credit > 0 ? credit : 0,
             description: String(line.description || "").trim() || null,
@@ -66,6 +67,15 @@ const validateLines = async (tx, accountId, lines, { requireBalanced = false } =
     if (accounts.length !== accountIds.length) {
         throw new ApiError(400, "Una o más cuentas no existen, están inactivas o pertenecen a otra empresa.");
     }
+    const costCenterIds = [...new Set(normalized.map((line) => line.costCenterId).filter(Boolean))];
+    if (costCenterIds.length) {
+        const costCenterCount = await tx.costCenter.count({
+            where: { id: { in: costCenterIds }, accountId, isActive: true },
+        });
+        if (costCenterCount !== costCenterIds.length) {
+            throw new ApiError(400, "Uno o más centros de costo no existen, están inactivos o pertenecen a otra empresa.");
+        }
+    }
     const accountById = new Map(accounts.map((account) => [account.id, account]));
     for (const line of normalized) {
         if (["1305", "2205"].includes(accountById.get(line.chartAccountId)?.code) && !line.thirdPartyType) {
@@ -82,7 +92,7 @@ const validateLines = async (tx, accountId, lines, { requireBalanced = false } =
 };
 
 const includeVoucher = {
-    lines: { orderBy: { position: "asc" }, include: { chartAccount: true } },
+    lines: { orderBy: { position: "asc" }, include: { chartAccount: true, costCenter: true } },
 };
 
 const lockVoucher = async (tx, accountId, id) => {
@@ -141,6 +151,7 @@ export const postDraft = async ({ accountId, actorId, id }) =>
                 debit: line.debit,
                 credit: line.credit,
                 description: line.description,
+                cost_center_id: line.costCenterId,
                 third_party: line.thirdPartyType ? {
                     type: line.thirdPartyType,
                     id: line.thirdPartyId,
@@ -191,10 +202,12 @@ export const voidPosted = async ({ accountId, actorId, id, reason, entryDate = n
                 debit: Number(line.credit),
                 credit: Number(line.debit),
                 description: line.description,
+                costCenterId: line.costCenterId,
                 thirdPartyType: line.thirdPartyType,
                 thirdPartyId: line.thirdPartyId,
                 thirdPartyName: line.thirdPartyName,
                 thirdPartyDocument: line.thirdPartyDocument,
+                costCenterId: line.costCenterId,
             })),
         });
         return tx.manualJournalVoucher.update({

@@ -8,6 +8,26 @@ export const accountingService = {
         return response.data;
     },
 
+    async listCostCenters({ includeInactive = false } = {}) {
+        const response = await api.get("/accounting/cost-centers", { params: { include_inactive: includeInactive } });
+        return response.data;
+    },
+
+    async createCostCenter(payload) {
+        const response = await api.post("/accounting/cost-centers", payload);
+        return response.data;
+    },
+
+    async updateCostCenter(id, payload) {
+        const response = await api.patch(`/accounting/cost-centers/${id}`, payload);
+        return response.data;
+    },
+
+    async getCostCenterLedger(id, { from, to } = {}) {
+        const response = await api.get(`/accounting/cost-centers/${id}/ledger`, { params: { ...(from ? { from } : {}), ...(to ? { to } : {}) } });
+        return response.data;
+    },
+
     async listChartOfAccounts() {
         const response = await api.get("/accounting/chart-of-accounts");
         return response.data;
@@ -35,13 +55,14 @@ export const accountingService = {
         return response.data;
     },
 
-    async listJournalEntries({ from, to, sourceType, sourceId } = {}) {
+    async listJournalEntries({ from, to, sourceType, sourceId, costCenterId } = {}) {
         const response = await api.get("/accounting/journal-entries", {
             params: {
                 ...(from ? { from } : {}),
                 ...(to ? { to } : {}),
                 ...(sourceType ? { source_type: sourceType } : {}),
                 ...(sourceId ? { source_id: sourceId } : {}),
+                ...(costCenterId ? { cost_center_id: costCenterId } : {}),
             },
         });
         return response.data;
@@ -170,9 +191,9 @@ export const accountingService = {
         return response.data;
     },
 
-    async getIncomeStatement({ from, to } = {}) {
+    async getIncomeStatement({ from, to, costCenterId } = {}) {
         const response = await api.get("/accounting/reports/income-statement", {
-            params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+            params: { ...(from ? { from } : {}), ...(to ? { to } : {}), ...(costCenterId ? { cost_center_id: costCenterId } : {}) },
         });
         return response.data;
     },
@@ -184,9 +205,9 @@ export const accountingService = {
         return response.data;
     },
 
-    async getTrialBalance({ from, to } = {}) {
+    async getTrialBalance({ from, to, costCenterId } = {}) {
         const response = await api.get("/accounting/reports/trial-balance", {
-            params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+            params: { ...(from ? { from } : {}), ...(to ? { to } : {}), ...(costCenterId ? { cost_center_id: costCenterId } : {}) },
         });
         return response.data;
     },
