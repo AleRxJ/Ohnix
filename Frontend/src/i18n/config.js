@@ -4,7 +4,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 import esCommon from '../locales/es/common.json';
 import enCommon from '../locales/en/common.json';
-import { applyCountryLanguageDefault, shouldRunCountryDetection, isLikelyBot, MANUAL_LANGUAGE_KEY } from './geoLanguage.js';
+import { applyCountryLanguageDefault, shouldRunCountryDetection, isLikelyBot, isBuildTimePrerender, MANUAL_LANGUAGE_KEY } from './geoLanguage.js';
 
 const resources = {
   es: {
@@ -58,7 +58,15 @@ i18n
 // Skipped entirely for crawlers: Googlebot et al. crawl from US-based
 // datacenter IPs, so this lookup would otherwise flip the indexed content
 // to English every time regardless of the site's actual audience.
-if (!isManuallySelected && !isLikelyBot() && shouldRunCountryDetection()) {
+//
+// Also skipped for scripts/prerender.js's own build-time pass: that pass
+// bakes its result into the static HTML served to every real visitor until
+// the next deploy, and it runs from the build host's network - not a
+// visitor's - so a lookup there resolves against the wrong location
+// entirely. This is why production was intermittently shipping the landing
+// page in English: whatever country the Vercel build happened to run from
+// got baked into the prerendered snapshot.
+if (!isManuallySelected && !isLikelyBot() && !isBuildTimePrerender() && shouldRunCountryDetection()) {
   applyCountryLanguageDefault(i18n);
 }
 

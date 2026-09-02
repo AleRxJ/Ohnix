@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { detectCountryCode } from "../i18n/geoLanguage";
+import { detectCountryCode, isBuildTimePrerender } from "../i18n/geoLanguage";
 import { pricingService } from "../services/pricingService";
 import { formatCurrency } from "../utils/currency";
 
@@ -107,6 +107,13 @@ export const useMarketPricing = () => {
     useEffect(() => {
         // Already resolved earlier this session - nothing to (re-)fetch.
         if (marketPricing) return undefined;
+        // scripts/prerender.js waits for the page's network to go idle
+        // before saving its HTML as the static snapshot served to every
+        // real visitor until the next deploy. Resolving this fetch during
+        // that pass would bake whatever country the Vercel build happened
+        // to run from into that snapshot (e.g. showing USD pricing to
+        // Colombian visitors) instead of the site's actual COP default.
+        if (isBuildTimePrerender()) return undefined;
 
         let active = true;
 
