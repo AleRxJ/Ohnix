@@ -48,17 +48,17 @@ const useScrollReveal = (threshold = 0.12) => {
     useEffect(() => {
         const el = ref.current;
         if (!el) return;
-        // scripts/prerender.js's headless viewport has whatever section
-        // happens to render first "in view" at scroll position 0, so this
-        // observer would fire almost immediately during the build capture -
-        // baking `visible: true` (and its revealed styling) into the static
-        // snapshot for every above-the-fold section. A real visitor's
-        // hydrateRoot() always starts at the `visible: false` above (this
-        // effect - and therefore the observer - only runs after that first
-        // commit), so that snapshot can never match - hydration mismatch
-        // (#418/#423). Never marking anything visible during that one pass
-        // keeps it pinned to the same false every fresh render starts at.
-        if (isBuildTimePrerender()) return undefined;
+        // Deliberately NOT gated by isBuildTimePrerender() (unlike the
+        // timers/geo-IP effects elsewhere in this file): main.jsx defers
+        // hydrateRoot() on prerendered pages until the visitor's first
+        // scroll/tap/click, so freezing this at `visible: false` for the
+        // build capture would leave every above-the-fold section stuck
+        // invisible (opacity-0) in the static snapshot with no interaction
+        // yet in sight to trigger hydration and reveal it - a blank-looking
+        // page, not just a console warning. Letting the observer run
+        // normally during that pass bakes "already revealed" styling into
+        // the static HTML for whatever is in the build viewport, same as a
+        // real visitor sees on first paint before they've scrolled.
         const obs = new IntersectionObserver(
             ([e]) => { if (e.isIntersecting) { setVisible(true); obs.unobserve(el); } },
             { threshold }
