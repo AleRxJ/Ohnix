@@ -7,6 +7,7 @@ import lowStockScheduler from "./utils/lowStockScheduler.js";
 import renewalScheduler from "./utils/subscriptionRenewalScheduler.js";
 import webhookRetryScheduler from "./utils/webhookRetryScheduler.js";
 import firmaPassValidationScheduler from "./utils/firmaPassValidationScheduler.js";
+import recurringExpenseScheduler from "./utils/recurringExpenseScheduler.js";
 import { reconcileLegacyApprovedRequests, reconcileStuckPendingPayments } from "./utils/subscriptionReconcile.js";
 
 dotenv.config({
@@ -70,6 +71,8 @@ connectDB()
                 webhookRetryScheduler.start();
                 console.log("🔏 Starting FirmaPass validation check scheduler...");
                 firmaPassValidationScheduler.start();
+                console.log("🧾 Starting recurring expense scheduler...");
+                recurringExpenseScheduler.start();
             }
         });
     })

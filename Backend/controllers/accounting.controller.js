@@ -10,6 +10,7 @@ import * as thirdPartyLedgerService from "../services/thirdPartyLedger.service.j
 import * as withholdingConceptService from "../services/withholdingConcept.service.js";
 import * as withholdingReportService from "../services/withholdingReport.service.js";
 import * as costCenterService from "../services/costCenter.service.js";
+import * as recurringExpenseService from "../services/recurringExpense.service.js";
 
 // `to`/`as_of` always arrives as a plain "YYYY-MM-DD" string (every date
 // picker on the frontend sends dayjs().format("YYYY-MM-DD")), which
@@ -271,6 +272,26 @@ export const assignLocationCostCenter = asyncHandler(async (req, res) => {
         point_of_sale_id: location.id,
         cost_center_id: location.defaultCostCenterId,
     }, "Centro de costo predeterminado actualizado."));
+});
+
+export const listRecurringExpenseTemplates = asyncHandler(async (req, res) => {
+    const templates = await recurringExpenseService.listRecurringExpenseTemplates(req.user.prismaId, { includeInactive: req.query.include_inactive === "true" });
+    return res.status(200).json(new ApiResponse(200, templates, "Gastos recurrentes obtenidos."));
+});
+
+export const createRecurringExpenseTemplate = asyncHandler(async (req, res) => {
+    const template = await recurringExpenseService.createRecurringExpenseTemplate(req.user.prismaId, req.user.actorId, req.body || {});
+    return res.status(201).json(new ApiResponse(201, template, "Gasto recurrente creado."));
+});
+
+export const updateRecurringExpenseTemplate = asyncHandler(async (req, res) => {
+    const template = await recurringExpenseService.updateRecurringExpenseTemplate(req.user.prismaId, req.user.actorId, req.params.id, req.body || {});
+    return res.status(200).json(new ApiResponse(200, template, "Gasto recurrente actualizado."));
+});
+
+export const runRecurringExpenseTemplateNow = asyncHandler(async (req, res) => {
+    const entry = await recurringExpenseService.runRecurringExpenseTemplateNow(req.user.prismaId, req.user.actorId, req.params.id);
+    return res.status(201).json(new ApiResponse(201, { entry_id: entry.id }, "Gasto recurrente generado."));
 });
 
 export const getJournalEntry = asyncHandler(async (req, res) => {

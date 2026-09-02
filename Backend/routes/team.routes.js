@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
+import { blockDuringImpersonation } from "../middleware/blockDuringImpersonation.middleware.js";
 import {
     teamInvitationRateLimiter,
     invitationAcceptRateLimiter,
@@ -55,7 +56,9 @@ router.use("/teams/:id", loadTeam);
 
 router.route("/teams/:id")
     .get(requireTeamAccess, getTeam)
-    .patch(requireTeamOwnerActor, updateTeam);
+    // Includes ownership transfer (newOwnerUserId) - never allowed while an
+    // admin is impersonating the owner.
+    .patch(requireTeamOwnerActor, blockDuringImpersonation, updateTeam);
 
 router.route("/teams/:id/members")
     .get(requireTeamAccess, listMembers);

@@ -10,6 +10,7 @@ import PlanGate from "../components/common/PlanGate";
 import EmptyState from "../components/common/EmptyState";
 import useIsMobile from "../hooks/useIsMobile";
 import { accountingService } from "../services/accountingService";
+import { financeService } from "../services/financeService";
 import { pointOfSaleService } from "../services/pointOfSaleService";
 import { companyService } from "../services/companyService";
 import { useCurrency } from "../context/CurrencyContext";
@@ -643,6 +644,141 @@ const CostCentersTab = () => {
                 { title: t("accounting.lines_col_credit"), dataIndex: "credit", align: "right", render: (value) => value ? formatCurrency(value) : "" },
             ]} />
         </Drawer>
+    </>;
+};
+
+const RecurringExpensesTab = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("accounting", "edit");
+    const [form] = Form.useForm();
+    const [templates, setTemplates] = useState([]);
+    const [expenseAccounts, setExpenseAccounts] = useState([]);
+    const [cashAccounts, setCashAccounts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [editing, setEditing] = useState(null);
+    const [open, setOpen] = useState(false);
+    const [runningId, setRunningId] = useState(null);
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const [templateResponse, chartResponse, cashResponse] = await Promise.all([
+                accountingService.listRecurringExpenses({ includeInactive: true }),
+                accountingService.listChartOfAccounts(),
+                financeService.listCashAccounts(),
+            ]);
+            setTemplates(templateResponse?.data || []);
+            setExpenseAccounts((chartResponse?.data || []).filter((a) => a.account_type === "expense" && a.is_active));
+            setCashAccounts((cashResponse?.data || []).filter((a) => a.is_active));
+        } catch { toast.error(t("accounting.failed")); }
+        finally { setLoading(false); }
+    };
+    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const showEditor = (template = null) => {
+        setEditing(template);
+        form.setFieldsValue({
+            description: template?.description || "",
+            amount: template?.amount ?? undefined,
+            day_of_month: template?.day_of_month ?? 1,
+            expense_account_id: template?.expense_account?._id,
+            cash_account_id: template?.cash_account?._id,
+            is_active: template?.is_active ?? true,
+        });
+        setOpen(true);
+    };
+    const save = async () => {
+        const values = await form.validateFields();
+        setSaving(true);
+        try {
+            if (editing) await accountingService.updateRecurringExpense(editing._id, values);
+            else await accountingService.createRecurringExpense(values);
+            toast.success(t(editing ? "accounting.recurring_expense_updated" : "accounting.recurring_expense_created"));
+            setOpen(false);
+            form.resetFields();
+            await load();
+        } catch (error) {
+            if (!error?.errorFields) toast.error(error?.response?.data?.message || t("accounting.failed"));
+        } finally { setSaving(false); }
+    };
+    const runNow = async (template) => {
+        setRunningId(template._id);
+        try {
+            await accountingService.runRecurringExpenseNow(template._id);
+            toast.success(t("accounting.recurring_expense_run_success"));
+            await load();
+        } catch (error) {
+            toast.error(error?.response?.data?.message || t("accounting.failed"));
+        } finally { setRunningId(null); }
+    };
+
+    return <>
+        <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("accounting.recurring_expense_help")} />
+        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.recurring_expense_new")}</Button>}</div>
+        <Table
+            className="module-dark-table"
+            loading={loading}
+            rowKey="_id"
+            dataSource={templates}
+            pagination={{ pageSize: 15 }}
+            scroll={{ x: "max-content" }}
+            locale={{ emptyText: <EmptyState compact title={t("accounting.empty_recurring_expenses_title")} subtitle={t("accounting.empty_recurring_expenses_help")} action={canEdit ? <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.recurring_expense_new")}</Button> : null} /> }}
+            columns={[
+                { title: t("accounting.col_description"), dataIndex: "description" },
+                { title: t("accounting.col_amount"), dataIndex: "amount", align: "right", render: (v) => formatCurrency(v) },
+                { title: t("accounting.recurring_expense_day_of_month"), dataIndex: "day_of_month", width: 90, align: "center" },
+                { title: t("accounting.section_expenses"), render: (_, row) => row.expense_account ? `${row.expense_account.code} · ${row.expense_account.name}` : "—" },
+                { title: t("accounting.recurring_expense_cash_account"), render: (_, row) => row.cash_account?.name || "—" },
+                {
+                    title: t("accounting.col_status"),
+                    render: (_, row) => (
+                        <div className="flex flex-col gap-1">
+                            <Tag color={row.is_active ? "green" : "default"}>{t(row.is_active ? "common.active" : "common.inactive")}</Tag>
+                            {row.last_run_status === "failed" && (
+                                <Tooltip title={row.last_run_error}>
+                                    <Tag color="red" icon={<WarningOutlined />}>{t("accounting.recurring_expense_last_run_failed")}</Tag>
+                                </Tooltip>
+                            )}
+                            {row.last_generated_period && row.last_run_status !== "failed" && (
+                                <span className="text-xs text-[var(--ohnix-text-dim)]">{t("accounting.recurring_expense_last_generated", { period: row.last_generated_period })}</span>
+                            )}
+                        </div>
+                    ),
+                },
+                {
+                    title: t("common.actions"),
+                    width: 220,
+                    render: (_, template) => (
+                        <div className="flex gap-2">
+                            {canEdit && (
+                                <Button size="small" loading={runningId === template._id} disabled={!template.is_active} onClick={() => runNow(template)}>
+                                    {t("accounting.recurring_expense_run_now")}
+                                </Button>
+                            )}
+                            {canEdit && <Button size="small" onClick={() => showEditor(template)}>{t("common.edit")}</Button>}
+                        </div>
+                    ),
+                },
+            ]}
+        />
+        <Modal className="accounting-modal" title={editing ? t("accounting.recurring_expense_edit") : t("accounting.recurring_expense_new")} open={open} onCancel={() => setOpen(false)} onOk={save} confirmLoading={saving} destroyOnHidden>
+            <Alert className="dark-alert dark-alert-teal mb-4" showIcon type="info" message={t("accounting.recurring_expense_form_help")} />
+            <Form form={form} layout="vertical">
+                <Form.Item name="description" label={t("accounting.col_description")} rules={[{ required: true, max: 160 }]}><Input /></Form.Item>
+                <Form.Item name="amount" label={t("accounting.col_amount")} rules={[{ required: true, type: "number" }]}><InputNumber min={0.01} step={1000} className="w-full" /></Form.Item>
+                <Form.Item name="day_of_month" label={t("accounting.recurring_expense_day_of_month")} extra={t("accounting.recurring_expense_day_of_month_help")} rules={[{ required: true, type: "number", min: 1, max: 28 }]}><InputNumber min={1} max={28} className="w-full" /></Form.Item>
+                <Form.Item name="expense_account_id" label={t("accounting.section_expenses")} rules={[{ required: true }]}>
+                    <Select showSearch optionFilterProp="label" options={expenseAccounts.map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))} />
+                </Form.Item>
+                <Form.Item name="cash_account_id" label={t("accounting.recurring_expense_cash_account")} rules={[{ required: true }]}>
+                    <Select showSearch optionFilterProp="label" options={cashAccounts.map((a) => ({ value: a._id, label: a.name }))} />
+                </Form.Item>
+                {editing && <Form.Item name="is_active" label={t("accounting.col_status")} valuePropName="checked"><Switch /></Form.Item>}
+            </Form>
+        </Modal>
     </>;
 };
 
@@ -1958,6 +2094,7 @@ const Accounting = () => {
         { key: "vouchers", label: tabLabel(<FileTextOutlined />, "accounting.tab_vouchers"), children: <ManualVouchersTab /> },
         { key: "third_parties", label: tabLabel(<TeamOutlined />, "accounting.tab_third_parties"), children: <ThirdPartyLedgerTab /> },
         { key: "cost_centers", label: tabLabel(<PartitionOutlined />, "accounting.tab_cost_centers"), children: <CostCentersTab /> },
+        { key: "recurring_expenses", label: tabLabel(<ClockCircleOutlined />, "accounting.tab_recurring_expenses"), children: <RecurringExpensesTab /> },
         { key: "trial_balance", label: tabLabel(<CalculatorOutlined />, "accounting.tab_trial_balance"), children: <TrialBalanceTab /> },
         { key: "periods", label: tabLabel(<LockOutlined />, "accounting.tab_periods"), children: <PeriodsTab /> },
         { key: "statements", label: tabLabel(<BarChartOutlined />, "accounting.tab_financial_statements"), children: <FinancialStatementsTab /> },

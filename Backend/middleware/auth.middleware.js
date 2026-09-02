@@ -3,6 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 import { prisma } from "../db/prisma.js";
 import { isSessionValid } from "../utils/sessionStore.js";
+import { isImpersonationSessionValid } from "../utils/impersonationSession.js";
 import { resolveAccountScope } from "../utils/teamContext.js";
 
 const shouldLogAuthDebug =
@@ -87,7 +88,21 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
         // sid and overwrites Redis's record of the active one for this user
         // - once that happens, this (now-superseded) token stops working
         // immediately instead of waiting for its natural expiry.
-        if (!(await isSessionValid(user.id, decodedToken.sid))) {
+        //
+        // An impersonation token (minted by impersonateUser, never by
+        // issueAuthTokens) never touches this user's real
+        // session:active:<userId> record - checking it here would either
+        // reject every impersonation token outright (no matching sid) or,
+        // worse, require overwriting the target's real session to make it
+        // pass. It's validated against its own independent Redis namespace
+        // instead - see impersonationSession.js.
+        if (decodedToken.impersonatedBy) {
+            if (!(await isImpersonationSessionValid(decodedToken.sid))) {
+                return next(
+                    new ApiError(401, "La sesión simulada terminó o expiró")
+                );
+            }
+        } else if (!(await isSessionValid(user.id, decodedToken.sid))) {
             return next(
                 new ApiError(
                     401,
@@ -116,6 +131,14 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
             // when posScopeAll is false.
             posScopeAll: accountScope.posScopeAll,
             posScopeIds: accountScope.posScopeIds,
+            // Present only when this request is running as an admin's
+            // impersonation of this user (see impersonateUser/endImpersonation
+            // in user.controller.js) - role/scope above already reflect the
+            // impersonated user, not the admin, so isAdmin-gated routes stay
+            // correctly blocked during impersonation with no extra check.
+            impersonatedBy: decodedToken.impersonatedBy || null,
+            impersonatedByUsername: decodedToken.impersonatedByUsername || null,
+            impersonationSid: decodedToken.impersonatedBy ? decodedToken.sid : null,
         };
         next();
     } catch (error) {

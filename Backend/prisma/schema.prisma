@@ -281,6 +281,7 @@ model User {
   journalEntriesCreated           JournalEntry[]
   accountingConfigAuditsOwned     AccountingConfigAudit[] @relation("AccountingConfigAuditAccount")
   costCentersOwned                CostCenter[]            @relation("CostCenterAccount")
+  recurringExpenseTemplatesOwned  RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateAccount")
   accountingConfigAuditsPerformed AccountingConfigAudit[] @relation("AccountingConfigAuditActor")
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
@@ -1793,6 +1794,7 @@ model CashAccount {
   orderPayments    OrderPayment[]
   purchasePayments PurchasePayment[]
   statementEntries BankStatementEntry[]
+  recurringExpenseTemplates RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateCashAccount")
 
   @@index([pointOfSaleId])
   @@index([createdById])
@@ -1962,6 +1964,7 @@ model ChartAccount {
   manualVoucherLines  ManualJournalVoucherLine[]
   withholdingConcepts WithholdingConcept[]
   purchaseRetentions  PurchaseRetention[]
+  recurringExpenseTemplates RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateExpenseAccount")
 
   @@unique([createdById, code])
   @@index([createdById])
@@ -1986,6 +1989,49 @@ model CostCenter {
   @@unique([accountId, code])
   @@index([accountId, isActive])
   @@map("cost_centers")
+}
+
+// A standing instruction to post the same operating expense (arriendo,
+// nómina, etc.) every month, instead of the user re-entering it by hand via
+// manualExpense.service.js each time. recurringExpense.service.js's daily
+// cron (see recurringExpenseScheduler.js) generates one JournalEntry per
+// template per calendar month once `dayOfMonth` has passed, going through
+// the exact same posting path (claim cash, applyLocationCostCenter off the
+// cash account's sede) as a manual expense - a template is just what decides
+// WHEN and with WHAT amounts that same posting happens, never a different
+// accounting treatment. No costCenterId field here on purpose: the center is
+// resolved from cashAccount.pointOfSaleId at generation time, same as every
+// other automated posting (accountingPosting.service.js), so moving a
+// template's cash account to a different sede repoints future generations
+// without editing the template itself.
+model RecurringExpenseTemplate {
+  id                   String    @id @default(cuid())
+  createdById          String    @map("created_by")
+  description          String
+  expenseAccountId     String    @map("expense_account_id")
+  cashAccountId        String    @map("cash_account_id")
+  amount               Decimal   @db.Decimal(14, 2)
+  // 1-28 only (not 29-31) so every calendar month, February included, has an
+  // unambiguous matching day - the alternative (clamping 30/31 down to each
+  // month's actual last day) would silently shift a template's effective
+  // date across different months.
+  dayOfMonth           Int       @default(1) @map("day_of_month")
+  isActive             Boolean   @default(true) @map("is_active")
+  // "YYYY-MM" of the last calendar month this template successfully posted
+  // for - the cron's dedupe key, so a restart or a late run within the same
+  // month never double-posts.
+  lastGeneratedPeriod  String?   @map("last_generated_period")
+  lastRunStatus        String?   @map("last_run_status")
+  lastRunError         String?   @map("last_run_error")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  createdBy     User         @relation("RecurringExpenseTemplateAccount", fields: [createdById], references: [id])
+  expenseAccount ChartAccount @relation("RecurringExpenseTemplateExpenseAccount", fields: [expenseAccountId], references: [id])
+  cashAccount   CashAccount  @relation("RecurringExpenseTemplateCashAccount", fields: [cashAccountId], references: [id])
+
+  @@index([createdById, isActive])
+  @@map("recurring_expense_templates")
 }
 
 model WithholdingConcept {
@@ -2096,6 +2142,7 @@ enum JournalSourceType {
   manual_income
   cash_transfer
   cash_adjustment
+  recurring_expense
 }
 
 model AccountingConfigAudit {

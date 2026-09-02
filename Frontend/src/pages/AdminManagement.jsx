@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { Alert, Form, Tabs } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
 import { adminService } from "../services/adminService";
@@ -19,8 +20,9 @@ import {
 } from "../components/admin";
 
 const AdminManagement = () => {
-    const { user } = useContext(AuthContext);
+    const { user, applySession } = useContext(AuthContext);
     const { t } = useI18n();
+    const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
     const [companies, setCompanies] = useState([]);
@@ -209,6 +211,18 @@ const AdminManagement = () => {
         }
     };
 
+    // Swaps this browser's session to targetUser's - see Backend's
+    // impersonateUser and AuthContext's applySession/endImpersonation.
+    const handleImpersonate = async (targetUser) => {
+        try {
+            const response = await adminService.impersonateUser(targetUser.id);
+            applySession(response.data.user, response.data.accessToken);
+            navigate("/dashboard");
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        }
+    };
+
     if (!isAdmin) {
         return (
             <div className="p-6 sm:p-8">
@@ -254,6 +268,7 @@ const AdminManagement = () => {
                                     onToggleVerification={toggleUserVerification}
                                     onViewTeam={setTeamContextUser}
                                     onSetPassword={setPasswordUser}
+                                    onImpersonate={handleImpersonate}
                                 />
                             ),
                         },

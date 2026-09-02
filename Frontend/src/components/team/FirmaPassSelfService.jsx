@@ -81,6 +81,15 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, electronicInvoicingA
     // directly instead of walking every FirmaPass step. Collapsed by
     // default since the wizard above is still the common path.
     const [manualCertOpen, setManualCertOpen] = useState(false);
+    // The buy/upload/FirmaPass-wizard block below is only ever needed again
+    // once invoicing is already active if the owner wants to add a backup
+    // certificate or replace one that's about to expire - collapsed by
+    // default then (unlike the pre-activation case, where it's the whole
+    // point of the card) so it doesn't compete with the "all good" alert.
+    // Forced open when electronicInvoicingAtRisk regardless of this toggle,
+    // since that state means the current certificate (or resolution) already
+    // stopped covering issuance and the owner needs this visible immediately.
+    const [certManagerOpen, setCertManagerOpen] = useState(false);
     const [manualCertFileBase64, setManualCertFileBase64] = useState("");
     const [certForm] = Form.useForm();
     const [uploadCertIdempotencyKey] = useState(() => crypto.randomUUID());
@@ -248,6 +257,14 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, electronicInvoicingA
     };
 
     const activeCertificate = (status?.certificates || []).some((certificate) => certificate.status === "ACTIVE") || Boolean(readiness?.certificateReady);
+    // Which certificate is actually being used to sign right now - prefer an
+    // ACTIVE one (there can be more than one on record after a renewal), but
+    // still surface something (most recently created) if none is ACTIVE yet,
+    // since that's still useful context while a new one is pending.
+    const certificates = status?.certificates || [];
+    const displayedCertificate = certificates.find((certificate) => certificate.status === "ACTIVE")
+        || [...certificates].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0]
+        || null;
     const validationUuidTrimmed = validationUuid.trim();
     const validationUuidInvalid = Boolean(validationUuidTrimmed) && !isValidUuid(validationUuidTrimmed);
     const canDriveValidation = Boolean(validationUuidTrimmed) && !validationUuidInvalid;
@@ -288,6 +305,20 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, electronicInvoicingA
                 </Tag>
             </div>
 
+            {displayedCertificate && (
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-3 py-2 text-xs">
+                    <span className="text-[var(--ohnix-text-muted)]">
+                        {t("fiscal_setup.firmapass_cert_identifier")}: <span className="font-medium text-[var(--ohnix-text-primary)]">{displayedCertificate.certificateIdentifier || "-"}</span>
+                    </span>
+                    {displayedCertificate.expiresAt && (
+                        <span className="text-[var(--ohnix-text-muted)]">
+                            {t("fiscal_setup.firmapass_cert_expires")}: <span className="font-medium text-[var(--ohnix-text-primary)]">{new Date(displayedCertificate.expiresAt).toLocaleDateString()}</span>
+                        </span>
+                    )}
+                    <Tag color={displayedCertificate.status === "ACTIVE" ? "green" : "orange"} className="m-0">{displayedCertificate.status}</Tag>
+                </div>
+            )}
+
             {!electronicInvoicingEnabled && activeCertificate && (
                 <Alert
                     className="mt-4 dark-alert dark-alert-teal"
@@ -312,7 +343,7 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, electronicInvoicingA
                 />
             )}
 
-            {electronicInvoicingEnabled ? (
+            {electronicInvoicingEnabled && (
                 electronicInvoicingAtRisk ? (
                     // getMyItcycleStatus's electronicInvoicingAtRisk means the
                     // enabled flag and the live certificate/resolution check
@@ -324,7 +355,20 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, electronicInvoicingA
                 ) : (
                     <Alert className="mt-4 dark-alert dark-alert-teal" type="success" showIcon message={t("fiscal_setup.firmapass_active_alert")} />
                 )
-            ) : (
+            )}
+
+            {electronicInvoicingEnabled && (
+                <Button
+                    type="link"
+                    size="small"
+                    className="mt-1 h-auto px-0"
+                    onClick={() => setCertManagerOpen((open) => !open)}
+                >
+                    {(certManagerOpen || electronicInvoicingAtRisk) ? t("fiscal_setup.firmapass_cert_manager_hide") : t("fiscal_setup.firmapass_cert_manager_show")}
+                </Button>
+            )}
+
+            {(!electronicInvoicingEnabled || certManagerOpen || electronicInvoicingAtRisk) && (
                 <Space direction="vertical" size="middle" className="mt-4 w-full">
                     <Alert
                         className="dark-alert dark-alert-purple"

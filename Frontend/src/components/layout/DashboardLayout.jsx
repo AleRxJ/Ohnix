@@ -6,6 +6,7 @@ import { WarningOutlined, CloseOutlined, FireOutlined, RocketOutlined, LockOutli
 import DashboardHeader from "./DashboardHeader";
 import DashboardSidebar from "./DashboardSidebar";
 import MobileMenu from "./MobileMenu";
+import ImpersonationBanner from "./ImpersonationBanner";
 import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { subscriptionService } from "../../services/subscriptionService";
@@ -426,7 +427,8 @@ const DashboardLayout = () => {
     };
 
     return (
-        <Layout className="dashboard-app min-h-screen relative overflow-x-hidden">
+        <Layout className={`dashboard-app min-h-screen relative overflow-x-hidden ${user?.impersonatedBy ? "pt-9" : ""}`}>
+            <ImpersonationBanner />
             <InventoryTour />
             <InventoryTourFab />
             <AssistantWidget />

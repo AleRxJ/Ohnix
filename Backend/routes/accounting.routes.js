@@ -38,6 +38,10 @@ import {
     updateCostCenter,
     getCostCenterLedger,
     assignLocationCostCenter,
+    listRecurringExpenseTemplates,
+    createRecurringExpenseTemplate,
+    updateRecurringExpenseTemplate,
+    runRecurringExpenseTemplateNow,
 } from "../controllers/accounting.controller.js";
 
 const router = Router();
@@ -64,6 +68,14 @@ router.route("/cost-centers/:id/ledger")
     .get(requireModulePermission("accounting", "view"), getCostCenterLedger);
 router.route("/cost-centers/location/:pointOfSaleId")
     .patch(requireModulePermission("accounting", "admin"), assignLocationCostCenter);
+
+router.route("/recurring-expenses")
+    .get(requireModulePermission("accounting", "view"), listRecurringExpenseTemplates)
+    .post(requireModulePermission("accounting", "edit"), createRecurringExpenseTemplate);
+router.route("/recurring-expenses/:id")
+    .patch(requireModulePermission("accounting", "edit"), updateRecurringExpenseTemplate);
+router.route("/recurring-expenses/:id/run")
+    .post(requireModulePermission("accounting", "edit"), runRecurringExpenseTemplateNow);
 
 router.route("/journal-entries").get(requireModulePermission("accounting", "view"), listJournalEntries);
 router.route("/journal-entries/:id").get(requireModulePermission("accounting", "view"), getJournalEntry);

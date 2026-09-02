@@ -10,6 +10,11 @@ import { prisma } from "../db/prisma.js";
 import { notifyAdminsUpgradeRequestCreated, notifyUserEmailVerified, notifyAdminsNewUserRegistered } from "../utils/upgradeRequestNotifications.js";
 import { clearActiveSession, isSessionValid } from "../utils/sessionStore.js";
 import { issueAuthTokens, userLookupByTokenId, AUTH_COOKIE_OPTIONS } from "../utils/authTokens.js";
+import {
+    signImpersonationToken,
+    setImpersonationSession,
+    clearImpersonationSession,
+} from "../utils/impersonationSession.js";
 import { shouldRouteToManualReview } from "./subscription.controller.js";
 import { logAdminAction } from "../utils/adminAudit.js";
 
@@ -676,9 +681,109 @@ const getCurrentUser = asyncHandler(async (req, res, next) => {
         return next(new ApiError(404, "User not found"));
     }
 
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                ...toAuthUser(currentUser),
+                // Only set while req.user came from an impersonation token
+                // (see verifyJWT) - this is what tells the frontend to show
+                // the "viewing as" banner.
+                impersonatedBy: req.user?.impersonatedBy || null,
+                impersonatedByUsername: req.user?.impersonatedByUsername || null,
+            },
+            "User fetched successfully"
+        )
+    );
+});
+
+// Admin-only: mints a short-lived, non-refreshable session that authenticates
+// as targetUser instead of the calling admin, so the admin can see exactly
+// what that user sees while helping with support. Deliberately does NOT
+// reuse issueAuthTokens - see impersonationSession.js for why that would
+// silently end the target's real session.
+const impersonateUser = asyncHandler(async (req, res, next) => {
+    const { userId } = req.params;
+
+    const target = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, legacyMongoId: true, username: true, email: true, role: true, tokenVersion: true },
+    });
+
+    if (!target) {
+        return next(new ApiError(404, "Usuario no encontrado."));
+    }
+    if (target.role === "admin") {
+        return next(new ApiError(403, "No se puede simular a otro administrador."));
+    }
+
+    const { accessToken, sid } = signImpersonationToken(target, req.user.id, req.user.username);
+    await setImpersonationSession(sid, { adminId: req.user.id, targetUserId: target.id });
+
+    await logAdminAction({
+        adminId: req.user.id,
+        action: "impersonation_started",
+        targetType: "user",
+        targetId: target.id,
+        targetUserId: target.id,
+        metadata: { sid },
+    });
+
+    const impersonatedUser = await prisma.user.findUnique({
+        where: { id: target.id },
+        select: userPublicSelect,
+    });
+
     return res
         .status(200)
-        .json(new ApiResponse(200, toAuthUser(currentUser), "User fetched successfully"));
+        .cookie("accessToken", accessToken, AUTH_COOKIE_OPTIONS.access)
+        .json(new ApiResponse(200, { user: impersonatedUser, accessToken }, "Sesión simulada iniciada"));
+});
+
+// Reachable only by verifyJWT (not isAdmin): while impersonating, req.user is
+// the TARGET user, whose role is very unlikely to be "admin" - gating this on
+// isAdmin would lock the admin out of their own way back. req.user.impersonatedBy
+// (set by verifyJWT from the impersonation token) is what proves this request
+// is genuinely running inside an impersonation session.
+const endImpersonation = asyncHandler(async (req, res, next) => {
+    if (!req.user?.impersonatedBy) {
+        return next(new ApiError(400, "No hay una sesión simulada activa."));
+    }
+
+    const adminId = req.user.impersonatedBy;
+    const targetUserId = req.user.id;
+    const sid = req.user.impersonationSid;
+
+    await clearImpersonationSession(sid);
+
+    await logAdminAction({
+        adminId,
+        action: "impersonation_ended",
+        targetType: "user",
+        targetId: targetUserId,
+        targetUserId,
+        metadata: { sid },
+    });
+
+    // Mints a brand-new, normal session for the admin - exactly like a fresh
+    // login, including the usual single-active-session bookkeeping. Their
+    // real refreshToken/session was never touched by the impersonation, but
+    // re-minting here (rather than trying to restore whatever they had
+    // before) keeps this endpoint simple and matches how every other
+    // "become this session" transition in the app already works.
+    const { accessToken, refreshToken } = await issueAuthTokens(adminId, {
+        deviceInfo: req.header("User-Agent"),
+    });
+    const adminUser = await prisma.user.findUnique({
+        where: { id: adminId },
+        select: userPublicSelect,
+    });
+
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, AUTH_COOKIE_OPTIONS.access)
+        .cookie("refreshToken", refreshToken, AUTH_COOKIE_OPTIONS.refresh)
+        .json(new ApiResponse(200, { user: adminUser, accessToken, refreshToken }, "Sesión simulada finalizada"));
 });
 
 const listUsersAdmin = asyncHandler(async (_req, res) => {
@@ -1303,6 +1408,8 @@ export {
     createUserAdmin,
     updateUserAdmin,
     setUserPasswordAdmin,
+    impersonateUser,
+    endImpersonation,
     sendVerifyOtp,
     verifyEmail,
     isAuthenticated,

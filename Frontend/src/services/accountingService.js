@@ -33,6 +33,26 @@ export const accountingService = {
         return response.data;
     },
 
+    async listRecurringExpenses({ includeInactive = false } = {}) {
+        const response = await api.get("/accounting/recurring-expenses", { params: { include_inactive: includeInactive } });
+        return response.data;
+    },
+
+    async createRecurringExpense(payload) {
+        const response = await api.post("/accounting/recurring-expenses", payload);
+        return response.data;
+    },
+
+    async updateRecurringExpense(id, payload) {
+        const response = await api.patch(`/accounting/recurring-expenses/${id}`, payload);
+        return response.data;
+    },
+
+    async runRecurringExpenseNow(id) {
+        const response = await api.post(`/accounting/recurring-expenses/${id}/run`);
+        return response.data;
+    },
+
     async listChartOfAccounts() {
         const response = await api.get("/accounting/chart-of-accounts");
         return response.data;

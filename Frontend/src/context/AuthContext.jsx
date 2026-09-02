@@ -47,6 +47,17 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Shared by login() and endImpersonation() - both swap in a brand-new
+    // accessToken + user for the current browser session the exact same way.
+    const applySession = (sessionUser, token) => {
+        setUser(sessionUser);
+        if (token) {
+            localStorage.setItem("accessToken", token);
+            api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        }
+        setAuthenticated(true);
+    };
+
     // Login function. `silent` skips the success/error toasts - used right
     // after registration (Signup.jsx) to authenticate a brand-new account
     // without a redundant "logged in" toast on top of "account created".
@@ -56,14 +67,7 @@ export const AuthProvider = ({ children }) => {
             const data = response.data;
 
             if (data.success) {
-                setUser(data.data.user);
-                // store access token for subsequent API calls
-                const token = data.data.accessToken;
-                if (token) {
-                    localStorage.setItem("accessToken", token);
-                    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-                }
-                setAuthenticated(true);
+                applySession(data.data.user, data.data.accessToken);
                 if (!silent) toast.success(t("auth.login_success"));
                 return { success: true };
             } else {
@@ -74,6 +78,25 @@ export const AuthProvider = ({ children }) => {
             const errorMessage =
                 error.response?.data?.message || t("common.error");
             if (!silent) toast.error(errorMessage);
+            return { success: false, message: errorMessage };
+        }
+    };
+
+    // Swaps the current (impersonated) session back to the admin's own,
+    // exactly like a fresh login - see Backend's endImpersonation.
+    const endImpersonation = async () => {
+        try {
+            const response = await api.post("/users/impersonation/end");
+            const data = response.data;
+            if (data.success) {
+                applySession(data.data.user, data.data.accessToken);
+                return { success: true };
+            }
+            toast.error(data.message || t("common.error"));
+            return { success: false, message: data.message };
+        } catch (error) {
+            const errorMessage = error.response?.data?.message || t("common.error");
+            toast.error(errorMessage);
             return { success: false, message: errorMessage };
         }
     };
@@ -113,6 +136,8 @@ export const AuthProvider = ({ children }) => {
         logout,
         isVerified,
         refreshUser: checkAuthStatus,
+        applySession,
+        endImpersonation,
     };
 
     return (

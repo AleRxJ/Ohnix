@@ -17,6 +17,8 @@ import {
     createUserAdmin,
     updateUserAdmin,
     setUserPasswordAdmin,
+    impersonateUser,
+    endImpersonation,
     sendChangePasswordOtp,
     verifyChangePasswordOtp,
 } from "../controllers/user.controller.js";
@@ -27,6 +29,7 @@ import {
 import { upload } from "../middleware/multer.middleware.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
+import { blockDuringImpersonation } from "../middleware/blockDuringImpersonation.middleware.js";
 import {
     loginRateLimiter,
     registerRateLimiter,
@@ -53,7 +56,8 @@ router.route("/login").post(loginRateLimiter, loginUser);
 router.route("/logout").post(verifyJWT, logoutUser);
 router.route("/refresh-token").post(refreshAccessToken);
 
-router.route("/change-password").post(verifyJWT, changeCurrentPassword);
+router.route("/change-password").post(verifyJWT, blockDuringImpersonation, changeCurrentPassword);
+router.route("/impersonation/end").post(verifyJWT, endImpersonation);
 router.route("/update-account").patch(verifyJWT, updateAccountDetails);
 router
     .route("/avatar")
@@ -67,6 +71,7 @@ router
     .post(verifyJWT, isAdmin, createUserAdmin);
 router.route("/admin/users/:userId").patch(verifyJWT, isAdmin, updateUserAdmin);
 router.route("/admin/users/:userId/password").patch(verifyJWT, isAdmin, setUserPasswordAdmin);
+router.route("/admin/users/:userId/impersonate").post(verifyJWT, isAdmin, impersonateUser);
 router.route("/admin/users/:userId/team").get(verifyJWT, isAdmin, getUserTeamContextAdmin);
 router.route("/admin/users/:userId/team/member").patch(verifyJWT, isAdmin, updateUserTeamMemberAdmin);
 

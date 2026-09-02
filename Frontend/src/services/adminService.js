@@ -81,6 +81,11 @@ export const adminService = {
         return response.data;
     },
 
+    async impersonateUser(userId) {
+        const response = await api.post(`/users/admin/users/${userId}/impersonate`);
+        return response.data;
+    },
+
     // Runs the DIAN habilitación "set de pruebas" (30 facturas, 10 notas
     // débito, 10 notas crédito) for a company already provisioned with
     // itcycle-api-dian - see Backend/services/dianTestMatrix.service.js.
