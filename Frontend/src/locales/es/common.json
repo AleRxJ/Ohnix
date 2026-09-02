@@ -4155,6 +4155,7 @@
     "habilitacion_test_set_id_placeholder": "Pega aquí el ID que te dio la DIAN",
     "habilitacion_test_set_id_known": "Ya teníamos este valor guardado de tu registro con la DIAN.",
     "habilitacion_where_toggle": "¿Dónde encuentro mi Test Set ID?",
+    "habilitacion_where_close": "Entendido",
     "habilitacion_where_hint": "Entra a tu portal de habilitación de la DIAN (vpfe-hab.dian.gov.co) con tu cuenta. Una vez asociado tu modo de operación \"Software propio\", verás un aviso automático - en la pantalla de inicio, o en Configurar modos de operación → ícono de ojo (\"Detalles de set de pruebas\") → botón \"Gráfico\" - que dice: \"Su empresa se encuentra en el proceso de pruebas de validación, el set de pruebas se encuentra En proceso. Usted debe proporcionar el identificador del set de pruebas (TestSetId) [tu identificador] en el web services para el envío de su set de pruebas.\" Copia ese identificador (un código largo tipo UUID) y pégalo aquí abajo.",
     "habilitacion_start_button": "Iniciar pruebas",
     "habilitacion_start_success": "Prueba de habilitación iniciada.",

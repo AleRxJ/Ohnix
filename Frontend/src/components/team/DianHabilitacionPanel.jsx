@@ -274,10 +274,16 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
             <Alert className="mt-3 dark-alert dark-alert-amber" type="warning" showIcon message={t("fiscal_setup.habilitacion_warning_title")} description={t("fiscal_setup.habilitacion_warning_hint")} />
 
             <Modal
+                // Every antd Modal in this app needs its own wrapper class -
+                // there's no global dark-theme override for .ant-modal, only
+                // per-feature ones (see .firmapass-detail-modal in index.css,
+                // whose rules this mirrors) - without it this rendered with
+                // antd's plain white default, breaking dark mode outright.
+                className="habilitacion-where-modal"
                 title={t("fiscal_setup.habilitacion_where_toggle")}
                 open={whereModalOpen}
                 onCancel={() => setWhereModalOpen(false)}
-                footer={<Button type="primary" onClick={() => setWhereModalOpen(false)}>{t("fiscal_setup.habilitacion_confirm_ok")}</Button>}
+                footer={<Button type="primary" onClick={() => setWhereModalOpen(false)}>{t("fiscal_setup.habilitacion_where_close")}</Button>}
             >
                 <Text className="text-sm text-[var(--ohnix-text-soft)]">{t("fiscal_setup.habilitacion_where_hint")}</Text>
             </Modal>
