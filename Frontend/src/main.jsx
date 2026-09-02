@@ -123,20 +123,41 @@ if (!isPrerendered) {
     // Replay button interactions once React has attached its handlers instead
     // of silently losing that click. Normal anchors keep native navigation and
     // never need to wait for hydration.
+    //
+    // boot() now mounts with createRoot() (see below), which discards the
+    // prerendered markup entirely and builds a brand-new DOM subtree instead
+    // of reusing it - so `control` here is a reference to a node that no
+    // longer exists in the document by the time boot() resolves. Calling
+    // .click() on it is a no-op: no ancestor to bubble through, and React's
+    // freshly-mounted root only has listeners on the new nodes. Re-locating
+    // whatever real element now sits at the original click's coordinates
+    // works regardless of which DOM nodes got replaced underneath it.
     addEventListener("click", (event) => {
         if (hydrated) return;
         const control = event.target.closest?.("button, [role='button']");
         if (!control) return;
+        const { clientX, clientY } = event;
         event.preventDefault();
         event.stopImmediatePropagation();
-        startBoot().then(() => control.click());
+        startBoot().then(() => {
+            document.elementFromPoint(clientX, clientY)?.closest?.("button, [role='button']")?.click();
+        });
     }, true);
 
     addEventListener("submit", (event) => {
         if (hydrated) return;
-        const form = event.target;
+        // Same staleness problem as the click handler above: `event.target`
+        // is the prerendered <form> node, which createRoot() will have
+        // already thrown away by the time this resolves. Forms don't carry
+        // click coordinates, so re-locate it by its position among all
+        // forms on the page instead - stable as long as the freshly-mounted
+        // tree renders the same forms in the same order, which it does
+        // (it's the same component tree, just mounted fresh).
+        const formIndex = Array.prototype.indexOf.call(document.forms, event.target);
         event.preventDefault();
         event.stopImmediatePropagation();
-        startBoot().then(() => form.requestSubmit());
+        startBoot().then(() => {
+            document.forms[formIndex]?.requestSubmit();
+        });
     }, true);
 }
