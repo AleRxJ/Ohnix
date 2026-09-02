@@ -57,11 +57,13 @@ const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate,
         .sort((a, b) => a.code.localeCompare(b.code));
 };
 
-// This app never posts to "expense" (class 5 - rent, payroll, etc. aren't
-// automated anywhere) - so in practice this is a gross-margin report
-// (ingresos - costo de ventas), not a full net-income statement. `expenses`
-// is included anyway (always empty today) so the shape is ready the moment
-// something does post there, at zero extra cost.
+// No sales/purchase/cash flow ever posts to "expense" (class 5 - rent,
+// payroll, etc.) automatically - manualExpense.service.js is the only writer,
+// so `expenses`/`net_income` only reflect whatever operating expenses were
+// entered by hand for the range, not a complete accrual of them. Included
+// unconditionally (not just when non-empty) so a tenant that never uses
+// manual expenses still gets a real net_income (== gross_profit) instead of
+// a field that silently disappears.
 //
 // Excludes `period_close` lines: those exist only to zero a closed period's
 // nominal accounts into retained earnings (see accountingPeriod.service.js),

@@ -1352,15 +1352,28 @@ const FinancialStatementsTab = () => {
                                 <StatCard title={t("accounting.gross_profit")} value={income.gross_profit} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-info)", fontWeight: 700 }} />
                             </Col>
                         </Row>
+                        <Row gutter={[16, 16]} className="mb-4">
+                            <Col xs={24} sm={12}>
+                                <StatCard title={t("accounting.total_expenses")} value={income.total_expenses} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-warning)" }} />
+                            </Col>
+                            <Col xs={24} sm={12}>
+                                <StatCard title={t("accounting.net_income")} value={income.net_income} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-success)", fontWeight: 700 }} />
+                            </Col>
+                        </Row>
                         <Row gutter={[16, 16]}>
-                            <Col xs={24} md={12}>
+                            <Col xs={24} md={8}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_revenue")}>
                                     <Table columns={accountColumns} dataSource={income.revenue} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} />
                                 </Card>
                             </Col>
-                            <Col xs={24} md={12}>
+                            <Col xs={24} md={8}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_costs")}>
                                     <Table columns={accountColumns} dataSource={income.costs} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} />
+                                </Card>
+                            </Col>
+                            <Col xs={24} md={8}>
+                                <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_expenses")}>
+                                    <Table columns={accountColumns} dataSource={income.expenses} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} locale={{ emptyText: t("accounting.section_expenses_empty") }} />
                                 </Card>
                             </Col>
                         </Row>
