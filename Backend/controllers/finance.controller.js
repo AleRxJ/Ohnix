@@ -100,6 +100,7 @@ export const updateCashAccount = asyncHandler(async (req, res) => {
     const { name, bank_name, account_number, chart_account_id } = req.body || {};
     const account = await cashAccountService.updateCashAccount({
         accountId: req.user.prismaId,
+        actorId: req.user.actorId,
         id: req.params.id,
         name,
         bankName: bank_name,
@@ -263,6 +264,11 @@ export const matchStatementEntry = asyncHandler(async (req, res, next) => {
         movementId: movement_id,
     });
     return res.status(200).json(new ApiResponse(200, mapStatementEntry(entry), "Entry matched successfully"));
+});
+
+export const listCashAccountConfigurationHistory = asyncHandler(async (req, res) => {
+    const rows = await cashAccountService.listCashAccountConfigurationHistory({ accountId: req.user.prismaId, id: req.params.id });
+    return res.status(200).json(new ApiResponse(200, rows.map((row) => ({ _id: row.id, action: row.action, before: row.before, after: row.after, actor: { _id: row.actor.id, name: row.actor.username || row.actor.email }, created_at: row.createdAt })), "Cash account configuration history fetched successfully"));
 });
 
 export const registerManualIncome = asyncHandler(async (req, res, next) => {

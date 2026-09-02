@@ -12,6 +12,7 @@ import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
+import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = Router();
 
@@ -22,13 +23,13 @@ router.route("/admin/all").get(isAdmin, getAllSuppliers);
 // Regular user routes
 router
     .route("/")
-    .post(requireModulePermission("suppliers", "edit"), enforceEntityLimit("suppliers"), upload.single("photo"), createSupplier)
+    .post(requireModulePermission("suppliers", "edit"), enforceEntityLimit("suppliers"), upload.single("photo"), idempotent("supplier.create"), createSupplier)
     .get(requireModulePermission("suppliers", "view"), getUserSuppliers);
 
 router
     .route("/:id")
-    .patch(requireModulePermission("suppliers", "edit"), upload.single("photo"), updateSupplier)
-    .delete(requireModulePermission("suppliers", "edit"), deleteSupplier);
+    .patch(requireModulePermission("suppliers", "edit"), upload.single("photo"), idempotent("supplier.update"), updateSupplier)
+    .delete(requireModulePermission("suppliers", "edit"), idempotent("supplier.delete"), deleteSupplier);
 
 router
     .route("/:id/point-of-sale")

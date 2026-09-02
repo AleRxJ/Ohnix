@@ -15,6 +15,9 @@ import { useTheme } from "../../context/ThemeContext";
 import InventoryTour from "../inventoryTour/InventoryTour";
 import InventoryTourFab from "../inventoryTour/InventoryTourFab";
 import AssistantWidget from "../assistant/AssistantWidget";
+import { initConnectivityWatcher } from "../../offline/connectivity";
+import { startSyncEngine } from "../../offline/syncEngine";
+import { resetOfflineDataIfAccountChanged } from "../../offline/db";
 
 const { Content } = Layout;
 
@@ -301,6 +304,30 @@ const DashboardLayout = () => {
         const titleKey = PAGE_TITLE_KEYS[currentPage];
         document.title = titleKey ? `${t(titleKey)} | Ohnix` : "Ohnix";
     }, [currentPage, currentLanguage, t]);
+
+    // Offline infrastructure only runs inside the authenticated app shell -
+    // the marketing site never needs it. Confined here (not main.jsx) keeps
+    // it out of every public/anonymous page entirely.
+    useEffect(() => {
+        initConnectivityWatcher();
+        startSyncEngine();
+
+        // The service worker only exists in a built (not dev-server) app -
+        // registering it in dev would 404 against a /sw.js that was never
+        // generated. Dynamic import so this virtual module (and the SW
+        // registration bundle) never ships in the dev build at all.
+        if (import.meta.env.PROD) {
+            import("virtual:pwa-register").then(({ registerSW }) => {
+                registerSW({ immediate: true });
+            });
+        }
+    }, []);
+
+    // A different account logging in on the same browser must never see a
+    // previous account's cached offline rows or queued mutations.
+    useEffect(() => {
+        if (user?.id) resetOfflineDataIfAccountChanged(user.id);
+    }, [user?.id]);
 
     const trialEndsAt = subscription?.trialEndsAt ?? null;
     const planEndsAt = typeof subscription?.endsAt === "string" ? subscription.endsAt : null;

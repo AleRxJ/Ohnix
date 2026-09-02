@@ -18,7 +18,7 @@
 // meant to be indexed, so it doesn't need prerendering.
 
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -74,6 +74,11 @@ const waitForServer = async (url, attempts = 60) => {
 };
 
 const run = async () => {
+    // Preserve Vite's clean SPA document before the homepage prerender replaces
+    // dist/index.html. Private/deep routes are rewritten to this file in
+    // Vercel, so they never inherit the marketing page's HTML or CSS.
+    copyFileSync(join(distDir, "index.html"), join(distDir, "app.html"));
+
     console.log("[prerender] Starting vite preview server...");
     const viteCli = join(rootDir, "node_modules", "vite", "bin", "vite.js");
     const server = spawn(process.execPath, [viteCli, "preview", "--port", String(PORT), "--strictPort"], {
@@ -87,6 +92,7 @@ const run = async () => {
         await waitForServer(HOST);
 
         browser = await launchBrowser();
+        const renderedPages = new Map();
 
         for (const route of ROUTES) {
             const page = await browser.newPage();
@@ -106,6 +112,13 @@ const run = async () => {
             const html = await page.content();
             await page.close();
 
+            renderedPages.set(route, html);
+        }
+
+        // Keep dist/index.html unchanged while Chromium is still using it as
+        // Vite's history fallback. Writing only after every route succeeds
+        // prevents later routes from accidentally rendering the homepage.
+        for (const [route, html] of renderedPages) {
             const outDir = route === "/" ? distDir : join(distDir, route);
             mkdirSync(outDir, { recursive: true });
             writeFileSync(join(outDir, "index.html"), html, "utf8");

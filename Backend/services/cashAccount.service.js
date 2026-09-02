@@ -38,12 +38,12 @@ export const getCashAccountById = async ({ accountId, posScopeAll, posScopeIds, 
     return cashAccount;
 };
 
-const resolveSelectedChartAccount = async (accountId, chartAccountId, accountType) => {
+const resolveSelectedChartAccount = async (accountId, chartAccountId, accountType, db = prisma) => {
     if (!chartAccountId) {
-        const coa = await getChartAccountMap(prisma, accountId);
+        const coa = await getChartAccountMap(db, accountId);
         return coa.get(accountType === "bank" ? "1110" : "1105").id;
     }
-    const selected = await prisma.chartAccount.findFirst({ where: { id: chartAccountId, createdById: accountId, accountType: "asset", isActive: true } });
+    const selected = await db.chartAccount.findFirst({ where: { id: chartAccountId, createdById: accountId, accountType: "asset", isActive: true } });
     if (!selected) throw new ApiError(404, "La cuenta contable debe existir, estar activa y ser de tipo activo.");
     return selected.id;
 };
@@ -84,21 +84,32 @@ export const createCashAccount = async ({ accountId, actorId, name, accountType,
     return cashAccount;
 };
 
-export const updateCashAccount = async ({ accountId, id, name, bankName, accountNumber, chartAccountId }) => {
-    const existing = await prisma.cashAccount.findFirst({ where: { id, createdById: accountId } });
+export const updateCashAccount = async ({ accountId, actorId, id, name, bankName, accountNumber, chartAccountId }) => {
+    const existing = await prisma.cashAccount.findFirst({ where: { id, createdById: accountId }, include: { chartAccount: { select: { id: true, code: true, name: true } } } });
     if (!existing) throw new ApiError(404, "Cuenta de caja/banco no encontrada.");
-
-    const validatedChartAccountId = chartAccountId !== undefined ? await resolveSelectedChartAccount(accountId, chartAccountId, existing.accountType) : undefined;
-    return prisma.cashAccount.update({
-        where: { id },
-        data: {
-            ...(name !== undefined && { name: `${name}`.trim() || existing.name }),
-            ...(existing.accountType === "bank" && bankName !== undefined && { bankName: bankName?.trim() || null }),
-            ...(existing.accountType === "bank" && accountNumber !== undefined && { accountNumber: accountNumber?.trim() || null }),
-            ...(validatedChartAccountId !== undefined && { chartAccountId: validatedChartAccountId }),
-        },
-        include: { pointOfSale: { select: { id: true, name: true } }, chartAccount: { select: { id: true, code: true, name: true, accountType: true } } },
+    return prisma.$transaction(async (tx) => {
+        const validatedChartAccountId = chartAccountId !== undefined ? await resolveSelectedChartAccount(accountId, chartAccountId, existing.accountType, tx) : undefined;
+        const updated = await tx.cashAccount.update({
+            where: { id },
+            data: {
+                ...(name !== undefined && { name: `${name}`.trim() || existing.name }),
+                ...(existing.accountType === "bank" && bankName !== undefined && { bankName: bankName?.trim() || null }),
+                ...(existing.accountType === "bank" && accountNumber !== undefined && { accountNumber: accountNumber?.trim() || null }),
+                ...(validatedChartAccountId !== undefined && { chartAccountId: validatedChartAccountId }),
+            },
+            include: { pointOfSale: { select: { id: true, name: true } }, chartAccount: { select: { id: true, code: true, name: true, accountType: true } } },
+        });
+        if (validatedChartAccountId !== undefined && validatedChartAccountId !== existing.chartAccountId) {
+            await tx.accountingConfigAudit.create({ data: { accountId, actorId, entityType: "cash_account", entityId: id, action: "chart_account_changed", before: existing.chartAccount ? { id: existing.chartAccount.id, code: existing.chartAccount.code, name: existing.chartAccount.name } : null, after: updated.chartAccount ? { id: updated.chartAccount.id, code: updated.chartAccount.code, name: updated.chartAccount.name } : null } });
+        }
+        return updated;
     });
+};
+
+export const listCashAccountConfigurationHistory = async ({ accountId, id }) => {
+    const exists = await prisma.cashAccount.findFirst({ where: { id, createdById: accountId }, select: { id: true } });
+    if (!exists) throw new ApiError(404, "Cuenta de caja/banco no encontrada.");
+    return prisma.accountingConfigAudit.findMany({ where: { accountId, entityType: "cash_account", entityId: id }, include: { actor: { select: { id: true, username: true, email: true } } }, orderBy: { createdAt: "desc" }, take: 100 });
 };
 
 // Soft-delete only - same reasoning as PointOfSale.isActive: once a CashMovement

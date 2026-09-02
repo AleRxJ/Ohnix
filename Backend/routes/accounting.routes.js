@@ -11,6 +11,7 @@ import {
     getJournalEntry,
     listAccountingPeriods,
     closeAccountingPeriod,
+    getAccountingPeriodCloseReadiness,
     reopenAccountingPeriod,
     getIncomeStatement,
     getBalanceSheet,
@@ -89,6 +90,7 @@ router.route("/periods").get(requireModulePermission("accounting", "view"), list
 // postings into that month), not routine data entry - gated at "admin"
 // rather than "edit", unlike the rest of this module's read-only surface.
 router.route("/periods/:id/close").post(requireModulePermission("accounting", "admin"), closeAccountingPeriod);
+router.route("/periods/:id/close-readiness").get(requireModulePermission("accounting", "view"), getAccountingPeriodCloseReadiness);
 router.route("/periods/:id/reopen").post(requireModulePermission("accounting", "admin"), reopenAccountingPeriod);
 
 export default router;

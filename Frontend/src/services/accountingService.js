@@ -35,12 +35,13 @@ export const accountingService = {
         return response.data;
     },
 
-    async listJournalEntries({ from, to, sourceType } = {}) {
+    async listJournalEntries({ from, to, sourceType, sourceId } = {}) {
         const response = await api.get("/accounting/journal-entries", {
             params: {
                 ...(from ? { from } : {}),
                 ...(to ? { to } : {}),
                 ...(sourceType ? { source_type: sourceType } : {}),
+                ...(sourceId ? { source_id: sourceId } : {}),
             },
         });
         return response.data;
@@ -153,6 +154,11 @@ export const accountingService = {
 
     async closeAccountingPeriod(id) {
         const response = await api.post(`/accounting/periods/${id}/close`);
+        return response.data;
+    },
+
+    async getAccountingPeriodCloseReadiness(id) {
+        const response = await api.get(`/accounting/periods/${id}/close-readiness`);
         return response.data;
     },
 

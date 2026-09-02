@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { api } from "../api/api.js";
 import useI18n from "../hooks/useI18n";
+import { clearOfflineDataOnLogout } from "../offline/db.js";
 
 const AuthContext = createContext();
 
@@ -87,6 +88,7 @@ export const AuthProvider = ({ children }) => {
                 setAuthenticated(false);
                 localStorage.removeItem("accessToken");
                 delete api.defaults.headers.common["Authorization"];
+                await clearOfflineDataOnLogout();
                 toast.success(t("auth.logout_success"));
             } else {
                 toast.error(response.data.message || t("auth.logout_failed"));

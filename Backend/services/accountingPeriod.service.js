@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ensureRetainedEarningsAccount } from "./chartOfAccounts.service.js";
 import { getPeriodClosingPlan } from "./financialStatements.service.js";
 import { recordJournalEntry } from "./journalEntry.service.js";
+import { getCashIntegrity } from "./cashIntegrity.service.js";
 
 export const listAccountingPeriods = async (accountId) =>
     prisma.accountingPeriod.findMany({
@@ -10,6 +11,25 @@ export const listAccountingPeriods = async (accountId) =>
         include: { reopenings: { orderBy: { reopenedAt: "desc" } } },
         orderBy: [{ year: "desc" }, { month: "desc" }],
     });
+
+export const getAccountingPeriodCloseReadiness = async ({ accountId, periodId, db = prisma }) => {
+    const period = await db.accountingPeriod.findFirst({ where: { id: periodId, createdById: accountId } });
+    if (!period) throw new ApiError(404, "Periodo contable no encontrado.");
+    const startDate = new Date(Date.UTC(period.year, period.month - 1, 1));
+    const endDate = new Date(Date.UTC(period.year, period.month, 0, 23, 59, 59, 999));
+    const [integrity, unmatchedStatementEntries, unmatchedCashMovements] = await Promise.all([
+        getCashIntegrity({ accountId, db }),
+        db.bankStatementEntry.count({ where: { cashAccount: { createdById: accountId }, entryDate: { gte: startDate, lte: endDate }, matchedMovementId: null } }),
+        db.cashMovement.count({ where: { cashAccount: { createdById: accountId }, createdAt: { gte: startDate, lte: endDate }, reconciledAt: null } }),
+    ]);
+    const operationalDifferences = integrity.operational.filter((row) => row.status !== "ok");
+    return {
+        period: { id: period.id, year: period.year, month: period.month, status: period.status },
+        can_close: operationalDifferences.length === 0,
+        blockers: { operational_differences: operationalDifferences },
+        warnings: { unmatched_statement_entries: unmatchedStatementEntries, unmatched_cash_movements: unmatchedCashMovements, accounting_differences: integrity.accounting.filter((row) => row.status !== "ok") },
+    };
+};
 
 // Only a period strictly before the current calendar month can be closed -
 // this structurally prevents the one real accident this feature could cause
@@ -53,6 +73,9 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
         const lockedPeriod = lockedRows[0];
         if (!lockedPeriod) throw new ApiError(404, "Periodo contable no encontrado.");
         if (lockedPeriod.status === "closed") throw new ApiError(400, "Este periodo ya está cerrado.");
+
+        const readiness = await getAccountingPeriodCloseReadiness({ accountId, periodId, db: tx });
+        if (!readiness.can_close) throw new ApiError(422, "No se puede cerrar el periodo: existen diferencias entre saldos de caja/banco y sus movimientos.", [], "", "accounting_period_integrity_blocked");
 
         const activeReopening = await tx.accountingPeriodReopening.findFirst({
             where: { periodId, reclosedAt: null },

@@ -5,6 +5,7 @@ import { idempotent } from "../middleware/idempotency.middleware.js";
 import {
     listCashAccounts,
     getCashAccount,
+    listCashAccountConfigurationHistory,
     createCashAccount,
     updateCashAccount,
     deactivateCashAccount,
@@ -48,12 +49,14 @@ router.route("/cash-accounts/:id/deactivate")
 
 router.route("/cash-accounts/:id/movements")
     .get(requireModulePermission("finance", "view"), listCashAccountMovements);
+router.route("/cash-accounts/:id/configuration-history")
+    .get(requireModulePermission("finance", "view"), listCashAccountConfigurationHistory);
 
 router.route("/expenses")
-    .post(requireModulePermission("finance", "edit"), registerManualExpense);
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.expense"), registerManualExpense);
 
 router.route("/income")
-    .post(requireModulePermission("finance", "edit"), registerManualIncome);
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.income"), registerManualIncome);
 router.route("/transfers")
     .post(requireModulePermission("finance", "edit"), idempotent("finance.cash-transfer"), transferCash);
 router.route("/adjustments")
@@ -63,11 +66,11 @@ router.route("/integrity")
 
 router.route("/orders/:orderId/payments")
     .get(requireModulePermission("finance", "view"), listOrderPayments)
-    .post(requireModulePermission("finance", "edit"), registerOrderPayment);
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.order-payment"), registerOrderPayment);
 
 router.route("/purchases/:purchaseId/payments")
     .get(requireModulePermission("finance", "view"), listPurchasePayments)
-    .post(requireModulePermission("finance", "edit"), registerPurchasePayment);
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.purchase-payment"), registerPurchasePayment);
 router.route("/accounts-payable")
     .get(requireModulePermission("finance", "view"), getAccountsPayablePlan);
 router.route("/purchases/:purchaseId/due-date")

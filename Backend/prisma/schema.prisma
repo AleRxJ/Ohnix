@@ -249,42 +249,44 @@ model User {
   subscription      Subscription?
   company           Company?      @relation(fields: [companyId], references: [id])
 
-  categoriesCreated         Category[]              @relation("CategoryCreatedBy")
-  categoriesUpdated         Category[]              @relation("CategoryUpdatedBy")
-  unitsCreated              Unit[]                  @relation("UnitCreatedBy")
-  unitsUpdated              Unit[]                  @relation("UnitUpdatedBy")
-  productsCreated           Product[]               @relation("ProductCreatedBy")
-  productsUpdated           Product[]               @relation("ProductUpdatedBy")
-  customers                 Customer[]
-  suppliers                 Supplier[]
-  purchasesCreated          Purchase[]              @relation("PurchaseCreatedBy")
-  purchasesUpdated          Purchase[]              @relation("PurchaseUpdatedBy")
-  quotationsCreated         PurchaseQuotation[]     @relation("QuotationCreatedBy")
-  quotationsUpdated         PurchaseQuotation[]     @relation("QuotationUpdatedBy")
-  salesQuotationsCreated    SalesQuotation[]        @relation("SalesQuotationCreatedBy")
-  salesQuotationsUpdated    SalesQuotation[]        @relation("SalesQuotationUpdatedBy")
-  ordersCreated             Order[]                 @relation("OrderCreatedBy")
-  ordersUpdated             Order[]                 @relation("OrderUpdatedBy")
-  planUpgradeRequests       PlanUpgradeRequest[]
-  apiKeys                   ApiKey[]
-  integrationConnections    IntegrationConnection[]
-  webhookEndpoints          WebhookEndpoint[]
-  stockMovementsCreated     StockMovement[]         @relation("StockMovementCreatedBy")
-  cashAccountsCreated       CashAccount[]
-  cashMovementsCreated      CashMovement[]
-  orderPaymentsRecorded     OrderPayment[]
-  purchasePaymentsRecorded  PurchasePayment[]
-  bankStatementEntriesAdded BankStatementEntry[]
-  chartAccountsCreated      ChartAccount[]
-  accountingPeriodsCreated  AccountingPeriod[]      @relation("AccountingPeriodCreatedBy")
-  accountingPeriodsClosed   AccountingPeriod[]      @relation("AccountingPeriodClosedBy")
-  journalEntriesCreated     JournalEntry[]
+  categoriesCreated               Category[]              @relation("CategoryCreatedBy")
+  categoriesUpdated               Category[]              @relation("CategoryUpdatedBy")
+  unitsCreated                    Unit[]                  @relation("UnitCreatedBy")
+  unitsUpdated                    Unit[]                  @relation("UnitUpdatedBy")
+  productsCreated                 Product[]               @relation("ProductCreatedBy")
+  productsUpdated                 Product[]               @relation("ProductUpdatedBy")
+  customers                       Customer[]
+  suppliers                       Supplier[]
+  purchasesCreated                Purchase[]              @relation("PurchaseCreatedBy")
+  purchasesUpdated                Purchase[]              @relation("PurchaseUpdatedBy")
+  quotationsCreated               PurchaseQuotation[]     @relation("QuotationCreatedBy")
+  quotationsUpdated               PurchaseQuotation[]     @relation("QuotationUpdatedBy")
+  salesQuotationsCreated          SalesQuotation[]        @relation("SalesQuotationCreatedBy")
+  salesQuotationsUpdated          SalesQuotation[]        @relation("SalesQuotationUpdatedBy")
+  ordersCreated                   Order[]                 @relation("OrderCreatedBy")
+  ordersUpdated                   Order[]                 @relation("OrderUpdatedBy")
+  planUpgradeRequests             PlanUpgradeRequest[]
+  apiKeys                         ApiKey[]
+  integrationConnections          IntegrationConnection[]
+  webhookEndpoints                WebhookEndpoint[]
+  stockMovementsCreated           StockMovement[]         @relation("StockMovementCreatedBy")
+  cashAccountsCreated             CashAccount[]
+  cashMovementsCreated            CashMovement[]
+  orderPaymentsRecorded           OrderPayment[]
+  purchasePaymentsRecorded        PurchasePayment[]
+  bankStatementEntriesAdded       BankStatementEntry[]
+  chartAccountsCreated            ChartAccount[]
+  accountingPeriodsCreated        AccountingPeriod[]      @relation("AccountingPeriodCreatedBy")
+  accountingPeriodsClosed         AccountingPeriod[]      @relation("AccountingPeriodClosedBy")
+  journalEntriesCreated           JournalEntry[]
+  accountingConfigAuditsOwned     AccountingConfigAudit[] @relation("AccountingConfigAuditAccount")
+  accountingConfigAuditsPerformed AccountingConfigAudit[] @relation("AccountingConfigAuditActor")
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
   // (starter/growth without a Team row) still need exactly one default
   // location - see PointOfSale below.
-  pointsOfSaleOwned         PointOfSale[]           @relation("PointOfSaleAccount")
-  stockTransfersRequested   StockTransfer[]         @relation("StockTransferRequestedBy")
+  pointsOfSaleOwned               PointOfSale[]           @relation("PointOfSaleAccount")
+  stockTransfersRequested         StockTransfer[]         @relation("StockTransferRequestedBy")
 
   // Teams: a user is either a team owner (ownedTeam), a member of exactly one
   // active team at a time (via TeamMember, enforced in team.service.js - not
@@ -1893,8 +1895,8 @@ model BankStatementEntry {
   matchedMovement CashMovement? @relation(fields: [matchedMovementId], references: [id])
   createdBy       User          @relation(fields: [createdById], references: [id])
 
-  @@index([cashAccountId, entryDate])
   @@unique([cashAccountId, importFingerprint])
+  @@index([cashAccountId, entryDate])
   @@map("bank_statement_entries")
 }
 
@@ -2065,6 +2067,25 @@ enum JournalSourceType {
   manual_income
   cash_transfer
   cash_adjustment
+}
+
+model AccountingConfigAudit {
+  id         String   @id @default(cuid())
+  accountId  String   @map("account_id")
+  actorId    String   @map("actor_id")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  account User @relation("AccountingConfigAuditAccount", fields: [accountId], references: [id])
+  actor   User @relation("AccountingConfigAuditActor", fields: [actorId], references: [id])
+
+  @@index([accountId, entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("accounting_config_audits")
 }
 
 enum ManualVoucherStatus {
@@ -2487,22 +2508,22 @@ model DianTestMatrixDocument {
 // keeps answers scoped to AssistantKnowledgeChunk content instead of letting
 // the model free-generate on DIAN/tax/accounting topics.
 model AssistantKnowledgeChunk {
-  id     String  @id @default(cuid())
+  id          String   @id @default(cuid())
   // Matches middleware/team.permissions.js MODULE_KEYS where applicable, plus
   // "general" for cross-module/onboarding content not tied to one screen.
-  module String
-  locale String  @default("es")
-  title  String
-  body   String  @db.Text
-  tags   String[] @default([])
+  module      String
+  locale      String   @default("es")
+  title       String
+  body        String   @db.Text
+  tags        String[] @default([])
   // guide | faq | concept | dian - purely informational, no behavior differs
   // by type today; kept so the KB can be filtered/reported on later.
-  sourceType String  @default("guide") @map("source_type")
+  sourceType  String   @default("guide") @map("source_type")
   // Starts false on every seeded entry - a human must review and flip this
   // before the assistant can ever cite it, since this is the only thing
   // standing between "the model answers from curated Ohnix content" and
   // "the model improvises," especially for DIAN/impuestos/contabilidad.
-  isPublished Boolean @default(false) @map("is_published")
+  isPublished Boolean  @default(false) @map("is_published")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -2528,10 +2549,10 @@ model ChatConversation {
 }
 
 model ChatMessage {
-  id             String   @id @default(cuid())
-  conversationId String   @map("conversation_id")
+  id             String          @id @default(cuid())
+  conversationId String          @map("conversation_id")
   role           ChatMessageRole
-  content        String   @db.Text
+  content        String          @db.Text
   // Route/module the user was on when this message was sent - context only,
   // never used to grant access to anything.
   module         String?
@@ -2539,7 +2560,7 @@ model ChatMessage {
   // frontend can show "fuentes" links. Null for user messages and for the
   // fixed no-match fallback (nothing was actually retrieved).
   sources        Json?
-  createdAt      DateTime @default(now()) @map("created_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
 
   conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   feedback     ChatFeedback?
@@ -2554,11 +2575,11 @@ enum ChatMessageRole {
 }
 
 model ChatFeedback {
-  id        String        @id @default(cuid())
-  messageId String        @unique @map("message_id")
+  id        String             @id @default(cuid())
+  messageId String             @unique @map("message_id")
   rating    ChatFeedbackRating
   comment   String?
-  createdAt DateTime      @default(now()) @map("created_at")
+  createdAt DateTime           @default(now()) @map("created_at")
 
   message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 

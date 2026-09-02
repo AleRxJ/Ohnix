@@ -519,6 +519,7 @@ const LandingPage = () => {
                     featuredLabel={t("landing.pricing.most_popular")}
                     onPlanSelect={handlePlanCta}
                     billingToggle={<BillingCycleToggle value={billingCycle} onChange={setBillingCycle} savingsLabel="-17%" />}
+                    paymentMethodsNote={t("landing.pricing.payment_methods_note")}
                 />
 
                 <FaqSection

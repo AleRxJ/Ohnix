@@ -109,6 +109,10 @@ export const financeService = {
         });
         return response.data;
     },
+    async listCashAccountConfigurationHistory(id) {
+        const response = await api.get(`/finance/cash-accounts/${id}/configuration-history`);
+        return response.data;
+    },
 
     async registerManualIncome(payload) {
         const response = await api.post("/finance/income", payload);

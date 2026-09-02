@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Spin, Popconfirm, Tooltip } from "antd";
-import { AuditOutlined, PlusOutlined, WalletOutlined, BankOutlined, EditOutlined, StopOutlined, SwapOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { Alert, Button, DatePicker, Drawer, Form, Input, InputNumber, Modal, Select, Spin, Table, Popconfirm, Tooltip } from "antd";
+import { AuditOutlined, HistoryOutlined, PlusOutlined, WalletOutlined, BankOutlined, EditOutlined, StopOutlined, SwapOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import PageHeader from "../components/common/PageHeader";
 import CashAccountFormModal from "../components/finance/CashAccountFormModal";
@@ -14,6 +14,7 @@ import AccountsPayablePlanner from "../components/finance/AccountsPayablePlanner
 import AccountsReceivablePlanner from "../components/finance/AccountsReceivablePlanner";
 import { accountingService } from "../services/accountingService";
 import CashIntegrityPanel from "../components/finance/CashIntegrityPanel";
+import { financeService } from "../services/financeService";
 
 const ACCOUNT_TYPE_ICON = { cash: WalletOutlined, bank: BankOutlined };
 
@@ -34,6 +35,9 @@ const Finance = () => {
     const [counterpartAccounts, setCounterpartAccounts] = useState([]);
     const [adjustmentForm] = Form.useForm();
     const adjustmentAmount = Form.useWatch("amount", adjustmentForm);
+    const [historyAccount, setHistoryAccount] = useState(null);
+    const [historyRows, setHistoryRows] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
 
     useEffect(() => {
         pointOfSaleService
@@ -106,6 +110,12 @@ const Finance = () => {
     const handleAdjustment = async (values) => {
         const success = await adjustCash({ cash_account_id: adjustmentAccount._id, counterpart_account_id: values.counterpart_account_id, amount: values.amount, reason: values.reason.trim(), adjustment_date: values.adjustment_date.toISOString() });
         if (success) { setAdjustmentAccount(null); adjustmentForm.resetFields(); }
+    };
+    const openConfigurationHistory = async (record) => {
+        setHistoryAccount(record); setHistoryLoading(true);
+        try { const response = await financeService.listCashAccountConfigurationHistory(record._id); setHistoryRows(response?.data || []); }
+        catch { setHistoryRows([]); Modal.error({ title: t("finance.mapping_history_failed") }); }
+        finally { setHistoryLoading(false); }
     };
 
     return (
@@ -197,6 +207,7 @@ const Finance = () => {
                                             {canEdit && (
                                                 <Tooltip title={t("finance.adjustment_cta")}><Button icon={<AuditOutlined />} onClick={() => openAdjustment(record)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-all duration-200" /></Tooltip>
                                             )}
+                                            <Tooltip title={t("finance.mapping_history_cta")}><Button icon={<HistoryOutlined />} onClick={() => openConfigurationHistory(record)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-all duration-200" /></Tooltip>
                                             {canEdit && (
                                                 <Button
                                                     icon={<EditOutlined />}
@@ -264,6 +275,10 @@ const Finance = () => {
                     <Form.Item name="reason" label={t("finance.adjustment_reason")} rules={[{ required: true, whitespace: true, message: t("validation.required_field") }]}><Input.TextArea rows={3} maxLength={300} showCount placeholder={t("finance.adjustment_reason_placeholder")} /></Form.Item>
                 </Form>
             </Modal>
+            <Drawer width={680} open={Boolean(historyAccount)} onClose={() => setHistoryAccount(null)} title={t("finance.mapping_history_title", { name: historyAccount?.name || "" })} styles={{ body: { background: "var(--ohnix-surface-card-soft)" }, header: { background: "var(--ohnix-surface-card-soft)", borderBottom: "1px solid var(--ohnix-line-3)" } }}>
+                <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.mapping_history_help_title")} description={t("finance.mapping_history_help_desc")} />
+                <Table loading={historyLoading} className="module-dark-table" size="small" rowKey="_id" dataSource={historyRows} pagination={false} locale={{ emptyText: t("finance.mapping_history_empty") }} scroll={{ x: 600 }} columns={[{ title: t("finance.mapping_history_date"), dataIndex: "created_at", width: 145, render: (value) => dayjs(value).format("DD/MM/YYYY HH:mm") }, { title: t("finance.mapping_history_actor"), dataIndex: ["actor", "name"], ellipsis: true }, { title: t("finance.mapping_history_before"), dataIndex: "before", render: (value) => value ? `${value.code} · ${value.name}` : t("finance.chart_account_automatic") }, { title: t("finance.mapping_history_after"), dataIndex: "after", render: (value) => value ? `${value.code} · ${value.name}` : t("finance.chart_account_automatic") }]} />
+            </Drawer>
         </div>
     );
 };

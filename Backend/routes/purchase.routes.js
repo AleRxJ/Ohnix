@@ -28,7 +28,7 @@ router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
 // Regular user routes
 router
     .route("/")
-    .post(requireModulePermission("purchases", "edit"), enforceEntityLimit("purchases"), enforceMonthlyLimit("purchases"), createPurchase)
+    .post(requireModulePermission("purchases", "edit"), enforceEntityLimit("purchases"), enforceMonthlyLimit("purchases"), idempotent("purchase.create"), createPurchase)
     .get(requireModulePermission("purchases", "view"), getAllPurchases);
 
 // Admin routes - if you want specific endpoints just for admins

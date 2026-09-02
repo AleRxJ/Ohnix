@@ -1,5 +1,31 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
+
+// Routes that are NOT part of the authenticated app shell (marketing site,
+// auth pages, public token-based pages) - the service worker must never
+// serve the SPA shell as a navigation fallback for these. They already have
+// their own handling (prerendered static HTML for marketing, or simply no
+// offline requirement at all for auth/public-token pages), and letting an
+// offline visitor land on the wrong shell would be worse than the normal
+// "you're offline" browser error.
+const NON_APP_NAVIGATION_PATTERNS = [
+    /^\/$/,
+    /^\/precios/,
+    /^\/blog/,
+    /^\/software-inventario-pymes/,
+    /^\/facturacion-electronica-dian/,
+    /^\/comparativa\//,
+    /^\/colaboracion-en-equipo/,
+    /^\/integraciones$/,
+    /^\/demo/,
+    /^\/login/,
+    /^\/signup/,
+    /^\/reset-password/,
+    /^\/email-verify/,
+    /^\/team\/invite\//,
+    /^\/public\//,
+]
 
 // Packages that MUST stay in the single vendor chunk.
 // rc-util reads React.version at module init time (top-level code), so any
@@ -75,7 +101,29 @@ function chunkSafetyGuard() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), chunkSafetyGuard()],
+  plugins: [
+    react(),
+    chunkSafetyGuard(),
+    VitePWA({
+      // The app registers the SW itself (see DashboardLayout.jsx) via the
+      // virtual:pwa-register module, instead of an auto-injected <script>
+      // tag - keeps registration confined to the authenticated app shell,
+      // the only surface that needs offline support.
+      injectRegister: false,
+      registerType: 'autoUpdate',
+      // Icons/name/theme already come from public/site-v2.webmanifest,
+      // linked in index.html - don't generate or inject a second manifest.
+      manifest: false,
+      workbox: {
+        // Vendor chunks (antd/antv/recharts) can be a few MB - the default
+        // 2MB precache cap would silently skip them, breaking offline app
+        // boot.
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: NON_APP_NAVIGATION_PATTERNS,
+      },
+    }),
+  ],
   resolve: {
     dedupe: ['react', 'react-dom'],
   },

@@ -16,6 +16,7 @@ import AuthContext from "../../context/AuthContext";
 import useI18n from "../../hooks/useI18n";
 import LanguageSwitcher from "../LanguageSwitcher/LanguageSwitcher";
 import ThemeToggle from "../common/ThemeToggle";
+import SyncStatusIndicator from "../common/SyncStatusIndicator";
 import { userService } from "../../services/userService";
 import { useTheme } from "../../context/ThemeContext";
 import { useTeam } from "../../context/TeamContext";
@@ -166,6 +167,7 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                         </button>
                     </Dropdown>
                 </div>
+                <SyncStatusIndicator />
                 <div className="mr-2">
                     <ThemeToggle compact />
                 </div>

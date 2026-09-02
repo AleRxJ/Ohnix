@@ -1733,7 +1733,7 @@ export const ContactSection = ({ heading, primaryCta, secondaryCta, onPrimary, o
     </ContentSection>
 );
 
-export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect, billingToggle }) => {
+export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect, billingToggle, paymentMethodsNote }) => {
     const [ref, visible] = useScrollReveal(0.06);
     return (
     <ContentSection id="pricing">
@@ -1744,6 +1744,9 @@ export const PricingSection = ({ heading, plans, featuredLabel, onPlanSelect, bi
         />
 
         {billingToggle && <div className="mt-8 flex justify-center">{billingToggle}</div>}
+        {paymentMethodsNote && (
+            <p className="mt-3 text-center text-[11px] text-[#6B7880]">{paymentMethodsNote}</p>
+        )}
 
         <div ref={ref} className="mt-14 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {plans.map((plan, i) => (
@@ -2265,13 +2268,18 @@ export const WhatsAppSupportButton = ({
                 </svg>
             </a>
 
-            {/* ── Mobile: barra inferior personalizada ── */}
+            {/* ── Mobile: barra inferior personalizada ──
+                 Se ubica encima del MobileStickyCta (misma página, siempre juntos)
+                 en vez de bottom-0, para no taparlo — antes ambas barras fijas
+                 quedaban una sobre otra y el CTA "Crear cuenta gratis" quedaba
+                 oculto e inalcanzable en mobile. */}
             <a
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="fixed bottom-0 left-0 right-0 z-50 flex sm:hidden items-center justify-between px-5 no-underline"
+                className="fixed left-0 right-0 z-50 flex sm:hidden items-center justify-between px-5 no-underline"
                 style={{
+                    bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))",
                     minHeight: 64,
                     background: "linear-gradient(90deg,#050f0f 0%,#071f1e 50%,#050f0f 100%)",
                     borderTop: "1px solid rgba(41,216,213,0.25)",

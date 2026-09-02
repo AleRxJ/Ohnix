@@ -29,7 +29,7 @@ import {
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.middleware.js";
-import { upload, csvUpload } from "../middleware/multer.middleware.js";
+import { upload, bulkUpload } from "../middleware/multer.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
 import { bulkUploadRateLimiter } from "../middleware/rateLimit.middleware.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
@@ -39,11 +39,11 @@ const router = Router();
 router.use(verifyJWT);
 
 // Bulk upload — Negocio ($49) and above
-router.route("/bulk-upload").post(bulkUploadRateLimiter, requireModulePermission("products", "edit"), enforcePlanFeature("bulkUpload"), csvUpload.single("file"), bulkUploadProducts);
+router.route("/bulk-upload").post(bulkUploadRateLimiter, requireModulePermission("products", "edit"), enforcePlanFeature("bulkUpload"), bulkUpload.single("file"), bulkUploadProducts);
 
 router
     .route("/")
-    .post(requireModulePermission("products", "edit"), enforceEntityLimit("products"), upload.single("product_image"), createProduct)
+    .post(requireModulePermission("products", "edit"), enforceEntityLimit("products"), upload.single("product_image"), idempotent("product.create"), createProduct)
     .get(requireModulePermission("products", "view"), getAllProducts);
 
 router.route("/bulk-low-stock-threshold").patch(requireModulePermission("products", "edit"), bulkUpdateLowStockThreshold);
@@ -53,8 +53,8 @@ router.route("/all").get(isAdmin, getAllProductsAdmin);
 
 router
     .route("/:id")
-    .patch(requireModulePermission("products", "edit"), upload.single("product_image"), updateProduct)
-    .delete(requireModulePermission("products", "edit"), deleteProduct);
+    .patch(requireModulePermission("products", "edit"), upload.single("product_image"), idempotent("product.update"), updateProduct)
+    .delete(requireModulePermission("products", "edit"), idempotent("product.delete"), deleteProduct);
 
 // Gallery sub-resource. The literal "/reorder" route MUST be registered
 // before "/:imageId" below, or Express matches "reorder" as an :imageId.

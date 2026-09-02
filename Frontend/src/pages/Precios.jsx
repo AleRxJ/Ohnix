@@ -248,6 +248,9 @@ const Precios = () => {
                             savingsLabel={priceByPlanKey.growth?.annualSavingsLabel ? "-17%" : null}
                         />
                     </div>
+                    <p className="mt-3 text-center text-[11px] text-[#6B7880] md:text-left">
+                        {t("landing.pricing.payment_methods_note")}
+                    </p>
 
                     <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
                         {plans.map((plan) => (

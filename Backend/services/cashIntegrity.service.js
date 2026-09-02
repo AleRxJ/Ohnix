@@ -2,8 +2,8 @@ import { prisma } from "../db/prisma.js";
 
 const round2 = (value) => Number(Number(value || 0).toFixed(2));
 
-export const getCashIntegrity = async ({ accountId }) => {
-    const accounts = await prisma.cashAccount.findMany({
+export const getCashIntegrity = async ({ accountId, db = prisma }) => {
+    const accounts = await db.cashAccount.findMany({
         where: { createdById: accountId },
         include: { chartAccount: { select: { id: true, code: true, name: true } } },
         orderBy: { name: "asc" },
@@ -11,8 +11,8 @@ export const getCashIntegrity = async ({ accountId }) => {
     const accountIds = accounts.map((row) => row.id);
     const chartAccountIds = [...new Set(accounts.map((row) => row.chartAccountId).filter(Boolean))];
     const [movementTotals, ledgerLines] = await Promise.all([
-        accountIds.length ? prisma.cashMovement.groupBy({ by: ["cashAccountId"], where: { cashAccountId: { in: accountIds } }, _sum: { delta: true }, _count: { _all: true } }) : [],
-        chartAccountIds.length ? prisma.journalEntryLine.findMany({ where: { chartAccountId: { in: chartAccountIds }, journalEntry: { period: { createdById: accountId } } }, select: { chartAccountId: true, debit: true, credit: true } }) : [],
+        accountIds.length ? db.cashMovement.groupBy({ by: ["cashAccountId"], where: { cashAccountId: { in: accountIds } }, _sum: { delta: true }, _count: { _all: true } }) : [],
+        chartAccountIds.length ? db.journalEntryLine.findMany({ where: { chartAccountId: { in: chartAccountIds }, journalEntry: { period: { createdById: accountId } } }, select: { chartAccountId: true, debit: true, credit: true } }) : [],
     ]);
     const movementMap = new Map(movementTotals.map((row) => [row.cashAccountId, row]));
     const operational = accounts.map((account) => {

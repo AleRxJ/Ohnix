@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal } from "antd";
 import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined } from "@ant-design/icons";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
 import PageHeader from "../components/common/PageHeader";
@@ -746,22 +746,29 @@ const ManualVouchersTab = () => {
     );
 };
 
-const JournalTab = () => {
+const JournalTab = ({ initialSourceType, initialSourceId }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
     const isMobile = useIsMobile();
     const [dateRange, setDateRange] = useState([dayjs().subtract(30, "days"), dayjs()]);
-    const [sourceType, setSourceType] = useState(undefined);
+    const [sourceType, setSourceType] = useState(initialSourceType);
+    const [sourceId, setSourceId] = useState(initialSourceId);
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    const fetchEntries = async () => {
+    const fetchEntries = async (overrides = {}) => {
+        // "sourceId" in overrides (not a !== undefined check) so an explicit
+        // clear - {sourceId: undefined}, e.g. dropping the deep-link pin -
+        // is distinguishable from "no override passed, keep current state".
+        const effectiveSourceType = "sourceType" in overrides ? overrides.sourceType : sourceType;
+        const effectiveSourceId = "sourceId" in overrides ? overrides.sourceId : sourceId;
         setLoading(true);
         try {
             const res = await accountingService.listJournalEntries({
                 from: dateRange[0].format("YYYY-MM-DD"),
                 to: dateRange[1].format("YYYY-MM-DD"),
-                sourceType,
+                sourceType: effectiveSourceType,
+                sourceId: effectiveSourceId,
             });
             setEntries(res?.data || []);
         } catch {
@@ -772,9 +779,18 @@ const JournalTab = () => {
     };
 
     useEffect(() => {
-        fetchEntries();
+        fetchEntries({ sourceType: initialSourceType, sourceId: initialSourceId });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [initialSourceType, initialSourceId]);
+
+    // A deep link (e.g. "view in accounting" from a transfer discrepancy)
+    // pins one entry by sourceId; any manual filter change below should
+    // drop that pin instead of silently re-applying it underneath.
+    const handleSourceTypeChange = (value) => {
+        setSourceType(value);
+        setSourceId(undefined);
+        fetchEntries({ sourceType: value, sourceId: undefined });
+    };
 
     const linesColumns = [
         { title: t("accounting.lines_col_account"), key: "account", render: (_, l) => `${l.chart_account.code} · ${l.chart_account.name}` },
@@ -810,12 +826,25 @@ const JournalTab = () => {
                         placeholder={t("accounting.source_type_filter_placeholder")}
                         className="w-full sm:w-56"
                         value={sourceType}
-                        onChange={setSourceType}
+                        onChange={handleSourceTypeChange}
                         options={Object.entries(SOURCE_TYPE_LABEL_KEYS).map(([value, key]) => ({ value, label: t(key) }))}
                     />
-                    <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={fetchEntries} loading={loading}>
+                    <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={() => fetchEntries()} loading={loading}>
                         {t("reports.refresh_report")}
                     </Button>
+                    {sourceId && (
+                        <Tag
+                            closable
+                            color="gold"
+                            onClose={(e) => {
+                                e.preventDefault();
+                                setSourceId(undefined);
+                                fetchEntries({ sourceId: undefined });
+                            }}
+                        >
+                            {t("accounting.source_id_filter_active")}
+                        </Tag>
+                    )}
                 </div>
             </Card>
             {isMobile ? (
@@ -884,6 +913,7 @@ const PeriodsTab = () => {
     const canClose = hasPermission("accounting", "admin");
     const [periods, setPeriods] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [checkingPeriodId, setCheckingPeriodId] = useState(null);
 
     const load = async () => {
         setLoading(true);
@@ -910,6 +940,33 @@ const PeriodsTab = () => {
         } catch (err) {
             toast.error(err?.response?.data?.message || t("accounting.failed"));
         }
+    };
+
+    const reviewAndClose = async (period) => {
+        setCheckingPeriodId(period._id);
+        try {
+            const response = await accountingService.getAccountingPeriodCloseReadiness(period._id);
+            const readiness = response?.data;
+            const blockers = readiness?.blockers?.operational_differences || [];
+            const warnings = readiness?.warnings || {};
+            Modal.confirm({
+                className: "accounting-modal",
+                title: t("accounting.close_readiness_title", { period: `${String(period.month).padStart(2, "0")}/${period.year}` }),
+                width: 620,
+                icon: null,
+                content: <div className="space-y-3 mt-4">
+                    {blockers.length > 0 ? <Alert type="error" showIcon message={t("accounting.close_readiness_blocked_title")} description={t("accounting.close_readiness_blocked_desc", { count: blockers.length })} /> : <Alert className="dark-alert dark-alert-teal" type="success" showIcon message={t("accounting.close_readiness_ok_title")} description={t("accounting.close_readiness_ok_desc")} />}
+                    {(warnings.unmatched_statement_entries > 0 || warnings.unmatched_cash_movements > 0) && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_reconciliation_title")} description={t("accounting.close_readiness_reconciliation_desc", { entries: warnings.unmatched_statement_entries || 0, movements: warnings.unmatched_cash_movements || 0 })} />}
+                    {(warnings.accounting_differences || []).length > 0 && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_accounting_title")} description={t("accounting.close_readiness_accounting_desc", { count: warnings.accounting_differences.length })} />}
+                    <p className="text-xs text-[var(--ohnix-text-muted)] m-0">{t("accounting.close_readiness_footer")}</p>
+                </div>,
+                okText: blockers.length > 0 ? t("accounting.close_readiness_blocked_cta") : t("accounting.close_period"),
+                okButtonProps: { disabled: blockers.length > 0 },
+                cancelText: t("common.cancel"),
+                onOk: blockers.length > 0 ? undefined : () => handleClose(period._id),
+            });
+        } catch (err) { toast.error(err?.response?.data?.message || t("accounting.close_readiness_failed")); }
+        finally { setCheckingPeriodId(null); }
     };
 
     const handleReopen = (period) => {
@@ -968,15 +1025,7 @@ const PeriodsTab = () => {
             key: "actions",
             render: (_, p) =>
                 p.status === "open" && canClose ? (
-                    <Popconfirm
-                        title={t("accounting.close_period_confirm_title")}
-                        description={t("accounting.close_period_confirm_content")}
-                        okText={t("common.yes")}
-                        cancelText={t("common.no")}
-                        onConfirm={() => handleClose(p._id)}
-                    >
-                        <Button size="small">{t("accounting.close_period")}</Button>
-                    </Popconfirm>
+                    <Button size="small" loading={checkingPeriodId === p._id} onClick={() => reviewAndClose(p)}>{t("accounting.close_period")}</Button>
                 ) : p.status === "closed" && canClose ? (
                     <Button size="small" onClick={() => handleReopen(p)}>{t("accounting.reopen_period")}</Button>
                 ) : null,
@@ -1679,7 +1728,9 @@ const TrialBalanceTab = () => {
 const Accounting = () => {
     const { t } = useI18n();
     const { can, loading: subscriptionLoading } = useSubscription();
-    const [activeTab, setActiveTab] = useState("overview");
+    const location = useLocation();
+    const deepLink = location.state || {};
+    const [activeTab, setActiveTab] = useState(deepLink.tab || "overview");
     const [status, setStatus] = useState(null);
     const hasAccounting = can("accounting");
 
@@ -1695,7 +1746,7 @@ const Accounting = () => {
     const tabItems = [
         { key: "overview", label: tabLabel(<DashboardOutlined />, "accounting.tab_overview"), children: <OverviewTab /> },
         { key: "chart", label: tabLabel(<ApartmentOutlined />, "accounting.tab_chart_of_accounts"), children: <ChartOfAccountsTab /> },
-        { key: "journal", label: tabLabel(<UnorderedListOutlined />, "accounting.tab_journal"), children: <JournalTab /> },
+        { key: "journal", label: tabLabel(<UnorderedListOutlined />, "accounting.tab_journal"), children: <JournalTab initialSourceType={deepLink.sourceType} initialSourceId={deepLink.sourceId} /> },
         { key: "vouchers", label: tabLabel(<FileTextOutlined />, "accounting.tab_vouchers"), children: <ManualVouchersTab /> },
         { key: "third_parties", label: tabLabel(<TeamOutlined />, "accounting.tab_third_parties"), children: <ThirdPartyLedgerTab /> },
         { key: "trial_balance", label: tabLabel(<CalculatorOutlined />, "accounting.tab_trial_balance"), children: <TrialBalanceTab /> },

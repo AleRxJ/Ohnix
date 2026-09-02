@@ -305,6 +305,11 @@ export const closeAccountingPeriod = asyncHandler(async (req, res, next) => {
     return res.status(200).json(new ApiResponse(200, mapPeriod(period), "Accounting period closed successfully"));
 });
 
+export const getAccountingPeriodCloseReadiness = asyncHandler(async (req, res) => {
+    const result = await accountingPeriodService.getAccountingPeriodCloseReadiness({ accountId: req.user.prismaId, periodId: req.params.id });
+    return res.status(200).json(new ApiResponse(200, result, "Accounting period close readiness fetched successfully"));
+});
+
 export const reopenAccountingPeriod = asyncHandler(async (req, res) => {
     const period = await accountingPeriodService.reopenAccountingPeriod({
         accountId: req.user.prismaId,
