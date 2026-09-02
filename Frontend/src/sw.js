@@ -1,29 +1,4 @@
-import { precache, addPlugins, addRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from "workbox-precaching";
-import { registerRoute, NavigationRoute } from "workbox-routing";
-
-// Routes that are NOT part of the authenticated app shell (marketing site,
-// auth pages, public token-based pages) - the service worker must never
-// serve the SPA shell as a navigation fallback for these. They either have
-// their own prerendered HTML or no offline requirement at all, and the
-// wrong shell would be worse than the browser's normal "you're offline"
-// error.
-const NON_APP_NAVIGATION_PATTERNS = [
-    /^\/$/,
-    /^\/precios/,
-    /^\/blog/,
-    /^\/software-inventario-pymes/,
-    /^\/facturacion-electronica-dian/,
-    /^\/comparativa\//,
-    /^\/colaboracion-en-equipo/,
-    /^\/integraciones$/,
-    /^\/demo/,
-    /^\/login/,
-    /^\/signup/,
-    /^\/reset-password/,
-    /^\/email-verify/,
-    /^\/team\/invite\//,
-    /^\/public\//,
-];
+import { precache, addPlugins, addRoute, cleanupOutdatedCaches } from "workbox-precaching";
 
 // Extension -> substring expected in that asset's Content-Type. Precaching
 // trusts each manifest URL blindly by default (it only checks for HTTP
@@ -58,11 +33,18 @@ addRoute();
 
 cleanupOutdatedCaches();
 
-registerRoute(
-    new NavigationRoute(createHandlerBoundToURL("/index.html"), {
-        denylist: NON_APP_NAVIGATION_PATTERNS,
-    })
-);
+// No navigation-fallback route (previously createHandlerBoundToURL bound to
+// "/index.html", i.e. the marketing homepage - wrong shell for an offline
+// visitor on an authenticated route, and the actual cause of the hydration
+// mismatch this file was rewritten to fix: a stale precached copy of "/"
+// getting hydrated against a newer JS bundle after a deploy). The correct
+// target is app.html (the real SPA shell), but it doesn't exist yet at the
+// point this precache manifest is generated - prerender.js creates it by
+// copying dist/index.html *after* `vite build` (and this plugin's manifest)
+// already ran, so createHandlerBoundToURL("/app.html") would find no match
+// and throw at SW startup, breaking the worker entirely. Needs the build
+// order fixed (e.g. emit app.html as its own Vite entry point instead of a
+// post-build copy) before this can be reintroduced safely.
 
 // registerType: 'autoUpdate' (vite.config.js) makes the client-side
 // registration (virtual:pwa-register) post this message as soon as it finds

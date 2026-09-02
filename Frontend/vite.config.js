@@ -103,8 +103,9 @@ export default defineConfig({
       // catch-all rewrite used to do before it excluded /assets/*) gets
       // cached as if it were real CSS/JS and is served to every future
       // visitor forever, with no error and no way to self-heal. See
-      // src/sw.js for the actual guard. navigateFallback/denylist and the
-      // rest of the previous generateSW behavior are reproduced there too.
+      // src/sw.js for the actual guard (the previous generateSW mode's
+      // navigateFallback/denylist for offline navigation was dropped there,
+      // not reproduced - see the comment in src/sw.js for why).
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.js',
@@ -113,6 +114,20 @@ export default defineConfig({
         // 2MB precache cap would silently skip them, breaking offline app
         // boot.
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        // Never precache the prerendered marketing HTML (dist/index.html,
+        // dist/precios/index.html, etc.) - it's rebuilt on every deploy, and
+        // this app deploys many times a day. A stale cached copy of "/" left
+        // over from an earlier deploy gets hydrated against the CURRENT JS
+        // bundle and mismatches (React errors #418/#423), which throws away
+        // the whole tree and forces a client-side re-render - and since
+        // navigating on from there (e.g. to /login) stays inside that same
+        // already-broken page instance, the visible breakage outlives the
+        // homepage visit. Precaching it was also pointless: the SW only
+        // registers once a visitor reaches the authenticated dashboard (see
+        // DashboardLayout.jsx), so a marketing-only visitor never has it
+        // installed anyway. app.html (the actual authenticated app shell)
+        // isn't named index.html, so it's unaffected by this exclusion.
+        globIgnores: ['**/node_modules/**/*', '**/index.html'],
       },
     }),
   ],
