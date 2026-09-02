@@ -8,6 +8,16 @@
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-v2.png" />
         <link rel="manifest" href="/site-v2.webmanifest" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <!-- Tells the browser this page already has its own dark AND light
+             styling, so it shouldn't apply forced/auto dark-mode darkening
+             on top of what's already there (Android WebView's "force dark",
+             some browsers' own dark-mode heuristics). This is a real,
+             standards-based signal - but it's the browser's OWN mechanism;
+             third-party dark-mode *extensions* inject their own CSS/filters
+             independently and are not required to honor it, so this can
+             reduce but can't guarantee-fix every such extension's
+             interference. -->
+        <meta name="color-scheme" content="dark light" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <!-- Non-blocking: a slow/unreachable third-party font host must never hold up

@@ -85,17 +85,6 @@ export default defineConfig({
     react(),
     chunkSafetyGuard(),
     VitePWA({
-      // !!! TEMPORARY - REVERT BEFORE THE NEXT REAL DEPLOY !!!
-      // Emergency kill switch: ships a special Service Worker whose only
-      // job is to unregister itself and wipe every cache it controls, for
-      // any client that receives it - no user action needed, propagates via
-      // the same update check every page now runs (see main.jsx). Testing
-      // whether this reaches an already-stuck tab/client. Leaving this
-      // `true` permanently means the Service Worker (and the whole
-      // offline-first architecture) never works for anyone ever again -
-      // set back to false (or remove this line) as soon as this is
-      // confirmed, before the next deploy that's meant to actually ship.
-      selfDestroying: true,
       // The app registers the SW itself (see DashboardLayout.jsx) via the
       // virtual:pwa-register module, instead of an auto-injected <script>
       // tag - keeps registration confined to the authenticated app shell,
