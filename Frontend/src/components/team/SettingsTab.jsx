@@ -1,19 +1,19 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Input, Button, Select, Popconfirm, Card, Typography, ColorPicker, Upload, Tooltip } from "antd";
-import { SaveOutlined, SwapOutlined, UploadOutlined, LockOutlined } from "@ant-design/icons";
+import { Link } from "react-router-dom";
+import { SaveOutlined, SwapOutlined, UploadOutlined, LockOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { teamService } from "../../services/teamService";
 import { companyService } from "../../services/companyService";
-import ElectronicInvoicingSettings from "./ElectronicInvoicingSettings";
 
 const { Text, Title } = Typography;
 
 const SettingsTab = () => {
     const { t } = useI18n();
-    const { user, refreshUser } = useContext(AuthContext);
+    const { user } = useContext(AuthContext);
     const { team, isOwner, refreshTeam } = useTeam();
     const [name, setName] = useState(team?.name || "");
     const [savingName, setSavingName] = useState(false);
@@ -25,7 +25,6 @@ const SettingsTab = () => {
     const [companyMeta, setCompanyMeta] = useState({ canUploadLogo: false, canCustomizeBranding: false });
     const [companyForm, setCompanyForm] = useState({
         name: "",
-        legalName: "",
         contactEmail: "",
         phone: "",
         pdfFooterText: "",
@@ -35,6 +34,7 @@ const SettingsTab = () => {
     const [savingCompany, setSavingCompany] = useState(false);
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [removingLogo, setRemovingLogo] = useState(false);
+    const [dianStatus, setDianStatus] = useState(null);
 
     useEffect(() => {
         setName(team?.name || "");
@@ -58,7 +58,6 @@ const SettingsTab = () => {
                 });
                 setCompanyForm({
                     name: data.company?.name || "",
-                    legalName: data.company?.legalName || "",
                     contactEmail: data.company?.contactEmail || "",
                     phone: data.company?.phone || "",
                     pdfFooterText: data.company?.pdfFooterText || "",
@@ -68,6 +67,15 @@ const SettingsTab = () => {
             .catch((err) => toast.error(err?.response?.data?.message || t("common.error")))
             .finally(() => setCompanyLoading(false));
     }, [isOwner]);
+
+    useEffect(() => {
+        if (!isOwner || !company) return;
+        companyService
+            .getMyItcycleStatus()
+            .then((res) => setDianStatus(res?.data || null))
+            .catch(() => setDianStatus(null));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOwner, company?.id]);
 
     if (!isOwner) {
         return (
@@ -119,12 +127,6 @@ const SettingsTab = () => {
         try {
             const payload = {
                 name: companyForm.name.trim(),
-                // Once itcycleCompanyId exists, legalName is frozen into
-                // itcycle-api-dian's own supplierProfile and the backend
-                // rejects a changed value (see companySelf.controller.js) -
-                // omit it entirely so an unrelated save (phone, email) never
-                // trips that guard just because this field is still in state.
-                ...(company?.itcycleCompanyId ? {} : { legalName: companyForm.legalName }),
                 contactEmail: companyForm.contactEmail,
                 phone: companyForm.phone,
             };
@@ -198,175 +200,181 @@ const SettingsTab = () => {
                 </div>
             </Card>
 
-            <Card className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]" loading={companyLoading}>
-                <Title level={5} className="text-[var(--ohnix-text-primary)] m-0 mb-1">
-                    {t("team.company_branding_title")}
-                </Title>
-                <Text className="text-[var(--ohnix-text-muted)] text-xs">{t("team.company_branding_hint")}</Text>
+            {companyLoading ? (
+                <Card className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]" loading />
+            ) : !company ? (
+                <Card className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]">
+                    <Title level={5} className="text-[var(--ohnix-text-primary)] m-0 mb-1">
+                        {t("team.company_missing_title")}
+                    </Title>
+                    <Text className="text-[var(--ohnix-text-muted)] text-sm">{t("team.company_missing_hint")}</Text>
+                    <div className="mt-4">
+                        <Link to="/fiscal-setup">
+                            <Button type="primary" size="large" icon={<SafetyCertificateOutlined />}>
+                                {t("team.company_missing_cta")}
+                            </Button>
+                        </Link>
+                    </div>
+                </Card>
+            ) : (
+                <>
+                    <Card className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]">
+                        <Title level={5} className="text-[var(--ohnix-text-primary)] m-0 mb-1">
+                            {t("team.company_branding_title")}
+                        </Title>
+                        <Text className="text-[var(--ohnix-text-muted)] text-xs">{t("team.company_branding_hint")}</Text>
 
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div>
-                        <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_name_label")}</Text>
-                        <Input
-                            size="large"
-                            className="auth-ohnix-input"
-                            value={companyForm.name}
-                            onChange={handleCompanyFieldChange("name")}
-                            maxLength={120}
-                        />
-                    </div>
-                    <div>
-                        <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_legal_name_label")}</Text>
-                        {company?.itcycleCompanyId ? (
-                            <Tooltip title={t("team.company_legal_name_locked")}>
-                                <span>
-                                    <Input size="large" className="auth-ohnix-input" value={companyForm.legalName} disabled suffix={<LockOutlined />} />
-                                </span>
-                            </Tooltip>
-                        ) : (
-                            <Input
-                                size="large"
-                                className="auth-ohnix-input"
-                                value={companyForm.legalName}
-                                onChange={handleCompanyFieldChange("legalName")}
-                                maxLength={160}
-                            />
-                        )}
-                    </div>
-                    <div>
-                        <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_contact_email_label")}</Text>
-                        <Input
-                            size="large"
-                            className="auth-ohnix-input"
-                            value={companyForm.contactEmail}
-                            onChange={handleCompanyFieldChange("contactEmail")}
-                            maxLength={160}
-                        />
-                    </div>
-                    <div>
-                        <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_phone_label")}</Text>
-                        <Input
-                            size="large"
-                            className="auth-ohnix-input"
-                            value={companyForm.phone}
-                            onChange={handleCompanyFieldChange("phone")}
-                            maxLength={40}
-                        />
-                    </div>
-                </div>
+                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                                <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_name_label")}</Text>
+                                <Input
+                                    size="large"
+                                    className="auth-ohnix-input"
+                                    value={companyForm.name}
+                                    onChange={handleCompanyFieldChange("name")}
+                                    maxLength={120}
+                                />
+                            </div>
+                            <div>
+                                <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_contact_email_label")}</Text>
+                                <Input
+                                    size="large"
+                                    className="auth-ohnix-input"
+                                    value={companyForm.contactEmail}
+                                    onChange={handleCompanyFieldChange("contactEmail")}
+                                    maxLength={160}
+                                />
+                            </div>
+                            <div>
+                                <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_phone_label")}</Text>
+                                <Input
+                                    size="large"
+                                    className="auth-ohnix-input"
+                                    value={companyForm.phone}
+                                    onChange={handleCompanyFieldChange("phone")}
+                                    maxLength={40}
+                                />
+                            </div>
+                        </div>
 
-                <div className="mt-4">
-                    <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-2">{t("team.company_logo_label")}</Text>
-                    <div className="flex items-center gap-3">
-                        {company?.logoUrl && (
-                            <img
-                                src={company.logoUrl}
-                                alt="logo"
-                                className="h-12 w-12 rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] object-contain"
-                            />
-                        )}
-                        {companyMeta.canUploadLogo ? (
-                            <>
-                                <Upload accept="image/*" showUploadList={false} beforeUpload={handleUploadLogo}>
-                                    <Button icon={<UploadOutlined />} loading={uploadingLogo}>
-                                        {t("team.upload_logo")}
-                                    </Button>
-                                </Upload>
+                        <div className="mt-4">
+                            <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-2">{t("team.company_logo_label")}</Text>
+                            <div className="flex items-center gap-3">
                                 {company?.logoUrl && (
-                                    <Popconfirm
-                                        title={t("common.delete")}
-                                        okText={t("common.yes")}
-                                        cancelText={t("common.no")}
-                                        onConfirm={handleRemoveLogo}
-                                    >
-                                        <Button danger loading={removingLogo}>
-                                            {t("common.delete")}
-                                        </Button>
-                                    </Popconfirm>
+                                    <img
+                                        src={company.logoUrl}
+                                        alt="logo"
+                                        className="h-12 w-12 rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] object-contain"
+                                    />
                                 )}
-                            </>
-                        ) : (
-                            <Tooltip title={t("team.company_branding_locked_logo")}>
-                                <span>
-                                    <Button icon={<LockOutlined />} disabled>
-                                        {t("team.upload_logo")}
-                                    </Button>
-                                </span>
-                            </Tooltip>
-                        )}
-                    </div>
-                </div>
+                                {companyMeta.canUploadLogo ? (
+                                    <>
+                                        <Upload accept="image/*" showUploadList={false} beforeUpload={handleUploadLogo}>
+                                            <Button icon={<UploadOutlined />} loading={uploadingLogo}>
+                                                {t("team.upload_logo")}
+                                            </Button>
+                                        </Upload>
+                                        {company?.logoUrl && (
+                                            <Popconfirm
+                                                title={t("common.delete")}
+                                                okText={t("common.yes")}
+                                                cancelText={t("common.no")}
+                                                onConfirm={handleRemoveLogo}
+                                            >
+                                                <Button danger loading={removingLogo}>
+                                                    {t("common.delete")}
+                                                </Button>
+                                            </Popconfirm>
+                                        )}
+                                    </>
+                                ) : (
+                                    <Tooltip title={t("team.company_branding_locked_logo")}>
+                                        <span>
+                                            <Button icon={<LockOutlined />} disabled>
+                                                {t("team.upload_logo")}
+                                            </Button>
+                                        </span>
+                                    </Tooltip>
+                                )}
+                            </div>
+                        </div>
 
-                <div className="mt-4">
-                    <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_footer_text_label")}</Text>
-                    <Text className="text-[var(--ohnix-text-dim)] text-xs block mb-2">{t("team.company_footer_text_hint")}</Text>
-                    {companyMeta.canCustomizeBranding ? (
-                        <Input.TextArea
-                            rows={2}
-                            className="auth-ohnix-input"
-                            placeholder={t("team.company_footer_text_placeholder")}
-                            value={companyForm.pdfFooterText}
-                            onChange={handleCompanyFieldChange("pdfFooterText")}
-                            maxLength={300}
-                        />
-                    ) : (
-                        <Tooltip title={t("team.company_branding_locked_custom")}>
-                            <span>
-                                <Input.TextArea rows={2} disabled placeholder={t("team.company_branding_locked_custom")} />
-                            </span>
-                        </Tooltip>
-                    )}
-                </div>
+                        <div className="mt-4">
+                            <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_footer_text_label")}</Text>
+                            <Text className="text-[var(--ohnix-text-dim)] text-xs block mb-2">{t("team.company_footer_text_hint")}</Text>
+                            {companyMeta.canCustomizeBranding ? (
+                                <Input.TextArea
+                                    rows={2}
+                                    className="auth-ohnix-input"
+                                    placeholder={t("team.company_footer_text_placeholder")}
+                                    value={companyForm.pdfFooterText}
+                                    onChange={handleCompanyFieldChange("pdfFooterText")}
+                                    maxLength={300}
+                                />
+                            ) : (
+                                <Tooltip title={t("team.company_branding_locked_custom")}>
+                                    <span>
+                                        <Input.TextArea rows={2} disabled placeholder={t("team.company_branding_locked_custom")} />
+                                    </span>
+                                </Tooltip>
+                            )}
+                        </div>
 
-                <div className="mt-4">
-                    <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_accent_color_label")}</Text>
-                    <Text className="text-[var(--ohnix-text-dim)] text-xs block mb-2">{t("team.company_accent_color_hint")}</Text>
-                    {companyMeta.canCustomizeBranding ? (
-                        <ColorPicker
-                            format="hex"
-                            showText
-                            disabledAlpha
-                            value={companyForm.pdfAccentColor || "#29D8D5"}
-                            onChange={(_, hex) => setCompanyForm((prev) => ({ ...prev, pdfAccentColor: hex }))}
-                        />
-                    ) : (
-                        <Tooltip title={t("team.company_branding_locked_custom")}>
-                            <span>
-                                <Button icon={<LockOutlined />} disabled>
-                                    {t("team.company_accent_color_label")}
+                        <div className="mt-4">
+                            <Text className="text-[var(--ohnix-text-muted)] text-xs block mb-1">{t("team.company_accent_color_label")}</Text>
+                            <Text className="text-[var(--ohnix-text-dim)] text-xs block mb-2">{t("team.company_accent_color_hint")}</Text>
+                            {companyMeta.canCustomizeBranding ? (
+                                <ColorPicker
+                                    format="hex"
+                                    showText
+                                    disabledAlpha
+                                    value={companyForm.pdfAccentColor || "#29D8D5"}
+                                    onChange={(_, hex) => setCompanyForm((prev) => ({ ...prev, pdfAccentColor: hex }))}
+                                />
+                            ) : (
+                                <Tooltip title={t("team.company_branding_locked_custom")}>
+                                    <span>
+                                        <Button icon={<LockOutlined />} disabled>
+                                            {t("team.company_accent_color_label")}
+                                        </Button>
+                                    </span>
+                                </Tooltip>
+                            )}
+                        </div>
+
+                        <div className="mt-5">
+                            <Button
+                                type="primary"
+                                size="large"
+                                icon={<SaveOutlined />}
+                                loading={savingCompany}
+                                disabled={!companyForm.name.trim()}
+                                onClick={handleSaveCompany}
+                            >
+                                {t("team.save_company")}
+                            </Button>
+                        </div>
+                    </Card>
+
+                    <Card className="rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] text-[var(--ohnix-text-primary)]">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <Title level={5} className="text-[var(--ohnix-text-primary)] m-0 mb-1">
+                                    {t("team.dian_status_title")}
+                                </Title>
+                                <Text className="text-[var(--ohnix-text-muted)] text-sm">
+                                    {dianStatus?.provisioned ? t("team.dian_status_ready") : t("team.dian_status_pending")}
+                                </Text>
+                            </div>
+                            <Link to="/fiscal-setup">
+                                <Button type="primary" icon={<SafetyCertificateOutlined />}>
+                                    {t("team.dian_status_cta")}
                                 </Button>
-                            </span>
-                        </Tooltip>
-                    )}
-                </div>
-
-                <div className="mt-5">
-                    <Button
-                        type="primary"
-                        size="large"
-                        icon={<SaveOutlined />}
-                        loading={savingCompany}
-                        disabled={!companyForm.name.trim()}
-                        onClick={handleSaveCompany}
-                    >
-                        {t("team.save_company")}
-                    </Button>
-                </div>
-            </Card>
-
-            <ElectronicInvoicingSettings
-                company={company}
-                onCompanyChanged={(updatedCompany) => {
-                    setCompany(updatedCompany);
-                    refreshUser?.();
-                    setCompanyForm((prev) => ({
-                        ...prev,
-                        name: updatedCompany?.name || prev.name,
-                        legalName: updatedCompany?.legalName || prev.legalName,
-                        contactEmail: updatedCompany?.contactEmail || prev.contactEmail,
-                    }));
-                }}
-            />
+                            </Link>
+                        </div>
+                    </Card>
+                </>
+            )}
 
             <Card className="rounded-2xl border border-amber-500/20 bg-amber-500/5 text-[var(--ohnix-text-primary)]">
                 <Title level={5} className="text-[var(--ohnix-text-primary)] m-0 mb-1">

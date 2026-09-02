@@ -540,31 +540,30 @@ export const updateMyCompanyLogo = asyncHandler(async (req, res, next) => {
         select: { companyId: true, username: true },
     });
 
+    // No creating a bare placeholder Company here anymore - Facturación
+    // electrónica (registerMyCompanyWithItcycle's updateMyCompany call) is
+    // now the only place a Company row gets born, with real NIT/legal data
+    // instead of just a logo and the username as its name.
+    if (!user?.companyId) {
+        return next(new ApiError(422, "Primero completa la configuración de tu empresa en Facturación electrónica."));
+    }
+
     const image = await uploadFile(req.file, {
-        ownerId: user?.companyId || req.user.prismaId,
+        ownerId: user.companyId,
         entity: "branding",
     });
     if (!image) {
         return next(new ApiError(500, "No se pudo subir el logo."));
     }
 
-    let companyId = user?.companyId;
-    if (!companyId) {
-        const company = await prisma.company.create({
-            data: { name: user?.username || "Mi empresa", isActive: true, logoUrl: image.url },
-            select: { id: true },
-        });
-        companyId = company.id;
-        await prisma.user.update({ where: { id: req.user.prismaId }, data: { companyId } });
-    } else {
-        const previous = await prisma.company.findUnique({
-            where: { id: companyId },
-            select: { logoUrl: true },
-        });
-        await prisma.company.update({ where: { id: companyId }, data: { logoUrl: image.url } });
-        if (previous?.logoUrl) {
-            deleteFile(previous.logoUrl);
-        }
+    const companyId = user.companyId;
+    const previous = await prisma.company.findUnique({
+        where: { id: companyId },
+        select: { logoUrl: true },
+    });
+    await prisma.company.update({ where: { id: companyId }, data: { logoUrl: image.url } });
+    if (previous?.logoUrl) {
+        deleteFile(previous.logoUrl);
     }
 
     const company = await prisma.company.findUnique({ where: { id: companyId }, select: SELF_SELECT });
