@@ -57,10 +57,18 @@ const AuthLayout = ({ children }) => {
             </div>
 
             {/* ── Right panel — form ───────────────────────────────────── */}
-            <div className="relative w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-8 lg:p-12">
+            <div
+                className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-8 lg:p-12"
+                style={{ position: "relative" }}
+            >
 
-                {/* Language switcher — top right */}
-                <div className="absolute top-4 right-4 z-50">
+                {/* Language switcher — top right. Positioned via inline style
+                    (not Tailwind's `absolute`/`top-4`/`right-4` utilities) so it
+                    can't fall back into the normal document flow - and land on
+                    top of the email field - during the moment on a cold first
+                    load where the app's CSS bundle hasn't finished applying yet
+                    but React has already mounted the form. */}
+                <div style={{ position: "absolute", top: "1rem", right: "1rem", zIndex: 50 }}>
                     <LanguageSwitcher />
                 </div>
 
