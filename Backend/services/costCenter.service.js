@@ -80,3 +80,22 @@ export const getCostCenterLedger = async (accountId, id, { startDate, endDate } 
         })),
     };
 };
+
+export const assignLocationCostCenter = async (accountId, actorId, pointOfSaleId, costCenterId) =>
+    prisma.$transaction(async (tx) => {
+        const location = await tx.pointOfSale.findFirst({ where: { id: pointOfSaleId, accountId } });
+        if (!location) throw new ApiError(404, "Sede no encontrada.");
+        let center = null;
+        if (costCenterId) {
+            center = await tx.costCenter.findFirst({ where: { id: costCenterId, accountId, isActive: true } });
+            if (!center) throw new ApiError(400, "El centro de costo no existe, está inactivo o pertenece a otra empresa.");
+        }
+        const updated = await tx.pointOfSale.update({ where: { id: pointOfSaleId }, data: { defaultCostCenterId: center?.id || null } });
+        await tx.accountingConfigAudit.create({
+            data: {
+                accountId, actorId, entityType: "point_of_sale_cost_center", entityId: pointOfSaleId, action: "updated",
+                before: { cost_center_id: location.defaultCostCenterId }, after: { cost_center_id: center?.id || null },
+            },
+        });
+        return updated;
+    });

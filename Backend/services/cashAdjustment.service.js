@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { claimCashAccount, creditCashAccount, recordCashMovement } from "./cashMovement.service.js";
 import { resolveCashAccountChartAccount } from "./chartOfAccounts.service.js";
 import { recordJournalEntry } from "./journalEntry.service.js";
+import { applyLocationCostCenter } from "./accountingPosting.service.js";
 
 export const adjustCash = async ({ accountId, actorId, cashAccountId, counterpartAccountId, amount, reason, adjustmentDate }) => {
     if (!cashAccountId || !counterpartAccountId) throw new ApiError(400, "La cuenta de caja/banco y la contrapartida son obligatorias.");
@@ -31,9 +32,9 @@ export const adjustCash = async ({ accountId, actorId, cashAccountId, counterpar
         if (cashChartAccountId === counterpart.id) throw new ApiError(422, "La contrapartida debe ser diferente de la cuenta contable de caja/banco.");
         const entry = await recordJournalEntry(tx, {
             accountId, createdById: actorId, entryDate, description: reason.trim(), sourceType: "cash_adjustment", sourceId: adjustmentId,
-            lines: numericAmount > 0
+            lines: await applyLocationCostCenter(tx, accountId, cashAccount.pointOfSaleId, numericAmount > 0
                 ? [{ chartAccountId: cashChartAccountId, debit: absoluteAmount, credit: 0 }, { chartAccountId: counterpart.id, debit: 0, credit: absoluteAmount }]
-                : [{ chartAccountId: counterpart.id, debit: absoluteAmount, credit: 0 }, { chartAccountId: cashChartAccountId, debit: 0, credit: absoluteAmount }],
+                : [{ chartAccountId: counterpart.id, debit: absoluteAmount, credit: 0 }, { chartAccountId: cashChartAccountId, debit: 0, credit: absoluteAmount }]),
         });
         const movement = await recordCashMovement(tx, { cashAccountId, delta: numericAmount, balanceAfter, sourceType: "adjustment", sourceId: adjustmentId, reason: reason.trim(), createdById: actorId });
         return { adjustmentId, entry, movement };

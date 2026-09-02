@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { creditCashAccount, recordCashMovement } from "./cashMovement.service.js";
 import { resolveCashAccountChartAccount } from "./chartOfAccounts.service.js";
 import { recordJournalEntry } from "./journalEntry.service.js";
+import { applyLocationCostCenter } from "./accountingPosting.service.js";
 
 export const registerManualIncome = async ({ accountId, actorId, amount, revenueAccountId, cashAccountId, description, incomeDate, statementEntryId = null }) => {
     const numericAmount = Number(Number(amount).toFixed(2));
@@ -32,10 +33,10 @@ export const registerManualIncome = async ({ accountId, actorId, amount, revenue
             entryDate,
             description: description?.trim() || "Ingreso manual",
             sourceType: "manual_income",
-            lines: [
+            lines: await applyLocationCostCenter(tx, accountId, cashAccount.pointOfSaleId, [
                 { chartAccountId: cashChartAccountId, debit: numericAmount, credit: 0 },
                 { chartAccountId: revenueAccount.id, debit: 0, credit: numericAmount },
-            ],
+            ]),
         });
         const movement = await recordCashMovement(tx, {
             cashAccountId,

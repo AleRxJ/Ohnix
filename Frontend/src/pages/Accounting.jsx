@@ -10,6 +10,7 @@ import PlanGate from "../components/common/PlanGate";
 import EmptyState from "../components/common/EmptyState";
 import useIsMobile from "../hooks/useIsMobile";
 import { accountingService } from "../services/accountingService";
+import { pointOfSaleService } from "../services/pointOfSaleService";
 import { companyService } from "../services/companyService";
 import { useCurrency } from "../context/CurrencyContext";
 import { useTeam } from "../context/TeamContext";
@@ -543,8 +544,10 @@ const CostCentersTab = () => {
     const { formatCurrency } = useCurrency();
     const { hasPermission } = useTeam();
     const canEdit = hasPermission("accounting", "edit");
+    const canAdmin = hasPermission("accounting", "admin");
     const [form] = Form.useForm();
     const [centers, setCenters] = useState([]);
+    const [locations, setLocations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -556,8 +559,9 @@ const CostCentersTab = () => {
     const load = async () => {
         setLoading(true);
         try {
-            const response = await accountingService.listCostCenters({ includeInactive: true });
-            setCenters(response?.data || []);
+            const [centerResponse, locationResponse] = await Promise.all([accountingService.listCostCenters({ includeInactive: true }), pointOfSaleService.list()]);
+            setCenters(centerResponse?.data || []);
+            setLocations(locationResponse?.data || []);
         } catch { toast.error(t("accounting.failed")); }
         finally { setLoading(false); }
     };
@@ -591,6 +595,13 @@ const CostCentersTab = () => {
         } catch { toast.error(t("accounting.failed")); }
         finally { setLedgerLoading(false); }
     };
+    const assignLocation = async (location, costCenterId) => {
+        try {
+            await accountingService.assignLocationCostCenter(location.id, costCenterId);
+            setLocations((rows) => rows.map((row) => row.id === location.id ? { ...row, defaultCostCenterId: costCenterId || null } : row));
+            toast.success(t("accounting.cost_center_location_saved"));
+        } catch (error) { toast.error(error?.response?.data?.message || t("accounting.failed")); }
+    };
 
     return <>
         <AccountingSectionGuide sectionKey="cost-centers" title={t("accounting.guide_cost_centers_title")} summary={t("accounting.tab_cost_centers_caption")} steps={[t("accounting.guide_cost_centers_step_1"), t("accounting.guide_cost_centers_step_2"), t("accounting.guide_cost_centers_step_3")]} result={t("accounting.guide_cost_centers_result")} concepts={[{ label: t("accounting.cost_center"), help: t("accounting.cost_center_help") }]} />
@@ -601,6 +612,17 @@ const CostCentersTab = () => {
             { title: t("accounting.col_status"), dataIndex: "is_active", render: (active) => <Tag color={active ? "green" : "default"}>{t(active ? "common.active" : "common.inactive")}</Tag> },
             { title: t("common.actions"), width: 210, render: (_, center) => <div className="flex gap-2"><Button size="small" icon={<EyeOutlined />} onClick={() => showLedger(center)}>{t("accounting.cost_center_view_ledger")}</Button>{canEdit && <Button size="small" onClick={() => showEditor(center)}>{t("common.edit")}</Button>}</div> },
         ]} />
+        <Card className="module-shell border border-[var(--ohnix-line-4)] mt-6" title={t("accounting.cost_center_automation_title")}>
+            <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("accounting.cost_center_automation_help")} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {locations.filter((location) => location.isActive).map((location) => (
+                    <div key={location.id} className="rounded-xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-surface-card-soft)] p-4">
+                        <strong className="block text-[var(--ohnix-text-primary)] mb-2">{location.name}</strong>
+                        <Select allowClear showSearch optionFilterProp="label" className="w-full" disabled={!canAdmin} placeholder={t("accounting.cost_center_location_unassigned")} value={location.defaultCostCenterId || undefined} onChange={(value) => assignLocation(location, value)} options={centers.filter((center) => center.is_active).map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
+                    </div>
+                ))}
+            </div>
+        </Card>
         <Modal className="accounting-modal" title={editing ? t("accounting.cost_center_edit") : t("accounting.cost_center_new")} open={open} onCancel={() => setOpen(false)} onOk={save} confirmLoading={saving} destroyOnHidden>
             <Alert className="dark-alert dark-alert-teal mb-4" showIcon type="info" message={t("accounting.cost_center_form_help")} />
             <Form form={form} layout="vertical">

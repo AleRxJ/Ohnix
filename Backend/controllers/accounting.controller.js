@@ -260,6 +260,19 @@ export const getCostCenterLedger = asyncHandler(async (req, res) => {
     }, "Auxiliar del centro de costo obtenido."));
 });
 
+export const assignLocationCostCenter = asyncHandler(async (req, res) => {
+    const location = await costCenterService.assignLocationCostCenter(
+        req.user.prismaId,
+        req.user.actorId,
+        req.params.pointOfSaleId,
+        req.body?.cost_center_id || null
+    );
+    return res.status(200).json(new ApiResponse(200, {
+        point_of_sale_id: location.id,
+        cost_center_id: location.defaultCostCenterId,
+    }, "Centro de costo predeterminado actualizado."));
+});
+
 export const getJournalEntry = asyncHandler(async (req, res) => {
     const entry = await journalEntryService.getJournalEntryById({ accountId: req.user.prismaId, id: req.params.id });
     return res.status(200).json(new ApiResponse(200, mapJournalEntry(entry), "Journal entry fetched successfully"));

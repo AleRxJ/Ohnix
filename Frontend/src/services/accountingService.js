@@ -28,6 +28,11 @@ export const accountingService = {
         return response.data;
     },
 
+    async assignLocationCostCenter(pointOfSaleId, costCenterId) {
+        const response = await api.patch(`/accounting/cost-centers/location/${pointOfSaleId}`, { cost_center_id: costCenterId || null });
+        return response.data;
+    },
+
     async listChartOfAccounts() {
         const response = await api.get("/accounting/chart-of-accounts");
         return response.data;

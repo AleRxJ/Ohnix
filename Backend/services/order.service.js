@@ -703,6 +703,7 @@ class OrderService {
                         description: `Cancelación de pedido`,
                         lines: journalLines,
                         thirdParty: buildAccountingThirdParty("customer", order.customer),
+                        pointOfSaleId: order.pointOfSaleId,
                     });
                 }
 
@@ -1149,6 +1150,7 @@ class OrderService {
                 description: `Devolución de pedido`,
                 lines: journalLines,
                 thirdParty: buildAccountingThirdParty("customer", order.customer),
+                pointOfSaleId: order.pointOfSaleId,
             });
 
             return { results, orderFullyReturned };

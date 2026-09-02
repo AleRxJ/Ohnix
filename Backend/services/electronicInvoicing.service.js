@@ -1287,6 +1287,7 @@ const applyCreditNoteRestock = async ({ order, items, creditNoteId, userId }) =>
             description: "Nota crédito con devolución de mercancía",
             lines: journalLines,
             thirdParty: buildAccountingThirdParty("customer", order.customer),
+            pointOfSaleId: order.pointOfSaleId,
         });
 
         return { lines, orderFullyReturned };
@@ -1320,6 +1321,7 @@ const postFinancialCreditNoteJournalEntry = async ({ order, amount, taxRate, cre
             description: "Nota crédito financiera",
             lines: [{ quantity: 1, unitcost: amount, taxRateApplied: taxRate || 0 }],
             thirdParty: buildAccountingThirdParty("customer", order.customer),
+            pointOfSaleId: order.pointOfSaleId,
         })
     );
     return { applied: true };

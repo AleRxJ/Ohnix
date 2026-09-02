@@ -36,6 +36,7 @@ import {
     createCostCenter,
     updateCostCenter,
     getCostCenterLedger,
+    assignLocationCostCenter,
 } from "../controllers/accounting.controller.js";
 
 const router = Router();
@@ -60,6 +61,8 @@ router.route("/cost-centers/:id")
     .patch(requireModulePermission("accounting", "edit"), updateCostCenter);
 router.route("/cost-centers/:id/ledger")
     .get(requireModulePermission("accounting", "view"), getCostCenterLedger);
+router.route("/cost-centers/location/:pointOfSaleId")
+    .patch(requireModulePermission("accounting", "admin"), assignLocationCostCenter);
 
 router.route("/journal-entries").get(requireModulePermission("accounting", "view"), listJournalEntries);
 router.route("/journal-entries/:id").get(requireModulePermission("accounting", "view"), getJournalEntry);

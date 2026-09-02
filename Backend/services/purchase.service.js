@@ -716,6 +716,7 @@ class PurchaseService {
                 lines: journalLines,
                 retentionReturns,
                 thirdParty: buildAccountingThirdParty("supplier", purchase.supplier),
+                pointOfSaleId: purchase.pointOfSaleId,
             });
 
             return { results, purchaseFullyReturned };

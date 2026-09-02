@@ -1717,30 +1717,33 @@ enum LocationType {
 }
 
 model PointOfSale {
-  id           String       @id @default(cuid())
-  accountId    String       @map("account_id")
-  name         String
-  locationType LocationType @default(point_of_sale) @map("location_type")
-  isDefault    Boolean      @default(false) @map("is_default")
-  isActive     Boolean      @default(true) @map("is_active")
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  id                  String       @id @default(cuid())
+  accountId           String       @map("account_id")
+  name                String
+  locationType        LocationType @default(point_of_sale) @map("location_type")
+  isDefault           Boolean      @default(false) @map("is_default")
+  isActive            Boolean      @default(true) @map("is_active")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+  defaultCostCenterId String?      @map("default_cost_center_id")
 
-  account         User                    @relation("PointOfSaleAccount", fields: [accountId], references: [id])
-  members         TeamMemberPointOfSale[]
-  orders          Order[]
-  purchases       Purchase[]
-  stockMovements  StockMovement[]
-  locationStock   ProductLocationStock[]
-  transfersOut    StockTransfer[]         @relation("StockTransferFrom")
-  transfersIn     StockTransfer[]         @relation("StockTransferTo")
-  customers       Customer[]
-  suppliers       Supplier[]
-  cashAccounts    CashAccount[]
-  quotations      PurchaseQuotation[]
-  salesQuotations SalesQuotation[]
+  account           User                    @relation("PointOfSaleAccount", fields: [accountId], references: [id])
+  members           TeamMemberPointOfSale[]
+  orders            Order[]
+  purchases         Purchase[]
+  stockMovements    StockMovement[]
+  locationStock     ProductLocationStock[]
+  transfersOut      StockTransfer[]         @relation("StockTransferFrom")
+  transfersIn       StockTransfer[]         @relation("StockTransferTo")
+  customers         Customer[]
+  suppliers         Supplier[]
+  cashAccounts      CashAccount[]
+  quotations        PurchaseQuotation[]
+  salesQuotations   SalesQuotation[]
+  defaultCostCenter CostCenter?             @relation(fields: [defaultCostCenterId], references: [id])
 
   @@index([accountId, isActive])
+  @@index([defaultCostCenterId])
   @@map("points_of_sale")
 }
 
@@ -1972,6 +1975,7 @@ model CostCenter {
   account            User                       @relation("CostCenterAccount", fields: [accountId], references: [id])
   journalEntryLines  JournalEntryLine[]
   manualVoucherLines ManualJournalVoucherLine[]
+  pointsOfSale       PointOfSale[]
 
   @@unique([accountId, code])
   @@index([accountId, isActive])

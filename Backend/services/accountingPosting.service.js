@@ -19,6 +19,19 @@ const withThirdParty = (lines, thirdParty, controlAccountId) => {
     };
     return lines.map((line) => line.chartAccountId === controlAccountId ? ({ ...line, ...dimension }) : line);
 };
+export const resolveLocationCostCenter = async (tx, accountId, pointOfSaleId) => {
+    if (!pointOfSaleId) return null;
+    const location = await tx.pointOfSale.findFirst({
+        where: { id: pointOfSaleId, accountId },
+        select: { defaultCostCenter: { select: { id: true, isActive: true } } },
+    });
+    return location?.defaultCostCenter?.isActive ? location.defaultCostCenter.id : null;
+};
+const withCostCenter = (lines, costCenterId) => costCenterId
+    ? lines.map((line) => ({ ...line, costCenterId }))
+    : lines;
+export const applyLocationCostCenter = async (tx, accountId, pointOfSaleId, lines) =>
+    withCostCenter(lines, await resolveLocationCostCenter(tx, accountId, pointOfSaleId));
 
 export const calculatePurchaseReturnValues = (lines) => {
     let refundBase = 0;
@@ -91,6 +104,7 @@ export const postTransferDiscrepancyJournalEntry = async (
 
 export const postOrderSaleJournalEntry = async (tx, { accountId, createdById, order, cogs, thirdParty }) => {
     const coa = await getChartAccountMap(tx, accountId);
+    const costCenterId = await resolveLocationCostCenter(tx, accountId, order.pointOfSaleId);
 
     return recordJournalEntry(tx, {
         accountId,
@@ -99,18 +113,19 @@ export const postOrderSaleJournalEntry = async (tx, { accountId, createdById, or
         description: `Venta ${order.invoiceNo}`,
         sourceType: "order_sale",
         sourceId: order.id,
-        lines: withThirdParty([
+        lines: withCostCenter(withThirdParty([
             { chartAccountId: coa.get("1305").id, debit: order.total, credit: 0 },
             { chartAccountId: coa.get("4135").id, debit: 0, credit: order.subTotal },
             { chartAccountId: coa.get("240805").id, debit: 0, credit: order.gst },
             { chartAccountId: coa.get("6135").id, debit: cogs, credit: 0 },
             { chartAccountId: coa.get("1435").id, debit: 0, credit: cogs },
-        ], thirdParty, coa.get("1305").id),
+        ], thirdParty, coa.get("1305").id), costCenterId),
     });
 };
 
 export const postPurchaseJournalEntry = async (tx, { accountId, createdById, purchase, totals, retentions = [], thirdParty }) => {
     const coa = await getChartAccountMap(tx, accountId);
+    const costCenterId = await resolveLocationCostCenter(tx, accountId, purchase.pointOfSaleId);
     const total = Number(totals.total || 0);
     const taxAmount = Number(totals.taxAmount || 0);
     const withheldTotal = round2(retentions.reduce((sum, retention) => sum + Number(retention.withheldAmount || 0), 0));
@@ -124,7 +139,7 @@ export const postPurchaseJournalEntry = async (tx, { accountId, createdById, pur
         description: `Compra ${purchase.purchaseNo}`,
         sourceType: "purchase",
         sourceId: purchase.id,
-        lines: withThirdParty([
+        lines: withCostCenter(withThirdParty([
             { chartAccountId: coa.get("1435").id, debit: total, credit: 0 },
             { chartAccountId: coa.get("240810").id, debit: taxAmount, credit: 0 },
             { chartAccountId: coa.get("2205").id, debit: 0, credit: payable },
@@ -134,13 +149,14 @@ export const postPurchaseJournalEntry = async (tx, { accountId, createdById, pur
                 credit: Number(retention.withheldAmount),
                 description: `${retention.conceptCode} - ${retention.conceptName}`,
             })),
-        ], thirdParty, coa.get("2205").id),
+        ], thirdParty, coa.get("2205").id), costCenterId),
     });
 };
 
 export const postOrderPaymentJournalEntry = async (tx, { accountId, createdById, payment, cashAccount, order, thirdParty }) => {
     const coa = await getChartAccountMap(tx, accountId);
     const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
+    const costCenterId = await resolveLocationCostCenter(tx, accountId, order.pointOfSaleId);
 
     return recordJournalEntry(tx, {
         accountId,
@@ -149,16 +165,17 @@ export const postOrderPaymentJournalEntry = async (tx, { accountId, createdById,
         description: `Pago de pedido ${order.invoiceNo}`,
         sourceType: "order_payment",
         sourceId: payment.id,
-        lines: withThirdParty([
+        lines: withCostCenter(withThirdParty([
             { chartAccountId: cashChartAccountId, debit: payment.amount, credit: 0 },
             { chartAccountId: coa.get("1305").id, debit: 0, credit: payment.amount },
-        ], thirdParty, coa.get("1305").id),
+        ], thirdParty, coa.get("1305").id), costCenterId),
     });
 };
 
 export const postPurchasePaymentJournalEntry = async (tx, { accountId, createdById, payment, cashAccount, purchase, thirdParty }) => {
     const coa = await getChartAccountMap(tx, accountId);
     const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
+    const costCenterId = await resolveLocationCostCenter(tx, accountId, purchase.pointOfSaleId);
 
     return recordJournalEntry(tx, {
         accountId,
@@ -167,10 +184,10 @@ export const postPurchasePaymentJournalEntry = async (tx, { accountId, createdBy
         description: `Pago de compra ${purchase.purchaseNo}`,
         sourceType: "purchase_payment",
         sourceId: payment.id,
-        lines: withThirdParty([
+        lines: withCostCenter(withThirdParty([
             { chartAccountId: coa.get("2205").id, debit: payment.amount, credit: 0 },
             { chartAccountId: cashChartAccountId, debit: 0, credit: payment.amount },
-        ], thirdParty, coa.get("2205").id),
+        ], thirdParty, coa.get("2205").id), costCenterId),
     });
 };
 
@@ -182,8 +199,9 @@ export const postPurchasePaymentJournalEntry = async (tx, { accountId, createdBy
 // owed) / Dr Inventarios (goods back) / Cr Costo de ventas (reduce recorded
 // cost) - same live-buyingPrice simplification as the forward posting (no
 // historical cost layers anywhere in this codebase).
-export const postOrderReturnJournalEntry = async (tx, { accountId, createdById, sourceType, sourceId, entryDate, description, lines, thirdParty }) => {
+export const postOrderReturnJournalEntry = async (tx, { accountId, createdById, sourceType, sourceId, entryDate, description, lines, thirdParty, pointOfSaleId }) => {
     const coa = await getChartAccountMap(tx, accountId);
+    const costCenterId = await resolveLocationCostCenter(tx, accountId, pointOfSaleId);
 
     let refundTotal = 0;
     let taxTotal = 0;
@@ -205,13 +223,13 @@ export const postOrderReturnJournalEntry = async (tx, { accountId, createdById, 
         description,
         sourceType,
         sourceId,
-        lines: withThirdParty([
+        lines: withCostCenter(withThirdParty([
             { chartAccountId: coa.get("1305").id, debit: 0, credit: refundTotal + taxTotal },
             { chartAccountId: coa.get("4135").id, debit: refundTotal, credit: 0 },
             { chartAccountId: coa.get("240805").id, debit: taxTotal, credit: 0 },
             { chartAccountId: coa.get("1435").id, debit: cogsTotal, credit: 0 },
             { chartAccountId: coa.get("6135").id, debit: 0, credit: cogsTotal },
-        ], thirdParty, coa.get("1305").id),
+        ], thirdParty, coa.get("1305").id), costCenterId),
     });
 };
 
@@ -220,8 +238,9 @@ export const postOrderReturnJournalEntry = async (tx, { accountId, createdById, 
 // cost-of-sale concept. Mirror-flip of postPurchaseJournalEntry: Dr
 // Proveedores (reduce what's owed) / Cr Inventarios (goods out) / Cr IVA
 // descontable (reduce credit claimed).
-export const postPurchaseReturnJournalEntry = async (tx, { accountId, createdById, sourceId, entryDate, description, lines, retentionReturns = [], thirdParty }) => {
+export const postPurchaseReturnJournalEntry = async (tx, { accountId, createdById, sourceId, entryDate, description, lines, retentionReturns = [], thirdParty, pointOfSaleId }) => {
     const coa = await getChartAccountMap(tx, accountId);
+    const costCenterId = await resolveLocationCostCenter(tx, accountId, pointOfSaleId);
 
     const { refundBase: total, taxTotal, inventoryTotal, variance } = calculatePurchaseReturnValues(lines);
     const withholdingReversal = round2(retentionReturns.reduce((sum, retention) => sum + Number(retention.withheldNow || 0), 0));
@@ -234,7 +253,7 @@ export const postPurchaseReturnJournalEntry = async (tx, { accountId, createdByI
         description,
         sourceType: "purchase_return",
         sourceId,
-        lines: withThirdParty([
+        lines: withCostCenter(withThirdParty([
             { chartAccountId: coa.get("2205").id, debit: supplierDebit, credit: 0 },
             ...retentionReturns.filter((retention) => Number(retention.withheldNow) > 0).map((retention) => ({
                 chartAccountId: retention.chartAccountId,
@@ -249,6 +268,6 @@ export const postPurchaseReturnJournalEntry = async (tx, { accountId, createdByI
                 : variance < 0
                   ? [{ chartAccountId: coa.get("5195").id, debit: -variance, credit: 0 }]
                   : []),
-        ], thirdParty, coa.get("2205").id),
+        ], thirdParty, coa.get("2205").id), costCenterId),
     });
 };
