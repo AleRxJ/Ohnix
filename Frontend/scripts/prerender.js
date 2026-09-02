@@ -95,8 +95,12 @@ const linkAppStylesheet = () => {
     }
     const appHtmlPath = join(distDir, "app.html");
     const html = readFileSync(appHtmlPath, "utf8");
-    const link = `<link rel="stylesheet" crossorigin href="/assets/${appCssFile}" />\n    `;
-    writeFileSync(appHtmlPath, html.replace("</head>", `${link}</head>`), "utf8");
+    // Placed right after <head> (not before </head>) so it's the very first
+    // thing any parser - including quirkier mobile/in-app WebViews - discovers,
+    // rather than relying on every engine's preload scanner to treat link
+    // order as irrelevant the way modern desktop Chrome does.
+    const link = `\n    <link rel="stylesheet" crossorigin href="/assets/${appCssFile}" />`;
+    writeFileSync(appHtmlPath, html.replace("<head>", `<head>${link}`), "utf8");
 };
 
 const run = async () => {

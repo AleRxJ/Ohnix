@@ -3215,7 +3215,7 @@
           "description": "Trabaja desde la nube cuando tu negocio lo necesite."
         },
         "unifiedOps": {
-          "value": "1 hub",
+          "value": "Todo en uno",
           "label": "Operación unificada",
           "description": "Compras, ventas y catálogo en un flujo conectado."
         },
@@ -3225,7 +3225,7 @@
           "description": "Alertas, PDFs y flujos estructurados reemplazan hojas de cálculo ad hoc."
         },
         "accessControl": {
-          "value": "RBAC",
+          "value": "Por roles",
           "label": "Control por equipo",
           "description": "Roles y cuentas verificadas mantienen los datos en las manos correctas."
         }

@@ -3221,7 +3221,7 @@
           "description": "Work from the cloud whenever your business needs it."
         },
         "unifiedOps": {
-          "value": "1 hub",
+          "value": "All-in-one",
           "label": "Unified ops",
           "description": "Purchases, sales, and catalog in one connected flow."
         },
@@ -3231,7 +3231,7 @@
           "description": "Automated alerts, PDFs, and structured workflows replace ad-hoc spreadsheets."
         },
         "accessControl": {
-          "value": "RBAC",
+          "value": "Role-based",
           "label": "Team control",
           "description": "Roles and verified accounts keep data scoped to the right people."
         }

@@ -10,10 +10,22 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <!-- Non-blocking: a slow/unreachable third-party font host must never hold up
+             first paint of the actual app CSS below. font-display=swap already lets text
+             render in a fallback font immediately; this preload+swap trick additionally
+             keeps the *stylesheet fetch itself* off the render-blocking critical path. -->
         <link
-            rel="stylesheet"
+            rel="preload"
+            as="style"
             href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+            onload="this.onload=null;this.rel='stylesheet'"
         />
+        <noscript>
+            <link
+                rel="stylesheet"
+                href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+            />
+        </noscript>
         <title>Software de inventario, contabilidad y facturación DIAN para pymes | Ohnix</title>
         <meta
             name="description"
