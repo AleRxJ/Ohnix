@@ -10,7 +10,7 @@ import {
 } from "./itcycleDian.service.js";
 import { getCompanyDianReadiness } from "./firmaPassProvisioning.service.js";
 import { buildItcycleCustomerParty, buildItcycleLines, buildItcycleTotals } from "./electronicInvoicing.service.js";
-import { notifyAdminsDianTestMatrixRunFinished } from "../utils/dianTestMatrixNotifications.js";
+import { notifyAdminsDianTestMatrixRunFinished, notifyCompanyOwnerDianTestMatrixRunFinished } from "../utils/dianTestMatrixNotifications.js";
 
 const text = (value) => `${value || ""}`.trim();
 
@@ -385,18 +385,29 @@ async function runDianTestMatrixWorker({ runId, apiKey, testSetId }) {
 }
 
 /**
- * Emails every admin once a run reaches a terminal status - runs can take a
- * while (up to ~50 documents x several minutes of polling each), so this
- * closes the loop instead of requiring someone to keep the admin tab open.
+ * Emails every admin, plus the company's own owner, once a run reaches a
+ * terminal status - runs can take a while (up to ~50 documents x several
+ * minutes of polling each), so this closes the loop instead of requiring
+ * someone to keep a tab open. Fires regardless of who started the run
+ * (an Ohnix admin, or the owner themselves via the self-service panel) -
+ * the owner should always know their own habilitación result either way.
  * Never lets a notification failure affect the run's own recorded outcome -
- * notifyAdminsDianTestMatrixRunFinished already swallows its own errors, but
- * the company lookup here is wrapped too, out of the same caution.
+ * both notify* functions already swallow their own errors, but the company/
+ * owner lookups here are wrapped too, out of the same caution.
  */
 async function sendRunFinishedNotification(runId) {
     try {
         const run = await getDianTestMatrixRun({ runId });
         const company = await prisma.company.findUnique({ where: { id: run.companyId }, select: { name: true } });
         await notifyAdminsDianTestMatrixRunFinished({ run, company, summary: run.summary });
+        // run.requestedByUserId is NOT who to notify here - for an
+        // admin-started run that's the admin, not the company. The owner is
+        // the one user row carrying this companyId directly: team members
+        // never get their own companyId set (they're scoped via TeamMember +
+        // resolveAccountScope instead - see auth.middleware.js), so this
+        // reliably resolves to exactly the account owner.
+        const ownerUser = await prisma.user.findFirst({ where: { companyId: run.companyId }, select: { email: true, username: true } });
+        if (ownerUser) await notifyCompanyOwnerDianTestMatrixRunFinished({ run, company, summary: run.summary, ownerUser });
     } catch (error) {
         console.error(`[dian-test-matrix] failed to send finish notification for run ${runId}:`, error);
     }

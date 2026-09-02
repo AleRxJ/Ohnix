@@ -13,6 +13,7 @@ import {
     LockOutlined,
     MailOutlined,
     PlusOutlined,
+    QuestionCircleOutlined,
     RocketOutlined,
     SafetyCertificateOutlined,
 } from "@ant-design/icons";
@@ -24,6 +25,7 @@ import { COLOMBIA_DEPARTMENTS, findDepartmentName } from "../../constants/colomb
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { isValidNit, isValidPrefix, isValidSoftwareId, isValidTechnicalKey } from "../../utils/dianValidation";
 import FirmaPassSelfService from "./FirmaPassSelfService";
+import DianHabilitacionPanel from "./DianHabilitacionPanel";
 
 const validatorRule = (isValid, message) => ({
     validator: (_, value) => (!value || isValid(value) ? Promise.resolve() : Promise.reject(new Error(message))),
@@ -42,13 +44,16 @@ const stepFields = [
     ["prefix", "resolutionNumber", "startNumber", "endNumber", "startDate", "endDate"],
 ];
 
-// Documento Soporte (DIAN type "05") needs its own numbering resolution,
-// separate from the invoice ("01") one the wizard below registers - see
-// Backend/services/purchaseSupportDocument.service.js. Without it,
+// Generic self-service "add a numbering resolution" form for any DIAN
+// document type. Originally hardcoded to "05" (Documento Soporte - see
+// Backend/services/purchaseSupportDocument.service.js: without it,
 // issueSupportDocumentForPurchase fails silently (fire-and-forget) the
-// first time a purchase from a not-obligated-to-invoice supplier completes,
-// so this is offered right alongside FirmaPass, not buried elsewhere.
-const SupportDocumentResolution = ({ onAdded }) => {
+// first time a purchase from a not-obligated-to-invoice supplier completes).
+// Generalized so the same form also covers "91"/"92" (nota crédito/débito),
+// which the DIAN habilitación test-matrix panel below requires a company to
+// have before it can start - reusing this one parametrized form instead of
+// duplicating it per document type.
+const NumberingResolutionForm = ({ documentType, titleKey, hintKey, buttonKey, onAdded }) => {
     const { t } = useI18n();
     const [form] = Form.useForm();
     const [adding, setAdding] = useState(false);
@@ -64,7 +69,7 @@ const SupportDocumentResolution = ({ onAdded }) => {
             const values = await form.validateFields();
             setAdding(true);
             await companyService.addMyItcycleNumberingResolution({
-                documentType: "05",
+                documentType,
                 prefix: values.prefix,
                 resolutionNumber: values.resolutionNumber,
                 startNumber: Number(values.startNumber),
@@ -90,8 +95,8 @@ const SupportDocumentResolution = ({ onAdded }) => {
                     <FileProtectOutlined className="text-lg text-[#44F3F0]" />
                 </div>
                 <div>
-                    <Title level={5} className="m-0 text-[var(--ohnix-text-primary)]">{t("fiscal_setup.support_document_title")}</Title>
-                    <Text className="text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.support_document_hint")}</Text>
+                    <Title level={5} className="m-0 text-[var(--ohnix-text-primary)]">{t(titleKey)}</Title>
+                    <Text className="text-xs text-[var(--ohnix-text-muted)]">{t(hintKey)}</Text>
                 </div>
             </div>
             <Form form={form} layout="vertical" className="mt-4">
@@ -149,7 +154,7 @@ const SupportDocumentResolution = ({ onAdded }) => {
                     </Form.Item>
                 </div>
                 <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" icon={<PlusOutlined />} loading={adding} onClick={submit}>
-                    {t("fiscal_setup.add_support_document_resolution")}
+                    {t(buttonKey)}
                 </Button>
             </Form>
         </Card>
@@ -206,6 +211,8 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
     const documentTypeLabel = (documentType) => {
         if (documentType === "01") return t("fiscal_setup.document_type_invoice");
         if (documentType === "05") return t("fiscal_setup.document_type_support");
+        if (documentType === "91") return t("fiscal_setup.document_type_credit_note");
+        if (documentType === "92") return t("fiscal_setup.document_type_debit_note");
         return documentType;
     };
 
@@ -248,6 +255,11 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
                     <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_environment")}</Text>
                     <div className="flex items-center gap-2">
                         <Text className="text-sm font-medium text-[var(--ohnix-text-primary)]">{readiness?.environment || "-"}</Text>
+                        {readiness?.environment && (
+                            <Tooltip title={t(readiness.environment === "PRODUCTION" ? "fiscal_setup.config_environment_production_hint" : "fiscal_setup.config_environment_sandbox_hint")}>
+                                <QuestionCircleOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
+                            </Tooltip>
+                        )}
                         <Tooltip title={t("fiscal_setup.config_locked_hint")}>
                             <LockOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
                         </Tooltip>
@@ -494,7 +506,8 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
         </Form.Item>
     );
 
-    const hasSupportDocumentResolution = (status?.readiness?.resolutions || []).some((r) => r.documentType === "05" && r.isCurrent);
+    const hasResolution = (documentType) => (status?.readiness?.resolutions || []).some((r) => r.documentType === documentType && r.isCurrent);
+    const isSandbox = status?.readiness?.environment === "SANDBOX";
 
     const STEP_META = [
         { icon: <BankOutlined />, title: t("fiscal_setup.step_company"), caption: t("fiscal_setup.step_company_caption") },
@@ -555,7 +568,34 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                         electronicInvoicingAtRisk={Boolean(status.electronicInvoicingAtRisk)}
                         onActivated={onCompanyChanged}
                     />
-                    {!hasSupportDocumentResolution && <SupportDocumentResolution onAdded={refresh} />}
+                    {!hasResolution("05") && (
+                        <NumberingResolutionForm
+                            documentType="05"
+                            titleKey="fiscal_setup.support_document_title"
+                            hintKey="fiscal_setup.support_document_hint"
+                            buttonKey="fiscal_setup.add_support_document_resolution"
+                            onAdded={refresh}
+                        />
+                    )}
+                    {isSandbox && !hasResolution("91") && (
+                        <NumberingResolutionForm
+                            documentType="91"
+                            titleKey="fiscal_setup.credit_note_resolution_title"
+                            hintKey="fiscal_setup.credit_note_resolution_hint"
+                            buttonKey="fiscal_setup.add_credit_note_resolution"
+                            onAdded={refresh}
+                        />
+                    )}
+                    {isSandbox && !hasResolution("92") && (
+                        <NumberingResolutionForm
+                            documentType="92"
+                            titleKey="fiscal_setup.debit_note_resolution_title"
+                            hintKey="fiscal_setup.debit_note_resolution_hint"
+                            buttonKey="fiscal_setup.add_debit_note_resolution"
+                            onAdded={refresh}
+                        />
+                    )}
+                    {isSandbox && <DianHabilitacionPanel knownTestSetId={status?.itcycleTestSetId} />}
                 </>
             ) : otherProviderActive ? (
                 <Alert

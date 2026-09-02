@@ -97,4 +97,38 @@ export const companyService = {
         });
         return response.data;
     },
+
+    // Self-service DIAN habilitación (test-matrix) - see
+    // Backend/routes/dianTestMatrixSelf.routes.js. testSetId itself still
+    // comes from DIAN's own habilitación portal (no API for that exists);
+    // everything from here on (start/monitor/cancel/request production) the
+    // owner drives themselves.
+    async startMyDianTestMatrixRun(payload, idempotencyKey) {
+        const response = await api.post("/company/dian-test-matrix/runs", payload, {
+            headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        });
+        return response.data;
+    },
+
+    async listMyDianTestMatrixRuns() {
+        const response = await api.get("/company/dian-test-matrix/runs");
+        return response.data;
+    },
+
+    async getMyDianTestMatrixRun(runId) {
+        const response = await api.get(`/company/dian-test-matrix/runs/${runId}`);
+        return response.data;
+    },
+
+    async cancelMyDianTestMatrixRun(runId) {
+        const response = await api.post(`/company/dian-test-matrix/runs/${runId}/cancel`);
+        return response.data;
+    },
+
+    async requestMyDianProductionActivation(runId, idempotencyKey) {
+        const response = await api.post(`/company/dian-test-matrix/runs/${runId}/request-production`, undefined, {
+            headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        });
+        return response.data;
+    },
 };

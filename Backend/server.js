@@ -90,6 +90,7 @@ process.on("SIGTERM", () => {
     renewalScheduler.stop();
     webhookRetryScheduler.stop();
     firmaPassValidationScheduler.stop();
+    recurringExpenseScheduler.stop();
     itcycleKeepAliveScheduler.stop();
     process.exit(0);
 });
@@ -100,6 +101,7 @@ process.on("SIGINT", () => {
     renewalScheduler.stop();
     webhookRetryScheduler.stop();
     firmaPassValidationScheduler.stop();
+    recurringExpenseScheduler.stop();
     itcycleKeepAliveScheduler.stop();
     process.exit(0);
 });

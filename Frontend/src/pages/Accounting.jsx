@@ -1609,9 +1609,14 @@ const OverviewTab = () => {
           (balance.liabilities.find((a) => a.code === VAT_DEDUCTIBLE_CODE)?.amount || 0)
         : 0;
 
+    // state.tab/.sub deep-links straight into Reports.jsx's "advanced" tab and
+    // (Reports.jsx forwards .sub as defaultSubTab) AdvancedReports.jsx's own
+    // "vat"/"cartera" sub-tab - without it these cards dropped the visitor on
+    // Reports.jsx's unrelated default "stock" tab, several clicks away from
+    // what the card actually promised.
     const relatedLinks = [
-        { to: "/reports", titleKey: "accounting.overview_link_cartera_title", descKey: "accounting.overview_link_cartera_desc" },
-        { to: "/reports", titleKey: "accounting.overview_link_vat_title", descKey: "accounting.overview_link_vat_desc" },
+        { to: "/reports", state: { tab: "advanced", sub: "cartera" }, titleKey: "accounting.overview_link_cartera_title", descKey: "accounting.overview_link_cartera_desc" },
+        { to: "/reports", state: { tab: "advanced", sub: "vat" }, titleKey: "accounting.overview_link_vat_title", descKey: "accounting.overview_link_vat_desc" },
         { to: "/finance", titleKey: "accounting.overview_link_reconciliation_title", descKey: "accounting.overview_link_reconciliation_desc" },
     ];
 
@@ -1643,7 +1648,7 @@ const OverviewTab = () => {
                 <Row gutter={[16, 16]}>
                     {relatedLinks.map((link) => (
                         <Col xs={24} md={8} key={link.titleKey}>
-                            <Link to={link.to}>
+                            <Link to={link.to} state={link.state}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)] h-full hover:border-[var(--ohnix-accent)] transition-colors" size="small">
                                     <div className="flex items-start justify-between gap-2">
                                         <div>

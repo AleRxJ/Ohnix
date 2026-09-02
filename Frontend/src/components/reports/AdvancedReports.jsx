@@ -30,8 +30,8 @@ const ChangeBadge = ({ value }) => {
     );
 };
 
-const AdvancedReports = () => {
-    const [activeTab, setActiveTab] = useState("margin");
+const AdvancedReports = ({ defaultSubTab } = {}) => {
+    const [activeTab, setActiveTab] = useState(defaultSubTab || "margin");
     const [dateRange, setDateRange] = useState([dayjs().subtract(30, "days"), dayjs()]);
     const [loading, setLoading] = useState(false);
     const [marginData, setMarginData] = useState(null);
@@ -49,29 +49,38 @@ const AdvancedReports = () => {
         end_date: dateRange[1].format("YYYY-MM-DD"),
     });
 
+    // Independent per-report requests (allSettled, not all) - each sub-tab's
+    // data only depends on its own request having succeeded. With Promise.all
+    // any single report failing (e.g. sales-by-team erroring on an edge case)
+    // rejected the whole batch and left every OTHER tab's state - including
+    // vatData - stuck at null, so a genuinely working VAT report looked
+    // exactly like a missing feature.
     const fetchAll = async () => {
-        try {
-            setLoading(true);
-            const params = dateParams();
-            const [margin, customers, team, comparison, vat, cartera] = await Promise.all([
-                api.get("/reports/profit-margin", { params }),
-                api.get("/reports/top-customers", { params }),
-                api.get("/reports/sales-by-team", { params }),
-                api.get("/reports/period-comparison", { params }),
-                api.get("/reports/vat", { params }),
-                api.get("/reports/cartera", { params }),
-            ]);
-            setMarginData(margin.data.data);
-            setCustomersData(customers.data.data);
-            setTeamData(team.data.data);
-            setComparisonData(comparison.data.data);
-            setVatData(vat.data.data);
-            setCarteraData(cartera.data.data);
-        } catch (error) {
-            toast.error(error.response?.data?.message || t("reports.advanced.failed"));
-        } finally {
-            setLoading(false);
+        setLoading(true);
+        const params = dateParams();
+        const requests = [
+            { key: "margin_tab", url: "/reports/profit-margin", setData: setMarginData },
+            { key: "customers_tab", url: "/reports/top-customers", setData: setCustomersData },
+            { key: "team_tab", url: "/reports/sales-by-team", setData: setTeamData },
+            { key: "comparison_tab", url: "/reports/period-comparison", setData: setComparisonData },
+            { key: "vat_tab", url: "/reports/vat", setData: setVatData },
+            { key: "cartera_tab", url: "/reports/cartera", setData: setCarteraData },
+        ];
+        const results = await Promise.allSettled(requests.map((r) => api.get(r.url, { params })));
+
+        const failedLabels = [];
+        results.forEach((result, index) => {
+            const { key, setData } = requests[index];
+            if (result.status === "fulfilled") {
+                setData(result.value.data.data);
+            } else {
+                failedLabels.push(t(`reports.advanced.${key}`));
+            }
+        });
+        if (failedLabels.length > 0) {
+            toast.error(t("reports.advanced.partial_failure", { reports: failedLabels.join(", ") }));
         }
+        setLoading(false);
     };
 
     useEffect(() => {

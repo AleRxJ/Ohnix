@@ -82,3 +82,102 @@ export const notifyAdminsDianTestMatrixRunFinished = async ({ run, company, summ
         console.error("[dian-test-matrix-alert] Failed to send admin notification:", err?.message);
     }
 };
+
+/**
+ * Fired alongside notifyAdminsDianTestMatrixRunFinished, once a run reaches
+ * a terminal status - so the company owner (who may have started this
+ * themselves via the self-service panel, or be waiting on one an Ohnix admin
+ * started for them) finds out without keeping the tab open. Deliberately
+ * lighter than the admin email: pass/fail + simple counts, no raw internal
+ * DIAN codes or per-document detail - that's what "Ver detalle técnico" in
+ * the self-service panel is for.
+ */
+export const notifyCompanyOwnerDianTestMatrixRunFinished = async ({ run, company, summary, ownerUser }) => {
+    if (!isMailConfigured() || !ownerUser?.email) return;
+    try {
+        const statusLabel = STATUS_LABEL[run.status] || run.status;
+        const passed = run.status === "completed" && run.passResult;
+        const icon = passed ? "✅" : run.status === "failed" ? "⚠️" : "ℹ️";
+        const resultLine = run.status === "completed"
+            ? (passed
+                ? "Tu prueba de habilitación fue <strong>aprobada</strong> - ya puedes solicitar la activación de Producción desde Configuración DIAN."
+                : "Tu prueba de habilitación <strong>no fue aprobada</strong> - ninguna factura quedó aceptada. Revisa el detalle en Configuración DIAN e inténtalo de nuevo.")
+            : run.status === "cancelled"
+                ? "Cancelaste esta prueba de habilitación."
+                : "Tu prueba de habilitación tuvo un error inesperado - nuestro equipo ya fue notificado.";
+
+        const rows = [
+            row("Test Set ID", `<span style="font-family:monospace;font-size:12px;">${run.testSetId}</span>`),
+            row("Estado", statusLabel),
+            row("Facturas (01)", `${summaryCount(summary, "invoice", "accepted")} de ${run.invoiceTarget} aceptadas`),
+            row("Notas crédito (91)", `${summaryCount(summary, "creditNote", "accepted")} de ${run.creditNoteTarget} aceptadas`),
+            row("Notas débito (92)", `${summaryCount(summary, "debitNote", "accepted")} de ${run.debitNoteTarget} aceptadas`),
+        ].join("");
+
+        await transporter.sendMail({
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            to: ownerUser.email,
+            subject: `[Ohnix] ${icon} Tu prueba de habilitación DIAN ${statusLabel.toLowerCase()}`,
+            html: `
+                <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
+                    <h2 style="color:#29D8D5;margin:0 0 6px;">${icon} Prueba de habilitación DIAN — ${statusLabel}</h2>
+                    <p style="color:#e5e7eb;font-size:14px;line-height:1.6;margin:0 0 16px;">Hola <strong>${ownerUser.username || ""}</strong>, ${resultLine}</p>
+                    <table style="width:100%;border-collapse:separate;border-spacing:0 8px;">${rows}</table>
+                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle.</p>
+                </div>
+            `,
+        });
+    } catch (err) {
+        console.error("[dian-test-matrix-alert] Failed to send company owner notification:", err?.message);
+    }
+};
+
+/**
+ * Fired by the self-service "Solicitar activación de Producción" action -
+ * the run already passed (at least 1 accepted invoice), but DIAN's own
+ * approval of the habilitación happens on THEIR portal, which neither Ohnix
+ * nor itcycle-api-dian can verify by API. This just turns a cold support
+ * ticket into a pre-filled review: an admin still has to confirm DIAN's
+ * approval by hand before flipping environment via itcycle-api-dian's
+ * PUT dian-configuration (admin-only, unchanged by this feature).
+ */
+export const notifyAdminsDianProductionActivationRequested = async ({ run, company, requestedByUser }) => {
+    if (!isMailConfigured()) return;
+    try {
+        const adminUsers = await prisma.user.findMany({ where: { role: "admin" }, select: { email: true } });
+        const recipients = Array.from(new Set([
+            ...adminUsers.map((a) => a.email?.toLowerCase()).filter(Boolean),
+            ...parseAdditionalRecipients(),
+        ]));
+        if (!recipients.length) return;
+
+        const rows = [
+            row("Empresa", company?.name || run.companyId),
+            row("Test Set ID", `<span style="font-family:monospace;font-size:12px;">${run.testSetId}</span>`),
+            row("Run ID", `<span style="font-family:monospace;font-size:12px;">${run.id}</span>`),
+            row("Resultado del run", run.passResult ? "✅ Aprobada" : "❌ No aprobada"),
+            row("Solicitado por", requestedByUser?.email || requestedByUser?.username || "—"),
+        ].join("");
+
+        await transporter.sendMail({
+            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            bcc: recipients,
+            subject: `[Ohnix] Solicitud de activación PRODUCCIÓN — ${company?.name || run.companyId}`,
+            html: `
+                <div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:20px;background:#0b0b0b;border:1px solid #29D8D5;border-radius:12px;">
+                    <h2 style="color:#29D8D5;margin:0 0 6px;">🚀 Solicitud de activación de Producción</h2>
+                    <p style="color:#9ca3af;font-size:13px;margin:0 0 16px;">
+                        Antes de activar, confirma en el portal de habilitación de la DIAN que esta empresa realmente fue aprobada - ni Ohnix ni itcycle-api-dian pueden verificar eso por API.
+                        Si todo está en orden, activa vía itcycle-api-dian: <code>PUT /api/v1/admin/companies/&lt;itcycleCompanyId&gt;/dian-configuration</code> con <code>environment: "PRODUCTION"</code>.
+                    </p>
+                    <table style="width:100%;border-collapse:separate;border-spacing:0 8px;">${rows}</table>
+                    <hr style="border:none;border-top:1px solid #1d2733;margin:20px 0;">
+                    <p style="text-align:center;font-size:12px;color:#6b7280;">&copy; ${new Date().getFullYear()} Ohnix by iTCycle.</p>
+                </div>
+            `,
+        });
+    } catch (err) {
+        console.error("[dian-test-matrix-alert] Failed to send production-activation-requested notification:", err?.message);
+    }
+};

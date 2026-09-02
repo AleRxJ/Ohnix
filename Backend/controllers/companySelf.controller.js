@@ -70,6 +70,7 @@ const SELF_SELECT = {
     electronicInvoicingProvider: true,
     itcycleCompanyId: true,
     dianSoftwareId: true,
+    itcycleTestSetId: true,
     vatResponsible: true,
     vatResponsibleEffectiveFrom: true,
     // Tax configuration only - no calculation reads these yet (see the
@@ -173,6 +174,13 @@ export const getMyItcycleStatus = asyncHandler(async (req, res) => {
         new ApiResponse(200, {
             provisioned: Boolean(company.itcycleCompanyId),
             itcycleCompanyId: company.itcycleCompanyId,
+            // Set by an admin during provisioning/support (never self-service
+            // yet) whenever DIAN's own habilitación is still "En proceso" -
+            // see buildItcycleSendOptions (electronicInvoicing.service.js).
+            // Surfaced so DianHabilitacionPanel.jsx can pre-fill the testSetId
+            // field instead of asking the owner to go find it again in DIAN's
+            // portal when Ohnix already has it on file.
+            itcycleTestSetId: company.itcycleTestSetId,
             electronicInvoicingEnabled: company.electronicInvoicingEnabled,
             electronicInvoicingAtRisk,
             electronicInvoicingProvider: company.electronicInvoicingProvider,
