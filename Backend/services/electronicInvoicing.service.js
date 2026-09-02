@@ -567,7 +567,15 @@ export const buildItcycleLines = (orderDetails) => orderDetails.map((item, index
         description: item.product.productName,
         price,
         lineExtensionAmount,
-        taxTotals: item.taxTreatmentApplied === "excluded" ? [] : [{
+        // dian-kit's own InvoiceLineSchema requires >=1 entry here
+        // unconditionally (z.array(TaxTotalSchema).min(1)) - a "bien
+        // excluido" (taxTreatmentApplied "excluded") is still IVA at 0%,
+        // just not the same as omitting the tax block entirely. An empty
+        // array here isn't "no tax to declare", it's an invalid document -
+        // confirmed by DIAN habilitación runs failing every "excluded" line
+        // with "lines[0].taxTotals: Too small: expected array to have >=1
+        // items" before this ever reached DIAN's own server.
+        taxTotals: [{
             taxAmount,
             subtotals: [{
                 taxableAmount: lineExtensionAmount,
