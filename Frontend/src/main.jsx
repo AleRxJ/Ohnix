@@ -58,7 +58,7 @@ const waitForStylesheets = () =>
     );
 
 const boot = async () => {
-    const [styles, React, { createRoot, hydrateRoot }, { default: App }, { default: AppErrorBoundary }] =
+    const [styles, React, { createRoot }, { default: App }, { default: AppErrorBoundary }] =
         await Promise.all([
             stylesReady,
             import("react"),
@@ -74,8 +74,20 @@ const boot = async () => {
         React.createElement(App)
     );
 
-    if (isPrerendered) hydrateRoot(rootElement, application);
-    else createRoot(rootElement).render(application);
+    // Deliberately createRoot() even on prerendered pages, never
+    // hydrateRoot(). hydrateRoot() demands the DOM match exactly what React
+    // would've rendered server-side, or it throws #418/#423 and falls back
+    // to a full client re-render anyway - so a strict match bought nothing
+    // real users could see, only console errors on any drift between the
+    // build's headless Chromium and a visitor's actual browser/viewport/
+    // locale/scroll position (all genuinely different, always). createRoot()
+    // skips that comparison entirely: it just discards the prerendered
+    // markup and renders fresh, the same recovery hydrateRoot was already
+    // silently doing on mismatch - minus the errors. The prerendered HTML
+    // still does its real job (crawlers and share-preview bots, which never
+    // run this script at all, only ever see that static markup) and still
+    // gives real visitors a fast first paint before this code even runs.
+    createRoot(rootElement).render(application);
     hydrated = true;
 
     // Analytics should represent people, not crawlers or Lighthouse runs.
