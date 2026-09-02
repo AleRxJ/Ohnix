@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useContext, useEffect, useRef } from "react";
+import React, { Suspense, lazy, useContext, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n/config.js";
@@ -12,6 +12,7 @@ import { InventoryTourProvider } from "./context/InventoryTourContext";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
 import { ELECTRONIC_INVOICING_ENABLED } from "./config/features";
 import { isPublicMarketingPath } from "./utils/publicPaths.js";
+import { waitForStylesheets } from "./utils/waitForStylesheets.js";
 
 // main.jsx picks exactly one CSS bundle (marketingStyles.js, no antd, for
 // PUBLIC_PATHS - or the full appStyles.js otherwise) based on whichever URL
@@ -20,29 +21,50 @@ import { isPublicMarketingPath } from "./utils/publicPaths.js";
 // doesn't reload the page or re-run main.jsx, so a visitor who lands on "/"
 // (marketingStyles only) and then clicks through to e.g. "/login" or
 // "/dashboard" keeps running with zero antd CSS loaded - every antd
-// component on that route renders completely unstyled. Watching the route
-// here and lazily loading whichever bundle wasn't picked at boot, the first
-// time the visitor actually crosses into that other zone, fixes it without
-// paying for both bundles up front on every load.
+// component on that route renders completely unstyled.
+//
+// Watching the route here and lazily loading whichever bundle wasn't picked
+// at boot, the first time the visitor actually crosses into that other
+// zone, fixes the missing styles - but the import (and the stylesheet
+// download behind it) still takes a beat. Rendering `children` immediately
+// during that beat means the new route paints once unstyled and again once
+// the CSS lands - the "ugly flash then it fixes itself" this component
+// exists to remove. Holding `children` back behind the same loading
+// fallback already used for lazy route chunks (below) until the stylesheet
+// has actually loaded avoids that second, wrong paint entirely.
 const loadedStyleBundles = new Set();
-const StyleBundleSync = () => {
+const StyleBundleGate = ({ children }) => {
     const { pathname } = useLocation();
     const isFirstRun = useRef(true);
+    // Starts true: main.jsx's own boot sequence already awaited
+    // waitForStylesheets() for the initial bundle before React ever mounted,
+    // so the very first render has nothing to wait on here.
+    const [ready, setReady] = useState(true);
+
     useEffect(() => {
+        const key = isPublicMarketingPath(pathname) ? "marketing" : "app";
         if (isFirstRun.current) {
-            // main.jsx already loaded the right bundle for this exact
-            // pathname before React even mounted - nothing to do here yet.
+            // main.jsx already loaded (and waited on) the right bundle for
+            // this exact pathname before React even mounted.
             isFirstRun.current = false;
-            loadedStyleBundles.add(isPublicMarketingPath(pathname) ? "marketing" : "app");
+            loadedStyleBundles.add(key);
             return;
         }
-        const key = isPublicMarketingPath(pathname) ? "marketing" : "app";
         if (loadedStyleBundles.has(key)) return;
-        loadedStyleBundles.add(key);
-        if (key === "marketing") import("./marketingStyles.js");
-        else import("./appStyles.js");
+        let cancelled = false;
+        setReady(false);
+        const stylesheetReady = key === "marketing" ? import("./marketingStyles.js") : import("./appStyles.js");
+        stylesheetReady.then(waitForStylesheets).then(() => {
+            if (cancelled) return;
+            loadedStyleBundles.add(key);
+            setReady(true);
+        });
+        return () => {
+            cancelled = true;
+        };
     }, [pathname]);
-    return null;
+
+    return ready ? children : <RouteLoadingFallback />;
 };
 
 // Lazy: ErrorPage uses antd (Result/Button) - same reasoning as
@@ -215,7 +237,6 @@ function App() {
                     <ThemeProvider>
                     <InventoryTourProvider>
                     <BrowserRouter>
-                        <StyleBundleSync />
                         <TeamProvider>
                         <Toaster
                             position="top-right"
@@ -244,6 +265,7 @@ function App() {
                             }}
                         />
                         <Suspense fallback={<RouteLoadingFallback />}>
+                        <StyleBundleGate>
                         <div>
                             <Routes>
                             {/* Public marketing routes - no antd usage, kept outside AntdRoutesLayout */}
@@ -337,6 +359,7 @@ function App() {
                             </Route>
                             </Routes>
                         </div>
+                        </StyleBundleGate>
                         </Suspense>
                         </TeamProvider>
                     </BrowserRouter>

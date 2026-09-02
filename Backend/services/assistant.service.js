@@ -18,6 +18,30 @@ const PROVIDER_ERROR_MESSAGE = {
     es: "El asistente no está disponible en este momento. Intenta de nuevo en unos minutos o contacta a soporte.",
     en: "The assistant isn't available right now. Please try again in a few minutes or contact support.",
 };
+const GREETING_MESSAGE = {
+    es: "¡Hola! Soy el asistente de Ohnix. Puedo ayudarte a entender cómo funciona la plataforma: productos, ventas, compras, clientes, contabilidad o facturación DIAN. ¿En qué necesitas ayuda?",
+    en: "Hi! I'm the Ohnix assistant. I can help you understand how the platform works: products, sales, purchases, customers, accounting, or DIAN invoicing. What do you need help with?",
+};
+
+// A plain "Hola" has no article about greetings, so it used to fall through
+// to NO_MATCH_MESSAGE - technically correct (nothing in the knowledge base
+// covers small talk) but a bad first impression, since a greeting is the
+// single most likely first message a real user sends. Answered here,
+// deterministically, before touching search or the model at all - no KB
+// lookup, no LLM call, so it's free and can't hallucinate.
+// Deliberately whole-message-only (every token must be a greeting word) so
+// "hola, cómo registro una venta" still falls through to real retrieval
+// instead of getting short-circuited into the canned greeting.
+const GREETING_WORDS = new Set([
+    "hola", "holaa", "holaaa", "buenas", "buenos", "buen", "dia", "dias", "día", "días",
+    "tarde", "tardes", "noche", "noches", "hey", "ey", "saludos", "que", "qué", "tal",
+    "hi", "hello", "hey", "greetings", "morning", "afternoon", "evening", "good",
+]);
+
+const isGreetingOnly = (text) => {
+    const words = text.toLowerCase().match(/\p{L}+/gu) || [];
+    return words.length > 0 && words.every((word) => GREETING_WORDS.has(word));
+};
 
 const normalizeLocale = (locale) => (locale === "en" ? "en" : "es");
 
@@ -92,25 +116,29 @@ export const askAssistant = async ({ userId, conversationId, message, module, lo
         },
     });
 
-    const chunks = await searchKnowledge({ query: trimmed, module, locale: safeLocale });
-
     let content;
     let sources = null;
 
-    if (chunks.length === 0) {
-        content = NO_MATCH_MESSAGE[safeLocale];
+    if (isGreetingOnly(trimmed)) {
+        content = GREETING_MESSAGE[safeLocale];
     } else {
-        sources = chunks.map((chunk) => ({ id: chunk.id, title: chunk.title }));
-        try {
-            const rawContent = await generateAssistantReply(
-                buildSystemPrompt({ locale: safeLocale, module }),
-                buildUserPrompt(trimmed, chunks)
-            );
-            content = stripMarkdown(rawContent);
-        } catch (error) {
-            console.error("[assistant] model call failed:", error);
-            content = PROVIDER_ERROR_MESSAGE[safeLocale];
-            sources = null;
+        const chunks = await searchKnowledge({ query: trimmed, module, locale: safeLocale });
+
+        if (chunks.length === 0) {
+            content = NO_MATCH_MESSAGE[safeLocale];
+        } else {
+            sources = chunks.map((chunk) => ({ id: chunk.id, title: chunk.title }));
+            try {
+                const rawContent = await generateAssistantReply(
+                    buildSystemPrompt({ locale: safeLocale, module }),
+                    buildUserPrompt(trimmed, chunks)
+                );
+                content = stripMarkdown(rawContent);
+            } catch (error) {
+                console.error("[assistant] model call failed:", error);
+                content = PROVIDER_ERROR_MESSAGE[safeLocale];
+                sources = null;
+            }
         }
     }
 
