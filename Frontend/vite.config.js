@@ -2,30 +2,10 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// Routes that are NOT part of the authenticated app shell (marketing site,
-// auth pages, public token-based pages) - the service worker must never
-// serve the SPA shell as a navigation fallback for these. They already have
-// their own handling (prerendered static HTML for marketing, or simply no
-// offline requirement at all for auth/public-token pages), and letting an
-// offline visitor land on the wrong shell would be worse than the normal
-// "you're offline" browser error.
-const NON_APP_NAVIGATION_PATTERNS = [
-    /^\/$/,
-    /^\/precios/,
-    /^\/blog/,
-    /^\/software-inventario-pymes/,
-    /^\/facturacion-electronica-dian/,
-    /^\/comparativa\//,
-    /^\/colaboracion-en-equipo/,
-    /^\/integraciones$/,
-    /^\/demo/,
-    /^\/login/,
-    /^\/signup/,
-    /^\/reset-password/,
-    /^\/email-verify/,
-    /^\/team\/invite\//,
-    /^\/public\//,
-]
+// The service worker's navigation-fallback denylist (which routes must never
+// get the SPA shell as a fallback) now lives in src/sw.js, since that's a
+// real hand-written SW source file (injectManifest mode) rather than
+// generated from this config - see NON_APP_NAVIGATION_PATTERNS there.
 
 // Packages that MUST stay in the single vendor chunk.
 // rc-util reads React.version at module init time (top-level code), so any
@@ -114,13 +94,25 @@ export default defineConfig({
       // Icons/name/theme already come from public/site-v2.webmanifest,
       // linked in index.html - don't generate or inject a second manifest.
       manifest: false,
-      workbox: {
+      // injectManifest (not the default generateSW) so src/sw.js can add a
+      // custom cacheWillUpdate plugin that rejects a precache entry whose
+      // response Content-Type doesn't match its file extension. Without
+      // that, workbox's default precache check only looks at HTTP status -
+      // a 200 response with the wrong body (e.g. the SPA's HTML served for
+      // a missing hashed asset, which is exactly what the vercel.json
+      // catch-all rewrite used to do before it excluded /assets/*) gets
+      // cached as if it were real CSS/JS and is served to every future
+      // visitor forever, with no error and no way to self-heal. See
+      // src/sw.js for the actual guard. navigateFallback/denylist and the
+      // rest of the previous generateSW behavior are reproduced there too.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
+      injectManifest: {
         // Vendor chunks (antd/antv/recharts) can be a few MB - the default
         // 2MB precache cap would silently skip them, breaking offline app
         // boot.
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: NON_APP_NAVIGATION_PATTERNS,
       },
     }),
   ],
