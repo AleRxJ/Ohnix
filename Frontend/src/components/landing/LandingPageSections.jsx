@@ -44,23 +44,40 @@ const sectionShell =
 /* ── Scroll-reveal hook ──────────────────────────────────────────────── */
 const useScrollReveal = (threshold = 0.12) => {
     const ref = useRef(null);
-    const [visible, setVisible] = useState(false);
+    // Starts visible, not hidden - scripts/prerender.js's headless capture
+    // runs every route's page as a background Chromium tab, where Chromium
+    // throttles rAF/IntersectionObserver to the point they never fire at
+    // all before the page is saved. Starting hidden (the old behavior) so
+    // the observer could "reveal" things on scroll meant every section on
+    // every prerendered page was permanently baked into the static HTML as
+    // opacity-0 - and since main.jsx defers hydrateRoot() on these pages
+    // until the visitor's first scroll/tap/click, nothing was ever around
+    // to flip it back: real visitors saw a blank page until they happened
+    // to interact. Starting visible instead matches that same static
+    // snapshot (still true, since the observer still won't fire during
+    // that pass) *and* a real visitor's first paint - no blank window, and
+    // no hydration mismatch (#418/#423) either, since both sides agree.
+    const [visible, setVisible] = useState(true);
     useEffect(() => {
         const el = ref.current;
         if (!el) return;
-        // Deliberately NOT gated by isBuildTimePrerender() (unlike the
-        // timers/geo-IP effects elsewhere in this file): main.jsx defers
-        // hydrateRoot() on prerendered pages until the visitor's first
-        // scroll/tap/click, so freezing this at `visible: false` for the
-        // build capture would leave every above-the-fold section stuck
-        // invisible (opacity-0) in the static snapshot with no interaction
-        // yet in sight to trigger hydration and reveal it - a blank-looking
-        // page, not just a console warning. Letting the observer run
-        // normally during that pass bakes "already revealed" styling into
-        // the static HTML for whatever is in the build viewport, same as a
-        // real visitor sees on first paint before they've scrolled.
+        // Belt-and-suspenders alongside the `true` default above: even if a
+        // future Chromium/Puppeteer stops throttling background-tab
+        // observers and this fires during the build capture after all,
+        // never let that pass flip anything to hidden - keeps the static
+        // snapshot's guarantee independent of that environment detail.
+        if (isBuildTimePrerender()) return undefined;
+        // Once a real visitor's hydration actually runs, this observer's
+        // first callback reports whatever is genuinely below the fold at
+        // that moment - hide only that (it re-reveals itself normally the
+        // first time they scroll to it) so the fade-in effect still works
+        // for content they haven't reached yet, without ever starting from
+        // a fully-hidden page.
         const obs = new IntersectionObserver(
-            ([e]) => { if (e.isIntersecting) { setVisible(true); obs.unobserve(el); } },
+            ([e]) => {
+                if (e.isIntersecting) { setVisible(true); obs.unobserve(el); }
+                else setVisible(false);
+            },
             { threshold }
         );
         obs.observe(el);
