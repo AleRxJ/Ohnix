@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { Card, DatePicker, Button, Tabs, Table, Row, Col, Tag, Alert } from "antd";
+import { Card, DatePicker, Button, Tabs, Table, Row, Col, Tag, Alert, Select } from "antd";
 import {
     BarChart,
     Bar,
@@ -20,6 +20,18 @@ import useI18n from "../../hooks/useI18n";
 
 const { RangePicker } = DatePicker;
 
+// Colombia files IVA on a fixed bimestral calendar (Ene-Feb, Mar-Abr, ...,
+// Nov-Dic) - a generic "last 30 days" range almost never lines up with a
+// real filing period, which is the actual reason the VAT tab read as
+// unfinished despite already computing correct numbers. index is 0-5.
+const BIMONTHLY_LABEL_KEYS = ["vat_bimonthly_1", "vat_bimonthly_2", "vat_bimonthly_3", "vat_bimonthly_4", "vat_bimonthly_5", "vat_bimonthly_6"];
+const getBimonthlyRange = (year, index) => {
+    const start = dayjs(`${year}-${String(index * 2 + 1).padStart(2, "0")}-01`);
+    return [start, start.add(1, "month").endOf("month")];
+};
+const getCurrentBimonthlyIndex = (date = dayjs()) => Math.floor(date.month() / 2);
+const rangesMatch = (a, b) => a[0].isSame(b[0], "day") && a[1].isSame(b[1], "day");
+
 const ChangeBadge = ({ value }) => {
     const positive = value >= 0;
     const Icon = positive ? RiseOutlined : FallOutlined;
@@ -32,7 +44,12 @@ const ChangeBadge = ({ value }) => {
 
 const AdvancedReports = ({ defaultSubTab } = {}) => {
     const [activeTab, setActiveTab] = useState(defaultSubTab || "margin");
-    const [dateRange, setDateRange] = useState([dayjs().subtract(30, "days"), dayjs()]);
+    // A visitor landing directly on "vat" (e.g. Accounting.jsx's overview
+    // card deep-link) should see the current bimestre out of the gate, not
+    // an arbitrary 30-day window they'd have to immediately replace.
+    const [dateRange, setDateRange] = useState(() =>
+        defaultSubTab === "vat" ? getBimonthlyRange(dayjs().year(), getCurrentBimonthlyIndex()) : [dayjs().subtract(30, "days"), dayjs()]
+    );
     const [loading, setLoading] = useState(false);
     const [marginData, setMarginData] = useState(null);
     const [customersData, setCustomersData] = useState(null);
@@ -44,9 +61,9 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
 
-    const dateParams = () => ({
-        start_date: dateRange[0].format("YYYY-MM-DD"),
-        end_date: dateRange[1].format("YYYY-MM-DD"),
+    const dateParams = (range = dateRange) => ({
+        start_date: range[0].format("YYYY-MM-DD"),
+        end_date: range[1].format("YYYY-MM-DD"),
     });
 
     // Independent per-report requests (allSettled, not all) - each sub-tab's
@@ -55,9 +72,9 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
     // rejected the whole batch and left every OTHER tab's state - including
     // vatData - stuck at null, so a genuinely working VAT report looked
     // exactly like a missing feature.
-    const fetchAll = async () => {
+    const fetchAll = async (range = dateRange) => {
         setLoading(true);
-        const params = dateParams();
+        const params = dateParams(range);
         const requests = [
             { key: "margin_tab", url: "/reports/profit-margin", setData: setMarginData },
             { key: "customers_tab", url: "/reports/top-customers", setData: setCustomersData },
@@ -92,6 +109,37 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
         if (dates && dates.length === 2) {
             setDateRange(dates);
         }
+    };
+
+    // Current year's bimestres up to the one in progress, then all six of
+    // last year (for a late/backdated filing) - newest first.
+    const bimonthlyOptions = () => {
+        const now = dayjs();
+        const options = [];
+        for (const year of [now.year(), now.year() - 1]) {
+            const maxIndex = year === now.year() ? getCurrentBimonthlyIndex(now) : 5;
+            for (let index = maxIndex; index >= 0; index--) {
+                options.push({ year, index });
+            }
+        }
+        return options.map(({ year, index }) => ({
+            value: `${year}-${index}`,
+            label: `${t(`reports.advanced.${BIMONTHLY_LABEL_KEYS[index]}`)} ${year}`,
+        }));
+    };
+    const selectedBimonthlyValue = (() => {
+        for (const year of [dateRange[0].year(), dateRange[0].year() - 1, dateRange[0].year() + 1]) {
+            for (let index = 0; index < 6; index++) {
+                if (rangesMatch(dateRange, getBimonthlyRange(year, index))) return `${year}-${index}`;
+            }
+        }
+        return undefined;
+    })();
+    const handleBimonthlySelect = (value) => {
+        const [year, index] = value.split("-").map(Number);
+        const range = getBimonthlyRange(year, index);
+        setDateRange(range);
+        fetchAll(range);
     };
 
     const marginColumns = [
@@ -149,6 +197,15 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
         <Card className="module-shell border border-[var(--ohnix-line-4)] overflow-hidden hover-lift mb-4">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div className="flex flex-col sm:flex-row gap-3">
+                    {activeTab === "vat" && (
+                        <Select
+                            placeholder={t("reports.advanced.vat_bimonthly_placeholder")}
+                            className="w-full sm:w-48"
+                            value={selectedBimonthlyValue}
+                            onChange={handleBimonthlySelect}
+                            options={bimonthlyOptions()}
+                        />
+                    )}
                     <RangePicker
                         value={dateRange}
                         onChange={handleDateRangeChange}
@@ -156,7 +213,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                         allowClear={false}
                         className="w-full sm:w-auto auth-ohnix-input"
                     />
-                    <Button type="primary" icon={<CalendarOutlined />} onClick={fetchAll} loading={loading}>
+                    <Button type="primary" icon={<CalendarOutlined />} onClick={() => fetchAll()} loading={loading}>
                         {t("reports.refresh_report")}
                     </Button>
                 </div>
