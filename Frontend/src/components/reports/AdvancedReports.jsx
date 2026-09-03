@@ -16,6 +16,8 @@ import { useCurrency } from "../../context/CurrencyContext";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
+import ReportExportButtons from "./ReportExportButtons";
+import { downloadCsv, downloadExcel, downloadPdfReport } from "../../utils/exportReport";
 import useI18n from "../../hooks/useI18n";
 
 const { RangePicker } = DatePicker;
@@ -169,6 +171,115 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
         { title: t("reports.advanced.vat_tax_column"), dataIndex: "taxAmount", key: "taxAmount", render: (v) => formatCurrency(v), width: 130 },
         { title: t("reports.advanced.vat_lines_column"), dataIndex: "lineCount", key: "lineCount", width: 90, responsive: ["sm"] },
     ];
+
+    // Mirrors SalesReport.jsx's export shape (buildReportRows for CSV/Excel,
+    // a title/subtitle/sections payload for the server-rendered PDF) - the
+    // VAT tab was the one advanced report with no export path at all, which
+    // undercuts its entire "listo para tu declaración bimestral" promise: a
+    // number a user can't hand to their accountant might as well not exist.
+    const buildVatReportRows = () => {
+        const rows = [
+            [t("reports.advanced.vat_tab")],
+            [`${dateRange[0].format("YYYY-MM-DD")} - ${dateRange[1].format("YYYY-MM-DD")}`],
+            [],
+        ];
+        rows.push([t("reports.advanced.vat_taxed_base"), formatCurrency(vatData.summary.taxedBase)]);
+        rows.push([t("reports.advanced.vat_excluded_base"), formatCurrency(vatData.summary.excludedBase)]);
+        rows.push([t("reports.advanced.vat_exempt_base"), formatCurrency(vatData.summary.exemptBase)]);
+        rows.push([t("reports.advanced.vat_collected"), formatCurrency(vatData.summary.taxCollected)]);
+        rows.push([t("reports.advanced.vat_credited"), formatCurrency(vatData.summary.taxCredited)]);
+        rows.push([vatData.summary.netVat >= 0 ? t("reports.advanced.vat_net_payable") : t("reports.advanced.vat_net_credit_balance"), formatCurrency(Math.abs(vatData.summary.netVat))]);
+        rows.push([]);
+
+        rows.push([t("reports.advanced.vat_by_rate")]);
+        rows.push([t("reports.advanced.vat_rate_column"), t("reports.advanced.vat_base_column"), t("reports.advanced.vat_tax_column"), t("reports.advanced.vat_lines_column")]);
+        vatData.byRate.forEach((row) => rows.push([`${row.rate}%`, formatCurrency(row.base), formatCurrency(row.taxAmount), String(row.lineCount)]));
+        rows.push([]);
+
+        if (vatData.byRatePurchases?.length > 0) {
+            rows.push([t("reports.advanced.vat_credited_by_rate")]);
+            rows.push([t("reports.advanced.vat_rate_column"), t("reports.advanced.vat_base_column"), t("reports.advanced.vat_tax_column"), t("reports.advanced.vat_lines_column")]);
+            vatData.byRatePurchases.forEach((row) => rows.push([`${row.rate}%`, formatCurrency(row.base), formatCurrency(row.taxAmount), String(row.lineCount)]));
+            rows.push([]);
+        }
+
+        if (vatData.manualAdjustments?.length > 0) {
+            rows.push([t("reports.advanced.vat_manual_adjustments_title")]);
+            rows.push([t("reports.advanced.vat_manual_adjustments_col_date"), t("reports.advanced.vat_manual_adjustments_col_description"), t("reports.advanced.vat_manual_adjustments_col_generated"), t("reports.advanced.vat_manual_adjustments_col_deductible")]);
+            vatData.manualAdjustments.forEach((row) => rows.push([dayjs(row.entryDate).format("DD/MM/YYYY"), row.description || "", row.generatedDelta ? formatCurrency(row.generatedDelta) : "", row.deductibleDelta ? formatCurrency(row.deductibleDelta) : ""]));
+        }
+
+        return rows;
+    };
+
+    const exportVatCsv = async () => {
+        if (!vatData) { toast.error(t("reports.no_data_to_export")); return; }
+        try {
+            await downloadCsv(buildVatReportRows(), `iva-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.csv`);
+            toast.success(t("reports.advanced.vat_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_csv_failed"));
+        }
+    };
+
+    const exportVatExcel = async () => {
+        if (!vatData) { toast.error(t("reports.no_data_to_export")); return; }
+        try {
+            await downloadExcel(buildVatReportRows(), `iva-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.xlsx`, t("reports.advanced.vat_tab"));
+            toast.success(t("reports.advanced.vat_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_excel_failed"));
+        }
+    };
+
+    const exportVatPdf = async () => {
+        if (!vatData) { toast.error(t("reports.no_data_to_export")); return; }
+        try {
+            await downloadPdfReport(
+                {
+                    title: t("reports.advanced.vat_tab"),
+                    subtitle: `${dateRange[0].format("YYYY-MM-DD")} - ${dateRange[1].format("YYYY-MM-DD")}`,
+                    sections: [
+                        {
+                            summary: [
+                                [t("reports.advanced.vat_taxed_base"), formatCurrency(vatData.summary.taxedBase)],
+                                [t("reports.advanced.vat_excluded_base"), formatCurrency(vatData.summary.excludedBase)],
+                                [t("reports.advanced.vat_exempt_base"), formatCurrency(vatData.summary.exemptBase)],
+                                [t("reports.advanced.vat_collected"), formatCurrency(vatData.summary.taxCollected)],
+                                [t("reports.advanced.vat_credited"), formatCurrency(vatData.summary.taxCredited)],
+                                [vatData.summary.netVat >= 0 ? t("reports.advanced.vat_net_payable") : t("reports.advanced.vat_net_credit_balance"), formatCurrency(Math.abs(vatData.summary.netVat))],
+                            ],
+                        },
+                        {
+                            heading: t("reports.advanced.vat_by_rate"),
+                            table: {
+                                headers: [t("reports.advanced.vat_rate_column"), t("reports.advanced.vat_base_column"), t("reports.advanced.vat_tax_column"), t("reports.advanced.vat_lines_column")],
+                                rows: vatData.byRate.map((row) => [`${row.rate}%`, formatCurrency(row.base), formatCurrency(row.taxAmount), String(row.lineCount)]),
+                            },
+                        },
+                        ...(vatData.byRatePurchases?.length > 0 ? [{
+                            heading: t("reports.advanced.vat_credited_by_rate"),
+                            table: {
+                                headers: [t("reports.advanced.vat_rate_column"), t("reports.advanced.vat_base_column"), t("reports.advanced.vat_tax_column"), t("reports.advanced.vat_lines_column")],
+                                rows: vatData.byRatePurchases.map((row) => [`${row.rate}%`, formatCurrency(row.base), formatCurrency(row.taxAmount), String(row.lineCount)]),
+                            },
+                        }] : []),
+                        ...(vatData.manualAdjustments?.length > 0 ? [{
+                            heading: t("reports.advanced.vat_manual_adjustments_title"),
+                            table: {
+                                headers: [t("reports.advanced.vat_manual_adjustments_col_date"), t("reports.advanced.vat_manual_adjustments_col_description"), t("reports.advanced.vat_manual_adjustments_col_generated"), t("reports.advanced.vat_manual_adjustments_col_deductible")],
+                                rows: vatData.manualAdjustments.map((row) => [dayjs(row.entryDate).format("DD/MM/YYYY"), row.description || "", row.generatedDelta ? formatCurrency(row.generatedDelta) : "", row.deductibleDelta ? formatCurrency(row.deductibleDelta) : ""]),
+                            },
+                        }] : []),
+                    ],
+                },
+                `iva-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.pdf`
+            );
+            toast.success(t("reports.advanced.vat_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_pdf_failed"));
+        }
+    };
 
     const carteraPartyColumns = (nameKey, nameTitle) => [
         { title: nameTitle, dataIndex: "name", key: "name", ellipsis: true },
@@ -335,6 +446,9 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                     <div className="mb-4 flex items-start gap-2 rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] p-3 text-xs text-[var(--ohnix-text-muted)]">
                         <InfoCircleOutlined className="mt-0.5 text-[#44F3F0]" />
                         <span>{t("reports.advanced.vat_disclaimer")}</span>
+                    </div>
+                    <div className="flex justify-end mb-4">
+                        <ReportExportButtons hasData={Boolean(vatData)} onExportCsv={exportVatCsv} onExportExcel={exportVatExcel} onExportPdf={exportVatPdf} />
                     </div>
                     <Row gutter={[16, 16]} className="mb-4">
                         <Col xs={12} sm={6}>

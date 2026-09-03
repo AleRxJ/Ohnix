@@ -2851,6 +2851,7 @@
       "vat_manual_adjustments_col_description": "Description",
       "vat_manual_adjustments_col_generated": "Output VAT (adjustment)",
       "vat_manual_adjustments_col_deductible": "Input VAT (adjustment)",
+      "vat_report_exported": "VAT report exported successfully!",
       "vat_rate_column": "Rate",
       "vat_base_column": "Base",
       "vat_tax_column": "VAT",

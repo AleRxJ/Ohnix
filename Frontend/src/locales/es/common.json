@@ -2852,6 +2852,7 @@
       "vat_manual_adjustments_col_description": "Descripción",
       "vat_manual_adjustments_col_generated": "IVA generado (ajuste)",
       "vat_manual_adjustments_col_deductible": "IVA descontable (ajuste)",
+      "vat_report_exported": "¡Reporte de IVA exportado con éxito!",
       "vat_rate_column": "Tarifa",
       "vat_base_column": "Base",
       "vat_tax_column": "IVA",
