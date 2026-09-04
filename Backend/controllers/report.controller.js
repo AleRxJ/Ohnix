@@ -1218,6 +1218,13 @@ const getVatReport = asyncHandler(async (req, res, next) => {
             taxedBase: 0,
             excludedBase: 0,
             exemptBase: 0,
+            // Purchase-side equivalents of the three above - always computed
+            // (byTreatmentPurchasesMap already had this per-treatment, just
+            // never rolled up), so a declaración needs both sides of the same
+            // excluida/exenta/gravada split, not only the sales half.
+            taxedBasePurchases: 0,
+            excludedBasePurchases: 0,
+            exemptBasePurchases: 0,
             taxCollected: 0,
             taxCredited: 0,
             lineCount: orderDetails.length,
@@ -1274,6 +1281,9 @@ const getVatReport = asyncHandler(async (req, res, next) => {
             const treatment = detail.taxTreatmentApplied;
 
             summary.taxCredited += taxAmount;
+            if (treatment === "taxed") summary.taxedBasePurchases += base;
+            else if (treatment === "excluded") summary.excludedBasePurchases += base;
+            else if (treatment === "exempt") summary.exemptBasePurchases += base;
 
             const treatmentEntry = byTreatmentPurchasesMap.get(treatment) || { treatment, base: 0, taxAmount: 0, lineCount: 0 };
             treatmentEntry.base += base;
@@ -1326,6 +1336,7 @@ const getVatReport = asyncHandler(async (req, res, next) => {
                 }
             } else {
                 summary.taxCredited += item.taxAmount;
+                summary.taxedBasePurchases += item.base;
 
                 const treatmentEntry = byTreatmentPurchasesMap.get("taxed") || { treatment: "taxed", base: 0, taxAmount: 0, lineCount: 0 };
                 treatmentEntry.base += item.base;
@@ -1432,6 +1443,9 @@ const getVatReport = asyncHandler(async (req, res, next) => {
                 taxedBase: round2(summary.taxedBase),
                 excludedBase: round2(summary.excludedBase),
                 exemptBase: round2(summary.exemptBase),
+                taxedBasePurchases: round2(summary.taxedBasePurchases),
+                excludedBasePurchases: round2(summary.excludedBasePurchases),
+                exemptBasePurchases: round2(summary.exemptBasePurchases),
                 taxCollected: round2(summary.taxCollected),
                 taxCredited: round2(summary.taxCredited),
                 financialCreditNoteBase: round2(summary.financialCreditNoteBase),

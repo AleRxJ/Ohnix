@@ -183,11 +183,18 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
             [`${dateRange[0].format("YYYY-MM-DD")} - ${dateRange[1].format("YYYY-MM-DD")}`],
             [],
         ];
+        rows.push([t("reports.sales")]);
         rows.push([t("reports.advanced.vat_taxed_base"), formatCurrency(vatData.summary.taxedBase)]);
         rows.push([t("reports.advanced.vat_excluded_base"), formatCurrency(vatData.summary.excludedBase)]);
         rows.push([t("reports.advanced.vat_exempt_base"), formatCurrency(vatData.summary.exemptBase)]);
         rows.push([t("reports.advanced.vat_collected"), formatCurrency(vatData.summary.taxCollected)]);
+        rows.push([]);
+        rows.push([t("reports.purchases")]);
+        rows.push([t("reports.advanced.vat_taxed_base_purchases"), formatCurrency(vatData.summary.taxedBasePurchases)]);
+        rows.push([t("reports.advanced.vat_excluded_base_purchases"), formatCurrency(vatData.summary.excludedBasePurchases)]);
+        rows.push([t("reports.advanced.vat_exempt_base_purchases"), formatCurrency(vatData.summary.exemptBasePurchases)]);
         rows.push([t("reports.advanced.vat_credited"), formatCurrency(vatData.summary.taxCredited)]);
+        rows.push([]);
         rows.push([vatData.summary.netVat >= 0 ? t("reports.advanced.vat_net_payable") : t("reports.advanced.vat_net_credit_balance"), formatCurrency(Math.abs(vatData.summary.netVat))]);
         rows.push([]);
 
@@ -241,12 +248,25 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                     subtitle: `${dateRange[0].format("YYYY-MM-DD")} - ${dateRange[1].format("YYYY-MM-DD")}`,
                     sections: [
                         {
+                            heading: t("reports.sales"),
                             summary: [
                                 [t("reports.advanced.vat_taxed_base"), formatCurrency(vatData.summary.taxedBase)],
                                 [t("reports.advanced.vat_excluded_base"), formatCurrency(vatData.summary.excludedBase)],
                                 [t("reports.advanced.vat_exempt_base"), formatCurrency(vatData.summary.exemptBase)],
                                 [t("reports.advanced.vat_collected"), formatCurrency(vatData.summary.taxCollected)],
+                            ],
+                        },
+                        {
+                            heading: t("reports.purchases"),
+                            summary: [
+                                [t("reports.advanced.vat_taxed_base_purchases"), formatCurrency(vatData.summary.taxedBasePurchases)],
+                                [t("reports.advanced.vat_excluded_base_purchases"), formatCurrency(vatData.summary.excludedBasePurchases)],
+                                [t("reports.advanced.vat_exempt_base_purchases"), formatCurrency(vatData.summary.exemptBasePurchases)],
                                 [t("reports.advanced.vat_credited"), formatCurrency(vatData.summary.taxCredited)],
+                            ],
+                        },
+                        {
+                            summary: [
                                 [vatData.summary.netVat >= 0 ? t("reports.advanced.vat_net_payable") : t("reports.advanced.vat_net_credit_balance"), formatCurrency(Math.abs(vatData.summary.netVat))],
                             ],
                         },
@@ -450,6 +470,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                     <div className="flex justify-end mb-4">
                         <ReportExportButtons hasData={Boolean(vatData)} onExportCsv={exportVatCsv} onExportExcel={exportVatExcel} onExportPdf={exportVatPdf} />
                     </div>
+                    <h4 className="text-sm font-semibold text-[var(--ohnix-text-primary)] mb-2">{t("reports.sales")}</h4>
                     <Row gutter={[16, 16]} className="mb-4">
                         <Col xs={12} sm={6}>
                             <StatCard title={t("reports.advanced.vat_taxed_base")} value={vatData.summary.taxedBase} formatter={formatCurrency} valueStyle={{ color: "#1890ff" }} />
@@ -464,11 +485,23 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                             <StatCard title={t("reports.advanced.vat_collected")} value={vatData.summary.taxCollected} formatter={formatCurrency} valueStyle={{ color: "#52c41a" }} />
                         </Col>
                     </Row>
+                    <h4 className="text-sm font-semibold text-[var(--ohnix-text-primary)] mb-2">{t("reports.purchases")}</h4>
                     <Row gutter={[16, 16]} className="mb-4">
-                        <Col xs={12} sm={8}>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.vat_taxed_base_purchases")} value={vatData.summary.taxedBasePurchases} formatter={formatCurrency} valueStyle={{ color: "#1890ff" }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.vat_excluded_base_purchases")} value={vatData.summary.excludedBasePurchases} formatter={formatCurrency} valueStyle={{ color: "#7C6AF7" }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.vat_exempt_base_purchases")} value={vatData.summary.exemptBasePurchases} formatter={formatCurrency} valueStyle={{ color: "#f59e0b" }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
                             <StatCard title={t("reports.advanced.vat_credited")} value={vatData.summary.taxCredited} formatter={formatCurrency} valueStyle={{ color: "#f97316" }} />
                         </Col>
-                        <Col xs={24} sm={16}>
+                    </Row>
+                    <Row gutter={[16, 16]} className="mb-4">
+                        <Col xs={24}>
                             <StatCard
                                 title={vatData.summary.netVat >= 0 ? t("reports.advanced.vat_net_payable") : t("reports.advanced.vat_net_credit_balance")}
                                 value={Math.abs(vatData.summary.netVat)}
