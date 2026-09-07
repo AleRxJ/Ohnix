@@ -2306,13 +2306,18 @@ textarea.ant-input[disabled] {
    deleting a row or starting a DIAN test-matrix run) renders into its own
    portal on <body>, same as Modal/Drawer above, but with none of its own
    classes shared with them - so it was falling back entirely to antd's
-   stock light theme (white card, default blue OK button) against Ohnix's
-   dark dashboard, unstyled and out of place. Scoped to .ant-popconfirm
-   (not the bare .ant-popover it's built on) so a plain Popover/Tooltip
-   elsewhere is untouched. The icon color is deliberately left alone - some
-   call sites already pass their own (e.g. a red ExclamationCircleOutlined
-   for a delete confirmation), and overriding it here with !important would
-   also clobber those inline colors, not just the antd default. */
+   stock light theme (white card, default blue OK button, orange warning
+   icon) against Ohnix's dark dashboard. Scoped to .ant-popconfirm (not the
+   bare .ant-popover it's built on) so a plain Popover/Tooltip elsewhere is
+   untouched. Beyond just recoloring the stock parts, this gives it the same
+   "wow" signature as the rest of the app - the teal glow-badge icon treatment
+   from DianHabilitacionPanel's card headers (h-10 w-10 rounded-2xl, teal-on-
+   teal border+bg, external glow) and a top gradient accent bar, instead of
+   reading as a reskinned default popup. No call site passes Popconfirm its
+   own `icon` prop, so recoloring the default (ExclamationCircleFilled) is
+   safe everywhere; a destructive confirmation still reads as "danger" from
+   its dangerous OK button (red, below) - the icon itself stays brand-teal
+   rather than trying to guess intent per call site. */
 .ant-popover.ant-popconfirm {
   --antd-arrow-background-color: var(--ohnix-surface-card) !important;
 }
@@ -2320,7 +2325,37 @@ textarea.ant-input[disabled] {
   background: var(--ohnix-surface-card) !important;
   border: 1px solid var(--ohnix-line-4) !important;
   border-radius: 16px !important;
-  box-shadow: var(--ohnix-shadow-elevated) !important;
+  box-shadow: var(--ohnix-shadow-elevated), 0 0 32px rgba(41, 216, 213, 0.12) !important;
+  overflow: hidden;
+  position: relative;
+  padding-top: 3px !important;
+}
+.ant-popconfirm .ant-popover-inner::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, #29d8d5, #44f3f0, #7c6af7);
+}
+.ant-popconfirm .ant-popconfirm-message {
+  gap: 12px;
+}
+.ant-popconfirm .ant-popconfirm-message-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  margin-top: -2px;
+  border-radius: 10px;
+  background: rgba(41, 216, 213, 0.12);
+  border: 1px solid rgba(41, 216, 213, 0.3);
+  box-shadow: 0 0 14px rgba(41, 216, 213, 0.18);
+}
+.ant-popconfirm .ant-popconfirm-message-icon .anticon {
+  color: #44f3f0 !important;
+  font-size: 15px;
 }
 .ant-popconfirm .ant-popconfirm-title {
   color: var(--ohnix-text-primary) !important;
@@ -2356,20 +2391,6 @@ textarea.ant-input[disabled] {
 .ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary.ant-btn-dangerous:hover {
   filter: brightness(1.08) !important;
   box-shadow: 0 0 20px rgba(251, 113, 133, 0.28) !important;
-}
-/* No call site across the app passes Popconfirm its own `icon` prop, so
-   every single one was rendering antd's hardcoded default
-   (ExclamationCircleFilled in stock warning-orange #faad14) - the one piece
-   the rules above never touched, and the reason the popup still read as
-   generic antd rather than Ohnix even with the card/buttons themed. Recolor
-   it to the same teal accent as the primary button and DianHabilitacionPanel's
-   icon-header treatment; anticon SVGs paint via currentColor, so setting
-   color here is enough, no separate fill/stroke override needed. A
-   destructive confirmation still reads as "danger" from its dangerous OK
-   button (red, already handled above) - the icon itself stays brand-teal
-   rather than trying to guess intent per call site. */
-.ant-popconfirm .ant-popconfirm-message-icon .anticon {
-  color: #44f3f0 !important;
 }
 
 .dark-alert-purple.ant-alert {
