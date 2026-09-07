@@ -247,7 +247,7 @@ const Billing = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, refreshUser } = useContext(AuthContext);
-    const { isOwner, hasPermission } = useTeam();
+    const { isOwner, hasPermission, team } = useTeam();
     const canViewBilling = isOwner || hasPermission("billing", "view");
     const { t, currentLanguage } = useI18n();
     const lang = currentLanguage === "en" ? "en" : "es";
@@ -940,6 +940,13 @@ const Billing = () => {
                     </div>
                     <h2 className="mb-2 text-xl font-bold text-[var(--ohnix-text-primary)]">{t("team.billing_locked_title")}</h2>
                     <p className="mb-0 text-sm text-[var(--ohnix-text-muted)]">{t("team.billing_locked_description")}</p>
+                    {team?.ownerName && (
+                        <p className="mt-3 mb-0 text-sm font-medium text-[var(--ohnix-text-primary)]">
+                            {team?.ownerEmail
+                                ? t("team.billing_locked_contact", { name: team.ownerName, email: team.ownerEmail })
+                                : t("team.billing_locked_contact_no_email", { name: team.ownerName })}
+                        </p>
+                    )}
                 </div>
             </div>
         );

@@ -8,18 +8,25 @@ import {
     updateMyItcycleNumberingResolution,
     activateMyItcycleElectronicInvoicing,
     confirmMyFirmaPassValidation,
+    createMyViafirmaRequest,
     deleteMyCompanyLogo,
     getMyCompany,
     getMyFirmaPassStatus,
     getMyFirmaPassValidationDetail,
     getMyItcycleStatus,
+    getMyViafirmaCertificates,
+    getMyViafirmaCertificateStatus,
+    getMyViafirmaKycLink,
+    listMyViafirmaDocuments,
     registerMyCompanyWithItcycle,
     resolveMyFirmaPassOrderNumber,
+    revokeMyViafirmaCertificate,
     updateMyCompany,
     updateMyCompanyLogo,
     uploadMyCertificate,
     uploadMyFirmaPassArchivo,
     uploadMyFirmaPassRut,
+    uploadMyViafirmaDocument,
 } from "../controllers/companySelf.controller.js";
 
 const router = Router();
@@ -45,5 +52,11 @@ router.route("/me/itcycle/firmapass/validations/:validationUuid/archivos").post(
 router.route("/me/itcycle/firmapass/validations/:validationUuid/confirmar").post(confirmMyFirmaPassValidation);
 router.route("/me/itcycle/firmapass/status").get(getMyFirmaPassStatus);
 router.route("/me/itcycle/certificates").post(idempotent("company.itcycle.certificate"), uploadMyCertificate);
+router.route("/me/itcycle/viafirma/requests").post(idempotent("company.itcycle.viafirma.request"), createMyViafirmaRequest);
+router.route("/me/itcycle/viafirma/certificates").get(getMyViafirmaCertificates);
+router.route("/me/itcycle/viafirma/certificates/:certificateId/status").get(getMyViafirmaCertificateStatus);
+router.route("/me/itcycle/viafirma/certificates/:certificateId/kyc-link").get(getMyViafirmaKycLink);
+router.route("/me/itcycle/viafirma/certificates/:certificateId/documents").get(listMyViafirmaDocuments).post(uploadMyViafirmaDocument);
+router.route("/me/itcycle/viafirma/certificates/:certificateId/revoke").post(revokeMyViafirmaCertificate);
 
 export default router;

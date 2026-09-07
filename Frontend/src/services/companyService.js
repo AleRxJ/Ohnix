@@ -106,6 +106,52 @@ export const companyService = {
         return response.data;
     },
 
+    // Viafirma Colombia digital-certificate issuance - unlike FirmaPass,
+    // there's no pre-existing validation to look up first: the CSR/keypair
+    // are generated server-side (itcycle-api-dian) by this one call, which
+    // returns { certificateId, codRequest } to drive every step after.
+    async createMyViafirmaRequest(payload, idempotencyKey) {
+        const response = await api.post("/company/me/itcycle/viafirma/requests", payload, {
+            headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        });
+        return response.data;
+    },
+
+    // How the UI recovers "do I already have an in-progress or active
+    // Viafirma certificate" after a page reload - certificateId isn't
+    // derivable from anything Viafirma itself hands back.
+    async getMyViafirmaCertificates() {
+        const response = await api.get("/company/me/itcycle/viafirma/certificates");
+        return response.data;
+    },
+
+    async getMyViafirmaCertificateStatus(certificateId) {
+        const response = await api.get(`/company/me/itcycle/viafirma/certificates/${certificateId}/status`);
+        return response.data;
+    },
+
+    // Only meaningful while status is "awaiting_identity_verification" -
+    // Viafirma itself errors out for any other status.
+    async getMyViafirmaKycLink(certificateId) {
+        const response = await api.get(`/company/me/itcycle/viafirma/certificates/${certificateId}/kyc-link`);
+        return response.data;
+    },
+
+    async uploadMyViafirmaDocument(certificateId, payload) {
+        const response = await api.post(`/company/me/itcycle/viafirma/certificates/${certificateId}/documents`, payload);
+        return response.data;
+    },
+
+    async listMyViafirmaDocuments(certificateId) {
+        const response = await api.get(`/company/me/itcycle/viafirma/certificates/${certificateId}/documents`);
+        return response.data;
+    },
+
+    async revokeMyViafirmaCertificate(certificateId, payload) {
+        const response = await api.post(`/company/me/itcycle/viafirma/certificates/${certificateId}/revoke`, payload);
+        return response.data;
+    },
+
     // Self-service DIAN habilitación (test-matrix) - see
     // Backend/routes/dianTestMatrixSelf.routes.js. testSetId itself still
     // comes from DIAN's own habilitación portal (no API for that exists);

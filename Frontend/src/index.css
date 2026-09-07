@@ -1037,6 +1037,17 @@ body {
   color: var(--ohnix-text-soft) !important;
 }
 
+/* Form.Item's `tooltip` prop renders its help icon in antd's light-theme
+   default (near-black, ~45% opacity) - invisible against this app's dark
+   backgrounds since there's no global antd theme override anywhere. Tinted
+   with the Ohnix accent (matches the section-header icons alongside it)
+   rather than a flat gray, so it reads as part of the UI, not a leftover
+   default. */
+.dashboard-app .ant-form-item-tooltip {
+  color: var(--ohnix-accent) !important;
+  opacity: 0.85;
+}
+
 /* antd's Statistic only themes its title via the rule above by default -
    the actual value keeps antd's near-black light-theme text color, unless
    overridden here too. */

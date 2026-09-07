@@ -27,6 +27,7 @@ import { COLOMBIA_DEPARTMENTS, findDepartmentName } from "../../constants/colomb
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { isValidNit, isValidPrefix, isValidSoftwareId, isValidTechnicalKey } from "../../utils/dianValidation";
 import FirmaPassSelfService from "./FirmaPassSelfService";
+import ViafirmaSelfService from "./ViafirmaSelfService";
 import DianHabilitacionPanel from "./DianHabilitacionPanel";
 
 const validatorRule = (isValid, message) => ({
@@ -137,15 +138,15 @@ const NumberingResolutionForm = ({ documentType, titleKey, hintKey, buttonKey, o
                     <Form.Item
                         name="prefix"
                         label={t("fiscal_setup.prefix")}
-                        extra={t(autoAssignPrefix ? "fiscal_setup.prefix_hint_auto_assign" : "fiscal_setup.prefix_hint")}
+                        tooltip={t(autoAssignPrefix ? "fiscal_setup.prefix_hint_auto_assign" : "fiscal_setup.prefix_hint")}
                         rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidPrefix, t("fiscal_setup.prefix_invalid"))]}
                     >
                         <Input size="large" maxLength={4} className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} extra={t(autoAssignPrefix ? "fiscal_setup.resolution_number_hint_auto_assign" : "fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} tooltip={t(autoAssignPrefix ? "fiscal_setup.resolution_number_hint_auto_assign" : "fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
                         <Input size="large" className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} extra={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} tooltip={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                         <Input size="large" type="number" min={1} className="auth-ohnix-input" />
                     </Form.Item>
                     <Form.Item
@@ -165,7 +166,7 @@ const NumberingResolutionForm = ({ documentType, titleKey, hintKey, buttonKey, o
                     >
                         <Input size="large" type="number" min={1} className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="startDate" label={t("fiscal_setup.start_date")} extra={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="startDate" label={t("fiscal_setup.start_date")} tooltip={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                         <DatePicker size="large" className="w-full" />
                     </Form.Item>
                     <Form.Item
@@ -653,7 +654,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
         status.electronicInvoicingProvider !== "itcycle";
 
     const field = (name, label, options = {}) => (
-        <Form.Item name={name} label={label} extra={options.hint} rules={options.required ? [{ required: true, message: t("fiscal_setup.field_required") }] : []}>
+        <Form.Item name={name} label={label} tooltip={options.hint} rules={options.required ? [{ required: true, message: t("fiscal_setup.field_required") }] : []}>
             {options.select
                 ? <Select size="large" options={options.select} />
                 : <Input size="large" type={options.type} prefix={options.icon} className="auth-ohnix-input" />}
@@ -717,6 +718,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                         <Alert className="mt-3 dark-alert dark-alert-amber" type="warning" showIcon message={t("fiscal_setup.readiness_unavailable")} description={t("fiscal_setup.readiness_unavailable_hint")} />
                     )}
                     <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} onResolutionsChanged={refresh} />
+                    <ViafirmaSelfService company={company} electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)} />
                     <FirmaPassSelfService
                         electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)}
                         electronicInvoicingAtRisk={Boolean(status.electronicInvoicingAtRisk)}
@@ -929,15 +931,15 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             <Form.Item
                                 name="prefix"
                                 label={t("fiscal_setup.prefix")}
-                                extra={t("fiscal_setup.prefix_hint")}
+                                tooltip={t("fiscal_setup.prefix_hint")}
                                 rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidPrefix, t("fiscal_setup.prefix_invalid"))]}
                             >
                                 <Input size="large" maxLength={4} className="auth-ohnix-input" />
                             </Form.Item>
-                            <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} extra={t("fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
+                            <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} tooltip={t("fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
                                 <Input size="large" className="auth-ohnix-input" />
                             </Form.Item>
-                            <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} extra={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                            <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} tooltip={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                                 <Input size="large" type="number" min={1} className="auth-ohnix-input" />
                             </Form.Item>
                             <Form.Item
@@ -957,7 +959,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             >
                                 <Input size="large" type="number" min={1} className="auth-ohnix-input" />
                             </Form.Item>
-                            <Form.Item name="startDate" label={t("fiscal_setup.start_date")} extra={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}><DatePicker size="large" className="w-full" /></Form.Item>
+                            <Form.Item name="startDate" label={t("fiscal_setup.start_date")} tooltip={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}><DatePicker size="large" className="w-full" /></Form.Item>
                             <Form.Item
                                 name="endDate"
                                 label={t("fiscal_setup.end_date")}

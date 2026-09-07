@@ -53,7 +53,11 @@ const PAGE_TITLE_KEYS = {
 // ever granted, see Backend/controllers/user.controller.js) - distinct from
 // isRenewal (a real trial or paid plan that lapsed), since this account
 // never had a trial or a paid period to begin with.
-const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false, hasNeverHadPlan = false }) => (
+// canActOnBilling = false means this is a team member without billing:edit -
+// the CTA below would just bounce them to /billing's own "you don't have
+// access" screen (see Billing.jsx's canViewBilling block), so instead of a
+// button that looks actionable but isn't, tell them plainly who to ask.
+const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false, hasNeverHadPlan = false, canActOnBilling = true, ownerName = null, ownerEmail = null }) => (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-8rem)] gap-6 px-6 text-center">
         <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-red-500/30 bg-red-500/10">
             <WarningOutlined className="text-4xl text-red-400" />
@@ -80,18 +84,32 @@ const TrialExpiredScreen = ({ onGoToBilling, lang, isRenewal = false, hasNeverHa
                             : "Your 14-day trial has ended. Subscribe to a plan to keep managing your inventory, sales, and reports without interruption.")}
             </p>
         </div>
-        <Button
-            type="primary"
-            size="large"
-            onClick={onGoToBilling}
-            className="bg-[#29D8D5] border-[#29D8D5] text-[#021314] font-semibold hover:bg-[#44F3F0] hover:border-[#44F3F0] px-8"
-        >
-            {hasNeverHadPlan
-                ? (lang === "es" ? "Completar pago" : "Complete payment")
-                : isRenewal
-                    ? (lang === "es" ? "Renovar mi plan" : "Renew my plan")
-                    : (lang === "es" ? "Ver planes y contratar" : "See plans and subscribe")}
-        </Button>
+        {canActOnBilling ? (
+            <Button
+                type="primary"
+                size="large"
+                onClick={onGoToBilling}
+                className="bg-[#29D8D5] border-[#29D8D5] text-[#021314] font-semibold hover:bg-[#44F3F0] hover:border-[#44F3F0] px-8"
+            >
+                {hasNeverHadPlan
+                    ? (lang === "es" ? "Completar pago" : "Complete payment")
+                    : isRenewal
+                        ? (lang === "es" ? "Renovar mi plan" : "Renew my plan")
+                        : (lang === "es" ? "Ver planes y contratar" : "See plans and subscribe")}
+            </Button>
+        ) : (
+            <div className="max-w-md rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] px-5 py-4">
+                <p className="m-0 text-sm text-[var(--ohnix-text-primary)]">
+                    {ownerName
+                        ? (lang === "es"
+                            ? <>Solo tu administrador puede gestionar el plan. Habla con <strong>{ownerName}</strong>{ownerEmail ? <> ({ownerEmail})</> : null}.</>
+                            : <>Only your admin can manage the plan. Reach out to <strong>{ownerName}</strong>{ownerEmail ? <> ({ownerEmail})</> : null}.</>)
+                        : (lang === "es"
+                            ? "Solo el administrador de tu equipo puede gestionar el plan."
+                            : "Only your team's admin can manage the plan.")}
+                </p>
+            </div>
+        )}
     </div>
 );
 
@@ -233,7 +251,7 @@ const DashboardLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
-    const { isOwner, hasPermission } = useTeam();
+    const { isOwner, hasPermission, team } = useTeam();
     const { t, currentLanguage } = useI18n();
     const lang = currentLanguage === "es" ? "es" : "en";
     // Promotional "upgrade/renew now" nudges only make sense for whoever can
@@ -335,6 +353,17 @@ const DashboardLayout = () => {
     const isStarterPlan = (subscription?.plan ?? "starter") === "starter";
     const isActive = subscription?.status === "active";
 
+    // Pages that must stay reachable even while the account is blocked - the
+    // DIAN electronic invoices/support documents listed there are the
+    // customer's own tax records (Estatuto Tributario / Codigo de Comercio
+    // retention requirements), not Ohnix's, so a lapsed subscription can
+    // never cut off the customer's ability to view or download them. This
+    // is read-only in effect: the backend's requireActiveSubscription
+    // (pricing.middleware.js) still blocks issuing/retrying/syncing any new
+    // DIAN document from these pages while paused (see order.routes.js /
+    // purchase.routes.js), only viewing already-issued ones stays open.
+    const COMPLIANCE_PAGES_EXEMPT_FROM_BLOCK = new Set(["billing", "electronic-invoices", "purchase-support-documents"]);
+
     // The ONLY thing allowed to actually block access. Mirrors the backend's
     // ensureActiveSubscription (pricing.middleware.js) exactly - every
     // create/report/API route gates on subscription.status === "active", and
@@ -344,8 +373,16 @@ const DashboardLayout = () => {
     // directly, which had zero grace period for trials and hard-locked
     // legitimate users out of the whole app up to 5 days before the backend
     // would have actually blocked them.
-    const isBlocked = subscription?.status === "paused" && user?.role !== "admin" && currentPage !== "billing";
-    const isRenewalBlock = isBlocked && !isStarterPlan;
+    const isBlocked = subscription?.status === "paused" && user?.role !== "admin" && !COMPLIANCE_PAGES_EXEMPT_FROM_BLOCK.has(currentPage);
+    // A real paid period lapsing vs. a trial lapsing is distinguished by
+    // endsAt being set, not by plan tier - Starter is a paid plan too (see
+    // PLAN_PRICES_USD in pricing.middleware.js) and blockLapsedSubscriptions
+    // groups a lapsed paid Starter subscription with every other paid plan,
+    // not with expired trials (see its expiredPaid vs expiredTrials query).
+    // Gating this on !isStarterPlan instead used to show a paying Starter
+    // subscriber whose plan expired the wrong copy ("your free trial has
+    // ended") when they'd actually paid for and lost a real subscription.
+    const isRenewalBlock = isBlocked && Boolean(planEndsAt);
     // A Negocio/Escala signup whose payment never completed - the account
     // was never on a trial and never paid for anything (see registerUser),
     // so the usual "trial ended"/"plan expired" copy is wrong for it.
@@ -360,15 +397,30 @@ const DashboardLayout = () => {
     const trialUrgent = trialDaysLeft > 0 && trialDaysLeft <= 3;
 
     // Renewal banner for paid plans expiring soon or in their grace period.
-    const renewalDaysLeft = planEndsAt && !isStarterPlan
+    // planEndsAt alone (not !isStarterPlan) is the right guard here too - see
+    // isRenewalBlock above - otherwise a paying Starter subscriber never gets
+    // this nudge anywhere before their real paid period lapses.
+    const renewalDaysLeft = planEndsAt
         ? Math.ceil((new Date(planEndsAt) - Date.now()) / (1000 * 60 * 60 * 24))
         : null;
+    // The billing page (SubscriptionPlanCard) renders its own equivalent
+    // renewal/urgency/expired banners inline, computed independently from
+    // this same subscription data - so all three floating banners must also
+    // exclude currentPage === "billing" (like isBlocked/showExpiredBanner
+    // below already did) or they stack a redundant, and sometimes
+    // contradictory, floating copy on top of the page's own message. This
+    // is what happened here: on the billing page isBlocked is forced false,
+    // so a paused+trial-expired account fell through to the "urgent, ends
+    // tomorrow" branch (see trialDaysLeft's Math.max(1, ...) clamp) instead
+    // of "expired", directly contradicting the card's "prueba ha terminado"
+    // banner rendered right underneath it.
     const showRenewalBanner =
         isActive &&
         renewalDaysLeft !== null &&
         renewalDaysLeft <= 7 &&
         !renewalBannerDismissed &&
         user?.role !== "admin" &&
+        currentPage !== "billing" &&
         canActOnBilling;
 
     // Never show trial banners on the payment-success page (user just paid)
@@ -393,6 +445,7 @@ const DashboardLayout = () => {
         !isOnPaymentSuccess &&
         isStarterPlan &&
         user?.role !== "admin" &&
+        currentPage !== "billing" &&
         canActOnBilling;
 
     const handleDismissBanner = () => {
@@ -461,7 +514,15 @@ const DashboardLayout = () => {
                         }}
                     >
                         {isBlocked
-                            ? <TrialExpiredScreen lang={lang} onGoToBilling={() => navigate("/billing")} isRenewal={isRenewalBlock} hasNeverHadPlan={hasNeverHadPlan} />
+                            ? <TrialExpiredScreen
+                                  lang={lang}
+                                  onGoToBilling={() => navigate("/billing")}
+                                  isRenewal={isRenewalBlock}
+                                  hasNeverHadPlan={hasNeverHadPlan}
+                                  canActOnBilling={canActOnBilling}
+                                  ownerName={team?.ownerName}
+                                  ownerEmail={team?.ownerEmail}
+                              />
                             : <Outlet />
                         }
                     </div>
@@ -491,8 +552,8 @@ const DashboardLayout = () => {
                     daysOverdue={renewalDaysLeft < 0 ? Math.abs(renewalDaysLeft) : 0}
                     isRenewal
                     planLabel={lang === "es"
-                        ? { growth: "Plan Negocio", scale: "Plan Escala", enterprise: "Plan Enterprise" }[subscription?.plan] || "tu plan"
-                        : { growth: "Business plan", scale: "Scale plan", enterprise: "Enterprise plan" }[subscription?.plan] || "your plan"
+                        ? { starter: "Plan Emprendedor", growth: "Plan Negocio", scale: "Plan Escala", enterprise: "Plan Enterprise" }[subscription?.plan] || "tu plan"
+                        : { starter: "Starter plan", growth: "Business plan", scale: "Scale plan", enterprise: "Enterprise plan" }[subscription?.plan] || "your plan"
                     }
                     lang={lang}
                     onUpgrade={handleRenew}

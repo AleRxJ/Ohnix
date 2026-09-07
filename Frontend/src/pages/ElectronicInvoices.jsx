@@ -48,7 +48,15 @@ import { getElectronicInvoicingProviderLabel } from "../utils/electronicInvoicin
 // ElectronicInvoicingSettings.jsx/FirmaPassSelfService.jsx. A plan that
 // lapses or gets downgraded after invoices already exist can still hit this
 // gate here (retry/sync/credit-note), so it needs the same translation.
-const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
+const PLAN_GATE_CODE_MESSAGES = {
+    electronic_invoicing_plan_required: "fiscal_setup.plan_required",
+    // Account is paused (lapsed subscription) - viewing/downloading existing
+    // invoices always stays open (see DashboardLayout.jsx's
+    // COMPLIANCE_PAGES_EXEMPT_FROM_BLOCK), but issuing/retrying/syncing a new
+    // DIAN document is still a billable write action and requires an active
+    // plan (requireActiveSubscription, order.routes.js).
+    subscription_inactive: "electronic_invoices.subscription_inactive",
+};
 const CREDIT_NOTE_CODE_MESSAGES = {
     ...PLAN_GATE_CODE_MESSAGES,
     credit_note_amount_exceeds_remaining_base: "electronic_invoices.credit_note.amount_exceeds_remaining_base",

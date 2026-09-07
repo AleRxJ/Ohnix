@@ -737,7 +737,24 @@ const impersonateUser = asyncHandler(async (req, res, next) => {
     return res
         .status(200)
         .cookie("accessToken", accessToken, AUTH_COOKIE_OPTIONS.access)
-        .json(new ApiResponse(200, { user: impersonatedUser, accessToken }, "Sesión simulada iniciada"));
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user: {
+                        ...toAuthUser(impersonatedUser),
+                        // Mirrors getCurrentUser's shape - the frontend's banner
+                        // (ImpersonationBanner.jsx) keys off these fields, and
+                        // applySession swaps this response straight into
+                        // AuthContext without a follow-up /current-user fetch.
+                        impersonatedBy: req.user.id,
+                        impersonatedByUsername: req.user.username,
+                    },
+                    accessToken,
+                },
+                "Sesión simulada iniciada"
+            )
+        );
 });
 
 // Reachable only by verifyJWT (not isAdmin): while impersonating, req.user is

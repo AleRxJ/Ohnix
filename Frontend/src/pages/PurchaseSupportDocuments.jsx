@@ -24,7 +24,13 @@ import { resolveApiErrorMessage } from "../utils/apiError";
 // Same reasoning as ElectronicInvoices.jsx's PLAN_GATE_CODE_MESSAGES -
 // purchaseSupportDocument.service.js's own ensureElectronicInvoicingPlan
 // copy throws the same English-by-design, code-tagged error.
-const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
+const PLAN_GATE_CODE_MESSAGES = {
+    electronic_invoicing_plan_required: "fiscal_setup.plan_required",
+    // Same reasoning as ElectronicInvoices.jsx: viewing/downloading an
+    // already-issued support document always stays open even while paused,
+    // only issuing/retrying/syncing a new one requires an active plan.
+    subscription_inactive: "purchase_support_documents.subscription_inactive",
+};
 import useCountUp from "../hooks/useCountUp";
 
 // Purchase-side mirror of ElectronicInvoices.jsx, for Documento Soporte (DIAN

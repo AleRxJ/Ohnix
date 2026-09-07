@@ -29,6 +29,15 @@ import {
     uploadCompanyFirmaPassArchivo,
     uploadCompanyFirmaPassRut,
 } from "../services/firmaPassProvisioning.service.js";
+import {
+    createCompanyViafirmaRequest,
+    getCompanyViafirmaCertificateStatus,
+    getCompanyViafirmaKycLink,
+    listCompanyViafirmaCertificates,
+    listCompanyViafirmaDocuments,
+    revokeCompanyViafirmaCertificate,
+    uploadCompanyViafirmaDocument,
+} from "../services/viafirmaProvisioning.service.js";
 
 // Same ISO-2 validator company.controller.js's admin endpoints use - kept as
 // its own copy rather than a shared import since that file is entirely
@@ -338,6 +347,87 @@ export const getMyFirmaPassStatus = asyncHandler(async (req, res) => {
             new ApiResponse(200, { provisioned: true, certificates: [], statusError: error.message || "No fue posible verificar el estado ante itcycle-api-dian." }, "Estado de FirmaPass obtenido parcialmente")
         );
     }
+});
+
+// Viafirma Colombia digital-certificate issuance (see
+// services/viafirmaProvisioning.service.js). Unlike the FirmaPass wizard,
+// there is no pre-existing validation to discover first - the CSR/keypair
+// are generated server-side, in itcycle-api-dian, by this one call.
+export const createMyViafirmaRequest = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    const { profileKind, subject, identityType, countryCode, identity, emailCertificate, organizationType } = req.body || {};
+    // Same convention as updateMyCompany's taxIdentificationDv: the user
+    // only ever types the bare NIT, never the check digit - it's always
+    // derived. Viafirma's own CSR field for NIT (SERIALNUMBER) accepts an
+    // optional "-N" suffix (validate: "^\d{5,12}(-\d{1})?$" in their
+    // profile-form response), matching how Colombia writes a NIT with its
+    // dígito de verificación.
+    const normalizedSubject =
+        profileKind === "FE-PJ" && subject?.nit
+            ? { ...subject, nit: `${subject.nit}-${computeNitCheckDigit(subject.nit)}` }
+            : subject;
+    const data = await createCompanyViafirmaRequest({
+        companyId: company.id,
+        profileKind,
+        subject: normalizedSubject,
+        identityType,
+        countryCode,
+        identity,
+        emailCertificate,
+        organizationType,
+    });
+    return res.status(201).json(new ApiResponse(201, data, "Solicitud de certificado Viafirma creada"));
+});
+
+export const getMyViafirmaCertificates = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    if (!company.itcycleCompanyId) {
+        return res.status(200).json(new ApiResponse(200, { provisioned: false, certificates: [] }, "Viafirma aún no está disponible"));
+    }
+    try {
+        const data = await listCompanyViafirmaCertificates({ companyId: company.id });
+        return res.status(200).json(new ApiResponse(200, { provisioned: true, certificates: data }, "Certificados Viafirma obtenidos"));
+    } catch (error) {
+        return res.status(200).json(
+            new ApiResponse(200, { provisioned: true, certificates: [], statusError: error.message || "No fue posible verificar el estado ante itcycle-api-dian." }, "Certificados Viafirma obtenidos parcialmente")
+        );
+    }
+});
+
+export const getMyViafirmaCertificateStatus = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const data = await getCompanyViafirmaCertificateStatus({ companyId: company.id, certificateId: req.params.certificateId });
+    return res.status(200).json(new ApiResponse(200, data, "Estado del certificado Viafirma obtenido"));
+});
+
+// Only meaningful while status is "awaiting_identity_verification" (Viafirma's
+// `accreditation`) - propagates itcycle-api-dian's own error otherwise
+// (Viafirma returns link_not_generated for any other status).
+export const getMyViafirmaKycLink = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const data = await getCompanyViafirmaKycLink({ companyId: company.id, certificateId: req.params.certificateId });
+    return res.status(200).json(new ApiResponse(200, data, "Enlace de verificación de identidad obtenido"));
+});
+
+export const uploadMyViafirmaDocument = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const { name, base64 } = req.body || {};
+    const data = await uploadCompanyViafirmaDocument({ companyId: company.id, certificateId: req.params.certificateId, name, base64 });
+    return res.status(201).json(new ApiResponse(201, data, "Documento enviado a Viafirma"));
+});
+
+export const listMyViafirmaDocuments = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const data = await listCompanyViafirmaDocuments({ companyId: company.id, certificateId: req.params.certificateId });
+    return res.status(200).json(new ApiResponse(200, data, "Documentos de Viafirma obtenidos"));
+});
+
+export const revokeMyViafirmaCertificate = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const { reason } = req.body || {};
+    const data = await revokeCompanyViafirmaCertificate({ companyId: company.id, certificateId: req.params.certificateId, reason });
+    return res.status(200).json(new ApiResponse(200, data, "Certificado Viafirma revocado"));
 });
 
 export const getMyCompany = asyncHandler(async (req, res) => {

@@ -311,6 +311,96 @@ export const getItcycleFirmaPassStatus = async ({ companyId }) => {
     });
 };
 
+// ---------------------------------------------------------------------------
+// Viafirma Colombia digital-certificate issuance (admin-only, see
+// itcycle-api-dian's src/modules/viafirma/viafirmaIssuance.service.ts).
+// Unlike FirmaPass, this starts from nothing - the CSR/keypair are generated
+// server-side (in itcycle-api-dian) by createItcycleViafirmaRequest itself;
+// there is no pre-existing validation for Ohnix to discover first.
+// ---------------------------------------------------------------------------
+
+export const createItcycleViafirmaRequest = async ({
+    companyId,
+    profileKind,
+    subject,
+    identityType,
+    countryCode,
+    identity,
+    emailCertificate,
+    organizationType,
+}) => {
+    requireAdminConfigured();
+    return request({
+        method: "POST",
+        path: `/api/v1/admin/companies/${companyId}/viafirma/requests`,
+        body: { profileKind, subject, identityType, countryCode, identity, emailCertificate, organizationType },
+        authHeader: adminAuthHeader(),
+    });
+};
+
+// Read-only, no-network projection - how Ohnix's UI recovers "do I already
+// have an in-progress or active Viafirma certificate" after a page reload,
+// since certificateId isn't derivable from anything Viafirma itself hands
+// back. Mirrors getItcycleFirmaPassStatus's provider-scoped read.
+export const listItcycleViafirmaCertificates = async ({ companyId }) => {
+    requireAdminConfigured();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/viafirma/certificates`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
+export const getItcycleViafirmaCertificateStatus = async ({ companyId, certificateId }) => {
+    requireAdminConfigured();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/viafirma/certificates/${certificateId}/status`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
+// Only valid while the certificate's status is "accreditation" (Viafirma's
+// own KYC step) - itcycle-api-dian (and Viafirma underneath it) returns an
+// error otherwise; propagated as an ItcycleDianError, not swallowed here.
+export const getItcycleViafirmaKycLink = async ({ companyId, certificateId }) => {
+    requireAdminConfigured();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/viafirma/certificates/${certificateId}/kyc-link`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
+export const uploadItcycleViafirmaDocument = async ({ companyId, certificateId, name, base64 }) => {
+    requireAdminConfigured();
+    return request({
+        method: "POST",
+        path: `/api/v1/admin/companies/${companyId}/viafirma/certificates/${certificateId}/documents`,
+        body: { name, base64 },
+        authHeader: adminAuthHeader(),
+    });
+};
+
+export const listItcycleViafirmaDocuments = async ({ companyId, certificateId }) => {
+    requireAdminConfigured();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/viafirma/certificates/${certificateId}/documents`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
+export const revokeItcycleViafirmaCertificate = async ({ companyId, certificateId, reason }) => {
+    requireAdminConfigured();
+    return request({
+        method: "POST",
+        path: `/api/v1/admin/companies/${companyId}/viafirma/certificates/${certificateId}/revoke`,
+        body: { reason },
+        authHeader: adminAuthHeader(),
+    });
+};
+
 // Read-only readiness projection from itcycle-api-dian. This is deliberately
 // separate from FirmaPass status: a valid manual certificate is equally
 // capable of signing, and all document types need their own resolution.
