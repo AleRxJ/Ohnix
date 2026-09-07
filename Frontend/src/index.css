@@ -2329,6 +2329,12 @@ textarea.ant-input[disabled] {
   overflow: hidden;
   position: relative;
   padding-top: 3px !important;
+  /* antd never caps a Popconfirm's width - left alone, its description
+     paragraph just expands sideways instead of wrapping, so a normal-length
+     confirmation reads as one very wide, thin strip instead of a compact
+     card. Capping it here forces the same wrap-into-a-block shape as any
+     other confirm dialog in the app. */
+  max-width: min(360px, calc(100vw - 32px));
 }
 .ant-popconfirm .ant-popover-inner::before {
   content: "";
