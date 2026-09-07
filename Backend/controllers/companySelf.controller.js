@@ -33,6 +33,7 @@ import {
     createCompanyViafirmaRequest,
     getCompanyViafirmaCertificateStatus,
     getCompanyViafirmaKycLink,
+    getCompanyViafirmaTerms,
     listCompanyViafirmaCertificates,
     listCompanyViafirmaDocuments,
     revokeCompanyViafirmaCertificate,
@@ -353,10 +354,27 @@ export const getMyFirmaPassStatus = asyncHandler(async (req, res) => {
 // services/viafirmaProvisioning.service.js). Unlike the FirmaPass wizard,
 // there is no pre-existing validation to discover first - the CSR/keypair
 // are generated server-side, in itcycle-api-dian, by this one call.
+// CEA-3.0-07 art. 10.11.1.e - the profile's terms/conditions must be shown
+// and explicitly accepted before a request can be submitted; itcycle-api-dian
+// enforces this again server-side (createViafirmaRequest, Zod schema), this
+// is just a friendlier 400 instead of a 502-wrapped provider error.
+export const getMyViafirmaTerms = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const { profileKind } = req.query || {};
+    if (profileKind !== "FE-PJ" && profileKind !== "FE-PN") {
+        throw new ApiError(400, "profileKind debe ser FE-PJ o FE-PN");
+    }
+    const data = await getCompanyViafirmaTerms({ companyId: company.id, profileKind });
+    return res.status(200).json(new ApiResponse(200, data, "Términos y condiciones obtenidos"));
+});
+
 export const createMyViafirmaRequest = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     await ensureElectronicInvoicingPlan(req.user.prismaId);
-    const { profileKind, subject, identityType, countryCode, identity, emailCertificate, organizationType } = req.body || {};
+    const { profileKind, subject, identityType, countryCode, identity, emailCertificate, organizationType, termsAccepted } = req.body || {};
+    if (termsAccepted !== true) {
+        throw new ApiError(400, "Debes aceptar los términos y condiciones para solicitar el certificado");
+    }
     // Same convention as updateMyCompany's taxIdentificationDv: the user
     // only ever types the bare NIT, never the check digit - it's always
     // derived. Viafirma's own CSR field for NIT (SERIALNUMBER) accepts an
@@ -376,6 +394,7 @@ export const createMyViafirmaRequest = asyncHandler(async (req, res) => {
         identity,
         emailCertificate,
         organizationType,
+        termsAccepted,
     });
     return res.status(201).json(new ApiResponse(201, data, "Solicitud de certificado Viafirma creada"));
 });

@@ -106,6 +106,14 @@ export const companyService = {
         return response.data;
     },
 
+    // CEA-3.0-07 art. 10.11.1.e - the applicant must see and explicitly
+    // accept these before createMyViafirmaRequest will accept the request
+    // (server-side enforced, not just a UI nicety - see that endpoint).
+    async getMyViafirmaTerms(profileKind) {
+        const response = await api.get(`/company/me/itcycle/viafirma/terms?profileKind=${encodeURIComponent(profileKind)}`);
+        return response.data;
+    },
+
     // Viafirma Colombia digital-certificate issuance - unlike FirmaPass,
     // there's no pre-existing validation to look up first: the CSR/keypair
     // are generated server-side (itcycle-api-dian) by this one call, which

@@ -319,6 +319,15 @@ export const getItcycleFirmaPassStatus = async ({ companyId }) => {
 // there is no pre-existing validation for Ohnix to discover first.
 // ---------------------------------------------------------------------------
 
+export const getItcycleViafirmaTerms = async ({ companyId, profileKind }) => {
+    requireAdminConfigured();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/viafirma/terms?profileKind=${encodeURIComponent(profileKind)}`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
 export const createItcycleViafirmaRequest = async ({
     companyId,
     profileKind,
@@ -328,12 +337,13 @@ export const createItcycleViafirmaRequest = async ({
     identity,
     emailCertificate,
     organizationType,
+    termsAccepted,
 }) => {
     requireAdminConfigured();
     return request({
         method: "POST",
         path: `/api/v1/admin/companies/${companyId}/viafirma/requests`,
-        body: { profileKind, subject, identityType, countryCode, identity, emailCertificate, organizationType },
+        body: { profileKind, subject, identityType, countryCode, identity, emailCertificate, organizationType, termsAccepted },
         authHeader: adminAuthHeader(),
     });
 };

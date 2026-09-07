@@ -17,6 +17,7 @@ import {
     getMyViafirmaCertificates,
     getMyViafirmaCertificateStatus,
     getMyViafirmaKycLink,
+    getMyViafirmaTerms,
     listMyViafirmaDocuments,
     registerMyCompanyWithItcycle,
     resolveMyFirmaPassOrderNumber,
@@ -52,6 +53,7 @@ router.route("/me/itcycle/firmapass/validations/:validationUuid/archivos").post(
 router.route("/me/itcycle/firmapass/validations/:validationUuid/confirmar").post(confirmMyFirmaPassValidation);
 router.route("/me/itcycle/firmapass/status").get(getMyFirmaPassStatus);
 router.route("/me/itcycle/certificates").post(idempotent("company.itcycle.certificate"), uploadMyCertificate);
+router.route("/me/itcycle/viafirma/terms").get(getMyViafirmaTerms);
 router.route("/me/itcycle/viafirma/requests").post(idempotent("company.itcycle.viafirma.request"), createMyViafirmaRequest);
 router.route("/me/itcycle/viafirma/certificates").get(getMyViafirmaCertificates);
 router.route("/me/itcycle/viafirma/certificates/:certificateId/status").get(getMyViafirmaCertificateStatus);

@@ -4,6 +4,7 @@ import {
     createItcycleViafirmaRequest,
     getItcycleViafirmaCertificateStatus,
     getItcycleViafirmaKycLink,
+    getItcycleViafirmaTerms,
     listItcycleViafirmaCertificates,
     uploadItcycleViafirmaDocument,
     listItcycleViafirmaDocuments,
@@ -36,6 +37,15 @@ const rethrowAsApiError = (error) => {
     throw new ApiError(502, error.message || "Viafirma provisioning request failed", providerPayload ? [providerPayload] : undefined);
 };
 
+export const getCompanyViafirmaTerms = async ({ companyId, profileKind }) => {
+    const company = await requireItcycleProvisionedCompany({ companyId });
+    try {
+        return await getItcycleViafirmaTerms({ companyId: company.itcycleCompanyId, profileKind });
+    } catch (error) {
+        rethrowAsApiError(error);
+    }
+};
+
 export const createCompanyViafirmaRequest = async ({
     companyId,
     profileKind,
@@ -45,6 +55,7 @@ export const createCompanyViafirmaRequest = async ({
     identity,
     emailCertificate,
     organizationType,
+    termsAccepted,
 }) => {
     const company = await requireItcycleProvisionedCompany({ companyId });
     try {
@@ -57,6 +68,7 @@ export const createCompanyViafirmaRequest = async ({
             identity,
             emailCertificate,
             organizationType,
+            termsAccepted,
         });
     } catch (error) {
         rethrowAsApiError(error);

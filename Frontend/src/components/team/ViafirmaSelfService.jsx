@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Card, Form, Input, Select, Space, Tag, Typography, Upload } from "antd";
+import { Alert, Button, Card, Checkbox, Form, Input, Select, Space, Tag, Typography, Upload } from "antd";
 import {
     BankOutlined,
     CheckCircleOutlined,
@@ -177,6 +177,22 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profileKind, company?.contactEmail, company?.taxIdentification]);
 
+    // CEA-3.0-07 art. 10.11.1.e - fetched fresh per profileKind (never
+    // cached across the two profiles, and re-fetched every time this
+    // switches) since the doc itself warns terms can differ/change and
+    // must not be treated as a fixed value. termsAccepted is reset too -
+    // accepting FE-PJ's terms shouldn't silently carry over to FE-PN's.
+    const [termsUrl, setTermsUrl] = useState("");
+    useEffect(() => {
+        form.setFieldsValue({ termsAccepted: false });
+        let cancelled = false;
+        companyService.getMyViafirmaTerms(profileKind)
+            .then((response) => { if (!cancelled) setTermsUrl(response?.data?.terms || ""); })
+            .catch(() => { if (!cancelled) setTermsUrl(""); });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profileKind]);
+
     const activeCertificateRow = certificates.find((c) => c.id === activeCertificateId) || null;
 
     const refreshLiveStatus = async (certificateId) => {
@@ -255,6 +271,7 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
                 identity: values.identity,
                 emailCertificate: values.emailCertificate,
                 organizationType: profileKind === "FE-PJ" ? values.organizationType : undefined,
+                termsAccepted: values.termsAccepted === true,
             }, requestIdempotencyKey);
             setActiveCertificateId(response?.data?.certificateId || null);
             form.resetFields();
@@ -550,7 +567,7 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
                         </div>
                     </div>
 
-                    <Form form={form} layout="vertical" className="mt-4" onFinish={submitRequest} initialValues={{ identityType: "IDC", organizationType: "RM" }}>
+                    <Form form={form} layout="vertical" className="mt-4" onFinish={submitRequest} initialValues={{ identityType: "IDC", organizationType: "RM", termsAccepted: false }}>
                         <div className="mb-4 flex gap-1 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-1">
                             <button
                                 type="button"
@@ -738,6 +755,26 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
                                 <Input className="auth-ohnix-input max-w-sm" />
                             </Form.Item>
                         </div>
+
+                        <Form.Item
+                            name="termsAccepted"
+                            valuePropName="checked"
+                            rules={[{
+                                validator: (_, value) => (value ? Promise.resolve() : Promise.reject(new Error(t("fiscal_setup.viafirma_terms_required")))),
+                            }]}
+                        >
+                            <Checkbox>
+                                {t("fiscal_setup.viafirma_terms_prefix")}{" "}
+                                {termsUrl ? (
+                                    <a href={termsUrl} target="_blank" rel="noopener noreferrer" className="text-[#29D8D5] underline">
+                                        {t("fiscal_setup.viafirma_terms_link")}
+                                    </a>
+                                ) : (
+                                    t("fiscal_setup.viafirma_terms_link")
+                                )}{" "}
+                                {t("fiscal_setup.viafirma_terms_suffix")}
+                            </Checkbox>
+                        </Form.Item>
 
                         <Button type="primary" htmlType="submit" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" loading={busy === "createRequest"}>
                             {t("fiscal_setup.viafirma_submit_request")}
