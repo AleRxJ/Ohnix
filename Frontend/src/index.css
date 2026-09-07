@@ -2357,6 +2357,20 @@ textarea.ant-input[disabled] {
   filter: brightness(1.08) !important;
   box-shadow: 0 0 20px rgba(251, 113, 133, 0.28) !important;
 }
+/* No call site across the app passes Popconfirm its own `icon` prop, so
+   every single one was rendering antd's hardcoded default
+   (ExclamationCircleFilled in stock warning-orange #faad14) - the one piece
+   the rules above never touched, and the reason the popup still read as
+   generic antd rather than Ohnix even with the card/buttons themed. Recolor
+   it to the same teal accent as the primary button and DianHabilitacionPanel's
+   icon-header treatment; anticon SVGs paint via currentColor, so setting
+   color here is enough, no separate fill/stroke override needed. A
+   destructive confirmation still reads as "danger" from its dangerous OK
+   button (red, already handled above) - the icon itself stays brand-teal
+   rather than trying to guess intent per call site. */
+.ant-popconfirm .ant-popconfirm-message-icon .anticon {
+  color: #44f3f0 !important;
+}
 
 .dark-alert-purple.ant-alert {
   border: 1px solid rgba(124, 106, 247, 0.25) !important;

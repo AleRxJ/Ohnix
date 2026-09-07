@@ -3979,6 +3979,7 @@
     "status_active_hint": "Ya puedes emitir documentos electrónicos desde Ohnix.",
     "status_pending_hint": "Completa el certificado digital para activar la emisión.",
     "certificate_provider_conflict_title": "Tienes dos certificados activos al mismo tiempo",
+    "certificate_provider_active_title": "Certificado de firma",
     "certificate_provider_conflict_hint": "Elige con cuál quieres facturar - el otro se oculta hasta que lo vuelvas a elegir.",
     "certificate_provider_use_viafirma": "Usar Viafirma",
     "certificate_provider_use_firmapass": "Usar FirmaPass",

@@ -764,33 +764,57 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                     )}
                     <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} onResolutionsChanged={refresh} />
                     {showCertificateProviderSelector && (
-                        <Alert
-                            className="mt-4 dark-alert dark-alert-amber"
-                            type="warning"
-                            showIcon
-                            message={t("fiscal_setup.certificate_provider_conflict_title")}
-                            description={
-                                <div className="mt-2 flex flex-wrap items-center gap-2">
-                                    <span className="text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.certificate_provider_conflict_hint")}</span>
-                                    <Button
-                                        size="small"
-                                        type={effectiveProvider === "viafirma" ? "primary" : "default"}
-                                        loading={providerSwitchBusy}
-                                        onClick={() => switchCertificateProvider("viafirma")}
-                                    >
-                                        {t("fiscal_setup.certificate_provider_use_viafirma")}
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        type={effectiveProvider === "firmapass" ? "primary" : "default"}
-                                        loading={providerSwitchBusy}
-                                        onClick={() => switchCertificateProvider("firmapass")}
-                                    >
-                                        {t("fiscal_setup.certificate_provider_use_firmapass")}
-                                    </Button>
+                        // Two visual weights, same control: unresolved (override still
+                        // null, silently defaulting to Viafirma) genuinely needs
+                        // attention, so it gets the amber-tinted card + hint text.
+                        // Once the owner has explicitly picked one, there's nothing
+                        // left to decide - it shrinks to a quiet, neutral row so it
+                        // doesn't keep reading as a warning every time this page loads.
+                        <div
+                            className={`mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 transition-colors ${
+                                override
+                                    ? "border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)]"
+                                    : "border-[var(--ohnix-status-amber)]/30 bg-[var(--ohnix-status-amber)]/5"
+                            }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <SafetyCertificateOutlined className={override ? "text-[var(--ohnix-text-dim)]" : "text-[var(--ohnix-status-amber)]"} />
+                                <div>
+                                    <Text className="block text-sm font-semibold text-[var(--ohnix-text-primary)]">
+                                        {override ? t("fiscal_setup.certificate_provider_active_title") : t("fiscal_setup.certificate_provider_conflict_title")}
+                                    </Text>
+                                    {!override && (
+                                        <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.certificate_provider_conflict_hint")}</Text>
+                                    )}
                                 </div>
-                            }
-                        />
+                            </div>
+                            <div className="flex gap-1 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] p-1">
+                                <button
+                                    type="button"
+                                    disabled={providerSwitchBusy}
+                                    onClick={() => switchCertificateProvider("viafirma")}
+                                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                        effectiveProvider === "viafirma"
+                                            ? "bg-[#29D8D5]/15 text-[#0f9e9c] shadow-[0_0_14px_rgba(41,216,213,0.15)]"
+                                            : "text-[var(--ohnix-text-muted)] hover:text-[var(--ohnix-text-primary)]"
+                                    }`}
+                                >
+                                    {t("fiscal_setup.certificate_provider_use_viafirma")}
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={providerSwitchBusy}
+                                    onClick={() => switchCertificateProvider("firmapass")}
+                                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                        effectiveProvider === "firmapass"
+                                            ? "bg-[#29D8D5]/15 text-[#0f9e9c] shadow-[0_0_14px_rgba(41,216,213,0.15)]"
+                                            : "text-[var(--ohnix-text-muted)] hover:text-[var(--ohnix-text-primary)]"
+                                    }`}
+                                >
+                                    {t("fiscal_setup.certificate_provider_use_firmapass")}
+                                </button>
+                            </div>
+                        </div>
                     )}
                     {showViafirmaCard && (
                         <ViafirmaSelfService company={company} electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)} />

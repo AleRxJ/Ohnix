@@ -3985,6 +3985,7 @@
     "status_active_hint": "You can now issue electronic documents from Ohnix.",
     "status_pending_hint": "Complete the digital certificate to activate issuance.",
     "certificate_provider_conflict_title": "You have two active certificates at once",
+    "certificate_provider_active_title": "Signing certificate",
     "certificate_provider_conflict_hint": "Choose which one to invoice with - the other stays hidden until you switch back.",
     "certificate_provider_use_viafirma": "Use Viafirma",
     "certificate_provider_use_firmapass": "Use FirmaPass",
