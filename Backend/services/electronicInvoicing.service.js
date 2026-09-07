@@ -192,6 +192,7 @@ const serializeCreditNote = (note) => !note ? null : ({
     id: note.id, invoiceId: note.invoiceId, correctionConceptCode: note.correctionConceptCode,
     referenceCode: note.referenceCode, status: note.status, externalId: note.externalId,
     creditNoteNumber: note.creditNoteNumber, cufe: note.cufe, pdfUrl: note.pdfUrl, xmlUrl: note.xmlUrl,
+    certificateId: note.certificateId, certificateProvider: note.certificateProvider,
     observation: note.observation, errorMessage: note.errorMessage, issuedAt: note.issuedAt,
     localEffectStatus: note.localEffectStatus, localEffectError: note.localEffectError,
     localEffectAttempts: note.localEffectAttempts, localEffectAppliedAt: note.localEffectAppliedAt,
@@ -783,6 +784,11 @@ const mapItcycleResponse = (raw) => ({
     pdfUrl: null,
     xmlUrl: null,
     status: normalizeItcycleStatus(raw?.status),
+    // Present on itcycle-api-dian's response via its own `include: {
+    // certificate: true }` - a company can have certificates from more than
+    // one provider active at once (see certificateProviderOverride).
+    certificateId: text(raw?.certificateId) || null,
+    certificateProvider: text(raw?.certificate?.provider) || null,
     rawResponse: raw,
 });
 
@@ -834,6 +840,8 @@ const mapItcycleCreditNoteResponse = (raw) => ({
     pdfUrl: null,
     xmlUrl: null,
     status: normalizeItcycleStatus(raw?.status),
+    certificateId: text(raw?.certificateId) || null,
+    certificateProvider: text(raw?.certificate?.provider) || null,
     rawResponse: raw,
 });
 
@@ -998,6 +1006,7 @@ const serialize = (invoice) => !invoice ? null : ({
     provider: invoice.provider, status: invoice.status, referenceCode: invoice.referenceCode,
     externalId: invoice.externalId, invoiceNumber: invoice.invoiceNumber, cufe: invoice.cufe,
     qrUrl: invoice.qrUrl, pdfUrl: invoice.pdfUrl, xmlUrl: invoice.xmlUrl,
+    certificateId: invoice.certificateId, certificateProvider: invoice.certificateProvider,
     errorMessage: invoice.errorMessage, issuedAt: invoice.issuedAt,
     createdAt: invoice.createdAt, updatedAt: invoice.updatedAt,
     events: Array.isArray(invoice.events) ? invoice.events.map(serializeEvent) : undefined,

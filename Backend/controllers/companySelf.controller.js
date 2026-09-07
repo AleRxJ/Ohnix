@@ -39,6 +39,10 @@ import {
     revokeCompanyViafirmaCertificate,
     uploadCompanyViafirmaDocument,
 } from "../services/viafirmaProvisioning.service.js";
+import {
+    getCompanyCertificateProviderStatus,
+    setCompanyCertificateProviderOverride,
+} from "../services/certificateProviderPreference.service.js";
 
 // Same ISO-2 validator company.controller.js's admin endpoints use - kept as
 // its own copy rather than a shared import since that file is entirely
@@ -199,6 +203,29 @@ export const getMyItcycleStatus = asyncHandler(async (req, res) => {
             readinessError,
         }, "Estado de facturación electrónica obtenido correctamente")
     );
+});
+
+// Which certificate provider (firmapass|viafirma) signs this company's real
+// documents - only meaningful (and only shown by the Frontend as a
+// selector) when activeProviders has more than one entry, i.e. this company
+// has an ACTIVE certificate from both at once.
+export const getMyCertificateProviderStatus = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    if (!company.itcycleCompanyId) {
+        return res.status(200).json(new ApiResponse(200, { activeProviders: [], override: null }, "Sin proveedor de certificado configurado todavía"));
+    }
+    const data = await getCompanyCertificateProviderStatus({ companyId: company.id });
+    return res.status(200).json(new ApiResponse(200, data, "Preferencia de proveedor de certificado obtenida"));
+});
+
+export const setMyCertificateProviderOverride = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const { provider } = req.body || {};
+    if (provider !== null && provider !== "firmapass" && provider !== "viafirma") {
+        throw new ApiError(400, "provider debe ser 'firmapass', 'viafirma' o null");
+    }
+    const data = await setCompanyCertificateProviderOverride({ companyId: company.id, provider });
+    return res.status(200).json(new ApiResponse(200, data, "Preferencia de proveedor de certificado actualizada"));
 });
 
 export const activateMyItcycleElectronicInvoicing = asyncHandler(async (req, res) => {

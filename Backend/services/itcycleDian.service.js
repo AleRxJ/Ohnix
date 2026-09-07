@@ -423,6 +423,28 @@ export const getItcycleDianReadiness = async ({ companyId }) => {
     });
 };
 
+// Which certificate provider (firmapass|viafirma) signs this company's real
+// documents when it has an ACTIVE certificate from more than one at once -
+// see itcycle-api-dian's Company.certificateProviderOverride/loadDianConfig.
+export const getItcycleCertificateProviderStatus = async ({ companyId }) => {
+    requireAdminConfigured();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/certificate-provider`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
+export const setItcycleCertificateProviderOverride = async ({ companyId, provider }) => {
+    requireAdminConfigured();
+    return request({
+        method: "PUT",
+        path: `/api/v1/admin/companies/${companyId}/certificate-provider`,
+        body: { provider },
+        authHeader: adminAuthHeader(),
+    });
+};
+
 // Resolves the real DIAN verdict for a document an async send (SendTestSetAsync)
 // left in itcycle-api-dian's intermediate "SENT" status - see that repo's
 // documentSend.service.ts#computeSentStatusFields and

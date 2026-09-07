@@ -205,7 +205,14 @@ async function processInvoiceDocument({ doc, apiKey, testSetId, itcycleCompanyId
 
     await prisma.dianTestMatrixDocument.update({
         where: { id: doc.id },
-        data: { externalId: result.id, status: "sent", cufe: result.cufe || null, sentAt: new Date() },
+        data: {
+            externalId: result.id,
+            status: "sent",
+            cufe: result.cufe || null,
+            sentAt: new Date(),
+            certificateId: result.certificateId || null,
+            certificateProvider: result.certificate?.provider || null,
+        },
     });
 
     if (result.status === "ACCEPTED" || result.status === "REJECTED") {
@@ -287,7 +294,14 @@ async function processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, i
 
     await prisma.dianTestMatrixDocument.update({
         where: { id: doc.id },
-        data: { externalId: result.id, status: "sent", cufe: result.cufe || null, sentAt: new Date() },
+        data: {
+            externalId: result.id,
+            status: "sent",
+            cufe: result.cufe || null,
+            sentAt: new Date(),
+            certificateId: result.certificateId || null,
+            certificateProvider: result.certificate?.provider || null,
+        },
     });
 
     if (result.status === "ACCEPTED" || result.status === "REJECTED") {

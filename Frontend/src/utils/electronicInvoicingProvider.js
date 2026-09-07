@@ -12,3 +12,13 @@ export const ELECTRONIC_INVOICING_PROVIDER_LABELS = {
 
 export const getElectronicInvoicingProviderLabel = (provider) =>
     ELECTRONIC_INVOICING_PROVIDER_LABELS[provider] || ELECTRONIC_INVOICING_PROVIDER_LABELS.itcycle;
+
+// Which digital-certificate provider (not DIAN engine provider, see above)
+// actually signed a document - "firmapass"/"viafirma" are proper brand
+// names, not translated copy, same as the map above.
+const CERTIFICATE_PROVIDER_LABELS = {
+    firmapass: "FirmaPass",
+    viafirma: "Viafirma",
+};
+
+export const getCertificateProviderLabel = (provider) => CERTIFICATE_PROVIDER_LABELS[provider] || provider;

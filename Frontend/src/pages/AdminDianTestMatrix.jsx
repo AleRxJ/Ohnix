@@ -6,6 +6,7 @@ import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
 import { adminService } from "../services/adminService";
 import PageHeader from "../components/common/PageHeader";
+import { getCertificateProviderLabel } from "../utils/electronicInvoicingProvider";
 
 const RUN_STATUS_COLOR = { pending: "default", running: "blue", completed: "green", failed: "red", cancelled: "default" };
 const DOC_STATUS_COLOR = { pending: "default", sending: "blue", sent: "gold", accepted: "green", rejected: "red", error: "red" };
@@ -122,6 +123,10 @@ const AdminDianTestMatrix = () => {
 
     const activeCompanyRun = runs.find((r) => r.companyId === companyId && ["pending", "running"].includes(r.status));
 
+    // Same reasoning as DianHabilitacionPanel's runCertificateProvider - all
+    // documents in a run are normally signed with the same certificate.
+    const runCertificateProvider = (run) => (run?.documents || []).find((d) => d.certificateProvider)?.certificateProvider || null;
+
     const startRun = async () => {
         if (!companyId || !testSetId.trim()) return;
         try {
@@ -168,6 +173,12 @@ const AdminDianTestMatrix = () => {
             render: (value) => <Tag color={DOC_STATUS_COLOR[value] || "default"}>{t(`admin.dian_test_matrix_doc_status_${value}`)}</Tag>,
         },
         { title: t("admin.dian_test_matrix_col_cufe"), dataIndex: "cufe", key: "cufe", render: (v) => (v ? <span className="font-mono text-xs">{`${v.slice(0, 10)}…`}</span> : "—") },
+        {
+            title: t("admin.dian_test_matrix_col_certificate"),
+            dataIndex: "certificateProvider",
+            key: "certificateProvider",
+            render: (v) => (v ? <Tag color="cyan">{getCertificateProviderLabel(v)}</Tag> : "—"),
+        },
         { title: t("admin.dian_test_matrix_col_description"), key: "description", render: (_, r) => r.errorMessage || r.statusDescription || "—" },
         { title: t("admin.dian_test_matrix_col_attempts"), dataIndex: "attempts", key: "attempts", width: 70 },
         { title: t("admin.dian_test_matrix_col_sent_at"), dataIndex: "sentAt", key: "sentAt", render: (v) => (v ? new Date(v).toLocaleTimeString() : "—") },
@@ -263,6 +274,11 @@ const AdminDianTestMatrix = () => {
                             {activeRun.status === "completed" && (
                                 <Tag color={activeRun.passResult ? "green" : "red"}>
                                     {activeRun.passResult ? t("admin.dian_test_matrix_pass_label") : t("admin.dian_test_matrix_fail_label")}
+                                </Tag>
+                            )}
+                            {runCertificateProvider(activeRun) && (
+                                <Tag color="cyan">
+                                    {t("fiscal_setup.habilitacion_run_certificate_label")}: {getCertificateProviderLabel(runCertificateProvider(activeRun))}
                                 </Tag>
                             )}
                         </div>

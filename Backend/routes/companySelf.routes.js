@@ -10,6 +10,7 @@ import {
     confirmMyFirmaPassValidation,
     createMyViafirmaRequest,
     deleteMyCompanyLogo,
+    getMyCertificateProviderStatus,
     getMyCompany,
     getMyFirmaPassStatus,
     getMyFirmaPassValidationDetail,
@@ -22,6 +23,7 @@ import {
     registerMyCompanyWithItcycle,
     resolveMyFirmaPassOrderNumber,
     revokeMyViafirmaCertificate,
+    setMyCertificateProviderOverride,
     updateMyCompany,
     updateMyCompanyLogo,
     uploadMyCertificate,
@@ -42,6 +44,7 @@ router.use(verifyJWT, blockTeamMembers);
 router.route("/me").get(getMyCompany).patch(updateMyCompany);
 router.route("/me/logo").patch(upload.single("logo"), updateMyCompanyLogo).delete(deleteMyCompanyLogo);
 router.route("/me/itcycle/status").get(getMyItcycleStatus);
+router.route("/me/itcycle/certificate-provider").get(getMyCertificateProviderStatus).put(setMyCertificateProviderOverride);
 router.route("/me/itcycle/register").post(idempotent("company.itcycle.register"), registerMyCompanyWithItcycle);
 router.route("/me/itcycle/activate").post(idempotent("company.itcycle.activate"), activateMyItcycleElectronicInvoicing);
 router.route("/me/itcycle/numbering-resolutions").post(idempotent("company.itcycle.numbering-resolution"), addMyItcycleNumberingResolution);

@@ -71,7 +71,6 @@ const SUBMITTED_FIELD_LABEL_KEYS = {
     locality: "viafirma_field_city",
     address: "viafirma_field_address",
     email: "viafirma_field_email",
-    emailCertificate: "viafirma_field_email",
     givenName: "viafirma_field_given_name",
     surname: "viafirma_field_surname",
     organizationType: "viafirma_field_organization_type",
@@ -387,7 +386,11 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
                                     // `country` is never asked from the user (always "CO" - see
                                     // submitRequest's own COUNTRY constant), so it's omitted here
                                     // for the same reason it's never shown as an editable field.
-                                    .filter(([key, value]) => key !== "country" && value !== undefined && value !== null && value !== "")
+                                    // `emailCertificate` is submitRequest's own duplicate of
+                                    // `email` (the form only ever collects one email address and
+                                    // reuses it for both) - showing both would just repeat the
+                                    // same row twice under the same label.
+                                    .filter(([key, value]) => key !== "country" && key !== "emailCertificate" && value !== undefined && value !== null && value !== "")
                                     .map(([key, value]) => (
                                         <div key={key} className="flex justify-between gap-3 text-xs">
                                             <span className="text-[var(--ohnix-text-muted)]">{t(`fiscal_setup.${SUBMITTED_FIELD_LABEL_KEYS[key] || key}`)}</span>

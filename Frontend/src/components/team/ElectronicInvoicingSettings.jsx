@@ -511,6 +511,11 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
     const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    // Which certificate provider (firmapass|viafirma) signs this company's
+    // real documents - a selector only makes sense when activeProviders has
+    // more than one entry (an ACTIVE certificate from both at once).
+    const [certificateProviderStatus, setCertificateProviderStatus] = useState({ activeProviders: [], override: null });
+    const [providerSwitchBusy, setProviderSwitchBusy] = useState(false);
     // Generated once per mount, not per click - the idempotency middleware
     // replays the cached response for a repeated key, which only protects a
     // real retry (network timeout, a double-click, a lost response after the
@@ -519,7 +524,18 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
     // brand-new request and could double-post the numbering resolution.
     const [registerIdempotencyKey] = useState(() => crypto.randomUUID());
 
+    const refreshCertificateProviderStatus = async () => {
+        try {
+            const response = await companyService.getMyCertificateProviderStatus();
+            setCertificateProviderStatus(response?.data || { activeProviders: [], override: null });
+        } catch {
+            // Non-critical - the certificate cards below fall back to their
+            // own default visibility rule when this hasn't loaded yet.
+        }
+    };
+
     const refresh = async () => {
+        refreshCertificateProviderStatus();
         try {
             const response = await companyService.getMyItcycleStatus();
             setStatus(response?.data || { provisioned: false });
@@ -664,6 +680,35 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
     const hasResolution = (documentType) => (status?.readiness?.resolutions || []).some((r) => r.documentType === documentType && r.isCurrent);
     const isSandbox = status?.readiness?.environment === "SANDBOX";
 
+    // Which certificate card(s) to show:
+    // - Both active at once (real ambiguity, e.g. mid-migration or a manual
+    //   contingency fallback) -> show a selector, render only the chosen one.
+    // - Only FirmaPass active (an existing pre-Viafirma customer) -> show
+    //   both: FirmaPass because it's what's actually protecting their
+    //   invoicing today, Viafirma as the invitation to migrate.
+    // - Anything else (nothing active yet, or only Viafirma active) ->
+    //   Viafirma alone, matching the new default going forward.
+    const { activeProviders, override } = certificateProviderStatus;
+    const bothActive = activeProviders.includes("viafirma") && activeProviders.includes("firmapass");
+    const onlyFirmaPassActive = activeProviders.includes("firmapass") && !activeProviders.includes("viafirma");
+    const effectiveProvider = bothActive ? (override || "viafirma") : null;
+    const showCertificateProviderSelector = bothActive;
+    const showViafirmaCard = bothActive ? effectiveProvider === "viafirma" : true;
+    const showFirmaPassCard = bothActive ? effectiveProvider === "firmapass" : onlyFirmaPassActive;
+
+    const switchCertificateProvider = async (provider) => {
+        try {
+            setProviderSwitchBusy(true);
+            const response = await companyService.setMyCertificateProviderOverride(provider);
+            setCertificateProviderStatus(response?.data || { activeProviders, override: provider });
+            toast.success(t("fiscal_setup.certificate_provider_switched"));
+        } catch (error) {
+            toast.error(error?.response?.data?.message || t("fiscal_setup.certificate_provider_switch_error"));
+        } finally {
+            setProviderSwitchBusy(false);
+        }
+    };
+
     const STEP_META = [
         { icon: <BankOutlined />, title: t("fiscal_setup.step_company"), caption: t("fiscal_setup.step_company_caption") },
         { icon: <SafetyCertificateOutlined />, title: t("fiscal_setup.step_software"), caption: t("fiscal_setup.step_software_caption") },
@@ -718,12 +763,45 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                         <Alert className="mt-3 dark-alert dark-alert-amber" type="warning" showIcon message={t("fiscal_setup.readiness_unavailable")} description={t("fiscal_setup.readiness_unavailable_hint")} />
                     )}
                     <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} onResolutionsChanged={refresh} />
-                    <ViafirmaSelfService company={company} electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)} />
-                    <FirmaPassSelfService
-                        electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)}
-                        electronicInvoicingAtRisk={Boolean(status.electronicInvoicingAtRisk)}
-                        onActivated={onCompanyChanged}
-                    />
+                    {showCertificateProviderSelector && (
+                        <Alert
+                            className="mt-4 dark-alert dark-alert-amber"
+                            type="warning"
+                            showIcon
+                            message={t("fiscal_setup.certificate_provider_conflict_title")}
+                            description={
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <span className="text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.certificate_provider_conflict_hint")}</span>
+                                    <Button
+                                        size="small"
+                                        type={effectiveProvider === "viafirma" ? "primary" : "default"}
+                                        loading={providerSwitchBusy}
+                                        onClick={() => switchCertificateProvider("viafirma")}
+                                    >
+                                        {t("fiscal_setup.certificate_provider_use_viafirma")}
+                                    </Button>
+                                    <Button
+                                        size="small"
+                                        type={effectiveProvider === "firmapass" ? "primary" : "default"}
+                                        loading={providerSwitchBusy}
+                                        onClick={() => switchCertificateProvider("firmapass")}
+                                    >
+                                        {t("fiscal_setup.certificate_provider_use_firmapass")}
+                                    </Button>
+                                </div>
+                            }
+                        />
+                    )}
+                    {showViafirmaCard && (
+                        <ViafirmaSelfService company={company} electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)} />
+                    )}
+                    {showFirmaPassCard && (
+                        <FirmaPassSelfService
+                            electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)}
+                            electronicInvoicingAtRisk={Boolean(status.electronicInvoicingAtRisk)}
+                            onActivated={onCompanyChanged}
+                        />
+                    )}
                     {!hasResolution("05") && (
                         <NumberingResolutionForm
                             documentType="05"

@@ -72,6 +72,7 @@ const serialize = (doc) => !doc ? null : ({
     provider: doc.provider, status: doc.status, referenceCode: doc.referenceCode,
     externalId: doc.externalId, documentNumber: doc.documentNumber, cufe: doc.cufe,
     pdfUrl: doc.pdfUrl, xmlUrl: doc.xmlUrl,
+    certificateId: doc.certificateId, certificateProvider: doc.certificateProvider,
     errorMessage: doc.errorMessage, issuedAt: doc.issuedAt,
     createdAt: doc.createdAt, updatedAt: doc.updatedAt,
     events: Array.isArray(doc.events) ? doc.events.map(serializeEvent) : undefined,
@@ -139,6 +140,8 @@ const mapSupportDocumentResponse = (raw) => ({
     pdfUrl: null,
     xmlUrl: null,
     status: normalizeItcycleStatus(raw?.status),
+    certificateId: text(raw?.certificateId) || null,
+    certificateProvider: text(raw?.certificate?.provider) || null,
     rawResponse: raw,
 });
 

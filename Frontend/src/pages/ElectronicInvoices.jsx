@@ -41,7 +41,7 @@ import useI18n from "../hooks/useI18n";
 import useIsMobile from "../hooks/useIsMobile";
 import useCountUp from "../hooks/useCountUp";
 import { resolveApiErrorMessage } from "../utils/apiError";
-import { getElectronicInvoicingProviderLabel } from "../utils/electronicInvoicingProvider";
+import { getElectronicInvoicingProviderLabel, getCertificateProviderLabel } from "../utils/electronicInvoicingProvider";
 
 // ensureElectronicInvoicingPlan (Backend/services/electronicInvoicing.service.js)
 // throws an English dev-facing message by design - see the same constant in
@@ -612,6 +612,14 @@ const InvoiceDetailDrawer = ({
                     mono={false}
                 />
 
+                {invoice.certificateProvider && (
+                    <InfoCard
+                        label={t("electronic_invoices.drawer.signed_with")}
+                        value={getCertificateProviderLabel(invoice.certificateProvider)}
+                        mono={false}
+                    />
+                )}
+
                 <div className="grid grid-cols-2 gap-3">
                     <SupportButton
                         kind="pdf"
@@ -679,6 +687,11 @@ const InvoiceDetailDrawer = ({
                                         {note.status === "accepted" && note.localEffectStatus && note.localEffectStatus !== "not_applicable" && (
                                             <div className={`mt-1 text-xs ${note.localEffectStatus === "applied" ? "text-emerald-400" : "text-amber-300"}`}>
                                                 {t(`electronic_invoices.credit_note.local_effect_${note.localEffectStatus}`)}
+                                            </div>
+                                        )}
+                                        {note.certificateProvider && (
+                                            <div className="mt-1 text-xs text-[var(--ohnix-text-dim)]">
+                                                {t("electronic_invoices.drawer.signed_with")}: {getCertificateProviderLabel(note.certificateProvider)}
                                             </div>
                                         )}
                                     </div>

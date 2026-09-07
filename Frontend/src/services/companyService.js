@@ -33,6 +33,19 @@ export const companyService = {
         return response.data;
     },
 
+    // Which certificate provider (firmapass|viafirma) signs this company's
+    // real documents - only meaningful once activeProviders has more than
+    // one entry (an ACTIVE certificate from both at once).
+    async getMyCertificateProviderStatus() {
+        const response = await api.get("/company/me/itcycle/certificate-provider");
+        return response.data;
+    },
+
+    async setMyCertificateProviderOverride(provider) {
+        const response = await api.put("/company/me/itcycle/certificate-provider", { provider });
+        return response.data;
+    },
+
     async registerMyCompanyWithItcycle(payload, idempotencyKey) {
         const response = await api.post("/company/me/itcycle/register", payload, {
             headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
