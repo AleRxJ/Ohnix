@@ -2302,6 +2302,62 @@ textarea.ant-input[disabled] {
   color: #29d8d5 !important;
 }
 
+/* antd's Popconfirm (used across ~26 files for "are you sure?" prompts, e.g.
+   deleting a row or starting a DIAN test-matrix run) renders into its own
+   portal on <body>, same as Modal/Drawer above, but with none of its own
+   classes shared with them - so it was falling back entirely to antd's
+   stock light theme (white card, default blue OK button) against Ohnix's
+   dark dashboard, unstyled and out of place. Scoped to .ant-popconfirm
+   (not the bare .ant-popover it's built on) so a plain Popover/Tooltip
+   elsewhere is untouched. The icon color is deliberately left alone - some
+   call sites already pass their own (e.g. a red ExclamationCircleOutlined
+   for a delete confirmation), and overriding it here with !important would
+   also clobber those inline colors, not just the antd default. */
+.ant-popover.ant-popconfirm {
+  --antd-arrow-background-color: var(--ohnix-surface-card) !important;
+}
+.ant-popconfirm .ant-popover-inner {
+  background: var(--ohnix-surface-card) !important;
+  border: 1px solid var(--ohnix-line-4) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--ohnix-shadow-elevated) !important;
+}
+.ant-popconfirm .ant-popconfirm-title {
+  color: var(--ohnix-text-primary) !important;
+  font-weight: 600;
+}
+.ant-popconfirm .ant-popconfirm-description {
+  color: var(--ohnix-text-muted) !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-default {
+  background: var(--ohnix-line-1) !important;
+  border-color: var(--ohnix-line-6) !important;
+  color: var(--ohnix-text-table-cell) !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-default:hover {
+  border-color: rgba(41, 216, 213, 0.5) !important;
+  color: #44f3f0 !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary {
+  background: linear-gradient(135deg, #29d8d5, #44f3f0) !important;
+  border-color: transparent !important;
+  color: #031416 !important;
+  font-weight: 700;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 0 20px rgba(41, 216, 213, 0.28) !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary.ant-btn-dangerous {
+  background: var(--ohnix-status-rose) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary.ant-btn-dangerous:hover {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 0 20px rgba(251, 113, 133, 0.28) !important;
+}
+
 .dark-alert-purple.ant-alert {
   border: 1px solid rgba(124, 106, 247, 0.25) !important;
   background: rgba(124, 106, 247, 0.1) !important;
