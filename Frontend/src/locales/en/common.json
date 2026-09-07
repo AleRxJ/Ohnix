@@ -4016,7 +4016,7 @@
     "vat_not_responsible": "Not VAT responsible",
     "software_step_assisted_hint": "Every company invoices under its own DIAN habilitación (the regulation requires it). Register your company as \"own software\" in DIAN's portal and paste the ID and PIN they give you here - our team takes care of running the habilitación test set for you.",
     "environment": "Environment",
-    "environment_hint": "Use \"Testing\" while you validate your setup. Switch to \"Production\" only once DIAN has actually enabled your company to invoice.",
+    "environment_hint": "Every company starts in \"Testing\" - DIAN requires it. Once you complete and pass your habilitación test set, our team activates \"Production\" for you.",
     "environment_sandbox": "Testing",
     "environment_production": "Production",
     "software_id": "DIAN software ID",

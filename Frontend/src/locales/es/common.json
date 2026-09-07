@@ -4010,7 +4010,7 @@
     "vat_not_responsible": "No responsable de IVA",
     "software_step_assisted_hint": "Cada empresa factura con su propia habilitación ante la DIAN (así lo exige la normativa). Registra tu empresa como \"software propio\" en el portal de la DIAN y pega aquí el ID y PIN que te entregaron - nuestro equipo se encarga de correr el set de pruebas de habilitación por ti.",
     "environment": "Ambiente",
-    "environment_hint": "Usa \"Pruebas\" mientras validas tu configuración. Cambia a \"Producción\" solo cuando la DIAN ya haya habilitado tu empresa para facturar de verdad.",
+    "environment_hint": "Toda empresa empieza en \"Pruebas\" - así lo exige la DIAN. Una vez completes y apruebes tu set de pruebas de habilitación, nuestro equipo activa \"Producción\" por ti.",
     "environment_sandbox": "Pruebas",
     "environment_production": "Producción",
     "software_id": "ID de software DIAN",

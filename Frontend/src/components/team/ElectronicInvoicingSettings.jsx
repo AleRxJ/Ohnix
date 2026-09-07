@@ -938,7 +938,16 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                                 message={t("fiscal_setup.software_step_assisted_hint")}
                             />
                             <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-                                {field("environment", t("fiscal_setup.environment"), { required: true, hint: t("fiscal_setup.environment_hint"), select: [{ value: "SANDBOX", label: t("fiscal_setup.environment_sandbox") }, { value: "PRODUCTION", label: t("fiscal_setup.environment_production") }] })}
+                                {/* Fixed to SANDBOX, not a real choice - the backend
+                                (registerCompanyWithItcycle) force-overrides whatever a
+                                self-service caller sends here anyway, since the DIAN
+                                requires an approved set de pruebas de habilitación before
+                                any company can go to PRODUCTION. That happens later, via
+                                DianHabilitacionPanel + an Ohnix admin's own review, never
+                                as a choice on this first registration step. */}
+                                <Form.Item name="environment" label={t("fiscal_setup.environment")} tooltip={t("fiscal_setup.environment_hint")}>
+                                    <Select size="large" disabled options={[{ value: "SANDBOX", label: t("fiscal_setup.environment_sandbox") }]} />
+                                </Form.Item>
                                 <Form.Item
                                     name="softwareId"
                                     label={t("fiscal_setup.software_id")}

@@ -855,7 +855,7 @@ const mapItcycleCreditNoteResponse = (raw) => ({
  * are forwarded once and never persisted in Ohnix - see secretEncryption.js
  * and itcycle-api-dian's own EncryptedFileCertificateSecretStore.
  */
-export const registerCompanyWithItcycle = async ({ companyId, dianConfiguration, supplierProfile, numberingResolutions, certificate }) => {
+export const registerCompanyWithItcycle = async ({ companyId, requesterRole, dianConfiguration, supplierProfile, numberingResolutions, certificate }) => {
     if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
     // Each Ohnix client is its own "facturador electrónico" before the DIAN -
     // every company registers its OWN softwareId/PIN/technicalKey (obtained
@@ -867,6 +867,17 @@ export const registerCompanyWithItcycle = async ({ companyId, dianConfiguration,
     if (!text(dianConfiguration?.softwareId) || !text(dianConfiguration?.softwarePin)) {
         throw new ApiError(422, "La configuración DIAN de tu empresa (softwareId/softwarePin) es obligatoria.");
     }
+    // A self-service caller (requesterRole !== "admin") can never register
+    // straight into PRODUCTION - the DIAN requires an approved set de
+    // pruebas de habilitación first (see DianHabilitacionPanel.jsx), and
+    // that approval is only ever recorded by an Ohnix admin's own deliberate
+    // review (requestMyDianProductionActivation notifies admins; flipping
+    // the environment is their manual, admin-only follow-up). Trusting the
+    // client's own `environment` field here would let a company skip
+    // habilitación entirely by just submitting "PRODUCTION" on first setup.
+    const effectiveDianConfiguration = requesterRole === "admin"
+        ? dianConfiguration
+        : { ...dianConfiguration, environment: "SANDBOX" };
 
     const company = await prisma.company.findUnique({ where: { id: companyId } });
     if (!company) throw new ApiError(404, "Company not found");
@@ -887,7 +898,7 @@ export const registerCompanyWithItcycle = async ({ companyId, dianConfiguration,
             dv,
             personType: "1",
         });
-        await setItcycleDianConfiguration({ companyId: itcycleCompany.id, ...dianConfiguration, supplierProfile });
+        await setItcycleDianConfiguration({ companyId: itcycleCompany.id, ...effectiveDianConfiguration, supplierProfile });
         for (const resolution of numberingResolutions || []) {
             await createItcycleNumberingResolution({ companyId: itcycleCompany.id, ...resolution });
         }
