@@ -212,6 +212,7 @@ async function processInvoiceDocument({ doc, apiKey, testSetId, itcycleCompanyId
             sentAt: new Date(),
             certificateId: result.certificateId || null,
             certificateProvider: result.certificate?.provider || null,
+            certificateIdentifier: result.certificate?.certificateIdentifier || null,
         },
     });
 
@@ -301,6 +302,7 @@ async function processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, i
             sentAt: new Date(),
             certificateId: result.certificateId || null,
             certificateProvider: result.certificate?.provider || null,
+            certificateIdentifier: result.certificate?.certificateIdentifier || null,
         },
     });
 

@@ -1477,11 +1477,16 @@ model ElectronicInvoice {
   errorMessage   String?                 @map("error_message") @db.Text
   // Which itcycle-api-dian Certificate actually signed this document -
   // captured from that create call's own response (its certificateId/
-  // certificate.provider, via that side's `include: { certificate: true }`).
-  // Only populated for provider "itcycle" - Factus/Alanube sign with their
-  // own infrastructure, not an Ohnix-held certificate.
-  certificateId       String?           @map("certificate_id")
-  certificateProvider String?           @map("certificate_provider")
+  // certificate.provider/certificate.certificateIdentifier, via that side's
+  // `include: { certificate: true }`). Only populated for provider "itcycle"
+  // - Factus/Alanube sign with their own infrastructure, not an Ohnix-held
+  // certificate. certificateIdentifier is the provider's own reference for
+  // THIS specific certificate (e.g. Viafirma's codRequest) - distinguishes
+  // two certificates from the same provider (e.g. after a renewal), which
+  // certificateProvider alone cannot.
+  certificateId         String?         @map("certificate_id")
+  certificateProvider   String?         @map("certificate_provider")
+  certificateIdentifier String?         @map("certificate_identifier")
   issuedAt       DateTime?               @map("issued_at")
   createdAt      DateTime                @default(now()) @map("created_at")
   updatedAt      DateTime                @updatedAt @map("updated_at")
@@ -1525,9 +1530,10 @@ model ElectronicCreditNote {
   rawRequest            Json?                   @map("raw_request")
   rawResponse           Json?                   @map("raw_response")
   errorMessage          String?                 @map("error_message") @db.Text
-  // Same reasoning as ElectronicInvoice.certificateId/certificateProvider.
+  // Same reasoning as ElectronicInvoice.certificateId/certificateProvider/certificateIdentifier.
   certificateId         String?                 @map("certificate_id")
   certificateProvider   String?                 @map("certificate_provider")
+  certificateIdentifier String?                 @map("certificate_identifier")
   // The DIAN document and its local inventory/accounting effect are two
   // distinct commits. Persist the second one's state so an accepted fiscal
   // note can never fail locally with only a console log as evidence.
@@ -1571,10 +1577,11 @@ model PurchaseSupportDocument {
   rawResponse    Json?                   @map("raw_response")
   fiscalSnapshot Json?                   @map("fiscal_snapshot")
   errorMessage   String?                 @map("error_message") @db.Text
-  // Same reasoning as ElectronicInvoice.certificateId/certificateProvider -
-  // always populated here since PurchaseSupportDocument is itcycle-only.
-  certificateId       String?           @map("certificate_id")
-  certificateProvider String?           @map("certificate_provider")
+  // Same reasoning as ElectronicInvoice.certificateId/certificateProvider/
+  // certificateIdentifier - always populated here since PurchaseSupportDocument is itcycle-only.
+  certificateId         String?         @map("certificate_id")
+  certificateProvider   String?         @map("certificate_provider")
+  certificateIdentifier String?         @map("certificate_identifier")
   issuedAt       DateTime?               @map("issued_at")
   createdAt      DateTime                @default(now()) @map("created_at")
   updatedAt      DateTime                @updatedAt @map("updated_at")
@@ -2590,11 +2597,16 @@ model DianTestMatrixDocument {
   externalId               String?                      @map("external_id")
   // Which itcycle-api-dian Certificate actually signed this test document -
   // captured from that create call's own response (its certificateId/
-  // certificate.provider, via `include: { certificate: true }`), not looked
-  // up separately, since a company can have certificates from more than one
-  // provider active at once (see certificateProviderOverride).
+  // certificate.provider/certificate.certificateIdentifier, via `include: {
+  // certificate: true }`), not looked up separately, since a company can
+  // have certificates from more than one provider active at once (see
+  // certificateProviderOverride). certificateIdentifier is the provider's
+  // own reference for THIS specific certificate (e.g. Viafirma's
+  // codRequest) - distinguishes two certificates from the same provider
+  // (e.g. after a renewal), which certificateProvider alone cannot.
   certificateId            String?                      @map("certificate_id")
   certificateProvider      String?                      @map("certificate_provider")
+  certificateIdentifier    String?                      @map("certificate_identifier")
   status                   DianTestMatrixDocumentStatus @default(pending)
   cufe                     String?
   statusDescription        String?                      @map("status_description") @db.Text

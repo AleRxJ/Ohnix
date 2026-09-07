@@ -41,7 +41,7 @@ import useI18n from "../hooks/useI18n";
 import useIsMobile from "../hooks/useIsMobile";
 import useCountUp from "../hooks/useCountUp";
 import { resolveApiErrorMessage } from "../utils/apiError";
-import { getElectronicInvoicingProviderLabel, getCertificateProviderLabel } from "../utils/electronicInvoicingProvider";
+import { getElectronicInvoicingProviderLabel, getCertificateLabel } from "../utils/electronicInvoicingProvider";
 
 // ensureElectronicInvoicingPlan (Backend/services/electronicInvoicing.service.js)
 // throws an English dev-facing message by design - see the same constant in
@@ -615,7 +615,7 @@ const InvoiceDetailDrawer = ({
                 {invoice.certificateProvider && (
                     <InfoCard
                         label={t("electronic_invoices.drawer.signed_with")}
-                        value={getCertificateProviderLabel(invoice.certificateProvider)}
+                        value={getCertificateLabel(invoice.certificateProvider, invoice.certificateIdentifier)}
                         mono={false}
                     />
                 )}
@@ -691,7 +691,7 @@ const InvoiceDetailDrawer = ({
                                         )}
                                         {note.certificateProvider && (
                                             <div className="mt-1 text-xs text-[var(--ohnix-text-dim)]">
-                                                {t("electronic_invoices.drawer.signed_with")}: {getCertificateProviderLabel(note.certificateProvider)}
+                                                {t("electronic_invoices.drawer.signed_with")}: {getCertificateLabel(note.certificateProvider, note.certificateIdentifier)}
                                             </div>
                                         )}
                                     </div>

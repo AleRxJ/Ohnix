@@ -20,7 +20,7 @@ import StatCard from "../components/dashboard/StatCard";
 import useI18n from "../hooks/useI18n";
 import useIsMobile from "../hooks/useIsMobile";
 import { resolveApiErrorMessage } from "../utils/apiError";
-import { getCertificateProviderLabel } from "../utils/electronicInvoicingProvider";
+import { getCertificateLabel } from "../utils/electronicInvoicingProvider";
 
 // Same reasoning as ElectronicInvoices.jsx's PLAN_GATE_CODE_MESSAGES -
 // purchaseSupportDocument.service.js's own ensureElectronicInvoicingPlan
@@ -264,7 +264,7 @@ const DocumentDetailDrawer = ({ document, onClose, onRetry, onSync, retrying, sy
                 {document.certificateProvider && (
                     <InfoCard
                         label={t("purchase_support_documents.drawer.signed_with")}
-                        value={getCertificateProviderLabel(document.certificateProvider)}
+                        value={getCertificateLabel(document.certificateProvider, document.certificateIdentifier)}
                     />
                 )}
 

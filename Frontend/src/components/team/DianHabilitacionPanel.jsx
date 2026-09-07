@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
 import { resolveApiErrorMessage } from "../../utils/apiError";
-import { getCertificateProviderLabel } from "../../utils/electronicInvoicingProvider";
+import { getCertificateLabel } from "../../utils/electronicInvoicingProvider";
 
 const { Text, Title } = Typography;
 
@@ -232,7 +232,7 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
             title: t("fiscal_setup.habilitacion_col_certificate"),
             dataIndex: "certificateProvider",
             key: "certificateProvider",
-            render: (v) => (v ? <Tag color="cyan">{getCertificateProviderLabel(v)}</Tag> : "—"),
+            render: (v, r) => (v ? <Tag color="cyan">{getCertificateLabel(v, r.certificateIdentifier)}</Tag> : "—"),
         },
         { title: t("fiscal_setup.habilitacion_col_description"), key: "description", render: (_, r) => r.errorMessage || r.statusDescription || "—" },
     ];
@@ -273,7 +273,7 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
     // same one throughout a run, so the first non-null value found is a fair
     // run-level summary. Only known once at least one document has actually
     // been sent (certificateProvider is null on "pending" rows).
-    const runCertificateProvider = (run) => (run?.documents || []).find((d) => d.certificateProvider)?.certificateProvider || null;
+    const runCertificate = (run) => (run?.documents || []).find((d) => d.certificateProvider) || null;
 
     const canRequestProduction = activeRun?.status === "completed" && activeRun?.passResult === true;
     const startDisabled = !testSetId.trim() || Boolean(activeRun && ACTIVE_STATUSES.includes(activeRun.status));
@@ -389,9 +389,9 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                                         {t(activeRun.passResult ? "fiscal_setup.habilitacion_pass_true" : "fiscal_setup.habilitacion_pass_false")}
                                     </Tag>
                                 )}
-                                {runCertificateProvider(activeRun) && (
+                                {runCertificate(activeRun) && (
                                     <Tag color="cyan">
-                                        {t("fiscal_setup.habilitacion_run_certificate_label")}: {getCertificateProviderLabel(runCertificateProvider(activeRun))}
+                                        {t("fiscal_setup.habilitacion_run_certificate_label")}: {getCertificateLabel(runCertificate(activeRun).certificateProvider, runCertificate(activeRun).certificateIdentifier)}
                                     </Tag>
                                 )}
                             </div>

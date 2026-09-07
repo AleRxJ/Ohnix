@@ -22,3 +22,11 @@ const CERTIFICATE_PROVIDER_LABELS = {
 };
 
 export const getCertificateProviderLabel = (provider) => CERTIFICATE_PROVIDER_LABELS[provider] || provider;
+
+// Provider name plus the provider's own reference for THIS specific
+// certificate (e.g. Viafirma's codRequest) - distinguishes two certificates
+// from the same provider (e.g. before/after a renewal), which the provider
+// name alone cannot. Falls back to just the provider name when no
+// identifier is available (older records, or a provider that doesn't set one).
+export const getCertificateLabel = (provider, identifier) =>
+    identifier ? `${getCertificateProviderLabel(provider)} · ${identifier}` : getCertificateProviderLabel(provider);
