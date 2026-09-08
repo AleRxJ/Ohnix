@@ -295,15 +295,37 @@ const AdminDianTestMatrix = () => {
                     <div className="grid grid-cols-3 gap-4">
                         {["invoice", "creditNote", "debitNote"].map((type) => {
                             const counts = activeRun.summary?.[type] || {};
-                            const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+                            // accepted/target - not "attempted/target" - is what
+                            // actually says whether this type passed. Attempted
+                            // count next to target reads as a success ratio even
+                            // when every attempt failed (see
+                            // DianHabilitacionPanel.jsx's summaryBreakdown for
+                            // the same fix on the self-service side).
+                            const accepted = counts.accepted || 0;
+                            const failed = (counts.rejected || 0) + (counts.error || 0);
+                            const inProgress = (counts.pending || 0) + (counts.sending || 0) + (counts.sent || 0);
                             const target = type === "invoice" ? activeRun.invoiceTarget : type === "creditNote" ? activeRun.creditNoteTarget : activeRun.debitNoteTarget;
+                            const statColor = failed > 0
+                                ? "var(--ohnix-status-danger)"
+                                : (target > 0 && accepted === target ? "var(--ohnix-status-success)" : undefined);
                             return (
-                                <Statistic
-                                    key={type}
-                                    title={t(`admin.dian_test_matrix_summary_${type === "invoice" ? "invoices" : type === "creditNote" ? "credit_notes" : "debit_notes"}`)}
-                                    value={`${total}/${target}`}
-                                    suffix={counts.accepted ? `· ${counts.accepted} ✓` : undefined}
-                                />
+                                <div key={type}>
+                                    <Statistic
+                                        title={t(`admin.dian_test_matrix_summary_${type === "invoice" ? "invoices" : type === "creditNote" ? "credit_notes" : "debit_notes"}`)}
+                                        value={`${accepted}/${target}`}
+                                        valueStyle={{ color: statColor }}
+                                    />
+                                    {(failed > 0 || inProgress > 0) && (
+                                        <div className="mt-1 flex flex-wrap gap-1">
+                                            {failed > 0 && (
+                                                <Tag color="red">{t("fiscal_setup.habilitacion_summary_failed", { count: failed })}</Tag>
+                                            )}
+                                            {inProgress > 0 && (
+                                                <Tag>{t("fiscal_setup.habilitacion_summary_in_progress", { count: inProgress })}</Tag>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             );
                         })}
                     </div>

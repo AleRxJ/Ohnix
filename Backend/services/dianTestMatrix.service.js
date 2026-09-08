@@ -17,18 +17,6 @@ const text = (value) => `${value || ""}`.trim();
 const POLL_INTERVAL_MS = Number(process.env.DIAN_TEST_MATRIX_POLL_INTERVAL_MS) || 15000;
 const MAX_POLL_ATTEMPTS = Number(process.env.DIAN_TEST_MATRIX_MAX_POLL_ATTEMPTS) || 20;
 
-// The DIAN only requires ONE accepted invoice to flip a "modo de operación"
-// from "En proceso" to "Aceptado" (confirmed on their own portal: "Total de
-// documentos aceptados requeridos: Facturas 1") - it does NOT wait for the
-// full 50-document batch. Once that happens, every further SendTestSetAsync
-// call against the same testSetId comes back REJECTED with exactly this
-// message, even though nothing is actually wrong - habilitación is just
-// already done. Showing that as a red "Rechazado" (like a genuine failure)
-// is misleading, so the worker detects it and stops the run immediately
-// instead of grinding through the rest of the batch collecting more of the
-// same non-error.
-const TEST_SET_ALREADY_ACCEPTED_PATTERN = /se encuentra aceptado/i;
-
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // DIAN document-type codes, matching the counts a real habilitación "set de
@@ -229,14 +217,14 @@ async function processInvoiceDocument({ doc, apiKey, testSetId, itcycleCompanyId
     });
 
     if (result.status === "ACCEPTED" || result.status === "REJECTED") {
-        // Sync send (or DIAN already resolved it) - nothing to poll. A
-        // "REJECTED" whose description matches TEST_SET_ALREADY_ACCEPTED_PATTERN
-        // isn't a real rejection - the DIAN is saying this exact document
-        // wasn't needed because the test set already passed. Recording it
-        // as "accepted" keeps every document's displayed status consistent
-        // with what actually happened, instead of a misleading red
-        // "Rechazado" the run then has to explain away separately.
-        const treatAsAccepted = result.status === "ACCEPTED" || TEST_SET_ALREADY_ACCEPTED_PATTERN.test(result.statusDescription || "");
+        // Sync send (or DIAN already resolved it) - nothing to poll.
+        // itcycle-api-dian's own status is canonical here, including the
+        // "test set already Aceptado" case (see its
+        // documentSend.service.ts#isTestSetAlreadyAcceptedMessage) - it
+        // already reports that as ACCEPTED, not a real rejection, so this
+        // just trusts it instead of re-deriving the same rule from the
+        // response text a second time.
+        const treatAsAccepted = result.status === "ACCEPTED";
         await prisma.dianTestMatrixDocument.update({
             where: { id: doc.id },
             data: { status: treatAsAccepted ? "accepted" : "rejected", statusDescription: result.statusDescription || null, cufe: result.cufe || null, resolvedAt: new Date() },
@@ -267,12 +255,10 @@ async function processInvoiceDocument({ doc, apiKey, testSetId, itcycleCompanyId
         });
         return null;
     }
-    // Same reasoning as the sync branch above: a "REJECTED" whose
-    // description says the test set is already Aceptado isn't a real
-    // rejection of THIS document - record it as accepted so every
-    // document's status stays consistent with what DIAN actually meant.
-    const accepted = outcome.record.status === "ACCEPTED"
-        || TEST_SET_ALREADY_ACCEPTED_PATTERN.test(outcome.record.statusDescription || "");
+    // Same reasoning as the sync branch above: trust itcycle-api-dian's own
+    // canonical status, already resolved through the "test set already
+    // Aceptado" rule on that side.
+    const accepted = outcome.record.status === "ACCEPTED";
     await prisma.dianTestMatrixDocument.update({
         where: { id: doc.id },
         data: {
@@ -331,11 +317,9 @@ async function processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, i
     });
 
     if (result.status === "ACCEPTED" || result.status === "REJECTED") {
-        // Same reasoning as processInvoiceDocument's sync branch: a
-        // "test set already Aceptado" rejection isn't a real rejection of
-        // this note - record it as accepted so its status stays consistent
-        // with what DIAN actually meant.
-        const treatAsAccepted = result.status === "ACCEPTED" || TEST_SET_ALREADY_ACCEPTED_PATTERN.test(result.statusDescription || "");
+        // Same reasoning as processInvoiceDocument's sync branch: trust
+        // itcycle-api-dian's own canonical status.
+        const treatAsAccepted = result.status === "ACCEPTED";
         await prisma.dianTestMatrixDocument.update({ where: { id: doc.id }, data: { status: treatAsAccepted ? "accepted" : "rejected", statusDescription: result.statusDescription || null, resolvedAt: new Date() } });
         return;
     }
@@ -360,8 +344,7 @@ async function processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, i
         return;
     }
     // Same reasoning as processInvoiceDocument's polled branch.
-    const accepted = outcome.record.status === "ACCEPTED"
-        || TEST_SET_ALREADY_ACCEPTED_PATTERN.test(outcome.record.statusDescription || "");
+    const accepted = outcome.record.status === "ACCEPTED";
     await prisma.dianTestMatrixDocument.update({
         where: { id: doc.id },
         data: {
@@ -491,4 +474,34 @@ export const cancelDianTestMatrixRun = async ({ runId }) => {
         throw new ApiError(409, `Run is already ${run.status} - nothing to cancel`);
     }
     return prisma.dianTestMatrixRun.update({ where: { id: runId }, data: { cancelRequested: true } });
+};
+
+/**
+ * Recovers runs orphaned by a server restart (a deploy, a crash) - the
+ * worker is a fire-and-forget async function tied to the process that
+ * started it (see startDianTestMatrixRun's own comment), so a "pending" or
+ * "running" run has no worker left to ever finish it once the process
+ * that held it is gone. Without this, such a run stays "En curso" forever
+ * - the self-service panel has no way to cancel it either, since
+ * cancelRequested is also only checked by that same dead worker - leaving
+ * a real customer stuck with no self-service recovery path at all.
+ *
+ * Call once at server startup (see server.js), same pattern as
+ * runSubscriptionReconciliation - anything still "pending"/"running" at
+ * that point can only be left over from before this process existed.
+ */
+export const reconcileOrphanedDianTestMatrixRuns = async () => {
+    const orphaned = await prisma.dianTestMatrixRun.findMany({ where: { status: { in: ["pending", "running"] } } });
+    for (const run of orphaned) {
+        await prisma.dianTestMatrixRun.update({
+            where: { id: run.id },
+            data: {
+                status: "failed",
+                finishedAt: new Date(),
+                errorMessage: "El servidor se reinició mientras esta prueba estaba en curso. Por favor, inicia una nueva prueba de habilitación.",
+            },
+        });
+        await sendRunFinishedNotification(run.id);
+    }
+    return { recovered: orphaned.length };
 };

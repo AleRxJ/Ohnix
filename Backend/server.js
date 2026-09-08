@@ -10,6 +10,7 @@ import firmaPassValidationScheduler from "./utils/firmaPassValidationScheduler.j
 import recurringExpenseScheduler from "./utils/recurringExpenseScheduler.js";
 import itcycleKeepAliveScheduler from "./utils/itcycleKeepAliveScheduler.js";
 import { reconcileLegacyApprovedRequests, reconcileStuckPendingPayments } from "./utils/subscriptionReconcile.js";
+import { reconcileOrphanedDianTestMatrixRuns } from "./services/dianTestMatrix.service.js";
 
 dotenv.config({
     path: "./.env",
@@ -44,6 +45,14 @@ connectDB()
         };
 
         runSubscriptionReconciliation();
+
+        reconcileOrphanedDianTestMatrixRuns()
+            .then(({ recovered }) => {
+                if (recovered > 0) {
+                    console.log(`🧾 Recovered ${recovered} DIAN test-matrix run(s) orphaned by the previous process`);
+                }
+            })
+            .catch((error) => console.error("❎ DIAN test-matrix run reconciliation failed", error));
 
         const reconcileMinutes = Number(
             process.env.SUBSCRIPTION_RECONCILE_INTERVAL_MINUTES || 15

@@ -206,7 +206,20 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
     };
 
     const summaryCounts = (run, type) => run?.summary?.[type] || {};
-    const summaryTotal = (run, type) => Object.values(summaryCounts(run, type)).reduce((sum, n) => sum + n, 0);
+    // accepted/target - not a raw "documents attempted/target" ratio - is
+    // the number that actually answers "did this document type pass".
+    // Showing attempted count next to target reads as a success ratio even
+    // when every attempt failed (e.g. "10/10" looks identical whether all
+    // 10 were accepted or all 10 errored out) - see failed/inProgress below,
+    // always rendered alongside so a run can never look complete when it
+    // wasn't, or passed when it didn't.
+    const summaryBreakdown = (run, type) => {
+        const counts = summaryCounts(run, type);
+        const accepted = counts.accepted || 0;
+        const failed = (counts.rejected || 0) + (counts.error || 0);
+        const inProgress = (counts.pending || 0) + (counts.sending || 0) + (counts.sent || 0);
+        return { accepted, failed, inProgress };
+    };
 
     // The Test Set ID is identical across every run in one habilitación
     // round (by design - see habilitacion_where_hint), so it can't tell two
@@ -404,9 +417,31 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                     </div>
 
                     <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <Statistic title={t("fiscal_setup.document_type_invoice")} value={`${summaryTotal(activeRun, "invoice")}/${activeRun.invoiceTarget}`} suffix={summaryCounts(activeRun, "invoice").accepted ? `· ${summaryCounts(activeRun, "invoice").accepted} ✓` : undefined} />
-                        <Statistic title={t("fiscal_setup.document_type_credit_note")} value={`${summaryTotal(activeRun, "creditNote")}/${activeRun.creditNoteTarget}`} suffix={summaryCounts(activeRun, "creditNote").accepted ? `· ${summaryCounts(activeRun, "creditNote").accepted} ✓` : undefined} />
-                        <Statistic title={t("fiscal_setup.document_type_debit_note")} value={`${summaryTotal(activeRun, "debitNote")}/${activeRun.debitNoteTarget}`} suffix={summaryCounts(activeRun, "debitNote").accepted ? `· ${summaryCounts(activeRun, "debitNote").accepted} ✓` : undefined} />
+                        {[
+                            { type: "invoice", label: t("fiscal_setup.document_type_invoice"), target: activeRun.invoiceTarget },
+                            { type: "creditNote", label: t("fiscal_setup.document_type_credit_note"), target: activeRun.creditNoteTarget },
+                            { type: "debitNote", label: t("fiscal_setup.document_type_debit_note"), target: activeRun.debitNoteTarget },
+                        ].map(({ type, label, target }) => {
+                            const { accepted, failed, inProgress } = summaryBreakdown(activeRun, type);
+                            const statColor = failed > 0
+                                ? "var(--ohnix-status-danger)"
+                                : (target > 0 && accepted === target ? "var(--ohnix-status-success)" : undefined);
+                            return (
+                                <div key={type}>
+                                    <Statistic title={label} value={`${accepted}/${target}`} valueStyle={{ color: statColor }} />
+                                    {(failed > 0 || inProgress > 0) && (
+                                        <div className="mt-1 flex flex-wrap gap-1">
+                                            {failed > 0 && (
+                                                <Tag color="red">{t("fiscal_setup.habilitacion_summary_failed", { count: failed })}</Tag>
+                                            )}
+                                            {inProgress > 0 && (
+                                                <Tag>{t("fiscal_setup.habilitacion_summary_in_progress", { count: inProgress })}</Tag>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
 
                     {activeRun.errorMessage && (
