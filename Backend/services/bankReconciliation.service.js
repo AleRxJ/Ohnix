@@ -8,7 +8,7 @@ import { ApiError } from "../utils/ApiError.js";
 
 const assertCashAccountOwned = async (accountId, cashAccountId) => {
     const cashAccount = await prisma.cashAccount.findFirst({ where: { id: cashAccountId, createdById: accountId } });
-    if (!cashAccount) throw new ApiError(404, "Cuenta de caja/banco no encontrada.");
+    if (!cashAccount) throw new ApiError(404, "Cash account not found.", [], "", "cash_account_not_found");
     return cashAccount;
 };
 
@@ -19,10 +19,10 @@ export const createStatementEntries = async ({ accountId, actorId, cashAccountId
     await assertCashAccountOwned(accountId, cashAccountId);
 
     if (!Array.isArray(entries) || entries.length === 0) {
-        throw new ApiError(400, "Se requiere al menos una entrada de extracto.");
+        throw new ApiError(400, "At least one bank statement entry is required.", [], "", "reconciliation_entries_required");
     }
     if (entries.length > 1000) {
-        throw new ApiError(413, "El extracto supera el máximo de 1.000 filas por importación.");
+        throw new ApiError(413, "The bank statement exceeds the 1,000-row import limit.", [], "", "reconciliation_import_limit");
     }
 
     const fingerprints = new Set();
@@ -30,12 +30,12 @@ export const createStatementEntries = async ({ accountId, actorId, cashAccountId
         const amount = Number(entry.amount);
         const entryDate = new Date(entry.entryDate);
         if (!entry.entryDate || Number.isNaN(entryDate.getTime()) || !Number.isFinite(amount) || amount === 0) {
-            throw new ApiError(400, `Entrada #${index + 1} inválida: entryDate y amount (distinto de cero) son obligatorios.`);
+            throw new ApiError(400, `Bank statement entry ${index + 1} is invalid.`, [{ index: index + 1 }], "", "reconciliation_entry_invalid");
         }
         const description = entry.description?.trim() || null;
         const fingerprint = `${entryDate.toISOString()}|${amount.toFixed(2)}|${description || ""}`;
         if (fingerprints.has(fingerprint)) {
-            throw new ApiError(409, `La fila #${index + 1} está repetida dentro del mismo extracto.`);
+            throw new ApiError(409, `Bank statement row ${index + 1} is duplicated.`, [{ index: index + 1 }], "", "reconciliation_entry_duplicate");
         }
         fingerprints.add(fingerprint);
         return {
@@ -124,16 +124,16 @@ export const getReconciliationSummary = async ({ accountId, cashAccountId }) => 
 
 export const getReconciliationReport = async ({ accountId, cashAccountId, dateFrom, dateTo, status = "all" }) => {
     await assertCashAccountOwned(accountId, cashAccountId);
-    if (!['all', 'matched', 'unmatched'].includes(status)) throw new ApiError(400, "Estado de conciliación no válido.");
+    if (!['all', 'matched', 'unmatched'].includes(status)) throw new ApiError(400, "The reconciliation status is invalid.", [], "", "reconciliation_status_invalid");
     const entryDate = {};
     if (dateFrom) {
         const parsed = new Date(dateFrom);
-        if (Number.isNaN(parsed.getTime())) throw new ApiError(400, "La fecha inicial no es válida.");
+        if (Number.isNaN(parsed.getTime())) throw new ApiError(400, "The start date is invalid.", [], "", "reconciliation_start_date_invalid");
         entryDate.gte = parsed;
     }
     if (dateTo) {
         const parsed = new Date(dateTo);
-        if (Number.isNaN(parsed.getTime())) throw new ApiError(400, "La fecha final no es válida.");
+        if (Number.isNaN(parsed.getTime())) throw new ApiError(400, "The end date is invalid.", [], "", "reconciliation_end_date_invalid");
         entryDate.lte = parsed;
     }
     const rows = await prisma.bankStatementEntry.findMany({
@@ -156,24 +156,24 @@ export const matchEntry = async ({ accountId, cashAccountId, entryId, movementId
         prisma.bankStatementEntry.findFirst({ where: { id: entryId, cashAccountId } }),
         prisma.cashMovement.findFirst({ where: { id: movementId, cashAccountId } }),
     ]);
-    if (!entry) throw new ApiError(404, "Entrada de extracto no encontrada.");
-    if (!movement) throw new ApiError(404, "Movimiento no encontrado.");
-    if (entry.matchedMovementId) throw new ApiError(400, "Esta entrada ya fue conciliada.");
-    if (movement.reconciledAt) throw new ApiError(400, "Este movimiento ya fue conciliado.");
+    if (!entry) throw new ApiError(404, "Bank statement entry not found.", [], "", "reconciliation_entry_not_found");
+    if (!movement) throw new ApiError(404, "Cash movement not found.", [], "", "reconciliation_movement_not_found");
+    if (entry.matchedMovementId) throw new ApiError(400, "This bank statement entry is already reconciled.", [], "", "reconciliation_entry_already_matched");
+    if (movement.reconciledAt) throw new ApiError(400, "This cash movement is already reconciled.", [], "", "reconciliation_movement_already_matched");
     if (!isReconciliationAmountMatch(entry.amount, movement.delta)) {
-        throw new ApiError(422, "El valor y el signo del extracto deben coincidir exactamente con el movimiento interno.");
+        throw new ApiError(422, "Bank statement amount and sign must exactly match the cash movement.", [], "", "reconciliation_amount_mismatch");
     }
 
     try {
         return await prisma.$transaction(async (tx) => {
             const movementClaim = await tx.cashMovement.updateMany({ where: { id: movementId, cashAccountId, reconciledAt: null }, data: { reconciledAt: new Date() } });
-            if (movementClaim.count !== 1) throw new ApiError(409, "El movimiento ya fue conciliado en otra sesión.");
+            if (movementClaim.count !== 1) throw new ApiError(409, "The cash movement was reconciled in another session.", [], "", "reconciliation_concurrent_change");
             const entryClaim = await tx.bankStatementEntry.updateMany({ where: { id: entryId, cashAccountId, matchedMovementId: null }, data: { matchedMovementId: movementId } });
-            if (entryClaim.count !== 1) throw new ApiError(409, "La entrada ya fue conciliada en otra sesión.");
+            if (entryClaim.count !== 1) throw new ApiError(409, "The bank statement entry was reconciled in another session.", [], "", "reconciliation_concurrent_change");
             return tx.bankStatementEntry.findUniqueOrThrow({ where: { id: entryId } });
         }, { isolationLevel: "Serializable" });
     } catch (error) {
-        if (error?.code === "P2034" || error?.code === "P2002") throw new ApiError(409, "La conciliación cambió en otra sesión. Actualiza e intenta de nuevo.");
+        if (error?.code === "P2034" || error?.code === "P2002") throw new ApiError(409, "The reconciliation changed in another session.", [], "", "reconciliation_concurrent_change");
         throw error;
     }
 };

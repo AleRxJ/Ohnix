@@ -124,7 +124,7 @@ export const listCashAccountMovements = asyncHandler(async (req, res) => {
 export const registerManualExpense = asyncHandler(async (req, res, next) => {
     const { amount, expense_account_id, cash_account_id, description, expense_date, statement_entry_id, tax_treatment, tax_rate } = req.body || {};
     if (!expense_account_id || !cash_account_id) {
-        return next(new ApiError(400, "expense_account_id y cash_account_id son obligatorios"));
+        return next(new ApiError(400, "expense_account_id and cash_account_id are required.", [], "", "finance_expense_accounts_required"));
     }
 
     const result = await manualExpenseService.registerManualExpense({
@@ -155,7 +155,7 @@ export const listOrderPayments = asyncHandler(async (req, res) => {
 
 export const registerOrderPayment = asyncHandler(async (req, res, next) => {
     const { amount, cash_account_id, method, reference } = req.body || {};
-    if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
 
     const payment = await orderPaymentService.registerOrderPayment({
         accountId: req.user.prismaId,
@@ -178,7 +178,7 @@ export const listPurchasePayments = asyncHandler(async (req, res) => {
 
 export const registerPurchasePayment = asyncHandler(async (req, res, next) => {
     const { amount, cash_account_id, method, reference } = req.body || {};
-    if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
 
     const payment = await purchasePaymentService.registerPurchasePayment({
         accountId: req.user.prismaId,
@@ -216,7 +216,7 @@ export const updateOrderDueDate = asyncHandler(async (req, res) => {
 
 export const createStatementEntries = asyncHandler(async (req, res, next) => {
     const { cash_account_id, entries } = req.body || {};
-    if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
 
     const result = await reconciliationService.createStatementEntries({
         accountId: req.user.prismaId,
@@ -233,7 +233,7 @@ export const createStatementEntries = asyncHandler(async (req, res, next) => {
 
 export const listUnmatchedStatementEntries = asyncHandler(async (req, res, next) => {
     const { cash_account_id } = req.query;
-    if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
 
     const entries = await reconciliationService.listUnmatchedStatementEntries({
         accountId: req.user.prismaId,
@@ -244,7 +244,7 @@ export const listUnmatchedStatementEntries = asyncHandler(async (req, res, next)
 
 export const listUnmatchedMovements = asyncHandler(async (req, res, next) => {
     const { cash_account_id } = req.query;
-    if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
 
     const movements = await reconciliationService.listUnmatchedMovements({
         accountId: req.user.prismaId,
@@ -256,7 +256,7 @@ export const listUnmatchedMovements = asyncHandler(async (req, res, next) => {
 export const matchStatementEntry = asyncHandler(async (req, res, next) => {
     const { cash_account_id, entry_id, movement_id } = req.body || {};
     if (!cash_account_id || !entry_id || !movement_id) {
-        return next(new ApiError(400, "cash_account_id, entry_id y movement_id son obligatorios"));
+        return next(new ApiError(400, "cash_account_id, entry_id, and movement_id are required.", [], "", "reconciliation_match_fields_required"));
     }
 
     const entry = await reconciliationService.matchEntry({
@@ -275,7 +275,7 @@ export const listCashAccountConfigurationHistory = asyncHandler(async (req, res)
 
 export const registerManualIncome = asyncHandler(async (req, res, next) => {
     const { amount, revenue_account_id, cash_account_id, description, income_date, statement_entry_id, tax_treatment, tax_rate } = req.body || {};
-    if (!revenue_account_id || !cash_account_id) return next(new ApiError(400, "revenue_account_id y cash_account_id son obligatorios"));
+    if (!revenue_account_id || !cash_account_id) return next(new ApiError(400, "revenue_account_id and cash_account_id are required.", [], "", "finance_income_accounts_required"));
     const result = await manualIncomeService.registerManualIncome({
         accountId: req.user.prismaId,
         actorId: req.user.actorId,
@@ -314,21 +314,21 @@ export const getCashIntegrity = asyncHandler(async (req, res) => {
 
 export const suggestStatementMatches = asyncHandler(async (req, res, next) => {
     const { cash_account_id } = req.query;
-    if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
     const suggestions = await reconciliationService.suggestMatches({ accountId: req.user.prismaId, cashAccountId: cash_account_id });
     return res.status(200).json(new ApiResponse(200, suggestions.map((row) => ({ entry: mapStatementEntry(row.entry), movement: mapCashMovement(row.movement), score: row.score, ambiguous: row.ambiguous })), "Reconciliation suggestions fetched successfully"));
 });
 
 export const getReconciliationSummary = asyncHandler(async (req, res, next) => {
     const { cash_account_id } = req.query;
-    if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
     const summary = await reconciliationService.getReconciliationSummary({ accountId: req.user.prismaId, cashAccountId: cash_account_id });
     return res.status(200).json(new ApiResponse(200, summary, "Reconciliation summary fetched successfully"));
 });
 
 export const getReconciliationReport = asyncHandler(async (req, res, next) => {
     const { cash_account_id, date_from, date_to, status } = req.query;
-    if (!cash_account_id) return next(new ApiError(400, "cash_account_id es obligatorio"));
+    if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
     const rows = await reconciliationService.getReconciliationReport({ accountId: req.user.prismaId, cashAccountId: cash_account_id, dateFrom: date_from, dateTo: date_to, status });
     return res.status(200).json(new ApiResponse(200, rows.map((row) => ({
         ...mapStatementEntry(row),

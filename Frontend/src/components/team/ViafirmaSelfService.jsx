@@ -65,6 +65,13 @@ const STATUS_PRESENTATION = {
     issued_ready_to_finalize: { key: "viafirma_status_ready_to_finalize", color: "blue" },
     active: { key: "viafirma_status_active", color: "green" },
     issuance_failed: { key: "viafirma_status_issuance_failed", color: "red" },
+    // Split from issuance_failed on itcycle-api-dian's side (Viafirma's own
+    // rues_error) - the one failure the applicant can usually fix themselves
+    // (a wrong/malformed NIT) and retry, so it gets its own, more actionable
+    // copy instead of the generic "no pudo completarse" (2026-09-08: a real
+    // request failed exactly this way from a NIT-formatting bug on Ohnix's
+    // own side, and the generic message gave no hint what to check).
+    rues_verification_failed: { key: "viafirma_status_rues_verification_failed", color: "red" },
     revoked: { key: "viafirma_status_revoked", color: "default" },
     expired: { key: "viafirma_status_expired", color: "default" },
 };
@@ -323,7 +330,7 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
     // a terminal failure state that needs the applicant to act first.
     useEffect(() => {
         if (!activeCertificateId || activeCertificateRow?.status === "ACTIVE") return undefined;
-        if (internalStatus === "identity_rejected" || internalStatus === "issuance_failed") return undefined;
+        if (["identity_rejected", "issuance_failed", "rues_verification_failed"].includes(internalStatus)) return undefined;
         const interval = setInterval(() => {
             refreshCertificates(true);
             refreshLiveStatus(activeCertificateId);
@@ -510,7 +517,7 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
                         </div>
                     )}
 
-                    {internalStatus === "identity_rejected" || internalStatus === "issuance_failed" ? (
+                    {["identity_rejected", "issuance_failed", "rues_verification_failed"].includes(internalStatus) ? (
                         <Alert
                             className="dark-alert dark-alert-red"
                             type="error"
@@ -541,7 +548,7 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
                 />
             )}
 
-            {!certificatesLoadError && (!activeCertificateRow || internalStatus === "identity_rejected" || internalStatus === "issuance_failed") && (
+            {!certificatesLoadError && (!activeCertificateRow || ["identity_rejected", "issuance_failed", "rues_verification_failed"].includes(internalStatus)) && (
                 <div className="mt-4">
                     <div className="overflow-hidden rounded-2xl border border-[#29D8D5]/30 bg-gradient-to-br from-[#29D8D5]/10 via-transparent to-transparent">
                         <div className="p-4">

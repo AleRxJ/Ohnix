@@ -402,14 +402,18 @@ export const createMyViafirmaRequest = asyncHandler(async (req, res) => {
     if (termsAccepted !== true) {
         throw new ApiError(400, "Debes aceptar los términos y condiciones para solicitar el certificado");
     }
-    // Same convention as updateMyCompany's taxIdentificationDv: the user
-    // only ever types the bare NIT, never the check digit - it's always
-    // derived. Viafirma's own CSR field for NIT (SERIALNUMBER) accepts an
-    // optional "-N" suffix (validate: "^\d{5,12}(-\d{1})?$" in their
-    // profile-form response), matching how Colombia writes a NIT with its
-    // dígito de verificación.
+    // Same convention as updateMyCompany's taxIdentificationDv: a user typing
+    // their NIT fresh only ever types the bare number, never the check digit
+    // - it's always derived. But ViafirmaSelfService.jsx's own nit field
+    // sends the FULL "NIT-DV" string already (registeredNit) whenever the
+    // company's NIT is already registered with Ohnix - appending another
+    // computed digit on top of that produced "901836726-5-4" (a real
+    // production incident, 2026-09-08: Viafirma's own SERIALNUMBER format
+    // "^\d{5,12}(-\d{1})?$" doesn't allow a second "-N" suffix, so the
+    // request was accepted but the issuance itself failed silently). Only
+    // append when `nit` doesn't already end in "-<digit>".
     const normalizedSubject =
-        profileKind === "FE-PJ" && subject?.nit
+        profileKind === "FE-PJ" && subject?.nit && !/-\d$/.test(subject.nit)
             ? { ...subject, nit: `${subject.nit}-${computeNitCheckDigit(subject.nit)}` }
             : subject;
     const data = await createCompanyViafirmaRequest({

@@ -448,19 +448,19 @@ export const reopenAccountingPeriod = asyncHandler(async (req, res) => {
         reason: req.body?.reason,
         durationHours: req.body?.duration_hours ?? 24,
     });
-    return res.status(200).json(new ApiResponse(200, mapPeriod(period), "Periodo reabierto temporalmente."));
+    return res.status(200).json(new ApiResponse(200, mapPeriod(period), "Accounting period reopened successfully."));
 });
 
 export const listWithholdingConcepts = asyncHandler(async (req, res) => {
     const concepts = await withholdingConceptService.listWithholdingConcepts(req.user.prismaId, {
         activeAt: req.query.active_at,
     });
-    return res.status(200).json(new ApiResponse(200, concepts, "Conceptos de retención consultados."));
+    return res.status(200).json(new ApiResponse(200, concepts, "Withholding concepts fetched successfully."));
 });
 
 export const createWithholdingConcept = asyncHandler(async (req, res) => {
     const concept = await withholdingConceptService.createWithholdingConcept(req.user.prismaId, req.body || {});
-    return res.status(201).json(new ApiResponse(201, concept, "Concepto de retención creado."));
+    return res.status(201).json(new ApiResponse(201, concept, "Withholding concept created successfully."));
 });
 
 export const setWithholdingConceptActive = asyncHandler(async (req, res) => {
@@ -469,12 +469,12 @@ export const setWithholdingConceptActive = asyncHandler(async (req, res) => {
         req.params.id,
         req.body?.is_active
     );
-    return res.status(200).json(new ApiResponse(200, concept, "Estado del concepto actualizado."));
+    return res.status(200).json(new ApiResponse(200, concept, "Withholding concept status updated successfully."));
 });
 
 export const previewWithholdings = asyncHandler(async (req, res) => {
     const preview = await withholdingConceptService.previewWithholdings(req.user.prismaId, req.body || {});
-    return res.status(200).json(new ApiResponse(200, preview, "Retenciones calculadas."));
+    return res.status(200).json(new ApiResponse(200, preview, "Withholdings calculated successfully."));
 });
 
 export const getWithholdingReport = asyncHandler(async (req, res) => {
@@ -485,7 +485,7 @@ export const getWithholdingReport = asyncHandler(async (req, res) => {
         taxType: req.query.tax_type,
         supplierId: req.query.supplier_id,
     });
-    return res.status(200).json(new ApiResponse(200, report, "Auxiliar de retenciones consultado."));
+    return res.status(200).json(new ApiResponse(200, report, "Withholding report fetched successfully."));
 });
 
 export const getWithholdingCertificate = asyncHandler(async (req, res) => {
@@ -494,10 +494,10 @@ export const getWithholdingCertificate = asyncHandler(async (req, res) => {
         supplierId: req.params.supplierId,
         year: req.query.year,
     });
-    return res.status(200).json(new ApiResponse(200, certificate, "Certificado de retenciones consultado."));
+    return res.status(200).json(new ApiResponse(200, certificate, "Withholding certificate fetched successfully."));
 });
 
 export const downloadWithholdingCertificate = asyncHandler(async (req, res) => {
     const certificate = await withholdingReportService.getWithholdingCertificate({ accountId: req.user.prismaId, supplierId: req.params.supplierId, year: req.query.year });
-    withholdingReportService.renderWithholdingCertificatePdf(res, certificate);
+    withholdingReportService.renderWithholdingCertificatePdf(res, certificate, req.query.language);
 });

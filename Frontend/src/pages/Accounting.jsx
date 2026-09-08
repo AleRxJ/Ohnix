@@ -58,6 +58,43 @@ const ACCOUNTING_ERROR_CODES = {
     accounting_period_reopen_duration_invalid: "accounting.error_period_reopen_duration_invalid",
     accounting_period_not_closed: "accounting.error_period_not_closed",
     accounting_period_id_required: "accounting.error_period_id_required",
+    cost_center_fields_required: "accounting.error_cost_center_fields_required",
+    cost_center_length_invalid: "accounting.error_cost_center_length_invalid",
+    cost_center_code_duplicate: "accounting.error_cost_center_code_duplicate",
+    cost_center_not_found: "accounting.error_cost_center_not_found",
+    cost_center_location_not_found: "accounting.error_cost_center_location_not_found",
+    cost_center_assignment_invalid: "accounting.error_cost_center_assignment_invalid",
+    recurring_expense_description_required: "accounting.error_recurring_description_required",
+    recurring_expense_description_too_long: "accounting.error_recurring_description_too_long",
+    recurring_expense_amount_invalid: "accounting.error_recurring_amount_invalid",
+    recurring_expense_day_invalid: "accounting.error_recurring_day_invalid",
+    recurring_expense_tax_treatment_invalid: "accounting.error_recurring_tax_treatment_invalid",
+    recurring_expense_tax_rate_invalid: "accounting.error_recurring_tax_rate_invalid",
+    recurring_expense_expense_account_unavailable: "accounting.error_recurring_expense_account_unavailable",
+    recurring_expense_cash_account_unavailable: "accounting.error_recurring_cash_account_unavailable",
+    recurring_expense_not_found: "accounting.error_recurring_not_found",
+    recurring_expense_insufficient_funds: "accounting.error_recurring_insufficient_funds",
+    recurring_expense_inactive: "accounting.error_recurring_inactive",
+    recurring_expense_already_generated: "accounting.error_recurring_already_generated",
+    recurring_expense_generation_failed: "accounting.error_recurring_generation_failed",
+    withholding_date_invalid: "accounting.error_withholding_date_invalid",
+    withholding_concepts_unavailable: "accounting.error_withholding_concepts_unavailable",
+    withholding_concept_versions_duplicate: "accounting.error_withholding_versions_duplicate",
+    withholding_fields_required: "accounting.error_withholding_fields_required",
+    withholding_tax_type_invalid: "accounting.error_withholding_tax_type_invalid",
+    withholding_base_type_invalid: "accounting.error_withholding_base_type_invalid",
+    withholding_rate_invalid: "accounting.error_withholding_rate_invalid",
+    withholding_minimum_base_invalid: "accounting.error_withholding_minimum_base_invalid",
+    withholding_date_range_invalid: "accounting.error_withholding_date_range_invalid",
+    withholding_municipality_required: "accounting.error_withholding_municipality_required",
+    withholding_chart_account_invalid: "accounting.error_withholding_chart_account_invalid",
+    withholding_effective_range_overlap: "accounting.error_withholding_effective_range_overlap",
+    withholding_concept_not_found: "accounting.error_withholding_concept_not_found",
+    withholding_preview_amounts_invalid: "accounting.error_withholding_preview_amounts_invalid",
+    withholding_concept_required: "accounting.error_withholding_concept_required",
+    withholding_certificate_year_invalid: "accounting.error_withholding_certificate_year_invalid",
+    withholding_supplier_not_found: "accounting.error_withholding_supplier_not_found",
+    third_party_identity_required: "accounting.error_third_party_identity_required",
 };
 
 const accountingErrorMessage = (error, t, fallbackKey = "accounting.failed") =>
@@ -787,7 +824,7 @@ const RecurringExpensesTab = () => {
                         <div className="flex flex-col gap-1">
                             <Tag color={row.is_active ? "green" : "default"}>{t(row.is_active ? "common.active" : "common.inactive")}</Tag>
                             {row.last_run_status === "failed" && (
-                                <Tooltip title={row.last_run_error}>
+                                <Tooltip title={t(ACCOUNTING_ERROR_CODES[row.last_run_error] || "accounting.error_recurring_generation_failed")}>
                                     <Tag color="red" icon={<WarningOutlined />}>{t("accounting.recurring_expense_last_run_failed")}</Tag>
                                 </Tooltip>
                             )}
@@ -1875,7 +1912,7 @@ const WithholdingConceptsCard = () => {
 };
 
 const WithholdingReportCard = () => {
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const { formatCurrency } = useCurrency();
     const isMobile = useIsMobile();
     const [dateRange, setDateRange] = useState([dayjs().startOf("year"), dayjs()]);
@@ -1922,7 +1959,7 @@ const WithholdingReportCard = () => {
     const downloadCertificate = async () => {
         setPdfLoading(true);
         try {
-            await accountingService.downloadWithholdingCertificate(certificate.supplier.id, certificate.year, certificate.supplier.identification);
+            await accountingService.downloadWithholdingCertificate(certificate.supplier.id, certificate.year, certificate.supplier.identification, currentLanguage);
             toast.success(t("accounting.withholding_certificate_downloaded"));
         } catch (error) {
             toast.error(accountingErrorMessage(error, t));

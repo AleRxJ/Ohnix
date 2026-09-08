@@ -12,6 +12,7 @@ import { financeService } from "../../services/financeService";
 import ReportExportButtons from "../reports/ReportExportButtons";
 import { downloadCsv, downloadExcel, downloadPdfReport } from "../../utils/exportReport";
 import useIsMobile from "../../hooks/useIsMobile";
+import { financeErrorMessage } from "../../utils/financeError";
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -160,7 +161,7 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
             });
             setReportRows(response?.data || []);
         } catch (error) {
-            Modal.error({ title: t("finance.reconciliation_report_failed"), content: error?.response?.data?.message || t("finance.failed") });
+            Modal.error({ title: t("finance.reconciliation_report_failed"), content: financeErrorMessage(error, t) });
         } finally { setReportLoading(false); }
     };
     const openReconciliationReport = async () => { setReportOpen(true); await loadReconciliationReport(); };

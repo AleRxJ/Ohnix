@@ -71,23 +71,23 @@ const validateTemplateInputs = async (accountId, payload) => {
     const dayOfMonth = Number(payload.day_of_month);
     const taxTreatment = payload.tax_treatment || "excluded";
     const taxRate = Number(payload.tax_rate || 0);
-    if (!description) throw new ApiError(400, "La descripción del gasto recurrente es obligatoria.");
-    if (description.length > 160) throw new ApiError(400, "La descripción supera la longitud permitida.");
-    if (!Number.isFinite(amount) || amount <= 0) throw new ApiError(400, "El monto debe ser mayor a cero.");
+    if (!description) throw new ApiError(400, "Recurring expense description is required.", [], "", "recurring_expense_description_required");
+    if (description.length > 160) throw new ApiError(400, "Recurring expense description is too long.", [], "", "recurring_expense_description_too_long");
+    if (!Number.isFinite(amount) || amount <= 0) throw new ApiError(400, "The recurring expense amount must be greater than zero.", [], "", "recurring_expense_amount_invalid");
     if (!Number.isInteger(dayOfMonth) || dayOfMonth < MIN_DAY_OF_MONTH || dayOfMonth > MAX_DAY_OF_MONTH) {
-        throw new ApiError(400, `El día del mes debe estar entre ${MIN_DAY_OF_MONTH} y ${MAX_DAY_OF_MONTH}.`);
+        throw new ApiError(400, `The day of month must be between ${MIN_DAY_OF_MONTH} and ${MAX_DAY_OF_MONTH}.`, [], "", "recurring_expense_day_invalid");
     }
-    if (!TAX_TREATMENTS.has(taxTreatment)) throw new ApiError(400, "El tratamiento de IVA no es válido.");
+    if (!TAX_TREATMENTS.has(taxTreatment)) throw new ApiError(400, "The VAT treatment is invalid.", [], "", "recurring_expense_tax_treatment_invalid");
     if (taxTreatment === "taxed" && (!Number.isFinite(taxRate) || taxRate <= 0 || taxRate > 100)) {
-        throw new ApiError(400, "La tarifa de IVA debe estar entre 0 y 100.");
+        throw new ApiError(400, "The VAT rate must be greater than zero and at most 100.", [], "", "recurring_expense_tax_rate_invalid");
     }
 
     const [expenseAccount, cashAccount] = await Promise.all([
         prisma.chartAccount.findFirst({ where: { id: payload.expense_account_id, createdById: accountId, accountType: "expense", isActive: true } }),
         prisma.cashAccount.findFirst({ where: { id: payload.cash_account_id, createdById: accountId, isActive: true } }),
     ]);
-    if (!expenseAccount) throw new ApiError(404, "Cuenta de gasto no encontrada o inactiva.");
-    if (!cashAccount) throw new ApiError(404, "Cuenta de caja/banco no encontrada o inactiva.");
+    if (!expenseAccount) throw new ApiError(404, "The expense account was not found or is inactive.", [], "", "recurring_expense_expense_account_unavailable");
+    if (!cashAccount) throw new ApiError(404, "The cash account was not found or is inactive.", [], "", "recurring_expense_cash_account_unavailable");
 
     return {
         description, amount, dayOfMonth,
@@ -105,7 +105,7 @@ export const createRecurringExpenseTemplate = async (accountId, actorId, payload
 
 export const updateRecurringExpenseTemplate = async (accountId, actorId, id, payload) => {
     const current = await prisma.recurringExpenseTemplate.findFirst({ where: { id, createdById: accountId } });
-    if (!current) throw new ApiError(404, "Gasto recurrente no encontrado.");
+    if (!current) throw new ApiError(404, "Recurring expense not found.", [], "", "recurring_expense_not_found");
 
     const merged = {
         description: payload.description ?? current.description,
@@ -135,8 +135,8 @@ const postTemplateExpense = async (tx, accountId, actorId, template, entryDate, 
         tx.cashAccount.findFirst({ where: { id: template.cashAccountId, createdById: accountId, isActive: true } }),
         tx.user.findUnique({ where: { id: accountId }, select: { company: { select: { vatResponsible: true } } } }),
     ]);
-    if (!expenseAccount) throw new Error("La cuenta de gasto ya no existe o está inactiva.");
-    if (!cashAccount) throw new Error("La cuenta de caja/banco ya no existe o está inactiva.");
+    if (!expenseAccount) throw new ApiError(422, "The expense account no longer exists or is inactive.", [], "", "recurring_expense_expense_account_unavailable");
+    if (!cashAccount) throw new ApiError(422, "The cash account no longer exists or is inactive.", [], "", "recurring_expense_cash_account_unavailable");
 
     // Re-checked at generation time (not frozen at template-creation time) so
     // a company that stops being VAT-responsible after a template was
@@ -148,7 +148,7 @@ const postTemplateExpense = async (tx, accountId, actorId, template, entryDate, 
     const { base, taxAmount } = decomposeInclusiveTax(amount, effectiveTreatment, Number(template.taxRate));
 
     const balanceAfter = await claimCashAccount(tx, { cashAccountId: cashAccount.id, amount });
-    if (balanceAfter === null) throw new Error("Saldo insuficiente en la cuenta de caja/banco.");
+    if (balanceAfter === null) throw new ApiError(422, "The cash account has insufficient funds.", [], "", "recurring_expense_insufficient_funds");
 
     const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
     const vatDeductibleAccountId = taxAmount > 0 ? (await getChartAccountMap(tx, accountId)).get("240810").id : null;
@@ -186,13 +186,13 @@ const postTemplateExpense = async (tx, accountId, actorId, template, entryDate, 
 // period.
 export const runRecurringExpenseTemplateNow = async (accountId, actorId, id) => {
     const template = await prisma.recurringExpenseTemplate.findFirst({ where: { id, createdById: accountId } });
-    if (!template) throw new ApiError(404, "Gasto recurrente no encontrado.");
-    if (!template.isActive) throw new ApiError(400, "El gasto recurrente está inactivo.");
+    if (!template) throw new ApiError(404, "Recurring expense not found.", [], "", "recurring_expense_not_found");
+    if (!template.isActive) throw new ApiError(400, "The recurring expense is inactive.", [], "", "recurring_expense_inactive");
 
     const { year, month } = currentLocalParts(resolveTimezone());
     const period = `${year}-${month}`;
     if (template.lastGeneratedPeriod === period) {
-        throw new ApiError(409, "Este gasto recurrente ya se generó para el periodo actual.");
+        throw new ApiError(409, "This recurring expense was already generated for the current period.", [], "", "recurring_expense_already_generated");
     }
 
     try {
@@ -208,9 +208,9 @@ export const runRecurringExpenseTemplateNow = async (accountId, actorId, id) => 
     } catch (err) {
         await prisma.recurringExpenseTemplate.update({
             where: { id },
-            data: { lastRunStatus: "failed", lastRunError: err?.message?.slice(0, 500) || "Error desconocido." },
+            data: { lastRunStatus: "failed", lastRunError: err?.code || "recurring_expense_generation_failed" },
         });
-        throw err instanceof ApiError ? err : new ApiError(422, err?.message || "No se pudo generar el gasto recurrente.");
+        throw err instanceof ApiError ? err : new ApiError(422, "The recurring expense could not be generated.", [], "", "recurring_expense_generation_failed");
     }
 };
 
@@ -244,7 +244,7 @@ export const generateDueRecurringExpenses = async () => {
         } catch (err) {
             await prisma.recurringExpenseTemplate.update({
                 where: { id: template.id },
-                data: { lastRunStatus: "failed", lastRunError: err?.message?.slice(0, 500) || "Error desconocido." },
+                data: { lastRunStatus: "failed", lastRunError: err?.code || "recurring_expense_generation_failed" },
             });
             failed++;
         }
