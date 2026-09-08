@@ -126,6 +126,14 @@ export const adminService = {
         return response.data;
     },
 
+    // The raw DIAN SOAP response for one test-matrix document - a genuine
+    // DIAN rejection can come back with no statusDescription/errorMessage at
+    // all, and this is the only way to see what DIAN actually said.
+    async getDianTestMatrixDocumentRawResponse(docId) {
+        const response = await api.get(`/admin/dian-test-matrix/documents/${docId}/raw-response`);
+        return response.data;
+    },
+
     // Colombia VAT config (general rate, ET art. 437 UVT threshold, DIAN's
     // yearly UVT peso value) - see Backend/utils/systemSettings.js. These
     // change by government decree, not by a code deploy, so an admin edits

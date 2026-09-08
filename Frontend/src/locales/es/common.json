@@ -1756,6 +1756,7 @@
     "dian_test_matrix_cancel_confirm": "¿Cancelar esta corrida? Los documentos ya enviados no se pueden deshacer.",
     "dian_test_matrix_cancel_requested": "Cancelación solicitada - se detendrá en el próximo documento.",
     "dian_test_matrix_retry_success": "Reintentando los documentos que fallaron.",
+    "dian_test_matrix_raw_response": "Ver respuesta cruda de la DIAN",
     "dian_test_matrix_refresh": "Actualizar",
     "dian_test_matrix_status_pending": "Pendiente",
     "dian_test_matrix_status_running": "En curso",

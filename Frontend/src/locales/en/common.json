@@ -1756,6 +1756,7 @@
     "dian_test_matrix_cancel_confirm": "Cancel this run? Documents already sent can't be undone.",
     "dian_test_matrix_cancel_requested": "Cancellation requested - it will stop at the next document.",
     "dian_test_matrix_retry_success": "Retrying the documents that failed.",
+    "dian_test_matrix_raw_response": "View raw DIAN response",
     "dian_test_matrix_refresh": "Refresh",
     "dian_test_matrix_status_pending": "Pending",
     "dian_test_matrix_status_running": "Running",

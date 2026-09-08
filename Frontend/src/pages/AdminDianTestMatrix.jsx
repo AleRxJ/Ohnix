@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Empty, Input, InputNumber, Popconfirm, Select, Statistic, Table, Tag } from "antd";
-import { DownOutlined, ExperimentOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UndoOutlined, UpOutlined } from "@ant-design/icons";
+import { Alert, Button, Empty, Input, InputNumber, Modal, Popconfirm, Select, Statistic, Table, Tag } from "antd";
+import { CodeOutlined, DownOutlined, ExperimentOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UndoOutlined, UpOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
@@ -42,6 +42,22 @@ const AdminDianTestMatrix = () => {
     const [activeRun, setActiveRun] = useState(null);
     const [loadingRuns, setLoadingRuns] = useState(true);
     const pollRef = useRef(null);
+
+    // Raw DIAN SOAP response viewer - a genuine DIAN rejection can come back
+    // with no statusDescription/errorMessage at all (see
+    // Backend/services/dianTestMatrix.service.js's getDianTestMatrixDocumentRawResponse),
+    // this is the only way to see what DIAN actually said.
+    const [rawResponseModal, setRawResponseModal] = useState({ open: false, loading: false, text: "" });
+
+    const viewRawResponse = async (docId) => {
+        setRawResponseModal({ open: true, loading: true, text: "" });
+        try {
+            const response = await adminService.getDianTestMatrixDocumentRawResponse(docId);
+            setRawResponseModal({ open: true, loading: false, text: response?.data?.rawResponse || "" });
+        } catch (error) {
+            setRawResponseModal({ open: true, loading: false, text: error.response?.data?.message || t("common.error") });
+        }
+    };
 
     // Run history grows with every client that goes through DIAN habilitación
     // - same reasoning as AdminFirmaPassValidations.jsx, this needs to stay
@@ -220,6 +236,15 @@ const AdminDianTestMatrix = () => {
         { title: t("admin.dian_test_matrix_col_attempts"), dataIndex: "attempts", key: "attempts", width: 70 },
         { title: t("admin.dian_test_matrix_col_sent_at"), dataIndex: "sentAt", key: "sentAt", render: (v) => (v ? new Date(v).toLocaleTimeString() : "—") },
         { title: t("admin.dian_test_matrix_col_resolved_at"), dataIndex: "resolvedAt", key: "resolvedAt", render: (v) => (v ? new Date(v).toLocaleTimeString() : "—") },
+        {
+            title: "",
+            key: "rawResponse",
+            render: (_, r) => (
+                r.externalId
+                    ? <Button size="small" type="text" icon={<CodeOutlined />} onClick={() => viewRawResponse(r.id)} title={t("admin.dian_test_matrix_raw_response")} />
+                    : null
+            ),
+        },
     ];
 
     const historyColumns = [
@@ -443,6 +468,18 @@ const AdminDianTestMatrix = () => {
                     scroll={{ x: true }}
                 />
             </div>
+
+            <Modal
+                title={t("admin.dian_test_matrix_raw_response")}
+                open={rawResponseModal.open}
+                onCancel={() => setRawResponseModal({ open: false, loading: false, text: "" })}
+                footer={<Button onClick={() => setRawResponseModal({ open: false, loading: false, text: "" })}>{t("common.close")}</Button>}
+                width={720}
+            >
+                <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-all rounded-lg bg-[var(--ohnix-surface-2)] p-3 text-xs">
+                    {rawResponseModal.loading ? "…" : rawResponseModal.text}
+                </pre>
+            </Modal>
         </div>
     );
 };

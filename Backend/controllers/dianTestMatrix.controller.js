@@ -6,6 +6,7 @@ import {
     listDianTestMatrixRuns,
     cancelDianTestMatrixRun,
     retryFailedDianTestMatrixDocuments,
+    getDianTestMatrixDocumentRawResponse,
 } from "../services/dianTestMatrix.service.js";
 
 export const startDianTestMatrixRunAdmin = asyncHandler(async (req, res) => {
@@ -24,6 +25,11 @@ export const startDianTestMatrixRunAdmin = asyncHandler(async (req, res) => {
 export const retryFailedDianTestMatrixDocumentsAdmin = asyncHandler(async (req, res) => {
     const data = await retryFailedDianTestMatrixDocuments({ runId: req.params.runId });
     return res.status(200).json(new ApiResponse(200, data, "Retrying failed documents"));
+});
+
+export const getDianTestMatrixDocumentRawResponseAdmin = asyncHandler(async (req, res) => {
+    const data = await getDianTestMatrixDocumentRawResponse({ docId: req.params.docId });
+    return res.status(200).json(new ApiResponse(200, data, "Raw DIAN response retrieved"));
 });
 
 export const getDianTestMatrixRunAdmin = asyncHandler(async (req, res) => {

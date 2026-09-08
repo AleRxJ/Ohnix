@@ -7,6 +7,7 @@ import {
     listDianTestMatrixRunsAdmin,
     cancelDianTestMatrixRunAdmin,
     retryFailedDianTestMatrixDocumentsAdmin,
+    getDianTestMatrixDocumentRawResponseAdmin,
 } from "../controllers/dianTestMatrix.controller.js";
 
 const router = Router();
@@ -21,5 +22,6 @@ router.route("/runs").get(listDianTestMatrixRunsAdmin).post(startDianTestMatrixR
 router.route("/runs/:runId").get(getDianTestMatrixRunAdmin);
 router.route("/runs/:runId/cancel").post(cancelDianTestMatrixRunAdmin);
 router.route("/runs/:runId/retry-failed").post(retryFailedDianTestMatrixDocumentsAdmin);
+router.route("/documents/:docId/raw-response").get(getDianTestMatrixDocumentRawResponseAdmin);
 
 export default router;

@@ -6,6 +6,7 @@ import {
     createItcycleCreditNote,
     createItcycleDebitNote,
     refreshItcycleDocumentStatus,
+    getItcycleRawResponse,
     isItcycleConfigured,
 } from "./itcycleDian.service.js";
 import { getCompanyDianReadiness } from "./firmaPassProvisioning.service.js";
@@ -532,6 +533,29 @@ export const getDianTestMatrixRun = async ({ runId }) => {
         summary[doc.documentType][doc.status] = (summary[doc.documentType][doc.status] || 0) + 1;
     }
     return { ...run, summary };
+};
+
+/**
+ * The raw DIAN SOAP response actually stored for one test-matrix document -
+ * admin-only diagnostic use (see itcycle-api-dian's admin.service.ts#getDianRawResponse
+ * for why this exists: a genuine DIAN rejection can come back with no
+ * statusDescription/errorMessage at all, and this is the only way to see
+ * what DIAN actually said).
+ */
+export const getDianTestMatrixDocumentRawResponse = async ({ docId }) => {
+    const doc = await prisma.dianTestMatrixDocument.findUnique({
+        where: { id: docId },
+        include: { run: { include: { company: true } } },
+    });
+    if (!doc) throw new ApiError(404, "Document not found");
+    if (!doc.externalId) throw new ApiError(422, "This document was never sent to itcycle-api-dian yet");
+    const itcycleCompanyId = doc.run.company.itcycleCompanyId;
+    const rawResponse = await getItcycleRawResponse({
+        companyId: itcycleCompanyId,
+        documentType: DOCUMENT_TYPE_CODE[doc.documentType],
+        id: doc.externalId,
+    });
+    return { rawResponse };
 };
 
 export const listDianTestMatrixRuns = async ({ companyId }) =>

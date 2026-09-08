@@ -461,6 +461,22 @@ export const refreshItcycleDocumentStatus = async ({ companyId, documentType, id
     });
 };
 
+// The raw DIAN SOAP response actually stored for a document - the only way
+// to see why DIAN rejected something when statusDescription/errorMessage
+// came back empty (a real DIAN behavior, not a display bug - see
+// itcycle-api-dian's admin.service.ts#getDianRawResponse). Admin-only,
+// diagnostic use. The response isn't JSON (raw XML) - request()'s own
+// toJsonOrNull wraps any non-JSON body as { raw: <text> }.
+export const getItcycleRawResponse = async ({ companyId, documentType, id }) => {
+    requireAdminConfigured();
+    const result = await request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/documents/${documentType}/${id}/raw-response`,
+        authHeader: adminAuthHeader(),
+    });
+    return result?.raw ?? result;
+};
+
 // Every invoice/credit-note/debit-note/support-document itcycle-api-dian has
 // sent for this company, optionally narrowed to one habilitación round
 // (testSetId) - see that repo's admin.service.ts#listTestSubmissions for why
