@@ -34,7 +34,15 @@ const requireItcycleProvisionedCompany = async ({ companyId }) => {
 
 const rethrowAsApiError = (error) => {
     const providerPayload = error instanceof ItcycleDianError ? error.payload : null;
-    throw new ApiError(502, error.message || "Viafirma provisioning request failed", providerPayload ? [providerPayload] : undefined);
+    // itcycle-api-dian's own error handler marks a Viafirma transport/infra
+    // failure (timeout, 5xx, a Sandbox quirk returning HTML instead of JSON -
+    // see ViafirmaApiClient.ts) this way - `error.message` at that point is
+    // an English dev-facing fallback, not something to show a user verbatim
+    // (same reasoning as ensureElectronicInvoicingPlan's own `code` further
+    // down this file's callers). `code` lets the self-service UI show a
+    // proper translated message instead - see fiscal_setup.viafirma_technical_error.
+    const code = providerPayload?.error === "certificate_provider_technical_error" ? "viafirma_technical_error" : undefined;
+    throw new ApiError(502, error.message || "Viafirma provisioning request failed", providerPayload ? [providerPayload] : undefined, "", code);
 };
 
 export const getCompanyViafirmaTerms = async ({ companyId, profileKind }) => {

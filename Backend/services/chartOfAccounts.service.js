@@ -84,19 +84,19 @@ export const ensureRetainedEarningsAccount = async (tx, accountId) => {
 // seed never used (ChartAccount.parentId's own comment) - optional here too,
 // a flat chart is still perfectly valid.
 export const createChartAccount = async (accountId, { code, name, accountType, parentId }) => {
-    if (!code?.trim()) throw new ApiError(400, "El código de la cuenta es obligatorio.");
-    if (!name?.trim()) throw new ApiError(400, "El nombre de la cuenta es obligatorio.");
+    if (!code?.trim()) throw new ApiError(400, "Account code is required.", [], "", "chart_account_code_required");
+    if (!name?.trim()) throw new ApiError(400, "Account name is required.", [], "", "chart_account_name_required");
     if (!ACCOUNT_TYPES.includes(accountType)) {
-        throw new ApiError(400, `accountType debe ser uno de: ${ACCOUNT_TYPES.join(", ")}.`);
+        throw new ApiError(400, `accountType must be one of: ${ACCOUNT_TYPES.join(", ")}.`, [], "", "chart_account_type_invalid");
     }
 
     const trimmedCode = code.trim();
     const existing = await prisma.chartAccount.findFirst({ where: { createdById: accountId, code: trimmedCode } });
-    if (existing) throw new ApiError(409, `Ya existe una cuenta con el código ${trimmedCode}.`);
+    if (existing) throw new ApiError(409, `An account with code ${trimmedCode} already exists.`, [], "", "chart_account_code_duplicate");
 
     if (parentId) {
         const parent = await prisma.chartAccount.findFirst({ where: { id: parentId, createdById: accountId } });
-        if (!parent) throw new ApiError(400, "La cuenta padre indicada no existe.");
+        if (!parent) throw new ApiError(400, "The selected parent account does not exist.", [], "", "chart_account_parent_not_found");
     }
 
     return prisma.chartAccount.create({
@@ -110,6 +110,6 @@ export const createChartAccount = async (accountId, { code, name, accountType, p
 // with isActive: true.
 export const setChartAccountActive = async (accountId, chartAccountId, isActive) => {
     const account = await prisma.chartAccount.findFirst({ where: { id: chartAccountId, createdById: accountId } });
-    if (!account) throw new ApiError(404, "Cuenta contable no encontrada.");
+    if (!account) throw new ApiError(404, "Chart account not found.", [], "", "chart_account_not_found");
     return prisma.chartAccount.update({ where: { id: chartAccountId }, data: { isActive } });
 };

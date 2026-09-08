@@ -21,10 +21,22 @@ import { COLOMBIA_DEPARTMENTS } from "../../constants/colombiaDivipola";
 import { computeNitCheckDigit } from "../../utils/nit.util";
 
 const { Text } = Typography;
-// Same reasoning as ElectronicInvoicingSettings.jsx/FirmaPassSelfService.jsx's
-// PLAN_GATE_CODE_MESSAGES - createMyViafirmaRequest also gates on
-// ensureElectronicInvoicingPlan server-side.
-const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
+// resolveApiErrorMessage shows error.response.data.message verbatim
+// whenever the backend sends one - it's an English dev-facing fallback
+// (logs, Postman), never meant to reach an end user as-is (see
+// ApiError.code's own doc comment in Backend/utils/ApiError.js). Every
+// `code` a Viafirma call can come back with needs an entry here, translated,
+// or it falls through untranslated.
+const VIAFIRMA_CODE_MESSAGES = {
+    // Same reasoning as ElectronicInvoicingSettings.jsx/FirmaPassSelfService.jsx's
+    // PLAN_GATE_CODE_MESSAGES - createMyViafirmaRequest also gates on
+    // ensureElectronicInvoicingPlan server-side.
+    electronic_invoicing_plan_required: "fiscal_setup.plan_required",
+    // Viafirma transport/infra failure (timeout, 5xx, or a Sandbox quirk
+    // returning HTML instead of JSON) - see itcycle-api-dian's
+    // CertificateProviderTechnicalError and Ohnix's viafirmaProvisioning.service.js#rethrowAsApiError.
+    viafirma_technical_error: "fiscal_setup.viafirma_technical_error",
+};
 
 const ORGANIZATION_TYPES = ["RM", "PROP", "RUNEOL", "RNT", "ESAL", "ESOL", "JUEGOS", "EXTRANJERAS"];
 
@@ -218,7 +230,7 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
             await action();
             if (successMessage) toast.success(successMessage);
         } catch (error) {
-            toast.error(errorFormatter?.(error) || resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "fiscal_setup.viafirma_step_error"));
+            toast.error(errorFormatter?.(error) || resolveApiErrorMessage(error, t, VIAFIRMA_CODE_MESSAGES, "fiscal_setup.viafirma_step_error"));
         } finally {
             setBusy("");
         }

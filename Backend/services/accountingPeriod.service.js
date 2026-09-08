@@ -14,7 +14,7 @@ export const listAccountingPeriods = async (accountId) =>
 
 export const getAccountingPeriodCloseReadiness = async ({ accountId, periodId, db = prisma }) => {
     const period = await db.accountingPeriod.findFirst({ where: { id: periodId, createdById: accountId } });
-    if (!period) throw new ApiError(404, "Periodo contable no encontrado.");
+    if (!period) throw new ApiError(404, "Accounting period not found.", [], "", "accounting_period_not_found");
     const startDate = new Date(Date.UTC(period.year, period.month - 1, 1));
     const endDate = new Date(Date.UTC(period.year, period.month, 0, 23, 59, 59, 999));
     const [integrity, unmatchedStatementEntries, unmatchedCashMovements] = await Promise.all([
@@ -46,14 +46,14 @@ export const getAccountingPeriodCloseReadiness = async ({ accountId, periodId, d
 // afterward instead of appearing to net to zero.
 export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) => {
     const period = await prisma.accountingPeriod.findFirst({ where: { id: periodId, createdById: accountId } });
-    if (!period) throw new ApiError(404, "Periodo contable no encontrado.");
-    if (period.status === "closed") throw new ApiError(400, "Este periodo ya está cerrado.");
+    if (!period) throw new ApiError(404, "Accounting period not found.", [], "", "accounting_period_not_found");
+    if (period.status === "closed") throw new ApiError(400, "This accounting period is already closed.", [], "", "accounting_period_already_closed");
 
     const now = new Date();
     const periodKey = period.year * 12 + period.month;
     const currentPeriodKey = now.getUTCFullYear() * 12 + now.getUTCMonth() + 1;
     if (periodKey >= currentPeriodKey) {
-        throw new ApiError(400, "Solo se pueden cerrar periodos de meses anteriores.");
+        throw new ApiError(400, "Only prior-month accounting periods may be closed.", [], "", "accounting_period_not_prior_month");
     }
 
     const startDate = new Date(Date.UTC(period.year, period.month - 1, 1));
@@ -71,11 +71,11 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
             FOR UPDATE
         `;
         const lockedPeriod = lockedRows[0];
-        if (!lockedPeriod) throw new ApiError(404, "Periodo contable no encontrado.");
-        if (lockedPeriod.status === "closed") throw new ApiError(400, "Este periodo ya está cerrado.");
+        if (!lockedPeriod) throw new ApiError(404, "Accounting period not found.", [], "", "accounting_period_not_found");
+        if (lockedPeriod.status === "closed") throw new ApiError(400, "This accounting period is already closed.", [], "", "accounting_period_already_closed");
 
         const readiness = await getAccountingPeriodCloseReadiness({ accountId, periodId, db: tx });
-        if (!readiness.can_close) throw new ApiError(422, "No se puede cerrar el periodo: existen diferencias entre saldos de caja/banco y sus movimientos.", [], "", "accounting_period_integrity_blocked");
+        if (!readiness.can_close) throw new ApiError(422, "The accounting period cannot be closed because cash balances and movements differ.", [], "", "accounting_period_integrity_blocked");
 
         const activeReopening = await tx.accountingPeriodReopening.findFirst({
             where: { periodId, reclosedAt: null },
@@ -118,7 +118,7 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
         }, { isolationLevel: "Serializable" });
     } catch (error) {
         if (error?.code === "P2034") {
-            throw new ApiError(409, "El periodo fue modificado por otra operación concurrente. Actualiza e intenta de nuevo.");
+            throw new ApiError(409, "The accounting period was changed by another operation.", [], "", "accounting_period_concurrent_change");
         }
         throw error;
     }
@@ -127,9 +127,9 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
 export const reopenAccountingPeriod = async ({ accountId, actorId, periodId, reason, durationHours = 24 }) => {
     const trimmedReason = String(reason || "").trim();
     const hours = Number(durationHours);
-    if (!trimmedReason) throw new ApiError(400, "El motivo de reapertura es obligatorio.");
+    if (!trimmedReason) throw new ApiError(400, "A reopening reason is required.", [], "", "accounting_period_reopen_reason_required");
     if (!Number.isInteger(hours) || hours < 1 || hours > 168) {
-        throw new ApiError(400, "La ventana de reapertura debe estar entre 1 y 168 horas.");
+        throw new ApiError(400, "The reopening window must be between 1 and 168 hours.", [], "", "accounting_period_reopen_duration_invalid");
     }
 
     return prisma.$transaction(async (tx) => {
@@ -140,8 +140,8 @@ export const reopenAccountingPeriod = async ({ accountId, actorId, periodId, rea
             FOR UPDATE
         `;
         const period = rows[0];
-        if (!period) throw new ApiError(404, "Periodo contable no encontrado.");
-        if (period.status !== "closed") throw new ApiError(409, "Solo se puede reabrir un periodo cerrado.");
+        if (!period) throw new ApiError(404, "Accounting period not found.", [], "", "accounting_period_not_found");
+        if (period.status !== "closed") throw new ApiError(409, "Only a closed accounting period may be reopened.", [], "", "accounting_period_not_closed");
 
         const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
         const reopening = await tx.accountingPeriodReopening.create({

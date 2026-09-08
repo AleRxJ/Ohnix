@@ -205,7 +205,7 @@ export const createChartOfAccount = asyncHandler(async (req, res) => {
 
 export const setChartOfAccountActive = asyncHandler(async (req, res, next) => {
     const { is_active } = req.body || {};
-    if (typeof is_active !== "boolean") return next(new ApiError(400, "is_active debe ser verdadero o falso."));
+    if (typeof is_active !== "boolean") return next(new ApiError(400, "is_active must be a boolean.", [], "", "chart_account_active_invalid"));
 
     const account = await chartOfAccountsService.setChartAccountActive(req.user.prismaId, req.params.id, is_active);
     return res.status(200).json(new ApiResponse(200, mapChartAccount(account), "Chart account updated successfully"));
@@ -390,7 +390,7 @@ export const getBudgetReport = asyncHandler(async (req, res) => {
         month: req.query.month,
         costCenterId: req.query.cost_center_id || "all",
     });
-    return res.status(200).json(new ApiResponse(200, report, "Presupuesto y ejecución obtenidos."));
+    return res.status(200).json(new ApiResponse(200, report, "Budget performance fetched successfully."));
 });
 
 export const saveBudgets = asyncHandler(async (req, res) => {
@@ -401,16 +401,31 @@ export const saveBudgets = asyncHandler(async (req, res) => {
         month: req.body?.month,
         items: req.body?.items,
     });
-    return res.status(200).json(new ApiResponse(200, { saved: budgets.length }, "Presupuesto guardado."));
+    return res.status(200).json(new ApiResponse(200, { saved: budgets.length }, "Budget saved successfully."));
 });
 
 export const deleteBudget = asyncHandler(async (req, res) => {
     await accountingBudgetService.deleteBudget({ accountId: req.user.prismaId, actorId: req.user.actorId, id: req.params.id });
-    return res.status(200).json(new ApiResponse(200, null, "Partida presupuestal eliminada."));
+    return res.status(200).json(new ApiResponse(200, null, "Budget line deleted successfully."));
+});
+
+export const getAnnualBudgetReport = asyncHandler(async (req, res) => {
+    const report = await accountingBudgetService.getAnnualBudgetReport({ accountId: req.user.prismaId, year: req.query.year, costCenterId: req.query.cost_center_id || "all" });
+    return res.status(200).json(new ApiResponse(200, report, "Annual budget fetched successfully."));
+});
+
+export const distributeAnnualBudget = asyncHandler(async (req, res) => {
+    const result = await accountingBudgetService.distributeAnnualBudget({ accountId: req.user.prismaId, actorId: req.user.actorId, year: req.body?.year, chartAccountId: req.body?.chart_account_id, costCenterId: req.body?.cost_center_id, annualAmount: req.body?.annual_amount, alertThresholdPercent: req.body?.alert_threshold_percent });
+    return res.status(200).json(new ApiResponse(200, result, "Annual budget distributed successfully."));
+});
+
+export const copyAnnualBudget = asyncHandler(async (req, res) => {
+    const result = await accountingBudgetService.copyAnnualBudget({ accountId: req.user.prismaId, actorId: req.user.actorId, sourceYear: req.body?.source_year, targetYear: req.body?.target_year, costCenterId: req.body?.cost_center_id || "all", overwrite: req.body?.overwrite === true });
+    return res.status(200).json(new ApiResponse(200, result, "Annual budget copied successfully."));
 });
 
 export const closeAccountingPeriod = asyncHandler(async (req, res, next) => {
-    if (!req.params.id) return next(new ApiError(400, "id es obligatorio"));
+    if (!req.params.id) return next(new ApiError(400, "Accounting period id is required.", [], "", "accounting_period_id_required"));
 
     const period = await accountingPeriodService.closeAccountingPeriod({
         accountId: req.user.prismaId,
