@@ -410,18 +410,7 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                     </div>
 
                     {activeRun.errorMessage && (
-                        // A completed+passResult run's errorMessage is never
-                        // an actual error - dianTestMatrix.service.js only
-                        // sets it there to explain why the run stopped early
-                        // (the DIAN already approved this test set before all
-                        // documents were sent), so it reads as good news
-                        // (teal), not a warning (amber).
-                        <Alert
-                            className={`mt-4 dark-alert ${activeRun.status === "completed" && activeRun.passResult ? "dark-alert-teal" : "dark-alert-amber"}`}
-                            type={activeRun.status === "completed" && activeRun.passResult ? "success" : "warning"}
-                            showIcon
-                            message={activeRun.errorMessage}
-                        />
+                        <Alert className="mt-4 dark-alert dark-alert-amber" type="warning" showIcon message={activeRun.errorMessage} />
                     )}
 
                     {canRequestProduction && (
