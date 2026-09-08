@@ -399,7 +399,7 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                     </div>
                     <Popconfirm
                         title={t("fiscal_setup.habilitacion_confirm_title")}
-                        description={t("fiscal_setup.habilitacion_confirm_description")}
+                        description={t("fiscal_setup.habilitacion_confirm_description", { invoiceTarget, creditNoteTarget, debitNoteTarget })}
                         okText={t("fiscal_setup.habilitacion_confirm_ok")}
                         cancelText={t("fiscal_setup.habilitacion_confirm_cancel")}
                         onConfirm={startRun}

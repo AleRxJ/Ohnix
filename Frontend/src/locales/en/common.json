@@ -4292,7 +4292,7 @@
     "habilitacion_warning_title": "This consumes real numbers from your numbering",
     "habilitacion_warning_hint": "This uses your real numbering (01, 91, 92) and will be \"spent\" on tests: Invoice {{invoiceTarget}} · Credit note {{creditNoteTarget}} · Debit note {{debitNoteTarget}}. Your next real invoice will start at a higher number.",
     "habilitacion_confirm_title": "Start the habilitación test?",
-    "habilitacion_confirm_description": "50 test documents (no legal validity) will be sent, consuming 30 numbers from your real invoice resolution (01), plus 10 credit note and 10 debit note numbers. This action cannot be undone.",
+    "habilitacion_confirm_description": "Test documents (no legal validity) will be sent, consuming real numbers: Invoice {{invoiceTarget}} · Credit note {{creditNoteTarget}} · Debit note {{debitNoteTarget}}. This can't be undone.",
     "habilitacion_confirm_ok": "Yes, start",
     "habilitacion_confirm_cancel": "Cancel",
     "habilitacion_test_set_id_label": "Test Set ID (DIAN)",

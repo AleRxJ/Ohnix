@@ -4286,7 +4286,7 @@
     "habilitacion_warning_title": "Esto consume números reales de tu numeración",
     "habilitacion_warning_hint": "Esto usa tu numeración real (01, 91, 92) y quedará \"gastado\" en pruebas: Factura {{invoiceTarget}} · Nota crédito {{creditNoteTarget}} · Nota débito {{debitNoteTarget}}. Tu próxima factura real empezará en un número más alto.",
     "habilitacion_confirm_title": "¿Iniciar la prueba de habilitación?",
-    "habilitacion_confirm_description": "Se enviarán 50 documentos de prueba (sin validez legal) y se consumirán 30 números de tu resolución de factura real (01), más 10 de nota crédito y 10 de nota débito. Esta acción no se puede deshacer.",
+    "habilitacion_confirm_description": "Se enviarán documentos de prueba (sin validez legal) y se consumirán números reales: Factura {{invoiceTarget}} · Nota crédito {{creditNoteTarget}} · Nota débito {{debitNoteTarget}}. No se puede deshacer.",
     "habilitacion_confirm_ok": "Sí, iniciar",
     "habilitacion_confirm_cancel": "Cancelar",
     "habilitacion_test_set_id_label": "Test Set ID (DIAN)",
