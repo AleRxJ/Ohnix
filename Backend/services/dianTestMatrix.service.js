@@ -40,9 +40,9 @@ const DISCREPANCY_BY_TYPE = {
 // A handful of plausible product lines, cycled deterministically per sequence
 // (not random) so a failed run is reproducible on retry.
 const PRODUCT_LINES = [
-    { productName: "Servicio de consultoría", unitMeasureCode: "94", taxCode: "01", taxRateApplied: 19, taxTreatmentApplied: "taxed" },
-    { productName: "Producto exento", unitMeasureCode: "94", taxCode: "01", taxRateApplied: 0, taxTreatmentApplied: "taxed" },
-    { productName: "Bien excluido de IVA", unitMeasureCode: "94", taxCode: "01", taxRateApplied: 0, taxTreatmentApplied: "excluded" },
+    { productName: "Servicio de consultoría", standardCode: "SRV001", unitMeasureCode: "94", taxCode: "01", taxRateApplied: 19, taxTreatmentApplied: "taxed" },
+    { productName: "Producto exento", standardCode: "SRV002", unitMeasureCode: "94", taxCode: "01", taxRateApplied: 0, taxTreatmentApplied: "taxed" },
+    { productName: "Bien excluido de IVA", standardCode: "SRV003", unitMeasureCode: "94", taxCode: "01", taxRateApplied: 0, taxTreatmentApplied: "excluded" },
 ];
 
 const dummyCustomer = (sequence) => ({
@@ -66,7 +66,7 @@ const buildDummyInvoicePayload = (sequence) => {
         taxTreatmentApplied: line.taxTreatmentApplied,
         taxRateApplied: line.taxRateApplied,
         taxAmount: line.taxTreatmentApplied === "excluded" ? 0 : Math.round(quantity * unitcost * (line.taxRateApplied / 100)),
-        product: { unitMeasureCode: line.unitMeasureCode, productName: `${line.productName} ${sequence}`, taxCode: line.taxCode },
+        product: { unitMeasureCode: line.unitMeasureCode, productName: `${line.productName} ${sequence}`, taxCode: line.taxCode, standardCode: line.standardCode },
     }];
     const lines = buildItcycleLines(orderDetails);
     const totals = buildItcycleTotals(lines);
@@ -88,7 +88,7 @@ const buildDummyNotePayload = (sequence) => {
         taxTreatmentApplied: "taxed",
         taxRateApplied: 19,
         taxAmount: Math.round((10000 + sequence * 100) * 0.19),
-        product: { unitMeasureCode: "94", productName: `Ajuste de prueba ${sequence}`, taxCode: "01" },
+        product: { unitMeasureCode: "94", productName: `Ajuste de prueba ${sequence}`, taxCode: "01", standardCode: "AJU001" },
     }];
     const lines = buildItcycleLines(orderDetails);
     const totals = buildItcycleTotals(lines);

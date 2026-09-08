@@ -566,6 +566,11 @@ export const buildItcycleLines = (orderDetails) => orderDetails.map((item, index
         quantity,
         unitCode: item.product.unitMeasureCode,
         description: item.product.productName,
+        // DIAN requires every line to carry a StandardItemIdentification
+        // code (rejection FAZ09 otherwise) - dian-kit defaults to "N/A"
+        // when this is omitted, but the product's own code is always
+        // available here and is what should actually reach DIAN.
+        standardItemCode: item.product.standardCode,
         price,
         lineExtensionAmount,
         // dian-kit's own InvoiceLineSchema requires >=1 entry here
