@@ -81,7 +81,18 @@ const buildDummyInvoicePayload = (sequence) => {
     };
 };
 
-const buildDummyNotePayload = (sequence) => {
+// CreditNoteInput/DebitNoteInput both require customer + paymentMeans (see
+// dian-engine's InvoiceInput, which CreditNoteInput/DebitNoteInput extend) -
+// itcycle-api-dian's real production note payload (buildItcycleCreditNotePayload
+// in electronicInvoicing.service.js) always reuses the ORIGINAL invoice's own
+// customer for this reason. This dummy generator used to omit both entirely,
+// which never surfaced as long as notes failed earlier in the pipeline (the
+// "referenced invoice not ACCEPTED" cascade, now fixed at the root in
+// itcycle-api-dian) - once that stopped masking it, every note started
+// failing Zod validation instead. `referenceInvoiceSequence` (not the note's
+// own `sequence`) drives the dummy customer so it matches the invoice this
+// note actually references, same as real production notes.
+const buildDummyNotePayload = (sequence, referenceInvoiceSequence) => {
     const orderDetails = [{
         quantity: 1,
         unitcost: 10000 + sequence * 100,
@@ -92,7 +103,14 @@ const buildDummyNotePayload = (sequence) => {
     }];
     const lines = buildItcycleLines(orderDetails);
     const totals = buildItcycleTotals(lines);
-    return { issueDate: new Date().toISOString(), issueTime: new Date().toISOString(), lines, ...totals };
+    return {
+        issueDate: new Date().toISOString(),
+        issueTime: new Date().toISOString(),
+        customer: buildItcycleCustomerParty(dummyCustomer(referenceInvoiceSequence)),
+        lines,
+        ...totals,
+        paymentMeans: { paymentForm: "1", paymentMethod: "10" },
+    };
 };
 
 /**
@@ -291,7 +309,7 @@ async function processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, i
             apiKey,
             internalReference: doc.internalReference,
             invoiceId: invoiceRef.externalId,
-            document: buildDummyNotePayload(doc.sequence),
+            document: buildDummyNotePayload(doc.sequence, doc.referenceInvoiceSequence),
             discrepancyResponse: DISCREPANCY_BY_TYPE[doc.documentType],
             send: { method: "SendTestSetAsync", testSetId },
         });
