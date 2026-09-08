@@ -17,6 +17,18 @@ const text = (value) => `${value || ""}`.trim();
 const POLL_INTERVAL_MS = Number(process.env.DIAN_TEST_MATRIX_POLL_INTERVAL_MS) || 15000;
 const MAX_POLL_ATTEMPTS = Number(process.env.DIAN_TEST_MATRIX_MAX_POLL_ATTEMPTS) || 20;
 
+// The DIAN only requires ONE accepted invoice to flip a "modo de operación"
+// from "En proceso" to "Aceptado" (confirmed on their own portal: "Total de
+// documentos aceptados requeridos: Facturas 1") - it does NOT wait for the
+// full 50-document batch. Once that happens, every further SendTestSetAsync
+// call against the same testSetId comes back REJECTED with exactly this
+// message, even though nothing is actually wrong - habilitación is just
+// already done. Showing that as a red "Rechazado" (like a genuine failure)
+// is misleading, so the worker detects it and stops the run immediately
+// instead of grinding through the rest of the batch collecting more of the
+// same non-error.
+const TEST_SET_ALREADY_ACCEPTED_PATTERN = /se encuentra aceptado/i;
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // DIAN document-type codes, matching the counts a real habilitación "set de
@@ -220,9 +232,11 @@ async function processInvoiceDocument({ doc, apiKey, testSetId, itcycleCompanyId
         // Sync send (or DIAN already resolved it) - nothing to poll.
         await prisma.dianTestMatrixDocument.update({
             where: { id: doc.id },
-            data: { status: result.status.toLowerCase(), cufe: result.cufe || null, resolvedAt: new Date() },
+            data: { status: result.status.toLowerCase(), statusDescription: result.statusDescription || null, cufe: result.cufe || null, resolvedAt: new Date() },
         });
-        return result.status === "ACCEPTED" ? { sequence: doc.sequence, externalId: result.id } : null;
+        if (result.status === "ACCEPTED") return { sequence: doc.sequence, externalId: result.id };
+        if (TEST_SET_ALREADY_ACCEPTED_PATTERN.test(result.statusDescription || "")) return { alreadyEnabled: true };
+        return null;
     }
     if (result.status !== "SENT") {
         // CONTINGENCY (DIAN unreachable) or ERROR - not pollable (no trackId
@@ -259,7 +273,9 @@ async function processInvoiceDocument({ doc, apiKey, testSetId, itcycleCompanyId
             resolvedAt: new Date(),
         },
     });
-    return accepted ? { sequence: doc.sequence, externalId: result.id } : null;
+    if (accepted) return { sequence: doc.sequence, externalId: result.id };
+    if (TEST_SET_ALREADY_ACCEPTED_PATTERN.test(outcome.record.statusDescription || "")) return { alreadyEnabled: true };
+    return null;
 }
 
 async function processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, invoiceBySequence }) {
@@ -307,7 +323,8 @@ async function processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, i
     });
 
     if (result.status === "ACCEPTED" || result.status === "REJECTED") {
-        await prisma.dianTestMatrixDocument.update({ where: { id: doc.id }, data: { status: result.status.toLowerCase(), resolvedAt: new Date() } });
+        await prisma.dianTestMatrixDocument.update({ where: { id: doc.id }, data: { status: result.status.toLowerCase(), statusDescription: result.statusDescription || null, resolvedAt: new Date() } });
+        if (result.status === "REJECTED" && TEST_SET_ALREADY_ACCEPTED_PATTERN.test(result.statusDescription || "")) return { alreadyEnabled: true };
         return;
     }
     if (result.status !== "SENT") {
@@ -340,6 +357,9 @@ async function processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, i
             resolvedAt: new Date(),
         },
     });
+    if (outcome.record.status !== "ACCEPTED" && TEST_SET_ALREADY_ACCEPTED_PATTERN.test(outcome.record.statusDescription || "")) {
+        return { alreadyEnabled: true };
+    }
 }
 
 /**
@@ -364,18 +384,29 @@ async function runDianTestMatrixWorker({ runId, apiKey, testSetId }) {
         const invoiceDocs = run.documents.filter((d) => d.documentType === "invoice");
         const noteDocs = run.documents.filter((d) => d.documentType !== "invoice");
 
+        let alreadyEnabled = false;
         const invoiceBySequence = new Map();
         for (const doc of invoiceDocs) {
             const cancelled = (await prisma.dianTestMatrixRun.findUnique({ where: { id: runId }, select: { cancelRequested: true } }))?.cancelRequested;
             if (cancelled) break;
-            const accepted = await processInvoiceDocument({ doc, apiKey, testSetId, itcycleCompanyId });
-            if (accepted) invoiceBySequence.set(accepted.sequence, accepted);
+            const outcome = await processInvoiceDocument({ doc, apiKey, testSetId, itcycleCompanyId });
+            if (outcome?.alreadyEnabled) {
+                alreadyEnabled = true;
+                break;
+            }
+            if (outcome) invoiceBySequence.set(outcome.sequence, outcome);
         }
 
-        for (const doc of noteDocs) {
-            const cancelled = (await prisma.dianTestMatrixRun.findUnique({ where: { id: runId }, select: { cancelRequested: true } }))?.cancelRequested;
-            if (cancelled) break;
-            await processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, invoiceBySequence });
+        if (!alreadyEnabled) {
+            for (const doc of noteDocs) {
+                const cancelled = (await prisma.dianTestMatrixRun.findUnique({ where: { id: runId }, select: { cancelRequested: true } }))?.cancelRequested;
+                if (cancelled) break;
+                const outcome = await processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, invoiceBySequence });
+                if (outcome?.alreadyEnabled) {
+                    alreadyEnabled = true;
+                    break;
+                }
+            }
         }
 
         const finalRun = await prisma.dianTestMatrixRun.findUniqueOrThrow({ where: { id: runId } });
@@ -385,10 +416,22 @@ async function runDianTestMatrixWorker({ runId, apiKey, testSetId }) {
             return;
         }
 
-        const acceptedInvoices = await prisma.dianTestMatrixDocument.count({ where: { runId, documentType: "invoice", status: "accepted" } });
+        // Stopping here (rather than grinding through the remaining pending
+        // documents) is deliberate - see TEST_SET_ALREADY_ACCEPTED_PATTERN's
+        // own comment. The DIAN already confirmed this habilitación passed;
+        // any further test-set send would just be rejected the same way.
+        const passResult = alreadyEnabled
+            || (await prisma.dianTestMatrixDocument.count({ where: { runId, documentType: "invoice", status: "accepted" } })) >= 1;
         await prisma.dianTestMatrixRun.update({
             where: { id: runId },
-            data: { status: "completed", finishedAt: new Date(), passResult: acceptedInvoices >= 1 },
+            data: {
+                status: "completed",
+                finishedAt: new Date(),
+                passResult,
+                errorMessage: alreadyEnabled
+                    ? "La DIAN ya había aprobado este set de pruebas - no se necesitaron más documentos."
+                    : null,
+            },
         });
         await sendRunFinishedNotification(runId);
     } catch (error) {
