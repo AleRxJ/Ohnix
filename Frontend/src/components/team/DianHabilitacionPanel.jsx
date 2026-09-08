@@ -320,12 +320,14 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
 
     const canRequestProduction = activeRun?.status === "completed" && activeRun?.passResult === true;
     const startDisabled = !testSetId.trim() || Boolean(activeRun && ACTIVE_STATUSES.includes(activeRun.status));
-    // Only failed/rejected documents need retrying - already-accepted ones
-    // are never re-sent (see Backend's retryFailedDianTestMatrixDocuments).
+    // Anything not already "accepted" is retryable - not just error/rejected.
+    // A run interrupted mid-flight (server restart) can leave documents
+    // stuck at "pending"/"sending" too (see Backend's
+    // retryFailedDianTestMatrixDocuments and reconcileOrphanedDianTestMatrixRuns).
     const canRetryFailed = Boolean(
         activeRun
         && !ACTIVE_STATUSES.includes(activeRun.status)
-        && (activeRun.documents || []).some((d) => d.status === "error" || d.status === "rejected")
+        && (activeRun.documents || []).some((d) => d.status !== "accepted")
     );
 
     return (
@@ -344,14 +346,20 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                 className="mt-4 dark-alert dark-alert-purple"
                 type="info"
                 showIcon
-                message={t("fiscal_setup.habilitacion_explainer")}
+                message={t("fiscal_setup.habilitacion_explainer", { invoiceTarget, creditNoteTarget, debitNoteTarget })}
                 action={
                     <Button size="small" type="text" icon={<QuestionCircleOutlined />} onClick={() => setWhereModalOpen(true)}>
                         {t("fiscal_setup.habilitacion_where_toggle")}
                     </Button>
                 }
             />
-            <Alert className="mt-3 dark-alert dark-alert-amber" type="warning" showIcon message={t("fiscal_setup.habilitacion_warning_title")} description={t("fiscal_setup.habilitacion_warning_hint")} />
+            <Alert
+                className="mt-3 dark-alert dark-alert-amber"
+                type="warning"
+                showIcon
+                message={t("fiscal_setup.habilitacion_warning_title")}
+                description={t("fiscal_setup.habilitacion_warning_hint", { invoiceTarget, creditNoteTarget, debitNoteTarget })}
+            />
 
             <Modal
                 // Every antd Modal in this app needs its own wrapper class -

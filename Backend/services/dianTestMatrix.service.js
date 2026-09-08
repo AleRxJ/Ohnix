@@ -552,18 +552,27 @@ export const cancelDianTestMatrixRun = async ({ runId }) => {
 };
 
 /**
- * Re-attempts only the documents that ended in "error"/"rejected" on a
- * finished run, instead of forcing a whole new run from scratch for what
- * might be one transient failure (a slow DIAN sandbox response, a network
- * blip). Already-"accepted" documents are left untouched - see
- * runDianTestMatrixWorker's own comment for why re-sending them would be
- * both wasteful and wrong (a fresh DIAN document number for nothing).
+ * Re-attempts every document that isn't already "accepted" on a finished
+ * run, instead of forcing a whole new run from scratch for what might be
+ * one transient failure (a slow DIAN sandbox response, a network blip, a
+ * server restart interrupting the run mid-flight - see
+ * reconcileOrphanedDianTestMatrixRuns). Already-"accepted" documents are
+ * left untouched - see runDianTestMatrixWorker's own comment for why
+ * re-sending them would be both wasteful and wrong (a fresh DIAN document
+ * number for nothing).
  *
- * Each retried document gets a brand-new internalReference before being
- * resent: itcycle-api-dian's own idempotent-replay check (createInvoice's
- * `if (existing) return existing`) would otherwise just hand back the exact
- * same REJECTED/ERROR row for the old internalReference instead of actually
- * re-validating anything - see itcycle-api-dian's invoice.service.ts.
+ * Only "error"/"rejected" documents get a brand-new internalReference:
+ * those already have a WRONG terminal result recorded at itcycle-api-dian
+ * under the old one, and itcycle-api-dian's own idempotent-replay check
+ * (createInvoice's `if (existing) return existing`) would otherwise just
+ * hand that same wrong result back instead of actually re-validating
+ * anything - see itcycle-api-dian's invoice.service.ts. "pending"/"sending"/
+ * "sent" documents were never terminal in the first place (never sent at
+ * all, or sent but the poll never finished) - reusing the SAME
+ * internalReference lets that identical idempotent-replay check naturally
+ * RESUME them instead (discover a result itcycle-api-dian already resolved
+ * on its own, or continue polling), with zero risk of a duplicate DIAN
+ * submission.
  */
 export const retryFailedDianTestMatrixDocuments = async ({ runId }) => {
     const run = await prisma.dianTestMatrixRun.findUnique({
@@ -578,19 +587,22 @@ export const retryFailedDianTestMatrixDocuments = async ({ runId }) => {
         throw new ApiError(422, "Company has not been provisioned with itcycle-api-dian yet");
     }
 
-    const retryable = run.documents.filter((d) => d.status === "error" || d.status === "rejected");
+    const retryable = run.documents.filter((d) => d.status !== "accepted");
     if (retryable.length === 0) {
         throw new ApiError(422, "This run has no failed documents to retry");
     }
 
     const apiKey = decryptSecret(run.company.itcycleApiKeyCiphertext);
 
-    await Promise.all(retryable.map((doc) =>
-        prisma.dianTestMatrixDocument.update({
+    await Promise.all(retryable.map((doc) => {
+        const needsFreshReference = doc.status === "error" || doc.status === "rejected";
+        return prisma.dianTestMatrixDocument.update({
             where: { id: doc.id },
             data: {
                 status: "pending",
-                internalReference: `${doc.internalReference}-r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+                ...(needsFreshReference
+                    ? { internalReference: `${doc.internalReference}-r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}` }
+                    : {}),
                 externalId: null,
                 cufe: null,
                 statusDescription: null,
@@ -602,8 +614,8 @@ export const retryFailedDianTestMatrixDocuments = async ({ runId }) => {
                 resolvedAt: null,
                 attempts: 0,
             },
-        })
-    ));
+        });
+    }));
 
     await prisma.dianTestMatrixRun.update({
         where: { id: runId },

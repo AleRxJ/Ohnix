@@ -131,10 +131,13 @@ const AdminDianTestMatrix = () => {
     }
 
     const activeCompanyRun = runs.find((r) => r.companyId === companyId && ["pending", "running"].includes(r.status));
+    // Anything not already "accepted" is retryable - a run interrupted
+    // mid-flight (server restart) can leave documents stuck at
+    // "pending"/"sending" too, not just error/rejected.
     const canRetryFailed = Boolean(
         activeRun
         && !["pending", "running"].includes(activeRun.status)
-        && (activeRun.documents || []).some((d) => d.status === "error" || d.status === "rejected")
+        && (activeRun.documents || []).some((d) => d.status !== "accepted")
     );
 
     // Same reasoning as DianHabilitacionPanel's runCertificate - all
