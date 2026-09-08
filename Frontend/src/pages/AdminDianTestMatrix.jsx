@@ -1,6 +1,6 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Empty, Input, Popconfirm, Select, Statistic, Table, Tag } from "antd";
-import { ExperimentOutlined, ReloadOutlined, SearchOutlined, StopOutlined } from "@ant-design/icons";
+import { Alert, Button, Empty, Input, InputNumber, Popconfirm, Select, Statistic, Table, Tag } from "antd";
+import { DownOutlined, ExperimentOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UndoOutlined, UpOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
@@ -28,6 +28,15 @@ const AdminDianTestMatrix = () => {
     const [testSetId, setTestSetId] = useState("");
     const [starting, setStarting] = useState(false);
     const [cancelling, setCancelling] = useState(false);
+    const [retrying, setRetrying] = useState(false);
+    // One of each type by default - see
+    // Backend/services/dianTestMatrix.service.js's own comment on why a
+    // fixed 30/10/10 for every company was dropped in favor of matching
+    // whatever the company's own DIAN portal actually requires.
+    const [invoiceTarget, setInvoiceTarget] = useState(1);
+    const [creditNoteTarget, setCreditNoteTarget] = useState(1);
+    const [debitNoteTarget, setDebitNoteTarget] = useState(1);
+    const [customTargetsOpen, setCustomTargetsOpen] = useState(false);
 
     const [runs, setRuns] = useState([]);
     const [activeRun, setActiveRun] = useState(null);
@@ -122,6 +131,11 @@ const AdminDianTestMatrix = () => {
     }
 
     const activeCompanyRun = runs.find((r) => r.companyId === companyId && ["pending", "running"].includes(r.status));
+    const canRetryFailed = Boolean(
+        activeRun
+        && !["pending", "running"].includes(activeRun.status)
+        && (activeRun.documents || []).some((d) => d.status === "error" || d.status === "rejected")
+    );
 
     // Same reasoning as DianHabilitacionPanel's runCertificate - all
     // documents in a run are normally signed with the same certificate.
@@ -131,7 +145,13 @@ const AdminDianTestMatrix = () => {
         if (!companyId || !testSetId.trim()) return;
         try {
             setStarting(true);
-            const response = await adminService.startDianTestMatrixRun({ companyId, testSetId: testSetId.trim() });
+            const response = await adminService.startDianTestMatrixRun({
+                companyId,
+                testSetId: testSetId.trim(),
+                invoiceTarget,
+                creditNoteTarget,
+                debitNoteTarget,
+            });
             toast.success(t("admin.dian_test_matrix_start_success"));
             setTestSetId("");
             await loadRuns();
@@ -153,6 +173,20 @@ const AdminDianTestMatrix = () => {
             toast.error(error.response?.data?.message || t("common.error"));
         } finally {
             setCancelling(false);
+        }
+    };
+
+    const retryFailed = async () => {
+        if (!activeRun) return;
+        try {
+            setRetrying(true);
+            await adminService.retryFailedDianTestMatrixDocuments(activeRun.id);
+            toast.success(t("admin.dian_test_matrix_retry_success"));
+            await viewRun(activeRun.id);
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setRetrying(false);
         }
     };
 
@@ -262,6 +296,30 @@ const AdminDianTestMatrix = () => {
                 {activeCompanyRun && (
                     <Alert type="warning" showIcon className="dark-alert dark-alert-amber" message={t("admin.dian_test_matrix_already_running")} />
                 )}
+
+                <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs font-medium text-[#44F3F0] hover:text-[#29D8D5]"
+                    onClick={() => setCustomTargetsOpen((v) => !v)}
+                >
+                    {customTargetsOpen ? <UpOutlined /> : <DownOutlined />}
+                    {t("fiscal_setup.habilitacion_custom_targets_toggle")}
+                </button>
+                {customTargetsOpen && (
+                    <div className="grid grid-cols-1 gap-3 rounded-xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-surface-2)] p-3 sm:grid-cols-3">
+                        <span className="text-xs text-[var(--ohnix-text-muted)] sm:col-span-3">{t("fiscal_setup.habilitacion_custom_targets_hint")}</span>
+                        {[
+                            { label: t("fiscal_setup.document_type_invoice"), value: invoiceTarget, onChange: setInvoiceTarget, min: 1 },
+                            { label: t("fiscal_setup.document_type_credit_note"), value: creditNoteTarget, onChange: setCreditNoteTarget, min: 0 },
+                            { label: t("fiscal_setup.document_type_debit_note"), value: debitNoteTarget, onChange: setDebitNoteTarget, min: 0 },
+                        ].map(({ label, value, onChange, min }) => (
+                            <div key={label}>
+                                <label className="mb-1 block text-xs font-medium">{label}</label>
+                                <InputNumber className="w-full auth-ohnix-input" min={min} max={50} value={value} onChange={(v) => onChange(v ?? min)} />
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {activeRun && (
@@ -287,6 +345,11 @@ const AdminDianTestMatrix = () => {
                                 <Popconfirm title={t("admin.dian_test_matrix_cancel_confirm")} onConfirm={cancelRun}>
                                     <Button danger icon={<StopOutlined />} loading={cancelling}>{t("admin.dian_test_matrix_cancel_button")}</Button>
                                 </Popconfirm>
+                            )}
+                            {canRetryFailed && (
+                                <Button type="primary" ghost icon={<UndoOutlined />} loading={retrying} onClick={retryFailed}>
+                                    {t("fiscal_setup.habilitacion_retry_button")}
+                                </Button>
                             )}
                             <Button icon={<ReloadOutlined />} onClick={() => viewRun(activeRun.id)}>{t("admin.dian_test_matrix_refresh")}</Button>
                         </div>

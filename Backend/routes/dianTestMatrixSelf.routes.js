@@ -8,6 +8,7 @@ import {
     listMyDianTestMatrixRuns,
     cancelMyDianTestMatrixRun,
     requestMyDianProductionActivation,
+    retryMyFailedDianTestMatrixDocuments,
 } from "../controllers/dianTestMatrixSelf.controller.js";
 
 const router = Router();
@@ -22,5 +23,6 @@ router.route("/runs").get(listMyDianTestMatrixRuns).post(idempotent("dian-test-m
 router.route("/runs/:runId").get(getMyDianTestMatrixRun);
 router.route("/runs/:runId/cancel").post(cancelMyDianTestMatrixRun);
 router.route("/runs/:runId/request-production").post(idempotent("dian-test-matrix.request-production"), requestMyDianProductionActivation);
+router.route("/runs/:runId/retry-failed").post(idempotent("dian-test-matrix.retry-failed"), retryMyFailedDianTestMatrixDocuments);
 
 export default router;

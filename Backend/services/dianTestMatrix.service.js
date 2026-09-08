@@ -19,11 +19,32 @@ const MAX_POLL_ATTEMPTS = Number(process.env.DIAN_TEST_MATRIX_MAX_POLL_ATTEMPTS)
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// DIAN document-type codes, matching the counts a real habilitación "set de
-// pruebas" screen showed for this exact test flow (30 facturas, 10 notas
-// débito, 10 notas crédito) - see the wizard step this feature is meant to
-// automate for an Ohnix admin instead of a client doing it by hand.
+// DIAN document-type codes.
 const DOCUMENT_TYPE_CODE = { invoice: "01", creditNote: "91", debitNote: "92" };
+
+// DIAN's own habilitación portal tells each company exactly how many
+// accepted documents of each type it actually requires ("Total de
+// documentos aceptados requeridos: Facturas X, Notas de débito Y, Notas de
+// crédito Z") - that number varies per company and isn't exposed by any API
+// (see listTestSubmissions's own comment on itcycle-api-dian's side), so it
+// can't be looked up automatically. These defaults - one of each document
+// type - only exist to keep a run fast and cheap when the caller doesn't
+// specify anything; whoever starts a run can and should override them with
+// what their own portal actually asks for. A hardcoded 30/10/10 used to be
+// the ONLY option, sized for one company that happened to need that much -
+// for a company that only needs 1 invoice (the DIAN minimum) and 0 notes,
+// that was 47 unnecessary documents' worth of waiting for no reason.
+const DEFAULT_INVOICE_TARGET = 1;
+const DEFAULT_CREDIT_NOTE_TARGET = 1;
+const DEFAULT_DEBIT_NOTE_TARGET = 1;
+const MAX_DOCUMENT_TARGET = 50;
+
+/** Clamps a caller-supplied target to [min, MAX_DOCUMENT_TARGET], falling back to `fallback` for anything not a finite number. */
+const clampTarget = (value, fallback, min = 0) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(MAX_DOCUMENT_TARGET, Math.max(min, Math.round(n)));
+};
 
 // Official DIAN "concepto de corrección" codes (Anexo Técnico 1.9, secciones
 // 13.2.7.4/13.2.7.5) - confirmed against itcycle-api-dian's own schema
@@ -115,13 +136,15 @@ const buildDummyNotePayload = (sequence, referenceInvoiceSequence) => {
 
 /**
  * Validates a company is ready for a DIAN habilitación test-matrix run and,
- * if so, creates the run + its 50 pending document rows, then kicks off the
- * worker in the background (fire-and-forget, mirroring the one-off async
- * pattern used for subscription reconciliation in server.js - this is not a
- * periodic job, so it's not a node-cron scheduler). Returns immediately;
- * the caller polls getDianTestMatrixRun for progress.
+ * if so, creates the run + its pending document rows (sized by
+ * invoiceTarget/creditNoteTarget/debitNoteTarget - see their own comment),
+ * then kicks off the worker in the background (fire-and-forget, mirroring
+ * the one-off async pattern used for subscription reconciliation in
+ * server.js - this is not a periodic job, so it's not a node-cron
+ * scheduler). Returns immediately; the caller polls getDianTestMatrixRun
+ * for progress.
  */
-export const startDianTestMatrixRun = async ({ companyId, testSetId, requesterUserId }) => {
+export const startDianTestMatrixRun = async ({ companyId, testSetId, requesterUserId, invoiceTarget, creditNoteTarget, debitNoteTarget }) => {
     if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
     if (!text(testSetId)) throw new ApiError(400, "testSetId is required");
 
@@ -153,19 +176,34 @@ export const startDianTestMatrixRun = async ({ companyId, testSetId, requesterUs
 
     const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
 
+    // Invoices always >= 1 - DIAN's habilitación never accepts a company
+    // with zero required invoices (see this file's own header comment), and
+    // every note needs at least one invoice sequence to reference.
+    const invoiceCount = clampTarget(invoiceTarget, DEFAULT_INVOICE_TARGET, 1);
+    const creditNoteCount = clampTarget(creditNoteTarget, DEFAULT_CREDIT_NOTE_TARGET);
+    const debitNoteCount = clampTarget(debitNoteTarget, DEFAULT_DEBIT_NOTE_TARGET);
+
     const documentsData = [];
-    for (let i = 1; i <= 30; i += 1) {
-        documentsData.push({ sequence: i, documentType: "invoice" });
+    let sequence = 1;
+    for (let i = 0; i < invoiceCount; i += 1, sequence += 1) {
+        documentsData.push({ sequence, documentType: "invoice" });
     }
-    for (let i = 31; i <= 40; i += 1) {
-        documentsData.push({ sequence: i, documentType: "creditNote", referenceInvoiceSequence: 1 + ((i - 31) % 30) });
+    for (let i = 0; i < creditNoteCount; i += 1, sequence += 1) {
+        documentsData.push({ sequence, documentType: "creditNote", referenceInvoiceSequence: 1 + (i % invoiceCount) });
     }
-    for (let i = 41; i <= 50; i += 1) {
-        documentsData.push({ sequence: i, documentType: "debitNote", referenceInvoiceSequence: 1 + ((i - 41) % 30) });
+    for (let i = 0; i < debitNoteCount; i += 1, sequence += 1) {
+        documentsData.push({ sequence, documentType: "debitNote", referenceInvoiceSequence: 1 + (i % invoiceCount) });
     }
 
     const run = await prisma.dianTestMatrixRun.create({
-        data: { companyId, testSetId: testSetId.trim(), requestedByUserId: requesterUserId },
+        data: {
+            companyId,
+            testSetId: testSetId.trim(),
+            requestedByUserId: requesterUserId,
+            invoiceTarget: invoiceCount,
+            creditNoteTarget: creditNoteCount,
+            debitNoteTarget: debitNoteCount,
+        },
     });
 
     // internalReference must be globally unique (schema constraint) - only
@@ -383,9 +421,20 @@ async function processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, i
  * fully processed first, since notes need an already-ACCEPTED invoice to
  * reference - a note's `referenceInvoiceSequence` can point at ANY accepted
  * invoice from this run, not necessarily a distinct one per note.
+ *
+ * `isRetry` (see retryFailedDianTestMatrixDocuments) skips any document
+ * already "accepted" instead of reprocessing every row unconditionally -
+ * re-sending an already-accepted document would claim ANOTHER real DIAN
+ * document number for nothing. Already-accepted invoices are still added to
+ * invoiceBySequence so retried notes can reference them. `startedAt` is only
+ * set on a document's very first attempt (not on retry) so it keeps meaning
+ * "when this habilitación attempt truly began".
  */
-async function runDianTestMatrixWorker({ runId, apiKey, testSetId }) {
-    await prisma.dianTestMatrixRun.update({ where: { id: runId }, data: { status: "running", startedAt: new Date() } });
+async function runDianTestMatrixWorker({ runId, apiKey, testSetId, isRetry = false }) {
+    await prisma.dianTestMatrixRun.update({
+        where: { id: runId },
+        data: isRetry ? { status: "running" } : { status: "running", startedAt: new Date() },
+    });
 
     try {
         const run = await prisma.dianTestMatrixRun.findUniqueOrThrow({
@@ -399,6 +448,13 @@ async function runDianTestMatrixWorker({ runId, apiKey, testSetId }) {
 
         const invoiceBySequence = new Map();
         for (const doc of invoiceDocs) {
+            if (doc.status === "accepted" && doc.externalId) {
+                invoiceBySequence.set(doc.sequence, { sequence: doc.sequence, externalId: doc.externalId });
+            }
+        }
+
+        for (const doc of invoiceDocs) {
+            if (doc.status === "accepted") continue;
             const cancelled = (await prisma.dianTestMatrixRun.findUnique({ where: { id: runId }, select: { cancelRequested: true } }))?.cancelRequested;
             if (cancelled) break;
             const accepted = await processInvoiceDocument({ doc, apiKey, testSetId, itcycleCompanyId });
@@ -406,6 +462,7 @@ async function runDianTestMatrixWorker({ runId, apiKey, testSetId }) {
         }
 
         for (const doc of noteDocs) {
+            if (doc.status === "accepted") continue;
             const cancelled = (await prisma.dianTestMatrixRun.findUnique({ where: { id: runId }, select: { cancelRequested: true } }))?.cancelRequested;
             if (cancelled) break;
             await processNoteDocument({ doc, apiKey, testSetId, itcycleCompanyId, invoiceBySequence });
@@ -492,6 +549,72 @@ export const cancelDianTestMatrixRun = async ({ runId }) => {
         throw new ApiError(409, `Run is already ${run.status} - nothing to cancel`);
     }
     return prisma.dianTestMatrixRun.update({ where: { id: runId }, data: { cancelRequested: true } });
+};
+
+/**
+ * Re-attempts only the documents that ended in "error"/"rejected" on a
+ * finished run, instead of forcing a whole new run from scratch for what
+ * might be one transient failure (a slow DIAN sandbox response, a network
+ * blip). Already-"accepted" documents are left untouched - see
+ * runDianTestMatrixWorker's own comment for why re-sending them would be
+ * both wasteful and wrong (a fresh DIAN document number for nothing).
+ *
+ * Each retried document gets a brand-new internalReference before being
+ * resent: itcycle-api-dian's own idempotent-replay check (createInvoice's
+ * `if (existing) return existing`) would otherwise just hand back the exact
+ * same REJECTED/ERROR row for the old internalReference instead of actually
+ * re-validating anything - see itcycle-api-dian's invoice.service.ts.
+ */
+export const retryFailedDianTestMatrixDocuments = async ({ runId }) => {
+    const run = await prisma.dianTestMatrixRun.findUnique({
+        where: { id: runId },
+        include: { company: true, documents: true },
+    });
+    if (!run) throw new ApiError(404, "DIAN test-matrix run not found");
+    if (run.status !== "completed" && run.status !== "failed") {
+        throw new ApiError(409, `Run is currently ${run.status} - cannot retry while it's already in progress`);
+    }
+    if (!text(run.company.itcycleApiKeyCiphertext)) {
+        throw new ApiError(422, "Company has not been provisioned with itcycle-api-dian yet");
+    }
+
+    const retryable = run.documents.filter((d) => d.status === "error" || d.status === "rejected");
+    if (retryable.length === 0) {
+        throw new ApiError(422, "This run has no failed documents to retry");
+    }
+
+    const apiKey = decryptSecret(run.company.itcycleApiKeyCiphertext);
+
+    await Promise.all(retryable.map((doc) =>
+        prisma.dianTestMatrixDocument.update({
+            where: { id: doc.id },
+            data: {
+                status: "pending",
+                internalReference: `${doc.internalReference}-r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+                externalId: null,
+                cufe: null,
+                statusDescription: null,
+                errorMessage: null,
+                certificateId: null,
+                certificateProvider: null,
+                certificateIdentifier: null,
+                sentAt: null,
+                resolvedAt: null,
+                attempts: 0,
+            },
+        })
+    ));
+
+    await prisma.dianTestMatrixRun.update({
+        where: { id: runId },
+        data: { status: "running", finishedAt: null, cancelRequested: false, passResult: null, errorMessage: null },
+    });
+
+    runDianTestMatrixWorker({ runId, apiKey, testSetId: run.testSetId, isRetry: true }).catch((error) => {
+        console.error(`[dian-test-matrix] retry worker failed for run ${runId}:`, error);
+    });
+
+    return getDianTestMatrixRun({ runId });
 };
 
 /**

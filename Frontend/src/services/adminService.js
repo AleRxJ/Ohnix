@@ -86,13 +86,21 @@ export const adminService = {
         return response.data;
     },
 
-    // Runs the DIAN habilitación "set de pruebas" (30 facturas, 10 notas
-    // débito, 10 notas crédito) for a company already provisioned with
-    // itcycle-api-dian - see Backend/services/dianTestMatrix.service.js.
-    // Admin-only: this is the "onboarding asistido" step a client can't do
-    // themselves.
-    async startDianTestMatrixRun({ companyId, testSetId }) {
-        const response = await api.post("/admin/dian-test-matrix/runs", { companyId, testSetId });
+    // Runs the DIAN habilitación "set de pruebas" for a company already
+    // provisioned with itcycle-api-dian - see
+    // Backend/services/dianTestMatrix.service.js. Admin-only: this is the
+    // "onboarding asistido" step a client can't do themselves. Document
+    // counts default to 1/1/1 on the backend when omitted here - see that
+    // file's own comment on why a fixed 30/10/10 for every company was
+    // dropped.
+    async startDianTestMatrixRun({ companyId, testSetId, invoiceTarget, creditNoteTarget, debitNoteTarget }) {
+        const response = await api.post("/admin/dian-test-matrix/runs", {
+            companyId,
+            testSetId,
+            invoiceTarget,
+            creditNoteTarget,
+            debitNoteTarget,
+        });
         return response.data;
     },
 
@@ -110,6 +118,11 @@ export const adminService = {
 
     async cancelDianTestMatrixRun(runId) {
         const response = await api.post(`/admin/dian-test-matrix/runs/${runId}/cancel`);
+        return response.data;
+    },
+
+    async retryFailedDianTestMatrixDocuments(runId) {
+        const response = await api.post(`/admin/dian-test-matrix/runs/${runId}/retry-failed`);
         return response.data;
     },
 

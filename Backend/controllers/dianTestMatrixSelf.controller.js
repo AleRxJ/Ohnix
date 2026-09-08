@@ -7,6 +7,7 @@ import {
     getDianTestMatrixRun,
     listDianTestMatrixRuns,
     cancelDianTestMatrixRun,
+    retryFailedDianTestMatrixDocuments,
 } from "../services/dianTestMatrix.service.js";
 import { ensureElectronicInvoicingPlan } from "../services/electronicInvoicing.service.js";
 import { notifyAdminsDianProductionActivationRequested } from "../utils/dianTestMatrixNotifications.js";
@@ -41,13 +42,27 @@ const getOwnedRunOrThrow = async (companyId, runId) => {
 export const startMyDianTestMatrixRun = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     await ensureElectronicInvoicingPlan(req.user.prismaId);
-    const { testSetId } = req.body || {};
+    const { testSetId, invoiceTarget, creditNoteTarget, debitNoteTarget } = req.body || {};
     // req.user.id (the real acting user), not req.user.prismaId (which
     // resolves to the account owner for a team member - but this route is
     // owner-only anyway, via blockTeamMembers) - matches the admin
     // controller's own requesterUserId: req.user.id.
-    const data = await startDianTestMatrixRun({ companyId: company.id, testSetId, requesterUserId: req.user.id });
+    const data = await startDianTestMatrixRun({
+        companyId: company.id,
+        testSetId,
+        requesterUserId: req.user.id,
+        invoiceTarget,
+        creditNoteTarget,
+        debitNoteTarget,
+    });
     return res.status(201).json(new ApiResponse(201, data, "Prueba de habilitación iniciada"));
+});
+
+export const retryMyFailedDianTestMatrixDocuments = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    await getOwnedRunOrThrow(company.id, req.params.runId);
+    const data = await retryFailedDianTestMatrixDocuments({ runId: req.params.runId });
+    return res.status(200).json(new ApiResponse(200, data, "Reintentando documentos fallidos"));
 });
 
 export const getMyDianTestMatrixRun = asyncHandler(async (req, res) => {

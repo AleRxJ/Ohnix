@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Card, Collapse, Input, Modal, Popconfirm, Statistic, Table, Tag, Typography } from "antd";
-import { CheckCircleOutlined, ExperimentOutlined, QuestionCircleOutlined, ReloadOutlined, RocketOutlined, StopOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Collapse, Input, InputNumber, Modal, Popconfirm, Statistic, Table, Tag, Typography } from "antd";
+import { CheckCircleOutlined, DownOutlined, ExperimentOutlined, QuestionCircleOutlined, ReloadOutlined, RocketOutlined, StopOutlined, UndoOutlined, UpOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
@@ -59,6 +59,18 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
     // instead of starting a second run / sending a second request.
     const [startIdempotencyKey, setStartIdempotencyKey] = useState(() => crypto.randomUUID());
     const [productionIdempotencyKey, setProductionIdempotencyKey] = useState(() => crypto.randomUUID());
+    const [retryIdempotencyKey, setRetryIdempotencyKey] = useState(() => crypto.randomUUID());
+    // One of each document type by default - fast, and enough to exercise
+    // every type at least once. DIAN's own habilitación portal tells each
+    // company its real required counts ("Total de documentos aceptados
+    // requeridos") - these three inputs (collapsed by default, see
+    // customTargetsOpen) let the owner match that instead of always sending
+    // a fixed batch sized for whichever company the old hardcoded 30/10/10
+    // happened to be calibrated against.
+    const [invoiceTarget, setInvoiceTarget] = useState(1);
+    const [creditNoteTarget, setCreditNoteTarget] = useState(1);
+    const [debitNoteTarget, setDebitNoteTarget] = useState(1);
+    const [customTargetsOpen, setCustomTargetsOpen] = useState(false);
 
     const stopPolling = () => {
         if (pollRef.current) {
@@ -163,7 +175,10 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
         if (!trimmed) return;
         try {
             setBusy("start");
-            const response = await companyService.startMyDianTestMatrixRun({ testSetId: trimmed }, startIdempotencyKey);
+            const response = await companyService.startMyDianTestMatrixRun(
+                { testSetId: trimmed, invoiceTarget, creditNoteTarget, debitNoteTarget },
+                startIdempotencyKey
+            );
             toast.success(t("fiscal_setup.habilitacion_start_success"));
             setTestSetId("");
             setStartIdempotencyKey(crypto.randomUUID());
@@ -171,6 +186,21 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
             await viewRun(response.data.id);
         } catch (error) {
             toast.error(describeMissingCodes(error) || resolveApiErrorMessage(error, t, {}, "fiscal_setup.habilitacion_start_error"));
+        } finally {
+            setBusy("");
+        }
+    };
+
+    const retryFailed = async () => {
+        if (!activeRun) return;
+        try {
+            setBusy("retry");
+            await companyService.retryMyFailedDianTestMatrixDocuments(activeRun.id, retryIdempotencyKey);
+            toast.success(t("fiscal_setup.habilitacion_retry_success"));
+            setRetryIdempotencyKey(crypto.randomUUID());
+            await viewRun(activeRun.id);
+        } catch (error) {
+            toast.error(resolveApiErrorMessage(error, t, {}, "fiscal_setup.habilitacion_start_error"));
         } finally {
             setBusy("");
         }
@@ -290,6 +320,13 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
 
     const canRequestProduction = activeRun?.status === "completed" && activeRun?.passResult === true;
     const startDisabled = !testSetId.trim() || Boolean(activeRun && ACTIVE_STATUSES.includes(activeRun.status));
+    // Only failed/rejected documents need retrying - already-accepted ones
+    // are never re-sent (see Backend's retryFailedDianTestMatrixDocuments).
+    const canRetryFailed = Boolean(
+        activeRun
+        && !ACTIVE_STATUSES.includes(activeRun.status)
+        && (activeRun.documents || []).some((d) => d.status === "error" || d.status === "rejected")
+    );
 
     return (
         <Card className="mt-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)]">
@@ -375,6 +412,38 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                 {knownTestSetId && testSetId === knownTestSetId && (
                     <Text className="mt-1 block text-xs text-[#44F3F0]">{t("fiscal_setup.habilitacion_test_set_id_known")}</Text>
                 )}
+
+                <button
+                    type="button"
+                    className="mt-3 flex items-center gap-1 text-xs font-medium text-[#44F3F0] hover:text-[#29D8D5]"
+                    onClick={() => setCustomTargetsOpen((v) => !v)}
+                    disabled={Boolean(activeRun && ACTIVE_STATUSES.includes(activeRun.status))}
+                >
+                    {customTargetsOpen ? <UpOutlined /> : <DownOutlined />}
+                    {t("fiscal_setup.habilitacion_custom_targets_toggle")}
+                </button>
+                {customTargetsOpen && (
+                    <div className="mt-2 grid grid-cols-1 gap-3 rounded-xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-surface-2)] p-3 sm:grid-cols-3">
+                        <Text className="text-xs text-[var(--ohnix-text-muted)] sm:col-span-3">{t("fiscal_setup.habilitacion_custom_targets_hint")}</Text>
+                        {[
+                            { label: t("fiscal_setup.document_type_invoice"), value: invoiceTarget, onChange: setInvoiceTarget, min: 1 },
+                            { label: t("fiscal_setup.document_type_credit_note"), value: creditNoteTarget, onChange: setCreditNoteTarget, min: 0 },
+                            { label: t("fiscal_setup.document_type_debit_note"), value: debitNoteTarget, onChange: setDebitNoteTarget, min: 0 },
+                        ].map(({ label, value, onChange, min }) => (
+                            <div key={label}>
+                                <label className="mb-1 block text-xs font-medium text-[var(--ohnix-text-primary)]">{label}</label>
+                                <InputNumber
+                                    className="w-full auth-ohnix-input"
+                                    min={min}
+                                    max={50}
+                                    value={value}
+                                    onChange={(v) => onChange(v ?? min)}
+                                    disabled={Boolean(activeRun && ACTIVE_STATUSES.includes(activeRun.status))}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {activeRun && (
@@ -412,6 +481,18 @@ const DianHabilitacionPanel = ({ knownTestSetId }) => {
                         {ACTIVE_STATUSES.includes(activeRun.status) && (
                             <Button size="small" danger icon={<StopOutlined />} loading={busy === "cancel"} onClick={cancelRun}>
                                 {t("fiscal_setup.habilitacion_cancel_button")}
+                            </Button>
+                        )}
+                        {canRetryFailed && (
+                            <Button
+                                size="small"
+                                type="primary"
+                                ghost
+                                icon={<UndoOutlined />}
+                                loading={busy === "retry"}
+                                onClick={retryFailed}
+                            >
+                                {t("fiscal_setup.habilitacion_retry_button")}
                             </Button>
                         )}
                     </div>

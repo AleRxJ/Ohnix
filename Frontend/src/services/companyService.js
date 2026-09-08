@@ -206,4 +206,11 @@ export const companyService = {
         });
         return response.data;
     },
+
+    async retryMyFailedDianTestMatrixDocuments(runId, idempotencyKey) {
+        const response = await api.post(`/company/dian-test-matrix/runs/${runId}/retry-failed`, undefined, {
+            headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        });
+        return response.data;
+    },
 };
