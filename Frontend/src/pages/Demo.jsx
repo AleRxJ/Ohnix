@@ -13,7 +13,7 @@ const Demo = () => {
     const videoRef = useRef(null);
     const [playing, setPlaying] = useState(false);
 
-    const structuredData = {
+    const breadcrumbStructuredData = {
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
         itemListElement: [
@@ -31,6 +31,20 @@ const Demo = () => {
             },
         ],
     };
+
+    const videoStructuredData = {
+        "@context": "https://schema.org",
+        "@type": "VideoObject",
+        name: "Demo de Ohnix | Inventario, compras y ventas en accion",
+        description:
+            "Conoce como Ohnix organiza inventario, compras, pedidos y reportes en una sola experiencia operativa para pymes.",
+        thumbnailUrl: ["https://ohnix.co/ohnix-social-preview-v2.png"],
+        uploadDate: "2026-09-01T00:00:00-05:00",
+        contentUrl: "https://ohnix.co/demo-preview.mp4",
+        embedUrl: "https://ohnix.co/demo",
+    };
+
+    const structuredData = [breadcrumbStructuredData, videoStructuredData];
 
     return (
         <div className="min-h-screen bg-[#050505]">
@@ -57,6 +71,7 @@ const Demo = () => {
                             <video
                                 ref={videoRef}
                                 src="/demo-preview.mp4"
+                                poster="/ohnix-social-preview-v2.png"
                                 controls={playing}
                                 preload="metadata"
                                 playsInline

@@ -9,6 +9,7 @@ import * as manualVoucherService from "../services/manualJournalVoucher.service.
 import * as thirdPartyLedgerService from "../services/thirdPartyLedger.service.js";
 import * as withholdingConceptService from "../services/withholdingConcept.service.js";
 import * as withholdingReportService from "../services/withholdingReport.service.js";
+import * as accountingBudgetService from "../services/accountingBudget.service.js";
 import * as costCenterService from "../services/costCenter.service.js";
 import * as recurringExpenseService from "../services/recurringExpense.service.js";
 
@@ -380,6 +381,32 @@ export const getAccountingStatus = asyncHandler(async (req, res) => {
         has_journal_entries: hasJournalEntries,
         has_backfilled_entries: hasBackfilledEntries,
     }, "Accounting status fetched successfully"));
+});
+
+export const getBudgetReport = asyncHandler(async (req, res) => {
+    const report = await accountingBudgetService.getBudgetReport({
+        accountId: req.user.prismaId,
+        year: req.query.year,
+        month: req.query.month,
+        costCenterId: req.query.cost_center_id || "all",
+    });
+    return res.status(200).json(new ApiResponse(200, report, "Presupuesto y ejecución obtenidos."));
+});
+
+export const saveBudgets = asyncHandler(async (req, res) => {
+    const budgets = await accountingBudgetService.saveBudgets({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        year: req.body?.year,
+        month: req.body?.month,
+        items: req.body?.items,
+    });
+    return res.status(200).json(new ApiResponse(200, { saved: budgets.length }, "Presupuesto guardado."));
+});
+
+export const deleteBudget = asyncHandler(async (req, res) => {
+    await accountingBudgetService.deleteBudget({ accountId: req.user.prismaId, actorId: req.user.actorId, id: req.params.id });
+    return res.status(200).json(new ApiResponse(200, null, "Partida presupuestal eliminada."));
 });
 
 export const closeAccountingPeriod = asyncHandler(async (req, res, next) => {

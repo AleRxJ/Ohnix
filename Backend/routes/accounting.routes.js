@@ -42,6 +42,9 @@ import {
     createRecurringExpenseTemplate,
     updateRecurringExpenseTemplate,
     runRecurringExpenseTemplateNow,
+    getBudgetReport,
+    saveBudgets,
+    deleteBudget,
 } from "../controllers/accounting.controller.js";
 
 const router = Router();
@@ -76,6 +79,12 @@ router.route("/recurring-expenses/:id")
     .patch(requireModulePermission("accounting", "edit"), updateRecurringExpenseTemplate);
 router.route("/recurring-expenses/:id/run")
     .post(requireModulePermission("accounting", "edit"), runRecurringExpenseTemplateNow);
+
+router.route("/budgets")
+    .get(requireModulePermission("accounting", "view"), getBudgetReport)
+    .put(requireModulePermission("accounting", "edit"), saveBudgets);
+router.route("/budgets/:id")
+    .delete(requireModulePermission("accounting", "edit"), deleteBudget);
 
 router.route("/journal-entries").get(requireModulePermission("accounting", "view"), listJournalEntries);
 router.route("/journal-entries/:id").get(requireModulePermission("accounting", "view"), getJournalEntry);

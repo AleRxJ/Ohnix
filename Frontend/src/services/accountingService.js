@@ -53,6 +53,21 @@ export const accountingService = {
         return response.data;
     },
 
+    async getBudgetReport({ year, month, costCenterId } = {}) {
+        const response = await api.get("/accounting/budgets", { params: { year, month, ...(costCenterId ? { cost_center_id: costCenterId } : {}) } });
+        return response.data;
+    },
+
+    async saveBudgets({ year, month, items }) {
+        const response = await api.put("/accounting/budgets", { year, month, items });
+        return response.data;
+    },
+
+    async deleteBudget(id) {
+        const response = await api.delete(`/accounting/budgets/${id}`);
+        return response.data;
+    },
+
     async listChartOfAccounts() {
         const response = await api.get("/accounting/chart-of-accounts");
         return response.data;

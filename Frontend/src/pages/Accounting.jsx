@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal } from "antd";
+import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal, Progress } from "antd";
 import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined, PartitionOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
@@ -2025,6 +2025,79 @@ const TaxesTab = () => {
 // everything still tie out" check, distinct from the Estados Financieros
 // tab which only shows one slice of the chart (revenue/cost/expense or
 // asset/liability/equity) at a time.
+const BudgetsTab = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("accounting", "edit");
+    const [form] = Form.useForm();
+    const [period, setPeriod] = useState(dayjs());
+    const [dimension, setDimension] = useState("all");
+    const [accounts, setAccounts] = useState([]);
+    const [costCenters, setCostCenters] = useState([]);
+    const [report, setReport] = useState({ rows: [], summary: {} });
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [editor, setEditor] = useState(null);
+
+    const load = async ({ nextPeriod = period, nextDimension = dimension, refreshCatalogs = false } = {}) => {
+        setLoading(true);
+        try {
+            const requests = [accountingService.getBudgetReport({ year: nextPeriod.year(), month: nextPeriod.month() + 1, costCenterId: nextDimension })];
+            if (refreshCatalogs || accounts.length === 0) requests.push(accountingService.listChartOfAccounts(), accountingService.listCostCenters());
+            const [reportResponse, accountResponse, centerResponse] = await Promise.all(requests);
+            setReport(reportResponse?.data || { rows: [], summary: {} });
+            if (accountResponse) setAccounts((accountResponse.data || []).filter((account) => account.is_active && ["revenue", "cost", "expense"].includes(account.account_type)));
+            if (centerResponse) setCostCenters(centerResponse.data || []);
+        } catch (error) { toast.error(error?.response?.data?.message || t("accounting.failed")); }
+        finally { setLoading(false); }
+    };
+    useEffect(() => { load({ refreshCatalogs: true }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const changePeriod = (value) => { if (value) { setPeriod(value); load({ nextPeriod: value }); } };
+    const changeDimension = (value) => { const next = value || "all"; setDimension(next); load({ nextDimension: next }); };
+    const openEditor = (row = null) => {
+        setEditor(row || {});
+        form.setFieldsValue({ chart_account_id: row?.chart_account?.id, cost_center_id: row ? row.cost_center?.id : dimension === "all" ? undefined : dimension, amount: row?.budget, alert_threshold_percent: row?.alert_threshold_percent ?? 10 });
+    };
+    const save = async () => {
+        const values = await form.validateFields();
+        setSaving(true);
+        try {
+            await accountingService.saveBudgets({ year: period.year(), month: period.month() + 1, items: [values] });
+            toast.success(t("accounting.budget_saved"));
+            setEditor(null);
+            const nextDimension = values.cost_center_id || "all";
+            setDimension(nextDimension);
+            await load({ nextDimension });
+        } catch (error) { if (!error?.errorFields) toast.error(error?.response?.data?.message || t("accounting.failed")); }
+        finally { setSaving(false); }
+    };
+    const remove = async (id) => {
+        try { await accountingService.deleteBudget(id); toast.success(t("accounting.budget_deleted")); await load(); }
+        catch (error) { toast.error(error?.response?.data?.message || t("accounting.failed")); }
+    };
+    const statusTag = (status) => status === "behind" ? <Tag color="orange">{t("accounting.budget_status_behind")}</Tag> : status === "over" ? <Tag color="red">{t("accounting.budget_status_over")}</Tag> : <Tag color="green">{t("accounting.budget_status_on_track")}</Tag>;
+    const summary = report.summary || {};
+
+    return <>
+        <AccountingSectionGuide sectionKey="budgets" title={t("accounting.guide_budgets_title")} summary={t("accounting.tab_budgets_caption")} steps={[t("accounting.guide_budgets_step_1"), t("accounting.guide_budgets_step_2"), t("accounting.guide_budgets_step_3")]} result={t("accounting.guide_budgets_result")} concepts={[{ label: t("accounting.budget_variance"), help: t("accounting.budget_variance_help") }, { label: t("accounting.budget_threshold"), help: t("accounting.budget_threshold_help") }]} />
+        <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4"><div className="flex flex-col sm:flex-row sm:items-center gap-3"><DatePicker picker="month" value={period} onChange={changePeriod} allowClear={false} className="w-full sm:w-auto" /><Select value={dimension} onChange={changeDimension} className="w-full sm:w-64" options={[{ value: "all", label: t("accounting.budget_company_wide") }, ...costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))]} />{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>{t("accounting.budget_new")}</Button>}</div></Card>
+        <Row gutter={[16, 16]} className="mb-4"><Col xs={24} sm={12} lg={6}><StatCard title={t("accounting.budget_planned_revenue")} value={summary.planned_revenue || 0} formatter={formatCurrency} /></Col><Col xs={24} sm={12} lg={6}><StatCard title={t("accounting.budget_actual_revenue")} value={summary.actual_revenue || 0} formatter={formatCurrency} /></Col><Col xs={24} sm={12} lg={6}><StatCard title={t("accounting.budget_planned_spend")} value={summary.planned_spend || 0} formatter={formatCurrency} /></Col><Col xs={24} sm={12} lg={6}><StatCard title={t("accounting.budget_actual_spend")} value={summary.actual_spend || 0} formatter={formatCurrency} /></Col></Row>
+        {summary.alert_count > 0 && <Alert className="dark-alert dark-alert-amber mb-4" type="warning" showIcon message={t("accounting.budget_alert_banner", { count: summary.alert_count })} />}
+        <Table className="module-dark-table" loading={loading} rowKey="id" dataSource={report.rows || []} scroll={{ x: 1050 }} pagination={{ pageSize: 15 }} locale={{ emptyText: <EmptyState compact title={t("accounting.empty_budgets_title")} subtitle={t("accounting.empty_budgets_help")} action={canEdit ? <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>{t("accounting.budget_new")}</Button> : null} /> }} columns={[
+            { title: t("accounting.col_account"), render: (_, row) => `${row.chart_account.code} · ${row.chart_account.name}` },
+            { title: t("accounting.cost_center"), render: (_, row) => row.cost_center ? `${row.cost_center.code} · ${row.cost_center.name}` : t("accounting.budget_company_wide") },
+            { title: t("accounting.budget_amount"), dataIndex: "budget", align: "right", render: formatCurrency },
+            { title: t("accounting.budget_actual"), dataIndex: "actual", align: "right", render: formatCurrency },
+            { title: t("accounting.budget_variance"), dataIndex: "variance", align: "right", render: formatCurrency },
+            { title: t("accounting.budget_execution"), width: 150, render: (_, row) => <Progress percent={Math.max(0, Math.min(100, row.achievement_percent ?? 0))} size="small" status={row.alert ? "exception" : "normal"} format={() => row.achievement_percent == null ? "—" : `${row.achievement_percent}%`} /> },
+            { title: t("accounting.col_status"), dataIndex: "status", render: statusTag },
+            ...(canEdit ? [{ title: t("common.actions"), width: 150, render: (_, row) => <div className="flex gap-2"><Button size="small" onClick={() => openEditor(row)}>{t("common.edit")}</Button><Popconfirm title={t("accounting.budget_delete_confirm")} onConfirm={() => remove(row.id)}><Button size="small" danger>{t("common.delete")}</Button></Popconfirm></div> }] : []),
+        ]} />
+        <Modal className="accounting-modal" open={Boolean(editor)} title={editor?.id ? t("accounting.budget_edit") : t("accounting.budget_new")} onCancel={() => setEditor(null)} onOk={save} confirmLoading={saving} destroyOnHidden><Alert className="dark-alert dark-alert-purple mb-4" type="info" showIcon message={t("accounting.budget_form_help")} /><Form form={form} layout="vertical"><Form.Item name="chart_account_id" label={t("accounting.col_account")} rules={[{ required: true }]}><Select disabled={Boolean(editor?.id)} showSearch optionFilterProp="label" options={accounts.map((account) => ({ value: account._id, label: `${account.code} · ${account.name}` }))} /></Form.Item><Form.Item name="cost_center_id" label={t("accounting.cost_center_optional")} extra={t("accounting.budget_global_help")}><Select disabled={Boolean(editor?.id)} allowClear showSearch optionFilterProp="label" options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} /></Form.Item><Form.Item name="amount" label={t("accounting.budget_amount")} rules={[{ required: true }]}><InputNumber min={0} precision={2} className="w-full" /></Form.Item><Form.Item name="alert_threshold_percent" label={t("accounting.budget_threshold")} extra={t("accounting.budget_threshold_help")} rules={[{ required: true }]}><InputNumber min={0} max={1000} precision={2} addonAfter="%" className="w-full" /></Form.Item></Form></Modal>
+    </>;
+};
+
 const TrialBalanceTab = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -2136,6 +2209,7 @@ const Accounting = () => {
         { key: "third_parties", label: tabLabel(<TeamOutlined />, "accounting.tab_third_parties"), children: <ThirdPartyLedgerTab /> },
         { key: "cost_centers", label: tabLabel(<PartitionOutlined />, "accounting.tab_cost_centers"), children: <CostCentersTab /> },
         { key: "recurring_expenses", label: tabLabel(<ClockCircleOutlined />, "accounting.tab_recurring_expenses"), children: <RecurringExpensesTab /> },
+        { key: "budgets", label: tabLabel(<BarChartOutlined />, "accounting.tab_budgets"), children: <BudgetsTab /> },
         { key: "trial_balance", label: tabLabel(<CalculatorOutlined />, "accounting.tab_trial_balance"), children: <TrialBalanceTab /> },
         { key: "periods", label: tabLabel(<LockOutlined />, "accounting.tab_periods"), children: <PeriodsTab /> },
         { key: "statements", label: tabLabel(<BarChartOutlined />, "accounting.tab_financial_statements"), children: <FinancialStatementsTab /> },
