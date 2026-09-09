@@ -71,10 +71,20 @@ export const requestTransfer = async ({ accountId, actorId, productId, fromPoint
 export const approveTransfer = async ({ transfer, actorId }) => {
     assertTransition(transfer, "approved");
 
-    const updated = await prisma.stockTransfer.update({
-        where: { id: transfer.id },
+    // Claims the transition atomically against the status this caller
+    // actually saw (not just the in-memory assertTransition check above) -
+    // the same `updateMany({where:{id, status:<expected>}})` idiom
+    // order.service.js/purchase.service.js already use for their status
+    // transitions, so two concurrent actions on the same transfer (e.g. one
+    // approving while another cancels) can't both silently win.
+    const claim = await prisma.stockTransfer.updateMany({
+        where: { id: transfer.id, status: transfer.status },
         data: { status: "approved", approvedById: actorId, approvedAt: new Date() },
     });
+    if (claim.count === 0) {
+        throw new ApiError(409, "Este traslado ya cambió de estado - actualiza para ver el estado actual.");
+    }
+    const updated = await prisma.stockTransfer.findUniqueOrThrow({ where: { id: transfer.id } });
 
     emitPosEvent(transfer.accountId, transfer.fromPointOfSaleId, "stockTransfer", "approved");
     emitPosEvent(transfer.accountId, transfer.toPointOfSaleId, "stockTransfer", "approved");
@@ -115,10 +125,14 @@ export const shipTransfer = async ({ transfer, actorId }) => {
             createdById: actorId,
         });
 
-        return tx.stockTransfer.update({
-            where: { id: transfer.id },
+        const claim = await tx.stockTransfer.updateMany({
+            where: { id: transfer.id, status: transfer.status },
             data: { status: "in_transit", unitCostApplied: costing.unitCostApplied, sentById: actorId, sentAt: new Date() },
         });
+        if (claim.count === 0) {
+            throw new ApiError(409, "Este traslado ya cambió de estado - actualiza para ver el estado actual.");
+        }
+        return tx.stockTransfer.findUniqueOrThrow({ where: { id: transfer.id } });
     });
 
     emitPosEvent(transfer.accountId, transfer.fromPointOfSaleId, "stockTransfer", "in_transit");
@@ -205,8 +219,8 @@ export const receiveTransfer = async ({ transfer, actorId, quantityReceived, not
             });
         }
 
-        return tx.stockTransfer.update({
-            where: { id: transfer.id },
+        const claim = await tx.stockTransfer.updateMany({
+            where: { id: transfer.id, status: transfer.status },
             data: {
                 status: "received",
                 quantityReceived,
@@ -215,6 +229,10 @@ export const receiveTransfer = async ({ transfer, actorId, quantityReceived, not
                 notes: notes ? `${transfer.notes ? `${transfer.notes}\n` : ""}${notes}` : transfer.notes,
             },
         });
+        if (claim.count === 0) {
+            throw new ApiError(409, "Este traslado ya cambió de estado - actualiza para ver el estado actual.");
+        }
+        return tx.stockTransfer.findUniqueOrThrow({ where: { id: transfer.id } });
     });
 
     emitPosEvent(transfer.accountId, transfer.fromPointOfSaleId, "stockTransfer", "received");
@@ -256,8 +274,8 @@ export const cancelTransfer = async ({ transfer, actorId, reason }) => {
             });
         }
 
-        return tx.stockTransfer.update({
-            where: { id: transfer.id },
+        const claim = await tx.stockTransfer.updateMany({
+            where: { id: transfer.id, status: transfer.status },
             data: {
                 status: "cancelled",
                 cancelledById: actorId,
@@ -265,6 +283,10 @@ export const cancelTransfer = async ({ transfer, actorId, reason }) => {
                 cancelReason: reason || null,
             },
         });
+        if (claim.count === 0) {
+            throw new ApiError(409, "Este traslado ya cambió de estado - actualiza para ver el estado actual.");
+        }
+        return tx.stockTransfer.findUniqueOrThrow({ where: { id: transfer.id } });
     });
 
     emitPosEvent(transfer.accountId, transfer.fromPointOfSaleId, "stockTransfer", "cancelled");

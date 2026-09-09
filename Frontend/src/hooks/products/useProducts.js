@@ -4,6 +4,9 @@ import { api } from "../../api/api";
 import useI18n from "../useI18n";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { idempotencyHeaders } from "../../utils/idempotency";
+import { getConnectivityState } from "../../offline/connectivity";
+import { subscribeSyncCompleted } from "../../offline/syncEngine";
+import { queueCreate, queueUpdate, queueDelete, readMirrorAll, mirrorReplaceAll, mirrorGet } from "../../offline/entityQueue";
 
 const DELETE_PRODUCT_ERROR_CODES = {
     product_has_history: "products.delete_conflict_history",
@@ -13,6 +16,28 @@ const STALE_EDIT_ERROR_CODES = {
     stale_edit_conflict: "common.stale_edit_conflict",
 };
 
+// Mirrors the server-side filtering in getAllProducts (search/category/stock
+// range) against the local mirror, so search and the stock-status filters
+// keep working offline instead of silently showing the unfiltered catalog.
+function filterProductsLocally(products, filters) {
+    let result = products;
+    if (filters.search) {
+        const q = filters.search.toLowerCase();
+        result = result.filter(
+            (p) => p.product_name?.toLowerCase().includes(q) || p.product_code?.toLowerCase().includes(q)
+        );
+    }
+    if (filters.category) {
+        result = result.filter((p) => p.category_id?._id === filters.category);
+    }
+    if (filters.stockFilter === "out") {
+        result = result.filter((p) => (p.stock ?? 0) <= 0);
+    } else if (filters.stockFilter === "low") {
+        result = result.filter((p) => (p.stock ?? 0) >= 1 && (p.stock ?? 0) <= 10);
+    }
+    return result;
+}
+
 export const useProducts = () => {
     const { t } = useI18n();
     const [products, setProducts] = useState([]);
@@ -20,6 +45,12 @@ export const useProducts = () => {
     const [error, setError] = useState(null);
 
     const fetchProducts = async (filters = {}) => {
+        if (!getConnectivityState()) {
+            const all = await readMirrorAll("products");
+            setProducts(filterProductsLocally(all, filters));
+            setError(null);
+            return;
+        }
         try {
             setLoading(true);
             setError(null);
@@ -37,6 +68,10 @@ export const useProducts = () => {
 
             if (response.data.success) {
                 setProducts(response.data.data);
+                // Only an unfiltered fetch is the full catalog - a filtered
+                // search result would otherwise clobber the mirror down to
+                // just the matching subset.
+                if (Object.keys(filters).length === 0) mirrorReplaceAll("products", response.data.data);
             } else {
                 setError(t("products.failed_load_products"));
                 toast.error(t("products.failed_load_products"));
@@ -54,6 +89,12 @@ export const useProducts = () => {
     };
 
     const createProduct = async (formData) => {
+        if (!getConnectivityState()) {
+            const optimistic = await queueCreate({ entity: "products", url: "/products", fields: formData });
+            toast.success(t("common.offline_saved_locally"));
+            setProducts((prev) => [...prev, optimistic]);
+            return { success: true, data: optimistic };
+        }
         try {
             const response = await api.post("/products", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
@@ -74,6 +115,17 @@ export const useProducts = () => {
     };
 
     const updateProduct = async (productId, formData) => {
+        if (!getConnectivityState()) {
+            const optimistic = await queueUpdate({
+                entity: "products",
+                url: `/products/${productId}`,
+                id: productId,
+                fields: formData,
+            });
+            toast.success(t("common.offline_saved_locally"));
+            setProducts((prev) => prev.map((p) => (p._id === productId ? optimistic : p)));
+            return { success: true, data: optimistic };
+        }
         try {
             const response = await api.patch(
                 `/products/${productId}`,
@@ -106,6 +158,12 @@ export const useProducts = () => {
     };
 
     const deleteProduct = async (productId) => {
+        if (!getConnectivityState()) {
+            await queueDelete({ entity: "products", url: `/products/${productId}`, id: productId });
+            toast.success(t("common.offline_deleted_locally"));
+            setProducts((prev) => prev.filter((p) => p._id !== productId));
+            return { success: true };
+        }
         try {
             const response = await api.delete(`/products/${productId}`);
 
@@ -131,6 +189,23 @@ export const useProducts = () => {
     };
 
     const adjustStock = async (productId, { delta, reason, pointOfSaleId }) => {
+        if (!getConnectivityState()) {
+            // Delta, never an absolute value - the server does its own
+            // atomic claim against the real (possibly different) stock at
+            // sync time; this optimistic number is only ever a preview.
+            const existing = await mirrorGet("products", productId);
+            const optimistic = await queueUpdate({
+                entity: "products",
+                url: `/products/${productId}/adjust-stock`,
+                id: productId,
+                fields: { delta, reason, ...(pointOfSaleId ? { pointOfSaleId } : {}) },
+                optimisticPatch: { stock: (existing?.stock ?? 0) + delta },
+                method: "post",
+            });
+            toast.success(t("common.offline_saved_locally"));
+            setProducts((prev) => prev.map((p) => (p._id === productId ? optimistic : p)));
+            return { success: true, data: optimistic };
+        }
         try {
             const response = await api.post(
                 `/products/${productId}/adjust-stock`,
@@ -312,6 +387,13 @@ export const useProducts = () => {
     useEffect(() => {
         fetchProducts();
     }, []);
+
+    // Refetch once a full sync cycle completes (not merely "connectivity
+    // came back") - otherwise this can race the outbox drain, refetch the
+    // still-stale server list, and never look again even though the sync
+    // that would have added this session's own offline-created rows
+    // finishes moments later.
+    useEffect(() => subscribeSyncCompleted(fetchProducts), []);
 
     return {
         products,

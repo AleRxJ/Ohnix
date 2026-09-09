@@ -19,6 +19,7 @@ import AssistantWidget from "../assistant/AssistantWidget";
 import { initConnectivityWatcher } from "../../offline/connectivity";
 import { startSyncEngine } from "../../offline/syncEngine";
 import { resetOfflineDataIfAccountChanged } from "../../offline/db";
+import "../../offline/entitySync"; // registers Etapa 1 entities' pull handlers
 
 const { Content } = Layout;
 

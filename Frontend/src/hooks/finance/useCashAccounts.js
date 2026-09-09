@@ -3,6 +3,10 @@ import toast from "react-hot-toast";
 import { financeService } from "../../services/financeService";
 import { useDataInvalidation } from "../useDataInvalidation";
 import useI18n from "../useI18n";
+import { getConnectivityState } from "../../offline/connectivity";
+import { subscribeSyncCompleted } from "../../offline/syncEngine";
+import { queueCreate, queueUpdate, readMirrorAll, mirrorReplaceAll } from "../../offline/entityQueue";
+import { enqueueOperation } from "../../offline/outbox";
 
 // Combined hook (list + CRUD + movements/reconciliation) - same shape as
 // usePurchase.js rather than the two-hook orders split, since Finance.jsx is
@@ -14,9 +18,15 @@ export const useCashAccounts = () => {
     const [submitting, setSubmitting] = useState(false);
 
     const load = useCallback(async () => {
+        if (!getConnectivityState()) {
+            setAccounts(await readMirrorAll("cashAccounts"));
+            setLoading(false);
+            return;
+        }
         try {
             const res = await financeService.listCashAccounts();
             setAccounts(res?.data || []);
+            mirrorReplaceAll("cashAccounts", res?.data || []);
         } catch (err) {
             toast.error(err?.response?.data?.message || t("finance.failed"));
         } finally {
@@ -34,8 +44,20 @@ export const useCashAccounts = () => {
     // does.
     useDataInvalidation("cashAccount", load);
 
+    // Refetch once a full sync cycle completes (not merely "connectivity
+    // came back") - see useOrders.js for why the raw connectivity event
+    // alone races the outbox drain.
+    useEffect(() => subscribeSyncCompleted(load), [load]);
+
     const createAccount = async (values) => {
         setSubmitting(true);
+        if (!getConnectivityState()) {
+            await queueCreate({ entity: "cashAccounts", url: "/finance/cash-accounts", fields: values, optimisticExtra: { is_active: true, balance: 0 } });
+            toast.success(t("common.offline_saved_locally"));
+            await load();
+            setSubmitting(false);
+            return true;
+        }
         try {
             await financeService.createCashAccount(values);
             toast.success(t("finance.created"));
@@ -51,6 +73,13 @@ export const useCashAccounts = () => {
 
     const updateAccount = async (id, values) => {
         setSubmitting(true);
+        if (!getConnectivityState()) {
+            await queueUpdate({ entity: "cashAccounts", url: `/finance/cash-accounts/${id}`, id, fields: values });
+            toast.success(t("common.offline_saved_locally"));
+            await load();
+            setSubmitting(false);
+            return true;
+        }
         try {
             await financeService.updateCashAccount(id, values);
             toast.success(t("finance.updated"));
@@ -65,6 +94,22 @@ export const useCashAccounts = () => {
     };
 
     const deactivateAccount = async (id) => {
+        if (!getConnectivityState()) {
+            // A state change (is_active: false), not a removal - the account
+            // still needs to be visible (e.g. its historical balance/movements),
+            // so this goes through queueUpdate, not queueDelete.
+            await queueUpdate({
+                entity: "cashAccounts",
+                url: `/finance/cash-accounts/${id}/deactivate`,
+                id,
+                fields: {},
+                optimisticPatch: { is_active: false },
+                method: "post",
+            });
+            toast.success(t("common.offline_saved_locally"));
+            await load();
+            return;
+        }
         try {
             await financeService.deactivateCashAccount(id);
             toast.success(t("finance.deactivated"));
@@ -76,6 +121,22 @@ export const useCashAccounts = () => {
 
     const transferCash = async (values) => {
         setSubmitting(true);
+        if (!getConnectivityState()) {
+            // Action-only (touches two accounts' balances at once) - no
+            // optimistic balance change is attempted here on purpose (see
+            // syncEngine.js's comment on never guessing at money/inventory
+            // outcomes the server alone is authoritative over). The
+            // accounts' balances simply stay at their last-synced figures
+            // until this drains for real.
+            await enqueueOperation({
+                entity: "cashAccounts",
+                opType: "custom",
+                request: { method: "post", url: "/finance/transfers", data: values },
+            });
+            toast.success(t("common.offline_saved_locally"));
+            setSubmitting(false);
+            return true;
+        }
         try {
             await financeService.transferCash(values);
             toast.success(t("finance.transfer_success"));
@@ -88,6 +149,16 @@ export const useCashAccounts = () => {
     };
     const adjustCash = async (values) => {
         setSubmitting(true);
+        if (!getConnectivityState()) {
+            await enqueueOperation({
+                entity: "cashAccounts",
+                opType: "custom",
+                request: { method: "post", url: "/finance/adjustments", data: values },
+            });
+            toast.success(t("common.offline_saved_locally"));
+            setSubmitting(false);
+            return true;
+        }
         try {
             await financeService.adjustCash(values);
             toast.success(t("finance.adjustment_success"));
