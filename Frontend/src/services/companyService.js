@@ -127,6 +127,48 @@ export const companyService = {
         return response.data;
     },
 
+    // DIAN-mandatory payment gate in front of createMyViafirmaRequest below -
+    // see CertificateOrder's doc comment in schema.prisma. `activeEntitlement`
+    // is null when nothing paid is currently valid for this company.
+    async getMyCertificateOrders() {
+        const response = await api.get("/company/me/itcycle/viafirma/certificate-orders");
+        return response.data;
+    },
+
+    // Creates (or reuses an already-pending) order for the chosen duration -
+    // does not charge anything by itself, only sets up the ePayco checkout
+    // session getMyCertificateOrderCheckoutParams then opens.
+    async createMyCertificateOrder(durationYears, idempotencyKey) {
+        const response = await api.post("/company/me/itcycle/viafirma/certificate-orders", { durationYears }, {
+            headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        });
+        return response.data;
+    },
+
+    async getMyCertificateOrderCheckoutParams(orderId) {
+        const response = await api.get(`/company/me/itcycle/viafirma/certificate-orders/${orderId}/epayco-params`);
+        return response.data;
+    },
+
+    // Gives resolvePendingCertificateOrderPaymentStatus's live-query fallback
+    // a real ref_payco to check when the signed confirmation webhook can't
+    // reach this backend at all (localhost in dev) or misses a cold start
+    // (Render in prod) - see reportMyCertificateOrderTransactionReference's
+    // own doc comment. Never trusted for activation by itself.
+    async reportMyCertificateOrderTransactionReference(orderId, refPayco) {
+        if (!refPayco) return null;
+        const response = await api.post(`/company/me/itcycle/viafirma/certificate-orders/${orderId}/epayco-reference`, { refPayco });
+        return response.data;
+    },
+
+    // Self-reported "the customer closed the ePayco checkout without
+    // finishing" signal - see reportMyCertificateOrderCheckoutClosed's own
+    // doc comment for the safety model (can only ever cancel, never pay).
+    async reportMyCertificateOrderCheckoutClosed(orderId) {
+        const response = await api.post(`/company/me/itcycle/viafirma/certificate-orders/${orderId}/epayco-checkout-closed`);
+        return response.data;
+    },
+
     // Viafirma Colombia digital-certificate issuance - unlike FirmaPass,
     // there's no pre-existing validation to look up first: the CSR/keypair
     // are generated server-side (itcycle-api-dian) by this one call, which

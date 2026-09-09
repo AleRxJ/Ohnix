@@ -40,6 +40,14 @@ import {
     uploadCompanyViafirmaDocument,
 } from "../services/viafirmaProvisioning.service.js";
 import {
+    createOrReuseMyCertificateOrder,
+    getActiveCertificateEntitlement,
+    listMyCertificateOrders,
+    markMyCertificateOrderPaymentFailed,
+    requireActiveCertificateEntitlement,
+} from "../services/certificateOrder.service.js";
+import { buildCertificateOrderWidgetParams } from "../services/certificateOrderPayment.service.js";
+import {
     getCompanyCertificateProviderStatus,
     setCompanyCertificateProviderOverride,
 } from "../services/certificateProviderPreference.service.js";
@@ -398,6 +406,13 @@ export const getMyViafirmaTerms = asyncHandler(async (req, res) => {
 export const createMyViafirmaRequest = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
     await ensureElectronicInvoicingPlan(req.user.prismaId);
+    // DIAN-mandatory: the certificate must be paid for before it can be
+    // requested - see CertificateOrder's own doc comment in schema.prisma.
+    // Checked here (not deeper in viafirmaProvisioning.service.js) so it
+    // gates the one action that actually costs Ohnix a Viafirma
+    // consumption unit, the same layer ensureElectronicInvoicingPlan
+    // already gates on above.
+    await requireActiveCertificateEntitlement({ companyId: company.id });
     const { profileKind, subject, identityType, countryCode, identity, emailCertificate, organizationType, termsAccepted } = req.body || {};
     if (termsAccepted !== true) {
         throw new ApiError(400, "Debes aceptar los términos y condiciones para solicitar el certificado");
@@ -428,6 +443,127 @@ export const createMyViafirmaRequest = asyncHandler(async (req, res) => {
         termsAccepted,
     });
     return res.status(201).json(new ApiResponse(201, data, "Solicitud de certificado Viafirma creada"));
+});
+
+// GET /company/me/itcycle/viafirma/certificate-orders
+// Lists this company's certificate purchases and whether an active
+// (paid, unexpired) entitlement currently exists - the paywall in
+// ViafirmaSelfService.jsx reads `activeEntitlement` to decide whether to
+// show the certificate-request form or the "pay first" screen.
+export const getMyCertificateOrders = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    // getActiveCertificateEntitlement resolves every pending order against
+    // ePayco first (see its own doc comment) - sequenced before the list
+    // read below, not run in parallel with it, so a webhook that never
+    // arrived doesn't leave this response showing stale "pending" rows.
+    const activeEntitlement = await getActiveCertificateEntitlement({ companyId: company.id });
+    const orders = await listMyCertificateOrders({ companyId: company.id });
+    return res.status(200).json(new ApiResponse(200, { orders, activeEntitlement }, "Órdenes de certificado obtenidas"));
+});
+
+// POST /company/me/itcycle/viafirma/certificate-orders/:orderId/epayco-reference
+// Same purpose/trust-model as subscription.controller.js#reportEpaycoTransactionReference:
+// the client-side ePayco widget's onResponse callback knows the real
+// ref_payco immediately, before any server-to-server webhook - which
+// simply cannot reach a localhost/private dev server, and can miss a
+// Render cold start even in production. This only ever fills in
+// paymentSessionId (still our own placeholder) so the trusted live-query
+// fallback (resolvePendingCertificateOrderPaymentStatus) has a real
+// reference to check; it never itself activates anything.
+export const reportMyCertificateOrderTransactionReference = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const { orderId } = req.params;
+    const refPayco = `${req.body?.refPayco || ""}`.trim();
+
+    if (!refPayco) {
+        return res.status(200).json(new ApiResponse(200, { updated: false }, "No reference provided"));
+    }
+
+    const order = await prisma.certificateOrder.findFirst({
+        where: { id: orderId, companyId: company.id },
+        select: { id: true, paymentStatus: true, paymentSessionId: true },
+    });
+    if (!order) throw new ApiError(404, "Certificate order not found");
+
+    const stillUntouchedPlaceholder = `${order.paymentSessionId || ""}`.startsWith(`OHNIX-CERT-${orderId}-`);
+    if (order.paymentStatus !== "pending" || !stillUntouchedPlaceholder) {
+        return res.status(200).json(new ApiResponse(200, { updated: false }, "Nothing to update"));
+    }
+
+    const alreadyConsumedBy = await prisma.certificateOrder.findFirst({
+        where: { paymentSessionId: refPayco, paymentStatus: "paid", NOT: { id: orderId } },
+        select: { id: true },
+    });
+    if (alreadyConsumedBy) {
+        console.warn("[certificate-order-reference] Rejected reused ref_payco", { orderId, refPayco });
+        return res.status(200).json(new ApiResponse(200, { updated: false }, "Reference already in use"));
+    }
+
+    await prisma.certificateOrder.updateMany({
+        where: { id: orderId, paymentStatus: "pending", paymentSessionId: order.paymentSessionId },
+        data: { paymentSessionId: refPayco },
+    });
+    return res.status(200).json(new ApiResponse(200, { updated: true }, "Reference recorded"));
+});
+
+// POST /company/me/itcycle/viafirma/certificate-orders/:orderId/epayco-checkout-closed
+// Same purpose/safety model as subscription.controller.js#reportEpaycoCheckoutClosed:
+// a self-reported "the customer closed the ePayco checkout without
+// finishing" signal, sent by CertificateOrderCheckout.jsx's onClosed hook
+// and its pagehide/sendBeacon fallback. Not a source of truth - only ever
+// moves a pending order the caller owns to "cancelled", never "paid" - so
+// it's just a fast-path around the 48h PENDING_ORDER_TIMEOUT_MS backstop,
+// not a way to grant anything.
+export const reportMyCertificateOrderCheckoutClosed = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const { orderId } = req.params;
+
+    const order = await prisma.certificateOrder.findFirst({
+        where: { id: orderId, companyId: company.id },
+        select: { id: true, paymentStatus: true },
+    });
+    if (!order) throw new ApiError(404, "Certificate order not found");
+
+    if (order.paymentStatus !== "pending") {
+        return res.status(200).json(new ApiResponse(200, { updated: false }, "Nothing to update"));
+    }
+
+    await markMyCertificateOrderPaymentFailed({ orderId, paymentStatus: "cancelled" });
+    return res.status(200).json(new ApiResponse(200, { updated: true }, "Checkout marked as cancelled"));
+});
+
+// POST /company/me/itcycle/viafirma/certificate-orders
+// Creates (or reuses an already-pending) CertificateOrder for the chosen
+// duration - does NOT charge anything by itself, only sets up the ePayco
+// checkout session the frontend then opens (see getMyCertificateOrderCheckoutParams).
+export const createMyCertificateOrder = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const durationYears = Number(req.body?.durationYears);
+    const order = await createOrReuseMyCertificateOrder({
+        companyId: company.id,
+        requestedByUserId: req.user.prismaId,
+        durationYears,
+    });
+    return res.status(201).json(new ApiResponse(201, order, "Orden de certificado creada"));
+});
+
+// GET /company/me/itcycle/viafirma/certificate-orders/:orderId/epayco-params
+// Same shape/purpose as subscription.controller.js#getEpaycoCheckoutParams,
+// scoped to a CertificateOrder instead of a PlanUpgradeRequest.
+export const getMyCertificateOrderCheckoutParams = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const order = await prisma.certificateOrder.findFirst({
+        where: { id: req.params.orderId, companyId: company.id },
+    });
+    if (!order) throw new ApiError(404, "Certificate order not found");
+    if (order.paymentStatus !== "pending" || !order.paymentSessionId) {
+        throw new ApiError(409, "Checkout is only available for a pending certificate order");
+    }
+    const user = await prisma.user.findUnique({ where: { id: req.user.prismaId }, select: { email: true } });
+    if (!user?.email) throw new ApiError(400, "A valid account email is required");
+
+    const params = buildCertificateOrderWidgetParams({ order, user, reference: order.paymentSessionId });
+    return res.status(200).json(new ApiResponse(200, params, "ePayco checkout params fetched successfully"));
 });
 
 export const getMyViafirmaCertificates = asyncHandler(async (req, res) => {

@@ -10,6 +10,7 @@ import firmaPassValidationScheduler from "./utils/firmaPassValidationScheduler.j
 import recurringExpenseScheduler from "./utils/recurringExpenseScheduler.js";
 import itcycleKeepAliveScheduler from "./utils/itcycleKeepAliveScheduler.js";
 import { reconcileLegacyApprovedRequests, reconcileStuckPendingPayments } from "./utils/subscriptionReconcile.js";
+import { reconcileStuckCertificateOrderPayments } from "./utils/certificateOrderReconcile.js";
 import { reconcileOrphanedDianTestMatrixRuns } from "./services/dianTestMatrix.service.js";
 
 dotenv.config({
@@ -41,6 +42,17 @@ connectDB()
                 }
             } catch (error) {
                 console.error("❎ Pending payment reconciliation failed", error);
+            }
+
+            try {
+                const certOrderResult = await reconcileStuckCertificateOrderPayments();
+                if (certOrderResult.resolved > 0) {
+                    console.log(
+                        `📜 Reconciled stuck certificate orders: ${certOrderResult.resolved} resolved out of ${certOrderResult.checked} pending orders`
+                    );
+                }
+            } catch (error) {
+                console.error("❎ Certificate order reconciliation failed", error);
             }
         };
 

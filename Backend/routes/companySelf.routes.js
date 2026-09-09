@@ -8,8 +8,13 @@ import {
     updateMyItcycleNumberingResolution,
     activateMyItcycleElectronicInvoicing,
     confirmMyFirmaPassValidation,
+    createMyCertificateOrder,
     createMyViafirmaRequest,
     deleteMyCompanyLogo,
+    getMyCertificateOrderCheckoutParams,
+    getMyCertificateOrders,
+    reportMyCertificateOrderCheckoutClosed,
+    reportMyCertificateOrderTransactionReference,
     getMyCertificateProviderStatus,
     getMyCompany,
     getMyFirmaPassStatus,
@@ -57,6 +62,10 @@ router.route("/me/itcycle/firmapass/validations/:validationUuid/confirmar").post
 router.route("/me/itcycle/firmapass/status").get(getMyFirmaPassStatus);
 router.route("/me/itcycle/certificates").post(idempotent("company.itcycle.certificate"), uploadMyCertificate);
 router.route("/me/itcycle/viafirma/terms").get(getMyViafirmaTerms);
+router.route("/me/itcycle/viafirma/certificate-orders").get(getMyCertificateOrders).post(idempotent("company.itcycle.viafirma.certificate-order"), createMyCertificateOrder);
+router.route("/me/itcycle/viafirma/certificate-orders/:orderId/epayco-params").get(getMyCertificateOrderCheckoutParams);
+router.route("/me/itcycle/viafirma/certificate-orders/:orderId/epayco-reference").post(reportMyCertificateOrderTransactionReference);
+router.route("/me/itcycle/viafirma/certificate-orders/:orderId/epayco-checkout-closed").post(reportMyCertificateOrderCheckoutClosed);
 router.route("/me/itcycle/viafirma/requests").post(idempotent("company.itcycle.viafirma.request"), createMyViafirmaRequest);
 router.route("/me/itcycle/viafirma/certificates").get(getMyViafirmaCertificates);
 router.route("/me/itcycle/viafirma/certificates/:certificateId/status").get(getMyViafirmaCertificateStatus);

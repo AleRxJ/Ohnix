@@ -309,6 +309,8 @@ model User {
 
   chatConversations ChatConversation[]
 
+  certificateOrdersRequested CertificateOrder[]
+
   @@map("users")
 }
 
@@ -433,6 +435,7 @@ model Company {
   purchaseSupportDocuments PurchaseSupportDocument[]
   apiKeys                  ApiKey[]
   dianTestMatrixRuns       DianTestMatrixRun[]
+  certificateOrders        CertificateOrder[]
 
   @@map("companies")
 }
@@ -517,6 +520,55 @@ model PlanUpgradeRequest {
 
   @@index([userId, status])
   @@map("plan_upgrade_requests")
+}
+
+// A one-off Viafirma digital-certificate purchase (1 or 2 years), gating
+// companySelf.controller.js#createMyViafirmaRequest per DIAN's requirement
+// that the certificate be paid for before a request can be submitted -
+// see certificateOrder.service.js#requireActiveCertificateEntitlement. Not
+// folded into PlanUpgradeRequest: that model is subscription-shaped
+// (currentPlan/targetPlan/admin review) and this is a standalone purchase
+// with no admin approval step, so most of its columns would sit unused.
+// Same ePayco checkout/webhook shape as PlanUpgradeRequest on purpose - see
+// services/certificateOrderPayment.service.js, which mirrors epayco.service.js.
+model CertificateOrder {
+  id                String   @id @default(cuid())
+  companyId         String   @map("company_id")
+  requestedByUserId String   @map("requested_by_user_id")
+  // Fixed at Viafirma's own certificate validity (see
+  // ViafirmaCertificateProvider - every profile issues a 730-day/2-year
+  // certificate regardless of what's paid for). A "1 año" purchase buys a
+  // shorter Ohnix-side entitlement window on top of the same 2-year
+  // certificate, not a technically different certificate - the customer
+  // must pay again after 1 year to keep using it, even though the
+  // underlying Viafirma certificate itself is still technically valid.
+  durationYears     Int      @map("duration_years")
+  amount            Int
+  currency          String   @default("COP")
+  paymentProvider   String?  @default("epayco") @map("payment_provider")
+  paymentSessionId  String?  @unique @map("payment_session_id")
+  // pending -> paid | rejected | failed | expired | cancelled | amount_mismatch
+  // Same vocabulary as PlanUpgradeRequest.paymentStatus/handleEpaycoConfirmation.
+  paymentStatus     String   @default("pending") @map("payment_status")
+  isTestPayment     Boolean? @map("is_test_payment")
+  paidAt            DateTime? @map("paid_at")
+  paidAmount        Int?     @map("paid_amount")
+  paidCurrency      String?  @map("paid_currency")
+  // The window during which createMyViafirmaRequest is allowed - starts at
+  // paidAt, ends durationYears later. Once entitlementEndsAt lapses, the
+  // company must create (and pay for) a new CertificateOrder before
+  // requesting another certificate ("si se le vence otra vez debería volver
+  // a salir para pagar y solicitar otro").
+  entitlementStartsAt DateTime? @map("entitlement_starts_at")
+  entitlementEndsAt   DateTime? @map("entitlement_ends_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  company         Company @relation(fields: [companyId], references: [id])
+  requestedByUser User    @relation(fields: [requestedByUserId], references: [id])
+
+  @@index([companyId, paymentStatus])
+  @@map("certificate_orders")
 }
 
 model Subscription {

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Alert, Button, Card, Checkbox, Form, Input, Select, Space, Tag, Typography, Upload } from "antd";
 import {
     BankOutlined,
@@ -36,14 +37,21 @@ const VIAFIRMA_CODE_MESSAGES = {
     // returning HTML instead of JSON) - see itcycle-api-dian's
     // CertificateProviderTechnicalError and Ohnix's viafirmaProvisioning.service.js#rethrowAsApiError.
     viafirma_technical_error: "fiscal_setup.viafirma_technical_error",
+    // createMyViafirmaRequest's own gate (companySelf.controller.js) - a
+    // paid, unexpired CertificateOrder is required before a request can be
+    // submitted. Should be unreachable through this UI (the form itself is
+    // hidden behind the same check, see activeEntitlement below), but the
+    // backend enforces it regardless of what the UI shows.
+    certificate_payment_required: "fiscal_setup.certificate_payment_required",
 };
 
 const ORGANIZATION_TYPES = ["RM", "PROP", "RUNEOL", "RNT", "ESAL", "ESOL", "JUEGOS", "EXTRANJERAS"];
 
 // Ohnix's own resale price to the customer - deliberately NOT what Ohnix
 // pays Viafirma per certificate (a separate, confidential consumption-based
-// rate negotiated directly with Viafirma). Purely informational for now -
-// no checkout is wired to this yet; billing is coordinated separately.
+// rate negotiated directly with Viafirma). Display-only: the amount actually
+// charged always comes from the backend (getCertificateOrderAmount), this
+// just has to say the same number so the paywall isn't misleading.
 const VIAFIRMA_PRICE_1_YEAR = "$100.000 COP";
 const VIAFIRMA_PRICE_2_YEARS = "$160.000 COP";
 const VIAFIRMA_LOGO_URL = "https://www.viafirma.com/wp-content/uploads/2025/02/logo_25_vf_1.svg";
@@ -117,6 +125,7 @@ const readFileAsBase64 = (file) => new Promise((resolve, reject) => {
 // duplicate that flow here.
 const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const [form] = Form.useForm();
     const [profileKind, setProfileKind] = useState("FE-PJ");
     // legalName/taxIdentification are already registered (frozen once
@@ -148,6 +157,36 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
     // have led someone to submit a duplicate real request on top of one
     // that was still fine, just temporarily unreachable.
     const [certificatesLoadError, setCertificatesLoadError] = useState(false);
+    // DIAN-mandatory payment gate in front of the request form below - see
+    // CertificateOrder's doc comment in schema.prisma. null = confirmed no
+    // active entitlement; undefined = not checked yet (don't flash the
+    // paywall before the first load resolves).
+    const [activeEntitlement, setActiveEntitlement] = useState(undefined);
+    const [payingDuration, setPayingDuration] = useState(0);
+
+    const refreshCertificateOrders = async () => {
+        try {
+            const response = await companyService.getMyCertificateOrders();
+            setActiveEntitlement(response?.data?.activeEntitlement || null);
+        } catch {
+            setActiveEntitlement(null);
+        }
+    };
+
+    useEffect(() => { refreshCertificateOrders(); }, []);
+
+    const payForCertificate = async (durationYears) => {
+        try {
+            setPayingDuration(durationYears);
+            const response = await companyService.createMyCertificateOrder(durationYears, crypto.randomUUID());
+            const orderId = response?.data?.id;
+            if (!orderId) throw new Error(t("fiscal_setup.certificate_order_create_error"));
+            navigate(`/fiscal-setup/certificate-checkout?orderId=${encodeURIComponent(orderId)}`);
+        } catch (error) {
+            toast.error(resolveApiErrorMessage(error, t, VIAFIRMA_CODE_MESSAGES, "fiscal_setup.certificate_order_create_error"));
+            setPayingDuration(0);
+        }
+    };
 
     // Only meant to run once, right after the first load - the toggle
     // shouldn't jump back to whatever the last submission used every time
@@ -567,6 +606,34 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
                         </div>
                     </div>
 
+                    {activeEntitlement ? (
+                        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                            <CheckCircleOutlined />
+                            {t("fiscal_setup.certificate_entitlement_active", {
+                                date: activeEntitlement.entitlementEndsAt ? new Date(activeEntitlement.entitlementEndsAt).toLocaleDateString() : "",
+                            })}
+                        </div>
+                    ) : (
+                        // DIAN-mandatory payment gate - the request form below only
+                        // renders once an active CertificateOrder entitlement exists
+                        // (see companySelf.controller.js#createMyViafirmaRequest's
+                        // server-side enforcement of the same rule).
+                        <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
+                            <div className="mb-1 text-sm font-semibold text-[var(--ohnix-text-primary)]">{t("fiscal_setup.certificate_payment_required_title")}</div>
+                            <p className="mb-3 text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.certificate_payment_required_body")}</p>
+                            <Space wrap>
+                                <Button type="primary" loading={payingDuration === 1} disabled={Boolean(payingDuration) && payingDuration !== 1} onClick={() => payForCertificate(1)}>
+                                    {t("fiscal_setup.certificate_pay_1_year", { price: VIAFIRMA_PRICE_1_YEAR })}
+                                </Button>
+                                <Button loading={payingDuration === 2} disabled={Boolean(payingDuration) && payingDuration !== 2} onClick={() => payForCertificate(2)}>
+                                    {t("fiscal_setup.certificate_pay_2_years", { price: VIAFIRMA_PRICE_2_YEARS })}
+                                </Button>
+                            </Space>
+                        </div>
+                    )}
+
+                    {activeEntitlement && (
+                    <>
                     <div className="mt-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] p-4">
                         <div className="mb-3 text-sm font-semibold text-[var(--ohnix-text-primary)]">{t("fiscal_setup.viafirma_how_it_works_title")}</div>
                         <div className="space-y-3">
@@ -802,6 +869,8 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
                             {t("fiscal_setup.viafirma_submit_request")}
                         </Button>
                     </Form>
+                    </>
+                    )}
                 </div>
             )}
 

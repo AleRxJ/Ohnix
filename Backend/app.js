@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import errorHandler from "./middleware/error.middleware.js";
 import { handlePaymentWebhook, handleEpaycoConfirmation, handleEpaycoResponse } from "./controllers/subscription.controller.js";
+import { handleCertificateOrderEpaycoConfirmation, handleCertificateOrderEpaycoResponse } from "./controllers/certificateOrderPayment.controller.js";
 import { receiveConnectorWebhook } from "./controllers/connectorWebhook.controller.js";
 import { isOriginAllowed } from "./utils/allowedOrigins.js";
 import { getRedisHealth } from "./utils/redisClient.js";
@@ -90,6 +91,22 @@ app.post(
     express.json({ limit: "16kb" }),
     express.urlencoded({ extended: true, limit: "16kb" }),
     handleEpaycoResponse
+);
+
+// Same public ePayco pattern as above, scoped to CertificateOrder (Viafirma
+// digital-certificate purchases) instead of PlanUpgradeRequest.
+app.post(
+    "/api/v1/certificate-orders/payments/epayco/confirmation",
+    express.json({ limit: "16kb" }),
+    express.urlencoded({ extended: true, limit: "16kb" }),
+    handleCertificateOrderEpaycoConfirmation
+);
+app.get("/api/v1/certificate-orders/payments/epayco/response", handleCertificateOrderEpaycoResponse);
+app.post(
+    "/api/v1/certificate-orders/payments/epayco/response",
+    express.json({ limit: "16kb" }),
+    express.urlencoded({ extended: true, limit: "16kb" }),
+    handleCertificateOrderEpaycoResponse
 );
 
 // Inbound webhooks FROM a connected e-commerce channel (Shopify order
