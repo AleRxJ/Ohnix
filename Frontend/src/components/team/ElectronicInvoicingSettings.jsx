@@ -929,25 +929,19 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             )}
                             {isSandbox && <DianHabilitacionPanel knownTestSetId={status?.itcycleTestSetId} />}
                         </>
-                    ) : (
-                        // Every one of these either sends a real document to
-                        // DIAN (habilitación tests) or configures numbering
-                        // for one that eventually will (documento soporte,
-                        // notes) - none of that is actionable without a
-                        // signed certificate to send it with (Viafirma,
-                        // FirmaPass, or a manually uploaded one - readiness
-                        // is provider-agnostic, see certificateReady's own
-                        // comment in admin.service.ts). Showing them earlier
-                        // just let someone configure/test something that
-                        // can't actually go anywhere yet.
-                        <Alert
-                            className="dark-alert dark-alert-purple"
-                            type="info"
-                            showIcon
-                            message={t("fiscal_setup.dian_docs_require_certificate_title")}
-                            description={t("fiscal_setup.dian_docs_require_certificate_hint")}
-                        />
-                    )}
+                    ) : null /* Every one of these either sends a real document to
+                        DIAN (habilitación tests) or configures numbering
+                        for one that eventually will (documento soporte,
+                        notes) - none of that is actionable without a
+                        signed certificate to send it with (Viafirma,
+                        FirmaPass, or a manually uploaded one - readiness
+                        is provider-agnostic, see certificateReady's own
+                        comment in admin.service.ts). Showing them earlier
+                        just let someone configure/test something that
+                        can't actually go anywhere yet - the paywall card
+                        above (ViafirmaSelfService) already explains what's
+                        needed, so this stays silent rather than repeating
+                        that explanation in a second place. */}
                 </>
             ) : otherProviderActive ? (
                 <Alert

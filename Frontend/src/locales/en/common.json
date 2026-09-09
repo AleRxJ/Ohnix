@@ -4207,8 +4207,6 @@
     "back": "Back",
     "continue": "Continue",
     "submit": "Set up my company",
-    "dian_docs_require_certificate_title": "Available once your digital signature certificate is active",
-    "dian_docs_require_certificate_hint": "Transmitting electronic documents to DIAN requires a valid digital signature certificate under Colombian regulation. Colombia's Estatuto Tributario (art. 616-1) and DIAN Resolución 000042 de 2020 (art. 11, no. 14) establish this requirement to guarantee the authenticity, integrity, and non-repudiation of every signed document. This section will unlock automatically once your certificate is active.",
     "support_document_title": "Support document",
     "support_document_hint": "Only needed if you buy from suppliers not obligated to invoice - add a \"05\" numbering resolution, separate from your electronic invoice one.",
     "add_support_document_resolution": "Add support document resolution",

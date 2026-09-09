@@ -4201,8 +4201,6 @@
     "back": "Atrás",
     "continue": "Continuar",
     "submit": "Configurar mi empresa",
-    "dian_docs_require_certificate_title": "Disponible una vez actives tu certificado de firma digital",
-    "dian_docs_require_certificate_hint": "Para transmitir documentos electrónicos a la DIAN, la normativa exige contar con un certificado de firma digital vigente. El Estatuto Tributario (art. 616-1) y la Resolución DIAN 000042 de 2020 (art. 11, núm. 14) establecen este requisito para garantizar la autenticidad, integridad y no repudio de cada documento firmado. Esta sección se habilitará automáticamente en cuanto tu certificado quede activo.",
     "support_document_title": "Documento soporte",
     "support_document_hint": "Solo necesario si le compras a proveedores no obligados a facturar - agrega una resolución de numeración \"05\" separada de tu factura electrónica.",
     "add_support_document_resolution": "Agregar resolución de documento soporte",
