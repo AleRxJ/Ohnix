@@ -9,6 +9,10 @@ import { printSalesQuotation } from "../utils/printSalesQuotation.js";
 import PointOfSaleField from "../components/common/PointOfSaleField";
 import useSubscription from "../hooks/useSubscription";
 import PlanGate from "../components/common/PlanGate";
+import { getConnectivityState } from "../offline/connectivity";
+import { subscribeSyncCompleted } from "../offline/syncEngine";
+import { queueCreate, queueUpdate, readMirrorAll, mirrorReplaceAll } from "../offline/entityQueue";
+import { enqueueOperation } from "../offline/outbox";
 
 const { Title, Text } = Typography;
 
@@ -29,6 +33,20 @@ const SalesQuotations = () => {
     const [form] = Form.useForm();
 
     const loadData = async () => {
+        if (!getConnectivityState()) {
+            // Reuses the same "customers"/"products" mirrors Etapa 1 already
+            // keeps warm - nothing quotation-specific to mirror for those.
+            const [cachedQuotations, cachedCustomers, cachedProducts] = await Promise.all([
+                readMirrorAll("salesQuotations"),
+                readMirrorAll("customers"),
+                readMirrorAll("products"),
+            ]);
+            setQuotations(cachedQuotations);
+            setCustomers(cachedCustomers);
+            setProducts(cachedProducts);
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         try {
             const [quotationResponse, customerResponse, productResponse] = await Promise.all([
@@ -39,6 +57,7 @@ const SalesQuotations = () => {
             setQuotations(quotationResponse.data?.data || []);
             setCustomers(customerResponse.data?.data || []);
             setProducts(productResponse.data?.data || []);
+            mirrorReplaceAll("salesQuotations", quotationResponse.data?.data || []);
         } catch {
             toast.error(t("sales_quotations.load_failed"));
         } finally {
@@ -55,6 +74,15 @@ const SalesQuotations = () => {
         // loadData is intentionally local to this page and only runs on mount.
         // eslint-disable-next-line react-hooks/exhaustive-deps
         // canUseSalesQuotations changes only when the resolved plan changes.
+    }, [planLoading, canUseSalesQuotations]);
+
+    // Refetch once a full sync cycle completes (not merely "connectivity
+    // came back") - see Frontend/src/hooks/orders/useOrders.js for why the
+    // raw connectivity event alone races the outbox drain.
+    useEffect(() => {
+        if (planLoading || !canUseSalesQuotations) return undefined;
+        return subscribeSyncCompleted(loadData);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [planLoading, canUseSalesQuotations]);
 
     const visibleQuotations = useMemo(() => {
@@ -88,23 +116,49 @@ const SalesQuotations = () => {
 
     const handleSubmit = async (values) => {
         setSubmitting(true);
-        try {
-            const response = await api.post("/sales-quotations", {
-                quotation_no: values.quotation_no,
-                customer_id: values.customer_id,
-                pointOfSaleId: values.pointOfSaleId,
-                valid_until: values.valid_until || undefined,
-                notes: values.notes,
-                discount_mode: values.discount_mode || "percentage",
-                discount_rate: values.discount_rate || 0,
-                discount_value: values.discount_value || 0,
-                details: values.details.map((detail) => ({
-                    product_id: detail.product_id,
-                    quantity: detail.quantity,
-                    unit_price: detail.unit_price,
-                    discount_rate: detail.discount_rate || 0,
-                })),
+        const payload = {
+            quotation_no: values.quotation_no,
+            customer_id: values.customer_id,
+            pointOfSaleId: values.pointOfSaleId,
+            valid_until: values.valid_until || undefined,
+            notes: values.notes,
+            discount_mode: values.discount_mode || "percentage",
+            discount_rate: values.discount_rate || 0,
+            discount_value: values.discount_value || 0,
+            details: values.details.map((detail) => ({
+                product_id: detail.product_id,
+                quantity: detail.quantity,
+                unit_price: detail.unit_price,
+                discount_rate: detail.discount_rate || 0,
+            })),
+        };
+
+        if (!getConnectivityState()) {
+            const customer = customers.find((c) => (c._id || c.id) === values.customer_id);
+            await queueCreate({
+                entity: "salesQuotations",
+                url: "/sales-quotations",
+                fields: payload,
+                optimisticExtra: {
+                    // This entity's own convention (see
+                    // salesQuotation.controller.js#mapQuotation) - a raw
+                    // Prisma select, not the `_id`/toExternalId shape most
+                    // other mirrored entities use.
+                    customer: customer ? { id: customer._id || customer.id, name: customer.name, email: customer.email, phone: customer.phone } : null,
+                    status: "draft",
+                    issued_at: new Date().toISOString(),
+                    total: 0,
+                    details: [],
+                },
             });
+            toast.success(t("common.offline_saved_locally"));
+            setModalOpen(false);
+            await loadData();
+            setSubmitting(false);
+            return;
+        }
+        try {
+            const response = await api.post("/sales-quotations", payload);
             if (response.data?.success) {
                 toast.success(t("sales_quotations.created"));
                 setModalOpen(false);
@@ -132,6 +186,19 @@ const SalesQuotations = () => {
     };
 
     const handleSendEmail = async (quotation) => {
+        if (!getConnectivityState()) {
+            await queueUpdate({
+                entity: "salesQuotations",
+                url: `/sales-quotations/${quotation._id}/send`,
+                id: quotation._id,
+                fields: {},
+                optimisticPatch: { status: "sent" },
+                method: "post",
+            });
+            toast.success(t("common.offline_saved_locally"));
+            await loadData();
+            return;
+        }
         try {
             await api.post(`/sales-quotations/${quotation._id}/send`);
             toast.success(t("sales_quotations.sent"));
@@ -142,6 +209,18 @@ const SalesQuotations = () => {
     };
 
     const handleConvert = async (quotation) => {
+        if (!getConnectivityState()) {
+            // Action-only - this creates a real Order server-side (stock +
+            // accounting effects), so no optimistic status/order is guessed
+            // here (same reasoning as LocationStockPanel's quick transfer).
+            await enqueueOperation({
+                entity: "salesQuotations",
+                opType: "custom",
+                request: { method: "post", url: `/sales-quotations/${quotation._id}/convert`, data: {} },
+            });
+            toast.success(t("common.offline_saved_locally"));
+            return;
+        }
         try {
             await api.post(`/sales-quotations/${quotation._id}/convert`);
             toast.success(t("sales_quotations.converted"));

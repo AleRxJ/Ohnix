@@ -6,6 +6,9 @@ import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { useDataInvalidation } from "../useDataInvalidation";
+import { getConnectivityState } from "../../offline/connectivity";
+import { subscribeSyncCompleted } from "../../offline/syncEngine";
+import { queueCreate, queueUpdate, queueDelete, readMirrorAll, mirrorReplaceAll } from "../../offline/entityQueue";
 
 const DELETE_UNIT_ERROR_CODES = {
     unit_has_products: "units.delete_conflict_products",
@@ -32,6 +35,12 @@ export const useUnits = () => {
     // Función interna que no depende de otras dependencias
     const loadUnitsInternal = useCallback(async () => {
         const requestId = ++latestRequestId.current;
+        if (!getConnectivityState()) {
+            const local = await readMirrorAll("units");
+            if (requestId !== latestRequestId.current) return local;
+            setUnits(local);
+            return local;
+        }
         setLoading(true);
         try {
             const response = await api.get("/units");
@@ -39,6 +48,7 @@ export const useUnits = () => {
 
             if (response.data.success) {
                 setUnits(response.data.data);
+                mirrorReplaceAll("units", response.data.data);
                 return response.data.data;
             } else {
                 return [];
@@ -67,8 +77,24 @@ export const useUnits = () => {
     // renaming, or deleting a unit.
     useDataInvalidation("unit", loadUnits);
 
+    // Coming back online: refetch for real (replaces any offline-queued
+    // optimistic rows with the server's canonical view once the outbox has
+    // had a chance to drain).
+    useEffect(() => subscribeSyncCompleted(loadUnits), [loadUnits]);
+
     const createUnit = useCallback(
         async (values) => {
+            if (!getConnectivityState()) {
+                await queueCreate({
+                    entity: "units",
+                    url: "/units",
+                    fields: values,
+                    optimisticExtra: { created_by: { _id: user?._id, username: user?.username }, products_count: 0 },
+                });
+                toast.success(t("common.offline_saved_locally"));
+                await loadUnits();
+                return { success: true };
+            }
             const loadingToast = toast.loading(t("units.creating_unit"));
             try {
                 const response = await api.post("/units", {
@@ -102,11 +128,17 @@ export const useUnits = () => {
                 return { success: false, error: errorMsg };
             }
         },
-        [loadUnits, isTutorialActive, notifyAction]
+        [loadUnits, isTutorialActive, notifyAction, user]
     );
 
     const updateUnit = useCallback(
         async (id, values) => {
+            if (!getConnectivityState()) {
+                await queueUpdate({ entity: "units", url: `/units/${id}`, id, fields: values });
+                toast.success(t("common.offline_saved_locally"));
+                await loadUnits();
+                return { success: true };
+            }
             const loadingToast = toast.loading(t("units.updating_unit"));
             try {
                 const response = await api.patch(`/units/${id}`, values);
@@ -133,6 +165,12 @@ export const useUnits = () => {
 
     const deleteUnit = useCallback(
         async (id) => {
+            if (!getConnectivityState()) {
+                await queueDelete({ entity: "units", url: `/units/${id}`, id });
+                toast.success(t("common.offline_deleted_locally"));
+                await loadUnits();
+                return { success: true };
+            }
             const loadingToast = toast.loading(t("units.deleting_unit"));
             try {
                 const response = await api.delete(`/units/${id}`);
@@ -163,14 +201,14 @@ export const useUnits = () => {
             .includes(searchText.toLowerCase());
         const matchesFilter =
             filter === "all" ||
-            (filter === "mine" && unit.created_by._id === user?._id) ||
-            (filter === "others" && unit.created_by._id !== user?._id);
+            (filter === "mine" && unit.created_by?._id === user?._id) ||
+            (filter === "others" && unit.created_by?._id !== user?._id);
         return matchesSearch && matchesFilter;
     });
 
     const canEdit = useCallback(
         (unit) => {
-            return isAdmin || unit.created_by._id === user?._id;
+            return isAdmin || unit.created_by?._id === user?._id;
         },
         [isAdmin, user]
     );

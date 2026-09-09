@@ -9,6 +9,7 @@ import {
     Button,
     Space,
     Input,
+    Alert,
 } from "antd";
 import {
     SearchOutlined,
@@ -28,14 +29,52 @@ import StatCard from "../dashboard/StatCard";
 import useI18n from "../../hooks/useI18n";
 import ReportExportButtons from "./ReportExportButtons";
 import { downloadCsv, downloadExcel, downloadPdfReport } from "../../utils/exportReport";
+import { getConnectivityState } from "../../offline/connectivity";
+import { subscribeSyncCompleted } from "../../offline/syncEngine";
+import { readMirrorAll } from "../../offline/entityQueue";
+import { db as offlineDb } from "../../offline/db";
+
+// Same default the backend falls back to when a product has no per-product
+// lowStockThreshold override (SystemSetting.lowStockDefaultThreshold, see
+// Backend/utils/systemSettings.js) - admin-adjustable there, not mirrored
+// here, so an account that changed it away from 10 sees a slightly
+// different Low/In Stock split offline until reconnecting. Disclosed via
+// the "synced as of" note rather than silently treated as exact.
+const OFFLINE_DEFAULT_LOW_STOCK_THRESHOLD = 10;
+
+// Reproduces getStockReport's status logic (Backend/controllers/report.controller.js)
+// against the locally mirrored product catalog. inventory_value here is an
+// estimate (stock × buying_price) - the real figure is a weighted-average
+// cost aggregated per location, which isn't mirrored locally.
+function buildOfflineStockReport(products) {
+    return products
+        .filter((p) => !p._pendingDelete)
+        .map((p) => {
+            const threshold = p.low_stock_threshold ?? OFFLINE_DEFAULT_LOW_STOCK_THRESHOLD;
+            const status = p.stock <= 0 ? "Out of Stock" : p.stock < threshold ? "Low Stock" : "In Stock";
+            return {
+                _id: p._id,
+                product_code: p.product_code || "",
+                product_name: p.product_name || "",
+                category_name: p.category_id?.category_name || "N/A",
+                unit_name: p.unit_id?.unit_name || "N/A",
+                stock: p.stock ?? 0,
+                buying_price: p.buying_price ?? 0,
+                selling_price: p.selling_price ?? 0,
+                inventory_value: (p.stock ?? 0) * (p.buying_price ?? 0),
+                status,
+            };
+        });
+}
 
 const StockReport = () => {
     const [stockData, setStockData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchText, setSearchText] = useState("");
     const [filteredData, setFilteredData] = useState([]);
+    const [offlineSyncedAt, setOfflineSyncedAt] = useState(null);
     const { user } = useContext(AuthContext);
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const { formatCurrency } = useCurrency();
 
     const statusLabelByValue = {
@@ -49,6 +88,11 @@ const StockReport = () => {
     useEffect(() => {
         fetchStockReport();
     }, []);
+
+    // Refetch once a full sync cycle completes (not merely "connectivity
+    // came back") - see Frontend/src/hooks/orders/useOrders.js for why the
+    // raw connectivity event alone races the outbox drain.
+    useEffect(() => subscribeSyncCompleted(fetchStockReport), []);
 
     useEffect(() => {
         const filtered = stockData.filter(
@@ -67,6 +111,18 @@ const StockReport = () => {
     }, [searchText, stockData]);
 
     const fetchStockReport = async () => {
+        if (!getConnectivityState()) {
+            const [products, cursorRow] = await Promise.all([
+                readMirrorAll("products"),
+                offlineDb.syncCursor.get("products"),
+            ]);
+            const rows = buildOfflineStockReport(products);
+            setStockData(rows);
+            setFilteredData(rows);
+            setOfflineSyncedAt(cursorRow?.updatedAt || null);
+            return;
+        }
+        setOfflineSyncedAt(null);
         try {
             setLoading(true);
             const response = await api.get("/reports/stock");
@@ -416,6 +472,17 @@ const StockReport = () => {
                     />
                 </div>
             </Card>
+
+            {offlineSyncedAt && (
+                <Alert
+                    message={t("reports.stock_report_offline_notice", {
+                        date: new Date(offlineSyncedAt).toLocaleString(currentLanguage),
+                    })}
+                    type="info"
+                    showIcon
+                    className="no-print mb-4 sm:mb-6 dark-alert dark-alert-teal"
+                />
+            )}
 
             {/* Summary Cards */}
             <Row gutter={[16, 16]} className="mb-4 sm:mb-6">

@@ -9,6 +9,9 @@ import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { idempotencyHeaders } from "../../utils/idempotency";
+import { getConnectivityState } from "../../offline/connectivity";
+import { queueCreate, queueUpdate } from "../../offline/entityQueue";
+import { enqueueOperation } from "../../offline/outbox";
 import { financeErrorMessage } from "../../utils/financeError";
 
 const UPDATE_STATUS_ERROR_CODES = {
@@ -54,6 +57,22 @@ export const useOrderOperations = (refreshOrders) => {
 
     const updateOrderStatus = async (orderId, newStatus) => {
         setUpdatingOrderId(orderId);
+        if (!getConnectivityState()) {
+            // Only actionable on an order this device already knows about
+            // (created offline this session, or cached from an earlier
+            // online view - see db.js on why "orders" isn't a full mirror).
+            await queueUpdate({
+                entity: "orders",
+                url: `/orders/${orderId}/status`,
+                id: orderId,
+                fields: { order_status: newStatus },
+                optimisticPatch: { order_status: newStatus },
+            });
+            toast.success(t("common.offline_saved_locally"));
+            await refreshOrders();
+            setUpdatingOrderId(null);
+            return;
+        }
         try {
             await api.patch(
                 `/orders/${orderId}/status`,
@@ -102,7 +121,7 @@ export const useOrderOperations = (refreshOrders) => {
         }
     };
 
-    const createOrder = async (values, products = []) => {
+    const createOrder = async (values, products = [], customers = []) => {
         try {
             const productsById = Object.fromEntries(
                 products.map((product) => [product._id, product])
@@ -127,6 +146,29 @@ export const useOrderOperations = (refreshOrders) => {
                 total_products: values.orderItems.length,
                 ...(isTutorialActive && { is_tutorial_data: true }),
             };
+
+            if (!getConnectivityState()) {
+                // The server recomputes totals/tax and (if completed) claims
+                // stock atomically at sync time - this is only ever a
+                // preview render, never trusted as final. A completed order
+                // that turns out to be short on stock by the time it syncs
+                // surfaces as a CONFLICT (see syncEngine.js), never silently
+                // auto-cancelled.
+                const customer = customers.find((c) => c._id === values.customer_id);
+                await queueCreate({
+                    entity: "orders",
+                    url: "/orders",
+                    fields: orderData,
+                    optimisticExtra: {
+                        customer_id: customer ? { _id: customer._id, name: customer.name } : values.customer_id,
+                        order_date: new Date().toISOString(),
+                        invoice_no: t("orders.pending_sync_invoice_placeholder"),
+                    },
+                });
+                toast.success(t("common.offline_saved_locally"));
+                await refreshOrders();
+                return true;
+            }
 
             const response = await api.post("/orders", orderData, idempotencyHeaders());
             toast.success(t("orders.order_created"));
@@ -195,6 +237,23 @@ export const useOrderOperations = (refreshOrders) => {
 
     const registerOrderPayment = async (orderId, values) => {
         setRegisteringPayment(true);
+        if (!getConnectivityState()) {
+            // Not routed through queueCreate/queueUpdate - a payment isn't a
+            // record this app browses/mirrors on its own (see Etapa 2
+            // scope), just an action queued against an order that's either
+            // cached locally or was created offline this session. The
+            // order's own balance/status only reflects it once the real
+            // sync (server-authoritative, Serializable-isolated) completes
+            // and the order list refetches.
+            await enqueueOperation({
+                entity: "orders",
+                opType: "custom",
+                request: { method: "post", url: `/finance/orders/${orderId}/payments`, data: values },
+            });
+            toast.success(t("common.offline_saved_locally"));
+            setRegisteringPayment(false);
+            return true;
+        }
         try {
             await financeService.registerOrderPayment(orderId, values);
             toast.success(t("finance.payment_registered"));

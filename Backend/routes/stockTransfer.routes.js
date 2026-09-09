@@ -32,9 +32,9 @@ router
     .post(requireModulePermission("products", "edit"), idempotent("stock-transfer.quick"), createQuickTransfer);
 
 router.route("/:id").get(requireModulePermission("products", "view"), getTransfer);
-router.route("/:id/approve").patch(requireModulePermission("products", "edit"), approveTransfer);
-router.route("/:id/ship").patch(requireModulePermission("products", "edit"), shipTransfer);
-router.route("/:id/receive").patch(requireModulePermission("products", "edit"), receiveTransfer);
-router.route("/:id/cancel").patch(requireModulePermission("products", "edit"), cancelTransfer);
+router.route("/:id/approve").patch(requireModulePermission("products", "edit"), idempotent("stock-transfer.approve"), approveTransfer);
+router.route("/:id/ship").patch(requireModulePermission("products", "edit"), idempotent("stock-transfer.ship"), shipTransfer);
+router.route("/:id/receive").patch(requireModulePermission("products", "edit"), idempotent("stock-transfer.receive"), receiveTransfer);
+router.route("/:id/cancel").patch(requireModulePermission("products", "edit"), idempotent("stock-transfer.cancel"), cancelTransfer);
 
 export default router;

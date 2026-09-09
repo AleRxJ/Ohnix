@@ -29,15 +29,97 @@ db.version(1).stores({
     meta: "key",
 });
 
+// Etapa 1 mirror tables - simple CRUD modules (Products, Categories, Units,
+// Customers, Suppliers). Each row is stored EXACTLY as the corresponding
+// list endpoint returns it (same `_id`/snake_case shape the API already
+// uses - see Backend's `toExternalId`/`mapProduct` etc.), so a component
+// reading from the mirror needs no translation versus reading from the API.
+// Primary key is `_id` - the same field every one of these endpoints uses.
+db.version(2).stores({
+    products: "_id",
+    categories: "_id",
+    units: "_id",
+    customers: "_id",
+    suppliers: "_id",
+});
+
+// Etapa 2 - Orders. Unlike the Etapa 1 tables above, this is NOT a full
+// mirror of every order the account has ever created - GET /orders is
+// paginated server-side with no "give me everything" mode, and an
+// established business's order history can be arbitrarily large. Instead
+// this table is a best-effort cache: whatever page/filter the user actually
+// viewed while online gets written through (see useOrders.js), plus
+// whatever this device created/edited while offline. Offline order
+// browsing is therefore "what's already been seen", not "the full ledger" -
+// see entitySync.js for why "orders" has no full-resync pull registered.
+db.version(3).stores({
+    orders: "_id",
+});
+
+// Etapa 3 - Purchases. Unlike Orders, GET /purchases returns everything in
+// one call (no pagination) - same full-mirror shape as the Etapa 1 tables,
+// so it gets a real full-resync pull registered in entitySync.js instead of
+// Orders' page-cache treatment.
+db.version(4).stores({
+    purchases: "_id",
+});
+
+// Etapa 3 - Finance cash accounts. Small full-mirror catalog, same shape as
+// the Etapa 1 tables. Cash movements/reconciliation are NOT mirrored (see
+// useCashAccounts.js) - that's a materially more complex ledger/matching
+// workflow, out of scope here per the plan's own classification (class C).
+db.version(5).stores({
+    cashAccounts: "_id",
+});
+
+// Etapa 4 - Stock transfers between locations.
+// - `pointsOfSale` is a small full-mirror catalog like Etapa 1 - but note
+//   its primary key is `id`, NOT `_id`: GET /points-of-sale is one of the
+//   few endpoints that returns the raw Prisma row unmapped (confirmed
+//   against pointOfSale.controller.js - no toExternalId/snake_case there).
+//   Declaring the wrong keyPath here wouldn't error, it would just silently
+//   collapse every row onto the same `undefined` key - worth calling out so
+//   the next entity added here doesn't assume `_id` is universal.
+// - `stockTransfers` follows the same full-resync treatment as Purchases:
+//   GET /stock-transfers with no filters returns every transfer this
+//   account/role can see (capped at 200 server-side), which is close enough
+//   to "everything" at SMB scale.
+// - `locationStockSummaries` isn't a real entity the API exposes as a list -
+//   it's GET /products/:id/location-stock's per-product aggregate
+//   (available/in-transit per location), invented as its own small mirror
+//   here (keyed by product id under `_id`) so LocationStockPanel has
+//   something to read offline. Write-through only, one row per product
+//   actually viewed - there's no "fetch every product's summary" endpoint
+//   to register a full-resync pull against.
+db.version(6).stores({
+    pointsOfSale: "id",
+    stockTransfers: "_id",
+    locationStockSummaries: "_id",
+});
+
+// Etapa 4 - Quotations. Both GET /purchase-quotations and
+// GET /sales-quotations return everything in one call (no pagination),
+// same full-mirror shape as Purchases.
+db.version(7).stores({
+    purchaseQuotations: "_id",
+    salesQuotations: "_id",
+});
+
+// Mirror tables added as each module is wired for offline support - keep in
+// sync with the list above so account/logout resets actually clear them.
+export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations"];
+
 const CURRENT_ACCOUNT_KEY = "currentAccountId";
 
 // Every offline table other than the two account-scoping columns below gets
 // wiped here, so this needs to be extended (not duplicated) as entity tables
 // are added in later stages.
 async function clearAllOfflineData() {
-    await db.transaction("rw", db.outbox, db.syncCursor, async () => {
+    const tables = [db.outbox, db.syncCursor, ...MIRROR_ENTITIES.map((name) => db.table(name))];
+    await db.transaction("rw", tables, async () => {
         await db.outbox.clear();
         await db.syncCursor.clear();
+        await Promise.all(MIRROR_ENTITIES.map((name) => db.table(name).clear()));
     });
 }
 

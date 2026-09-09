@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { Card, Tabs, Badge, Alert } from "antd";
 import {
@@ -20,6 +20,7 @@ import PlanGate from "../components/common/PlanGate";
 import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
 import useSubscription from "../hooks/useSubscription";
+import { getConnectivityState, subscribeConnectivity } from "../offline/connectivity";
 
 const Reports = () => {
     // A caller elsewhere in the app (e.g. Accounting.jsx's "Reporte de IVA"
@@ -33,11 +34,14 @@ const Reports = () => {
     const location = useLocation();
     const deepLink = location.state || {};
     const [activeTab, setActiveTab] = useState(deepLink.tab || "stock");
+    const [isOffline, setIsOffline] = useState(!getConnectivityState());
     const { user } = useContext(AuthContext);
     const { t, currentLanguage } = useI18n();
     const { can, loading: subscriptionLoading } = useSubscription();
     const hasAutoEmailAlerts = can("autoEmailAlerts");
     const isMobile = window.innerWidth < 768;
+
+    useEffect(() => subscribeConnectivity((online) => setIsOffline(!online)), []);
 
     const tabLabelByKey = {
         stock: isMobile ? t("reports.stock") : t("reports.stock_report"),
@@ -171,6 +175,21 @@ const Reports = () => {
                     {t("reports.print_generated_on")}: {new Date().toLocaleString(currentLanguage)}
                 </p>
             </div>
+
+            {/* Offline notice - only "Stock" is computed from locally synced
+                data (see StockReport.jsx); every other report is a
+                server-side aggregation over the account's full history and
+                simply isn't reproducible from a partial local dataset (see
+                the offline-first plan's report classification). */}
+            {isOffline && (
+                <Alert
+                    message={t("reports.offline_notice_title")}
+                    description={t("reports.offline_notice_description")}
+                    type="warning"
+                    showIcon
+                    className="no-print mb-4 sm:mb-6 dark-alert dark-alert-amber"
+                />
+            )}
 
             {/* Admin Notice */}
             {user?.role === "admin" && (
