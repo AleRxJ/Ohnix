@@ -15,6 +15,7 @@ import { getConnectivityState } from "../../offline/connectivity";
 import { subscribeSyncCompleted } from "../../offline/syncEngine";
 import { queueCreate, queueUpdate, readMirrorAll, mirrorReplaceAll } from "../../offline/entityQueue";
 import { enqueueOperation } from "../../offline/outbox";
+import { financeErrorMessage } from "../../utils/financeError";
 
 const UPDATE_STATUS_ERROR_CODES = {
     invalid_purchase_status_transition: "purchases.invalid_status_transition",
@@ -176,7 +177,7 @@ export const usePurchase = () => {
             await Promise.all([fetchPurchasePayments(purchaseId), fetchPurchases()]);
             return true;
         } catch (error) {
-            toast.error(error.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(error, t));
             console.error("Error:", error);
             return false;
         } finally {

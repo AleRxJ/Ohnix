@@ -297,6 +297,13 @@ body {
   --ohnix-text-dim: #8b98a0;
   --ohnix-accent: #29d8d5;
   --ohnix-accent-2: #44f3f0;
+  --ohnix-accent-soft: rgba(41, 216, 213, 0.10);
+  --ohnix-accent-soft-hover: rgba(41, 216, 213, 0.18);
+  --ohnix-accent-line: rgba(41, 216, 213, 0.30);
+  --ohnix-accent-line-strong: rgba(41, 216, 213, 0.42);
+  --ohnix-accent-glow: 0 0 18px rgba(41, 216, 213, 0.12);
+  --ohnix-accent-glow-hover: 0 0 26px rgba(41, 216, 213, 0.22);
+  --ohnix-modal-mask: rgba(0, 0, 0, 0.55);
   --ohnix-status-purple: #7c6af7;
   --ohnix-status-rose: #fb7185;
   --ohnix-status-amber: #f59e0b;
@@ -304,6 +311,11 @@ body {
   --ohnix-status-info: #60a5fa;
   --ohnix-status-warning: #fb923c;
   --ohnix-status-danger: #fb7185;
+  --ohnix-status-success-soft: rgba(52, 211, 153, 0.10);
+  --ohnix-status-success-line: rgba(52, 211, 153, 0.28);
+  --ohnix-status-danger-soft: rgba(251, 113, 133, 0.06);
+  --ohnix-status-danger-soft-hover: rgba(251, 113, 133, 0.14);
+  --ohnix-status-danger-line: rgba(251, 113, 133, 0.25);
 
   /* Text colors for content sitting on tinted alert/badge backgrounds
      (e.g. bg-amber-500/10) - these need to flip per theme since a pale
@@ -356,6 +368,7 @@ body {
 }
 
 [data-ohnix-theme="lite"] {
+  --ohnix-modal-mask: rgba(15, 23, 42, 0.38);
   --ohnix-bg: #eef1f4;
   --ohnix-surface: #ffffff;
   --ohnix-surface-2: #f7f9fa;
@@ -374,6 +387,11 @@ body {
   --ohnix-status-info: #2563eb;
   --ohnix-status-warning: #c2410c;
   --ohnix-status-danger: #be123c;
+  --ohnix-status-success-soft: rgba(4, 120, 87, 0.09);
+  --ohnix-status-success-line: rgba(4, 120, 87, 0.25);
+  --ohnix-status-danger-soft: rgba(190, 18, 60, 0.06);
+  --ohnix-status-danger-soft-hover: rgba(190, 18, 60, 0.12);
+  --ohnix-status-danger-line: rgba(190, 18, 60, 0.22);
 
   --ohnix-bg-alt: #eef1f4;
   --ohnix-surface-3: #eef2f4;
@@ -2007,6 +2025,13 @@ textarea.ant-input[disabled] {
 
 .public-sales-quotation-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; color: var(--ohnix-text-primary); font-size: 20px; font-weight: 700; letter-spacing: .18em; }
 .public-sales-quotation-brand img { width: 76px; height: 76px; object-fit: contain; filter: drop-shadow(0 0 14px rgba(41,216,213,.42)); }
+/* .ohnix-logo-adaptive's own filter (index.css, Popconfirm section) would
+   otherwise lose to the rule above on specificity alone and never apply here
+   - chain both effects into one filter instead of letting them fight over
+   the property. */
+html[data-ohnix-theme="lite"] .public-sales-quotation-brand img.ohnix-logo-adaptive {
+  filter: contrast(1.8) brightness(0.55) drop-shadow(0 0 14px rgba(41, 216, 213, 0.42));
+}
 .public-sales-quotation-eyebrow { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; color: #29d8d5; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
 .public-sales-quotation-hero h1 { margin: 0 0 8px; color: var(--ohnix-text-primary); font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1.05; }
 .public-sales-quotation-number { margin: 0; color: var(--ohnix-text-muted); font-size: 14px; }
@@ -2397,6 +2422,31 @@ textarea.ant-input[disabled] {
 .ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary.ant-btn-dangerous:hover {
   filter: brightness(1.08) !important;
   box-shadow: 0 0 20px rgba(251, 113, 133, 0.28) !important;
+}
+
+/* Ohnix_Icon_Transparent.png is thin gray line-art + a teal accent, drawn to
+   sit on a dark surface - fine as-is anywhere that's fixed-dark regardless of
+   app theme (the marketing site, AuthLayout), but on the Lite theme's white
+   surfaces (sidebar, header, mobile menu, the public quotation document) the
+   gray strokes wash out to near-invisible and the "OHNIX" wordmark baked
+   into the image becomes unreadable. Rather than maintaining a second
+   "-lite" logo asset (the previous approach, which looked inconsistent with
+   the Dark version and still needed its own fixes), every img using this
+   asset in a theme-aware spot gets this class - a contrast/brightness pull
+   that only engages when data-ohnix-theme=lite (set on <html> by
+   ThemeContext), so Dark and the always-dark marketing pages render the
+   original untouched. Values tuned by eye against a white background.
+   Deliberately doesn't set `filter` on the bare class (only inside the
+   [data-ohnix-theme="lite"] rule below) - this class is combined with
+   Tailwind's own drop-shadow-lg on some of these imgs, and thanks to
+   @tailwind utilities sitting above this rule in the cascade, an unscoped
+   `filter: none` here would win the specificity tie against drop-shadow-lg
+   and silently kill that hover glow on Dark too, not just override it on Lite. */
+.ohnix-logo-adaptive {
+  transition: filter 150ms ease;
+}
+html[data-ohnix-theme="lite"] .ohnix-logo-adaptive {
+  filter: contrast(1.8) brightness(0.55);
 }
 
 .dark-alert-purple.ant-alert {

@@ -95,6 +95,24 @@ const ACCOUNTING_ERROR_CODES = {
     withholding_certificate_year_invalid: "accounting.error_withholding_certificate_year_invalid",
     withholding_supplier_not_found: "accounting.error_withholding_supplier_not_found",
     third_party_identity_required: "accounting.error_third_party_identity_required",
+    manual_voucher_support_url_invalid: "accounting.error_manual_voucher_support_url_invalid",
+    manual_voucher_date_invalid: "accounting.error_manual_voucher_date_invalid",
+    manual_voucher_description_required: "accounting.error_manual_voucher_description_required",
+    manual_voucher_lines_required: "accounting.error_manual_voucher_lines_required",
+    manual_voucher_line_invalid: "accounting.error_manual_voucher_line_invalid",
+    manual_voucher_line_side_invalid: "accounting.error_manual_voucher_line_side_invalid",
+    manual_voucher_third_party_type_invalid: "accounting.error_manual_voucher_third_party_type_invalid",
+    manual_voucher_third_party_name_required: "accounting.error_manual_voucher_third_party_name_required",
+    manual_voucher_accounts_invalid: "accounting.error_manual_voucher_accounts_invalid",
+    manual_voucher_cost_centers_invalid: "accounting.error_manual_voucher_cost_centers_invalid",
+    manual_voucher_third_party_required: "accounting.error_manual_voucher_third_party_required",
+    manual_voucher_unbalanced: "accounting.error_manual_voucher_unbalanced",
+    manual_voucher_not_found: "accounting.error_manual_voucher_not_found",
+    manual_voucher_not_draft: "accounting.error_manual_voucher_not_draft",
+    manual_voucher_already_processed: "accounting.error_manual_voucher_already_processed",
+    manual_voucher_not_posted: "accounting.error_manual_voucher_not_posted",
+    manual_voucher_void_reason_required: "accounting.error_manual_voucher_void_reason_required",
+    manual_voucher_void_date_invalid: "accounting.error_manual_voucher_void_date_invalid",
 };
 
 const accountingErrorMessage = (error, t, fallbackKey = "accounting.failed") =>
@@ -200,6 +218,9 @@ const SOURCE_TYPE_LABEL_KEYS = {
     manual_journal: "accounting.source_manual_journal",
     manual_journal_reversal: "accounting.source_manual_journal_reversal",
     manual_expense: "accounting.source_manual_expense",
+    manual_income: "accounting.source_manual_income",
+    cash_transfer: "accounting.source_cash_transfer",
+    cash_adjustment: "accounting.source_cash_adjustment",
 };
 
 // Libro mayor for one account: opening balance + every movement in range
@@ -298,7 +319,7 @@ const AccountLedgerDrawer = ({ account, onClose }) => {
                                         {m.debit > 0 && `${t("accounting.lines_col_debit")}: ${formatCurrency(m.debit)}`}
                                         {m.credit > 0 && `${t("accounting.lines_col_credit")}: ${formatCurrency(m.credit)}`}
                                     </span>
-                                    <span className="font-semibold text-[#44F3F0]">{formatCurrency(m.running_balance)}</span>
+                                    <span className="font-semibold text-[var(--ohnix-accent-2)]">{formatCurrency(m.running_balance)}</span>
                                 </div>
                             </div>
                         ))}
@@ -1197,7 +1218,7 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
                         options={Object.entries(SOURCE_TYPE_LABEL_KEYS).map(([value, key]) => ({ value, label: t(key) }))}
                     />
                     <Select allowClear showSearch optionFilterProp="label" placeholder={t("accounting.cost_center")} className="w-full sm:w-56" value={costCenterId} onChange={setCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
-                    <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={() => fetchEntries()} loading={loading}>
+                    <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={() => fetchEntries()} loading={loading}>
                         {t("reports.refresh_report")}
                     </Button>
                     {sourceId && (
@@ -1233,7 +1254,7 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
                                         <p className="text-sm font-medium text-[var(--ohnix-text-primary)] m-0 truncate">{entry.description}</p>
                                         <p className="text-xs text-[var(--ohnix-text-muted)] m-0">{dayjs(entry.entry_date).format("DD/MM/YYYY")}</p>
                                     </div>
-                                    <span className="text-sm font-semibold text-[#44F3F0] shrink-0">
+                                    <span className="text-sm font-semibold text-[var(--ohnix-accent-2)] shrink-0">
                                         {formatCurrency(entry.lines.reduce((sum, l) => sum + l.debit, 0))}
                                     </span>
                                 </div>
@@ -1545,7 +1566,7 @@ const FinancialStatementsTab = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <RangePicker value={incomeRange} onChange={(dates) => dates && setIncomeRange(dates)} format="YYYY-MM-DD" allowClear={false} />
                         <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={incomeCostCenterId} onChange={setIncomeCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
-                        <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" icon={<CalendarOutlined />} onClick={() => { fetchIncome(); if (comparisonOpen) fetchComparison(); }} loading={incomeLoading}>
+                        <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)]" icon={<CalendarOutlined />} onClick={() => { fetchIncome(); if (comparisonOpen) fetchComparison(); }} loading={incomeLoading}>
                             {t("reports.refresh_report")}
                         </Button>
                         <Button onClick={toggleComparison} loading={comparisonLoading}>
@@ -1636,7 +1657,7 @@ const FinancialStatementsTab = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <DatePicker value={asOfDate} onChange={(d) => d && setAsOfDate(d)} format="YYYY-MM-DD" allowClear={false} />
                         <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={balanceCostCenterId} onChange={setBalanceCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
-                        <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" icon={<CalendarOutlined />} onClick={fetchBalance} loading={balanceLoading}>
+                        <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)]" icon={<CalendarOutlined />} onClick={fetchBalance} loading={balanceLoading}>
                             {t("reports.refresh_report")}
                         </Button>
                     </div>
@@ -2183,7 +2204,7 @@ const BudgetsTab = () => {
             { title: t("accounting.budget_annual_total"), dataIndex: "budget", align: "right", width: 140, render: formatCurrency },
             { title: t("accounting.budget_actual"), dataIndex: "actual", align: "right", width: 140, render: formatCurrency },
             { title: t("accounting.budget_variance"), dataIndex: "variance", align: "right", width: 140, render: formatCurrency },
-            ...Array.from({ length: 12 }, (_, index) => ({ title: dayjs().month(index).format("MMM"), width: 135, render: (_, row) => { const item = row.months[index]; return item ? <Tooltip title={`${t("accounting.budget_actual")}: ${formatCurrency(item.actual)}`}><span className={item.alert ? "text-red-500" : ""}>{formatCurrency(item.budget)}{item.alert ? " ⚠" : ""}</span></Tooltip> : "—"; } })),
+                            ...Array.from({ length: 12 }, (_, index) => ({ title: dayjs().month(index).format("MMM"), width: 135, render: (_, row) => { const item = row.months[index]; return item ? <Tooltip title={`${t("accounting.budget_actual")}: ${formatCurrency(item.actual)}`}><span className={item.alert ? "text-[var(--ohnix-status-danger)]" : ""}>{formatCurrency(item.budget)}{item.alert ? " ⚠" : ""}</span></Tooltip> : "—"; } })),
             ...(canEdit ? [{ title: t("common.actions"), fixed: "right", width: 100, render: (_, row) => <Button size="small" onClick={() => openAnnualEditor(row)}>{t("common.edit")}</Button> }] : []),
         ] : [
             { title: t("accounting.col_account"), render: (_, row) => `${row.chart_account.code} · ${row.chart_account.name}` },
@@ -2252,7 +2273,7 @@ const TrialBalanceTab = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <RangePicker value={dateRange} onChange={(dates) => dates && setDateRange(dates)} format="YYYY-MM-DD" allowClear={false} className="w-full sm:w-auto" />
                     <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={costCenterId} onChange={setCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
-                    <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={fetchRows} loading={loading}>
+                    <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={fetchRows} loading={loading}>
                         {t("reports.refresh_report")}
                     </Button>
                 </div>

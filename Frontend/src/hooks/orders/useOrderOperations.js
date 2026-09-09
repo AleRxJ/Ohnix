@@ -12,6 +12,7 @@ import { idempotencyHeaders } from "../../utils/idempotency";
 import { getConnectivityState } from "../../offline/connectivity";
 import { queueCreate, queueUpdate } from "../../offline/entityQueue";
 import { enqueueOperation } from "../../offline/outbox";
+import { financeErrorMessage } from "../../utils/financeError";
 
 const UPDATE_STATUS_ERROR_CODES = {
     invalid_order_status_transition: "orders.invalid_status_transition",
@@ -259,7 +260,7 @@ export const useOrderOperations = (refreshOrders) => {
             await Promise.all([fetchOrderPayments(orderId), refreshOrders()]);
             return true;
         } catch (error) {
-            toast.error(error.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(error, t));
             console.error("Error registering order payment:", error);
             return false;
         } finally {

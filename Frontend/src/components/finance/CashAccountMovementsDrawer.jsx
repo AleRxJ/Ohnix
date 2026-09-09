@@ -216,7 +216,7 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
             key: "delta",
             align: "right",
             render: (v) => (
-                <span className={v >= 0 ? "text-green-500 font-medium" : "text-red-400 font-medium"}>
+                <span className={v >= 0 ? "text-[var(--ohnix-status-success)] font-medium" : "text-[var(--ohnix-status-danger)] font-medium"}>
                     {v >= 0 ? "+" : ""}
                     {formatCurrency(v)}
                 </span>
@@ -302,7 +302,7 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
             width={isMobile ? "100vw" : 640}
             closeIcon={<CloseOutlined className="text-[var(--ohnix-text-muted)]" />}
             styles={{
-                mask: { backgroundColor: "rgba(0,0,0,0.45)" },
+                mask: { backgroundColor: "var(--ohnix-modal-mask)" },
                 body: { padding: isMobile ? 16 : 24, background: "var(--ohnix-surface-card-soft)" },
                 header: { borderBottom: "1px solid var(--ohnix-line-3)", padding: isMobile ? "16px" : "20px 24px", background: "var(--ohnix-surface-card-soft)" },
             }}
@@ -310,12 +310,12 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
             <div className="space-y-4 sm:space-y-6">
                 <div className="rounded-2xl p-4 border border-[var(--ohnix-line-4)] flex items-center justify-between bg-[var(--ohnix-line-1)]">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#29D8D5]/30 bg-[linear-gradient(135deg,rgba(41,216,213,0.18),rgba(68,243,240,0.06))]">
-                            <WalletOutlined className="text-lg text-[#44F3F0]" />
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--ohnix-accent-line)] bg-[var(--ohnix-accent-soft)]">
+                            <WalletOutlined className="text-lg text-[var(--ohnix-accent-2)]" />
                         </div>
                         <span className="font-semibold text-[var(--ohnix-text-primary)]">{account.name}</span>
                     </div>
-                    <span className="text-xl font-bold text-[#44F3F0]">{formatCurrency(account.balance)}</span>
+                    <span className="text-xl font-bold text-[var(--ohnix-accent-2)]">{formatCurrency(account.balance)}</span>
                 </div>
 
                 <div>
@@ -441,7 +441,7 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
                 )}
             </Modal>
             <Modal title={t("finance.import_preview_title")} open={Boolean(importPreview)} onCancel={() => setImportPreview(null)} onOk={confirmImport} confirmLoading={submitting} okText={t("finance.import_confirm")} width={760}>
-                {importPreview && <><Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.import_preview_summary", { file: importPreview.fileName, count: importPreview.entries.length })} description={t("finance.import_sign_help")} /><Table size="small" rowKey={(_, index) => index} pagination={{ pageSize: 8 }} dataSource={importPreview.entries} columns={[{ title: t("finance.col_date"), dataIndex: "entry_date", render: (v) => dayjs(v).format("DD/MM/YYYY") }, { title: t("finance.entry_description_label"), dataIndex: "description", ellipsis: true, render: (v) => v || t("common.na") }, { title: t("finance.col_amount"), dataIndex: "amount", align: "right", render: (v) => <span className={v > 0 ? "text-green-500" : "text-red-400"}>{v > 0 ? "+" : ""}{formatCurrency(v)}</span> }]} /></>}
+                {importPreview && <><Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.import_preview_summary", { file: importPreview.fileName, count: importPreview.entries.length })} description={t("finance.import_sign_help")} /><Table size="small" rowKey={(_, index) => index} pagination={{ pageSize: 8 }} dataSource={importPreview.entries} columns={[{ title: t("finance.col_date"), dataIndex: "entry_date", render: (v) => dayjs(v).format("DD/MM/YYYY") }, { title: t("finance.entry_description_label"), dataIndex: "description", ellipsis: true, render: (v) => v || t("common.na") }, { title: t("finance.col_amount"), dataIndex: "amount", align: "right", render: (v) => <span className={v > 0 ? "text-[var(--ohnix-status-success)]" : "text-[var(--ohnix-status-danger)]"}>{v > 0 ? "+" : ""}{formatCurrency(v)}</span> }]} /></>}
             </Modal>
             <Modal title={t("finance.suggestions_title")} open={Array.isArray(suggestions)} onCancel={() => setSuggestions(null)} onOk={confirmSuggestions} confirmLoading={submitting} okButtonProps={{ disabled: selectedSuggestions.length === 0 }} okText={t("finance.suggestions_confirm")} width={820}>
                 <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.suggestions_help_title")} description={t("finance.suggestions_help_desc")} />

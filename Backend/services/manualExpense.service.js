@@ -8,12 +8,12 @@ import { applyLocationCostCenter, decomposeInclusiveTax } from "./accountingPost
 export const registerManualExpense = async ({ accountId, actorId, amount, expenseAccountId, cashAccountId, description, expenseDate, statementEntryId = null, taxTreatment = "excluded", taxRate = 0 }) => {
     const numericAmount = Number(Number(amount).toFixed(2));
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-        throw new ApiError(400, "El monto del gasto debe ser mayor a cero.");
+        throw new ApiError(400, "Expense amount must be greater than zero.", [], "", "manual_expense_amount_invalid");
     }
 
     const entryDate = expenseDate ? new Date(expenseDate) : new Date();
     if (Number.isNaN(entryDate.getTime())) {
-        throw new ApiError(400, "La fecha del gasto no es válida.");
+        throw new ApiError(400, "Expense date is invalid.", [], "", "manual_expense_date_invalid");
     }
 
     const [expenseAccount, cashAccount, statementEntry, owner] = await Promise.all([
@@ -22,11 +22,11 @@ export const registerManualExpense = async ({ accountId, actorId, amount, expens
         statementEntryId ? prisma.bankStatementEntry.findFirst({ where: { id: statementEntryId, cashAccountId, matchedMovementId: null } }) : null,
         prisma.user.findUnique({ where: { id: accountId }, select: { company: { select: { vatResponsible: true } } } }),
     ]);
-    if (!expenseAccount) throw new ApiError(404, "Cuenta de gasto no encontrada o inactiva.");
-    if (!cashAccount) throw new ApiError(404, "Cuenta de caja/banco no encontrada o inactiva.");
-    if (statementEntryId && !statementEntry) throw new ApiError(404, "La entrada del extracto no existe o ya fue conciliada.");
+    if (!expenseAccount) throw new ApiError(404, "Expense account not found or inactive.", [], "", "manual_expense_expense_account_not_found");
+    if (!cashAccount) throw new ApiError(404, "Cash account not found or inactive.", [], "", "manual_expense_cash_account_not_found");
+    if (statementEntryId && !statementEntry) throw new ApiError(404, "Statement entry does not exist or is already reconciled.", [], "", "manual_expense_statement_entry_unavailable");
     if (statementEntry && Math.abs(Number(statementEntry.amount) + numericAmount) >= 0.005) {
-        throw new ApiError(422, "El cargo bancario debe coincidir exactamente con el valor negativo del extracto.");
+        throw new ApiError(422, "Bank charge must exactly match the negative statement amount.", [], "", "manual_expense_statement_amount_mismatch");
     }
 
     // A company that isn't VAT-responsible can't credit input VAT on
@@ -43,7 +43,7 @@ export const registerManualExpense = async ({ accountId, actorId, amount, expens
     return prisma.$transaction(async (tx) => {
         const balanceAfter = await claimCashAccount(tx, { cashAccountId, amount: numericAmount });
         if (balanceAfter === null) {
-            throw new ApiError(422, "Saldo insuficiente en la cuenta de caja/banco seleccionada.");
+            throw new ApiError(422, "The selected cash account has insufficient funds.", [], "", "manual_expense_insufficient_funds");
         }
 
         const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
@@ -73,7 +73,7 @@ export const registerManualExpense = async ({ accountId, actorId, amount, expens
 
         if (statementEntry) {
             const claim = await tx.bankStatementEntry.updateMany({ where: { id: statementEntry.id, matchedMovementId: null }, data: { matchedMovementId: movement.id } });
-            if (claim.count !== 1) throw new ApiError(409, "La entrada fue conciliada en otra sesión.");
+            if (claim.count !== 1) throw new ApiError(409, "The statement entry was reconciled in another session.", [], "", "manual_expense_statement_concurrent_change");
             await tx.cashMovement.update({ where: { id: movement.id }, data: { reconciledAt: new Date() } });
         }
 

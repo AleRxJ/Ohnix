@@ -7,19 +7,19 @@ import { recordJournalEntry } from "./journalEntry.service.js";
 import { applyLocationCostCenter } from "./accountingPosting.service.js";
 
 export const adjustCash = async ({ accountId, actorId, cashAccountId, counterpartAccountId, amount, reason, adjustmentDate }) => {
-    if (!cashAccountId || !counterpartAccountId) throw new ApiError(400, "La cuenta de caja/banco y la contrapartida son obligatorias.");
+    if (!cashAccountId || !counterpartAccountId) throw new ApiError(400, "Cash and counterpart accounts are required.", [], "", "cash_adjustment_accounts_required");
     const numericAmount = Number(Number(amount).toFixed(2));
-    if (!Number.isFinite(numericAmount) || numericAmount === 0) throw new ApiError(400, "El ajuste debe ser diferente de cero.");
-    if (!reason?.trim()) throw new ApiError(400, "El motivo del ajuste es obligatorio.");
+    if (!Number.isFinite(numericAmount) || numericAmount === 0) throw new ApiError(400, "The adjustment must be different from zero.", [], "", "cash_adjustment_amount_invalid");
+    if (!reason?.trim()) throw new ApiError(400, "The adjustment reason is required.", [], "", "cash_adjustment_reason_required");
     const entryDate = adjustmentDate ? new Date(adjustmentDate) : new Date();
-    if (Number.isNaN(entryDate.getTime())) throw new ApiError(400, "La fecha del ajuste no es válida.");
+    if (Number.isNaN(entryDate.getTime())) throw new ApiError(400, "The adjustment date is invalid.", [], "", "cash_adjustment_date_invalid");
 
     const [cashAccount, counterpart] = await Promise.all([
         prisma.cashAccount.findFirst({ where: { id: cashAccountId, createdById: accountId, isActive: true } }),
         prisma.chartAccount.findFirst({ where: { id: counterpartAccountId, createdById: accountId, isActive: true } }),
     ]);
-    if (!cashAccount) throw new ApiError(404, "Cuenta de caja/banco no encontrada o inactiva.");
-    if (!counterpart) throw new ApiError(404, "Cuenta contable de contrapartida no encontrada o inactiva.");
+    if (!cashAccount) throw new ApiError(404, "Cash account not found or inactive.", [], "", "cash_adjustment_cash_account_not_found");
+    if (!counterpart) throw new ApiError(404, "Counterpart account not found or inactive.", [], "", "cash_adjustment_counterpart_not_found");
     const adjustmentId = randomUUID();
     const absoluteAmount = Math.abs(numericAmount);
 
@@ -27,9 +27,9 @@ export const adjustCash = async ({ accountId, actorId, cashAccountId, counterpar
         const balanceAfter = numericAmount > 0
             ? await creditCashAccount(tx, { cashAccountId, amount: absoluteAmount })
             : await claimCashAccount(tx, { cashAccountId, amount: absoluteAmount });
-        if (balanceAfter === null) throw new ApiError(422, "El ajuste dejaría la cuenta con saldo negativo.");
+        if (balanceAfter === null) throw new ApiError(422, "The adjustment would leave a negative balance.", [], "", "cash_adjustment_negative_balance");
         const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
-        if (cashChartAccountId === counterpart.id) throw new ApiError(422, "La contrapartida debe ser diferente de la cuenta contable de caja/banco.");
+        if (cashChartAccountId === counterpart.id) throw new ApiError(422, "The counterpart must differ from the cash ledger account.", [], "", "cash_adjustment_same_counterpart");
         const entry = await recordJournalEntry(tx, {
             accountId, createdById: actorId, entryDate, description: reason.trim(), sourceType: "cash_adjustment", sourceId: adjustmentId,
             lines: await applyLocationCostCenter(tx, accountId, cashAccount.pointOfSaleId, numericAmount > 0

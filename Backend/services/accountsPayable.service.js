@@ -51,8 +51,8 @@ export const getAccountsPayablePlan = async ({ accountId, posScopeAll, posScopeI
 
 export const updatePurchaseDueDate = async ({ accountId, purchaseId, dueDate }) => {
     const parsed = dueDate ? new Date(dueDate) : null;
-    if (parsed && Number.isNaN(parsed.getTime())) throw new ApiError(400, "Fecha de vencimiento inválida.");
+    if (parsed && Number.isNaN(parsed.getTime())) throw new ApiError(400, "The due date is invalid.", [], "", "payable_due_date_invalid");
     const purchase = await prisma.purchase.findFirst({ where: { createdById: accountId, OR: [{ id: purchaseId }, { legacyMongoId: purchaseId }] }, select: { id: true } });
-    if (!purchase) throw new ApiError(404, "Compra no encontrada.");
+    if (!purchase) throw new ApiError(404, "Purchase not found.", [], "", "payable_purchase_not_found");
     return prisma.purchase.update({ where: { id: purchase.id }, data: { dueDate: parsed }, select: { id: true, dueDate: true } });
 };
