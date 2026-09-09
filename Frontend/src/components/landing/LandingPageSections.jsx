@@ -1194,6 +1194,7 @@ export const DemoTeaserSection = ({ heading, onContactClick }) => {
                     <video
                         ref={videoRef}
                         src="/demo-preview.mp4"
+                        poster="/demo-poster.jpg"
                         controls={playing}
                         preload="metadata"
                         playsInline

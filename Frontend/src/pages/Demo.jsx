@@ -38,8 +38,9 @@ const Demo = () => {
         name: "Demo de Ohnix | Inventario, compras y ventas en accion",
         description:
             "Conoce como Ohnix organiza inventario, compras, pedidos y reportes en una sola experiencia operativa para pymes.",
-        thumbnailUrl: ["https://ohnix.co/ohnix-social-preview-v2.png"],
+        thumbnailUrl: ["https://ohnix.co/demo-poster.jpg"],
         uploadDate: "2026-09-01T00:00:00-05:00",
+        duration: "PT30S",
         contentUrl: "https://ohnix.co/demo-preview.mp4",
         embedUrl: "https://ohnix.co/demo",
     };
@@ -71,7 +72,7 @@ const Demo = () => {
                             <video
                                 ref={videoRef}
                                 src="/demo-preview.mp4"
-                                poster="/ohnix-social-preview-v2.png"
+                                poster="/demo-poster.jpg"
                                 controls={playing}
                                 preload="metadata"
                                 playsInline

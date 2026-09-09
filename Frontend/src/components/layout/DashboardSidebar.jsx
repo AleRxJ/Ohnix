@@ -107,24 +107,34 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     );
 };
 
+// Both logo assets (Logo-lite.svg included, despite the name) are drawn in
+// white/pastel strokes meant to sit on a dark surface - on the Lite theme's
+// white sidebar they read as nearly invisible. Give them a fixed dark chip
+// (the same gradient as the Dark sidebar) so contrast holds regardless of
+// which app theme is active.
 const SidebarLogo = ({ collapsed, isLite, onClick }) => (
     <div
         className={`flex items-center justify-center py-6 cursor-pointer group transition-all duration-200 ${collapsed ? "px-0" : "px-4"}`}
         onClick={onClick}
     >
-        {collapsed ? (
-            <img
-                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Transparent.png"}
-                alt="Ohnix icon"
-                className="h-16 w-16 shrink-0 scale-125 object-contain transition-transform duration-200 group-hover:scale-[1.35] drop-shadow-lg"
-            />
-        ) : (
-            <img
-                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Transparent.png"}
-                alt="Ohnix logo"
-                className="h-28 w-28 object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
-            />
-        )}
+        <div
+            className={`flex items-center justify-center rounded-2xl transition-transform duration-200 ${collapsed ? "p-2" : "p-3"}`}
+            style={isLite ? { background: "linear-gradient(180deg, #0b0b0b 0%, #0a1114 100%)" } : undefined}
+        >
+            {collapsed ? (
+                <img
+                    src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Transparent.png"}
+                    alt="Ohnix icon"
+                    className="h-12 w-12 shrink-0 object-contain transition-transform duration-200 group-hover:scale-110 drop-shadow-lg"
+                />
+            ) : (
+                <img
+                    src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Transparent.png"}
+                    alt="Ohnix logo"
+                    className="h-24 w-24 object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
+                />
+            )}
+        </div>
     </div>
 );
 
