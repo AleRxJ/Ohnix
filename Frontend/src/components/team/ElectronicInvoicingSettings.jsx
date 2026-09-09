@@ -15,6 +15,7 @@ import {
     MailOutlined,
     PlusOutlined,
     QuestionCircleOutlined,
+    ReloadOutlined,
     RocketOutlined,
     SafetyCertificateOutlined,
 } from "@ant-design/icons";
@@ -516,6 +517,16 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
     // more than one entry (an ACTIVE certificate from both at once).
     const [certificateProviderStatus, setCertificateProviderStatus] = useState({ activeProviders: [], override: null });
     const [providerSwitchBusy, setProviderSwitchBusy] = useState(false);
+    // readinessError (itcycle-api-dian unreachable/cold-starting) used to just
+    // print "try again in a few seconds" with nothing on screen that actually
+    // retried or told the owner when - they had no way to know if reloading
+    // now would help or if they should wait. This auto-retries a few times on
+    // a visible countdown, backing off each time, plus a manual button for
+    // "I don't want to wait."
+    const [retrying, setRetrying] = useState(false);
+    const [autoRetryCount, setAutoRetryCount] = useState(0);
+    const [secondsToRetry, setSecondsToRetry] = useState(null);
+    const MAX_AUTO_RETRIES = 3;
     // Generated once per mount, not per click - the idempotency middleware
     // replays the cached response for a repeated key, which only protects a
     // real retry (network timeout, a double-click, a lost response after the
@@ -555,6 +566,45 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Backs off each attempt (8s, 16s, 24s) instead of hammering
+    // itcycle-api-dian while it's cold-starting, and gives up after
+    // MAX_AUTO_RETRIES so a genuinely down backend doesn't poll forever -
+    // the manual button below always stays available after that.
+    useEffect(() => {
+        if (!status?.readinessError || autoRetryCount >= MAX_AUTO_RETRIES) {
+            setSecondsToRetry(null);
+            return undefined;
+        }
+        const delaySeconds = 8 * (autoRetryCount + 1);
+        setSecondsToRetry(delaySeconds);
+        const tick = setInterval(() => {
+            setSecondsToRetry((current) => (current && current > 1 ? current - 1 : 0));
+        }, 1000);
+        const timeout = setTimeout(() => {
+            clearInterval(tick);
+            setAutoRetryCount((count) => count + 1);
+            refresh();
+        }, delaySeconds * 1000);
+        return () => {
+            clearInterval(tick);
+            clearTimeout(timeout);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [status?.readinessError, autoRetryCount]);
+
+    useEffect(() => {
+        if (!status?.readinessError) setAutoRetryCount(0);
+    }, [status?.readinessError]);
+
+    const retryReadinessNow = async () => {
+        setRetrying(true);
+        try {
+            await refresh();
+        } finally {
+            setRetrying(false);
         }
     };
 
@@ -760,7 +810,27 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                         }
                     />
                     {status.readinessError && (
-                        <Alert className="mt-3 dark-alert dark-alert-amber" type="warning" showIcon message={t("fiscal_setup.readiness_unavailable")} description={t("fiscal_setup.readiness_unavailable_hint")} />
+                        <Alert
+                            className="mt-3 dark-alert dark-alert-amber"
+                            type="warning"
+                            showIcon
+                            message={t("fiscal_setup.readiness_unavailable")}
+                            description={
+                                <div className="flex flex-col gap-1">
+                                    <span>{t("fiscal_setup.readiness_unavailable_hint")}</span>
+                                    {secondsToRetry != null && (
+                                        <span className="text-xs text-[var(--ohnix-text-muted)]">
+                                            {t("fiscal_setup.readiness_retry_countdown", { seconds: secondsToRetry })}
+                                        </span>
+                                    )}
+                                </div>
+                            }
+                            action={
+                                <Button size="small" icon={<ReloadOutlined />} loading={retrying} onClick={retryReadinessNow}>
+                                    {t("fiscal_setup.readiness_retry_now")}
+                                </Button>
+                            }
+                        />
                     )}
                     <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} onResolutionsChanged={refresh} />
                     {showCertificateProviderSelector && (
