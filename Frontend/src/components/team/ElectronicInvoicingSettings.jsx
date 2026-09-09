@@ -896,36 +896,58 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             onActivated={onCompanyChanged}
                         />
                     )}
-                    {!hasResolution("05") && (
-                        <NumberingResolutionForm
-                            documentType="05"
-                            titleKey="fiscal_setup.support_document_title"
-                            hintKey="fiscal_setup.support_document_hint"
-                            buttonKey="fiscal_setup.add_support_document_resolution"
-                            onAdded={refresh}
+                    {status?.readiness?.certificateReady ? (
+                        <>
+                            {!hasResolution("05") && (
+                                <NumberingResolutionForm
+                                    documentType="05"
+                                    titleKey="fiscal_setup.support_document_title"
+                                    hintKey="fiscal_setup.support_document_hint"
+                                    buttonKey="fiscal_setup.add_support_document_resolution"
+                                    onAdded={refresh}
+                                />
+                            )}
+                            {isSandbox && !hasResolution("91") && (
+                                <NumberingResolutionForm
+                                    documentType="91"
+                                    titleKey="fiscal_setup.credit_note_resolution_title"
+                                    hintKey="fiscal_setup.credit_note_resolution_hint"
+                                    buttonKey="fiscal_setup.add_credit_note_resolution"
+                                    autoAssignPrefix="NC"
+                                    onAdded={refresh}
+                                />
+                            )}
+                            {isSandbox && !hasResolution("92") && (
+                                <NumberingResolutionForm
+                                    documentType="92"
+                                    titleKey="fiscal_setup.debit_note_resolution_title"
+                                    hintKey="fiscal_setup.debit_note_resolution_hint"
+                                    buttonKey="fiscal_setup.add_debit_note_resolution"
+                                    autoAssignPrefix="ND"
+                                    onAdded={refresh}
+                                />
+                            )}
+                            {isSandbox && <DianHabilitacionPanel knownTestSetId={status?.itcycleTestSetId} />}
+                        </>
+                    ) : (
+                        // Every one of these either sends a real document to
+                        // DIAN (habilitación tests) or configures numbering
+                        // for one that eventually will (documento soporte,
+                        // notes) - none of that is actionable without a
+                        // signed certificate to send it with (Viafirma,
+                        // FirmaPass, or a manually uploaded one - readiness
+                        // is provider-agnostic, see certificateReady's own
+                        // comment in admin.service.ts). Showing them earlier
+                        // just let someone configure/test something that
+                        // can't actually go anywhere yet.
+                        <Alert
+                            className="dark-alert dark-alert-purple"
+                            type="info"
+                            showIcon
+                            message={t("fiscal_setup.dian_docs_require_certificate_title")}
+                            description={t("fiscal_setup.dian_docs_require_certificate_hint")}
                         />
                     )}
-                    {isSandbox && !hasResolution("91") && (
-                        <NumberingResolutionForm
-                            documentType="91"
-                            titleKey="fiscal_setup.credit_note_resolution_title"
-                            hintKey="fiscal_setup.credit_note_resolution_hint"
-                            buttonKey="fiscal_setup.add_credit_note_resolution"
-                            autoAssignPrefix="NC"
-                            onAdded={refresh}
-                        />
-                    )}
-                    {isSandbox && !hasResolution("92") && (
-                        <NumberingResolutionForm
-                            documentType="92"
-                            titleKey="fiscal_setup.debit_note_resolution_title"
-                            hintKey="fiscal_setup.debit_note_resolution_hint"
-                            buttonKey="fiscal_setup.add_debit_note_resolution"
-                            autoAssignPrefix="ND"
-                            onAdded={refresh}
-                        />
-                    )}
-                    {isSandbox && <DianHabilitacionPanel knownTestSetId={status?.itcycleTestSetId} />}
                 </>
             ) : otherProviderActive ? (
                 <Alert

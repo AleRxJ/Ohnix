@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Alert, Button, Card, Checkbox, Form, Input, Select, Space, Tag, Typography, Upload } from "antd";
 import {
@@ -7,6 +7,7 @@ import {
     CheckCircleOutlined,
     EyeOutlined,
     IdcardOutlined,
+    InfoCircleOutlined,
     LinkOutlined,
     MailOutlined,
     SafetyCertificateOutlined,
@@ -163,6 +164,7 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
     // paywall before the first load resolves).
     const [activeEntitlement, setActiveEntitlement] = useState(undefined);
     const [payingDuration, setPayingDuration] = useState(0);
+    const [selectedDuration, setSelectedDuration] = useState(1);
 
     const refreshCertificateOrders = async () => {
         try {
@@ -589,21 +591,15 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
 
             {!certificatesLoadError && (!activeCertificateRow || ["identity_rejected", "issuance_failed", "rues_verification_failed"].includes(internalStatus)) && (
                 <div className="mt-4">
-                    <div className="overflow-hidden rounded-2xl border border-[#29D8D5]/30 bg-gradient-to-br from-[#29D8D5]/10 via-transparent to-transparent">
-                        <div className="p-4">
-                            <div className="text-sm font-semibold text-[var(--ohnix-text-primary)]">{t("fiscal_setup.viafirma_alliance_title")}</div>
-                            <p className="mb-0 mt-1 max-w-lg text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.viafirma_alliance_body")}</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3 border-t border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)]/60 px-4 py-3">
-                            <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--ohnix-text-muted)]">{t("fiscal_setup.viafirma_price_title")}</span>
-                            <span className="rounded-full border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] px-3 py-1 text-xs text-[var(--ohnix-text-primary)]">
-                                {t("fiscal_setup.viafirma_price_1_year_label")} <span className="font-semibold text-[#0f9e9c]">{VIAFIRMA_PRICE_1_YEAR}</span>
-                            </span>
-                            <span className="rounded-full border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] px-3 py-1 text-xs text-[var(--ohnix-text-primary)]">
-                                {t("fiscal_setup.viafirma_price_2_years_label")} <span className="font-semibold text-[#0f9e9c]">{VIAFIRMA_PRICE_2_YEARS}</span>
-                            </span>
-                            <span className="text-[11px] text-[var(--ohnix-text-muted)]">{t("fiscal_setup.viafirma_price_note")}</span>
-                        </div>
+                    {/* Pricing lives ONLY in the paywall card below (or the
+                        green confirmation once paid) - this panel used to
+                        also show its own price chips, duplicating that
+                        exact information right next to it. Keeping just the
+                        trust/process copy here avoids saying the same thing
+                        twice on one screen. */}
+                    <div className="overflow-hidden rounded-2xl border border-[#29D8D5]/30 bg-gradient-to-br from-[#29D8D5]/10 via-transparent to-transparent p-4">
+                        <div className="text-sm font-semibold text-[var(--ohnix-text-primary)]">{t("fiscal_setup.viafirma_alliance_title")}</div>
+                        <p className="mb-0 mt-1 max-w-lg text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.viafirma_alliance_body")}</p>
                     </div>
 
                     {activeEntitlement ? (
@@ -617,18 +613,115 @@ const ViafirmaSelfService = ({ company, electronicInvoicingEnabled }) => {
                         // DIAN-mandatory payment gate - the request form below only
                         // renders once an active CertificateOrder entitlement exists
                         // (see companySelf.controller.js#createMyViafirmaRequest's
-                        // server-side enforcement of the same rule).
-                        <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
-                            <div className="mb-1 text-sm font-semibold text-[var(--ohnix-text-primary)]">{t("fiscal_setup.certificate_payment_required_title")}</div>
-                            <p className="mb-3 text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.certificate_payment_required_body")}</p>
-                            <Space wrap>
-                                <Button type="primary" loading={payingDuration === 1} disabled={Boolean(payingDuration) && payingDuration !== 1} onClick={() => payForCertificate(1)}>
-                                    {t("fiscal_setup.certificate_pay_1_year", { price: VIAFIRMA_PRICE_1_YEAR })}
-                                </Button>
-                                <Button loading={payingDuration === 2} disabled={Boolean(payingDuration) && payingDuration !== 2} onClick={() => payForCertificate(2)}>
-                                    {t("fiscal_setup.certificate_pay_2_years", { price: VIAFIRMA_PRICE_2_YEARS })}
-                                </Button>
-                            </Space>
+                        // server-side enforcement of the same rule). Styled to match
+                        // Billing.jsx's Colombia ePayco checkout card (same dark
+                        // gradient, "Completar pago" pill, e-Payco wordmark button,
+                        // security footer) with an explicit legal-note callout so
+                        // this reads as a DIAN requirement Ohnix administers, not an
+                        // Ohnix-invented fee - the user's own explicit ask.
+                        <div className="relative mt-4 overflow-hidden rounded-2xl border border-[#29D8D5]/25 bg-gradient-to-br from-[#050e1a] to-[#050c14] p-5">
+                            <div className="pointer-events-none absolute -top-12 left-1/2 h-28 w-72 -translate-x-1/2 rounded-full bg-[#29D8D5]/8 blur-3xl" />
+
+                            <div className="relative mb-3 flex flex-wrap items-center justify-between gap-2">
+                                <div className="inline-flex items-center gap-2 rounded-full border border-[#29D8D5]/20 bg-[#29D8D5]/8 px-3 py-1">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-[#29D8D5] shadow-[0_0_5px_#29D8D5]" />
+                                    <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#29D8D5]">
+                                        {t("fiscal_setup.certificate_payment_required_badge")}
+                                    </span>
+                                </div>
+                                <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/25 bg-amber-500/8 px-2.5 py-1 text-[10px] font-medium text-amber-300">
+                                    <IdcardOutlined />
+                                    {t("fiscal_setup.certificate_dian_pill")}
+                                </div>
+                            </div>
+
+                            <h4 className="relative m-0 text-lg font-black text-white">{t("fiscal_setup.certificate_payment_required_title")}</h4>
+
+                            {/* Legal note - deliberately its own visually distinct
+                                callout (not the Ohnix teal) so it reads as "DIAN's
+                                rule", never blended into Ohnix's own branded copy. */}
+                            <div className="relative mt-3 flex items-start gap-2.5 rounded-xl border border-amber-400/20 bg-amber-500/[0.06] p-3">
+                                <InfoCircleOutlined className="mt-0.5 shrink-0 text-amber-300" />
+                                <p className="mb-0 text-xs leading-relaxed text-[#d8c896]">
+                                    {t("fiscal_setup.certificate_payment_required_legal_note")}
+                                </p>
+                            </div>
+
+                            <p className="relative mb-4 mt-3 text-xs leading-relaxed text-[#a9b3b8]">
+                                {t("fiscal_setup.certificate_payment_required_body")}
+                            </p>
+
+                            {/* Duration picker */}
+                            <div className="relative mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {[
+                                    { years: 1, label: t("fiscal_setup.viafirma_price_1_year_label"), price: VIAFIRMA_PRICE_1_YEAR },
+                                    { years: 2, label: t("fiscal_setup.viafirma_price_2_years_label"), price: VIAFIRMA_PRICE_2_YEARS },
+                                ].map(({ years, label, price }) => (
+                                    <button
+                                        key={years}
+                                        type="button"
+                                        onClick={() => setSelectedDuration(years)}
+                                        disabled={Boolean(payingDuration)}
+                                        className={`rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                                            selectedDuration === years
+                                                ? "border-[#29D8D5]/50 bg-[#29D8D5]/10"
+                                                : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                                        }`}
+                                    >
+                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-[#6b8090]">{label}</div>
+                                        <div className="mt-0.5 text-lg font-black text-white">{price}</div>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* ePayco button - same wordmark/shimmer/footer treatment as Billing.jsx's Colombia checkout CTA */}
+                            <button
+                                type="button"
+                                onClick={() => !payingDuration && payForCertificate(selectedDuration)}
+                                disabled={Boolean(payingDuration)}
+                                className={[
+                                    "group relative w-full overflow-hidden rounded-xl border px-5 py-4 text-left transition-all duration-200",
+                                    payingDuration
+                                        ? "cursor-not-allowed border-[#00AFF0]/20 bg-[#00AFF0]/5 opacity-60"
+                                        : "cursor-pointer border-[#00AFF0]/35 bg-[#00AFF0]/8 hover:border-[#00AFF0]/60 hover:bg-[#00AFF0]/15",
+                                ].join(" ")}
+                            >
+                                <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/[0.06] to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex items-baseline gap-0.5">
+                                            <span className="text-xl font-black leading-none text-[#00AFF0]">e</span>
+                                            <span className="text-base font-bold leading-none text-white">Payco</span>
+                                        </div>
+                                        <div className="h-4 w-px bg-white/10" />
+                                        <span className="text-sm font-medium text-white/90">
+                                            {payingDuration ? t("fiscal_setup.certificate_pay_redirecting") : t("fiscal_setup.certificate_pay_cta")}
+                                        </span>
+                                    </div>
+                                    {payingDuration ? (
+                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#00AFF0]/30 border-t-[#00AFF0]" />
+                                    ) : (
+                                        <svg className="h-4 w-4 text-[#00AFF0] transition-transform duration-200 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    )}
+                                </div>
+                                <div className="mt-2 flex items-center gap-1.5 text-[10px] text-[#4a6070]">
+                                    {["PSE", "Tarjeta", "Nequi", "Daviplata"].map((m, i, arr) => (
+                                        <Fragment key={m}>
+                                            <span>{m}</span>
+                                            {i < arr.length - 1 && <span className="text-[#2a3a44]">·</span>}
+                                        </Fragment>
+                                    ))}
+                                </div>
+                            </button>
+
+                            <div className="relative mt-3.5 flex items-center gap-2 text-[10px] text-[#3a4e58]">
+                                <svg className="h-3 w-3 shrink-0 text-[#3a5060]" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944z" clipRule="evenodd" />
+                                </svg>
+                                <span>{t("fiscal_setup.certificate_pay_security_footer")}</span>
+                            </div>
                         </div>
                     )}
 
