@@ -39,8 +39,8 @@ export const getAccountsReceivablePlan = async ({ accountId, posScopeAll, posSco
 
 export const updateOrderDueDate = async ({ accountId, orderId, dueDate }) => {
     const parsed = dueDate ? new Date(dueDate) : null;
-    if (parsed && Number.isNaN(parsed.getTime())) throw new ApiError(400, "Fecha de vencimiento inválida.");
+    if (parsed && Number.isNaN(parsed.getTime())) throw new ApiError(400, "The due date is invalid.", [], "", "receivable_due_date_invalid");
     const order = await prisma.order.findFirst({ where: { createdById: accountId, OR: [{ id: orderId }, { legacyMongoId: orderId }] }, select: { id: true } });
-    if (!order) throw new ApiError(404, "Pedido no encontrado.");
+    if (!order) throw new ApiError(404, "Order not found.", [], "", "receivable_order_not_found");
     return prisma.order.update({ where: { id: order.id }, data: { dueDate: parsed }, select: { id: true, dueDate: true } });
 };

@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { financeService } from "../../services/financeService";
 import { useCurrency } from "../../context/CurrencyContext";
 import useI18n from "../../hooks/useI18n";
+import { financeErrorMessage } from "../../utils/financeError";
 
 const STATUS_COLORS = { overdue: "error", due_soon: "warning", current: "success", unscheduled: "default" };
 
@@ -22,7 +23,7 @@ const AccountsPayablePlanner = ({ canEdit }) => {
     const load = async () => {
         setLoading(true);
         try { const response = await financeService.getAccountsPayablePlan(); setPlan(response?.data || { summary: {}, documents: [] }); }
-        catch (error) { toast.error(error?.response?.data?.message || t("finance.payables_load_failed")); }
+        catch (error) { toast.error(financeErrorMessage(error, t, "finance.payables_load_failed")); }
         finally { setLoading(false); }
     };
     useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -33,7 +34,7 @@ const AccountsPayablePlanner = ({ canEdit }) => {
         try {
             await financeService.updatePurchaseDueDate(editing.id, dueDate ? dueDate.endOf("day").toISOString() : null);
             toast.success(t("finance.payables_due_updated")); setEditing(null); await load();
-        } catch (error) { toast.error(error?.response?.data?.message || t("finance.payables_due_failed")); }
+        } catch (error) { toast.error(financeErrorMessage(error, t, "finance.payables_due_failed")); }
         finally { setSaving(false); }
     };
 

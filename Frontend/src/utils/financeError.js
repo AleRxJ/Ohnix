@@ -23,6 +23,10 @@ export const FINANCE_ERROR_CODES = {
     reconciliation_movement_already_matched: "finance.error_reconciliation_movement_already_matched",
     reconciliation_amount_mismatch: "finance.error_reconciliation_amount_mismatch",
     reconciliation_concurrent_change: "finance.error_reconciliation_concurrent_change",
+    receivable_due_date_invalid: "finance.error_receivable_due_date_invalid",
+    receivable_order_not_found: "finance.error_receivable_order_not_found",
+    payable_due_date_invalid: "finance.error_payable_due_date_invalid",
+    payable_purchase_not_found: "finance.error_payable_purchase_not_found",
 };
 
 export const financeErrorMessage = (error, t, fallbackKey = "finance.failed") =>

@@ -298,7 +298,7 @@ const AccountLedgerDrawer = ({ account, onClose }) => {
                                         {m.debit > 0 && `${t("accounting.lines_col_debit")}: ${formatCurrency(m.debit)}`}
                                         {m.credit > 0 && `${t("accounting.lines_col_credit")}: ${formatCurrency(m.credit)}`}
                                     </span>
-                                    <span className="font-semibold text-[#44F3F0]">{formatCurrency(m.running_balance)}</span>
+                                    <span className="font-semibold text-[var(--ohnix-accent-2)]">{formatCurrency(m.running_balance)}</span>
                                 </div>
                             </div>
                         ))}
@@ -1197,7 +1197,7 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
                         options={Object.entries(SOURCE_TYPE_LABEL_KEYS).map(([value, key]) => ({ value, label: t(key) }))}
                     />
                     <Select allowClear showSearch optionFilterProp="label" placeholder={t("accounting.cost_center")} className="w-full sm:w-56" value={costCenterId} onChange={setCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
-                    <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={() => fetchEntries()} loading={loading}>
+                    <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={() => fetchEntries()} loading={loading}>
                         {t("reports.refresh_report")}
                     </Button>
                     {sourceId && (
@@ -1233,7 +1233,7 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
                                         <p className="text-sm font-medium text-[var(--ohnix-text-primary)] m-0 truncate">{entry.description}</p>
                                         <p className="text-xs text-[var(--ohnix-text-muted)] m-0">{dayjs(entry.entry_date).format("DD/MM/YYYY")}</p>
                                     </div>
-                                    <span className="text-sm font-semibold text-[#44F3F0] shrink-0">
+                                    <span className="text-sm font-semibold text-[var(--ohnix-accent-2)] shrink-0">
                                         {formatCurrency(entry.lines.reduce((sum, l) => sum + l.debit, 0))}
                                     </span>
                                 </div>
@@ -1545,7 +1545,7 @@ const FinancialStatementsTab = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <RangePicker value={incomeRange} onChange={(dates) => dates && setIncomeRange(dates)} format="YYYY-MM-DD" allowClear={false} />
                         <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={incomeCostCenterId} onChange={setIncomeCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
-                        <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" icon={<CalendarOutlined />} onClick={() => { fetchIncome(); if (comparisonOpen) fetchComparison(); }} loading={incomeLoading}>
+                        <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)]" icon={<CalendarOutlined />} onClick={() => { fetchIncome(); if (comparisonOpen) fetchComparison(); }} loading={incomeLoading}>
                             {t("reports.refresh_report")}
                         </Button>
                         <Button onClick={toggleComparison} loading={comparisonLoading}>
@@ -1636,7 +1636,7 @@ const FinancialStatementsTab = () => {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <DatePicker value={asOfDate} onChange={(d) => d && setAsOfDate(d)} format="YYYY-MM-DD" allowClear={false} />
                         <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={balanceCostCenterId} onChange={setBalanceCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
-                        <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" icon={<CalendarOutlined />} onClick={fetchBalance} loading={balanceLoading}>
+                        <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)]" icon={<CalendarOutlined />} onClick={fetchBalance} loading={balanceLoading}>
                             {t("reports.refresh_report")}
                         </Button>
                     </div>
@@ -2252,7 +2252,7 @@ const TrialBalanceTab = () => {
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <RangePicker value={dateRange} onChange={(dates) => dates && setDateRange(dates)} format="YYYY-MM-DD" allowClear={false} className="w-full sm:w-auto" />
                     <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={costCenterId} onChange={setCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
-                    <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={fetchRows} loading={loading}>
+                    <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={fetchRows} loading={loading}>
                         {t("reports.refresh_report")}
                     </Button>
                 </div>

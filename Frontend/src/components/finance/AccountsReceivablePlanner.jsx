@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { financeService } from "../../services/financeService";
 import { useCurrency } from "../../context/CurrencyContext";
 import useI18n from "../../hooks/useI18n";
+import { financeErrorMessage } from "../../utils/financeError";
 
 const COLORS = { overdue: "error", due_soon: "warning", current: "success", unscheduled: "default" };
 
@@ -14,10 +15,10 @@ const AccountsReceivablePlanner = ({ canEdit }) => {
     const { t } = useI18n(); const { formatCurrency } = useCurrency();
     const [plan, setPlan] = useState({ summary: {}, documents: [] }); const [loading, setLoading] = useState(false);
     const [editing, setEditing] = useState(null); const [dueDate, setDueDate] = useState(null); const [saving, setSaving] = useState(false);
-    const load = async () => { setLoading(true); try { const response = await financeService.getAccountsReceivablePlan(); setPlan(response?.data || { summary: {}, documents: [] }); } catch (error) { toast.error(error?.response?.data?.message || t("finance.receivables_load_failed")); } finally { setLoading(false); } };
+    const load = async () => { setLoading(true); try { const response = await financeService.getAccountsReceivablePlan(); setPlan(response?.data || { summary: {}, documents: [] }); } catch (error) { toast.error(financeErrorMessage(error, t, "finance.receivables_load_failed")); } finally { setLoading(false); } };
     useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
     const openDate = (row) => { setEditing(row); setDueDate(row.due_date ? dayjs(row.due_date) : null); };
-    const saveDate = async () => { setSaving(true); try { await financeService.updateOrderDueDate(editing.id, dueDate ? dueDate.endOf("day").toISOString() : null); toast.success(t("finance.receivables_due_updated")); setEditing(null); await load(); } catch (error) { toast.error(error?.response?.data?.message || t("finance.receivables_due_failed")); } finally { setSaving(false); } };
+    const saveDate = async () => { setSaving(true); try { await financeService.updateOrderDueDate(editing.id, dueDate ? dueDate.endOf("day").toISOString() : null); toast.success(t("finance.receivables_due_updated")); setEditing(null); await load(); } catch (error) { toast.error(financeErrorMessage(error, t, "finance.receivables_due_failed")); } finally { setSaving(false); } };
     const remind = (row) => { if (!row.customer.phone) return toast.error(t("finance.receivables_phone_missing")); const phone = row.customer.phone.replace(/\D/g, ""); const message = t("finance.receivables_message", { customer: row.customer.name, invoice: row.number, amount: formatCurrency(row.pending), date: row.due_date ? dayjs(row.due_date).format("DD/MM/YYYY") : t("finance.receivables_no_date") }); window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer"); };
     const columns = [
         { title: t("finance.payables_priority"), dataIndex: "status", width: 125, render: (value) => <Tag color={COLORS[value]}>{t(`finance.payables_status_${value}`)}</Tag> },

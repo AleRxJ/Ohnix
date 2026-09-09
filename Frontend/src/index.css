@@ -297,6 +297,13 @@ body {
   --ohnix-text-dim: #8b98a0;
   --ohnix-accent: #29d8d5;
   --ohnix-accent-2: #44f3f0;
+  --ohnix-accent-soft: rgba(41, 216, 213, 0.10);
+  --ohnix-accent-soft-hover: rgba(41, 216, 213, 0.18);
+  --ohnix-accent-line: rgba(41, 216, 213, 0.30);
+  --ohnix-accent-line-strong: rgba(41, 216, 213, 0.42);
+  --ohnix-accent-glow: 0 0 18px rgba(41, 216, 213, 0.12);
+  --ohnix-accent-glow-hover: 0 0 26px rgba(41, 216, 213, 0.22);
+  --ohnix-modal-mask: rgba(0, 0, 0, 0.55);
   --ohnix-status-purple: #7c6af7;
   --ohnix-status-rose: #fb7185;
   --ohnix-status-amber: #f59e0b;
@@ -304,6 +311,11 @@ body {
   --ohnix-status-info: #60a5fa;
   --ohnix-status-warning: #fb923c;
   --ohnix-status-danger: #fb7185;
+  --ohnix-status-success-soft: rgba(52, 211, 153, 0.10);
+  --ohnix-status-success-line: rgba(52, 211, 153, 0.28);
+  --ohnix-status-danger-soft: rgba(251, 113, 133, 0.06);
+  --ohnix-status-danger-soft-hover: rgba(251, 113, 133, 0.14);
+  --ohnix-status-danger-line: rgba(251, 113, 133, 0.25);
 
   /* Text colors for content sitting on tinted alert/badge backgrounds
      (e.g. bg-amber-500/10) - these need to flip per theme since a pale
@@ -356,6 +368,7 @@ body {
 }
 
 [data-ohnix-theme="lite"] {
+  --ohnix-modal-mask: rgba(15, 23, 42, 0.38);
   --ohnix-bg: #eef1f4;
   --ohnix-surface: #ffffff;
   --ohnix-surface-2: #f7f9fa;
@@ -374,6 +387,11 @@ body {
   --ohnix-status-info: #2563eb;
   --ohnix-status-warning: #c2410c;
   --ohnix-status-danger: #be123c;
+  --ohnix-status-success-soft: rgba(4, 120, 87, 0.09);
+  --ohnix-status-success-line: rgba(4, 120, 87, 0.25);
+  --ohnix-status-danger-soft: rgba(190, 18, 60, 0.06);
+  --ohnix-status-danger-soft-hover: rgba(190, 18, 60, 0.12);
+  --ohnix-status-danger-line: rgba(190, 18, 60, 0.22);
 
   --ohnix-bg-alt: #eef1f4;
   --ohnix-surface-3: #eef2f4;

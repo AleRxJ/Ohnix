@@ -302,7 +302,7 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
             width={isMobile ? "100vw" : 640}
             closeIcon={<CloseOutlined className="text-[var(--ohnix-text-muted)]" />}
             styles={{
-                mask: { backgroundColor: "rgba(0,0,0,0.45)" },
+                mask: { backgroundColor: "var(--ohnix-modal-mask)" },
                 body: { padding: isMobile ? 16 : 24, background: "var(--ohnix-surface-card-soft)" },
                 header: { borderBottom: "1px solid var(--ohnix-line-3)", padding: isMobile ? "16px" : "20px 24px", background: "var(--ohnix-surface-card-soft)" },
             }}
@@ -310,12 +310,12 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
             <div className="space-y-4 sm:space-y-6">
                 <div className="rounded-2xl p-4 border border-[var(--ohnix-line-4)] flex items-center justify-between bg-[var(--ohnix-line-1)]">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#29D8D5]/30 bg-[linear-gradient(135deg,rgba(41,216,213,0.18),rgba(68,243,240,0.06))]">
-                            <WalletOutlined className="text-lg text-[#44F3F0]" />
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--ohnix-accent-line)] bg-[var(--ohnix-accent-soft)]">
+                            <WalletOutlined className="text-lg text-[var(--ohnix-accent-2)]" />
                         </div>
                         <span className="font-semibold text-[var(--ohnix-text-primary)]">{account.name}</span>
                     </div>
-                    <span className="text-xl font-bold text-[#44F3F0]">{formatCurrency(account.balance)}</span>
+                    <span className="text-xl font-bold text-[var(--ohnix-accent-2)]">{formatCurrency(account.balance)}</span>
                 </div>
 
                 <div>

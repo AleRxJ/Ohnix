@@ -167,25 +167,25 @@ const Finance = () => {
                                     >
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="flex items-center gap-3 min-w-0">
-                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#29D8D5]/30 bg-[linear-gradient(135deg,rgba(41,216,213,0.18),rgba(68,243,240,0.06))] shadow-[0_0_18px_rgba(41,216,213,0.12)]">
-                                                    <Icon className="text-lg text-[#44F3F0]" />
+                                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--ohnix-accent-line)] bg-[var(--ohnix-accent-soft)] shadow-[var(--ohnix-accent-glow)]">
+                                                    <Icon className="text-lg text-[var(--ohnix-accent-2)]" />
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="m-0 font-semibold text-[var(--ohnix-text-primary)] truncate">{record.name}</p>
                                                     <span className="text-xs text-[var(--ohnix-text-muted)]">
                                                         {record.point_of_sale?.name || t("finance.point_of_sale_all_locations")}
                                                     </span>
-                                                    <span className="block text-[11px] text-[#44F3F0] mt-0.5">{record.chart_account ? `${record.chart_account.code} · ${record.chart_account.name}` : t("finance.chart_account_automatic")}</span>
+                                                    <span className="block text-[11px] text-[var(--ohnix-accent-2)] mt-0.5">{record.chart_account ? `${record.chart_account.code} · ${record.chart_account.name}` : t("finance.chart_account_automatic")}</span>
                                                 </div>
                                             </div>
                                             {record.is_active ? (
-                                                <span className="status-pill" style={{ color: "#22c55e", background: "#22c55e18", border: "1px solid #22c55e33" }}>
-                                                    <span className="status-dot" style={{ background: "#22c55e" }} />
+                                                <span className="status-pill" style={{ color: "var(--ohnix-status-success)", background: "var(--ohnix-status-success-soft)", border: "1px solid var(--ohnix-status-success-line)" }}>
+                                                    <span className="status-dot" style={{ background: "var(--ohnix-status-success)" }} />
                                                     {t("finance.status_active")}
                                                 </span>
                                             ) : (
-                                                <span className="status-pill" style={{ color: "#8b98a0", background: "#8b98a018", border: "1px solid #8b98a033" }}>
-                                                    <span className="status-dot" style={{ background: "#8b98a0" }} />
+                                                <span className="status-pill" style={{ color: "var(--ohnix-text-dim)", background: "var(--ohnix-line-2)", border: "1px solid var(--ohnix-line-4)" }}>
+                                                    <span className="status-dot" style={{ background: "var(--ohnix-text-dim)" }} />
                                                     {t("finance.status_inactive")}
                                                 </span>
                                             )}
@@ -193,26 +193,26 @@ const Finance = () => {
 
                                         <div className="flex items-center justify-between border-t border-[var(--ohnix-line-3)] pt-3">
                                             <span className="text-xs text-[var(--ohnix-text-muted)] uppercase tracking-wide">{t("finance.balance_label")}</span>
-                                            <span className="text-lg font-bold text-[#44F3F0]">{formatCurrency(record.balance)}</span>
+                                            <span className="text-lg font-bold text-[var(--ohnix-accent-2)]">{formatCurrency(record.balance)}</span>
                                         </div>
 
                                         <div className="flex gap-2 pt-1">
                                             <Button
                                                 icon={<UnorderedListOutlined />}
                                                 onClick={() => setMovementsAccount(record)}
-                                                className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[#44F3F0] hover:border-[#44F3F0] hover:bg-[rgba(41,216,213,0.06)] transition-all duration-200"
+                                                className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[var(--ohnix-accent-2)] hover:border-[var(--ohnix-accent-line-strong)] hover:bg-[var(--ohnix-accent-soft)] transition-all duration-200"
                                             >
                                                 {t("finance.view_movements")}
                                             </Button>
                                             {canEdit && (
-                                                <Tooltip title={t("finance.adjustment_cta")}><Button icon={<AuditOutlined />} onClick={() => openAdjustment(record)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-all duration-200" /></Tooltip>
+                                                <Tooltip title={t("finance.adjustment_cta")}><Button icon={<AuditOutlined />} onClick={() => openAdjustment(record)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[var(--ohnix-accent-2)] hover:border-[var(--ohnix-accent-line-strong)] transition-all duration-200" /></Tooltip>
                                             )}
-                                            <Tooltip title={t("finance.mapping_history_cta")}><Button icon={<HistoryOutlined />} onClick={() => openConfigurationHistory(record)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-all duration-200" /></Tooltip>
+                                            <Tooltip title={t("finance.mapping_history_cta")}><Button icon={<HistoryOutlined />} onClick={() => openConfigurationHistory(record)} className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[var(--ohnix-accent-2)] hover:border-[var(--ohnix-accent-line-strong)] transition-all duration-200" /></Tooltip>
                                             {canEdit && (
                                                 <Button
                                                     icon={<EditOutlined />}
                                                     onClick={() => openEdit(record)}
-                                                    className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[#44F3F0] hover:border-[#44F3F0] transition-all duration-200"
+                                                    className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] text-[var(--ohnix-text-soft)] hover:text-[var(--ohnix-accent-2)] hover:border-[var(--ohnix-accent-line-strong)] transition-all duration-200"
                                                 />
                                             )}
                                             {canEdit && record.is_active && (
@@ -225,7 +225,7 @@ const Finance = () => {
                                                 >
                                                     <Button
                                                         icon={<StopOutlined />}
-                                                        className="h-9 w-9 flex items-center justify-center rounded-lg bg-[rgba(251,113,133,0.06)] border border-[rgba(251,113,133,0.25)] text-[var(--ohnix-status-rose)] hover:bg-[rgba(251,113,133,0.14)] hover:border-[var(--ohnix-status-rose)] transition-all duration-200"
+                                                        className="h-9 w-9 flex items-center justify-center rounded-lg bg-[var(--ohnix-status-danger-soft)] border border-[var(--ohnix-status-danger-line)] text-[var(--ohnix-status-danger)] hover:bg-[var(--ohnix-status-danger-soft-hover)] hover:border-[var(--ohnix-status-danger)] transition-all duration-200"
                                                     />
                                                 </Popconfirm>
                                             )}
