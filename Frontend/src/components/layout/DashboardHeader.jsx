@@ -18,13 +18,11 @@ import LanguageSwitcher from "../LanguageSwitcher/LanguageSwitcher";
 import ThemeToggle from "../common/ThemeToggle";
 import SyncStatusIndicator from "../common/SyncStatusIndicator";
 import { userService } from "../../services/userService";
-import { useTheme } from "../../context/ThemeContext";
 import { useTeam } from "../../context/TeamContext";
 
 const DashboardHeader = ({ collapsed, setCollapsed }) => {
     const { user, logout } = useContext(AuthContext);
     const { t, currentLanguage, changeLanguage } = useI18n();
-    const { isLite } = useTheme();
     const navigate = useNavigate();
 
     // Handle logout
@@ -102,14 +100,11 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                     onClick={handleLogoClick}
                 >
                     <div className="flex items-center gap-1.5">
-                        <div
-                            className="flex items-center justify-center rounded-xl p-1.5"
-                            style={isLite ? { background: "linear-gradient(180deg, #0b0b0b 0%, #0a1114 100%)" } : undefined}
-                        >
+                        <div className="flex items-center justify-center rounded-xl p-1.5">
                             <img
-                                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Transparent.png"}
+                                src="/Ohnix_Icon_Transparent.png"
                                 alt="Ohnix icon"
-                                className="h-11 w-11 object-contain"
+                                className="ohnix-logo-adaptive h-11 w-11 object-contain"
                             />
                         </div>
                         <span className="text-sm font-semibold tracking-[0.18em] text-[var(--ohnix-text-primary)]">

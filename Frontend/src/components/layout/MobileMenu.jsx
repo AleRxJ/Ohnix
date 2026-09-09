@@ -83,15 +83,12 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
                 <div className="px-4 py-3 h-full flex flex-col gap-3">
                     <div className="flex items-center justify-between px-1">
                         <div className="flex items-center gap-2.5">
-                            <div
-                                className="flex items-center justify-center rounded-lg p-1"
-                                style={isLite ? { background: "linear-gradient(180deg, #0b0b0b 0%, #0a1114 100%)" } : undefined}
-                            >
+                            <div className="flex items-center justify-center rounded-lg p-1">
                                 <img
-                                    src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Transparent.png"}
+                                    src="/Ohnix_Icon_Transparent.png"
                                     alt=""
                                     aria-hidden="true"
-                                    className="h-9 w-9 object-contain"
+                                    className="ohnix-logo-adaptive h-9 w-9 object-contain"
                                 />
                             </div>
                             <span className="text-sm font-semibold tracking-wide text-[var(--ohnix-text-primary)]">
