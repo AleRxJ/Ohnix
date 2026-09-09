@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal } from "antd";
+import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal, Progress } from "antd";
 import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined, PartitionOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
@@ -17,11 +17,88 @@ import { useCurrency } from "../context/CurrencyContext";
 import { useTeam } from "../context/TeamContext";
 import useI18n from "../hooks/useI18n";
 import useSubscription from "../hooks/useSubscription";
+import { resolveApiErrorMessage } from "../utils/apiError";
 
 // Codes from chartOfAccounts.service.js's default PUC seed - matched by code
 // (not name) so a renamed-but-not-recoded account still nets correctly.
 const VAT_GENERATED_CODE = "240805";
 const VAT_DEDUCTIBLE_CODE = "240810";
+
+const ACCOUNTING_ERROR_CODES = {
+    accounting_budget_invalid_period: "accounting.budget_error_invalid_period",
+    accounting_budget_period_closed: "accounting.budget_error_period_closed",
+    accounting_budget_invalid_items: "accounting.budget_error_invalid_items",
+    accounting_budget_invalid_line: "accounting.budget_error_invalid_line",
+    accounting_budget_invalid_threshold: "accounting.budget_error_invalid_threshold",
+    accounting_budget_duplicate_lines: "accounting.budget_error_duplicate_lines",
+    accounting_budget_invalid_account: "accounting.budget_error_invalid_account",
+    accounting_budget_invalid_cost_center: "accounting.budget_error_invalid_cost_center",
+    accounting_budget_not_found: "accounting.budget_error_not_found",
+    accounting_budget_invalid_year: "accounting.budget_error_invalid_year",
+    accounting_budget_invalid_annual_amount: "accounting.budget_error_invalid_annual_amount",
+    accounting_budget_same_copy_year: "accounting.budget_error_same_copy_year",
+    accounting_budget_copy_source_empty: "accounting.budget_error_copy_source_empty",
+    chart_account_code_required: "accounting.error_chart_account_code_required",
+    chart_account_name_required: "accounting.error_chart_account_name_required",
+    chart_account_type_invalid: "accounting.error_chart_account_type_invalid",
+    chart_account_code_duplicate: "accounting.error_chart_account_code_duplicate",
+    chart_account_parent_not_found: "accounting.error_chart_account_parent_not_found",
+    chart_account_not_found: "accounting.error_chart_account_not_found",
+    chart_account_active_invalid: "accounting.error_chart_account_active_invalid",
+    journal_entry_unbalanced: "accounting.error_journal_entry_unbalanced",
+    journal_entry_not_found: "accounting.error_journal_entry_not_found",
+    accounting_period_closed: "accounting.error_period_closed",
+    accounting_period_reopening_expired: "accounting.error_period_reopening_expired",
+    accounting_period_not_found: "accounting.error_period_not_found",
+    accounting_period_already_closed: "accounting.error_period_already_closed",
+    accounting_period_not_prior_month: "accounting.error_period_not_prior_month",
+    accounting_period_integrity_blocked: "accounting.error_period_integrity_blocked",
+    accounting_period_concurrent_change: "accounting.error_period_concurrent_change",
+    accounting_period_reopen_reason_required: "accounting.error_period_reopen_reason_required",
+    accounting_period_reopen_duration_invalid: "accounting.error_period_reopen_duration_invalid",
+    accounting_period_not_closed: "accounting.error_period_not_closed",
+    accounting_period_id_required: "accounting.error_period_id_required",
+    cost_center_fields_required: "accounting.error_cost_center_fields_required",
+    cost_center_length_invalid: "accounting.error_cost_center_length_invalid",
+    cost_center_code_duplicate: "accounting.error_cost_center_code_duplicate",
+    cost_center_not_found: "accounting.error_cost_center_not_found",
+    cost_center_location_not_found: "accounting.error_cost_center_location_not_found",
+    cost_center_assignment_invalid: "accounting.error_cost_center_assignment_invalid",
+    recurring_expense_description_required: "accounting.error_recurring_description_required",
+    recurring_expense_description_too_long: "accounting.error_recurring_description_too_long",
+    recurring_expense_amount_invalid: "accounting.error_recurring_amount_invalid",
+    recurring_expense_day_invalid: "accounting.error_recurring_day_invalid",
+    recurring_expense_tax_treatment_invalid: "accounting.error_recurring_tax_treatment_invalid",
+    recurring_expense_tax_rate_invalid: "accounting.error_recurring_tax_rate_invalid",
+    recurring_expense_expense_account_unavailable: "accounting.error_recurring_expense_account_unavailable",
+    recurring_expense_cash_account_unavailable: "accounting.error_recurring_cash_account_unavailable",
+    recurring_expense_not_found: "accounting.error_recurring_not_found",
+    recurring_expense_insufficient_funds: "accounting.error_recurring_insufficient_funds",
+    recurring_expense_inactive: "accounting.error_recurring_inactive",
+    recurring_expense_already_generated: "accounting.error_recurring_already_generated",
+    recurring_expense_generation_failed: "accounting.error_recurring_generation_failed",
+    withholding_date_invalid: "accounting.error_withholding_date_invalid",
+    withholding_concepts_unavailable: "accounting.error_withholding_concepts_unavailable",
+    withholding_concept_versions_duplicate: "accounting.error_withholding_versions_duplicate",
+    withholding_fields_required: "accounting.error_withholding_fields_required",
+    withholding_tax_type_invalid: "accounting.error_withholding_tax_type_invalid",
+    withholding_base_type_invalid: "accounting.error_withholding_base_type_invalid",
+    withholding_rate_invalid: "accounting.error_withholding_rate_invalid",
+    withholding_minimum_base_invalid: "accounting.error_withholding_minimum_base_invalid",
+    withholding_date_range_invalid: "accounting.error_withholding_date_range_invalid",
+    withholding_municipality_required: "accounting.error_withholding_municipality_required",
+    withholding_chart_account_invalid: "accounting.error_withholding_chart_account_invalid",
+    withholding_effective_range_overlap: "accounting.error_withholding_effective_range_overlap",
+    withholding_concept_not_found: "accounting.error_withholding_concept_not_found",
+    withholding_preview_amounts_invalid: "accounting.error_withholding_preview_amounts_invalid",
+    withholding_concept_required: "accounting.error_withholding_concept_required",
+    withholding_certificate_year_invalid: "accounting.error_withholding_certificate_year_invalid",
+    withholding_supplier_not_found: "accounting.error_withholding_supplier_not_found",
+    third_party_identity_required: "accounting.error_third_party_identity_required",
+};
+
+const accountingErrorMessage = (error, t, fallbackKey = "accounting.failed") =>
+    resolveApiErrorMessage(error, t, ACCOUNTING_ERROR_CODES, fallbackKey);
 
 const { RangePicker } = DatePicker;
 
@@ -262,7 +339,7 @@ const NewAccountModal = ({ open, accounts, onClose, onCreated }) => {
             form.resetFields();
             onCreated();
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(err, t));
         } finally {
             setSaving(false);
         }
@@ -332,7 +409,7 @@ const ChartOfAccountsTab = () => {
             toast.success(account.is_active ? t("accounting.account_deactivated") : t("accounting.account_activated"));
             load();
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(err, t));
         }
     };
 
@@ -584,7 +661,7 @@ const CostCentersTab = () => {
             form.resetFields();
             await load();
         } catch (error) {
-            if (!error?.errorFields) toast.error(error?.response?.data?.message || t("accounting.failed"));
+            if (!error?.errorFields) toast.error(accountingErrorMessage(error, t));
         } finally { setSaving(false); }
     };
     const showLedger = async (center, range = ledgerRange) => {
@@ -601,7 +678,7 @@ const CostCentersTab = () => {
             await accountingService.assignLocationCostCenter(location.id, costCenterId);
             setLocations((rows) => rows.map((row) => row.id === location.id ? { ...row, defaultCostCenterId: costCenterId || null } : row));
             toast.success(t("accounting.cost_center_location_saved"));
-        } catch (error) { toast.error(error?.response?.data?.message || t("accounting.failed")); }
+        } catch (error) { toast.error(accountingErrorMessage(error, t)); }
     };
 
     return <>
@@ -661,6 +738,12 @@ const RecurringExpensesTab = () => {
     const [editing, setEditing] = useState(null);
     const [open, setOpen] = useState(false);
     const [runningId, setRunningId] = useState(null);
+    const watchedTreatment = Form.useWatch("tax_treatment", form);
+    const watchedAmount = Form.useWatch("amount", form);
+    const watchedRate = Form.useWatch("tax_rate", form);
+    const taxPreview = watchedTreatment === "taxed" && Number(watchedAmount) > 0 && Number(watchedRate) > 0
+        ? { base: Number(watchedAmount) / (1 + Number(watchedRate) / 100), tax: Number(watchedAmount) - Number(watchedAmount) / (1 + Number(watchedRate) / 100) }
+        : null;
 
     const load = async () => {
         setLoading(true);
@@ -686,6 +769,8 @@ const RecurringExpensesTab = () => {
             day_of_month: template?.day_of_month ?? 1,
             expense_account_id: template?.expense_account?._id,
             cash_account_id: template?.cash_account?._id,
+            tax_treatment: template?.tax_treatment || "excluded",
+            tax_rate: template?.tax_rate || 19,
             is_active: template?.is_active ?? true,
         });
         setOpen(true);
@@ -701,7 +786,7 @@ const RecurringExpensesTab = () => {
             form.resetFields();
             await load();
         } catch (error) {
-            if (!error?.errorFields) toast.error(error?.response?.data?.message || t("accounting.failed"));
+            if (!error?.errorFields) toast.error(accountingErrorMessage(error, t));
         } finally { setSaving(false); }
     };
     const runNow = async (template) => {
@@ -711,7 +796,7 @@ const RecurringExpensesTab = () => {
             toast.success(t("accounting.recurring_expense_run_success"));
             await load();
         } catch (error) {
-            toast.error(error?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(error, t));
         } finally { setRunningId(null); }
     };
 
@@ -732,13 +817,14 @@ const RecurringExpensesTab = () => {
                 { title: t("accounting.recurring_expense_day_of_month"), dataIndex: "day_of_month", width: 90, align: "center" },
                 { title: t("accounting.section_expenses"), render: (_, row) => row.expense_account ? `${row.expense_account.code} · ${row.expense_account.name}` : "—" },
                 { title: t("accounting.recurring_expense_cash_account"), render: (_, row) => row.cash_account?.name || "—" },
+                { title: t("accounting.recurring_expense_vat_column"), render: (_, row) => row.tax_treatment === "taxed" ? <Tag color="blue">{t("accounting.tax_treatment_taxed")} {row.tax_rate}%</Tag> : <Tag>{t(`accounting.tax_treatment_${row.tax_treatment}`)}</Tag> },
                 {
                     title: t("accounting.col_status"),
                     render: (_, row) => (
                         <div className="flex flex-col gap-1">
                             <Tag color={row.is_active ? "green" : "default"}>{t(row.is_active ? "common.active" : "common.inactive")}</Tag>
                             {row.last_run_status === "failed" && (
-                                <Tooltip title={row.last_run_error}>
+                                <Tooltip title={t(ACCOUNTING_ERROR_CODES[row.last_run_error] || "accounting.error_recurring_generation_failed")}>
                                     <Tag color="red" icon={<WarningOutlined />}>{t("accounting.recurring_expense_last_run_failed")}</Tag>
                                 </Tooltip>
                             )}
@@ -768,7 +854,7 @@ const RecurringExpensesTab = () => {
             <Alert className="dark-alert dark-alert-teal mb-4" showIcon type="info" message={t("accounting.recurring_expense_form_help")} />
             <Form form={form} layout="vertical">
                 <Form.Item name="description" label={t("accounting.col_description")} rules={[{ required: true, max: 160 }]}><Input /></Form.Item>
-                <Form.Item name="amount" label={t("accounting.col_amount")} rules={[{ required: true, type: "number" }]}><InputNumber min={0.01} step={1000} className="w-full" /></Form.Item>
+                <Form.Item name="amount" label={t("accounting.col_amount")} extra={t("accounting.recurring_expense_amount_help")} rules={[{ required: true, type: "number" }]}><InputNumber min={0.01} step={1000} className="w-full" /></Form.Item>
                 <Form.Item name="day_of_month" label={t("accounting.recurring_expense_day_of_month")} extra={t("accounting.recurring_expense_day_of_month_help")} rules={[{ required: true, type: "number", min: 1, max: 28 }]}><InputNumber min={1} max={28} className="w-full" /></Form.Item>
                 <Form.Item name="expense_account_id" label={t("accounting.section_expenses")} rules={[{ required: true }]}>
                     <Select showSearch optionFilterProp="label" options={expenseAccounts.map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))} />
@@ -776,6 +862,32 @@ const RecurringExpensesTab = () => {
                 <Form.Item name="cash_account_id" label={t("accounting.recurring_expense_cash_account")} rules={[{ required: true }]}>
                     <Select showSearch optionFilterProp="label" options={cashAccounts.map((a) => ({ value: a._id, label: a.name }))} />
                 </Form.Item>
+                <Row gutter={12}>
+                    <Col xs={24} sm={taxPreview !== null || watchedTreatment === "taxed" ? 12 : 24}>
+                        <Form.Item name="tax_treatment" label={t("accounting.tax_treatment")} rules={[{ required: true }]}>
+                            <Select options={[
+                                { value: "excluded", label: t("accounting.tax_treatment_excluded") },
+                                { value: "exempt", label: t("accounting.tax_treatment_exempt") },
+                                { value: "taxed", label: t("accounting.tax_treatment_taxed") },
+                            ]} />
+                        </Form.Item>
+                    </Col>
+                    {watchedTreatment === "taxed" && (
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="tax_rate" label={t("accounting.tax_rate")} rules={[{ required: true, type: "number", min: 0.01, max: 100 }]}>
+                                <InputNumber min={0} max={100} precision={2} className="w-full" />
+                            </Form.Item>
+                        </Col>
+                    )}
+                </Row>
+                {taxPreview && (
+                    <Alert
+                        className="dark-alert dark-alert-purple mb-4"
+                        type="info"
+                        showIcon
+                        message={t("accounting.recurring_expense_tax_preview", { base: formatCurrency(taxPreview.base), tax: formatCurrency(taxPreview.tax) })}
+                    />
+                )}
                 {editing && <Form.Item name="is_active" label={t("accounting.col_status")} valuePropName="checked"><Switch /></Form.Item>}
             </Form>
         </Modal>
@@ -860,7 +972,7 @@ const ManualVouchersTab = () => {
             await load();
         } catch (error) {
             if (error?.errorFields) return;
-            toast.error(error?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(error, t));
         } finally {
             setSaving(false);
         }
@@ -872,7 +984,7 @@ const ManualVouchersTab = () => {
             toast.success(t("accounting.voucher_posted"));
             await load();
         } catch (error) {
-            toast.error(error?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(error, t));
         }
     };
 
@@ -1194,7 +1306,7 @@ const PeriodsTab = () => {
             toast.success(t("accounting.period_closed"));
             load();
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(err, t));
         }
     };
 
@@ -1221,7 +1333,7 @@ const PeriodsTab = () => {
                 cancelText: t("common.cancel"),
                 onOk: blockers.length > 0 ? undefined : () => handleClose(period._id),
             });
-        } catch (err) { toast.error(err?.response?.data?.message || t("accounting.close_readiness_failed")); }
+        } catch (err) { toast.error(accountingErrorMessage(err, t, "accounting.close_readiness_failed")); }
         finally { setCheckingPeriodId(null); }
     };
 
@@ -1609,9 +1721,14 @@ const OverviewTab = () => {
           (balance.liabilities.find((a) => a.code === VAT_DEDUCTIBLE_CODE)?.amount || 0)
         : 0;
 
+    // state.tab/.sub deep-links straight into Reports.jsx's "advanced" tab and
+    // (Reports.jsx forwards .sub as defaultSubTab) AdvancedReports.jsx's own
+    // "vat"/"cartera" sub-tab - without it these cards dropped the visitor on
+    // Reports.jsx's unrelated default "stock" tab, several clicks away from
+    // what the card actually promised.
     const relatedLinks = [
-        { to: "/reports", titleKey: "accounting.overview_link_cartera_title", descKey: "accounting.overview_link_cartera_desc" },
-        { to: "/reports", titleKey: "accounting.overview_link_vat_title", descKey: "accounting.overview_link_vat_desc" },
+        { to: "/reports", state: { tab: "advanced", sub: "cartera" }, titleKey: "accounting.overview_link_cartera_title", descKey: "accounting.overview_link_cartera_desc" },
+        { to: "/reports", state: { tab: "advanced", sub: "vat" }, titleKey: "accounting.overview_link_vat_title", descKey: "accounting.overview_link_vat_desc" },
         { to: "/finance", titleKey: "accounting.overview_link_reconciliation_title", descKey: "accounting.overview_link_reconciliation_desc" },
     ];
 
@@ -1634,6 +1751,7 @@ const OverviewTab = () => {
                         value={Math.abs(netVat)}
                         formatter={formatCurrency}
                         loading={loading}
+                        description={t("accounting.overview_net_vat_help")}
                         valueStyle={{ color: netVat >= 0 ? "var(--ohnix-status-danger)" : "var(--ohnix-status-success)", fontWeight: 700 }}
                     />
                 </Col>
@@ -1643,7 +1761,7 @@ const OverviewTab = () => {
                 <Row gutter={[16, 16]}>
                     {relatedLinks.map((link) => (
                         <Col xs={24} md={8} key={link.titleKey}>
-                            <Link to={link.to}>
+                            <Link to={link.to} state={link.state}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)] h-full hover:border-[var(--ohnix-accent)] transition-colors" size="small">
                                     <div className="flex items-start justify-between gap-2">
                                         <div>
@@ -1710,7 +1828,7 @@ const WithholdingConceptsCard = () => {
             setConcepts(conceptResponse?.data || []);
             setLiabilityAccounts((accountResponse?.data || []).filter((account) => account.account_type === "liability" && account.is_active));
         } catch (error) {
-            toast.error(error?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(error, t));
         } finally {
             setLoading(false);
         }
@@ -1737,7 +1855,7 @@ const WithholdingConceptsCard = () => {
             setOpen(false);
             await load();
         } catch (error) {
-            toast.error(error?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(error, t));
         } finally {
             setSaving(false);
         }
@@ -1749,7 +1867,7 @@ const WithholdingConceptsCard = () => {
             toast.success(t("accounting.withholding_status_updated"));
             await load();
         } catch (error) {
-            toast.error(error?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(error, t));
         }
     };
 
@@ -1794,7 +1912,7 @@ const WithholdingConceptsCard = () => {
 };
 
 const WithholdingReportCard = () => {
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const { formatCurrency } = useCurrency();
     const isMobile = useIsMobile();
     const [dateRange, setDateRange] = useState([dayjs().startOf("year"), dayjs()]);
@@ -1811,7 +1929,7 @@ const WithholdingReportCard = () => {
             const response = await accountingService.getWithholdingReport({ from: dateRange?.[0]?.format("YYYY-MM-DD"), to: dateRange?.[1]?.format("YYYY-MM-DD"), taxType });
             setReport(response?.data || { totals: {}, by_type: [], rows: [] });
         } catch (error) {
-            toast.error(error?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(error, t));
         } finally { setLoading(false); }
     };
 
@@ -1823,7 +1941,7 @@ const WithholdingReportCard = () => {
             const response = await accountingService.getWithholdingCertificate(row.supplier.id, dayjs(row.purchase.date).year());
             setCertificate(response?.data || null);
         } catch (error) {
-            toast.error(error?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(error, t));
         } finally { setCertificateLoadingId(null); }
     };
 
@@ -1841,10 +1959,10 @@ const WithholdingReportCard = () => {
     const downloadCertificate = async () => {
         setPdfLoading(true);
         try {
-            await accountingService.downloadWithholdingCertificate(certificate.supplier.id, certificate.year, certificate.supplier.identification);
+            await accountingService.downloadWithholdingCertificate(certificate.supplier.id, certificate.year, certificate.supplier.identification, currentLanguage);
             toast.success(t("accounting.withholding_certificate_downloaded"));
         } catch (error) {
-            toast.error(error?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(error, t));
         } finally { setPdfLoading(false); }
     };
 
@@ -1896,7 +2014,7 @@ const WithholdingConfigCard = () => {
             await companyService.updateMyCompany(values);
             toast.success(t("accounting.taxes_config_saved"));
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("accounting.failed"));
+            toast.error(accountingErrorMessage(err, t));
         } finally {
             setSaving(false);
         }
@@ -1984,6 +2102,103 @@ const TaxesTab = () => {
 // everything still tie out" check, distinct from the Estados Financieros
 // tab which only shows one slice of the chart (revenue/cost/expense or
 // asset/liability/equity) at a time.
+const BudgetsTab = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("accounting", "edit");
+    const [form] = Form.useForm();
+    const [period, setPeriod] = useState(dayjs());
+    const [view, setView] = useState("month");
+    const [dimension, setDimension] = useState("all");
+    const [accounts, setAccounts] = useState([]);
+    const [costCenters, setCostCenters] = useState([]);
+    const [report, setReport] = useState({ rows: [], summary: {} });
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [editor, setEditor] = useState(null);
+    const showBudgetError = (error) => toast.error(accountingErrorMessage(error, t));
+
+    const load = async ({ nextPeriod = period, nextDimension = dimension, nextView = view, refreshCatalogs = false } = {}) => {
+        setLoading(true);
+        try {
+            const requests = [nextView === "year" ? accountingService.getAnnualBudgetReport({ year: nextPeriod.year(), costCenterId: nextDimension }) : accountingService.getBudgetReport({ year: nextPeriod.year(), month: nextPeriod.month() + 1, costCenterId: nextDimension })];
+            if (refreshCatalogs || accounts.length === 0) requests.push(accountingService.listChartOfAccounts(), accountingService.listCostCenters());
+            const [reportResponse, accountResponse, centerResponse] = await Promise.all(requests);
+            setReport(reportResponse?.data || { rows: [], summary: {} });
+            if (accountResponse) setAccounts((accountResponse.data || []).filter((account) => account.is_active && ["revenue", "cost", "expense"].includes(account.account_type)));
+            if (centerResponse) setCostCenters(centerResponse.data || []);
+        } catch (error) { showBudgetError(error); }
+        finally { setLoading(false); }
+    };
+    useEffect(() => { load({ refreshCatalogs: true }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    const changePeriod = (value) => { if (value) { setPeriod(value); load({ nextPeriod: value }); } };
+    const changeView = (value) => { setView(value); setEditor(null); load({ nextView: value }); };
+    const changeDimension = (value) => { const next = value || "all"; setDimension(next); load({ nextDimension: next }); };
+    const openEditor = (row = null) => {
+        setEditor(row || {});
+        form.setFieldsValue({ chart_account_id: row?.chart_account?.id, cost_center_id: row ? row.cost_center?.id : dimension === "all" ? undefined : dimension, amount: row?.budget, alert_threshold_percent: row?.alert_threshold_percent ?? 10 });
+    };
+    const openAnnualEditor = (row = null) => {
+        setEditor({ annual: true, row });
+        form.setFieldsValue({ chart_account_id: row?.chart_account?.id, cost_center_id: row ? row.cost_center?.id : dimension === "all" ? undefined : dimension, annual_amount: row?.budget, alert_threshold_percent: row?.months?.find(Boolean)?.alert_threshold_percent ?? 10 });
+    };
+    const save = async () => {
+        const values = await form.validateFields();
+        setSaving(true);
+        try {
+            if (editor?.annual) await accountingService.distributeAnnualBudget({ year: period.year(), ...values });
+            else await accountingService.saveBudgets({ year: period.year(), month: period.month() + 1, items: [values] });
+            toast.success(t("accounting.budget_saved"));
+            setEditor(null);
+            const nextDimension = values.cost_center_id || "all";
+            setDimension(nextDimension);
+            await load({ nextDimension });
+        } catch (error) { if (!error?.errorFields) showBudgetError(error); }
+        finally { setSaving(false); }
+    };
+    const copyPreviousYear = async () => {
+        setSaving(true);
+        try {
+            const response = await accountingService.copyAnnualBudget({ source_year: period.year() - 1, target_year: period.year(), cost_center_id: dimension });
+            toast.success(t("accounting.budget_copy_success", { copied: response?.data?.copied || 0, skipped: response?.data?.skipped || 0 }));
+            await load();
+        } catch (error) { showBudgetError(error); }
+        finally { setSaving(false); }
+    };
+    const remove = async (id) => {
+        try { await accountingService.deleteBudget(id); toast.success(t("accounting.budget_deleted")); await load(); }
+        catch (error) { showBudgetError(error); }
+    };
+    const statusTag = (status) => status === "behind" ? <Tag color="orange">{t("accounting.budget_status_behind")}</Tag> : status === "over" ? <Tag color="red">{t("accounting.budget_status_over")}</Tag> : <Tag color="green">{t("accounting.budget_status_on_track")}</Tag>;
+    const summary = report.summary || {};
+
+    return <>
+        <AccountingSectionGuide sectionKey="budgets" title={t("accounting.guide_budgets_title")} summary={t("accounting.tab_budgets_caption")} steps={[t("accounting.guide_budgets_step_1"), t("accounting.guide_budgets_step_2"), t("accounting.guide_budgets_step_3")]} result={t("accounting.guide_budgets_result")} concepts={[{ label: t("accounting.budget_variance"), help: t("accounting.budget_variance_help") }, { label: t("accounting.budget_threshold"), help: t("accounting.budget_threshold_help") }]} />
+        <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4"><div className="flex flex-col sm:flex-row sm:items-center gap-3"><Select value={view} onChange={changeView} className="w-full sm:w-40" options={[{ value: "month", label: t("accounting.budget_monthly_view") }, { value: "year", label: t("accounting.budget_annual_view") }]} /><DatePicker picker={view === "year" ? "year" : "month"} value={period} onChange={changePeriod} allowClear={false} className="w-full sm:w-auto" /><Select value={dimension} onChange={changeDimension} className="w-full sm:w-64" options={[{ value: "all", label: t("accounting.budget_company_wide") }, ...costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))]} />{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => view === "year" ? openAnnualEditor() : openEditor()}>{view === "year" ? t("accounting.budget_distribute") : t("accounting.budget_new")}</Button>}{canEdit && view === "year" && <Popconfirm title={t("accounting.budget_copy_confirm", { year: period.year() - 1 })} onConfirm={copyPreviousYear}><Button loading={saving}>{t("accounting.budget_copy_previous")}</Button></Popconfirm>}</div></Card>
+        <Row gutter={[16, 16]} className="mb-4"><Col xs={24} sm={12} lg={6}><StatCard title={t("accounting.budget_planned_revenue")} value={summary.planned_revenue || 0} formatter={formatCurrency} /></Col><Col xs={24} sm={12} lg={6}><StatCard title={t("accounting.budget_actual_revenue")} value={summary.actual_revenue || 0} formatter={formatCurrency} /></Col><Col xs={24} sm={12} lg={6}><StatCard title={t("accounting.budget_planned_spend")} value={summary.planned_spend || 0} formatter={formatCurrency} /></Col><Col xs={24} sm={12} lg={6}><StatCard title={t("accounting.budget_actual_spend")} value={summary.actual_spend || 0} formatter={formatCurrency} /></Col></Row>
+        {summary.alert_count > 0 && <Alert className="dark-alert dark-alert-amber mb-4" type="warning" showIcon message={t("accounting.budget_alert_banner", { count: summary.alert_count })} />}
+        <Table className="module-dark-table" loading={loading} rowKey={(row) => row.id || `${row.chart_account.id}:${row.cost_center?.id || "all"}`} dataSource={report.rows || []} scroll={{ x: view === "year" ? 2200 : 1050 }} pagination={{ pageSize: 15 }} locale={{ emptyText: <EmptyState compact title={t("accounting.empty_budgets_title")} subtitle={t("accounting.empty_budgets_help")} action={canEdit ? <Button type="primary" icon={<PlusOutlined />} onClick={() => view === "year" ? openAnnualEditor() : openEditor()}>{view === "year" ? t("accounting.budget_distribute") : t("accounting.budget_new")}</Button> : null} /> }} columns={view === "year" ? [
+            { title: t("accounting.col_account"), fixed: "left", width: 220, render: (_, row) => `${row.chart_account.code} · ${row.chart_account.name}` },
+            { title: t("accounting.budget_annual_total"), dataIndex: "budget", align: "right", width: 140, render: formatCurrency },
+            { title: t("accounting.budget_actual"), dataIndex: "actual", align: "right", width: 140, render: formatCurrency },
+            { title: t("accounting.budget_variance"), dataIndex: "variance", align: "right", width: 140, render: formatCurrency },
+            ...Array.from({ length: 12 }, (_, index) => ({ title: dayjs().month(index).format("MMM"), width: 135, render: (_, row) => { const item = row.months[index]; return item ? <Tooltip title={`${t("accounting.budget_actual")}: ${formatCurrency(item.actual)}`}><span className={item.alert ? "text-red-500" : ""}>{formatCurrency(item.budget)}{item.alert ? " ⚠" : ""}</span></Tooltip> : "—"; } })),
+            ...(canEdit ? [{ title: t("common.actions"), fixed: "right", width: 100, render: (_, row) => <Button size="small" onClick={() => openAnnualEditor(row)}>{t("common.edit")}</Button> }] : []),
+        ] : [
+            { title: t("accounting.col_account"), render: (_, row) => `${row.chart_account.code} · ${row.chart_account.name}` },
+            { title: t("accounting.cost_center"), render: (_, row) => row.cost_center ? `${row.cost_center.code} · ${row.cost_center.name}` : t("accounting.budget_company_wide") },
+            { title: t("accounting.budget_amount"), dataIndex: "budget", align: "right", render: formatCurrency },
+            { title: t("accounting.budget_actual"), dataIndex: "actual", align: "right", render: formatCurrency },
+            { title: t("accounting.budget_variance"), dataIndex: "variance", align: "right", render: formatCurrency },
+            { title: t("accounting.budget_execution"), width: 150, render: (_, row) => <Progress percent={Math.max(0, Math.min(100, row.achievement_percent ?? 0))} size="small" status={row.alert ? "exception" : "normal"} format={() => row.achievement_percent == null ? "—" : `${row.achievement_percent}%`} /> },
+            { title: t("accounting.col_status"), dataIndex: "status", render: statusTag },
+            ...(canEdit ? [{ title: t("common.actions"), width: 150, render: (_, row) => <div className="flex gap-2"><Button size="small" onClick={() => openEditor(row)}>{t("common.edit")}</Button><Popconfirm title={t("accounting.budget_delete_confirm")} onConfirm={() => remove(row.id)}><Button size="small" danger>{t("common.delete")}</Button></Popconfirm></div> }] : []),
+        ]} />
+        <Modal className="accounting-modal" open={Boolean(editor)} title={editor?.annual ? t("accounting.budget_distribute") : editor?.id ? t("accounting.budget_edit") : t("accounting.budget_new")} onCancel={() => setEditor(null)} onOk={save} confirmLoading={saving} destroyOnHidden><Alert className="dark-alert dark-alert-purple mb-4" type="info" showIcon message={editor?.annual ? t("accounting.budget_annual_form_help") : t("accounting.budget_form_help")} /><Form form={form} layout="vertical"><Form.Item name="chart_account_id" label={t("accounting.col_account")} rules={[{ required: true }]}><Select disabled={Boolean(editor?.id || editor?.row)} showSearch optionFilterProp="label" options={accounts.map((account) => ({ value: account._id, label: `${account.code} · ${account.name}` }))} /></Form.Item><Form.Item name="cost_center_id" label={t("accounting.cost_center_optional")} extra={t("accounting.budget_global_help")}><Select disabled={Boolean(editor?.id || editor?.row)} allowClear showSearch optionFilterProp="label" options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} /></Form.Item>{editor?.annual ? <Form.Item name="annual_amount" label={t("accounting.budget_annual_amount")} rules={[{ required: true }]}><InputNumber min={0} precision={2} className="w-full" /></Form.Item> : <Form.Item name="amount" label={t("accounting.budget_amount")} rules={[{ required: true }]}><InputNumber min={0} precision={2} className="w-full" /></Form.Item>}<Form.Item name="alert_threshold_percent" label={t("accounting.budget_threshold")} extra={t("accounting.budget_threshold_help")} rules={[{ required: true }]}><InputNumber min={0} max={1000} precision={2} addonAfter="%" className="w-full" /></Form.Item></Form></Modal>
+    </>;
+};
+
 const TrialBalanceTab = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -2095,6 +2310,7 @@ const Accounting = () => {
         { key: "third_parties", label: tabLabel(<TeamOutlined />, "accounting.tab_third_parties"), children: <ThirdPartyLedgerTab /> },
         { key: "cost_centers", label: tabLabel(<PartitionOutlined />, "accounting.tab_cost_centers"), children: <CostCentersTab /> },
         { key: "recurring_expenses", label: tabLabel(<ClockCircleOutlined />, "accounting.tab_recurring_expenses"), children: <RecurringExpensesTab /> },
+        { key: "budgets", label: tabLabel(<BarChartOutlined />, "accounting.tab_budgets"), children: <BudgetsTab /> },
         { key: "trial_balance", label: tabLabel(<CalculatorOutlined />, "accounting.tab_trial_balance"), children: <TrialBalanceTab /> },
         { key: "periods", label: tabLabel(<LockOutlined />, "accounting.tab_periods"), children: <PeriodsTab /> },
         { key: "statements", label: tabLabel(<BarChartOutlined />, "accounting.tab_financial_statements"), children: <FinancialStatementsTab /> },

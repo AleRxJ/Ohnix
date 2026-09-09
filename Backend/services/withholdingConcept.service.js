@@ -7,7 +7,7 @@ const round2 = (value) => Number(Number(value).toFixed(2));
 
 const parseDate = (value, field) => {
     const date = new Date(value);
-    if (!value || Number.isNaN(date.getTime())) throw new ApiError(400, `${field} no es una fecha válida.`);
+    if (!value || Number.isNaN(date.getTime())) throw new ApiError(400, `${field} is not a valid date.`, [{ field }], "", "withholding_date_invalid");
     return date;
 };
 
@@ -53,9 +53,9 @@ export const buildPurchaseRetentionSnapshots = async (db, { accountId, conceptId
             OR: [{ effectiveTo: null }, { effectiveTo: { gte: transactionDate } }],
         },
     });
-    if (concepts.length !== ids.length) throw new ApiError(400, "Uno o más conceptos de retención no existen o no están vigentes para la fecha de la compra.");
+    if (concepts.length !== ids.length) throw new ApiError(400, "One or more withholding concepts are unavailable for the purchase date.", [], "", "withholding_concepts_unavailable");
     if (new Set(concepts.map((concept) => concept.code)).size !== concepts.length) {
-        throw new ApiError(400, "No se pueden aplicar dos versiones del mismo concepto a una compra.");
+        throw new ApiError(400, "Two versions of the same withholding concept cannot be applied.", [], "", "withholding_concept_versions_duplicate");
     }
     return concepts.map((concept) => {
         const calculation = calculateWithholdingAmount(concept, totals);
@@ -117,18 +117,18 @@ export const createWithholdingConcept = async (accountId, payload) => {
     const effectiveFrom = parseDate(payload.effective_from, "effective_from");
     const effectiveTo = payload.effective_to ? parseDate(payload.effective_to, "effective_to") : null;
 
-    if (!code || !name) throw new ApiError(400, "Código y nombre son obligatorios.");
-    if (!TAX_TYPES.includes(taxType)) throw new ApiError(400, "Tipo de retención inválido.");
-    if (!BASE_TYPES.includes(baseType)) throw new ApiError(400, "Base de retención inválida.");
-    if (!Number.isFinite(ratePercent) || ratePercent <= 0 || ratePercent > 100) throw new ApiError(400, "La tarifa debe ser mayor que 0 y menor o igual que 100%.");
-    if (!Number.isFinite(minimumBaseAmount) || minimumBaseAmount < 0) throw new ApiError(400, "La base mínima no puede ser negativa.");
-    if (effectiveTo && effectiveTo < effectiveFrom) throw new ApiError(400, "effective_to no puede ser anterior a effective_from.");
-    if (taxType === "ica" && !String(payload.municipality_code || "").trim()) throw new ApiError(400, "El municipio es obligatorio para ReteICA.");
+    if (!code || !name) throw new ApiError(400, "Withholding code and name are required.", [], "", "withholding_fields_required");
+    if (!TAX_TYPES.includes(taxType)) throw new ApiError(400, "The withholding tax type is invalid.", [], "", "withholding_tax_type_invalid");
+    if (!BASE_TYPES.includes(baseType)) throw new ApiError(400, "The withholding base type is invalid.", [], "", "withholding_base_type_invalid");
+    if (!Number.isFinite(ratePercent) || ratePercent <= 0 || ratePercent > 100) throw new ApiError(400, "The withholding rate must be greater than zero and at most 100%.", [], "", "withholding_rate_invalid");
+    if (!Number.isFinite(minimumBaseAmount) || minimumBaseAmount < 0) throw new ApiError(400, "The minimum withholding base cannot be negative.", [], "", "withholding_minimum_base_invalid");
+    if (effectiveTo && effectiveTo < effectiveFrom) throw new ApiError(400, "The end date cannot precede the start date.", [], "", "withholding_date_range_invalid");
+    if (taxType === "ica" && !String(payload.municipality_code || "").trim()) throw new ApiError(400, "A municipality is required for ICA withholding.", [], "", "withholding_municipality_required");
 
     const chartAccount = await prisma.chartAccount.findFirst({
         where: { id: payload.chart_account_id, createdById: accountId, accountType: "liability", isActive: true },
     });
-    if (!chartAccount) throw new ApiError(400, "La cuenta contable debe ser un pasivo activo del mismo tercero contable.");
+    if (!chartAccount) throw new ApiError(400, "The chart account must be an active liability owned by the company.", [], "", "withholding_chart_account_invalid");
 
     // Two effective versions of the same code may not cover the same day;
     // otherwise a purchase would have no deterministic rate to freeze.
@@ -141,7 +141,7 @@ export const createWithholdingConcept = async (accountId, payload) => {
         },
         select: { id: true },
     });
-    if (overlap) throw new ApiError(409, `El concepto ${code} ya tiene una versión vigente en ese intervalo.`);
+    if (overlap) throw new ApiError(409, `Withholding concept ${code} already has an effective version in that date range.`, [], "", "withholding_effective_range_overlap");
 
     const created = await prisma.withholdingConcept.create({
         data: {
@@ -157,7 +157,7 @@ export const createWithholdingConcept = async (accountId, payload) => {
 
 export const setWithholdingConceptActive = async (accountId, id, isActive) => {
     const concept = await prisma.withholdingConcept.findFirst({ where: { id, accountId } });
-    if (!concept) throw new ApiError(404, "Concepto de retención no encontrado.");
+    if (!concept) throw new ApiError(404, "Withholding concept not found.", [], "", "withholding_concept_not_found");
     const updated = await prisma.withholdingConcept.update({
         where: { id }, data: { isActive: isActive === true },
         include: { chartAccount: { select: { id: true, code: true, name: true } } },
@@ -170,15 +170,15 @@ export const previewWithholdings = async (accountId, payload) => {
     const subtotal = Number(payload.subtotal);
     const vat = Number(payload.vat || 0);
     if (!Number.isFinite(subtotal) || subtotal < 0 || !Number.isFinite(vat) || vat < 0) {
-        throw new ApiError(400, "Subtotal e IVA deben ser valores no negativos.");
+        throw new ApiError(400, "Subtotal and VAT must be non-negative values.", [], "", "withholding_preview_amounts_invalid");
     }
     const ids = [...new Set(Array.isArray(payload.concept_ids) ? payload.concept_ids : [])];
-    if (ids.length === 0) throw new ApiError(400, "Selecciona al menos un concepto de retención.");
+    if (ids.length === 0) throw new ApiError(400, "Select at least one withholding concept.", [], "", "withholding_concept_required");
     const concepts = await prisma.withholdingConcept.findMany({
         where: { id: { in: ids }, accountId, isActive: true, effectiveFrom: { lte: at }, OR: [{ effectiveTo: null }, { effectiveTo: { gte: at } }] },
         include: { chartAccount: { select: { id: true, code: true, name: true } } },
     });
-    if (concepts.length !== ids.length) throw new ApiError(400, "Uno o más conceptos no existen o no están vigentes para la fecha indicada.");
+    if (concepts.length !== ids.length) throw new ApiError(400, "One or more withholding concepts are unavailable for the selected date.", [], "", "withholding_concepts_unavailable");
     const items = concepts.map((concept) => ({ ...serialize(concept), ...calculateWithholdingAmount(concept, { subtotal, vat }) }));
     const withheldTotal = round2(items.reduce((sum, item) => sum + item.withheldAmount, 0));
     return { subtotal: round2(subtotal), vat: round2(vat), gross_total: round2(subtotal + vat), withheld_total: withheldTotal, payable_total: round2(subtotal + vat - withheldTotal), items };

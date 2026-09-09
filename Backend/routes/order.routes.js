@@ -24,6 +24,7 @@ import { isAdmin } from "../middleware/admin.middleware.js";
 import {
     enforceEntityLimit,
     enforceMonthlyLimit,
+    requireActiveSubscription,
 } from "../middleware/pricing.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
@@ -45,16 +46,23 @@ router.route("/:id/return-preview").get(requireModulePermission("orders", "view"
 router.route("/:id/returns").post(requireModulePermission("orders", "edit"), idempotent("order.return"), processOrderReturn);
 router.route("/:id/shipping-payload").get(requireModulePermission("orders", "view"), getOrderShippingPayload);
 router.route("/:id/invoice").get(requireModulePermission("orders", "view"), generateInvoice);
+// GET routes here are deliberately never gated by requireActiveSubscription:
+// an already-issued DIAN invoice is the customer's own tax record, and they
+// must be able to view/download it even while their Ohnix subscription is
+// paused for non-payment (see requireActiveSubscription's comment). Only the
+// write actions below - which create/resend billable DIAN documents - are
+// gated.
 router.route("/:id/electronic-invoice").get(requireModulePermission("orders", "view"), getOrderElectronicInvoice);
 router.route("/:id/electronic-invoice/pdf").get(requireModulePermission("orders", "view"), downloadOrderElectronicInvoicePdf);
-router.route("/:id/electronic-invoice/issue").post(requireModulePermission("orders", "edit"), issueOrderElectronicInvoice);
-router.route("/:id/electronic-invoice/sync").post(requireModulePermission("orders", "edit"), syncOrderElectronicInvoice);
+router.route("/:id/electronic-invoice/issue").post(requireModulePermission("orders", "edit"), requireActiveSubscription, issueOrderElectronicInvoice);
+router.route("/:id/electronic-invoice/sync").post(requireModulePermission("orders", "edit"), requireActiveSubscription, syncOrderElectronicInvoice);
 router.route("/:id/electronic-invoice/credit-notes")
     .get(requireModulePermission("orders", "view"), getOrderCreditNotes)
-    .post(requireModulePermission("orders", "edit"), idempotent("credit-note.issue"), issueOrderCreditNote);
+    .post(requireModulePermission("orders", "edit"), requireActiveSubscription, idempotent("credit-note.issue"), issueOrderCreditNote);
 router.post(
     "/:id/electronic-invoice/credit-notes/:creditNoteId/retry-local-effect",
     requireModulePermission("orders", "edit"),
+    requireActiveSubscription,
     idempotent("credit-note.local-effect"),
     retryOrderCreditNoteLocalEffect
 );

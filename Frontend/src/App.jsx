@@ -155,6 +155,8 @@ const EpaycoResponseRedirect = lazy(() => import("./pages/EpaycoResponseRedirect
 const ElectronicInvoices = lazy(() => import("./pages/ElectronicInvoices"));
 const PurchaseSupportDocuments = lazy(() => import("./pages/PurchaseSupportDocuments"));
 const FiscalSetup = lazy(() => import("./pages/FiscalSetup"));
+const CertificateOrderCheckout = lazy(() => import("./pages/CertificateOrderCheckout"));
+const CertificateOrderPaymentResponse = lazy(() => import("./pages/CertificateOrderPaymentResponse"));
 const Team = lazy(() => import("./pages/Team"));
 const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
 
@@ -374,6 +376,8 @@ function App() {
                                 <Route path="finance" element={<RequireFinanceAccess><Finance /></RequireFinanceAccess>} />
                                 <Route path="accounting" element={<RequireAccountingAccess><Accounting /></RequireAccountingAccess>} />
                                 <Route path="fiscal-setup" element={<RequireFiscalSetupAccess><FiscalSetup /></RequireFiscalSetupAccess>} />
+                                <Route path="fiscal-setup/certificate-checkout" element={<RequireFiscalSetupAccess><CertificateOrderCheckout /></RequireFiscalSetupAccess>} />
+                                <Route path="fiscal-setup/certificate-payment-response" element={<RequireFiscalSetupAccess><CertificateOrderPaymentResponse /></RequireFiscalSetupAccess>} />
                                 <Route path="team" element={<Team />} />
                                 <Route path="billing" element={<RequireBillingAccess><Billing /></RequireBillingAccess>} />
                                 {/* Same owner-only gate as Billing (see RequireBillingAccess's comment) -

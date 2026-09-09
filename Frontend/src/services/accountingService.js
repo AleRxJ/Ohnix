@@ -53,6 +53,36 @@ export const accountingService = {
         return response.data;
     },
 
+    async getBudgetReport({ year, month, costCenterId } = {}) {
+        const response = await api.get("/accounting/budgets", { params: { year, month, ...(costCenterId ? { cost_center_id: costCenterId } : {}) } });
+        return response.data;
+    },
+
+    async saveBudgets({ year, month, items }) {
+        const response = await api.put("/accounting/budgets", { year, month, items });
+        return response.data;
+    },
+
+    async deleteBudget(id) {
+        const response = await api.delete(`/accounting/budgets/${id}`);
+        return response.data;
+    },
+
+    async getAnnualBudgetReport({ year, costCenterId } = {}) {
+        const response = await api.get("/accounting/budgets-annual", { params: { year, ...(costCenterId ? { cost_center_id: costCenterId } : {}) } });
+        return response.data;
+    },
+
+    async distributeAnnualBudget(payload) {
+        const response = await api.post("/accounting/budgets-annual/distribute", payload);
+        return response.data;
+    },
+
+    async copyAnnualBudget(payload) {
+        const response = await api.post("/accounting/budgets-annual/copy", payload);
+        return response.data;
+    },
+
     async listChartOfAccounts() {
         const response = await api.get("/accounting/chart-of-accounts");
         return response.data;
@@ -181,12 +211,12 @@ export const accountingService = {
         return response.data;
     },
 
-    async downloadWithholdingCertificate(supplierId, year, document) {
-        const response = await api.get(`/accounting/reports/withholdings/certificates/${encodeURIComponent(supplierId)}/pdf`, { params: { year }, responseType: "blob" });
+    async downloadWithholdingCertificate(supplierId, year, document, language = "es") {
+        const response = await api.get(`/accounting/reports/withholdings/certificates/${encodeURIComponent(supplierId)}/pdf`, { params: { year, language }, responseType: "blob" });
         const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
         const link = window.document.createElement("a");
         link.href = url;
-        link.download = `certificado-retenciones-${document || supplierId}-${year}.pdf`;
+        link.download = `${language === "en" ? "withholding-certificate" : "certificado-retenciones"}-${document || supplierId}-${year}.pdf`;
         window.document.body.appendChild(link);
         link.click();
         window.document.body.removeChild(link);

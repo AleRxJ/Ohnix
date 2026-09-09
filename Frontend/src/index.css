@@ -960,6 +960,21 @@ body {
   background: rgba(41, 216, 213, 0.08) !important;
 }
 
+/* Marks whichever history row's run is the one currently shown above the
+   table (DianHabilitacionPanel.jsx) - a stronger, sticky version of the
+   plain hover tint so it stays visible after the pointer moves away,
+   answering "which one am I looking at" without relying on scroll position
+   or memory of what was just clicked. The accent bar goes on :first-child
+   only - putting the inset shadow on every <td> (as the tint does, which is
+   meant to span the row) drew one broken segment per column instead of a
+   single clean line down the row's left edge. */
+.module-dark-table .dian-run-row-active > td {
+  background: rgba(41, 216, 213, 0.14) !important;
+}
+.module-dark-table .dian-run-row-active > td:first-child {
+  box-shadow: inset 3px 0 0 0 #29d8d5;
+}
+
 /* Table.Summary renders into a <tfoot>, which module-dark-table's
    .ant-table-tbody rules above don't reach - antd paints its own opaque
    white background directly on the <tfoot> itself (not just its cells), so
@@ -1020,6 +1035,17 @@ body {
 .dashboard-app .ant-typography,
 .dashboard-app .ant-form-item-label > label {
   color: var(--ohnix-text-soft) !important;
+}
+
+/* Form.Item's `tooltip` prop renders its help icon in antd's light-theme
+   default (near-black, ~45% opacity) - invisible against this app's dark
+   backgrounds since there's no global antd theme override anywhere. Tinted
+   with the Ohnix accent (matches the section-header icons alongside it)
+   rather than a flat gray, so it reads as part of the UI, not a leftover
+   default. */
+.dashboard-app .ant-form-item-tooltip {
+  color: var(--ohnix-accent) !important;
+  opacity: 0.85;
 }
 
 /* antd's Statistic only themes its title via the rule above by default -
@@ -2276,6 +2302,103 @@ textarea.ant-input[disabled] {
   color: #29d8d5 !important;
 }
 
+/* antd's Popconfirm (used across ~26 files for "are you sure?" prompts, e.g.
+   deleting a row or starting a DIAN test-matrix run) renders into its own
+   portal on <body>, same as Modal/Drawer above, but with none of its own
+   classes shared with them - so it was falling back entirely to antd's
+   stock light theme (white card, default blue OK button, orange warning
+   icon) against Ohnix's dark dashboard. Scoped to .ant-popconfirm (not the
+   bare .ant-popover it's built on) so a plain Popover/Tooltip elsewhere is
+   untouched. Beyond just recoloring the stock parts, this gives it the same
+   "wow" signature as the rest of the app - the teal glow-badge icon treatment
+   from DianHabilitacionPanel's card headers (h-10 w-10 rounded-2xl, teal-on-
+   teal border+bg, external glow) and a top gradient accent bar, instead of
+   reading as a reskinned default popup. No call site passes Popconfirm its
+   own `icon` prop, so recoloring the default (ExclamationCircleFilled) is
+   safe everywhere; a destructive confirmation still reads as "danger" from
+   its dangerous OK button (red, below) - the icon itself stays brand-teal
+   rather than trying to guess intent per call site. */
+.ant-popover.ant-popconfirm {
+  --antd-arrow-background-color: var(--ohnix-surface-card) !important;
+}
+.ant-popconfirm .ant-popover-inner {
+  background: var(--ohnix-surface-card) !important;
+  border: 1px solid var(--ohnix-line-4) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--ohnix-shadow-elevated), 0 0 32px rgba(41, 216, 213, 0.12) !important;
+  overflow: hidden;
+  position: relative;
+  padding-top: 3px !important;
+  /* antd never caps a Popconfirm's width - left alone, its description
+     paragraph just expands sideways instead of wrapping, so a normal-length
+     confirmation reads as one very wide, thin strip instead of a compact
+     card. Capping it here forces the same wrap-into-a-block shape as any
+     other confirm dialog in the app. */
+  max-width: min(360px, calc(100vw - 32px));
+}
+.ant-popconfirm .ant-popover-inner::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, #29d8d5, #44f3f0, #7c6af7);
+}
+.ant-popconfirm .ant-popconfirm-message {
+  gap: 12px;
+}
+.ant-popconfirm .ant-popconfirm-message-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  margin-top: -2px;
+  border-radius: 10px;
+  background: rgba(41, 216, 213, 0.12);
+  border: 1px solid rgba(41, 216, 213, 0.3);
+  box-shadow: 0 0 14px rgba(41, 216, 213, 0.18);
+}
+.ant-popconfirm .ant-popconfirm-message-icon .anticon {
+  color: #44f3f0 !important;
+  font-size: 15px;
+}
+.ant-popconfirm .ant-popconfirm-title {
+  color: var(--ohnix-text-primary) !important;
+  font-weight: 600;
+}
+.ant-popconfirm .ant-popconfirm-description {
+  color: var(--ohnix-text-muted) !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-default {
+  background: var(--ohnix-line-1) !important;
+  border-color: var(--ohnix-line-6) !important;
+  color: var(--ohnix-text-table-cell) !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-default:hover {
+  border-color: rgba(41, 216, 213, 0.5) !important;
+  color: #44f3f0 !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary {
+  background: linear-gradient(135deg, #29d8d5, #44f3f0) !important;
+  border-color: transparent !important;
+  color: #031416 !important;
+  font-weight: 700;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 0 20px rgba(41, 216, 213, 0.28) !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary.ant-btn-dangerous {
+  background: var(--ohnix-status-rose) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary.ant-btn-dangerous:hover {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 0 20px rgba(251, 113, 133, 0.28) !important;
+}
+
 .dark-alert-purple.ant-alert {
   border: 1px solid rgba(124, 106, 247, 0.25) !important;
   background: rgba(124, 106, 247, 0.1) !important;
@@ -2654,6 +2777,24 @@ textarea.ant-input[disabled] {
     color: var(--ohnix-text-primary);
 }
 .firmapass-detail-modal .ant-modal-body {
+    padding: 24px;
+}
+
+.habilitacion-where-modal .ant-modal-content {
+    background: linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
+    border: 1px solid var(--ohnix-line-4);
+    border-radius: 24px;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+}
+.habilitacion-where-modal .ant-modal-header {
+    background: transparent;
+    border-bottom: 1px solid var(--ohnix-line-3);
+}
+.habilitacion-where-modal .ant-modal-title,
+.habilitacion-where-modal .ant-modal-close {
+    color: var(--ohnix-text-primary);
+}
+.habilitacion-where-modal .ant-modal-body {
     padding: 24px;
 }
 

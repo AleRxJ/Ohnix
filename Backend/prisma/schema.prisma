@@ -249,46 +249,49 @@ model User {
   subscription      Subscription?
   company           Company?      @relation(fields: [companyId], references: [id])
 
-  categoriesCreated               Category[]              @relation("CategoryCreatedBy")
-  categoriesUpdated               Category[]              @relation("CategoryUpdatedBy")
-  unitsCreated                    Unit[]                  @relation("UnitCreatedBy")
-  unitsUpdated                    Unit[]                  @relation("UnitUpdatedBy")
-  productsCreated                 Product[]               @relation("ProductCreatedBy")
-  productsUpdated                 Product[]               @relation("ProductUpdatedBy")
+  categoriesCreated               Category[]                 @relation("CategoryCreatedBy")
+  categoriesUpdated               Category[]                 @relation("CategoryUpdatedBy")
+  unitsCreated                    Unit[]                     @relation("UnitCreatedBy")
+  unitsUpdated                    Unit[]                     @relation("UnitUpdatedBy")
+  productsCreated                 Product[]                  @relation("ProductCreatedBy")
+  productsUpdated                 Product[]                  @relation("ProductUpdatedBy")
   customers                       Customer[]
   suppliers                       Supplier[]
-  purchasesCreated                Purchase[]              @relation("PurchaseCreatedBy")
-  purchasesUpdated                Purchase[]              @relation("PurchaseUpdatedBy")
-  quotationsCreated               PurchaseQuotation[]     @relation("QuotationCreatedBy")
-  quotationsUpdated               PurchaseQuotation[]     @relation("QuotationUpdatedBy")
-  salesQuotationsCreated          SalesQuotation[]        @relation("SalesQuotationCreatedBy")
-  salesQuotationsUpdated          SalesQuotation[]        @relation("SalesQuotationUpdatedBy")
-  ordersCreated                   Order[]                 @relation("OrderCreatedBy")
-  ordersUpdated                   Order[]                 @relation("OrderUpdatedBy")
+  purchasesCreated                Purchase[]                 @relation("PurchaseCreatedBy")
+  purchasesUpdated                Purchase[]                 @relation("PurchaseUpdatedBy")
+  quotationsCreated               PurchaseQuotation[]        @relation("QuotationCreatedBy")
+  quotationsUpdated               PurchaseQuotation[]        @relation("QuotationUpdatedBy")
+  salesQuotationsCreated          SalesQuotation[]           @relation("SalesQuotationCreatedBy")
+  salesQuotationsUpdated          SalesQuotation[]           @relation("SalesQuotationUpdatedBy")
+  ordersCreated                   Order[]                    @relation("OrderCreatedBy")
+  ordersUpdated                   Order[]                    @relation("OrderUpdatedBy")
   planUpgradeRequests             PlanUpgradeRequest[]
   apiKeys                         ApiKey[]
   integrationConnections          IntegrationConnection[]
   webhookEndpoints                WebhookEndpoint[]
-  stockMovementsCreated           StockMovement[]         @relation("StockMovementCreatedBy")
+  stockMovementsCreated           StockMovement[]            @relation("StockMovementCreatedBy")
   cashAccountsCreated             CashAccount[]
   cashMovementsCreated            CashMovement[]
   orderPaymentsRecorded           OrderPayment[]
   purchasePaymentsRecorded        PurchasePayment[]
   bankStatementEntriesAdded       BankStatementEntry[]
   chartAccountsCreated            ChartAccount[]
-  accountingPeriodsCreated        AccountingPeriod[]      @relation("AccountingPeriodCreatedBy")
-  accountingPeriodsClosed         AccountingPeriod[]      @relation("AccountingPeriodClosedBy")
+  accountingPeriodsCreated        AccountingPeriod[]         @relation("AccountingPeriodCreatedBy")
+  accountingPeriodsClosed         AccountingPeriod[]         @relation("AccountingPeriodClosedBy")
   journalEntriesCreated           JournalEntry[]
-  accountingConfigAuditsOwned     AccountingConfigAudit[] @relation("AccountingConfigAuditAccount")
-  costCentersOwned                CostCenter[]            @relation("CostCenterAccount")
+  accountingConfigAuditsOwned     AccountingConfigAudit[]    @relation("AccountingConfigAuditAccount")
+  costCentersOwned                CostCenter[]               @relation("CostCenterAccount")
   recurringExpenseTemplatesOwned  RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateAccount")
-  accountingConfigAuditsPerformed AccountingConfigAudit[] @relation("AccountingConfigAuditActor")
+  accountingBudgetsOwned          AccountingBudget[]         @relation("AccountingBudgetAccount")
+  accountingBudgetsCreated        AccountingBudget[]         @relation("AccountingBudgetCreatedBy")
+  accountingBudgetsUpdated        AccountingBudget[]         @relation("AccountingBudgetUpdatedBy")
+  accountingConfigAuditsPerformed AccountingConfigAudit[]    @relation("AccountingConfigAuditActor")
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
   // (starter/growth without a Team row) still need exactly one default
   // location - see PointOfSale below.
-  pointsOfSaleOwned               PointOfSale[]           @relation("PointOfSaleAccount")
-  stockTransfersRequested         StockTransfer[]         @relation("StockTransferRequestedBy")
+  pointsOfSaleOwned               PointOfSale[]              @relation("PointOfSaleAccount")
+  stockTransfersRequested         StockTransfer[]            @relation("StockTransferRequestedBy")
 
   // Teams: a user is either a team owner (ownedTeam), a member of exactly one
   // active team at a time (via TeamMember, enforced in team.service.js - not
@@ -305,6 +308,8 @@ model User {
   dianTestMatrixRunsRequested DianTestMatrixRun[]
 
   chatConversations ChatConversation[]
+
+  certificateOrdersRequested CertificateOrder[]
 
   @@map("users")
 }
@@ -430,6 +435,7 @@ model Company {
   purchaseSupportDocuments PurchaseSupportDocument[]
   apiKeys                  ApiKey[]
   dianTestMatrixRuns       DianTestMatrixRun[]
+  certificateOrders        CertificateOrder[]
 
   @@map("companies")
 }
@@ -514,6 +520,55 @@ model PlanUpgradeRequest {
 
   @@index([userId, status])
   @@map("plan_upgrade_requests")
+}
+
+// A one-off Viafirma digital-certificate purchase (1 or 2 years), gating
+// companySelf.controller.js#createMyViafirmaRequest per DIAN's requirement
+// that the certificate be paid for before a request can be submitted -
+// see certificateOrder.service.js#requireActiveCertificateEntitlement. Not
+// folded into PlanUpgradeRequest: that model is subscription-shaped
+// (currentPlan/targetPlan/admin review) and this is a standalone purchase
+// with no admin approval step, so most of its columns would sit unused.
+// Same ePayco checkout/webhook shape as PlanUpgradeRequest on purpose - see
+// services/certificateOrderPayment.service.js, which mirrors epayco.service.js.
+model CertificateOrder {
+  id                String   @id @default(cuid())
+  companyId         String   @map("company_id")
+  requestedByUserId String   @map("requested_by_user_id")
+  // Fixed at Viafirma's own certificate validity (see
+  // ViafirmaCertificateProvider - every profile issues a 730-day/2-year
+  // certificate regardless of what's paid for). A "1 año" purchase buys a
+  // shorter Ohnix-side entitlement window on top of the same 2-year
+  // certificate, not a technically different certificate - the customer
+  // must pay again after 1 year to keep using it, even though the
+  // underlying Viafirma certificate itself is still technically valid.
+  durationYears     Int      @map("duration_years")
+  amount            Int
+  currency          String   @default("COP")
+  paymentProvider   String?  @default("epayco") @map("payment_provider")
+  paymentSessionId  String?  @unique @map("payment_session_id")
+  // pending -> paid | rejected | failed | expired | cancelled | amount_mismatch
+  // Same vocabulary as PlanUpgradeRequest.paymentStatus/handleEpaycoConfirmation.
+  paymentStatus     String   @default("pending") @map("payment_status")
+  isTestPayment     Boolean? @map("is_test_payment")
+  paidAt            DateTime? @map("paid_at")
+  paidAmount        Int?     @map("paid_amount")
+  paidCurrency      String?  @map("paid_currency")
+  // The window during which createMyViafirmaRequest is allowed - starts at
+  // paidAt, ends durationYears later. Once entitlementEndsAt lapses, the
+  // company must create (and pay for) a new CertificateOrder before
+  // requesting another certificate ("si se le vence otra vez debería volver
+  // a salir para pagar y solicitar otro").
+  entitlementStartsAt DateTime? @map("entitlement_starts_at")
+  entitlementEndsAt   DateTime? @map("entitlement_ends_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  company         Company @relation(fields: [companyId], references: [id])
+  requestedByUser User    @relation(fields: [requestedByUserId], references: [id])
+
+  @@index([companyId, paymentStatus])
+  @@map("certificate_orders")
 }
 
 model Subscription {
@@ -1458,26 +1513,38 @@ model OrderDetail {
 }
 
 model ElectronicInvoice {
-  id             String                  @id @default(cuid())
-  orderId        String                  @unique @map("order_id")
-  companyId      String                  @map("company_id")
-  countryCode    String                  @map("country_code")
-  provider       String
-  status         ElectronicInvoiceStatus @default(draft)
-  externalId     String?                 @unique @map("external_id")
-  referenceCode  String                  @unique @map("reference_code")
-  invoiceNumber  String?                 @map("invoice_number")
-  cufe           String?
-  qrUrl          String?                 @map("qr_url") @db.Text
-  pdfUrl         String?                 @map("pdf_url") @db.Text
-  xmlUrl         String?                 @map("xml_url") @db.Text
-  rawRequest     Json?                   @map("raw_request")
-  rawResponse    Json?                   @map("raw_response")
-  fiscalSnapshot Json?                   @map("fiscal_snapshot")
-  errorMessage   String?                 @map("error_message") @db.Text
-  issuedAt       DateTime?               @map("issued_at")
-  createdAt      DateTime                @default(now()) @map("created_at")
-  updatedAt      DateTime                @updatedAt @map("updated_at")
+  id                    String                  @id @default(cuid())
+  orderId               String                  @unique @map("order_id")
+  companyId             String                  @map("company_id")
+  countryCode           String                  @map("country_code")
+  provider              String
+  status                ElectronicInvoiceStatus @default(draft)
+  externalId            String?                 @unique @map("external_id")
+  referenceCode         String                  @unique @map("reference_code")
+  invoiceNumber         String?                 @map("invoice_number")
+  cufe                  String?
+  qrUrl                 String?                 @map("qr_url") @db.Text
+  pdfUrl                String?                 @map("pdf_url") @db.Text
+  xmlUrl                String?                 @map("xml_url") @db.Text
+  rawRequest            Json?                   @map("raw_request")
+  rawResponse           Json?                   @map("raw_response")
+  fiscalSnapshot        Json?                   @map("fiscal_snapshot")
+  errorMessage          String?                 @map("error_message") @db.Text
+  // Which itcycle-api-dian Certificate actually signed this document -
+  // captured from that create call's own response (its certificateId/
+  // certificate.provider/certificate.certificateIdentifier, via that side's
+  // `include: { certificate: true }`). Only populated for provider "itcycle"
+  // - Factus/Alanube sign with their own infrastructure, not an Ohnix-held
+  // certificate. certificateIdentifier is the provider's own reference for
+  // THIS specific certificate (e.g. Viafirma's codRequest) - distinguishes
+  // two certificates from the same provider (e.g. after a renewal), which
+  // certificateProvider alone cannot.
+  certificateId         String?                 @map("certificate_id")
+  certificateProvider   String?                 @map("certificate_provider")
+  certificateIdentifier String?                 @map("certificate_identifier")
+  issuedAt              DateTime?               @map("issued_at")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
 
   order       Order                    @relation(fields: [orderId], references: [id])
   company     Company                  @relation(fields: [companyId], references: [id])
@@ -1518,6 +1585,10 @@ model ElectronicCreditNote {
   rawRequest            Json?                   @map("raw_request")
   rawResponse           Json?                   @map("raw_response")
   errorMessage          String?                 @map("error_message") @db.Text
+  // Same reasoning as ElectronicInvoice.certificateId/certificateProvider/certificateIdentifier.
+  certificateId         String?                 @map("certificate_id")
+  certificateProvider   String?                 @map("certificate_provider")
+  certificateIdentifier String?                 @map("certificate_identifier")
   // The DIAN document and its local inventory/accounting effect are two
   // distinct commits. Persist the second one's state so an accepted fiscal
   // note can never fail locally with only a console log as evidence.
@@ -1545,25 +1616,30 @@ model ElectronicCreditNote {
 /// `documentNumber`, not `invoiceNumber` - matches itcycle-api-dian's own
 /// SupportDocument.documentNumber field name.
 model PurchaseSupportDocument {
-  id             String                  @id @default(cuid())
-  purchaseId     String                  @unique @map("purchase_id")
-  companyId      String                  @map("company_id")
-  countryCode    String                  @map("country_code")
-  provider       String                  @default("itcycle")
-  status         ElectronicInvoiceStatus @default(draft)
-  externalId     String?                 @unique @map("external_id")
-  referenceCode  String                  @unique @map("reference_code")
-  documentNumber String?                 @map("document_number")
-  cufe           String?
-  pdfUrl         String?                 @map("pdf_url") @db.Text
-  xmlUrl         String?                 @map("xml_url") @db.Text
-  rawRequest     Json?                   @map("raw_request")
-  rawResponse    Json?                   @map("raw_response")
-  fiscalSnapshot Json?                   @map("fiscal_snapshot")
-  errorMessage   String?                 @map("error_message") @db.Text
-  issuedAt       DateTime?               @map("issued_at")
-  createdAt      DateTime                @default(now()) @map("created_at")
-  updatedAt      DateTime                @updatedAt @map("updated_at")
+  id                    String                  @id @default(cuid())
+  purchaseId            String                  @unique @map("purchase_id")
+  companyId             String                  @map("company_id")
+  countryCode           String                  @map("country_code")
+  provider              String                  @default("itcycle")
+  status                ElectronicInvoiceStatus @default(draft)
+  externalId            String?                 @unique @map("external_id")
+  referenceCode         String                  @unique @map("reference_code")
+  documentNumber        String?                 @map("document_number")
+  cufe                  String?
+  pdfUrl                String?                 @map("pdf_url") @db.Text
+  xmlUrl                String?                 @map("xml_url") @db.Text
+  rawRequest            Json?                   @map("raw_request")
+  rawResponse           Json?                   @map("raw_response")
+  fiscalSnapshot        Json?                   @map("fiscal_snapshot")
+  errorMessage          String?                 @map("error_message") @db.Text
+  // Same reasoning as ElectronicInvoice.certificateId/certificateProvider/
+  // certificateIdentifier - always populated here since PurchaseSupportDocument is itcycle-only.
+  certificateId         String?                 @map("certificate_id")
+  certificateProvider   String?                 @map("certificate_provider")
+  certificateIdentifier String?                 @map("certificate_identifier")
+  issuedAt              DateTime?               @map("issued_at")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
 
   purchase Purchase                       @relation(fields: [purchaseId], references: [id])
   company  Company                        @relation(fields: [companyId], references: [id])
@@ -1787,13 +1863,13 @@ model CashAccount {
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
-  pointOfSale      PointOfSale?         @relation(fields: [pointOfSaleId], references: [id])
-  chartAccount     ChartAccount?        @relation(fields: [chartAccountId], references: [id])
-  createdBy        User                 @relation(fields: [createdById], references: [id])
-  movements        CashMovement[]
-  orderPayments    OrderPayment[]
-  purchasePayments PurchasePayment[]
-  statementEntries BankStatementEntry[]
+  pointOfSale               PointOfSale?               @relation(fields: [pointOfSaleId], references: [id])
+  chartAccount              ChartAccount?              @relation(fields: [chartAccountId], references: [id])
+  createdBy                 User                       @relation(fields: [createdById], references: [id])
+  movements                 CashMovement[]
+  orderPayments             OrderPayment[]
+  purchasePayments          PurchasePayment[]
+  statementEntries          BankStatementEntry[]
   recurringExpenseTemplates RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateCashAccount")
 
   @@index([pointOfSaleId])
@@ -1956,14 +2032,15 @@ model ChartAccount {
   createdAt   DateTime              @default(now()) @map("created_at")
   updatedAt   DateTime              @updatedAt @map("updated_at")
 
-  parent              ChartAccount?              @relation("ChartAccountHierarchy", fields: [parentId], references: [id])
-  children            ChartAccount[]             @relation("ChartAccountHierarchy")
-  createdBy           User                       @relation(fields: [createdById], references: [id])
-  cashAccounts        CashAccount[]
-  journalEntryLines   JournalEntryLine[]
-  manualVoucherLines  ManualJournalVoucherLine[]
-  withholdingConcepts WithholdingConcept[]
-  purchaseRetentions  PurchaseRetention[]
+  parent                    ChartAccount?              @relation("ChartAccountHierarchy", fields: [parentId], references: [id])
+  children                  ChartAccount[]             @relation("ChartAccountHierarchy")
+  createdBy                 User                       @relation(fields: [createdById], references: [id])
+  cashAccounts              CashAccount[]
+  journalEntryLines         JournalEntryLine[]
+  manualVoucherLines        ManualJournalVoucherLine[]
+  withholdingConcepts       WithholdingConcept[]
+  purchaseRetentions        PurchaseRetention[]
+  accountingBudgets         AccountingBudget[]
   recurringExpenseTemplates RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateExpenseAccount")
 
   @@unique([createdById, code])
@@ -1985,10 +2062,39 @@ model CostCenter {
   journalEntryLines  JournalEntryLine[]
   manualVoucherLines ManualJournalVoucherLine[]
   pointsOfSale       PointOfSale[]
+  accountingBudgets  AccountingBudget[]
 
   @@unique([accountId, code])
   @@index([accountId, isActive])
   @@map("cost_centers")
+}
+
+model AccountingBudget {
+  id                    String   @id @default(cuid())
+  accountId             String   @map("account_id")
+  year                  Int
+  month                 Int
+  chartAccountId        String   @map("chart_account_id")
+  costCenterId          String?  @map("cost_center_id")
+  dimensionKey          String   @map("dimension_key")
+  amount                Decimal  @db.Decimal(14, 2)
+  alertThresholdPercent Decimal  @default(10) @map("alert_threshold_percent") @db.Decimal(6, 2)
+  createdById           String   @map("created_by")
+  updatedById           String   @map("updated_by")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  account      User         @relation("AccountingBudgetAccount", fields: [accountId], references: [id])
+  chartAccount ChartAccount @relation(fields: [chartAccountId], references: [id])
+  costCenter   CostCenter?  @relation(fields: [costCenterId], references: [id])
+  createdBy    User         @relation("AccountingBudgetCreatedBy", fields: [createdById], references: [id])
+  updatedBy    User         @relation("AccountingBudgetUpdatedBy", fields: [updatedById], references: [id])
+
+  @@unique([accountId, year, month, chartAccountId, dimensionKey])
+  @@index([accountId, year, month])
+  @@index([costCenterId])
+  @@index([chartAccountId])
+  @@map("accounting_budgets")
 }
 
 // A standing instruction to post the same operating expense (arriendo,
@@ -2005,30 +2111,37 @@ model CostCenter {
 // template's cash account to a different sede repoints future generations
 // without editing the template itself.
 model RecurringExpenseTemplate {
-  id                   String    @id @default(cuid())
-  createdById          String    @map("created_by")
-  description          String
-  expenseAccountId     String    @map("expense_account_id")
-  cashAccountId        String    @map("cash_account_id")
-  amount               Decimal   @db.Decimal(14, 2)
+  id                  String              @id @default(cuid())
+  createdById         String              @map("created_by")
+  description         String
+  expenseAccountId    String              @map("expense_account_id")
+  cashAccountId       String              @map("cash_account_id")
+  // The TOTAL paid each period (what actually leaves the cash/bank account),
+  // not a pre-tax base - matches how a business owner actually thinks about
+  // rent/a recurring bill ("I pay $1,500,000/month"), unlike a product's
+  // list price. When taxTreatment is "taxed", generation backs the base and
+  // taxRate-implied VAT out of this total instead of adding VAT on top of it.
+  amount              Decimal             @db.Decimal(14, 2)
+  taxTreatment        ProductTaxTreatment @default(excluded) @map("tax_treatment")
+  taxRate             Decimal             @default(0) @map("tax_rate") @db.Decimal(5, 2)
   // 1-28 only (not 29-31) so every calendar month, February included, has an
   // unambiguous matching day - the alternative (clamping 30/31 down to each
   // month's actual last day) would silently shift a template's effective
   // date across different months.
-  dayOfMonth           Int       @default(1) @map("day_of_month")
-  isActive             Boolean   @default(true) @map("is_active")
+  dayOfMonth          Int                 @default(1) @map("day_of_month")
+  isActive            Boolean             @default(true) @map("is_active")
   // "YYYY-MM" of the last calendar month this template successfully posted
   // for - the cron's dedupe key, so a restart or a late run within the same
   // month never double-posts.
-  lastGeneratedPeriod  String?   @map("last_generated_period")
-  lastRunStatus        String?   @map("last_run_status")
-  lastRunError         String?   @map("last_run_error")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  lastGeneratedPeriod String?             @map("last_generated_period")
+  lastRunStatus       String?             @map("last_run_status")
+  lastRunError        String?             @map("last_run_error")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
 
-  createdBy     User         @relation("RecurringExpenseTemplateAccount", fields: [createdById], references: [id])
+  createdBy      User         @relation("RecurringExpenseTemplateAccount", fields: [createdById], references: [id])
   expenseAccount ChartAccount @relation("RecurringExpenseTemplateExpenseAccount", fields: [expenseAccountId], references: [id])
-  cashAccount   CashAccount  @relation("RecurringExpenseTemplateCashAccount", fields: [cashAccountId], references: [id])
+  cashAccount    CashAccount  @relation("RecurringExpenseTemplateCashAccount", fields: [cashAccountId], references: [id])
 
   @@index([createdById, isActive])
   @@map("recurring_expense_templates")
@@ -2567,6 +2680,18 @@ model DianTestMatrixDocument {
   referenceInvoiceSequence Int?                         @map("reference_invoice_sequence")
   internalReference        String                       @unique @map("internal_reference")
   externalId               String?                      @map("external_id")
+  // Which itcycle-api-dian Certificate actually signed this test document -
+  // captured from that create call's own response (its certificateId/
+  // certificate.provider/certificate.certificateIdentifier, via `include: {
+  // certificate: true }`), not looked up separately, since a company can
+  // have certificates from more than one provider active at once (see
+  // certificateProviderOverride). certificateIdentifier is the provider's
+  // own reference for THIS specific certificate (e.g. Viafirma's
+  // codRequest) - distinguishes two certificates from the same provider
+  // (e.g. after a renewal), which certificateProvider alone cannot.
+  certificateId            String?                      @map("certificate_id")
+  certificateProvider      String?                      @map("certificate_provider")
+  certificateIdentifier    String?                      @map("certificate_identifier")
   status                   DianTestMatrixDocumentStatus @default(pending)
   cufe                     String?
   statusDescription        String?                      @map("status_description") @db.Text

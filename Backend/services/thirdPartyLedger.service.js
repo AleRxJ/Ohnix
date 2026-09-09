@@ -50,7 +50,7 @@ export const listThirdPartyBalances = async ({ accountId, startDate, endDate, ty
 };
 
 export const getThirdPartyMovements = async ({ accountId, type, id, startDate, endDate }) => {
-    if (!type || !id) throw new ApiError(400, "Tipo e identificador del tercero son obligatorios.");
+    if (!type || !id) throw new ApiError(400, "Third-party type and identifier are required.", [], "", "third_party_identity_required");
     const [prior, lines] = await Promise.all([
         startDate ? prisma.journalEntryLine.aggregate({
             where: {

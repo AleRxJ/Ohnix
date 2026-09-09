@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import errorHandler from "./middleware/error.middleware.js";
 import { handlePaymentWebhook, handleEpaycoConfirmation, handleEpaycoResponse } from "./controllers/subscription.controller.js";
+import { handleCertificateOrderEpaycoConfirmation, handleCertificateOrderEpaycoResponse } from "./controllers/certificateOrderPayment.controller.js";
 import { receiveConnectorWebhook } from "./controllers/connectorWebhook.controller.js";
 import { isOriginAllowed } from "./utils/allowedOrigins.js";
 import { getRedisHealth } from "./utils/redisClient.js";
@@ -92,6 +93,22 @@ app.post(
     handleEpaycoResponse
 );
 
+// Same public ePayco pattern as above, scoped to CertificateOrder (Viafirma
+// digital-certificate purchases) instead of PlanUpgradeRequest.
+app.post(
+    "/api/v1/certificate-orders/payments/epayco/confirmation",
+    express.json({ limit: "16kb" }),
+    express.urlencoded({ extended: true, limit: "16kb" }),
+    handleCertificateOrderEpaycoConfirmation
+);
+app.get("/api/v1/certificate-orders/payments/epayco/response", handleCertificateOrderEpaycoResponse);
+app.post(
+    "/api/v1/certificate-orders/payments/epayco/response",
+    express.json({ limit: "16kb" }),
+    express.urlencoded({ extended: true, limit: "16kb" }),
+    handleCertificateOrderEpaycoResponse
+);
+
 // Inbound webhooks FROM a connected e-commerce channel (Shopify order
 // events today) - raw body needed for HMAC verification, same reasoning as
 // the Stripe/ePayco routes above. See connectors/shopify.connector.js#verifyWebhookSignature.
@@ -136,6 +153,7 @@ import subscriptionRouter from "./routes/subscription.routes.js";
 import pricingRouter from "./routes/pricing.routes.js";
 import companyRouter from "./routes/company.routes.js";
 import dianTestMatrixRouter from "./routes/dianTestMatrix.routes.js";
+import dianTestMatrixSelfRouter from "./routes/dianTestMatrixSelf.routes.js";
 import companySelfRouter from "./routes/companySelf.routes.js";
 import electronicInvoiceRouter from "./routes/electronicInvoice.routes.js";
 import purchaseSupportDocumentRouter from "./routes/purchaseSupportDocument.routes.js";
@@ -172,6 +190,7 @@ app.use("/api/v1/subscriptions", subscriptionRouter);
 app.use("/api/v1/pricing", pricingRouter);
 app.use("/api/v1/companies", companyRouter);
 app.use("/api/v1/admin/dian-test-matrix", dianTestMatrixRouter);
+app.use("/api/v1/company/dian-test-matrix", dianTestMatrixSelfRouter);
 app.use("/api/v1/company", companySelfRouter);
 app.use("/api/v1/electronic-invoices", electronicInvoiceRouter);
 app.use("/api/v1/purchase-support-documents", purchaseSupportDocumentRouter);

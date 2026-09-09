@@ -12,6 +12,7 @@ import { financeService } from "../../services/financeService";
 import ReportExportButtons from "../reports/ReportExportButtons";
 import { downloadCsv, downloadExcel, downloadPdfReport } from "../../utils/exportReport";
 import useIsMobile from "../../hooks/useIsMobile";
+import { financeErrorMessage } from "../../utils/financeError";
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -49,6 +50,17 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
     const [reportRows, setReportRows] = useState([]);
     const [reportRange, setReportRange] = useState([dayjs().startOf("month"), dayjs().endOf("month")]);
     const [reportStatus, setReportStatus] = useState("all");
+    const chargeTreatment = Form.useWatch("tax_treatment", chargeForm);
+    const chargeRate = Form.useWatch("tax_rate", chargeForm);
+    const incomeTreatment = Form.useWatch("tax_treatment", incomeForm);
+    const incomeRate = Form.useWatch("tax_rate", incomeForm);
+    const taxBreakdown = (total, treatment, rate) => {
+        if (treatment !== "taxed" || !(Number(rate) > 0) || !(Number(total) > 0)) return null;
+        const base = Number(total) / (1 + Number(rate) / 100);
+        return { base, tax: Number(total) - base };
+    };
+    const chargePreview = taxBreakdown(Math.abs(chargeTarget?.amount || 0), chargeTreatment, chargeRate);
+    const incomePreview = taxBreakdown(incomeTarget?.amount || 0, incomeTreatment, incomeRate);
 
     const {
         movements,
@@ -119,10 +131,10 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
         const response = await accountingService.listChartOfAccounts();
         setExpenseAccounts((response?.data || []).filter((item) => item.account_type === "expense" && item.is_active));
         setChargeTarget(entry);
-        chargeForm.setFieldsValue({ description: entry.description || t("finance.bank_charge_default") });
+        chargeForm.setFieldsValue({ description: entry.description || t("finance.bank_charge_default"), tax_treatment: "excluded", tax_rate: 19 });
     };
     const confirmBankCharge = async (values) => {
-        const success = await registerStatementExpense({ amount: Math.abs(chargeTarget.amount), expense_account_id: values.expense_account_id, cash_account_id: account._id, description: values.description, expense_date: chargeTarget.entry_date, statement_entry_id: chargeTarget._id });
+        const success = await registerStatementExpense({ amount: Math.abs(chargeTarget.amount), expense_account_id: values.expense_account_id, cash_account_id: account._id, description: values.description, expense_date: chargeTarget.entry_date, statement_entry_id: chargeTarget._id, tax_treatment: values.tax_treatment, tax_rate: values.tax_rate });
         if (success) { setChargeTarget(null); chargeForm.resetFields(); }
     };
     const openBankIncome = async (entry) => {
@@ -130,13 +142,13 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
             const response = await accountingService.listChartOfAccounts();
             setRevenueAccounts((response?.data || []).filter((item) => item.account_type === "revenue" && item.is_active));
             setIncomeTarget(entry);
-            incomeForm.setFieldsValue({ description: entry.description || t("finance.bank_income_default") });
+            incomeForm.setFieldsValue({ description: entry.description || t("finance.bank_income_default"), tax_treatment: "excluded", tax_rate: 19 });
         } catch {
             Modal.error({ title: t("finance.bank_income_failed"), content: t("finance.bank_income_load_accounts_failed") });
         }
     };
     const confirmBankIncome = async (values) => {
-        const success = await registerStatementIncome({ amount: incomeTarget.amount, revenue_account_id: values.revenue_account_id, cash_account_id: account._id, description: values.description, income_date: incomeTarget.entry_date, statement_entry_id: incomeTarget._id });
+        const success = await registerStatementIncome({ amount: incomeTarget.amount, revenue_account_id: values.revenue_account_id, cash_account_id: account._id, description: values.description, income_date: incomeTarget.entry_date, statement_entry_id: incomeTarget._id, tax_treatment: values.tax_treatment, tax_rate: values.tax_rate });
         if (success) { setIncomeTarget(null); incomeForm.resetFields(); }
     };
     const loadReconciliationReport = async (range = reportRange, status = reportStatus) => {
@@ -149,7 +161,7 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
             });
             setReportRows(response?.data || []);
         } catch (error) {
-            Modal.error({ title: t("finance.reconciliation_report_failed"), content: error?.response?.data?.message || t("finance.failed") });
+            Modal.error({ title: t("finance.reconciliation_report_failed"), content: financeErrorMessage(error, t) });
         } finally { setReportLoading(false); }
     };
     const openReconciliationReport = async () => { setReportOpen(true); await loadReconciliationReport(); };
@@ -440,6 +452,21 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
                 <Form form={chargeForm} layout="vertical" onFinish={confirmBankCharge}>
                     <Form.Item name="expense_account_id" label={t("finance.bank_charge_account")} rules={[{ required: true, message: t("validation.required_field") }]}><Select options={expenseAccounts.map((item) => ({ value: item._id, label: `${item.code} · ${item.name}` }))} placeholder={t("finance.bank_charge_account_placeholder")} /></Form.Item>
                     <Form.Item name="description" label={t("finance.entry_description_label")} rules={[{ required: true, message: t("validation.required_field") }]}><Input maxLength={200} /></Form.Item>
+                    <Form.Item name="tax_treatment" label={t("accounting.tax_treatment")} rules={[{ required: true }]}>
+                        <Select options={[
+                            { value: "excluded", label: t("accounting.tax_treatment_excluded") },
+                            { value: "exempt", label: t("accounting.tax_treatment_exempt") },
+                            { value: "taxed", label: t("accounting.tax_treatment_taxed") },
+                        ]} />
+                    </Form.Item>
+                    {chargeTreatment === "taxed" && (
+                        <Form.Item name="tax_rate" label={t("accounting.tax_rate")} rules={[{ required: true, type: "number", min: 0.01, max: 100 }]}>
+                            <InputNumber min={0} max={100} precision={2} className="w-full" />
+                        </Form.Item>
+                    )}
+                    {chargePreview && (
+                        <Alert className="dark-alert dark-alert-purple mb-4" type="info" showIcon message={t("accounting.recurring_expense_tax_preview", { base: formatCurrency(chargePreview.base), tax: formatCurrency(chargePreview.tax) })} />
+                    )}
                 </Form>
             </Modal>
             <Modal title={t("finance.bank_income_title")} open={Boolean(incomeTarget)} onCancel={() => setIncomeTarget(null)} onOk={() => incomeForm.submit()} confirmLoading={submitting} okText={t("finance.bank_income_confirm")}>
@@ -447,6 +474,21 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
                 <Form form={incomeForm} layout="vertical" onFinish={confirmBankIncome}>
                     <Form.Item name="revenue_account_id" label={t("finance.bank_income_account")} rules={[{ required: true, message: t("validation.required_field") }]}><Select options={revenueAccounts.map((item) => ({ value: item._id, label: `${item.code} · ${item.name}` }))} placeholder={t("finance.bank_income_account_placeholder")} /></Form.Item>
                     <Form.Item name="description" label={t("finance.entry_description_label")} rules={[{ required: true, message: t("validation.required_field") }]}><Input maxLength={200} /></Form.Item>
+                    <Form.Item name="tax_treatment" label={t("accounting.tax_treatment")} rules={[{ required: true }]}>
+                        <Select options={[
+                            { value: "excluded", label: t("accounting.tax_treatment_excluded") },
+                            { value: "exempt", label: t("accounting.tax_treatment_exempt") },
+                            { value: "taxed", label: t("accounting.tax_treatment_taxed") },
+                        ]} />
+                    </Form.Item>
+                    {incomeTreatment === "taxed" && (
+                        <Form.Item name="tax_rate" label={t("accounting.tax_rate")} rules={[{ required: true, type: "number", min: 0.01, max: 100 }]}>
+                            <InputNumber min={0} max={100} precision={2} className="w-full" />
+                        </Form.Item>
+                    )}
+                    {incomePreview && (
+                        <Alert className="dark-alert dark-alert-purple mb-4" type="info" showIcon message={t("accounting.recurring_expense_tax_preview", { base: formatCurrency(incomePreview.base), tax: formatCurrency(incomePreview.tax) })} />
+                    )}
                 </Form>
             </Modal>
             <Modal title={t("finance.reconciliation_report_title")} open={reportOpen} onCancel={() => setReportOpen(false)} footer={null} width={980}>

@@ -9,6 +9,7 @@ import * as manualVoucherService from "../services/manualJournalVoucher.service.
 import * as thirdPartyLedgerService from "../services/thirdPartyLedger.service.js";
 import * as withholdingConceptService from "../services/withholdingConcept.service.js";
 import * as withholdingReportService from "../services/withholdingReport.service.js";
+import * as accountingBudgetService from "../services/accountingBudget.service.js";
 import * as costCenterService from "../services/costCenter.service.js";
 import * as recurringExpenseService from "../services/recurringExpense.service.js";
 
@@ -204,7 +205,7 @@ export const createChartOfAccount = asyncHandler(async (req, res) => {
 
 export const setChartOfAccountActive = asyncHandler(async (req, res, next) => {
     const { is_active } = req.body || {};
-    if (typeof is_active !== "boolean") return next(new ApiError(400, "is_active debe ser verdadero o falso."));
+    if (typeof is_active !== "boolean") return next(new ApiError(400, "is_active must be a boolean.", [], "", "chart_account_active_invalid"));
 
     const account = await chartOfAccountsService.setChartAccountActive(req.user.prismaId, req.params.id, is_active);
     return res.status(200).json(new ApiResponse(200, mapChartAccount(account), "Chart account updated successfully"));
@@ -382,8 +383,49 @@ export const getAccountingStatus = asyncHandler(async (req, res) => {
     }, "Accounting status fetched successfully"));
 });
 
+export const getBudgetReport = asyncHandler(async (req, res) => {
+    const report = await accountingBudgetService.getBudgetReport({
+        accountId: req.user.prismaId,
+        year: req.query.year,
+        month: req.query.month,
+        costCenterId: req.query.cost_center_id || "all",
+    });
+    return res.status(200).json(new ApiResponse(200, report, "Budget performance fetched successfully."));
+});
+
+export const saveBudgets = asyncHandler(async (req, res) => {
+    const budgets = await accountingBudgetService.saveBudgets({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        year: req.body?.year,
+        month: req.body?.month,
+        items: req.body?.items,
+    });
+    return res.status(200).json(new ApiResponse(200, { saved: budgets.length }, "Budget saved successfully."));
+});
+
+export const deleteBudget = asyncHandler(async (req, res) => {
+    await accountingBudgetService.deleteBudget({ accountId: req.user.prismaId, actorId: req.user.actorId, id: req.params.id });
+    return res.status(200).json(new ApiResponse(200, null, "Budget line deleted successfully."));
+});
+
+export const getAnnualBudgetReport = asyncHandler(async (req, res) => {
+    const report = await accountingBudgetService.getAnnualBudgetReport({ accountId: req.user.prismaId, year: req.query.year, costCenterId: req.query.cost_center_id || "all" });
+    return res.status(200).json(new ApiResponse(200, report, "Annual budget fetched successfully."));
+});
+
+export const distributeAnnualBudget = asyncHandler(async (req, res) => {
+    const result = await accountingBudgetService.distributeAnnualBudget({ accountId: req.user.prismaId, actorId: req.user.actorId, year: req.body?.year, chartAccountId: req.body?.chart_account_id, costCenterId: req.body?.cost_center_id, annualAmount: req.body?.annual_amount, alertThresholdPercent: req.body?.alert_threshold_percent });
+    return res.status(200).json(new ApiResponse(200, result, "Annual budget distributed successfully."));
+});
+
+export const copyAnnualBudget = asyncHandler(async (req, res) => {
+    const result = await accountingBudgetService.copyAnnualBudget({ accountId: req.user.prismaId, actorId: req.user.actorId, sourceYear: req.body?.source_year, targetYear: req.body?.target_year, costCenterId: req.body?.cost_center_id || "all", overwrite: req.body?.overwrite === true });
+    return res.status(200).json(new ApiResponse(200, result, "Annual budget copied successfully."));
+});
+
 export const closeAccountingPeriod = asyncHandler(async (req, res, next) => {
-    if (!req.params.id) return next(new ApiError(400, "id es obligatorio"));
+    if (!req.params.id) return next(new ApiError(400, "Accounting period id is required.", [], "", "accounting_period_id_required"));
 
     const period = await accountingPeriodService.closeAccountingPeriod({
         accountId: req.user.prismaId,
@@ -406,19 +448,19 @@ export const reopenAccountingPeriod = asyncHandler(async (req, res) => {
         reason: req.body?.reason,
         durationHours: req.body?.duration_hours ?? 24,
     });
-    return res.status(200).json(new ApiResponse(200, mapPeriod(period), "Periodo reabierto temporalmente."));
+    return res.status(200).json(new ApiResponse(200, mapPeriod(period), "Accounting period reopened successfully."));
 });
 
 export const listWithholdingConcepts = asyncHandler(async (req, res) => {
     const concepts = await withholdingConceptService.listWithholdingConcepts(req.user.prismaId, {
         activeAt: req.query.active_at,
     });
-    return res.status(200).json(new ApiResponse(200, concepts, "Conceptos de retención consultados."));
+    return res.status(200).json(new ApiResponse(200, concepts, "Withholding concepts fetched successfully."));
 });
 
 export const createWithholdingConcept = asyncHandler(async (req, res) => {
     const concept = await withholdingConceptService.createWithholdingConcept(req.user.prismaId, req.body || {});
-    return res.status(201).json(new ApiResponse(201, concept, "Concepto de retención creado."));
+    return res.status(201).json(new ApiResponse(201, concept, "Withholding concept created successfully."));
 });
 
 export const setWithholdingConceptActive = asyncHandler(async (req, res) => {
@@ -427,12 +469,12 @@ export const setWithholdingConceptActive = asyncHandler(async (req, res) => {
         req.params.id,
         req.body?.is_active
     );
-    return res.status(200).json(new ApiResponse(200, concept, "Estado del concepto actualizado."));
+    return res.status(200).json(new ApiResponse(200, concept, "Withholding concept status updated successfully."));
 });
 
 export const previewWithholdings = asyncHandler(async (req, res) => {
     const preview = await withholdingConceptService.previewWithholdings(req.user.prismaId, req.body || {});
-    return res.status(200).json(new ApiResponse(200, preview, "Retenciones calculadas."));
+    return res.status(200).json(new ApiResponse(200, preview, "Withholdings calculated successfully."));
 });
 
 export const getWithholdingReport = asyncHandler(async (req, res) => {
@@ -443,7 +485,7 @@ export const getWithholdingReport = asyncHandler(async (req, res) => {
         taxType: req.query.tax_type,
         supplierId: req.query.supplier_id,
     });
-    return res.status(200).json(new ApiResponse(200, report, "Auxiliar de retenciones consultado."));
+    return res.status(200).json(new ApiResponse(200, report, "Withholding report fetched successfully."));
 });
 
 export const getWithholdingCertificate = asyncHandler(async (req, res) => {
@@ -452,10 +494,10 @@ export const getWithholdingCertificate = asyncHandler(async (req, res) => {
         supplierId: req.params.supplierId,
         year: req.query.year,
     });
-    return res.status(200).json(new ApiResponse(200, certificate, "Certificado de retenciones consultado."));
+    return res.status(200).json(new ApiResponse(200, certificate, "Withholding certificate fetched successfully."));
 });
 
 export const downloadWithholdingCertificate = asyncHandler(async (req, res) => {
     const certificate = await withholdingReportService.getWithholdingCertificate({ accountId: req.user.prismaId, supplierId: req.params.supplierId, year: req.query.year });
-    withholdingReportService.renderWithholdingCertificatePdf(res, certificate);
+    withholdingReportService.renderWithholdingCertificatePdf(res, certificate, req.query.language);
 });

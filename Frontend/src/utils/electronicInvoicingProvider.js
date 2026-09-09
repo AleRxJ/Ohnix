@@ -12,3 +12,21 @@ export const ELECTRONIC_INVOICING_PROVIDER_LABELS = {
 
 export const getElectronicInvoicingProviderLabel = (provider) =>
     ELECTRONIC_INVOICING_PROVIDER_LABELS[provider] || ELECTRONIC_INVOICING_PROVIDER_LABELS.itcycle;
+
+// Which digital-certificate provider (not DIAN engine provider, see above)
+// actually signed a document - "firmapass"/"viafirma" are proper brand
+// names, not translated copy, same as the map above.
+const CERTIFICATE_PROVIDER_LABELS = {
+    firmapass: "FirmaPass",
+    viafirma: "Viafirma",
+};
+
+export const getCertificateProviderLabel = (provider) => CERTIFICATE_PROVIDER_LABELS[provider] || provider;
+
+// Provider name plus the provider's own reference for THIS specific
+// certificate (e.g. Viafirma's codRequest) - distinguishes two certificates
+// from the same provider (e.g. before/after a renewal), which the provider
+// name alone cannot. Falls back to just the provider name when no
+// identifier is available (older records, or a provider that doesn't set one).
+export const getCertificateLabel = (provider, identifier) =>
+    identifier ? `${getCertificateProviderLabel(provider)} · ${identifier}` : getCertificateProviderLabel(provider);

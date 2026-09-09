@@ -1,11 +1,12 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Empty, Input, Popconfirm, Select, Statistic, Table, Tag } from "antd";
-import { ExperimentOutlined, ReloadOutlined, SearchOutlined, StopOutlined } from "@ant-design/icons";
+import { Alert, Button, Empty, Input, InputNumber, Modal, Popconfirm, Select, Statistic, Table, Tag } from "antd";
+import { CodeOutlined, DownOutlined, ExperimentOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UndoOutlined, UpOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
 import { adminService } from "../services/adminService";
 import PageHeader from "../components/common/PageHeader";
+import { getCertificateLabel } from "../utils/electronicInvoicingProvider";
 
 const RUN_STATUS_COLOR = { pending: "default", running: "blue", completed: "green", failed: "red", cancelled: "default" };
 const DOC_STATUS_COLOR = { pending: "default", sending: "blue", sent: "gold", accepted: "green", rejected: "red", error: "red" };
@@ -27,11 +28,36 @@ const AdminDianTestMatrix = () => {
     const [testSetId, setTestSetId] = useState("");
     const [starting, setStarting] = useState(false);
     const [cancelling, setCancelling] = useState(false);
+    const [retrying, setRetrying] = useState(false);
+    // One of each type by default - see
+    // Backend/services/dianTestMatrix.service.js's own comment on why a
+    // fixed 30/10/10 for every company was dropped in favor of matching
+    // whatever the company's own DIAN portal actually requires.
+    const [invoiceTarget, setInvoiceTarget] = useState(1);
+    const [creditNoteTarget, setCreditNoteTarget] = useState(1);
+    const [debitNoteTarget, setDebitNoteTarget] = useState(1);
+    const [customTargetsOpen, setCustomTargetsOpen] = useState(false);
 
     const [runs, setRuns] = useState([]);
     const [activeRun, setActiveRun] = useState(null);
     const [loadingRuns, setLoadingRuns] = useState(true);
     const pollRef = useRef(null);
+
+    // Raw DIAN SOAP response viewer - a genuine DIAN rejection can come back
+    // with no statusDescription/errorMessage at all (see
+    // Backend/services/dianTestMatrix.service.js's getDianTestMatrixDocumentRawResponse),
+    // this is the only way to see what DIAN actually said.
+    const [rawResponseModal, setRawResponseModal] = useState({ open: false, loading: false, text: "" });
+
+    const viewRawResponse = async (docId) => {
+        setRawResponseModal({ open: true, loading: true, text: "" });
+        try {
+            const response = await adminService.getDianTestMatrixDocumentRawResponse(docId);
+            setRawResponseModal({ open: true, loading: false, text: response?.data?.rawResponse || "" });
+        } catch (error) {
+            setRawResponseModal({ open: true, loading: false, text: error.response?.data?.message || t("common.error") });
+        }
+    };
 
     // Run history grows with every client that goes through DIAN habilitación
     // - same reasoning as AdminFirmaPassValidations.jsx, this needs to stay
@@ -121,12 +147,30 @@ const AdminDianTestMatrix = () => {
     }
 
     const activeCompanyRun = runs.find((r) => r.companyId === companyId && ["pending", "running"].includes(r.status));
+    // Anything not already "accepted" is retryable - a run interrupted
+    // mid-flight (server restart) can leave documents stuck at
+    // "pending"/"sending" too, not just error/rejected.
+    const canRetryFailed = Boolean(
+        activeRun
+        && !["pending", "running"].includes(activeRun.status)
+        && (activeRun.documents || []).some((d) => d.status !== "accepted")
+    );
+
+    // Same reasoning as DianHabilitacionPanel's runCertificate - all
+    // documents in a run are normally signed with the same certificate.
+    const runCertificate = (run) => (run?.documents || []).find((d) => d.certificateProvider) || null;
 
     const startRun = async () => {
         if (!companyId || !testSetId.trim()) return;
         try {
             setStarting(true);
-            const response = await adminService.startDianTestMatrixRun({ companyId, testSetId: testSetId.trim() });
+            const response = await adminService.startDianTestMatrixRun({
+                companyId,
+                testSetId: testSetId.trim(),
+                invoiceTarget,
+                creditNoteTarget,
+                debitNoteTarget,
+            });
             toast.success(t("admin.dian_test_matrix_start_success"));
             setTestSetId("");
             await loadRuns();
@@ -151,6 +195,20 @@ const AdminDianTestMatrix = () => {
         }
     };
 
+    const retryFailed = async () => {
+        if (!activeRun) return;
+        try {
+            setRetrying(true);
+            await adminService.retryFailedDianTestMatrixDocuments(activeRun.id);
+            toast.success(t("admin.dian_test_matrix_retry_success"));
+            await viewRun(activeRun.id);
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setRetrying(false);
+        }
+    };
+
     const documentColumns = [
         { title: t("admin.dian_test_matrix_col_sequence"), dataIndex: "sequence", key: "sequence", width: 50 },
         {
@@ -168,10 +226,25 @@ const AdminDianTestMatrix = () => {
             render: (value) => <Tag color={DOC_STATUS_COLOR[value] || "default"}>{t(`admin.dian_test_matrix_doc_status_${value}`)}</Tag>,
         },
         { title: t("admin.dian_test_matrix_col_cufe"), dataIndex: "cufe", key: "cufe", render: (v) => (v ? <span className="font-mono text-xs">{`${v.slice(0, 10)}…`}</span> : "—") },
+        {
+            title: t("admin.dian_test_matrix_col_certificate"),
+            dataIndex: "certificateProvider",
+            key: "certificateProvider",
+            render: (v, r) => (v ? <Tag color="cyan">{getCertificateLabel(v, r.certificateIdentifier)}</Tag> : "—"),
+        },
         { title: t("admin.dian_test_matrix_col_description"), key: "description", render: (_, r) => r.errorMessage || r.statusDescription || "—" },
         { title: t("admin.dian_test_matrix_col_attempts"), dataIndex: "attempts", key: "attempts", width: 70 },
         { title: t("admin.dian_test_matrix_col_sent_at"), dataIndex: "sentAt", key: "sentAt", render: (v) => (v ? new Date(v).toLocaleTimeString() : "—") },
         { title: t("admin.dian_test_matrix_col_resolved_at"), dataIndex: "resolvedAt", key: "resolvedAt", render: (v) => (v ? new Date(v).toLocaleTimeString() : "—") },
+        {
+            title: "",
+            key: "rawResponse",
+            render: (_, r) => (
+                r.externalId
+                    ? <Button size="small" type="text" icon={<CodeOutlined />} onClick={() => viewRawResponse(r.id)} title={t("admin.dian_test_matrix_raw_response")} />
+                    : null
+            ),
+        },
     ];
 
     const historyColumns = [
@@ -251,6 +324,30 @@ const AdminDianTestMatrix = () => {
                 {activeCompanyRun && (
                     <Alert type="warning" showIcon className="dark-alert dark-alert-amber" message={t("admin.dian_test_matrix_already_running")} />
                 )}
+
+                <button
+                    type="button"
+                    className="flex items-center gap-1 text-xs font-medium text-[#44F3F0] hover:text-[#29D8D5]"
+                    onClick={() => setCustomTargetsOpen((v) => !v)}
+                >
+                    {customTargetsOpen ? <UpOutlined /> : <DownOutlined />}
+                    {t("fiscal_setup.habilitacion_custom_targets_toggle")}
+                </button>
+                {customTargetsOpen && (
+                    <div className="grid grid-cols-1 gap-3 rounded-xl border border-[var(--ohnix-line-3)] bg-[var(--ohnix-surface-2)] p-3 sm:grid-cols-3">
+                        <span className="text-xs text-[var(--ohnix-text-muted)] sm:col-span-3">{t("fiscal_setup.habilitacion_custom_targets_hint")}</span>
+                        {[
+                            { label: t("fiscal_setup.document_type_invoice"), value: invoiceTarget, onChange: setInvoiceTarget, min: 1 },
+                            { label: t("fiscal_setup.document_type_credit_note"), value: creditNoteTarget, onChange: setCreditNoteTarget, min: 0 },
+                            { label: t("fiscal_setup.document_type_debit_note"), value: debitNoteTarget, onChange: setDebitNoteTarget, min: 0 },
+                        ].map(({ label, value, onChange, min }) => (
+                            <div key={label}>
+                                <label className="mb-1 block text-xs font-medium">{label}</label>
+                                <InputNumber className="w-full auth-ohnix-input" min={min} max={50} value={value} onChange={(v) => onChange(v ?? min)} />
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {activeRun && (
@@ -265,12 +362,22 @@ const AdminDianTestMatrix = () => {
                                     {activeRun.passResult ? t("admin.dian_test_matrix_pass_label") : t("admin.dian_test_matrix_fail_label")}
                                 </Tag>
                             )}
+                            {runCertificate(activeRun) && (
+                                <Tag color="cyan">
+                                    {t("fiscal_setup.habilitacion_run_certificate_label")}: {getCertificateLabel(runCertificate(activeRun).certificateProvider, runCertificate(activeRun).certificateIdentifier)}
+                                </Tag>
+                            )}
                         </div>
                         <div className="flex gap-2">
                             {["pending", "running"].includes(activeRun.status) && (
                                 <Popconfirm title={t("admin.dian_test_matrix_cancel_confirm")} onConfirm={cancelRun}>
                                     <Button danger icon={<StopOutlined />} loading={cancelling}>{t("admin.dian_test_matrix_cancel_button")}</Button>
                                 </Popconfirm>
+                            )}
+                            {canRetryFailed && (
+                                <Button type="primary" ghost icon={<UndoOutlined />} loading={retrying} onClick={retryFailed}>
+                                    {t("fiscal_setup.habilitacion_retry_button")}
+                                </Button>
                             )}
                             <Button icon={<ReloadOutlined />} onClick={() => viewRun(activeRun.id)}>{t("admin.dian_test_matrix_refresh")}</Button>
                         </div>
@@ -279,15 +386,37 @@ const AdminDianTestMatrix = () => {
                     <div className="grid grid-cols-3 gap-4">
                         {["invoice", "creditNote", "debitNote"].map((type) => {
                             const counts = activeRun.summary?.[type] || {};
-                            const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+                            // accepted/target - not "attempted/target" - is what
+                            // actually says whether this type passed. Attempted
+                            // count next to target reads as a success ratio even
+                            // when every attempt failed (see
+                            // DianHabilitacionPanel.jsx's summaryBreakdown for
+                            // the same fix on the self-service side).
+                            const accepted = counts.accepted || 0;
+                            const failed = (counts.rejected || 0) + (counts.error || 0);
+                            const inProgress = (counts.pending || 0) + (counts.sending || 0) + (counts.sent || 0);
                             const target = type === "invoice" ? activeRun.invoiceTarget : type === "creditNote" ? activeRun.creditNoteTarget : activeRun.debitNoteTarget;
+                            const statColor = failed > 0
+                                ? "var(--ohnix-status-danger)"
+                                : (target > 0 && accepted === target ? "var(--ohnix-status-success)" : undefined);
                             return (
-                                <Statistic
-                                    key={type}
-                                    title={t(`admin.dian_test_matrix_summary_${type === "invoice" ? "invoices" : type === "creditNote" ? "credit_notes" : "debit_notes"}`)}
-                                    value={`${total}/${target}`}
-                                    suffix={counts.accepted ? `· ${counts.accepted} ✓` : undefined}
-                                />
+                                <div key={type}>
+                                    <Statistic
+                                        title={t(`admin.dian_test_matrix_summary_${type === "invoice" ? "invoices" : type === "creditNote" ? "credit_notes" : "debit_notes"}`)}
+                                        value={`${accepted}/${target}`}
+                                        valueStyle={{ color: statColor }}
+                                    />
+                                    {(failed > 0 || inProgress > 0) && (
+                                        <div className="mt-1 flex flex-wrap gap-1">
+                                            {failed > 0 && (
+                                                <Tag color="red">{t("fiscal_setup.habilitacion_summary_failed", { count: failed })}</Tag>
+                                            )}
+                                            {inProgress > 0 && (
+                                                <Tag>{t("fiscal_setup.habilitacion_summary_in_progress", { count: inProgress })}</Tag>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             );
                         })}
                     </div>
@@ -339,6 +468,18 @@ const AdminDianTestMatrix = () => {
                     scroll={{ x: true }}
                 />
             </div>
+
+            <Modal
+                title={t("admin.dian_test_matrix_raw_response")}
+                open={rawResponseModal.open}
+                onCancel={() => setRawResponseModal({ open: false, loading: false, text: "" })}
+                footer={<Button onClick={() => setRawResponseModal({ open: false, loading: false, text: "" })}>{t("common.close")}</Button>}
+                width={720}
+            >
+                <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-all rounded-lg bg-[var(--ohnix-surface-2)] p-3 text-xs">
+                    {rawResponseModal.loading ? "…" : rawResponseModal.text}
+                </pre>
+            </Modal>
         </div>
     );
 };

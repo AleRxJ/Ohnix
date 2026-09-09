@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildItcycleTotals, buildItcycleWithholdingTotals, calculateCreditNoteRemainingBase } from "../services/electronicInvoicing.service.js";
+import { buildItcycleLines, buildItcycleTotals, buildItcycleWithholdingTotals, calculateCreditNoteRemainingBase } from "../services/electronicInvoicing.service.js";
 
 // Regression test for a real bug found 2026-08-29: buildItcycleTotals used
 // to blend every line into a single invented "effective rate" tax subtotal
@@ -49,6 +49,40 @@ test("buildItcycleTotals returns no tax totals for a fully tax-exempt order", ()
 
     assert.deepEqual(taxTotals, []);
     assert.equal(legalMonetaryTotal.taxInclusiveAmount, 30000);
+});
+
+// Regression test for a real bug found 2026-09-02: a "bien excluido" line
+// (taxTreatmentApplied "excluded") used to get an EMPTY taxTotals array,
+// but dian-kit's own InvoiceLineSchema requires z.array(TaxTotalSchema).min(1)
+// unconditionally - "excluded" is still IVA at 0%, not "no tax block at all".
+// Every real DIAN habilitación test invoice built from an excluded line
+// failed with "lines[0].taxTotals: Too small: expected array to have >=1
+// items" before this reached DIAN's own server.
+test("buildItcycleLines always includes a taxTotals entry, even for an excluded line", () => {
+    const excludedLine = buildItcycleLines([{
+        quantity: 1,
+        unitcost: 50000,
+        taxTreatmentApplied: "excluded",
+        taxRateApplied: 0,
+        taxAmount: 0,
+        product: { unitMeasureCode: "94", productName: "Bien excluido", taxCode: "01" },
+    }])[0];
+
+    assert.equal(excludedLine.taxTotals.length, 1);
+    assert.equal(excludedLine.taxTotals[0].taxAmount, 0);
+    assert.equal(excludedLine.taxTotals[0].subtotals[0].percent, 0);
+
+    const taxedLine = buildItcycleLines([{
+        quantity: 1,
+        unitcost: 100000,
+        taxTreatmentApplied: "taxed",
+        taxRateApplied: 19,
+        taxAmount: 19000,
+        product: { unitMeasureCode: "94", productName: "Servicio", taxCode: "01" },
+    }])[0];
+
+    assert.equal(taxedLine.taxTotals.length, 1);
+    assert.equal(taxedLine.taxTotals[0].taxAmount, 19000);
 });
 
 test("buildItcycleWithholdingTotals returns nothing for a customer with no configured rates", () => {

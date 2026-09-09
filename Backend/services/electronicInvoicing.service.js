@@ -14,6 +14,7 @@ import {
     provisionItcycleCompany,
     setItcycleDianConfiguration,
     createItcycleNumberingResolution,
+    updateItcycleNumberingResolution,
     uploadItcycleCertificate,
     createItcycleApiKey,
     createItcycleInvoice,
@@ -23,6 +24,7 @@ import {
     ItcycleDianError,
     isItcycleConfigured,
 } from "./itcycleDian.service.js";
+import { getCompanyDianReadiness } from "./firmaPassProvisioning.service.js";
 import { encryptSecret, decryptSecret } from "../utils/secretEncryption.js";
 import { computeNitCheckDigit } from "../utils/nit.util.js";
 import { normalizeCountryCode } from "./companyCountry.service.js";
@@ -190,6 +192,7 @@ const serializeCreditNote = (note) => !note ? null : ({
     id: note.id, invoiceId: note.invoiceId, correctionConceptCode: note.correctionConceptCode,
     referenceCode: note.referenceCode, status: note.status, externalId: note.externalId,
     creditNoteNumber: note.creditNoteNumber, cufe: note.cufe, pdfUrl: note.pdfUrl, xmlUrl: note.xmlUrl,
+    certificateId: note.certificateId, certificateProvider: note.certificateProvider, certificateIdentifier: note.certificateIdentifier,
     observation: note.observation, errorMessage: note.errorMessage, issuedAt: note.issuedAt,
     localEffectStatus: note.localEffectStatus, localEffectError: note.localEffectError,
     localEffectAttempts: note.localEffectAttempts, localEffectAppliedAt: note.localEffectAppliedAt,
@@ -563,9 +566,22 @@ export const buildItcycleLines = (orderDetails) => orderDetails.map((item, index
         quantity,
         unitCode: item.product.unitMeasureCode,
         description: item.product.productName,
+        // DIAN requires every line to carry a StandardItemIdentification
+        // code (rejection FAZ09 otherwise) - dian-kit defaults to "N/A"
+        // when this is omitted, but the product's own code is always
+        // available here and is what should actually reach DIAN.
+        standardItemCode: item.product.standardCode,
         price,
         lineExtensionAmount,
-        taxTotals: item.taxTreatmentApplied === "excluded" ? [] : [{
+        // dian-kit's own InvoiceLineSchema requires >=1 entry here
+        // unconditionally (z.array(TaxTotalSchema).min(1)) - a "bien
+        // excluido" (taxTreatmentApplied "excluded") is still IVA at 0%,
+        // just not the same as omitting the tax block entirely. An empty
+        // array here isn't "no tax to declare", it's an invalid document -
+        // confirmed by DIAN habilitación runs failing every "excluded" line
+        // with "lines[0].taxTotals: Too small: expected array to have >=1
+        // items" before this ever reached DIAN's own server.
+        taxTotals: [{
             taxAmount,
             subtotals: [{
                 taxableAmount: lineExtensionAmount,
@@ -773,6 +789,12 @@ const mapItcycleResponse = (raw) => ({
     pdfUrl: null,
     xmlUrl: null,
     status: normalizeItcycleStatus(raw?.status),
+    // Present on itcycle-api-dian's response via its own `include: {
+    // certificate: true }` - a company can have certificates from more than
+    // one provider active at once (see certificateProviderOverride).
+    certificateId: text(raw?.certificateId) || null,
+    certificateProvider: text(raw?.certificate?.provider) || null,
+    certificateIdentifier: text(raw?.certificate?.certificateIdentifier) || null,
     rawResponse: raw,
 });
 
@@ -824,6 +846,9 @@ const mapItcycleCreditNoteResponse = (raw) => ({
     pdfUrl: null,
     xmlUrl: null,
     status: normalizeItcycleStatus(raw?.status),
+    certificateId: text(raw?.certificateId) || null,
+    certificateProvider: text(raw?.certificate?.provider) || null,
+    certificateIdentifier: text(raw?.certificate?.certificateIdentifier) || null,
     rawResponse: raw,
 });
 
@@ -835,7 +860,7 @@ const mapItcycleCreditNoteResponse = (raw) => ({
  * are forwarded once and never persisted in Ohnix - see secretEncryption.js
  * and itcycle-api-dian's own EncryptedFileCertificateSecretStore.
  */
-export const registerCompanyWithItcycle = async ({ companyId, dianConfiguration, supplierProfile, numberingResolutions, certificate }) => {
+export const registerCompanyWithItcycle = async ({ companyId, requesterRole, dianConfiguration, supplierProfile, numberingResolutions, certificate }) => {
     if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
     // Each Ohnix client is its own "facturador electrónico" before the DIAN -
     // every company registers its OWN softwareId/PIN/technicalKey (obtained
@@ -847,6 +872,17 @@ export const registerCompanyWithItcycle = async ({ companyId, dianConfiguration,
     if (!text(dianConfiguration?.softwareId) || !text(dianConfiguration?.softwarePin)) {
         throw new ApiError(422, "La configuración DIAN de tu empresa (softwareId/softwarePin) es obligatoria.");
     }
+    // A self-service caller (requesterRole !== "admin") can never register
+    // straight into PRODUCTION - the DIAN requires an approved set de
+    // pruebas de habilitación first (see DianHabilitacionPanel.jsx), and
+    // that approval is only ever recorded by an Ohnix admin's own deliberate
+    // review (requestMyDianProductionActivation notifies admins; flipping
+    // the environment is their manual, admin-only follow-up). Trusting the
+    // client's own `environment` field here would let a company skip
+    // habilitación entirely by just submitting "PRODUCTION" on first setup.
+    const effectiveDianConfiguration = requesterRole === "admin"
+        ? dianConfiguration
+        : { ...dianConfiguration, environment: "SANDBOX" };
 
     const company = await prisma.company.findUnique({ where: { id: companyId } });
     if (!company) throw new ApiError(404, "Company not found");
@@ -867,7 +903,7 @@ export const registerCompanyWithItcycle = async ({ companyId, dianConfiguration,
             dv,
             personType: "1",
         });
-        await setItcycleDianConfiguration({ companyId: itcycleCompany.id, ...dianConfiguration, supplierProfile });
+        await setItcycleDianConfiguration({ companyId: itcycleCompany.id, ...effectiveDianConfiguration, supplierProfile });
         for (const resolution of numberingResolutions || []) {
             await createItcycleNumberingResolution({ companyId: itcycleCompany.id, ...resolution });
         }
@@ -928,6 +964,42 @@ export const addItcycleNumberingResolutionForCompany = async ({ companyId, docum
         throw new ApiError(502, error.message || "Failed to add numbering resolution with itcycle-api-dian", providerPayload ? [providerPayload] : undefined);
     }
 };
+
+// Self-service correction, restricted to "91"/"92" (nota crédito/débito) -
+// unlike "01"/"05", DIAN never issues or validates those two, so fixing a
+// typo here can't desync anything DIAN itself has on record (see
+// NumberingResolutionForm's autoAssignPrefix comment in
+// ElectronicInvoicingSettings.jsx). itcycle-api-dian's own
+// updateNumberingResolution additionally refuses this once any document has
+// claimed a number from the resolution - that failure surfaces as-is here.
+export const updateItcycleNumberingResolutionForCompany = async ({ companyId, resolutionId, prefix, resolutionNumber, startNumber, endNumber, startDate, endDate }) => {
+    if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) throw new ApiError(404, "Company not found");
+    if (!text(company.itcycleCompanyId)) {
+        throw new ApiError(422, "Company must be provisioned with itcycle-api-dian before editing a numbering resolution");
+    }
+
+    let readiness;
+    try {
+        readiness = await getCompanyDianReadiness({ companyId });
+    } catch (error) {
+        throw new ApiError(502, error.message || "Failed to verify the numbering resolution with itcycle-api-dian");
+    }
+    const resolution = (readiness?.resolutions || []).find((r) => r.id === resolutionId);
+    if (!resolution) throw new ApiError(404, "Numbering resolution not found");
+    if (resolution.documentType !== "91" && resolution.documentType !== "92") {
+        throw new ApiError(403, "Solo las resoluciones de nota crédito/débito se pueden editar aquí - las de factura o documento soporte quedaron registradas ante la DIAN y requieren soporte.");
+    }
+
+    try {
+        return await updateItcycleNumberingResolution({ companyId: company.itcycleCompanyId, resolutionId, prefix, resolutionNumber, startNumber, endNumber, startDate, endDate });
+    } catch (error) {
+        const providerPayload = error instanceof ItcycleDianError ? error.payload : null;
+        throw new ApiError(502, error.message || "Failed to update numbering resolution with itcycle-api-dian", providerPayload ? [providerPayload] : undefined);
+    }
+};
 // ---------------------------------------------------------------------------
 
 const getOrderWithRelations = (orderId) => prisma.order.findFirst({
@@ -952,6 +1024,7 @@ const serialize = (invoice) => !invoice ? null : ({
     provider: invoice.provider, status: invoice.status, referenceCode: invoice.referenceCode,
     externalId: invoice.externalId, invoiceNumber: invoice.invoiceNumber, cufe: invoice.cufe,
     qrUrl: invoice.qrUrl, pdfUrl: invoice.pdfUrl, xmlUrl: invoice.xmlUrl,
+    certificateId: invoice.certificateId, certificateProvider: invoice.certificateProvider, certificateIdentifier: invoice.certificateIdentifier,
     errorMessage: invoice.errorMessage, issuedAt: invoice.issuedAt,
     createdAt: invoice.createdAt, updatedAt: invoice.updatedAt,
     events: Array.isArray(invoice.events) ? invoice.events.map(serializeEvent) : undefined,

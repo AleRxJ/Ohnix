@@ -102,11 +102,16 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                     onClick={handleLogoClick}
                 >
                     <div className="flex items-center gap-1.5">
-                        <img
-                            src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Transparent.png"}
-                            alt="Ohnix icon"
-                            className="h-14 w-14 object-contain"
-                        />
+                        <div
+                            className="flex items-center justify-center rounded-xl p-1.5"
+                            style={isLite ? { background: "linear-gradient(180deg, #0b0b0b 0%, #0a1114 100%)" } : undefined}
+                        >
+                            <img
+                                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon_Transparent.png"}
+                                alt="Ohnix icon"
+                                className="h-11 w-11 object-contain"
+                            />
+                        </div>
                         <span className="text-sm font-semibold tracking-[0.18em] text-[var(--ohnix-text-primary)]">
                             OHNIX
                         </span>

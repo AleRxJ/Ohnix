@@ -84,7 +84,7 @@ export const recordJournalEntry = async (
     if (totalDebit !== totalCredit) {
         throw new ApiError(
             500,
-            "El asiento contable no cuadra (débitos ≠ créditos).",
+            "The journal entry is unbalanced (debits do not equal credits).",
             [],
             "",
             "journal_entry_unbalanced"
@@ -95,7 +95,7 @@ export const recordJournalEntry = async (
     if (period.status === "closed") {
         throw new ApiError(
             409,
-            "El periodo contable está cerrado para nuevos movimientos.",
+            "The accounting period is closed for new entries.",
             [],
             "",
             "accounting_period_closed"
@@ -104,7 +104,7 @@ export const recordJournalEntry = async (
     if (period.reopenedUntil && period.reopenedUntil <= new Date() && sourceType !== "period_reclose") {
         throw new ApiError(
             409,
-            "La ventana autorizada de reapertura del periodo venció. Debe cerrarse o autorizarse una nueva reapertura.",
+            "The authorized reopening window has expired.",
             [],
             "",
             "accounting_period_reopening_expired"
@@ -187,7 +187,7 @@ export const hasBackfilledJournalEntry = async ({ accountId }) => {
 // requiring a separate reconciliation step.
 export const getAccountLedger = async ({ accountId, chartAccountId, startDate, endDate }) => {
     const account = await prisma.chartAccount.findFirst({ where: { id: chartAccountId, createdById: accountId } });
-    if (!account) throw new ApiError(404, "Cuenta contable no encontrada.");
+    if (!account) throw new ApiError(404, "Chart account not found.", [], "", "chart_account_not_found");
 
     const priorLines = startDate
         ? await prisma.journalEntryLine.findMany({
@@ -244,6 +244,6 @@ export const getJournalEntryById = async ({ accountId, id }) => {
             period: { select: { id: true, year: true, month: true, status: true } },
         },
     });
-    if (!entry) throw new ApiError(404, "Asiento contable no encontrado.");
+    if (!entry) throw new ApiError(404, "Journal entry not found.", [], "", "journal_entry_not_found");
     return entry;
 };

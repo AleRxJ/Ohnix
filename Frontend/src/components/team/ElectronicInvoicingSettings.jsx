@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, DatePicker, Form, Input, Select, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, DatePicker, Form, Input, Modal, Select, Tag, Tooltip, Typography } from "antd";
 import {
     ArrowLeftOutlined,
     ArrowRightOutlined,
     BankOutlined,
     CheckCircleOutlined,
+    EditOutlined,
     EnvironmentOutlined,
     FileProtectOutlined,
     IdcardOutlined,
@@ -13,10 +14,13 @@ import {
     LockOutlined,
     MailOutlined,
     PlusOutlined,
+    QuestionCircleOutlined,
+    ReloadOutlined,
     RocketOutlined,
     SafetyCertificateOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
+import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
 import { getElectronicInvoicingProviderLabel } from "../../utils/electronicInvoicingProvider";
@@ -24,6 +28,8 @@ import { COLOMBIA_DEPARTMENTS, findDepartmentName } from "../../constants/colomb
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { isValidNit, isValidPrefix, isValidSoftwareId, isValidTechnicalKey } from "../../utils/dianValidation";
 import FirmaPassSelfService from "./FirmaPassSelfService";
+import ViafirmaSelfService from "./ViafirmaSelfService";
+import DianHabilitacionPanel from "./DianHabilitacionPanel";
 
 const validatorRule = (isValid, message) => ({
     validator: (_, value) => (!value || isValid(value) ? Promise.resolve() : Promise.reject(new Error(message))),
@@ -42,13 +48,27 @@ const stepFields = [
     ["prefix", "resolutionNumber", "startNumber", "endNumber", "startDate", "endDate"],
 ];
 
-// Documento Soporte (DIAN type "05") needs its own numbering resolution,
-// separate from the invoice ("01") one the wizard below registers - see
-// Backend/services/purchaseSupportDocument.service.js. Without it,
+// Generic self-service "add a numbering resolution" form for any DIAN
+// document type. Originally hardcoded to "05" (Documento Soporte - see
+// Backend/services/purchaseSupportDocument.service.js: without it,
 // issueSupportDocumentForPurchase fails silently (fire-and-forget) the
-// first time a purchase from a not-obligated-to-invoice supplier completes,
-// so this is offered right alongside FirmaPass, not buried elsewhere.
-const SupportDocumentResolution = ({ onAdded }) => {
+// first time a purchase from a not-obligated-to-invoice supplier completes).
+// Generalized so the same form also covers "91"/"92" (nota crédito/débito),
+// which the DIAN habilitación test-matrix panel below requires a company to
+// have before it can start - reusing this one parametrized form instead of
+// duplicating it per document type.
+// autoAssignPrefix is set only for "91"/"92": unlike a factura's Resolución
+// de Facturación (DIAN pre-authorizes a specific prefix/range/dates before
+// you can use them), Resolución DIAN 000042 de 2020 only requires notas
+// crédito/débito to follow "un sistema de numeración consecutiva del emisor"
+// - the ISSUER'S OWN consecutive scheme, not one DIAN grants in advance.
+// itcycle-api-dian's own numbering-resolution creation is a plain database
+// insert with no DIAN-side validation either way (confirmed against its
+// admin.service.ts), so there's nothing to look up - only something to pick
+// once and keep using. Pre-filling sensible values here (a distinct 2-letter
+// prefix + a wide, decades-long range) turns "figure out what DIAN wants"
+// into "review these defaults and click Agregar."
+const NumberingResolutionForm = ({ documentType, titleKey, hintKey, buttonKey, onAdded, autoAssignPrefix }) => {
     const { t } = useI18n();
     const [form] = Form.useForm();
     const [adding, setAdding] = useState(false);
@@ -64,7 +84,7 @@ const SupportDocumentResolution = ({ onAdded }) => {
             const values = await form.validateFields();
             setAdding(true);
             await companyService.addMyItcycleNumberingResolution({
-                documentType: "05",
+                documentType,
                 prefix: values.prefix,
                 resolutionNumber: values.resolutionNumber,
                 startNumber: Number(values.startNumber),
@@ -90,24 +110,44 @@ const SupportDocumentResolution = ({ onAdded }) => {
                     <FileProtectOutlined className="text-lg text-[#44F3F0]" />
                 </div>
                 <div>
-                    <Title level={5} className="m-0 text-[var(--ohnix-text-primary)]">{t("fiscal_setup.support_document_title")}</Title>
-                    <Text className="text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.support_document_hint")}</Text>
+                    <Title level={5} className="m-0 text-[var(--ohnix-text-primary)]">{t(titleKey)}</Title>
+                    <Text className="text-xs text-[var(--ohnix-text-muted)]">{t(hintKey)}</Text>
                 </div>
             </div>
-            <Form form={form} layout="vertical" className="mt-4">
+            {autoAssignPrefix && (
+                <Alert
+                    className="mt-3 dark-alert dark-alert-purple"
+                    type="info"
+                    showIcon
+                    message={t("fiscal_setup.auto_assign_resolution_hint")}
+                />
+            )}
+            <Form
+                form={form}
+                layout="vertical"
+                className="mt-4"
+                initialValues={autoAssignPrefix ? {
+                    prefix: autoAssignPrefix,
+                    resolutionNumber: "1",
+                    startNumber: 1,
+                    endNumber: 999999,
+                    startDate: dayjs(),
+                    endDate: dayjs().add(10, "year"),
+                } : undefined}
+            >
                 <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                     <Form.Item
                         name="prefix"
                         label={t("fiscal_setup.prefix")}
-                        extra={t("fiscal_setup.prefix_hint")}
+                        tooltip={t(autoAssignPrefix ? "fiscal_setup.prefix_hint_auto_assign" : "fiscal_setup.prefix_hint")}
                         rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidPrefix, t("fiscal_setup.prefix_invalid"))]}
                     >
                         <Input size="large" maxLength={4} className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} extra={t("fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} tooltip={t(autoAssignPrefix ? "fiscal_setup.resolution_number_hint_auto_assign" : "fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
                         <Input size="large" className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} extra={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} tooltip={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                         <Input size="large" type="number" min={1} className="auth-ohnix-input" />
                     </Form.Item>
                     <Form.Item
@@ -127,7 +167,7 @@ const SupportDocumentResolution = ({ onAdded }) => {
                     >
                         <Input size="large" type="number" min={1} className="auth-ohnix-input" />
                     </Form.Item>
-                    <Form.Item name="startDate" label={t("fiscal_setup.start_date")} extra={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                    <Form.Item name="startDate" label={t("fiscal_setup.start_date")} tooltip={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                         <DatePicker size="large" className="w-full" />
                     </Form.Item>
                     <Form.Item
@@ -149,7 +189,7 @@ const SupportDocumentResolution = ({ onAdded }) => {
                     </Form.Item>
                 </div>
                 <Button type="primary" className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" icon={<PlusOutlined />} loading={adding} onClick={submit}>
-                    {t("fiscal_setup.add_support_document_resolution")}
+                    {t(buttonKey)}
                 </Button>
             </Form>
         </Card>
@@ -179,10 +219,16 @@ const MISSING_READINESS_LABEL_KEYS = {
 // (see updateMyCompany's vatResponsibleEffectiveFrom tracking) and had no
 // edit path left once the wizard disappeared - so it gets its own inline
 // editor instead of just being displayed.
-const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
+const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged, onResolutionsChanged }) => {
     const { t } = useI18n();
     const [vatResponsible, setVatResponsible] = useState(company?.vatResponsible === "unset" ? undefined : company?.vatResponsible);
     const [savingVat, setSavingVat] = useState(false);
+    // Only "91"/"92" resolutions are ever editable (see
+    // updateItcycleNumberingResolutionForCompany's comment) - null means the
+    // edit modal is closed.
+    const [editingResolution, setEditingResolution] = useState(null);
+    const [editForm] = Form.useForm();
+    const [savingResolution, setSavingResolution] = useState(false);
 
     useEffect(() => {
         setVatResponsible(company?.vatResponsible === "unset" ? undefined : company?.vatResponsible);
@@ -202,10 +248,46 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
         }
     };
 
+    const openEditResolution = (resolution) => {
+        setEditingResolution(resolution);
+        editForm.setFieldsValue({
+            prefix: resolution.prefix,
+            resolutionNumber: resolution.resolutionNumber,
+            startNumber: resolution.startNumber,
+            endNumber: resolution.endNumber,
+            startDate: dayjs(resolution.startDate),
+            endDate: dayjs(resolution.endDate),
+        });
+    };
+
+    const submitEditResolution = async () => {
+        try {
+            const values = await editForm.validateFields();
+            setSavingResolution(true);
+            await companyService.updateMyItcycleNumberingResolution(editingResolution.id, {
+                prefix: values.prefix,
+                resolutionNumber: values.resolutionNumber,
+                startNumber: Number(values.startNumber),
+                endNumber: Number(values.endNumber),
+                startDate: values.startDate?.format("YYYY-MM-DD"),
+                endDate: values.endDate?.format("YYYY-MM-DD"),
+            });
+            toast.success(t("fiscal_setup.resolutions_edit_success"));
+            setEditingResolution(null);
+            onResolutionsChanged?.();
+        } catch (error) {
+            if (!error?.errorFields) toast.error(resolveApiErrorMessage(error, t, {}, "fiscal_setup.resolutions_edit_error"));
+        } finally {
+            setSavingResolution(false);
+        }
+    };
+
     const resolutions = readiness?.resolutions || [];
     const documentTypeLabel = (documentType) => {
         if (documentType === "01") return t("fiscal_setup.document_type_invoice");
         if (documentType === "05") return t("fiscal_setup.document_type_support");
+        if (documentType === "91") return t("fiscal_setup.document_type_credit_note");
+        if (documentType === "92") return t("fiscal_setup.document_type_debit_note");
         return documentType;
     };
 
@@ -248,6 +330,11 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
                     <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.config_environment")}</Text>
                     <div className="flex items-center gap-2">
                         <Text className="text-sm font-medium text-[var(--ohnix-text-primary)]">{readiness?.environment || "-"}</Text>
+                        {readiness?.environment && (
+                            <Tooltip title={t(readiness.environment === "PRODUCTION" ? "fiscal_setup.config_environment_production_hint" : "fiscal_setup.config_environment_sandbox_hint")}>
+                                <QuestionCircleOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
+                            </Tooltip>
+                        )}
                         <Tooltip title={t("fiscal_setup.config_locked_hint")}>
                             <LockOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
                         </Tooltip>
@@ -309,30 +396,111 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged }) => {
                                     <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_prefix")}</th>
                                     <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_number")}</th>
                                     <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_validity")}</th>
-                                    <th className="pb-2 font-medium">{t("fiscal_setup.resolutions_col_status")}</th>
+                                    <th className="pb-2 pr-3 font-medium">{t("fiscal_setup.resolutions_col_status")}</th>
+                                    <th className="pb-2 font-medium" />
                                 </tr>
                             </thead>
                             <tbody>
-                                {resolutions.map((resolution) => (
-                                    <tr key={resolution.id} className="border-t border-[var(--ohnix-line-4)]">
-                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{documentTypeLabel(resolution.documentType)}</td>
-                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{resolution.prefix}</td>
-                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{resolution.resolutionNumber}</td>
-                                        <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">
-                                            {new Date(resolution.startDate).toLocaleDateString()} – {new Date(resolution.endDate).toLocaleDateString()}
-                                        </td>
-                                        <td className="py-2">
-                                            <Tag color={resolution.isCurrent ? "green" : "default"}>
-                                                {resolution.isCurrent ? t("fiscal_setup.resolutions_current") : t("fiscal_setup.resolutions_not_current")}
-                                            </Tag>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {resolutions.map((resolution) => {
+                                    // Only "91"/"92" (self-assigned, no DIAN validation) are ever
+                                    // editable, and only before any document has claimed a number
+                                    // from them - see updateItcycleNumberingResolutionForCompany.
+                                    const canEdit = (resolution.documentType === "91" || resolution.documentType === "92")
+                                        && resolution.currentNumber === resolution.startNumber;
+                                    return (
+                                        <tr key={resolution.id} className="border-t border-[var(--ohnix-line-4)]">
+                                            <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{documentTypeLabel(resolution.documentType)}</td>
+                                            <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{resolution.prefix}</td>
+                                            <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">{resolution.resolutionNumber}</td>
+                                            <td className="py-2 pr-3 text-[var(--ohnix-text-primary)]">
+                                                {new Date(resolution.startDate).toLocaleDateString()} – {new Date(resolution.endDate).toLocaleDateString()}
+                                            </td>
+                                            <td className="py-2 pr-3">
+                                                <Tag color={resolution.isCurrent ? "green" : "default"}>
+                                                    {resolution.isCurrent ? t("fiscal_setup.resolutions_current") : t("fiscal_setup.resolutions_not_current")}
+                                                </Tag>
+                                            </td>
+                                            <td className="py-2">
+                                                {canEdit && (
+                                                    <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEditResolution(resolution)}>
+                                                        {t("fiscal_setup.resolutions_edit")}
+                                                    </Button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
                 )}
             </div>
+
+            <Modal
+                title={t("fiscal_setup.resolutions_edit_title")}
+                open={Boolean(editingResolution)}
+                onCancel={() => setEditingResolution(null)}
+                onOk={submitEditResolution}
+                confirmLoading={savingResolution}
+                okText={t("fiscal_setup.resolutions_edit_save")}
+                cancelText={t("fiscal_setup.habilitacion_confirm_cancel")}
+                destroyOnClose
+            >
+                <Form form={editForm} layout="vertical" className="mt-4">
+                    <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                        <Form.Item
+                            name="prefix"
+                            label={t("fiscal_setup.prefix")}
+                            rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidPrefix, t("fiscal_setup.prefix_invalid"))]}
+                        >
+                            <Input size="large" maxLength={4} className="auth-ohnix-input" />
+                        </Form.Item>
+                        <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
+                            <Input size="large" className="auth-ohnix-input" />
+                        </Form.Item>
+                        <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                            <Input size="large" type="number" min={1} className="auth-ohnix-input" />
+                        </Form.Item>
+                        <Form.Item
+                            name="endNumber"
+                            label={t("fiscal_setup.end_number")}
+                            dependencies={["startNumber"]}
+                            rules={[
+                                { required: true, message: t("fiscal_setup.field_required") },
+                                {
+                                    validator: (_, value) => {
+                                        const startNumber = editForm.getFieldValue("startNumber");
+                                        if (!value || !startNumber) return Promise.resolve();
+                                        return Number(value) > Number(startNumber) ? Promise.resolve() : Promise.reject(new Error(t("fiscal_setup.number_range_invalid")));
+                                    },
+                                },
+                            ]}
+                        >
+                            <Input size="large" type="number" min={1} className="auth-ohnix-input" />
+                        </Form.Item>
+                        <Form.Item name="startDate" label={t("fiscal_setup.start_date")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                            <DatePicker size="large" className="w-full" />
+                        </Form.Item>
+                        <Form.Item
+                            name="endDate"
+                            label={t("fiscal_setup.end_date")}
+                            dependencies={["startDate"]}
+                            rules={[
+                                { required: true, message: t("fiscal_setup.field_required") },
+                                {
+                                    validator: (_, value) => {
+                                        const startDate = editForm.getFieldValue("startDate");
+                                        if (!value || !startDate) return Promise.resolve();
+                                        return value.isAfter(startDate) ? Promise.resolve() : Promise.reject(new Error(t("fiscal_setup.date_range_invalid")));
+                                    },
+                                },
+                            ]}
+                        >
+                            <DatePicker size="large" className="w-full" />
+                        </Form.Item>
+                    </div>
+                </Form>
+            </Modal>
         </Card>
     );
 };
@@ -344,6 +512,21 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
     const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    // Which certificate provider (firmapass|viafirma) signs this company's
+    // real documents - a selector only makes sense when activeProviders has
+    // more than one entry (an ACTIVE certificate from both at once).
+    const [certificateProviderStatus, setCertificateProviderStatus] = useState({ activeProviders: [], override: null });
+    const [providerSwitchBusy, setProviderSwitchBusy] = useState(false);
+    // readinessError (itcycle-api-dian unreachable/cold-starting) used to just
+    // print "try again in a few seconds" with nothing on screen that actually
+    // retried or told the owner when - they had no way to know if reloading
+    // now would help or if they should wait. This auto-retries a few times on
+    // a visible countdown, backing off each time, plus a manual button for
+    // "I don't want to wait."
+    const [retrying, setRetrying] = useState(false);
+    const [autoRetryCount, setAutoRetryCount] = useState(0);
+    const [secondsToRetry, setSecondsToRetry] = useState(null);
+    const MAX_AUTO_RETRIES = 3;
     // Generated once per mount, not per click - the idempotency middleware
     // replays the cached response for a repeated key, which only protects a
     // real retry (network timeout, a double-click, a lost response after the
@@ -352,7 +535,18 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
     // brand-new request and could double-post the numbering resolution.
     const [registerIdempotencyKey] = useState(() => crypto.randomUUID());
 
+    const refreshCertificateProviderStatus = async () => {
+        try {
+            const response = await companyService.getMyCertificateProviderStatus();
+            setCertificateProviderStatus(response?.data || { activeProviders: [], override: null });
+        } catch {
+            // Non-critical - the certificate cards below fall back to their
+            // own default visibility rule when this hasn't loaded yet.
+        }
+    };
+
     const refresh = async () => {
+        refreshCertificateProviderStatus();
         try {
             const response = await companyService.getMyItcycleStatus();
             setStatus(response?.data || { provisioned: false });
@@ -372,6 +566,45 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Backs off each attempt (8s, 16s, 24s) instead of hammering
+    // itcycle-api-dian while it's cold-starting, and gives up after
+    // MAX_AUTO_RETRIES so a genuinely down backend doesn't poll forever -
+    // the manual button below always stays available after that.
+    useEffect(() => {
+        if (!status?.readinessError || autoRetryCount >= MAX_AUTO_RETRIES) {
+            setSecondsToRetry(null);
+            return undefined;
+        }
+        const delaySeconds = 8 * (autoRetryCount + 1);
+        setSecondsToRetry(delaySeconds);
+        const tick = setInterval(() => {
+            setSecondsToRetry((current) => (current && current > 1 ? current - 1 : 0));
+        }, 1000);
+        const timeout = setTimeout(() => {
+            clearInterval(tick);
+            setAutoRetryCount((count) => count + 1);
+            refresh();
+        }, delaySeconds * 1000);
+        return () => {
+            clearInterval(tick);
+            clearTimeout(timeout);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [status?.readinessError, autoRetryCount]);
+
+    useEffect(() => {
+        if (!status?.readinessError) setAutoRetryCount(0);
+    }, [status?.readinessError]);
+
+    const retryReadinessNow = async () => {
+        setRetrying(true);
+        try {
+            await refresh();
+        } finally {
+            setRetrying(false);
         }
     };
 
@@ -487,14 +720,44 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
         status.electronicInvoicingProvider !== "itcycle";
 
     const field = (name, label, options = {}) => (
-        <Form.Item name={name} label={label} extra={options.hint} rules={options.required ? [{ required: true, message: t("fiscal_setup.field_required") }] : []}>
+        <Form.Item name={name} label={label} tooltip={options.hint} rules={options.required ? [{ required: true, message: t("fiscal_setup.field_required") }] : []}>
             {options.select
                 ? <Select size="large" options={options.select} />
                 : <Input size="large" type={options.type} prefix={options.icon} className="auth-ohnix-input" />}
         </Form.Item>
     );
 
-    const hasSupportDocumentResolution = (status?.readiness?.resolutions || []).some((r) => r.documentType === "05" && r.isCurrent);
+    const hasResolution = (documentType) => (status?.readiness?.resolutions || []).some((r) => r.documentType === documentType && r.isCurrent);
+    const isSandbox = status?.readiness?.environment === "SANDBOX";
+
+    // Which certificate card(s) to show:
+    // - Both active at once (real ambiguity, e.g. mid-migration or a manual
+    //   contingency fallback) -> show a selector, render only the chosen one.
+    // - Only FirmaPass active (an existing pre-Viafirma customer) -> show
+    //   both: FirmaPass because it's what's actually protecting their
+    //   invoicing today, Viafirma as the invitation to migrate.
+    // - Anything else (nothing active yet, or only Viafirma active) ->
+    //   Viafirma alone, matching the new default going forward.
+    const { activeProviders, override } = certificateProviderStatus;
+    const bothActive = activeProviders.includes("viafirma") && activeProviders.includes("firmapass");
+    const onlyFirmaPassActive = activeProviders.includes("firmapass") && !activeProviders.includes("viafirma");
+    const effectiveProvider = bothActive ? (override || "viafirma") : null;
+    const showCertificateProviderSelector = bothActive;
+    const showViafirmaCard = bothActive ? effectiveProvider === "viafirma" : true;
+    const showFirmaPassCard = bothActive ? effectiveProvider === "firmapass" : onlyFirmaPassActive;
+
+    const switchCertificateProvider = async (provider) => {
+        try {
+            setProviderSwitchBusy(true);
+            const response = await companyService.setMyCertificateProviderOverride(provider);
+            setCertificateProviderStatus(response?.data || { activeProviders, override: provider });
+            toast.success(t("fiscal_setup.certificate_provider_switched"));
+        } catch (error) {
+            toast.error(error?.response?.data?.message || t("fiscal_setup.certificate_provider_switch_error"));
+        } finally {
+            setProviderSwitchBusy(false);
+        }
+    };
 
     const STEP_META = [
         { icon: <BankOutlined />, title: t("fiscal_setup.step_company"), caption: t("fiscal_setup.step_company_caption") },
@@ -547,15 +810,138 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                         }
                     />
                     {status.readinessError && (
-                        <Alert className="mt-3 dark-alert dark-alert-amber" type="warning" showIcon message={t("fiscal_setup.readiness_unavailable")} description={t("fiscal_setup.readiness_unavailable_hint")} />
+                        <Alert
+                            className="mt-3 dark-alert dark-alert-amber"
+                            type="warning"
+                            showIcon
+                            message={t("fiscal_setup.readiness_unavailable")}
+                            description={
+                                <div className="flex flex-col gap-1">
+                                    <span>{t("fiscal_setup.readiness_unavailable_hint")}</span>
+                                    {secondsToRetry != null && (
+                                        <span className="text-xs text-[var(--ohnix-text-muted)]">
+                                            {t("fiscal_setup.readiness_retry_countdown", { seconds: secondsToRetry })}
+                                        </span>
+                                    )}
+                                </div>
+                            }
+                            action={
+                                <Button size="small" icon={<ReloadOutlined />} loading={retrying} onClick={retryReadinessNow}>
+                                    {t("fiscal_setup.readiness_retry_now")}
+                                </Button>
+                            }
+                        />
                     )}
-                    <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} />
-                    <FirmaPassSelfService
-                        electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)}
-                        electronicInvoicingAtRisk={Boolean(status.electronicInvoicingAtRisk)}
-                        onActivated={onCompanyChanged}
-                    />
-                    {!hasSupportDocumentResolution && <SupportDocumentResolution onAdded={refresh} />}
+                    <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} onResolutionsChanged={refresh} />
+                    {showCertificateProviderSelector && (
+                        // Two visual weights, same control: unresolved (override still
+                        // null, silently defaulting to Viafirma) genuinely needs
+                        // attention, so it gets the amber-tinted card + hint text.
+                        // Once the owner has explicitly picked one, there's nothing
+                        // left to decide - it shrinks to a quiet, neutral row so it
+                        // doesn't keep reading as a warning every time this page loads.
+                        <div
+                            className={`mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 transition-colors ${
+                                override
+                                    ? "border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)]"
+                                    : "border-[var(--ohnix-status-amber)]/30 bg-[var(--ohnix-status-amber)]/5"
+                            }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <SafetyCertificateOutlined className={override ? "text-[var(--ohnix-text-dim)]" : "text-[var(--ohnix-status-amber)]"} />
+                                <div>
+                                    <Text className="block text-sm font-semibold text-[var(--ohnix-text-primary)]">
+                                        {override ? t("fiscal_setup.certificate_provider_active_title") : t("fiscal_setup.certificate_provider_conflict_title")}
+                                    </Text>
+                                    {!override && (
+                                        <Text className="block text-xs text-[var(--ohnix-text-muted)]">{t("fiscal_setup.certificate_provider_conflict_hint")}</Text>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex gap-1 rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card)] p-1">
+                                <button
+                                    type="button"
+                                    disabled={providerSwitchBusy}
+                                    onClick={() => switchCertificateProvider("viafirma")}
+                                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                        effectiveProvider === "viafirma"
+                                            ? "bg-[#29D8D5]/15 text-[#0f9e9c] shadow-[0_0_14px_rgba(41,216,213,0.15)]"
+                                            : "text-[var(--ohnix-text-muted)] hover:text-[var(--ohnix-text-primary)]"
+                                    }`}
+                                >
+                                    {t("fiscal_setup.certificate_provider_use_viafirma")}
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={providerSwitchBusy}
+                                    onClick={() => switchCertificateProvider("firmapass")}
+                                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                        effectiveProvider === "firmapass"
+                                            ? "bg-[#29D8D5]/15 text-[#0f9e9c] shadow-[0_0_14px_rgba(41,216,213,0.15)]"
+                                            : "text-[var(--ohnix-text-muted)] hover:text-[var(--ohnix-text-primary)]"
+                                    }`}
+                                >
+                                    {t("fiscal_setup.certificate_provider_use_firmapass")}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    {showViafirmaCard && (
+                        <ViafirmaSelfService company={company} electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)} />
+                    )}
+                    {showFirmaPassCard && (
+                        <FirmaPassSelfService
+                            electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)}
+                            electronicInvoicingAtRisk={Boolean(status.electronicInvoicingAtRisk)}
+                            onActivated={onCompanyChanged}
+                        />
+                    )}
+                    {status?.readiness?.certificateReady ? (
+                        <>
+                            {!hasResolution("05") && (
+                                <NumberingResolutionForm
+                                    documentType="05"
+                                    titleKey="fiscal_setup.support_document_title"
+                                    hintKey="fiscal_setup.support_document_hint"
+                                    buttonKey="fiscal_setup.add_support_document_resolution"
+                                    onAdded={refresh}
+                                />
+                            )}
+                            {isSandbox && !hasResolution("91") && (
+                                <NumberingResolutionForm
+                                    documentType="91"
+                                    titleKey="fiscal_setup.credit_note_resolution_title"
+                                    hintKey="fiscal_setup.credit_note_resolution_hint"
+                                    buttonKey="fiscal_setup.add_credit_note_resolution"
+                                    autoAssignPrefix="NC"
+                                    onAdded={refresh}
+                                />
+                            )}
+                            {isSandbox && !hasResolution("92") && (
+                                <NumberingResolutionForm
+                                    documentType="92"
+                                    titleKey="fiscal_setup.debit_note_resolution_title"
+                                    hintKey="fiscal_setup.debit_note_resolution_hint"
+                                    buttonKey="fiscal_setup.add_debit_note_resolution"
+                                    autoAssignPrefix="ND"
+                                    onAdded={refresh}
+                                />
+                            )}
+                            {isSandbox && <DianHabilitacionPanel knownTestSetId={status?.itcycleTestSetId} />}
+                        </>
+                    ) : null /* Every one of these either sends a real document to
+                        DIAN (habilitación tests) or configures numbering
+                        for one that eventually will (documento soporte,
+                        notes) - none of that is actionable without a
+                        signed certificate to send it with (Viafirma,
+                        FirmaPass, or a manually uploaded one - readiness
+                        is provider-agnostic, see certificateReady's own
+                        comment in admin.service.ts). Showing them earlier
+                        just let someone configure/test something that
+                        can't actually go anywhere yet - the paywall card
+                        above (ViafirmaSelfService) already explains what's
+                        needed, so this stays silent rather than repeating
+                        that explanation in a second place. */}
                 </>
             ) : otherProviderActive ? (
                 <Alert
@@ -662,7 +1048,16 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                                 message={t("fiscal_setup.software_step_assisted_hint")}
                             />
                             <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-                                {field("environment", t("fiscal_setup.environment"), { required: true, hint: t("fiscal_setup.environment_hint"), select: [{ value: "SANDBOX", label: t("fiscal_setup.environment_sandbox") }, { value: "PRODUCTION", label: t("fiscal_setup.environment_production") }] })}
+                                {/* Fixed to SANDBOX, not a real choice - the backend
+                                (registerCompanyWithItcycle) force-overrides whatever a
+                                self-service caller sends here anyway, since the DIAN
+                                requires an approved set de pruebas de habilitación before
+                                any company can go to PRODUCTION. That happens later, via
+                                DianHabilitacionPanel + an Ohnix admin's own review, never
+                                as a choice on this first registration step. */}
+                                <Form.Item name="environment" label={t("fiscal_setup.environment")} tooltip={t("fiscal_setup.environment_hint")}>
+                                    <Select size="large" disabled options={[{ value: "SANDBOX", label: t("fiscal_setup.environment_sandbox") }]} />
+                                </Form.Item>
                                 <Form.Item
                                     name="softwareId"
                                     label={t("fiscal_setup.software_id")}
@@ -733,15 +1128,15 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             <Form.Item
                                 name="prefix"
                                 label={t("fiscal_setup.prefix")}
-                                extra={t("fiscal_setup.prefix_hint")}
+                                tooltip={t("fiscal_setup.prefix_hint")}
                                 rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidPrefix, t("fiscal_setup.prefix_invalid"))]}
                             >
                                 <Input size="large" maxLength={4} className="auth-ohnix-input" />
                             </Form.Item>
-                            <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} extra={t("fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
+                            <Form.Item name="resolutionNumber" label={t("fiscal_setup.resolution_number")} tooltip={t("fiscal_setup.resolution_number_hint")} rules={[{ required: true, whitespace: true, message: t("fiscal_setup.field_required") }]}>
                                 <Input size="large" className="auth-ohnix-input" />
                             </Form.Item>
-                            <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} extra={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
+                            <Form.Item name="startNumber" label={t("fiscal_setup.start_number")} tooltip={t("fiscal_setup.number_range_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}>
                                 <Input size="large" type="number" min={1} className="auth-ohnix-input" />
                             </Form.Item>
                             <Form.Item
@@ -761,7 +1156,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             >
                                 <Input size="large" type="number" min={1} className="auth-ohnix-input" />
                             </Form.Item>
-                            <Form.Item name="startDate" label={t("fiscal_setup.start_date")} extra={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}><DatePicker size="large" className="w-full" /></Form.Item>
+                            <Form.Item name="startDate" label={t("fiscal_setup.start_date")} tooltip={t("fiscal_setup.validity_dates_hint")} rules={[{ required: true, message: t("fiscal_setup.field_required") }]}><DatePicker size="large" className="w-full" /></Form.Item>
                             <Form.Item
                                 name="endDate"
                                 label={t("fiscal_setup.end_date")}

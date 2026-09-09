@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Card, Tabs, Badge, Alert } from "antd";
 import {
     FileTextOutlined,
@@ -22,7 +23,17 @@ import useSubscription from "../hooks/useSubscription";
 import { getConnectivityState, subscribeConnectivity } from "../offline/connectivity";
 
 const Reports = () => {
-    const [activeTab, setActiveTab] = useState("stock");
+    // A caller elsewhere in the app (e.g. Accounting.jsx's "Reporte de IVA"
+    // overview card) can deep-link straight to a specific tab - and, for the
+    // "advanced" tab, straight to one of ITS OWN sub-tabs - via
+    // navigate("/reports", { state: { tab: "advanced", sub: "vat" } }),
+    // mirroring the identical state.tab pattern Accounting.jsx itself already
+    // reads. Without this, every such link landed on the unrelated default
+    // "stock" tab (or, once on "advanced", its own default "margin" sub-tab),
+    // which is indistinguishable from the feature not existing at all.
+    const location = useLocation();
+    const deepLink = location.state || {};
+    const [activeTab, setActiveTab] = useState(deepLink.tab || "stock");
     const [isOffline, setIsOffline] = useState(!getConnectivityState());
     const { user } = useContext(AuthContext);
     const { t, currentLanguage } = useI18n();
@@ -111,7 +122,7 @@ const Reports = () => {
                     {tabLabelByKey.advanced}
                 </span>
             ),
-            children: can("advancedReports") ? <AdvancedReports /> : <PlanGate featureKey="advancedReports" />,
+            children: can("advancedReports") ? <AdvancedReports defaultSubTab={deepLink.sub} /> : <PlanGate featureKey="advancedReports" />,
         },
     ];
 

@@ -17,6 +17,7 @@ import { isAdmin } from "../middleware/admin.middleware.js";
 import {
     enforceEntityLimit,
     enforceMonthlyLimit,
+    requireActiveSubscription,
 } from "../middleware/pricing.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
@@ -51,8 +52,11 @@ router.route("/:id/returns").post(requireModulePermission("purchases", "edit"), 
 // Documento Soporte (DIAN type "05", itcycle-api-dian only) - see
 // purchaseSupportDocument.service.js. Auto-issued on purchase completion;
 // these endpoints are for viewing status and manually retrying/syncing.
+// GET is never gated by requireActiveSubscription - same reasoning as
+// order.routes.js's electronic-invoice GET routes: this is the customer's
+// own tax record and must stay viewable even while the account is paused.
 router.route("/:id/support-document").get(requireModulePermission("purchases", "view"), getPurchaseSupportDocument);
-router.route("/:id/support-document/issue").post(requireModulePermission("purchases", "edit"), issuePurchaseSupportDocument);
-router.route("/:id/support-document/sync").post(requireModulePermission("purchases", "edit"), syncPurchaseSupportDocument);
+router.route("/:id/support-document/issue").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, issuePurchaseSupportDocument);
+router.route("/:id/support-document/sync").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, syncPurchaseSupportDocument);
 
 export default router;

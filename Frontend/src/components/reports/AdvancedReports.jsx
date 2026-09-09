@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { Card, DatePicker, Button, Tabs, Table, Row, Col, Tag, Alert } from "antd";
+import { Card, DatePicker, Button, Tabs, Table, Row, Col, Tag, Alert, Select } from "antd";
 import {
     BarChart,
     Bar,
@@ -16,9 +16,23 @@ import { useCurrency } from "../../context/CurrencyContext";
 import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import StatCard from "../dashboard/StatCard";
+import ReportExportButtons from "./ReportExportButtons";
+import { downloadCsv, downloadExcel, downloadPdfReport } from "../../utils/exportReport";
 import useI18n from "../../hooks/useI18n";
 
 const { RangePicker } = DatePicker;
+
+// Colombia files IVA on a fixed bimestral calendar (Ene-Feb, Mar-Abr, ...,
+// Nov-Dic) - a generic "last 30 days" range almost never lines up with a
+// real filing period, which is the actual reason the VAT tab read as
+// unfinished despite already computing correct numbers. index is 0-5.
+const BIMONTHLY_LABEL_KEYS = ["vat_bimonthly_1", "vat_bimonthly_2", "vat_bimonthly_3", "vat_bimonthly_4", "vat_bimonthly_5", "vat_bimonthly_6"];
+const getBimonthlyRange = (year, index) => {
+    const start = dayjs(`${year}-${String(index * 2 + 1).padStart(2, "0")}-01`);
+    return [start, start.add(1, "month").endOf("month")];
+};
+const getCurrentBimonthlyIndex = (date = dayjs()) => Math.floor(date.month() / 2);
+const rangesMatch = (a, b) => a[0].isSame(b[0], "day") && a[1].isSame(b[1], "day");
 
 const ChangeBadge = ({ value }) => {
     const positive = value >= 0;
@@ -30,9 +44,14 @@ const ChangeBadge = ({ value }) => {
     );
 };
 
-const AdvancedReports = () => {
-    const [activeTab, setActiveTab] = useState("margin");
-    const [dateRange, setDateRange] = useState([dayjs().subtract(30, "days"), dayjs()]);
+const AdvancedReports = ({ defaultSubTab } = {}) => {
+    const [activeTab, setActiveTab] = useState(defaultSubTab || "margin");
+    // A visitor landing directly on "vat" (e.g. Accounting.jsx's overview
+    // card deep-link) should see the current bimestre out of the gate, not
+    // an arbitrary 30-day window they'd have to immediately replace.
+    const [dateRange, setDateRange] = useState(() =>
+        defaultSubTab === "vat" ? getBimonthlyRange(dayjs().year(), getCurrentBimonthlyIndex()) : [dayjs().subtract(30, "days"), dayjs()]
+    );
     const [loading, setLoading] = useState(false);
     const [marginData, setMarginData] = useState(null);
     const [customersData, setCustomersData] = useState(null);
@@ -44,34 +63,43 @@ const AdvancedReports = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
 
-    const dateParams = () => ({
-        start_date: dateRange[0].format("YYYY-MM-DD"),
-        end_date: dateRange[1].format("YYYY-MM-DD"),
+    const dateParams = (range = dateRange) => ({
+        start_date: range[0].format("YYYY-MM-DD"),
+        end_date: range[1].format("YYYY-MM-DD"),
     });
 
-    const fetchAll = async () => {
-        try {
-            setLoading(true);
-            const params = dateParams();
-            const [margin, customers, team, comparison, vat, cartera] = await Promise.all([
-                api.get("/reports/profit-margin", { params }),
-                api.get("/reports/top-customers", { params }),
-                api.get("/reports/sales-by-team", { params }),
-                api.get("/reports/period-comparison", { params }),
-                api.get("/reports/vat", { params }),
-                api.get("/reports/cartera", { params }),
-            ]);
-            setMarginData(margin.data.data);
-            setCustomersData(customers.data.data);
-            setTeamData(team.data.data);
-            setComparisonData(comparison.data.data);
-            setVatData(vat.data.data);
-            setCarteraData(cartera.data.data);
-        } catch (error) {
-            toast.error(error.response?.data?.message || t("reports.advanced.failed"));
-        } finally {
-            setLoading(false);
+    // Independent per-report requests (allSettled, not all) - each sub-tab's
+    // data only depends on its own request having succeeded. With Promise.all
+    // any single report failing (e.g. sales-by-team erroring on an edge case)
+    // rejected the whole batch and left every OTHER tab's state - including
+    // vatData - stuck at null, so a genuinely working VAT report looked
+    // exactly like a missing feature.
+    const fetchAll = async (range = dateRange) => {
+        setLoading(true);
+        const params = dateParams(range);
+        const requests = [
+            { key: "margin_tab", url: "/reports/profit-margin", setData: setMarginData },
+            { key: "customers_tab", url: "/reports/top-customers", setData: setCustomersData },
+            { key: "team_tab", url: "/reports/sales-by-team", setData: setTeamData },
+            { key: "comparison_tab", url: "/reports/period-comparison", setData: setComparisonData },
+            { key: "vat_tab", url: "/reports/vat", setData: setVatData },
+            { key: "cartera_tab", url: "/reports/cartera", setData: setCarteraData },
+        ];
+        const results = await Promise.allSettled(requests.map((r) => api.get(r.url, { params })));
+
+        const failedLabels = [];
+        results.forEach((result, index) => {
+            const { key, setData } = requests[index];
+            if (result.status === "fulfilled") {
+                setData(result.value.data.data);
+            } else {
+                failedLabels.push(t(`reports.advanced.${key}`));
+            }
+        });
+        if (failedLabels.length > 0) {
+            toast.error(t("reports.advanced.partial_failure", { reports: failedLabels.join(", ") }));
         }
+        setLoading(false);
     };
 
     useEffect(() => {
@@ -83,6 +111,37 @@ const AdvancedReports = () => {
         if (dates && dates.length === 2) {
             setDateRange(dates);
         }
+    };
+
+    // Current year's bimestres up to the one in progress, then all six of
+    // last year (for a late/backdated filing) - newest first.
+    const bimonthlyOptions = () => {
+        const now = dayjs();
+        const options = [];
+        for (const year of [now.year(), now.year() - 1]) {
+            const maxIndex = year === now.year() ? getCurrentBimonthlyIndex(now) : 5;
+            for (let index = maxIndex; index >= 0; index--) {
+                options.push({ year, index });
+            }
+        }
+        return options.map(({ year, index }) => ({
+            value: `${year}-${index}`,
+            label: `${t(`reports.advanced.${BIMONTHLY_LABEL_KEYS[index]}`)} ${year}`,
+        }));
+    };
+    const selectedBimonthlyValue = (() => {
+        for (const year of [dateRange[0].year(), dateRange[0].year() - 1, dateRange[0].year() + 1]) {
+            for (let index = 0; index < 6; index++) {
+                if (rangesMatch(dateRange, getBimonthlyRange(year, index))) return `${year}-${index}`;
+            }
+        }
+        return undefined;
+    })();
+    const handleBimonthlySelect = (value) => {
+        const [year, index] = value.split("-").map(Number);
+        const range = getBimonthlyRange(year, index);
+        setDateRange(range);
+        fetchAll(range);
     };
 
     const marginColumns = [
@@ -113,6 +172,135 @@ const AdvancedReports = () => {
         { title: t("reports.advanced.vat_lines_column"), dataIndex: "lineCount", key: "lineCount", width: 90, responsive: ["sm"] },
     ];
 
+    // Mirrors SalesReport.jsx's export shape (buildReportRows for CSV/Excel,
+    // a title/subtitle/sections payload for the server-rendered PDF) - the
+    // VAT tab was the one advanced report with no export path at all, which
+    // undercuts its entire "listo para tu declaración bimestral" promise: a
+    // number a user can't hand to their accountant might as well not exist.
+    const buildVatReportRows = () => {
+        const rows = [
+            [t("reports.advanced.vat_tab")],
+            [`${dateRange[0].format("YYYY-MM-DD")} - ${dateRange[1].format("YYYY-MM-DD")}`],
+            [],
+        ];
+        rows.push([t("reports.sales")]);
+        rows.push([t("reports.advanced.vat_taxed_base"), formatCurrency(vatData.summary.taxedBase)]);
+        rows.push([t("reports.advanced.vat_excluded_base"), formatCurrency(vatData.summary.excludedBase)]);
+        rows.push([t("reports.advanced.vat_exempt_base"), formatCurrency(vatData.summary.exemptBase)]);
+        rows.push([t("reports.advanced.vat_collected"), formatCurrency(vatData.summary.taxCollected)]);
+        rows.push([]);
+        rows.push([t("reports.purchases")]);
+        rows.push([t("reports.advanced.vat_taxed_base_purchases"), formatCurrency(vatData.summary.taxedBasePurchases)]);
+        rows.push([t("reports.advanced.vat_excluded_base_purchases"), formatCurrency(vatData.summary.excludedBasePurchases)]);
+        rows.push([t("reports.advanced.vat_exempt_base_purchases"), formatCurrency(vatData.summary.exemptBasePurchases)]);
+        rows.push([t("reports.advanced.vat_credited"), formatCurrency(vatData.summary.taxCredited)]);
+        rows.push([]);
+        rows.push([vatData.summary.netVat >= 0 ? t("reports.advanced.vat_net_payable") : t("reports.advanced.vat_net_credit_balance"), formatCurrency(Math.abs(vatData.summary.netVat))]);
+        rows.push([]);
+
+        rows.push([t("reports.advanced.vat_by_rate")]);
+        rows.push([t("reports.advanced.vat_rate_column"), t("reports.advanced.vat_base_column"), t("reports.advanced.vat_tax_column"), t("reports.advanced.vat_lines_column")]);
+        vatData.byRate.forEach((row) => rows.push([`${row.rate}%`, formatCurrency(row.base), formatCurrency(row.taxAmount), String(row.lineCount)]));
+        rows.push([]);
+
+        if (vatData.byRatePurchases?.length > 0) {
+            rows.push([t("reports.advanced.vat_credited_by_rate")]);
+            rows.push([t("reports.advanced.vat_rate_column"), t("reports.advanced.vat_base_column"), t("reports.advanced.vat_tax_column"), t("reports.advanced.vat_lines_column")]);
+            vatData.byRatePurchases.forEach((row) => rows.push([`${row.rate}%`, formatCurrency(row.base), formatCurrency(row.taxAmount), String(row.lineCount)]));
+            rows.push([]);
+        }
+
+        if (vatData.manualAdjustments?.length > 0) {
+            rows.push([t("reports.advanced.vat_manual_adjustments_title")]);
+            rows.push([t("reports.advanced.vat_manual_adjustments_col_date"), t("reports.advanced.vat_manual_adjustments_col_description"), t("reports.advanced.vat_manual_adjustments_col_generated"), t("reports.advanced.vat_manual_adjustments_col_deductible")]);
+            vatData.manualAdjustments.forEach((row) => rows.push([dayjs(row.entryDate).format("DD/MM/YYYY"), row.description || "", row.generatedDelta ? formatCurrency(row.generatedDelta) : "", row.deductibleDelta ? formatCurrency(row.deductibleDelta) : ""]));
+        }
+
+        return rows;
+    };
+
+    const exportVatCsv = async () => {
+        if (!vatData) { toast.error(t("reports.no_data_to_export")); return; }
+        try {
+            await downloadCsv(buildVatReportRows(), `iva-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.csv`);
+            toast.success(t("reports.advanced.vat_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_csv_failed"));
+        }
+    };
+
+    const exportVatExcel = async () => {
+        if (!vatData) { toast.error(t("reports.no_data_to_export")); return; }
+        try {
+            await downloadExcel(buildVatReportRows(), `iva-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.xlsx`, t("reports.advanced.vat_tab"));
+            toast.success(t("reports.advanced.vat_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_excel_failed"));
+        }
+    };
+
+    const exportVatPdf = async () => {
+        if (!vatData) { toast.error(t("reports.no_data_to_export")); return; }
+        try {
+            await downloadPdfReport(
+                {
+                    title: t("reports.advanced.vat_tab"),
+                    subtitle: `${dateRange[0].format("YYYY-MM-DD")} - ${dateRange[1].format("YYYY-MM-DD")}`,
+                    sections: [
+                        {
+                            heading: t("reports.sales"),
+                            summary: [
+                                [t("reports.advanced.vat_taxed_base"), formatCurrency(vatData.summary.taxedBase)],
+                                [t("reports.advanced.vat_excluded_base"), formatCurrency(vatData.summary.excludedBase)],
+                                [t("reports.advanced.vat_exempt_base"), formatCurrency(vatData.summary.exemptBase)],
+                                [t("reports.advanced.vat_collected"), formatCurrency(vatData.summary.taxCollected)],
+                            ],
+                        },
+                        {
+                            heading: t("reports.purchases"),
+                            summary: [
+                                [t("reports.advanced.vat_taxed_base_purchases"), formatCurrency(vatData.summary.taxedBasePurchases)],
+                                [t("reports.advanced.vat_excluded_base_purchases"), formatCurrency(vatData.summary.excludedBasePurchases)],
+                                [t("reports.advanced.vat_exempt_base_purchases"), formatCurrency(vatData.summary.exemptBasePurchases)],
+                                [t("reports.advanced.vat_credited"), formatCurrency(vatData.summary.taxCredited)],
+                            ],
+                        },
+                        {
+                            summary: [
+                                [vatData.summary.netVat >= 0 ? t("reports.advanced.vat_net_payable") : t("reports.advanced.vat_net_credit_balance"), formatCurrency(Math.abs(vatData.summary.netVat))],
+                            ],
+                        },
+                        {
+                            heading: t("reports.advanced.vat_by_rate"),
+                            table: {
+                                headers: [t("reports.advanced.vat_rate_column"), t("reports.advanced.vat_base_column"), t("reports.advanced.vat_tax_column"), t("reports.advanced.vat_lines_column")],
+                                rows: vatData.byRate.map((row) => [`${row.rate}%`, formatCurrency(row.base), formatCurrency(row.taxAmount), String(row.lineCount)]),
+                            },
+                        },
+                        ...(vatData.byRatePurchases?.length > 0 ? [{
+                            heading: t("reports.advanced.vat_credited_by_rate"),
+                            table: {
+                                headers: [t("reports.advanced.vat_rate_column"), t("reports.advanced.vat_base_column"), t("reports.advanced.vat_tax_column"), t("reports.advanced.vat_lines_column")],
+                                rows: vatData.byRatePurchases.map((row) => [`${row.rate}%`, formatCurrency(row.base), formatCurrency(row.taxAmount), String(row.lineCount)]),
+                            },
+                        }] : []),
+                        ...(vatData.manualAdjustments?.length > 0 ? [{
+                            heading: t("reports.advanced.vat_manual_adjustments_title"),
+                            table: {
+                                headers: [t("reports.advanced.vat_manual_adjustments_col_date"), t("reports.advanced.vat_manual_adjustments_col_description"), t("reports.advanced.vat_manual_adjustments_col_generated"), t("reports.advanced.vat_manual_adjustments_col_deductible")],
+                                rows: vatData.manualAdjustments.map((row) => [dayjs(row.entryDate).format("DD/MM/YYYY"), row.description || "", row.generatedDelta ? formatCurrency(row.generatedDelta) : "", row.deductibleDelta ? formatCurrency(row.deductibleDelta) : ""]),
+                            },
+                        }] : []),
+                    ],
+                },
+                `iva-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.pdf`
+            );
+            toast.success(t("reports.advanced.vat_report_exported"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("reports.export_pdf_failed"));
+        }
+    };
+
     const carteraPartyColumns = (nameKey, nameTitle) => [
         { title: nameTitle, dataIndex: "name", key: "name", ellipsis: true },
         { title: t("reports.advanced.cartera_documents_column"), dataIndex: "documentCount", key: "documentCount", width: 100 },
@@ -140,6 +328,15 @@ const AdvancedReports = () => {
         <Card className="module-shell border border-[var(--ohnix-line-4)] overflow-hidden hover-lift mb-4">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div className="flex flex-col sm:flex-row gap-3">
+                    {activeTab === "vat" && (
+                        <Select
+                            placeholder={t("reports.advanced.vat_bimonthly_placeholder")}
+                            className="w-full sm:w-48"
+                            value={selectedBimonthlyValue}
+                            onChange={handleBimonthlySelect}
+                            options={bimonthlyOptions()}
+                        />
+                    )}
                     <RangePicker
                         value={dateRange}
                         onChange={handleDateRangeChange}
@@ -147,7 +344,7 @@ const AdvancedReports = () => {
                         allowClear={false}
                         className="w-full sm:w-auto auth-ohnix-input"
                     />
-                    <Button type="primary" icon={<CalendarOutlined />} onClick={fetchAll} loading={loading}>
+                    <Button type="primary" icon={<CalendarOutlined />} onClick={() => fetchAll()} loading={loading}>
                         {t("reports.refresh_report")}
                     </Button>
                 </div>
@@ -270,6 +467,10 @@ const AdvancedReports = () => {
                         <InfoCircleOutlined className="mt-0.5 text-[#44F3F0]" />
                         <span>{t("reports.advanced.vat_disclaimer")}</span>
                     </div>
+                    <div className="flex justify-end mb-4">
+                        <ReportExportButtons hasData={Boolean(vatData)} onExportCsv={exportVatCsv} onExportExcel={exportVatExcel} onExportPdf={exportVatPdf} />
+                    </div>
+                    <h4 className="text-sm font-semibold text-[var(--ohnix-text-primary)] mb-2">{t("reports.sales")}</h4>
                     <Row gutter={[16, 16]} className="mb-4">
                         <Col xs={12} sm={6}>
                             <StatCard title={t("reports.advanced.vat_taxed_base")} value={vatData.summary.taxedBase} formatter={formatCurrency} valueStyle={{ color: "#1890ff" }} />
@@ -284,11 +485,23 @@ const AdvancedReports = () => {
                             <StatCard title={t("reports.advanced.vat_collected")} value={vatData.summary.taxCollected} formatter={formatCurrency} valueStyle={{ color: "#52c41a" }} />
                         </Col>
                     </Row>
+                    <h4 className="text-sm font-semibold text-[var(--ohnix-text-primary)] mb-2">{t("reports.purchases")}</h4>
                     <Row gutter={[16, 16]} className="mb-4">
-                        <Col xs={12} sm={8}>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.vat_taxed_base_purchases")} value={vatData.summary.taxedBasePurchases} formatter={formatCurrency} valueStyle={{ color: "#1890ff" }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.vat_excluded_base_purchases")} value={vatData.summary.excludedBasePurchases} formatter={formatCurrency} valueStyle={{ color: "#7C6AF7" }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
+                            <StatCard title={t("reports.advanced.vat_exempt_base_purchases")} value={vatData.summary.exemptBasePurchases} formatter={formatCurrency} valueStyle={{ color: "#f59e0b" }} />
+                        </Col>
+                        <Col xs={12} sm={6}>
                             <StatCard title={t("reports.advanced.vat_credited")} value={vatData.summary.taxCredited} formatter={formatCurrency} valueStyle={{ color: "#f97316" }} />
                         </Col>
-                        <Col xs={24} sm={16}>
+                    </Row>
+                    <Row gutter={[16, 16]} className="mb-4">
+                        <Col xs={24}>
                             <StatCard
                                 title={vatData.summary.netVat >= 0 ? t("reports.advanced.vat_net_payable") : t("reports.advanced.vat_net_credit_balance")}
                                 value={Math.abs(vatData.summary.netVat)}
@@ -314,8 +527,30 @@ const AdvancedReports = () => {
                         <Table columns={vatColumns} dataSource={vatData.byRate} rowKey="rate" loading={loading} pagination={false} className="module-dark-table" scroll={{ x: 400 }} />
                     </Card>
                     {vatData.byRatePurchases?.length > 0 && (
-                        <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("reports.advanced.vat_credited_by_rate")}>
+                        <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4" title={t("reports.advanced.vat_credited_by_rate")}>
                             <Table columns={vatColumns} dataSource={vatData.byRatePurchases} rowKey="rate" loading={loading} pagination={false} className="module-dark-table" scroll={{ x: 400 }} />
+                        </Card>
+                    )}
+                    {vatData.manualAdjustments?.length > 0 && (
+                        <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("reports.advanced.vat_manual_adjustments_title")}>
+                            <div className="mb-3 flex items-start gap-2 rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] p-3 text-xs text-[var(--ohnix-text-muted)]">
+                                <InfoCircleOutlined className="mt-0.5 text-[#44F3F0]" />
+                                <span>{t("reports.advanced.vat_manual_adjustments_help")}</span>
+                            </div>
+                            <Table
+                                columns={[
+                                    { title: t("reports.advanced.vat_manual_adjustments_col_date"), dataIndex: "entryDate", key: "entryDate", width: 110, render: (v) => dayjs(v).format("DD/MM/YYYY") },
+                                    { title: t("reports.advanced.vat_manual_adjustments_col_description"), dataIndex: "description", key: "description", ellipsis: true },
+                                    { title: t("reports.advanced.vat_manual_adjustments_col_generated"), dataIndex: "generatedDelta", key: "generatedDelta", align: "right", width: 150, render: (v) => v ? formatCurrency(v) : "" },
+                                    { title: t("reports.advanced.vat_manual_adjustments_col_deductible"), dataIndex: "deductibleDelta", key: "deductibleDelta", align: "right", width: 150, render: (v) => v ? formatCurrency(v) : "" },
+                                ]}
+                                dataSource={vatData.manualAdjustments}
+                                rowKey="id"
+                                loading={loading}
+                                pagination={false}
+                                className="module-dark-table"
+                                scroll={{ x: 500 }}
+                            />
                         </Card>
                     )}
                 </>

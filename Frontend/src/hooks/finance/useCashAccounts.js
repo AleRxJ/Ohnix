@@ -7,6 +7,7 @@ import { getConnectivityState } from "../../offline/connectivity";
 import { subscribeSyncCompleted } from "../../offline/syncEngine";
 import { queueCreate, queueUpdate, readMirrorAll, mirrorReplaceAll } from "../../offline/entityQueue";
 import { enqueueOperation } from "../../offline/outbox";
+import { financeErrorMessage } from "../../utils/financeError";
 
 // Combined hook (list + CRUD + movements/reconciliation) - same shape as
 // usePurchase.js rather than the two-hook orders split, since Finance.jsx is
@@ -28,7 +29,7 @@ export const useCashAccounts = () => {
             setAccounts(res?.data || []);
             mirrorReplaceAll("cashAccounts", res?.data || []);
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(err, t));
         } finally {
             setLoading(false);
         }
@@ -64,7 +65,7 @@ export const useCashAccounts = () => {
             await load();
             return true;
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(err, t));
             return false;
         } finally {
             setSubmitting(false);
@@ -86,7 +87,7 @@ export const useCashAccounts = () => {
             await load();
             return true;
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(err, t));
             return false;
         } finally {
             setSubmitting(false);
@@ -115,7 +116,7 @@ export const useCashAccounts = () => {
             toast.success(t("finance.deactivated"));
             await load();
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(err, t));
         }
     };
 
@@ -143,7 +144,7 @@ export const useCashAccounts = () => {
             await load();
             return true;
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.transfer_failed"));
+            toast.error(financeErrorMessage(err, t, "finance.transfer_failed"));
             return false;
         } finally { setSubmitting(false); }
     };
@@ -165,7 +166,7 @@ export const useCashAccounts = () => {
             await load();
             return true;
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.adjustment_failed"));
+            toast.error(financeErrorMessage(err, t, "finance.adjustment_failed"));
             return false;
         } finally { setSubmitting(false); }
     };
@@ -209,7 +210,7 @@ export const useCashAccountMovements = (cashAccountId) => {
             setUnmatchedEntries(unmatchedEntriesRes?.data || []);
             setReconciliationSummary(summaryRes?.data || {});
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(err, t));
         } finally {
             setLoading(false);
         }
@@ -227,7 +228,7 @@ export const useCashAccountMovements = (cashAccountId) => {
             await load();
             return true;
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(err, t));
             return false;
         } finally {
             setSubmitting(false);
@@ -244,7 +245,7 @@ export const useCashAccountMovements = (cashAccountId) => {
             await load();
             return true;
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.import_failed"));
+            toast.error(financeErrorMessage(err, t, "finance.import_failed"));
             return false;
         } finally {
             setSubmitting(false);
@@ -259,7 +260,7 @@ export const useCashAccountMovements = (cashAccountId) => {
             await load();
             return true;
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(err, t));
             return false;
         } finally {
             setSubmitting(false);
@@ -268,7 +269,7 @@ export const useCashAccountMovements = (cashAccountId) => {
 
     const getSuggestions = async () => {
         try { const response = await financeService.getReconciliationSuggestions(cashAccountId); return response?.data || []; }
-        catch (err) { toast.error(err?.response?.data?.message || t("finance.suggestions_failed")); return null; }
+        catch (err) { toast.error(financeErrorMessage(err, t, "finance.suggestions_failed")); return null; }
     };
 
     const matchEntries = async (rows) => {
@@ -276,7 +277,7 @@ export const useCashAccountMovements = (cashAccountId) => {
         try {
             for (const row of rows) { await financeService.matchEntry({ cashAccountId, entryId: row.entry._id, movementId: row.movement._id }); completed += 1; }
             toast.success(t("finance.suggestions_applied", { count: completed })); await load(); return true;
-        } catch (err) { toast.error(err?.response?.data?.message || t("finance.suggestions_partial", { count: completed })); await load(); return false; }
+        } catch (err) { toast.error(financeErrorMessage(err, t, "finance.suggestions_failed")); await load(); return false; }
         finally { setSubmitting(false); }
     };
 
@@ -288,7 +289,7 @@ export const useCashAccountMovements = (cashAccountId) => {
             await load();
             return true;
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.bank_charge_failed"));
+            toast.error(financeErrorMessage(err, t, "finance.bank_charge_failed"));
             return false;
         } finally { setSubmitting(false); }
     };
@@ -301,7 +302,7 @@ export const useCashAccountMovements = (cashAccountId) => {
             await load();
             return true;
         } catch (err) {
-            toast.error(err?.response?.data?.message || t("finance.bank_income_failed"));
+            toast.error(financeErrorMessage(err, t, "finance.bank_income_failed"));
             return false;
         } finally { setSubmitting(false); }
     };

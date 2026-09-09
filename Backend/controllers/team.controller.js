@@ -60,18 +60,30 @@ export const getCurrentTeam = asyncHandler(async (req, res) => {
     const isOwner = team.ownerId === req.user.actorId;
 
     let myRole = null;
+    // Owner contact info - so a member without billing access can be told
+    // who to ask ("habla con tu administrador") instead of hitting a dead-end
+    // CTA. Same "no special grant needed" rule as the rest of this endpoint:
+    // knowing who your team's admin is isn't a permission-gated fact.
+    let ownerContact = null;
     if (!isOwner) {
-        const membership = await prisma.teamMember.findFirst({
-            where: { teamId: team.id, userId: req.user.actorId, status: "active" },
-            include: { role: { include: { permissions: true } } },
-        });
+        const [membership, owner] = await Promise.all([
+            prisma.teamMember.findFirst({
+                where: { teamId: team.id, userId: req.user.actorId, status: "active" },
+                include: { role: { include: { permissions: true } } },
+            }),
+            prisma.user.findUnique({
+                where: { id: team.ownerId },
+                select: { username: true, email: true },
+            }),
+        ]);
         myRole = membership?.role ?? null;
+        ownerContact = owner ? { name: owner.username, email: owner.email } : null;
     }
 
     return res.status(200).json(
         new ApiResponse(
             200,
-            { team, isOwner, myRole },
+            { team: { ...team, ownerName: ownerContact?.name ?? null, ownerEmail: ownerContact?.email ?? null }, isOwner, myRole },
             "Current team fetched successfully"
         )
     );
