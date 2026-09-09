@@ -11,6 +11,7 @@ import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { idempotencyHeaders } from "../../utils/idempotency";
 import { useDataInvalidation } from "../useDataInvalidation";
+import { financeErrorMessage } from "../../utils/financeError";
 
 const UPDATE_STATUS_ERROR_CODES = {
     invalid_purchase_status_transition: "purchases.invalid_status_transition",
@@ -142,7 +143,7 @@ export const usePurchase = () => {
             await Promise.all([fetchPurchasePayments(purchaseId), fetchPurchases()]);
             return true;
         } catch (error) {
-            toast.error(error.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(error, t));
             console.error("Error:", error);
             return false;
         } finally {

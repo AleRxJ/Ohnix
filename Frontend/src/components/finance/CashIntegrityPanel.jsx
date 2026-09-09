@@ -27,7 +27,7 @@ const CashIntegrityPanel = ({ onOpenMovements }) => {
         { title: t("finance.integrity_account"), dataIndex: "name" },
         { title: t("finance.integrity_stored"), dataIndex: "stored_balance", align: "right", render: formatCurrency },
         { title: t("finance.integrity_movements"), dataIndex: "movement_balance", align: "right", render: formatCurrency },
-        { title: t("finance.integrity_difference"), dataIndex: "difference", align: "right", render: (value) => <span className={Math.abs(value) >= 0.005 ? "text-red-400 font-semibold" : "text-[var(--ohnix-text-primary)]"}>{formatCurrency(value)}</span> },
+        { title: t("finance.integrity_difference"), dataIndex: "difference", align: "right", render: (value) => <span className={Math.abs(value) >= 0.005 ? "text-[var(--ohnix-status-danger)] font-semibold" : "text-[var(--ohnix-text-primary)]"}>{formatCurrency(value)}</span> },
         { title: t("finance.integrity_status"), dataIndex: "status", render: (value) => <Tag color={value === "ok" ? "success" : "error"}>{t(`finance.integrity_${value}`)}</Tag> },
         { title: "", width: 130, render: (_, row) => <Button size="small" icon={<EyeOutlined />} onClick={() => onOpenMovements?.({ _id: row.id, name: row.name, account_type: row.account_type, balance: row.stored_balance, is_active: row.is_active, chart_account: row.chart_account ? { _id: row.chart_account.id, ...row.chart_account } : null })}>{t("finance.integrity_view_movements")}</Button> },
     ];
@@ -36,7 +36,7 @@ const CashIntegrityPanel = ({ onOpenMovements }) => {
         { title: t("finance.integrity_linked_accounts"), dataIndex: "cash_accounts", render: (rows) => rows.map((row) => row.name).join(", ") },
         { title: t("finance.integrity_operational"), dataIndex: "operational_balance", align: "right", render: formatCurrency },
         { title: t("finance.integrity_ledger"), dataIndex: "ledger_balance", align: "right", render: formatCurrency },
-        { title: t("finance.integrity_difference"), dataIndex: "difference", align: "right", render: (value) => <span className={Math.abs(value) >= 0.005 ? "text-amber-400 font-semibold" : "text-[var(--ohnix-text-primary)]"}>{formatCurrency(value)}</span> },
+        { title: t("finance.integrity_difference"), dataIndex: "difference", align: "right", render: (value) => <span className={Math.abs(value) >= 0.005 ? "text-[var(--ohnix-status-warning)] font-semibold" : "text-[var(--ohnix-text-primary)]"}>{formatCurrency(value)}</span> },
         { title: t("finance.integrity_status"), dataIndex: "status", render: (value) => <Tag color={value === "ok" ? "success" : "warning"}>{t(`finance.integrity_${value}`)}</Tag> },
         { title: "", width: 125, render: (_, row) => <Button size="small" icon={<EyeOutlined />} onClick={async () => { setLedgerLoading(true); setLedgerError(false); setLedger({ account: row.chart_account, movements: [] }); try { const response = await accountingService.getAccountLedger(row.chart_account.id); setLedger(response?.data || null); } catch { setLedgerError(true); } finally { setLedgerLoading(false); } }}>{t("finance.integrity_investigate")}</Button> },
     ];

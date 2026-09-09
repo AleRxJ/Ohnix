@@ -9,6 +9,7 @@ import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { idempotencyHeaders } from "../../utils/idempotency";
+import { financeErrorMessage } from "../../utils/financeError";
 
 const UPDATE_STATUS_ERROR_CODES = {
     invalid_order_status_transition: "orders.invalid_status_transition",
@@ -200,7 +201,7 @@ export const useOrderOperations = (refreshOrders) => {
             await Promise.all([fetchOrderPayments(orderId), refreshOrders()]);
             return true;
         } catch (error) {
-            toast.error(error.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(error, t));
             console.error("Error registering order payment:", error);
             return false;
         } finally {

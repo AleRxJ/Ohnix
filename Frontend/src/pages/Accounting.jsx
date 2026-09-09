@@ -95,6 +95,24 @@ const ACCOUNTING_ERROR_CODES = {
     withholding_certificate_year_invalid: "accounting.error_withholding_certificate_year_invalid",
     withholding_supplier_not_found: "accounting.error_withholding_supplier_not_found",
     third_party_identity_required: "accounting.error_third_party_identity_required",
+    manual_voucher_support_url_invalid: "accounting.error_manual_voucher_support_url_invalid",
+    manual_voucher_date_invalid: "accounting.error_manual_voucher_date_invalid",
+    manual_voucher_description_required: "accounting.error_manual_voucher_description_required",
+    manual_voucher_lines_required: "accounting.error_manual_voucher_lines_required",
+    manual_voucher_line_invalid: "accounting.error_manual_voucher_line_invalid",
+    manual_voucher_line_side_invalid: "accounting.error_manual_voucher_line_side_invalid",
+    manual_voucher_third_party_type_invalid: "accounting.error_manual_voucher_third_party_type_invalid",
+    manual_voucher_third_party_name_required: "accounting.error_manual_voucher_third_party_name_required",
+    manual_voucher_accounts_invalid: "accounting.error_manual_voucher_accounts_invalid",
+    manual_voucher_cost_centers_invalid: "accounting.error_manual_voucher_cost_centers_invalid",
+    manual_voucher_third_party_required: "accounting.error_manual_voucher_third_party_required",
+    manual_voucher_unbalanced: "accounting.error_manual_voucher_unbalanced",
+    manual_voucher_not_found: "accounting.error_manual_voucher_not_found",
+    manual_voucher_not_draft: "accounting.error_manual_voucher_not_draft",
+    manual_voucher_already_processed: "accounting.error_manual_voucher_already_processed",
+    manual_voucher_not_posted: "accounting.error_manual_voucher_not_posted",
+    manual_voucher_void_reason_required: "accounting.error_manual_voucher_void_reason_required",
+    manual_voucher_void_date_invalid: "accounting.error_manual_voucher_void_date_invalid",
 };
 
 const accountingErrorMessage = (error, t, fallbackKey = "accounting.failed") =>
@@ -200,6 +218,9 @@ const SOURCE_TYPE_LABEL_KEYS = {
     manual_journal: "accounting.source_manual_journal",
     manual_journal_reversal: "accounting.source_manual_journal_reversal",
     manual_expense: "accounting.source_manual_expense",
+    manual_income: "accounting.source_manual_income",
+    cash_transfer: "accounting.source_cash_transfer",
+    cash_adjustment: "accounting.source_cash_adjustment",
 };
 
 // Libro mayor for one account: opening balance + every movement in range
@@ -2183,7 +2204,7 @@ const BudgetsTab = () => {
             { title: t("accounting.budget_annual_total"), dataIndex: "budget", align: "right", width: 140, render: formatCurrency },
             { title: t("accounting.budget_actual"), dataIndex: "actual", align: "right", width: 140, render: formatCurrency },
             { title: t("accounting.budget_variance"), dataIndex: "variance", align: "right", width: 140, render: formatCurrency },
-            ...Array.from({ length: 12 }, (_, index) => ({ title: dayjs().month(index).format("MMM"), width: 135, render: (_, row) => { const item = row.months[index]; return item ? <Tooltip title={`${t("accounting.budget_actual")}: ${formatCurrency(item.actual)}`}><span className={item.alert ? "text-red-500" : ""}>{formatCurrency(item.budget)}{item.alert ? " ⚠" : ""}</span></Tooltip> : "—"; } })),
+                            ...Array.from({ length: 12 }, (_, index) => ({ title: dayjs().month(index).format("MMM"), width: 135, render: (_, row) => { const item = row.months[index]; return item ? <Tooltip title={`${t("accounting.budget_actual")}: ${formatCurrency(item.actual)}`}><span className={item.alert ? "text-[var(--ohnix-status-danger)]" : ""}>{formatCurrency(item.budget)}{item.alert ? " ⚠" : ""}</span></Tooltip> : "—"; } })),
             ...(canEdit ? [{ title: t("common.actions"), fixed: "right", width: 100, render: (_, row) => <Button size="small" onClick={() => openAnnualEditor(row)}>{t("common.edit")}</Button> }] : []),
         ] : [
             { title: t("accounting.col_account"), render: (_, row) => `${row.chart_account.code} · ${row.chart_account.name}` },

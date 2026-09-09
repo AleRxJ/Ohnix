@@ -12,36 +12,36 @@ const normalizeSupportUrl = (value) => {
         if (!["http:", "https:"].includes(url.protocol)) throw new Error();
         return url.toString();
     } catch {
-        throw new ApiError(400, "El enlace de soporte debe ser una URL HTTP o HTTPS válida.");
+        throw new ApiError(400, "Support link must be a valid HTTP or HTTPS URL.", [], "", "manual_voucher_support_url_invalid");
     }
 };
 
 const validateHeader = ({ entryDate, description }) => {
     const parsedDate = new Date(entryDate);
-    if (Number.isNaN(parsedDate.getTime())) throw new ApiError(400, "La fecha del comprobante no es válida.");
-    if (!String(description || "").trim()) throw new ApiError(400, "La descripción del comprobante es obligatoria.");
+    if (Number.isNaN(parsedDate.getTime())) throw new ApiError(400, "Voucher date is invalid.", [], "", "manual_voucher_date_invalid");
+    if (!String(description || "").trim()) throw new ApiError(400, "Voucher description is required.", [], "", "manual_voucher_description_required");
     return { entryDate: parsedDate, description: String(description).trim() };
 };
 
 const validateLines = async (tx, accountId, lines, { requireBalanced = false } = {}) => {
     if (!Array.isArray(lines) || lines.length < 2) {
-        throw new ApiError(400, "El comprobante debe contener al menos dos líneas.");
+        throw new ApiError(400, "Voucher must contain at least two lines.", [], "", "manual_voucher_lines_required");
     }
     const normalized = lines.map((line, position) => {
         const debit = Number(line.debit || 0);
         const credit = Number(line.credit || 0);
         if (!line.chart_account_id || !Number.isFinite(debit) || !Number.isFinite(credit)) {
-            throw new ApiError(400, `La línea ${position + 1} no es válida.`);
+            throw new ApiError(400, `Voucher line ${position + 1} is invalid.`, [], "", "manual_voucher_line_invalid");
         }
         if ((debit > 0) === (credit > 0) || debit < 0 || credit < 0) {
-            throw new ApiError(400, `La línea ${position + 1} debe tener débito o crédito, pero no ambos.`);
+            throw new ApiError(400, `Voucher line ${position + 1} must have either debit or credit, not both.`, [], "", "manual_voucher_line_side_invalid");
         }
         const thirdParty = line.third_party || null;
         if (thirdParty && !["customer", "supplier", "other"].includes(thirdParty.type)) {
-            throw new ApiError(400, `El tipo de tercero de la línea ${position + 1} no es válido.`);
+            throw new ApiError(400, `Third-party type on voucher line ${position + 1} is invalid.`, [], "", "manual_voucher_third_party_type_invalid");
         }
         if (thirdParty && !String(thirdParty.name || "").trim()) {
-            throw new ApiError(400, `El nombre del tercero de la línea ${position + 1} es obligatorio.`);
+            throw new ApiError(400, `Third-party name on voucher line ${position + 1} is required.`, [], "", "manual_voucher_third_party_name_required");
         }
         return {
             chartAccountId: line.chart_account_id,
@@ -65,7 +65,7 @@ const validateLines = async (tx, accountId, lines, { requireBalanced = false } =
         select: { id: true, code: true },
     });
     if (accounts.length !== accountIds.length) {
-        throw new ApiError(400, "Una o más cuentas no existen, están inactivas o pertenecen a otra empresa.");
+        throw new ApiError(400, "One or more accounts do not exist, are inactive, or belong to another company.", [], "", "manual_voucher_accounts_invalid");
     }
     const costCenterIds = [...new Set(normalized.map((line) => line.costCenterId).filter(Boolean))];
     if (costCenterIds.length) {
@@ -73,20 +73,20 @@ const validateLines = async (tx, accountId, lines, { requireBalanced = false } =
             where: { id: { in: costCenterIds }, accountId, isActive: true },
         });
         if (costCenterCount !== costCenterIds.length) {
-            throw new ApiError(400, "Uno o más centros de costo no existen, están inactivos o pertenecen a otra empresa.");
+            throw new ApiError(400, "One or more cost centers do not exist, are inactive, or belong to another company.", [], "", "manual_voucher_cost_centers_invalid");
         }
     }
     const accountById = new Map(accounts.map((account) => [account.id, account]));
     for (const line of normalized) {
         if (["1305", "2205"].includes(accountById.get(line.chartAccountId)?.code) && !line.thirdPartyType) {
-            throw new ApiError(400, "Las líneas de Clientes o Proveedores deben identificar un tercero.");
+            throw new ApiError(400, "Customer or supplier lines must identify a third party.", [], "", "manual_voucher_third_party_required");
         }
     }
 
     const totalDebit = normalized.reduce((sum, line) => sum + cents(line.debit), 0);
     const totalCredit = normalized.reduce((sum, line) => sum + cents(line.credit), 0);
     if (requireBalanced && totalDebit !== totalCredit) {
-        throw new ApiError(400, "El comprobante no cuadra: débitos y créditos deben ser iguales.", [], "", "manual_voucher_unbalanced");
+        throw new ApiError(400, "Voucher is unbalanced: total debits and credits must be equal.", [], "", "manual_voucher_unbalanced");
     }
     return normalized;
 };
@@ -101,7 +101,7 @@ const lockVoucher = async (tx, accountId, id) => {
         WHERE id = ${id} AND account_id = ${accountId}
         FOR UPDATE
     `;
-    if (!rows.length) throw new ApiError(404, "Comprobante contable no encontrado.");
+    if (!rows.length) throw new ApiError(404, "Journal voucher not found.", [], "", "manual_voucher_not_found");
     return tx.manualJournalVoucher.findUniqueOrThrow({ where: { id }, include: includeVoucher });
 };
 
@@ -124,7 +124,7 @@ export const createDraft = async ({ accountId, actorId, entryDate, description, 
 export const updateDraft = async ({ accountId, id, entryDate, description, supportUrl, lines }) =>
     prisma.$transaction(async (tx) => {
         const voucher = await lockVoucher(tx, accountId, id);
-        if (voucher.status !== "draft") throw new ApiError(409, "Solo se pueden modificar comprobantes en borrador.");
+        if (voucher.status !== "draft") throw new ApiError(409, "Only draft vouchers can be edited.", [], "", "manual_voucher_not_draft");
         const header = validateHeader({ entryDate, description });
         const normalizedLines = await validateLines(tx, accountId, lines);
         await tx.manualJournalVoucherLine.deleteMany({ where: { voucherId: id } });
@@ -142,7 +142,7 @@ export const updateDraft = async ({ accountId, id, entryDate, description, suppo
 export const postDraft = async ({ accountId, actorId, id }) =>
     prisma.$transaction(async (tx) => {
         const voucher = await lockVoucher(tx, accountId, id);
-        if (voucher.status !== "draft") throw new ApiError(409, "El comprobante ya fue contabilizado o anulado.");
+        if (voucher.status !== "draft") throw new ApiError(409, "Voucher has already been posted or voided.", [], "", "manual_voucher_already_processed");
         const lines = await validateLines(
             tx,
             accountId,
@@ -181,11 +181,11 @@ export const voidPosted = async ({ accountId, actorId, id, reason, entryDate = n
     prisma.$transaction(async (tx) => {
         const voucher = await lockVoucher(tx, accountId, id);
         if (voucher.status !== "posted" || !voucher.postedEntryId) {
-            throw new ApiError(409, "Solo se puede anular un comprobante contabilizado.");
+            throw new ApiError(409, "Only a posted voucher can be voided.", [], "", "manual_voucher_not_posted");
         }
-        if (!String(reason || "").trim()) throw new ApiError(400, "El motivo de anulación es obligatorio.");
+        if (!String(reason || "").trim()) throw new ApiError(400, "Void reason is required.", [], "", "manual_voucher_void_reason_required");
         const reversalDate = new Date(entryDate);
-        if (Number.isNaN(reversalDate.getTime())) throw new ApiError(400, "La fecha de anulación no es válida.");
+        if (Number.isNaN(reversalDate.getTime())) throw new ApiError(400, "Void date is invalid.", [], "", "manual_voucher_void_date_invalid");
         const posted = await tx.journalEntry.findUniqueOrThrow({
             where: { id: voucher.postedEntryId },
             include: { lines: true },
@@ -236,6 +236,6 @@ export const getVoucher = async ({ accountId, id }) => {
         where: { id, accountId },
         include: includeVoucher,
     });
-    if (!voucher) throw new ApiError(404, "Comprobante contable no encontrado.");
+    if (!voucher) throw new ApiError(404, "Journal voucher not found.", [], "", "manual_voucher_not_found");
     return voucher;
 };

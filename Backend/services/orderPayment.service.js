@@ -13,7 +13,7 @@ export const getOrderPendingBalance = async (orderId, db = prisma) => {
         db.orderPayment.aggregate({ where: { orderId }, _sum: { amount: true } }),
         db.electronicCreditNote.findMany({ where: { invoice: { orderId } }, select: { id: true } }),
     ]);
-    if (!order) throw new ApiError(404, "Pedido no encontrado.");
+    if (!order) throw new ApiError(404, "Order not found.", [], "", "order_payment_order_not_found");
     const entries = notes.length ? await db.journalEntry.findMany({ where: { sourceType: "credit_note_financial", sourceId: { in: notes.map((note) => note.id) } }, select: { lines: { where: { chartAccount: { code: "1305" } }, select: { credit: true } } } }) : [];
     const operationalTotal = order.orderDetails.reduce((sum, row) => sum + Number(row.total) + Number(row.taxAmount) - Number(row.refundAmount) - Number(row.returnedTaxAmount), 0);
     const creditReduction = entries.reduce((sum, entry) => sum + entry.lines.reduce((lineSum, line) => lineSum + Number(line.credit), 0), 0);
@@ -25,7 +25,7 @@ export const getOrderPendingBalance = async (orderId, db = prisma) => {
 
 export const listOrderPayments = async ({ accountId, orderId }) => {
     const order = await prisma.order.findFirst({ where: { id: orderId, createdById: accountId }, select: { id: true } });
-    if (!order) throw new ApiError(404, "Pedido no encontrado.");
+    if (!order) throw new ApiError(404, "Order not found.", [], "", "order_payment_order_not_found");
 
     return prisma.orderPayment.findMany({
         where: { orderId: order.id },
@@ -37,28 +37,28 @@ export const listOrderPayments = async ({ accountId, orderId }) => {
 export const registerOrderPayment = async ({ accountId, actorId, orderId, amount, cashAccountId, method, reference }) => {
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-        throw new ApiError(400, "El monto del pago debe ser mayor a cero.");
+        throw new ApiError(400, "Payment amount must be greater than zero.", [], "", "order_payment_amount_invalid");
     }
 
     const order = await prisma.order.findFirst({
         where: { id: orderId, createdById: accountId },
         include: { customer: { select: { id: true, name: true, identification: true } } },
     });
-    if (!order) throw new ApiError(404, "Pedido no encontrado.");
+    if (!order) throw new ApiError(404, "Order not found.", [], "", "order_payment_order_not_found");
     if (order.orderStatus === "cancelled") {
-        throw new ApiError(400, "No se pueden registrar pagos sobre un pedido cancelado.");
+        throw new ApiError(400, "Payments cannot be recorded for a cancelled order.", [], "", "order_payment_order_cancelled");
     }
 
     const cashAccount = await prisma.cashAccount.findFirst({
         where: { id: cashAccountId, createdById: accountId, isActive: true },
     });
-    if (!cashAccount) throw new ApiError(404, "Cuenta de caja/banco no encontrada.");
+    if (!cashAccount) throw new ApiError(404, "Cash account not found.", [], "", "order_payment_cash_account_not_found");
 
     try {
         return await prisma.$transaction(async (tx) => {
         const { pending } = await getOrderPendingBalance(orderId, tx);
         if (numericAmount > pending + 0.001) {
-            throw new ApiError(422, `El pago (${numericAmount}) excede el saldo pendiente del pedido (${pending}).`);
+            throw new ApiError(422, `Payment (${numericAmount}) exceeds the order balance (${pending}).`, [], "", "order_payment_exceeds_balance");
         }
 
         const payment = await tx.orderPayment.create({
@@ -97,7 +97,7 @@ export const registerOrderPayment = async ({ accountId, actorId, orderId, amount
         }, { isolationLevel: "Serializable" });
     } catch (error) {
         if (error?.code === "P2034") {
-            throw new ApiError(409, "El pago no pudo registrarse porque el saldo cambió. Intenta de nuevo.");
+            throw new ApiError(409, "Payment could not be recorded because the balance changed. Try again.", [], "", "order_payment_concurrent_change");
         }
         throw error;
     }
