@@ -110,16 +110,20 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
 // Both logo assets (Logo-lite.svg included, despite the name) are drawn in
 // white/pastel strokes meant to sit on a dark surface - on the Lite theme's
 // white sidebar they read as nearly invisible. Give them a fixed dark chip
-// (the same gradient as the Dark sidebar) so contrast holds regardless of
-// which app theme is active.
+// so contrast holds regardless of which app theme is active. On Lite this is
+// styled as an actual badge (teal border + outer glow, matching the
+// icon-badge language used across the app - e.g. DianHabilitacionPanel's
+// card headers) instead of a flat black rectangle, so it reads as a
+// deliberate brand mark sitting on the light sidebar rather than a leftover
+// dark patch.
 const SidebarLogo = ({ collapsed, isLite, onClick }) => (
     <div
         className={`flex items-center justify-center py-6 cursor-pointer group transition-all duration-200 ${collapsed ? "px-0" : "px-4"}`}
         onClick={onClick}
     >
         <div
-            className={`flex items-center justify-center rounded-2xl transition-transform duration-200 ${collapsed ? "p-2" : "p-3"}`}
-            style={isLite ? { background: "linear-gradient(180deg, #0b0b0b 0%, #0a1114 100%)" } : undefined}
+            className={`flex items-center justify-center rounded-2xl transition-transform duration-200 ${collapsed ? "p-2" : "p-3"} ${isLite ? "border border-[#29D8D5]/25 shadow-[0_0_22px_rgba(41,216,213,0.16)]" : ""}`}
+            style={isLite ? { background: "radial-gradient(circle at 30% 20%, rgba(41,216,213,0.16), transparent 55%), linear-gradient(180deg, #0b0b0b 0%, #0a1114 100%)" } : undefined}
         >
             {collapsed ? (
                 <img
