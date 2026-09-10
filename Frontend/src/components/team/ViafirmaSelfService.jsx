@@ -53,8 +53,8 @@ const ORGANIZATION_TYPES = ["RM", "PROP", "RUNEOL", "RNT", "ESAL", "ESOL", "JUEG
 // rate negotiated directly with Viafirma). Display-only: the amount actually
 // charged always comes from the backend (getCertificateOrderAmount), this
 // just has to say the same number so the paywall isn't misleading.
-const VIAFIRMA_PRICE_1_YEAR = "$100.000 COP";
-const VIAFIRMA_PRICE_2_YEARS = "$160.000 COP";
+const VIAFIRMA_PRICE_1_YEAR = "$150.000 COP";
+const VIAFIRMA_PRICE_2_YEARS = "$220.000 COP";
 const VIAFIRMA_LOGO_URL = "https://www.viafirma.com/wp-content/uploads/2025/02/logo_25_vf_1.svg";
 // Same asset Navbar.jsx uses for the primary Ohnix wordmark - kept large and
 // first in the lockup below, with Viafirma appearing smaller as the backing

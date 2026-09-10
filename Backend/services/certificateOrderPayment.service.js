@@ -42,12 +42,17 @@ export const isEpaycoConfiguredForCertificateOrders = () => {
 };
 
 // Ohnix's own resale price (see ViafirmaSelfService.jsx's VIAFIRMA_PRICE_1_YEAR/
-// VIAFIRMA_PRICE_2_YEARS, previously display-only). Configurable via env,
-// same STRIPE/EPAYCO_AMOUNT_*_COP fallback convention as epayco.service.js,
-// falling back to the exact figures already shown to customers.
+// VIAFIRMA_PRICE_2_YEARS). Configurable via env, same STRIPE/EPAYCO_AMOUNT_*_COP
+// fallback convention as epayco.service.js. Set at a ~55% markup over
+// Viafirma's real IVA-inclusive cost to Ohnix (2026-09-09: confirmed
+// $99.008 COP/1yr and $144.704 COP/2yr, both 19% IVA included) - the
+// original $100.000/$160.000 figures left almost no margin once Viafirma's
+// actual (VAT-inclusive) cost is accounted for. IVA-inclusive totals, same
+// as the price customers see - not a separate line item, since ePayco's
+// checkout takes one flat amount (see buildCertificateOrderWidgetParams).
 const CERTIFICATE_ORDER_AMOUNT_RESOLVER = {
-    1: () => Number(process.env.EPAYCO_AMOUNT_CERTIFICATE_1_YEAR_COP || 100000),
-    2: () => Number(process.env.EPAYCO_AMOUNT_CERTIFICATE_2_YEARS_COP || 160000),
+    1: () => Number(process.env.EPAYCO_AMOUNT_CERTIFICATE_1_YEAR_COP || 150000),
+    2: () => Number(process.env.EPAYCO_AMOUNT_CERTIFICATE_2_YEARS_COP || 220000),
 };
 
 export const getCertificateOrderAmount = (durationYears) => {
