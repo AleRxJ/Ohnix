@@ -3225,6 +3225,7 @@
     "total_sales_rupees": "Ventas totales",
     "average_price_rupees": "Precio promedio",
     "total_quantity_sold": "Cantidad total vendida",
+    "orders": "Pedidos",
     "automatic_low_stock_alerts": "Alertas automáticas de stock bajo",
     "low_stock_alert_schedule": "Las alertas por correo de stock bajo se envían automáticamente cada lunes a las 9:00 AM.",
     "low_stock_alert_admin_suffix": "Puedes activar alertas manualmente para pruebas.",
