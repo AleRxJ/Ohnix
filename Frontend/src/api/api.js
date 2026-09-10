@@ -1,4 +1,5 @@
 import axios from "axios";
+import { reportNetworkFailure } from "../offline/connectivity.js";
 
 const configuredBackendUrl = import.meta.env.VITE_BACKEND_URL?.trim();
 
@@ -31,3 +32,20 @@ export const api = axios.create({
     // still override this per-request via the axios config argument.
     timeout: 30000,
 });
+
+// The browser's 'offline' event (what connectivity.js primarily relies on)
+// doesn't fire reliably in every environment - VPNs, multiple network
+// adapters, some Windows network stacks can leave navigator.onLine reporting
+// true while every real request fails. A request that fails with no
+// `response` at all (DNS/connection failure, not a server error status) is a
+// much stronger, immediate signal - feed it back so connectivity state
+// self-corrects without waiting on that event.
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (!error.response) {
+            reportNetworkFailure();
+        }
+        return Promise.reject(error);
+    }
+);

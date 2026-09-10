@@ -55,6 +55,12 @@ export const useUnits = () => {
             }
         } catch (error) {
             if (requestId !== latestRequestId.current) return [];
+            if (!error.response) {
+                const local = await readMirrorAll("units");
+                if (requestId !== latestRequestId.current) return [];
+                setUnits(local);
+                return local;
+            }
             console.error("[useUnits] Error:", error);
             toast.error(t("units.failed_load_units"));
             return [];

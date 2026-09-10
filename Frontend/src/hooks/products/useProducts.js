@@ -77,6 +77,16 @@ export const useProducts = () => {
                 toast.error(t("products.failed_load_products"));
             }
         } catch (err) {
+            if (!err.response) {
+                // Real network failure, not a server rejection - most likely
+                // we were actually offline and just didn't know it yet (see
+                // connectivity.js's reportNetworkFailure). Fall back to the
+                // mirror instead of a scary "failed to load" toast.
+                const all = await readMirrorAll("products");
+                setProducts(filterProductsLocally(all, filters));
+                setError(null);
+                return;
+            }
             console.error("Products fetch error:", err);
             const errorMessage =
                 err.response?.data?.message ||

@@ -58,7 +58,22 @@ const SalesQuotations = () => {
             setCustomers(customerResponse.data?.data || []);
             setProducts(productResponse.data?.data || []);
             mirrorReplaceAll("salesQuotations", quotationResponse.data?.data || []);
-        } catch {
+        } catch (error) {
+            if (!error.response) {
+                // Real network failure, not a server rejection - most likely
+                // we were actually offline and just didn't know it yet (see
+                // connectivity.js's reportNetworkFailure). Fall back to the
+                // mirrors instead of a scary "failed to load" toast.
+                const [cachedQuotations, cachedCustomers, cachedProducts] = await Promise.all([
+                    readMirrorAll("salesQuotations"),
+                    readMirrorAll("customers"),
+                    readMirrorAll("products"),
+                ]);
+                setQuotations(cachedQuotations);
+                setCustomers(cachedCustomers);
+                setProducts(cachedProducts);
+                return;
+            }
             toast.error(t("sales_quotations.load_failed"));
         } finally {
             setLoading(false);

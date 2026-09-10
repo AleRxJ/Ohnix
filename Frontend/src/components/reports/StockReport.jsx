@@ -131,6 +131,17 @@ const StockReport = () => {
                 setFilteredData(response.data.data);
             }
         } catch (error) {
+            if (!error.response) {
+                const [products, cursorRow] = await Promise.all([
+                    readMirrorAll("products"),
+                    offlineDb.syncCursor.get("products"),
+                ]);
+                const rows = buildOfflineStockReport(products);
+                setStockData(rows);
+                setFilteredData(rows);
+                setOfflineSyncedAt(cursorRow?.updatedAt || null);
+                return;
+            }
             toast.error(
                 error.response?.data?.message || t("reports.failed_stock_report")
             );

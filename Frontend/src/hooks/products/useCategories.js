@@ -25,6 +25,10 @@ export const useCategories = () => {
                 setCategories(response.data.data);
             }
         } catch (err) {
+            if (!err.response) {
+                setCategories(await readMirrorAll("categories"));
+                return;
+            }
             console.error("Categories fetch error:", err);
         } finally {
             setLoading(false);

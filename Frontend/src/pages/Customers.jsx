@@ -88,6 +88,19 @@ const Customers = () => {
                 mirrorReplaceAll("customers", customers);
             }
         } catch (error) {
+            if (!error.response) {
+                // Real network failure, not a server rejection - most likely
+                // we were actually offline this whole time and just didn't
+                // know it yet (getConnectivityState() can be stale - see
+                // connectivity.js's reportNetworkFailure, triggered by this
+                // very error). Fall back to the last-synced mirror instead of
+                // a scary "failed to load" toast - this is the same offline
+                // reading experience, just detected reactively instead of in
+                // advance.
+                const customers = await readMirrorAll("customers");
+                updateState({ customers, stats: calculateStats(customers) });
+                return;
+            }
             toast.error(
                 error.response?.data?.message || t("customers.failed_fetch_customers")
             );

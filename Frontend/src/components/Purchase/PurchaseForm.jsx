@@ -55,6 +55,29 @@ const PurchaseForm = ({
     const isConvertingQuotation = Boolean(initialQuotation);
     const fieldsLocked = isTourCreateStep || isConvertingQuotation;
     const [withholdingConcepts, setWithholdingConcepts] = React.useState([]);
+    const selectedPointOfSaleId = Form.useWatch("pointOfSaleId", form);
+
+    // Suppliers are assigned to a single point of sale at creation (see
+    // Backend/services/purchase.service.js's "pertenece a otro punto de
+    // venta" check) - only offer the ones that match whatever location this
+    // purchase is being created for, so that check can never reject a
+    // selection made here. Suppliers without a resolved location (or when
+    // PointOfSaleField isn't rendered, ie. single-location accounts) are
+    // left unfiltered since there's nothing to disambiguate against yet.
+    const availableSuppliers = React.useMemo(() => {
+        if (!selectedPointOfSaleId) return suppliers;
+        return suppliers.filter(
+            (supplier) => !supplier.point_of_sale?._id || String(supplier.point_of_sale._id) === String(selectedPointOfSaleId)
+        );
+    }, [suppliers, selectedPointOfSaleId]);
+
+    React.useEffect(() => {
+        if (fieldsLocked || !selectedPointOfSaleId) return;
+        const currentSupplierId = form.getFieldValue("supplier_id");
+        if (!currentSupplierId) return;
+        const stillAvailable = availableSuppliers.some((supplier) => supplier._id === currentSupplierId);
+        if (!stillAvailable) form.setFieldsValue({ supplier_id: undefined });
+    }, [selectedPointOfSaleId, availableSuppliers, fieldsLocked, form]);
 
     React.useEffect(() => {
         if (!visible || isTourCreateStep) return;
@@ -201,7 +224,7 @@ const PurchaseForm = ({
                                     optionFilterProp="children"
                                     disabled={fieldsLocked}
                                 >
-                                    {suppliers.map((supplier) => (
+                                    {availableSuppliers.map((supplier) => (
                                         <Option key={supplier._id} value={supplier._id}>
                                             {supplier.shopname ? `${supplier.name} (${supplier.shopname})` : supplier.name}
                                         </Option>

@@ -29,6 +29,10 @@ export const useCashAccounts = () => {
             setAccounts(res?.data || []);
             mirrorReplaceAll("cashAccounts", res?.data || []);
         } catch (err) {
+            if (!err.response) {
+                setAccounts(await readMirrorAll("cashAccounts"));
+                return;
+            }
             toast.error(financeErrorMessage(err, t));
         } finally {
             setLoading(false);

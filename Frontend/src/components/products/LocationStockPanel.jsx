@@ -216,6 +216,19 @@ const LocationStockPanel = ({ product }) => {
             }
             prevTotalsRef.current = nextTotals;
         } catch (err) {
+            if (!err.response) {
+                const [cachedPos, cachedSummary, cachedTransfers] = await Promise.all([
+                    readMirrorAll("pointsOfSale"),
+                    readMirrorAll("locationStockSummaries"),
+                    readMirrorAll("stockTransfers"),
+                ]);
+                setPointsOfSale(cachedPos.filter((pos) => pos.isActive));
+                const summaryRow = cachedSummary.find((row) => row._id === product._id);
+                setSummary(summaryRow?.summary || null);
+                setTransfers(cachedTransfers.filter((tr) => tr.product_id?._id === product._id || tr.product_id === product._id));
+                setStatus("loaded");
+                return;
+            }
             toast.error(err?.response?.data?.message || t("common.error"));
             setStatus("error");
         }

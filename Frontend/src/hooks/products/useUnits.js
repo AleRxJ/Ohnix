@@ -21,6 +21,10 @@ export const useUnits = () => {
                 setUnits(response.data.data);
             }
         } catch (err) {
+            if (!err.response) {
+                setUnits(await readMirrorAll("units"));
+                return;
+            }
             console.error("Units fetch error:", err);
         } finally {
             setLoading(false);

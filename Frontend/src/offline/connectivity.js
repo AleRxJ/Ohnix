@@ -26,6 +26,11 @@ function notify() {
 function setOnline(next) {
     if (next === isOnline) return;
     isOnline = next;
+    if (isOnline) {
+        clearTimeout(pollTimer);
+    } else {
+        schedulePollWhileOffline();
+    }
     notify();
 }
 
@@ -85,10 +90,26 @@ export function initConnectivityWatcher() {
     });
     window.addEventListener("offline", () => {
         setOnline(false);
-        schedulePollWhileOffline();
     });
 
+    // setOnline() only schedules the offline poll on a *transition* to
+    // offline - if the app boots already offline (isOnline's initial value,
+    // read from navigator.onLine, is already false), checkNow() below
+    // resolves to the same value and setOnline() sees no transition. Cover
+    // that boot-time case explicitly.
     checkNow().then(() => {
         if (!isOnline) schedulePollWhileOffline();
     });
+}
+
+// Called by api.js's response interceptor whenever a request fails at the
+// network level (no response reached at all - DNS/connection failure,
+// timeout), regardless of whether the browser's own 'offline' event fired.
+// That event is not reliable in every environment (VPNs, multiple network
+// adapters, some Windows network stacks) - a real failed request is a much
+// stronger signal than navigator.onLine, so use it to re-verify reachability
+// right away instead of waiting on an event that might never come.
+export function reportNetworkFailure() {
+    if (!isOnline) return; // already known offline, nothing new to learn
+    checkNow();
 }

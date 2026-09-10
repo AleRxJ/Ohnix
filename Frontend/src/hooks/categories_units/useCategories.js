@@ -59,6 +59,12 @@ export const useCategories = () => {
             }
         } catch (error) {
             if (requestId !== latestRequestId.current) return [];
+            if (!error.response) {
+                const local = admin ? [] : await readMirrorAll("categories");
+                if (requestId !== latestRequestId.current) return [];
+                setCategories(local);
+                return local;
+            }
             console.error("[useCategories] Error:", error);
             toast.error(t("categories.failed_load_categories"));
             return [];

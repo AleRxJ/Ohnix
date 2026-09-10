@@ -56,6 +56,13 @@ export const useQuotations = () => {
             }
         } catch (error) {
             if (requestId !== latestRequestId.current) return;
+            if (!error.response) {
+                const cached = await readMirrorAll("purchaseQuotations");
+                if (requestId !== latestRequestId.current) return;
+                setQuotations(cached);
+                setStats(calculateQuotationStats(cached));
+                return;
+            }
             toast.error(t("quotations.error_fetching"));
             console.error("Error:", error);
         } finally {
@@ -72,6 +79,10 @@ export const useQuotations = () => {
             const response = await api.get(user.role === "admin" ? "/suppliers/admin/all" : "/suppliers");
             if (response.data.success) setSuppliers(response.data.data);
         } catch (error) {
+            if (!error.response) {
+                setSuppliers(await readMirrorAll("suppliers"));
+                return;
+            }
             toast.error(t("purchases.error_fetching_suppliers"));
             console.error("Error:", error);
         }
@@ -86,6 +97,10 @@ export const useQuotations = () => {
             const response = await api.get("/products");
             if (response.data.success) setProducts(response.data.data);
         } catch (error) {
+            if (!error.response) {
+                setProducts(await readMirrorAll("products"));
+                return;
+            }
             toast.error(t("purchases.error_fetching_products"));
             console.error("Error:", error);
         }

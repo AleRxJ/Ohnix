@@ -82,6 +82,13 @@ export const usePurchase = () => {
             }
         } catch (error) {
             if (requestId !== latestRequestId.current) return;
+            if (!error.response) {
+                const cached = await readMirrorAll("purchases");
+                if (requestId !== latestRequestId.current) return;
+                setPurchases(cached);
+                setStats(calculateStats(cached));
+                return;
+            }
             toast.error(t("purchases.error_fetching_purchases"));
             console.error("Error:", error);
         } finally {
@@ -108,6 +115,10 @@ export const usePurchase = () => {
                 setSuppliers(response.data.data);
             }
         } catch (error) {
+            if (!error.response) {
+                setSuppliers(await readMirrorAll("suppliers"));
+                return;
+            }
             toast.error(t("purchases.error_fetching_suppliers"));
             console.error("Error:", error);
         }
@@ -125,6 +136,10 @@ export const usePurchase = () => {
                 setProducts(response.data.data);
             }
         } catch (error) {
+            if (!error.response) {
+                setProducts(await readMirrorAll("products"));
+                return;
+            }
             toast.error(t("purchases.error_fetching_products"));
             console.error("Error:", error);
         }

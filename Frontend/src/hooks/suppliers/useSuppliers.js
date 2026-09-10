@@ -73,6 +73,17 @@ export const useSuppliers = (isAdmin = false) => {
             if (!isAdmin) mirrorReplaceAll("suppliers", response.data.data);
         } catch (error) {
             if (requestId !== latestRequestId.current) return;
+            if (!error.response) {
+                // Real network failure, not a server rejection - most likely
+                // we were actually offline and just didn't know it yet (see
+                // connectivity.js's reportNetworkFailure). Fall back to the
+                // mirror instead of a scary "failed to load" toast.
+                const local = isAdmin ? [] : await readMirrorAll("suppliers");
+                if (requestId !== latestRequestId.current) return;
+                setSuppliers(local);
+                calculateStats(local);
+                return;
+            }
             toast.error(t("suppliers.failed_fetch_suppliers"));
             console.error("Error fetching suppliers:", error);
         } finally {

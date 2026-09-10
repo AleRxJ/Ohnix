@@ -148,6 +148,17 @@ export const useOrders = () => {
             mirrorUpsertMany("orders", ordersData);
         } catch (error) {
             if (requestId !== latestRequestId.current) return;
+            if (!error.response) {
+                const cached = await readMirrorAll("orders");
+                const filtered = filterOrdersLocally(cached, currentFilters);
+                const start = (page - 1) * pageSize;
+                const pageSlice = filtered.slice(start, start + pageSize);
+                if (requestId !== latestRequestId.current) return;
+                setOrders(pageSlice);
+                setPagination({ current: page, pageSize, total: filtered.length });
+                setStats(calculateStats(filtered, { total: filtered.length }));
+                return;
+            }
             toast.error(t("orders.failed_fetch_orders"));
             console.error("Error fetching orders:", error);
         } finally {
@@ -170,6 +181,10 @@ export const useOrders = () => {
             const response = await api.get(endpoint);
             setCustomers(response.data.data);
         } catch (error) {
+            if (!error.response) {
+                setCustomers(await readMirrorAll("customers"));
+                return;
+            }
             console.error("Error fetching customers:", error);
         }
     };
@@ -183,6 +198,10 @@ export const useOrders = () => {
             const response = await api.get("/products");
             setProducts(response.data.data.products || response.data.data);
         } catch (error) {
+            if (!error.response) {
+                setProducts(await readMirrorAll("products"));
+                return;
+            }
             console.error("Error fetching products:", error);
         }
     };
