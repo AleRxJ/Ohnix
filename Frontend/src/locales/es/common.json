@@ -15,6 +15,7 @@
     "offline_capabilities_available_list": "Productos, categorías, unidades, clientes y proveedores · Pedidos y compras · Cotizaciones y traslados de stock · Cuentas de caja y movimientos financieros",
     "offline_capabilities_unavailable_title": "Necesitan conexión:",
     "offline_capabilities_unavailable_list": "Equipo y permisos · Facturación y suscripción · Integraciones y API keys · Reportes (excepto Stock) y Contabilidad",
+    "offline_capabilities_reload_note": "Podés recargar la página sin problema: nada se pierde y todo se sincroniza solo, en el orden en que lo creaste, apenas vuelva la conexión.",
     "offline_gate_title": "Esta sección necesita conexión a internet",
     "offline_gate_description": "Por seguridad, y porque estos datos no se guardan en el dispositivo, este módulo no está disponible sin conexión. Se habilita solo en cuanto vuelvas a estar en línea.",
     "language": "Idioma",

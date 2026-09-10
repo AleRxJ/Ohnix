@@ -38,7 +38,7 @@ const ChangeBadge = ({ value }) => {
     const positive = value >= 0;
     const Icon = positive ? RiseOutlined : FallOutlined;
     return (
-        <span className={`inline-flex items-center gap-1 text-sm font-medium ${positive ? "text-green-500" : "text-red-400"}`}>
+        <span className={`inline-flex items-center gap-1 text-sm font-medium ${positive ? "text-[var(--ohnix-status-success)]" : "text-[var(--ohnix-status-danger)]"}`}>
             <Icon /> {positive ? "+" : ""}{value}%
         </span>
     );
@@ -148,7 +148,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
         { title: t("products.product_name"), dataIndex: "product_name", key: "product_name", ellipsis: true },
         { title: t("reports.quantity_sold"), dataIndex: "quantity", key: "quantity", width: 100, responsive: ["sm"] },
         { title: t("reports.total_sales"), dataIndex: "revenue", key: "revenue", render: (v) => formatCurrency(v), width: 130 },
-        { title: t("reports.advanced.margin"), dataIndex: "margin", key: "margin", render: (v) => <span className={v >= 0 ? "text-green-500" : "text-red-400"}>{formatCurrency(v)}</span>, width: 130 },
+        { title: t("reports.advanced.margin"), dataIndex: "margin", key: "margin", render: (v) => <span className={v >= 0 ? "text-[var(--ohnix-status-success)]" : "text-[var(--ohnix-status-danger)]"}>{formatCurrency(v)}</span>, width: 130 },
         { title: t("reports.advanced.margin_percent"), dataIndex: "marginPercent", key: "marginPercent", render: (v) => `${v}%`, width: 100, responsive: ["md"] },
     ];
 
@@ -306,21 +306,21 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
         { title: t("reports.advanced.cartera_documents_column"), dataIndex: "documentCount", key: "documentCount", width: 100 },
         { title: t("reports.advanced.cartera_total_column"), dataIndex: "total", key: "total", render: (v) => formatCurrency(v), width: 120 },
         { title: t("reports.advanced.cartera_paid_column"), dataIndex: "paid", key: "paid", render: (v) => formatCurrency(v), width: 120, responsive: ["sm"] },
-        { title: t("reports.advanced.cartera_pending_column"), dataIndex: "pending", key: "pending", render: (v) => <span className="font-semibold text-[#f5222d]">{formatCurrency(v)}</span>, width: 130 },
+        { title: t("reports.advanced.cartera_pending_column"), dataIndex: "pending", key: "pending", render: (v) => <span className="font-semibold text-[var(--ohnix-status-danger)]">{formatCurrency(v)}</span>, width: 130 },
     ];
 
     const carteraDocumentColumns = (docKey, docTitle, partyKey, partyTitle) => [
         { title: docTitle, dataIndex: docKey, key: docKey, width: 120 },
         { title: partyTitle, dataIndex: partyKey, key: partyKey, render: (v) => v?.name || t("common.na"), ellipsis: true },
         { title: t("common.total"), dataIndex: "total", key: "total", render: (v) => formatCurrency(v), width: 120, responsive: ["sm"] },
-        { title: t("finance.pending_balance_label"), dataIndex: "pending", key: "pending", render: (v) => <span className="font-semibold text-[#f5222d]">{formatCurrency(v)}</span>, width: 130 },
+        { title: t("finance.pending_balance_label"), dataIndex: "pending", key: "pending", render: (v) => <span className="font-semibold text-[var(--ohnix-status-danger)]">{formatCurrency(v)}</span>, width: 130 },
         { title: t("reports.advanced.cartera_due_date_column"), dataIndex: "due_date", key: "due_date", width: 125, render: (v) => v ? dayjs(v).format("DD/MM/YYYY") : <Tag>{t("reports.advanced.cartera_unscheduled")}</Tag> },
         {
             title: t("reports.advanced.cartera_days_overdue_column"),
             dataIndex: "days_overdue",
             key: "days_overdue",
             width: 110,
-            render: (v) => v === null || v === undefined ? "—" : <span className={v > 30 ? "text-red-500 font-semibold" : v > 0 ? "text-amber-500" : ""}>{v}</span>,
+            render: (v) => v === null || v === undefined ? "—" : <span className={v > 30 ? "text-[var(--ohnix-status-danger)] font-semibold" : v > 0 ? "text-[var(--ohnix-status-warning)]" : ""}>{v}</span>,
         },
     ];
 
@@ -360,13 +360,13 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                 <>
                     <Row gutter={[16, 16]} className="mb-4">
                         <Col xs={24} sm={8}>
-                            <StatCard title={t("reports.total_sales")} value={marginData.summary.totalRevenue} formatter={formatCurrency} valueStyle={{ color: "#1890ff" }} />
+                            <StatCard title={t("reports.total_sales")} value={marginData.summary.totalRevenue} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-info)" }} />
                         </Col>
                         <Col xs={24} sm={8}>
-                            <StatCard title={t("reports.advanced.margin")} value={marginData.summary.totalMargin} formatter={formatCurrency} valueStyle={{ color: marginData.summary.totalMargin >= 0 ? "#52c41a" : "#f5222d" }} />
+                            <StatCard title={t("reports.advanced.margin")} value={marginData.summary.totalMargin} formatter={formatCurrency} valueStyle={{ color: marginData.summary.totalMargin >= 0 ? "var(--ohnix-status-success)" : "var(--ohnix-status-danger)" }} />
                         </Col>
                         <Col xs={24} sm={8}>
-                            <StatCard title={t("reports.advanced.margin_percent")} value={marginData.summary.marginPercent} suffix="%" valueStyle={{ color: "#7C6AF7" }} />
+                            <StatCard title={t("reports.advanced.margin_percent")} value={marginData.summary.marginPercent} suffix="%" valueStyle={{ color: "var(--ohnix-status-purple)" }} />
                         </Col>
                     </Row>
                     {marginData.byProduct.length > 0 && (
@@ -377,7 +377,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                                     <XAxis dataKey="product_name" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={100} interval={0} />
                                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                                     <Tooltip formatter={(v) => formatCurrency(v)} />
-                                    <Bar dataKey="margin" fill="#52c41a" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="margin" fill="var(--ohnix-status-success)" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </Card>
@@ -401,7 +401,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                                     <XAxis dataKey="customer_name" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={100} interval={0} />
                                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                                     <Tooltip formatter={(v) => formatCurrency(v)} />
-                                    <Bar dataKey="totalRevenue" fill="#29D8D5" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="totalRevenue" fill="var(--ohnix-accent)" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </Card>
@@ -425,7 +425,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                                     <XAxis dataKey="username" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={100} interval={0} />
                                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                                     <Tooltip formatter={(v) => formatCurrency(v)} />
-                                    <Bar dataKey="totalRevenue" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="totalRevenue" fill="var(--ohnix-status-amber)" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </Card>
@@ -464,7 +464,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
             children: vatData && (
                 <>
                     <div className="mb-4 flex items-start gap-2 rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] p-3 text-xs text-[var(--ohnix-text-muted)]">
-                        <InfoCircleOutlined className="mt-0.5 text-[#44F3F0]" />
+                        <InfoCircleOutlined className="mt-0.5 text-[var(--ohnix-accent-2)]" />
                         <span>{t("reports.advanced.vat_disclaimer")}</span>
                     </div>
                     <div className="flex justify-end mb-4">
@@ -473,31 +473,31 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                     <h4 className="text-sm font-semibold text-[var(--ohnix-text-primary)] mb-2">{t("reports.sales")}</h4>
                     <Row gutter={[16, 16]} className="mb-4">
                         <Col xs={12} sm={6}>
-                            <StatCard title={t("reports.advanced.vat_taxed_base")} value={vatData.summary.taxedBase} formatter={formatCurrency} valueStyle={{ color: "#1890ff" }} />
+                            <StatCard title={t("reports.advanced.vat_taxed_base")} value={vatData.summary.taxedBase} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-info)" }} />
                         </Col>
                         <Col xs={12} sm={6}>
-                            <StatCard title={t("reports.advanced.vat_excluded_base")} value={vatData.summary.excludedBase} formatter={formatCurrency} valueStyle={{ color: "#7C6AF7" }} />
+                            <StatCard title={t("reports.advanced.vat_excluded_base")} value={vatData.summary.excludedBase} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-purple)" }} />
                         </Col>
                         <Col xs={12} sm={6}>
-                            <StatCard title={t("reports.advanced.vat_exempt_base")} value={vatData.summary.exemptBase} formatter={formatCurrency} valueStyle={{ color: "#f59e0b" }} />
+                            <StatCard title={t("reports.advanced.vat_exempt_base")} value={vatData.summary.exemptBase} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-amber)" }} />
                         </Col>
                         <Col xs={12} sm={6}>
-                            <StatCard title={t("reports.advanced.vat_collected")} value={vatData.summary.taxCollected} formatter={formatCurrency} valueStyle={{ color: "#52c41a" }} />
+                            <StatCard title={t("reports.advanced.vat_collected")} value={vatData.summary.taxCollected} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-success)" }} />
                         </Col>
                     </Row>
                     <h4 className="text-sm font-semibold text-[var(--ohnix-text-primary)] mb-2">{t("reports.purchases")}</h4>
                     <Row gutter={[16, 16]} className="mb-4">
                         <Col xs={12} sm={6}>
-                            <StatCard title={t("reports.advanced.vat_taxed_base_purchases")} value={vatData.summary.taxedBasePurchases} formatter={formatCurrency} valueStyle={{ color: "#1890ff" }} />
+                            <StatCard title={t("reports.advanced.vat_taxed_base_purchases")} value={vatData.summary.taxedBasePurchases} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-info)" }} />
                         </Col>
                         <Col xs={12} sm={6}>
-                            <StatCard title={t("reports.advanced.vat_excluded_base_purchases")} value={vatData.summary.excludedBasePurchases} formatter={formatCurrency} valueStyle={{ color: "#7C6AF7" }} />
+                            <StatCard title={t("reports.advanced.vat_excluded_base_purchases")} value={vatData.summary.excludedBasePurchases} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-purple)" }} />
                         </Col>
                         <Col xs={12} sm={6}>
-                            <StatCard title={t("reports.advanced.vat_exempt_base_purchases")} value={vatData.summary.exemptBasePurchases} formatter={formatCurrency} valueStyle={{ color: "#f59e0b" }} />
+                            <StatCard title={t("reports.advanced.vat_exempt_base_purchases")} value={vatData.summary.exemptBasePurchases} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-amber)" }} />
                         </Col>
                         <Col xs={12} sm={6}>
-                            <StatCard title={t("reports.advanced.vat_credited")} value={vatData.summary.taxCredited} formatter={formatCurrency} valueStyle={{ color: "#f97316" }} />
+                            <StatCard title={t("reports.advanced.vat_credited")} value={vatData.summary.taxCredited} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-warning)" }} />
                         </Col>
                     </Row>
                     <Row gutter={[16, 16]} className="mb-4">
@@ -506,7 +506,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                                 title={vatData.summary.netVat >= 0 ? t("reports.advanced.vat_net_payable") : t("reports.advanced.vat_net_credit_balance")}
                                 value={Math.abs(vatData.summary.netVat)}
                                 formatter={formatCurrency}
-                                valueStyle={{ color: vatData.summary.netVat >= 0 ? "#f5222d" : "#52c41a", fontWeight: 700 }}
+                                valueStyle={{ color: vatData.summary.netVat >= 0 ? "var(--ohnix-status-danger)" : "var(--ohnix-status-success)", fontWeight: 700 }}
                             />
                         </Col>
                     </Row>
@@ -518,7 +518,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                                     <XAxis dataKey="period" tick={{ fontSize: 10 }} />
                                     <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                                     <Tooltip formatter={(v) => formatCurrency(v)} />
-                                    <Bar dataKey="taxAmount" fill="#52c41a" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="taxAmount" fill="var(--ohnix-status-success)" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </Card>
@@ -534,7 +534,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                     {vatData.manualAdjustments?.length > 0 && (
                         <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("reports.advanced.vat_manual_adjustments_title")}>
                             <div className="mb-3 flex items-start gap-2 rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-card-soft)] p-3 text-xs text-[var(--ohnix-text-muted)]">
-                                <InfoCircleOutlined className="mt-0.5 text-[#44F3F0]" />
+                                <InfoCircleOutlined className="mt-0.5 text-[var(--ohnix-accent-2)]" />
                                 <span>{t("reports.advanced.vat_manual_adjustments_help")}</span>
                             </div>
                             <Table
@@ -563,13 +563,13 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                 <>
                     <Row gutter={[16, 16]} className="mb-4">
                         <Col xs={12} sm={6}>
-                            <StatCard title={t("reports.advanced.cartera_receivables_total")} value={carteraData.receivables.summary.totalPending} formatter={formatCurrency} valueStyle={{ color: "#f5222d" }} />
+                            <StatCard title={t("reports.advanced.cartera_receivables_total")} value={carteraData.receivables.summary.totalPending} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-danger)" }} />
                         </Col>
                         <Col xs={12} sm={6}>
                             <StatCard title={t("reports.advanced.cartera_receivables_count")} value={carteraData.receivables.summary.documentCount} />
                         </Col>
                         <Col xs={12} sm={6}>
-                            <StatCard title={t("reports.advanced.cartera_payables_total")} value={carteraData.payables.summary.totalPending} formatter={formatCurrency} valueStyle={{ color: "#f59e0b" }} />
+                            <StatCard title={t("reports.advanced.cartera_payables_total")} value={carteraData.payables.summary.totalPending} formatter={formatCurrency} valueStyle={{ color: "var(--ohnix-status-amber)" }} />
                         </Col>
                         <Col xs={12} sm={6}>
                             <StatCard title={t("reports.advanced.cartera_payables_count")} value={carteraData.payables.summary.documentCount} />

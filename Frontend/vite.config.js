@@ -147,6 +147,18 @@ export default defineConfig({
     // initialise together in the correct order. Page chunks (from React.lazy)
     // remain split — only node_modules are consolidated.
     rollupOptions: {
+      // Two HTML entries sharing the same /src/main.jsx module graph -
+      // index.html (marketing, prerendered per-route) and app.html (the
+      // private authenticated shell, never prerendered/hydrated - see its
+      // own comment). Both need to exist as real emitted files by the time
+      // this `vite build` step finishes, so app.html is actually present in
+      // dist/ when vite-plugin-pwa's injectManifest scans it afterwards -
+      // a post-build copy (the previous approach) runs too late to be
+      // precached, which is exactly why offline reload didn't work before.
+      input: {
+        main: 'index.html',
+        app: 'app.html',
+      },
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return

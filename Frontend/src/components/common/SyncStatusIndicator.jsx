@@ -21,7 +21,8 @@ const OfflineCapabilitiesPopover = ({ t }) => (
         <p className="mb-0.5 font-semibold text-[var(--ohnix-text-primary)]">
             {t("common.offline_capabilities_unavailable_title")}
         </p>
-        <p className="mb-0 text-[var(--ohnix-text-dim)]">{t("common.offline_capabilities_unavailable_list")}</p>
+        <p className="mb-2 text-[var(--ohnix-text-dim)]">{t("common.offline_capabilities_unavailable_list")}</p>
+        <p className="mb-0 text-[var(--ohnix-text-dim)]">{t("common.offline_capabilities_reload_note")}</p>
     </div>
 );
 

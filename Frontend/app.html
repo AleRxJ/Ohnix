@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-v2-16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-v2-32.png" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/favicon-v2-48.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-v2.png" />
+        <link rel="manifest" href="/site-v2.webmanifest" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="color-scheme" content="dark light" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="preload"
+            as="style"
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+            onload="this.onload=null;this.rel='stylesheet'"
+        />
+        <noscript>
+            <link
+                rel="stylesheet"
+                href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+            />
+        </noscript>
+        <!-- Private app shell - never a search result or a share-preview
+             target (blocked in robots.txt), so it carries none of
+             index.html's marketing title/description/OG tags on purpose. -->
+        <title>Ohnix</title>
+        <meta name="robots" content="noindex, nofollow" />
+    </head>
+    <body>
+        <div id="root"></div>
+        <script type="module" src="/src/main.jsx"></script>
+    </body>
+</html>

@@ -3,8 +3,42 @@ import toast from "react-hot-toast";
 import { api } from "../api/api.js";
 import useI18n from "../hooks/useI18n";
 import { clearOfflineDataOnLogout } from "../offline/db.js";
+import { subscribeConnectivity } from "../offline/connectivity.js";
 
 const AuthContext = createContext();
+
+// Snapshot of the last confirmed session, so a reload while genuinely
+// offline (see Frontend/src/sw.js's navigateFallback) can restore the app
+// instead of bouncing to /login - a network failure on the /users/current-user
+// check below is not proof the session is invalid, only that it couldn't be
+// confirmed right now. Deliberately just localStorage (synchronous, same
+// place accessToken already lives) rather than Dexie - this only needs to
+// answer "who was logged in last", not the fuller team/permissions snapshot
+// OFFLINE_ARCHITECTURE.md's section 8 flags as still unsolved.
+const LAST_KNOWN_USER_KEY = "ohnix:lastKnownUser";
+const persistUserSnapshot = (user) => {
+    try {
+        localStorage.setItem(LAST_KNOWN_USER_KEY, JSON.stringify(user));
+    } catch {
+        // Storage full/unavailable (private browsing) - offline reload just
+        // won't restore the session in that case, nothing else depends on it.
+    }
+};
+const readUserSnapshot = () => {
+    try {
+        const raw = localStorage.getItem(LAST_KNOWN_USER_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        return null;
+    }
+};
+const clearUserSnapshot = () => {
+    try {
+        localStorage.removeItem(LAST_KNOWN_USER_KEY);
+    } catch {
+        // Nothing to clean up if storage isn't available in the first place.
+    }
+};
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -16,6 +50,17 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         checkAuthStatus();
     }, []);
+
+    // Re-confirm for real once connectivity is back - closes the gap left by
+    // the offline-snapshot restore in checkAuthStatus's catch block above. A
+    // session that was optimistically restored while offline (browser
+    // 'online' events aren't reliable either, but connectivity.js's own
+    // reachability probe fires this event only once it's actually confirmed
+    // reaching the server) gets its real answer here, including a genuine
+    // logout if the session was actually invalidated in the meantime.
+    useEffect(() => subscribeConnectivity((online) => {
+        if (online) checkAuthStatus();
+    }), []);
 
     // If accessToken stored in localStorage, set default header
     useEffect(() => {
@@ -34,14 +79,38 @@ export const AuthProvider = ({ children }) => {
             if (response.data.success) {
                 setUser(response.data.data);
                 setAuthenticated(true);
+                persistUserSnapshot(response.data.data);
             } else {
                 setUser(null);
                 setAuthenticated(false);
+                clearUserSnapshot();
             }
         } catch (error) {
             console.error("Auth check error:", error);
+            if (!error.response) {
+                // Real network failure (see connectivity.js's
+                // reportNetworkFailure, triggered by this very error) - not
+                // proof the session is invalid, only that it couldn't be
+                // confirmed right now. Restore the last confirmed session
+                // instead of bouncing to /login; checkAuthStatus reruns for
+                // real the moment the app is back online (see the
+                // subscribeConnectivity effect below), which replaces this
+                // optimistic restore with the server's actual answer - if
+                // the session really was invalidated in the meantime (e.g.
+                // password changed from another device), that recheck logs
+                // the user out for real then, not before.
+                const snapshot = readUserSnapshot();
+                if (snapshot) {
+                    setUser(snapshot);
+                    setAuthenticated(true);
+                    return;
+                }
+            }
+            // A real 401/403 (or no snapshot to fall back to) - only now is
+            // it safe to treat this as "not logged in".
             setUser(null);
             setAuthenticated(false);
+            clearUserSnapshot();
         } finally {
             setLoading(false);
         }
@@ -56,6 +125,7 @@ export const AuthProvider = ({ children }) => {
             api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
         }
         setAuthenticated(true);
+        persistUserSnapshot(sessionUser);
     };
 
     // Login function. `silent` skips the success/error toasts - used right
@@ -110,6 +180,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(null);
                 setAuthenticated(false);
                 localStorage.removeItem("accessToken");
+                clearUserSnapshot();
                 delete api.defaults.headers.common["Authorization"];
                 await clearOfflineDataOnLogout();
                 toast.success(t("auth.logout_success"));

@@ -1,4 +1,5 @@
-import { precache, addPlugins, addRoute, cleanupOutdatedCaches } from "workbox-precaching";
+import { precache, addPlugins, addRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from "workbox-precaching";
+import { registerRoute, NavigationRoute } from "workbox-routing";
 
 // Extension -> substring expected in that asset's Content-Type. Precaching
 // trusts each manifest URL blindly by default (it only checks for HTTP
@@ -33,18 +34,32 @@ addRoute();
 
 cleanupOutdatedCaches();
 
-// No navigation-fallback route (previously createHandlerBoundToURL bound to
-// "/index.html", i.e. the marketing homepage - wrong shell for an offline
-// visitor on an authenticated route, and the actual cause of the hydration
-// mismatch this file was rewritten to fix: a stale precached copy of "/"
-// getting hydrated against a newer JS bundle after a deploy). The correct
-// target is app.html (the real SPA shell), but it doesn't exist yet at the
-// point this precache manifest is generated - prerender.js creates it by
-// copying dist/index.html *after* `vite build` (and this plugin's manifest)
-// already ran, so createHandlerBoundToURL("/app.html") would find no match
-// and throw at SW startup, breaking the worker entirely. Needs the build
-// order fixed (e.g. emit app.html as its own Vite entry point instead of a
-// post-build copy) before this can be reintroduced safely.
+// Navigation fallback, now safe to reintroduce: app.html is a real Vite
+// build entry (vite.config.js rollupOptions.input), so it's actually in the
+// precache manifest by the time this file is built - createHandlerBoundToURL
+// below resolves instead of throwing at SW startup.
+//
+// This is NOT the same mistake as before (binding to "/index.html", the
+// marketing homepage). That broke because index.html is prerendered *static
+// content* that gets hydrateRoot()'d against whatever JS bundle happens to
+// be current - a stale cached copy served as a fallback for an unrelated
+// route mismatched against a newer bundle and crashed the hydrate. app.html
+// has no prerendered content at all (plain `<div id="root">`, see its own
+// comment) - main.jsx always does a fresh createRoot().render() for it,
+// never hydrateRoot(), so there is no hydration-mismatch class of bug here:
+// whichever JS this worker has active is exactly what app.html's own
+// precache entry was built alongside, and React Router renders whatever the
+// real URL is once it boots, regardless of which shell file served it.
+//
+// The denylist mirrors workbox's own generateSW default: don't fall back to
+// the app shell for a navigation that looks like a direct request for a
+// file (has a dot in the last path segment) - e.g. a mistyped asset URL
+// should still 404 normally instead of silently returning HTML.
+registerRoute(
+    new NavigationRoute(createHandlerBoundToURL("/app.html"), {
+        denylist: [/\/[^/?]+\.[^/]+$/],
+    })
+);
 
 // registerType: 'autoUpdate' (vite.config.js) makes the client-side
 // registration (virtual:pwa-register) post this message as soon as it finds

@@ -107,15 +107,18 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     );
 };
 
-// Ohnix_Icon_Transparent.png's pale strokes are tuned for a dark surface -
-// a CSS filter (contrast/brightness) can't darken them cleanly on Lite
-// without roughing up the anti-aliased edges at this display size. Lite
-// instead gets its own pre-recolored asset (same artwork, strokes and
-// wordmark inverted to dark, brand cyan accent kept) rendered at 480px so
-// it stays crisp when scaled down, no runtime filter involved.
+// Ohnix_Icon_Transparent.png's pale strokes are tuned for a dark surface, and
+// it bakes the "OHNIX" wordmark into the raster itself - fine at the ~256px
+// this image ships at, but that text turns to mush once it's downscaled into
+// a 44-96px nav slot, and no color/CSS fix can recover text that was never
+// vector to begin with. Lite gets a different treatment instead of a filter
+// on the same file: Ohnix_Icon_Lite.png is cropped to just the cube+ring
+// glyph (no wordmark, no stray background dots) and pre-recoloured (dark
+// strokes, brand cyan kept) at 480px, so it stays crisp when scaled down.
+// The "OHNIX" label is real text here instead, which is always crisp.
 const SidebarLogo = ({ collapsed, isLite, onClick }) => (
     <div
-        className={`flex items-center justify-center py-6 cursor-pointer group transition-all duration-200 ${collapsed ? "px-0" : "px-4"}`}
+        className={`flex flex-col items-center justify-center gap-2 py-6 cursor-pointer group transition-all duration-200 ${collapsed ? "px-0" : "px-4"}`}
         onClick={onClick}
     >
         <div
@@ -131,10 +134,13 @@ const SidebarLogo = ({ collapsed, isLite, onClick }) => (
                 <img
                     src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
                     alt="Ohnix logo"
-                    className="h-24 w-24 object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
+                    className={`object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg ${isLite ? "h-16 w-16" : "h-24 w-24"}`}
                 />
             )}
         </div>
+        {!collapsed && isLite && (
+            <span className="text-sm font-bold tracking-[0.22em] text-[var(--ohnix-text-primary)]">OHNIX</span>
+        )}
     </div>
 );
 
