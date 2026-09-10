@@ -54,7 +54,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                 borderRight: "1px solid var(--ohnix-line-4)",
             }}
         >
-            <SidebarLogo collapsed={collapsed} onClick={handleLogoClick} />
+            <SidebarLogo collapsed={collapsed} isLite={isLite} onClick={handleLogoClick} />
             <div className="mx-4 mb-4 h-px bg-[var(--ohnix-line-4)]"></div>
 
             <div className="ohnix-scrollbar-thin min-h-0 flex-1 touch-pan-y overscroll-contain overflow-y-auto px-3">
@@ -107,13 +107,13 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     );
 };
 
-// Ohnix_Icon_Transparent.png is line-art (thin gray strokes + a teal accent),
-// not a solid-color fill, so it never needed a separate "Lite" asset or a
-// background chip behind it - one logo, both themes. It's still tuned for a
-// dark surface though, so on Lite it picks up .ohnix-logo-adaptive (see
-// index.css), which darkens the strokes just enough to stay legible on the
-// white sidebar.
-const SidebarLogo = ({ collapsed, onClick }) => (
+// Ohnix_Icon_Transparent.png's pale strokes are tuned for a dark surface -
+// a CSS filter (contrast/brightness) can't darken them cleanly on Lite
+// without roughing up the anti-aliased edges at this display size. Lite
+// instead gets its own pre-recolored asset (same artwork, strokes and
+// wordmark inverted to dark, brand cyan accent kept) rendered at 480px so
+// it stays crisp when scaled down, no runtime filter involved.
+const SidebarLogo = ({ collapsed, isLite, onClick }) => (
     <div
         className={`flex items-center justify-center py-6 cursor-pointer group transition-all duration-200 ${collapsed ? "px-0" : "px-4"}`}
         onClick={onClick}
@@ -123,15 +123,15 @@ const SidebarLogo = ({ collapsed, onClick }) => (
         >
             {collapsed ? (
                 <img
-                    src="/Ohnix_Icon_Transparent.png"
+                    src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
                     alt="Ohnix icon"
-                    className="ohnix-logo-adaptive h-12 w-12 shrink-0 object-contain transition-transform duration-200 group-hover:scale-110 drop-shadow-lg"
+                    className="h-12 w-12 shrink-0 object-contain transition-transform duration-200 group-hover:scale-110 drop-shadow-lg"
                 />
             ) : (
                 <img
-                    src="/Ohnix_Icon_Transparent.png"
+                    src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
                     alt="Ohnix logo"
-                    className="ohnix-logo-adaptive h-24 w-24 object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
+                    className="h-24 w-24 object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
                 />
             )}
         </div>

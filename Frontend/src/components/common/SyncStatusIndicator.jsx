@@ -1,10 +1,29 @@
 import React, { useEffect, useState } from "react";
+import { Popover } from "antd";
 import { useLiveQuery } from "dexie-react-hooks";
 import { CloudSyncOutlined, DisconnectOutlined, WarningFilled } from "@ant-design/icons";
 import { db } from "../../offline/db.js";
 import { OUTBOX_STATUS } from "../../offline/outbox.js";
 import { getConnectivityState, subscribeConnectivity } from "../../offline/connectivity.js";
 import useI18n from "../../hooks/useI18n";
+
+// Content of the click-to-open explainer - what still works offline vs. what
+// needs a connection. Kept as plain text lines (not a live-generated list
+// from the module registry) since it's meant to be a short, human-readable
+// summary a non-technical user can actually read, not an exhaustive spec.
+const OfflineCapabilitiesPopover = ({ t }) => (
+    <div className="max-w-xs text-sm">
+        <p className="mb-2 text-[var(--ohnix-text-dim)]">{t("common.offline_capabilities_intro")}</p>
+        <p className="mb-0.5 font-semibold text-[var(--ohnix-text-primary)]">
+            {t("common.offline_capabilities_available_title")}
+        </p>
+        <p className="mb-2 text-[var(--ohnix-text-dim)]">{t("common.offline_capabilities_available_list")}</p>
+        <p className="mb-0.5 font-semibold text-[var(--ohnix-text-primary)]">
+            {t("common.offline_capabilities_unavailable_title")}
+        </p>
+        <p className="mb-0 text-[var(--ohnix-text-dim)]">{t("common.offline_capabilities_unavailable_list")}</p>
+    </div>
+);
 
 // Discreet, always-present connection/sync state - never a modal, never a
 // popup, never blocks the page. See Backend/prisma/schema.prisma's
@@ -57,19 +76,27 @@ const SyncStatusIndicator = () => {
     }
 
     return (
-        <div
-            className="hidden md:flex items-center gap-1.5 mr-3 rounded-full px-3 py-1 text-xs font-semibold"
-            style={{
-                color,
-                background: "var(--ohnix-surface-2)",
-                border: "1px solid var(--ohnix-line-5)",
-            }}
-            role="status"
-            title={label}
+        <Popover
+            content={<OfflineCapabilitiesPopover t={t} />}
+            title={t("common.offline_capabilities_title")}
+            trigger="click"
+            placement="bottomRight"
         >
-            {icon}
-            <span className="whitespace-nowrap">{label}</span>
-        </div>
+            <button
+                type="button"
+                className="hidden md:flex items-center gap-1.5 mr-3 rounded-full px-3 py-1 text-xs font-semibold cursor-pointer"
+                style={{
+                    color,
+                    background: "var(--ohnix-surface-2)",
+                    border: "1px solid var(--ohnix-line-5)",
+                }}
+                role="status"
+                title={label}
+            >
+                {icon}
+                <span className="whitespace-nowrap">{label}</span>
+            </button>
+        </Popover>
     );
 };
 
