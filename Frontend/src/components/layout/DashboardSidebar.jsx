@@ -114,7 +114,8 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
 // vector to begin with. Lite gets a different treatment instead of a filter
 // on the same file: Ohnix_Icon_Lite.png is cropped to just the cube+ring
 // glyph (no wordmark, no stray background dots) and pre-recoloured (dark
-// strokes, brand cyan kept) at 480px, so it stays crisp when scaled down.
+// strokes, brand cyan kept) at 480px, so it stays crisp when scaled down and
+// reads fine directly on the white sidebar - no dark backing tile needed.
 // The "OHNIX" label is real text here instead, which is always crisp.
 const SidebarLogo = ({ collapsed, isLite, onClick }) => (
     <div

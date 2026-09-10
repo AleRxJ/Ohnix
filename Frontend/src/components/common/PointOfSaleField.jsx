@@ -5,6 +5,8 @@ import { ShopOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import useSubscription from "../../hooks/useSubscription";
 import { pointOfSaleService } from "../../services/pointOfSaleService";
+import { getConnectivityState } from "../../offline/connectivity";
+import { readMirrorAll } from "../../offline/entityQueue";
 
 // Drops into any create form that goes through
 // Backend/middleware/pos.permissions.js#resolveOrAssertPointOfSaleId
@@ -34,13 +36,31 @@ const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false }) => {
             if (!subscriptionLoading) setOptions([]);
             return;
         }
+        const filterOwn = (rows) => (rows || []).filter((pos) => pos.isActive && pos.inOwnScope);
+        if (!getConnectivityState()) {
+            // pointsOfSale is a full-mirror entity (entitySync.js) - same
+            // shape as the live GET /points-of-sale response, so it filters
+            // identically. Without this, a genuinely multi-location account
+            // silently lost the ability to say *which* location a purchase/
+            // order/customer/supplier belongs to while offline (the field
+            // just disappeared, per the `options.length <= 1` check below).
+            readMirrorAll("pointsOfSale").then((rows) => setOptions(filterOwn(rows)));
+            return;
+        }
         pointOfSaleService
             .list()
-            .then((res) => {
-                const own = (res?.data || []).filter((pos) => pos.isActive && pos.inOwnScope);
-                setOptions(own);
-            })
-            .catch(() => setOptions([]));
+            .then((res) => setOptions(filterOwn(res?.data)))
+            .catch((error) => {
+                if (!error.response) {
+                    // Real network failure, not a server rejection - most
+                    // likely we were actually offline this whole time (see
+                    // connectivity.js's reportNetworkFailure). Fall back to
+                    // the mirror instead of silently hiding the field.
+                    readMirrorAll("pointsOfSale").then((rows) => setOptions(filterOwn(rows)));
+                    return;
+                }
+                setOptions([]);
+            });
     }, [canUseMultiLocation, subscriptionLoading]);
 
     if (!subscriptionLoading && (!canUseMultiLocation || (options && options.length <= 1))) return null;

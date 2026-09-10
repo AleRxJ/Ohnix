@@ -2424,6 +2424,120 @@ html[data-ohnix-theme="lite"] .public-sales-quotation-brand img.ohnix-logo-adapt
   box-shadow: 0 0 20px rgba(251, 113, 133, 0.28) !important;
 }
 
+/* SyncStatusIndicator's click-to-open "what works offline" explainer -
+   same reasoning as .ant-popconfirm above (a bare antd Popover falls back
+   entirely to stock light-theme styling against Ohnix's dark dashboard).
+   Scoped to this one overlayClassName so a plain Popover/Tooltip elsewhere
+   stays untouched. Mirrors the popconfirm's card/gradient-bar/glow
+   treatment for visual consistency, plus its own two-list layout (a
+   teal check-list for what still works, an amber lock-list for what
+   needs a connection) since this popover is informational, not a
+   confirm/cancel action. */
+.offline-capabilities-popover .ant-popover-inner {
+  background: var(--ohnix-surface-card) !important;
+  border: 1px solid var(--ohnix-line-4) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--ohnix-shadow-elevated), 0 0 32px rgba(41, 216, 213, 0.12) !important;
+  overflow: hidden;
+  position: relative;
+  padding-top: 3px !important;
+}
+.offline-capabilities-popover .ant-popover-inner::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, #29d8d5, #44f3f0, #7c6af7);
+}
+.offline-capabilities-popover .ant-popover-inner-content {
+  padding: 4px 2px;
+}
+.offline-capabilities-popover__body {
+  width: 260px;
+  font-size: 12px;
+}
+.offline-capabilities-popover__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.offline-capabilities-popover__icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.18);
+  color: #f59e0b;
+  font-size: 14px;
+}
+.offline-capabilities-popover__title {
+  margin: 0;
+  color: var(--ohnix-text-primary);
+  font-weight: 700;
+  font-size: 13px;
+}
+.offline-capabilities-popover__intro {
+  margin: 2px 0 0;
+  color: var(--ohnix-text-muted);
+  line-height: 1.4;
+}
+.offline-capabilities-popover__group-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.offline-capabilities-popover__group-title--ok {
+  color: #44f3f0;
+}
+.offline-capabilities-popover__group-title--blocked {
+  color: #f59e0b;
+}
+.offline-capabilities-popover__list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.offline-capabilities-popover__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--ohnix-text-table-cell);
+  line-height: 1.35;
+}
+.offline-capabilities-popover__list-icon {
+  margin-top: 2px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.offline-capabilities-popover__list-icon--ok {
+  color: #29d8d5;
+}
+.offline-capabilities-popover__list-icon--blocked {
+  color: #f59e0b;
+}
+.offline-capabilities-popover__footnote {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--ohnix-line-4);
+  color: var(--ohnix-text-dim);
+  line-height: 1.4;
+}
+.offline-capabilities-popover__footnote .anticon {
+  color: #44f3f0;
+  margin-right: 2px;
+}
+
 /* Ohnix_Icon_Transparent.png is thin gray line-art + a teal accent, drawn to
    sit on a dark surface - fine as-is anywhere that's fixed-dark regardless of
    app theme (the marketing site, AuthLayout), but on the Lite theme's white

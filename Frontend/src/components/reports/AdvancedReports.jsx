@@ -60,7 +60,7 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
     const [vatData, setVatData] = useState(null);
     const [carteraData, setCarteraData] = useState(null);
     const { user } = useContext(AuthContext);
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const { formatCurrency } = useCurrency();
 
     const dateParams = (range = dateRange) => ({
@@ -213,29 +213,36 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
         if (vatData.manualAdjustments?.length > 0) {
             rows.push([t("reports.advanced.vat_manual_adjustments_title")]);
             rows.push([t("reports.advanced.vat_manual_adjustments_col_date"), t("reports.advanced.vat_manual_adjustments_col_description"), t("reports.advanced.vat_manual_adjustments_col_generated"), t("reports.advanced.vat_manual_adjustments_col_deductible")]);
-            vatData.manualAdjustments.forEach((row) => rows.push([dayjs(row.entryDate).format("DD/MM/YYYY"), row.description || "", row.generatedDelta ? formatCurrency(row.generatedDelta) : "", row.deductibleDelta ? formatCurrency(row.deductibleDelta) : ""]));
+            vatData.manualAdjustments.forEach((row) => rows.push([dayjs(row.entryDate).format("DD/MM/YYYY"), manualAdjustmentDescription(row), row.generatedDelta ? formatCurrency(row.generatedDelta) : "", row.deductibleDelta ? formatCurrency(row.deductibleDelta) : ""]));
         }
 
         return rows;
     };
 
+    const manualAdjustmentDescription = (row) => {
+        if (row.sourceType !== "manual_journal_reversal") return row.description || "";
+        const match = /^(?:Anulación|Reversal):\s*(.+)$/i.exec(String(row.description || ""));
+        return match ? t("reports.advanced.vat_manual_reversal_description", { detail: match[1] }) : row.description || "";
+    };
+    const vatExportPrefix = currentLanguage === "en" ? "vat-report" : "informe-iva";
+
     const exportVatCsv = async () => {
         if (!vatData) { toast.error(t("reports.no_data_to_export")); return; }
         try {
-            await downloadCsv(buildVatReportRows(), `iva-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.csv`);
+            await downloadCsv(buildVatReportRows(), `${vatExportPrefix}-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.csv`);
             toast.success(t("reports.advanced.vat_report_exported"));
-        } catch (error) {
-            toast.error(error.response?.data?.message || t("reports.export_csv_failed"));
+        } catch {
+            toast.error(t("reports.export_csv_failed"));
         }
     };
 
     const exportVatExcel = async () => {
         if (!vatData) { toast.error(t("reports.no_data_to_export")); return; }
         try {
-            await downloadExcel(buildVatReportRows(), `iva-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.xlsx`, t("reports.advanced.vat_tab"));
+            await downloadExcel(buildVatReportRows(), `${vatExportPrefix}-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.xlsx`, t("reports.advanced.vat_tab"));
             toast.success(t("reports.advanced.vat_report_exported"));
-        } catch (error) {
-            toast.error(error.response?.data?.message || t("reports.export_excel_failed"));
+        } catch {
+            toast.error(t("reports.export_excel_failed"));
         }
     };
 
@@ -288,16 +295,16 @@ const AdvancedReports = ({ defaultSubTab } = {}) => {
                             heading: t("reports.advanced.vat_manual_adjustments_title"),
                             table: {
                                 headers: [t("reports.advanced.vat_manual_adjustments_col_date"), t("reports.advanced.vat_manual_adjustments_col_description"), t("reports.advanced.vat_manual_adjustments_col_generated"), t("reports.advanced.vat_manual_adjustments_col_deductible")],
-                                rows: vatData.manualAdjustments.map((row) => [dayjs(row.entryDate).format("DD/MM/YYYY"), row.description || "", row.generatedDelta ? formatCurrency(row.generatedDelta) : "", row.deductibleDelta ? formatCurrency(row.deductibleDelta) : ""]),
+                                rows: vatData.manualAdjustments.map((row) => [dayjs(row.entryDate).format("DD/MM/YYYY"), manualAdjustmentDescription(row), row.generatedDelta ? formatCurrency(row.generatedDelta) : "", row.deductibleDelta ? formatCurrency(row.deductibleDelta) : ""]),
                             },
                         }] : []),
                     ],
                 },
-                `iva-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.pdf`
+                `${vatExportPrefix}-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.pdf`
             );
             toast.success(t("reports.advanced.vat_report_exported"));
-        } catch (error) {
-            toast.error(error.response?.data?.message || t("reports.export_pdf_failed"));
+        } catch {
+            toast.error(t("reports.export_pdf_failed"));
         }
     };
 

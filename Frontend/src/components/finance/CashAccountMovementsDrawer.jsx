@@ -28,7 +28,7 @@ const SOURCE_LABEL_KEYS = {
 };
 
 const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
-    const { t } = useI18n();
+    const { t, currentLanguage } = useI18n();
     const { formatCurrency, currency } = useCurrency();
     const isMobile = useIsMobile();
     const currencyInputProps = getCurrencyInputProps(currency.code);
@@ -169,9 +169,10 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
         [t("finance.col_date"), t("finance.entry_description_label"), t("finance.col_amount"), t("finance.reconciliation_report_status"), t("finance.col_source"), t("finance.col_reason"), t("finance.reconciliation_report_reconciled_at")],
         ...reportRows.map((row) => [dayjs(row.entry_date).format("DD/MM/YYYY"), row.description || "", row.amount, t(`finance.reconciliation_status_${row.status}`), row.movement ? t(SOURCE_LABEL_KEYS[row.movement.source_type] || row.movement.source_type) : "", row.movement?.reason || "", row.movement?.reconciled_at ? dayjs(row.movement.reconciled_at).format("DD/MM/YYYY HH:mm") : ""]),
     ];
-    const exportReportCsv = () => downloadCsv(reportData(), `conciliacion-${account.name}-${dayjs().format("YYYY-MM-DD")}.csv`);
-    const exportReportExcel = () => downloadExcel(reportData(), `conciliacion-${account.name}-${dayjs().format("YYYY-MM-DD")}.xlsx`, t("finance.reconciliation_report_sheet"));
-    const exportReportPdf = () => downloadPdfReport({ title: t("finance.reconciliation_report_title"), subtitle: `${account.name} · ${reportRange?.[0]?.format("DD/MM/YYYY")} - ${reportRange?.[1]?.format("DD/MM/YYYY")}`, sections: [{ summary: [[t("finance.reconciliation_report_total"), reportRows.length], [t("finance.reconciliation_matched"), reportRows.filter((row) => row.status === "matched").length], [t("finance.reconciliation_pending"), reportRows.filter((row) => row.status === "unmatched").length]], table: { headers: reportData()[0], rows: reportData().slice(1) } }] }, `conciliacion-${account.name}-${dayjs().format("YYYY-MM-DD")}.pdf`);
+    const reconciliationExportPrefix = currentLanguage === "en" ? "reconciliation-report" : "informe-conciliacion";
+    const exportReportCsv = () => downloadCsv(reportData(), `${reconciliationExportPrefix}-${account.name}-${dayjs().format("YYYY-MM-DD")}.csv`);
+    const exportReportExcel = () => downloadExcel(reportData(), `${reconciliationExportPrefix}-${account.name}-${dayjs().format("YYYY-MM-DD")}.xlsx`, t("finance.reconciliation_report_sheet"));
+    const exportReportPdf = () => downloadPdfReport({ title: t("finance.reconciliation_report_title"), subtitle: `${account.name} · ${reportRange?.[0]?.format("DD/MM/YYYY")} - ${reportRange?.[1]?.format("DD/MM/YYYY")}`, sections: [{ summary: [[t("finance.reconciliation_report_total"), reportRows.length], [t("finance.reconciliation_matched"), reportRows.filter((row) => row.status === "matched").length], [t("finance.reconciliation_pending"), reportRows.filter((row) => row.status === "unmatched").length]], table: { headers: reportData()[0], rows: reportData().slice(1) } }] }, `${reconciliationExportPrefix}-${account.name}-${dayjs().format("YYYY-MM-DD")}.pdf`);
 
     const handleAddEntry = async (values) => {
         const success = await addStatementEntry({

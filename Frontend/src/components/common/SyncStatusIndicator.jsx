@@ -1,28 +1,63 @@
 import React, { useEffect, useState } from "react";
 import { Popover } from "antd";
 import { useLiveQuery } from "dexie-react-hooks";
-import { CloudSyncOutlined, DisconnectOutlined, WarningFilled } from "@ant-design/icons";
+import {
+    CheckCircleFilled,
+    CloudSyncOutlined,
+    DisconnectOutlined,
+    LockFilled,
+    ReloadOutlined,
+    WarningFilled,
+} from "@ant-design/icons";
 import { db } from "../../offline/db.js";
 import { OUTBOX_STATUS } from "../../offline/outbox.js";
 import { getConnectivityState, subscribeConnectivity } from "../../offline/connectivity.js";
 import useI18n from "../../hooks/useI18n";
 
 // Content of the click-to-open explainer - what still works offline vs. what
-// needs a connection. Kept as plain text lines (not a live-generated list
-// from the module registry) since it's meant to be a short, human-readable
-// summary a non-technical user can actually read, not an exhaustive spec.
+// needs a connection. Real bullet lists (not a comma-joined sentence, which
+// read as a wall of text) so it's scannable at a glance; kept as short
+// static items (not a live-generated list from the module registry) since
+// it's meant to be a human-readable summary, not an exhaustive spec.
 const OfflineCapabilitiesPopover = ({ t }) => (
-    <div className="max-w-xs text-sm">
-        <p className="mb-2 text-[var(--ohnix-text-dim)]">{t("common.offline_capabilities_intro")}</p>
-        <p className="mb-0.5 font-semibold text-[var(--ohnix-text-primary)]">
+    <div className="offline-capabilities-popover__body">
+        <div className="offline-capabilities-popover__header">
+            <span className="offline-capabilities-popover__icon-badge">
+                <DisconnectOutlined />
+            </span>
+            <div>
+                <p className="offline-capabilities-popover__title">{t("common.offline_capabilities_title")}</p>
+                <p className="offline-capabilities-popover__intro">{t("common.offline_capabilities_intro")}</p>
+            </div>
+        </div>
+
+        <p className="offline-capabilities-popover__group-title offline-capabilities-popover__group-title--ok">
             {t("common.offline_capabilities_available_title")}
         </p>
-        <p className="mb-2 text-[var(--ohnix-text-dim)]">{t("common.offline_capabilities_available_list")}</p>
-        <p className="mb-0.5 font-semibold text-[var(--ohnix-text-primary)]">
+        <ul className="offline-capabilities-popover__list">
+            {[1, 2, 3, 4].map((n) => (
+                <li key={n}>
+                    <CheckCircleFilled className="offline-capabilities-popover__list-icon offline-capabilities-popover__list-icon--ok" />
+                    {t(`common.offline_capabilities_available_${n}`)}
+                </li>
+            ))}
+        </ul>
+
+        <p className="offline-capabilities-popover__group-title offline-capabilities-popover__group-title--blocked">
             {t("common.offline_capabilities_unavailable_title")}
         </p>
-        <p className="mb-2 text-[var(--ohnix-text-dim)]">{t("common.offline_capabilities_unavailable_list")}</p>
-        <p className="mb-0 text-[var(--ohnix-text-dim)]">{t("common.offline_capabilities_reload_note")}</p>
+        <ul className="offline-capabilities-popover__list">
+            {[1, 2, 3].map((n) => (
+                <li key={n}>
+                    <LockFilled className="offline-capabilities-popover__list-icon offline-capabilities-popover__list-icon--blocked" />
+                    {t(`common.offline_capabilities_unavailable_${n}`)}
+                </li>
+            ))}
+        </ul>
+
+        <p className="offline-capabilities-popover__footnote">
+            <ReloadOutlined /> {t("common.offline_capabilities_reload_note")}
+        </p>
     </div>
 );
 
@@ -79,9 +114,9 @@ const SyncStatusIndicator = () => {
     return (
         <Popover
             content={<OfflineCapabilitiesPopover t={t} />}
-            title={t("common.offline_capabilities_title")}
             trigger="click"
             placement="bottomRight"
+            overlayClassName="offline-capabilities-popover"
         >
             <button
                 type="button"
