@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { issueAuthTokens } from "../utils/authTokens.js";
-import { revokeAllSessions } from "../utils/sessionStore.js";
+import { listSessions, revokeAllSessions, revokeSession } from "../utils/sessionStore.js";
 import { publishPosScopeChange } from "../utils/posScopeStore.js";
 import {
     ensureUserSubscription,
@@ -952,6 +952,36 @@ export const removeMember = async ({ team, actorId, userId }) => {
     );
 
     return { removed: true };
+};
+
+// ─── Sessions (owner managing a member's devices) ──────────────────────────
+// Lets a team owner see/end a member's active sessions without removing them
+// from the team entirely (removeMember above already force-ends every
+// session, but that's a much bigger, harder-to-undo action). Scoped to
+// "active member of THIS team" the same way removeMember is - an owner can
+// only reach sessions for people actually on their own team, never an
+// arbitrary userId. The owner's own sessions aren't reachable here (they're
+// not a TeamMember row) - that's what the self-service /users/sessions panel
+// is for.
+
+const requireActiveMember = async (team, userId) => {
+    const member = await prisma.teamMember.findFirst({ where: { teamId: team.id, userId, status: "active" } });
+    if (!member) {
+        throw new ApiError(404, "Miembro activo no encontrado");
+    }
+};
+
+export const getMemberSessions = async ({ team, userId }) => {
+    await requireActiveMember(team, userId);
+    return listSessions(userId);
+};
+
+export const revokeMemberSession = async ({ team, userId, sessionId }) => {
+    await requireActiveMember(team, userId);
+    const revoked = await revokeSession(userId, sessionId);
+    if (!revoked) {
+        throw new ApiError(404, "Sesión no encontrada");
+    }
 };
 
 // ─── Activity log ───────────────────────────────────────────────────────

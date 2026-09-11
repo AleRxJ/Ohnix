@@ -1028,6 +1028,45 @@ const setUserPasswordAdmin = asyncHandler(async (req, res, next) => {
         .json(new ApiResponse(200, {}, "Password updated successfully"));
 });
 
+// Support/security tooling: the Ohnix platform admin can see and end any
+// user's sessions, not just their own - e.g. a compromised-account report,
+// or a user who can't reach their own sessions tab to sign out a lost device
+// themselves. Never scoped to isCurrent (an admin's own sid is irrelevant to
+// someone else's device list).
+const getUserSessionsAdmin = asyncHandler(async (req, res) => {
+    const sessions = await listSessions(req.params.userId);
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            sessions.map((session) => ({
+                id: session.id,
+                deviceClass: session.deviceClass,
+                deviceLabel: session.deviceLabel,
+                lastSeenAt: session.lastSeenAt,
+                createdAt: session.createdAt,
+            })),
+            "Sessions fetched successfully"
+        )
+    );
+});
+
+const revokeUserSessionAdmin = asyncHandler(async (req, res, next) => {
+    const { userId, sessionId } = req.params;
+    const revoked = await revokeSession(userId, sessionId);
+    if (!revoked) {
+        return next(new ApiError(404, "Session not found"));
+    }
+    await logAdminAction({
+        adminId: req.user.prismaId,
+        action: "revoke_user_session",
+        targetType: "user",
+        targetId: userId,
+        targetUserId: userId,
+        metadata: { sessionId },
+    });
+    return res.status(200).json(new ApiResponse(200, {}, "Session revoked successfully"));
+});
+
 // Send verification otp to users email
 const sendVerifyOtp = asyncHandler(async (req, res, next) => {
     try {
@@ -1459,6 +1498,8 @@ export {
     createUserAdmin,
     updateUserAdmin,
     setUserPasswordAdmin,
+    getUserSessionsAdmin,
+    revokeUserSessionAdmin,
     impersonateUser,
     endImpersonation,
     sendVerifyOtp,

@@ -25,6 +25,8 @@ import {
     acceptInvitation,
     listMembers,
     updateMember,
+    listMemberSessions,
+    revokeMemberSession,
     listActivity,
 } from "../controllers/team.controller.js";
 
@@ -64,6 +66,10 @@ router.route("/teams/:id/members")
     .get(requireTeamAccess, listMembers);
 router.route("/teams/:id/members/:userId")
     .patch(requireTeamOwnerActor, updateMember);
+router.route("/teams/:id/members/:userId/sessions")
+    .get(requireTeamOwnerActor, listMemberSessions);
+router.route("/teams/:id/members/:userId/sessions/:sessionId")
+    .delete(requireTeamOwnerActor, revokeMemberSession);
 
 router.route("/teams/:id/invitations")
     .get(requireTeamOwnerActor, listInvitations)
