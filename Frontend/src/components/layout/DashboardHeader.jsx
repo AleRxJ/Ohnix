@@ -19,10 +19,12 @@ import ThemeToggle from "../common/ThemeToggle";
 import SyncStatusIndicator from "../common/SyncStatusIndicator";
 import { userService } from "../../services/userService";
 import { useTeam } from "../../context/TeamContext";
+import { useTheme } from "../../context/ThemeContext";
 
 const DashboardHeader = ({ collapsed, setCollapsed }) => {
     const { user, logout } = useContext(AuthContext);
     const { t, currentLanguage, changeLanguage } = useI18n();
+    const { isLite } = useTheme();
     const navigate = useNavigate();
 
     // Handle logout
@@ -102,9 +104,9 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                     <div className="flex items-center gap-1.5">
                         <div className="flex items-center justify-center rounded-xl p-1.5">
                             <img
-                                src="/Ohnix_Icon_Transparent.png"
+                                src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
                                 alt="Ohnix icon"
-                                className="ohnix-logo-adaptive h-11 w-11 object-contain"
+                                className="h-11 w-11 object-contain"
                             />
                         </div>
                         <span className="text-sm font-semibold tracking-[0.18em] text-[var(--ohnix-text-primary)]">

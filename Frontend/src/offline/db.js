@@ -105,9 +105,20 @@ db.version(7).stores({
     salesQuotations: "_id",
 });
 
+// Receipt acknowledgment (RADIAN acuse de recibo/recepción/aceptación/reclamo
+// for purchases from a supplier that issues its own real invoice - see
+// receiptAcknowledgment.service.js). Same invented-mirror shape as
+// locationStockSummaries above: GET /purchases/:id/receipt-acknowledgment is
+// a per-purchase result, not a list endpoint, so this is keyed by purchaseId
+// under `_id`, write-through only (one row per purchase actually viewed), no
+// full-resync pull registered in entitySync.js.
+db.version(8).stores({
+    receiptAcknowledgments: "_id",
+});
+
 // Mirror tables added as each module is wired for offline support - keep in
 // sync with the list above so account/logout resets actually clear them.
-export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations"];
+export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments"];
 
 const CURRENT_ACCOUNT_KEY = "currentAccountId";
 

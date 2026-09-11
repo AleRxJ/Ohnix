@@ -12,6 +12,14 @@ import {
     issuePurchaseSupportDocument,
     syncPurchaseSupportDocument,
 } from "../controllers/purchaseSupportDocument.controller.js";
+import {
+    getPurchaseReceiptAcknowledgment,
+    recordPurchaseSupplierInvoiceReference,
+    triggerPurchaseAcuseDeRecibo,
+    triggerPurchaseAceptacionExpresa,
+    triggerPurchaseReclamo,
+    syncPurchaseReceiptAcknowledgment,
+} from "../controllers/receiptAcknowledgment.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import {
@@ -58,5 +66,19 @@ router.route("/:id/returns").post(requireModulePermission("purchases", "edit"), 
 router.route("/:id/support-document").get(requireModulePermission("purchases", "view"), getPurchaseSupportDocument);
 router.route("/:id/support-document/issue").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, issuePurchaseSupportDocument);
 router.route("/:id/support-document/sync").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, syncPurchaseSupportDocument);
+
+// Receipt acknowledgment (RADIAN buyer-side events - acuse de recibo /
+// recibo del bien / aceptación expresa / reclamo) for a purchase from a
+// supplier that issues its OWN real invoice - see
+// receiptAcknowledgment.service.js. Opposite precondition from Documento
+// Soporte above. Acuse+recepción auto-fire on purchase completion (chained
+// server-side, see purchase.service.js); recepción has no manual endpoint by
+// design. GET ungated by subscription status, same reasoning as support-document.
+router.route("/:id/receipt-acknowledgment").get(requireModulePermission("purchases", "view"), getPurchaseReceiptAcknowledgment);
+router.route("/:id/receipt-acknowledgment/reference").post(requireModulePermission("purchases", "edit"), idempotent("purchase.receipt_reference"), recordPurchaseSupplierInvoiceReference);
+router.route("/:id/receipt-acknowledgment/acuse").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, triggerPurchaseAcuseDeRecibo);
+router.route("/:id/receipt-acknowledgment/aceptacion-expresa").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, triggerPurchaseAceptacionExpresa);
+router.route("/:id/receipt-acknowledgment/reclamo").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, triggerPurchaseReclamo);
+router.route("/:id/receipt-acknowledgment/sync").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, syncPurchaseReceiptAcknowledgment);
 
 export default router;

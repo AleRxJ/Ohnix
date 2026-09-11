@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { pointOfSaleService } from "../services/pointOfSaleService";
+import { getConnectivityState } from "../offline/connectivity";
+import { readMirrorAll } from "../offline/entityQueue";
 
 // Whether the current viewer can see every one of the account's active
 // locations (owner, admin, or a member explicitly granted posScopeAll -
@@ -17,10 +19,22 @@ export const usePointOfSaleScope = () => {
     const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
+        const filterActive = (rows) => (rows || []).filter((pos) => pos.isActive);
+        if (!getConnectivityState()) {
+            readMirrorAll("pointsOfSale")
+                .then((rows) => setPointsOfSale(filterActive(rows)))
+                .finally(() => setLoaded(true));
+            return;
+        }
         pointOfSaleService
             .list()
-            .then((res) => setPointsOfSale((res?.data || []).filter((pos) => pos.isActive)))
-            .catch(() => setPointsOfSale([]))
+            .then((res) => setPointsOfSale(filterActive(res?.data)))
+            .catch((error) => {
+                if (!error.response) {
+                    return readMirrorAll("pointsOfSale").then((rows) => setPointsOfSale(filterActive(rows)));
+                }
+                setPointsOfSale([]);
+            })
             .finally(() => setLoaded(true));
     }, []);
 

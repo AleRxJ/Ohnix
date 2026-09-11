@@ -6,6 +6,7 @@ import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
 import { buildAccountingThirdParty, postPurchaseJournalEntry, postPurchaseReturnJournalEntry } from "./accountingPosting.service.js";
 import { issueSupportDocumentForPurchase } from "./purchaseSupportDocument.service.js";
+import { triggerAcuseDeReciboForPurchase } from "./receiptAcknowledgment.service.js";
 import { buildPurchaseRetentionSnapshots, calculateRetentionReturn } from "./withholdingConcept.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
@@ -21,6 +22,27 @@ const triggerSupportDocumentIfCompleted = ({ purchaseId, userId, userRole, trigg
         trigger,
     }).catch((error) => {
         console.warn("[support-document] async issuance skipped/failed", {
+            purchaseId,
+            trigger,
+            message: error?.message || error,
+        });
+    });
+};
+
+// Same fire-and-forget pattern as triggerSupportDocumentIfCompleted above,
+// for the opposite supplier precondition (issuesElectronicInvoice, not
+// notObligatedToInvoice) - see receiptAcknowledgment.service.js. Internally
+// no-ops (via its own 409 checks) for a purchase whose supplier doesn't
+// need this, exactly like the support-document trigger does for its own
+// precondition - so it's safe to fire unconditionally alongside it.
+const triggerReceiptAcknowledgmentIfCompleted = ({ purchaseId, userId, userRole, trigger }) => {
+    triggerAcuseDeReciboForPurchase({
+        purchaseId,
+        requesterUserId: userId,
+        requesterRole: userRole,
+        trigger,
+    }).catch((error) => {
+        console.warn("[receipt-acknowledgment] async acuse skipped/failed", {
             purchaseId,
             trigger,
             message: error?.message || error,
@@ -98,7 +120,7 @@ class PurchaseService {
 
         const supplier = await findSupplierByAnyId(supplier_id);
         if (!supplier) {
-            throw new ApiError(404, "Supplier not found");
+            throw new ApiError(404, "Supplier not found", [], "", "supplier_not_found");
         }
 
         if (userRole !== "admin" && supplier.createdById !== userId) {
@@ -124,7 +146,7 @@ class PurchaseService {
 
         const products = await Promise.all(uniqueProductIds.map((id) => findProductByAnyId(id)));
         if (products.some((p) => !p)) {
-            throw new ApiError(400, "One or more products not found");
+            throw new ApiError(400, "One or more products not found", [], "", "products_not_found");
         }
 
         for (const product of products) {
@@ -147,7 +169,7 @@ class PurchaseService {
             select: { id: true },
         });
         if (existing) {
-            throw new ApiError(409, "Purchase number already exists");
+            throw new ApiError(409, "Purchase number already exists", [], "", "purchase_number_already_exists");
         }
 
         const initialStatus = purchase_status || "pending";
@@ -212,7 +234,7 @@ class PurchaseService {
                 for (const detail of details) {
                     const mappedProduct = await findProductByAnyId(detail.product_id);
                     if (!mappedProduct) {
-                        throw new ApiError(400, "One or more products not found");
+                        throw new ApiError(400, "One or more products not found", [], "", "products_not_found");
                     }
 
                     const itemTax = computePurchaseItemTax(
@@ -310,7 +332,7 @@ class PurchaseService {
             };
         } catch (err) {
             if (err.code === "P2002") {
-                throw new ApiError(409, "Purchase number already exists");
+                throw new ApiError(409, "Purchase number already exists", [], "", "purchase_number_already_exists");
             }
             throw err;
         }
@@ -431,6 +453,12 @@ class PurchaseService {
 
         if (newStatus === "completed" && !updatedPurchase.isTutorialData) {
             triggerSupportDocumentIfCompleted({
+                purchaseId: updatedPurchase.id,
+                userId,
+                userRole,
+                trigger: "purchase_status_completed",
+            });
+            triggerReceiptAcknowledgmentIfCompleted({
                 purchaseId: updatedPurchase.id,
                 userId,
                 userRole,

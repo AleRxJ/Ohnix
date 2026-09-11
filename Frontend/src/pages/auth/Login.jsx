@@ -1,5 +1,6 @@
 import { useState, useContext, useEffect } from "react";
-import { Form, Divider } from "antd";
+import { Form, Divider, Alert } from "antd";
+import { DisconnectOutlined } from "@ant-design/icons";
 import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import AuthContext from "../../context/AuthContext";
 import AuthLayout from "../../components/auth/AuthLayout";
@@ -8,6 +9,7 @@ import SeoHead from "../../components/common/SeoHead";
 import { EmailInput, PasswordInput } from "../../components/auth/FormItems";
 import AuthButton from "../../components/auth/AuthButton";
 import useI18n from "../../hooks/useI18n";
+import { getConnectivityState, subscribeConnectivity, checkNow } from "../../offline/connectivity";
 
 const Login = () => {
     const [form] = Form.useForm();
@@ -17,6 +19,18 @@ const Login = () => {
     const location = useLocation();
     const [searchParams] = useSearchParams();
     const { t, currentLanguage } = useI18n();
+    const [isOffline, setIsOffline] = useState(!getConnectivityState());
+
+    // Logging in is the one thing that genuinely can never work offline -
+    // there's no prior session on this device yet to fall back to (unlike
+    // every other offline-aware screen in the app). Rather than let someone
+    // type a password and only find out from a generic failed-submit toast,
+    // check for real on mount (navigator.onLine alone isn't reliable enough
+    // to trust silently - see connectivity.js) and show it up front.
+    useEffect(() => {
+        checkNow();
+        return subscribeConnectivity((online) => setIsOffline(!online));
+    }, []);
 
     // ProtectedRoute stashes the page the user was actually trying to reach
     // (pathname + query string, e.g. /billing?payment=cancelled&requestId=...
@@ -62,6 +76,15 @@ const Login = () => {
                 title={t('auth.login')}
                 subtitle={t('auth.login_success')}
             >
+                {isOffline && (
+                    <Alert
+                        className="mb-5 dark-alert dark-alert-amber"
+                        type="warning"
+                        showIcon
+                        icon={<DisconnectOutlined />}
+                        message={t("auth.login_requires_connection")}
+                    />
+                )}
                 <Form
                     form={form}
                     name="login-form"

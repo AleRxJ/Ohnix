@@ -12,6 +12,7 @@ import * as withholdingReportService from "../services/withholdingReport.service
 import * as accountingBudgetService from "../services/accountingBudget.service.js";
 import * as costCenterService from "../services/costCenter.service.js";
 import * as recurringExpenseService from "../services/recurringExpense.service.js";
+import * as openingBalanceService from "../services/openingBalance.service.js";
 
 // `to`/`as_of` always arrives as a plain "YYYY-MM-DD" string (every date
 // picker on the frontend sends dayjs().format("YYYY-MM-DD")), which
@@ -381,6 +382,22 @@ export const getAccountingStatus = asyncHandler(async (req, res) => {
         has_journal_entries: hasJournalEntries,
         has_backfilled_entries: hasBackfilledEntries,
     }, "Accounting status fetched successfully"));
+});
+
+export const createOpeningBalance = asyncHandler(async (req, res) => {
+    const entry = await openingBalanceService.createOpeningBalance({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        entryDate: req.body?.entry_date,
+        description: req.body?.description,
+        lines: req.body?.lines,
+    });
+    return res.status(201).json(new ApiResponse(201, {
+        _id: entry.id,
+        entry_date: entry.entryDate,
+        source_type: entry.sourceType,
+        source_id: entry.sourceId,
+    }, "Opening balance posted successfully"));
 });
 
 export const getBudgetReport = asyncHandler(async (req, res) => {

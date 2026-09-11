@@ -85,10 +85,10 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
                         <div className="flex items-center gap-2.5">
                             <div className="flex items-center justify-center rounded-lg p-1">
                                 <img
-                                    src="/Ohnix_Icon_Transparent.png"
+                                    src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
                                     alt=""
                                     aria-hidden="true"
-                                    className="ohnix-logo-adaptive h-9 w-9 object-contain"
+                                    className="h-9 w-9 object-contain"
                                 />
                             </div>
                             <span className="text-sm font-semibold tracking-wide text-[var(--ohnix-text-primary)]">

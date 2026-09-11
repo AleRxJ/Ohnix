@@ -33,6 +33,7 @@ const mapSupplier = (supplier, currentUser) => ({
     municipality_code: supplier.municipalityCode,
     country_code: supplier.countryCode,
     not_obligated_to_invoice: supplier.notObligatedToInvoice,
+    issues_electronic_invoice: supplier.issuesElectronicInvoice,
     photo: supplier.photo,
     owner: supplier.createdBy
         ? {
@@ -102,12 +103,26 @@ const createSupplier = asyncHandler(async (req, res, next) => {
         account_holder,
         account_number,
         not_obligated_to_invoice,
+        issues_electronic_invoice,
         is_tutorial_data,
     } = req.body;
 
     if (!name || !email || !phone || !address) {
         return next(
             new ApiError(400, "Name, email, phone, and address are required")
+        );
+    }
+
+    // A supplier is either not obligated to invoice at all (Documento
+    // Soporte, self-issued by Ohnix) or issues its own real invoice (buyer
+    // owes DIAN an acuse de recibo referencing THAT invoice) - never both,
+    // the two flows assume opposite facts about who issues what.
+    if (
+        (not_obligated_to_invoice === true || not_obligated_to_invoice === "true") &&
+        (issues_electronic_invoice === true || issues_electronic_invoice === "true")
+    ) {
+        return next(
+            new ApiError(400, "A supplier cannot be both not obligated to invoice and issuing its own electronic invoice")
         );
     }
 
@@ -152,6 +167,7 @@ const createSupplier = asyncHandler(async (req, res, next) => {
                 accountNumber: account_number?.trim() || null,
                 photo: photoUrl,
                 notObligatedToInvoice: not_obligated_to_invoice === true || not_obligated_to_invoice === "true",
+                issuesElectronicInvoice: issues_electronic_invoice === true || issues_electronic_invoice === "true",
                 isTutorialData: is_tutorial_data === true || is_tutorial_data === "true",
                 createdById: req.user.prismaId,
                 pointOfSaleId,
@@ -286,6 +302,18 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
             return next(new ApiError(403, "No tienes acceso a este punto de venta."));
         }
 
+        const nextNotObligated = req.body.not_obligated_to_invoice !== undefined
+            ? req.body.not_obligated_to_invoice === true || req.body.not_obligated_to_invoice === "true"
+            : existingSupplier.notObligatedToInvoice;
+        const nextIssuesElectronicInvoice = req.body.issues_electronic_invoice !== undefined
+            ? req.body.issues_electronic_invoice === true || req.body.issues_electronic_invoice === "true"
+            : existingSupplier.issuesElectronicInvoice;
+        if (nextNotObligated && nextIssuesElectronicInvoice) {
+            return next(
+                new ApiError(400, "A supplier cannot be both not obligated to invoice and issuing its own electronic invoice")
+            );
+        }
+
         let photoUrl = existingSupplier.photo;
         if (req.file) {
             const photo = await uploadFile(req.file, {
@@ -327,6 +355,9 @@ const updateSupplier = asyncHandler(async (req, res, next) => {
                 }),
                 ...(req.body.not_obligated_to_invoice !== undefined && {
                     notObligatedToInvoice: req.body.not_obligated_to_invoice === true || req.body.not_obligated_to_invoice === "true",
+                }),
+                ...(req.body.issues_electronic_invoice !== undefined && {
+                    issuesElectronicInvoice: req.body.issues_electronic_invoice === true || req.body.issues_electronic_invoice === "true",
                 }),
                 ...fiscalSupplierData(req.body),
                 photo: photoUrl,

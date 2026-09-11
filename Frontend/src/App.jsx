@@ -11,6 +11,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { TeamProvider, useTeam } from "./context/TeamContext";
 import { InventoryTourProvider } from "./context/InventoryTourContext";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
+import OfflineGate from "./components/common/OfflineGate";
 import { ELECTRONIC_INVOICING_ENABLED } from "./config/features";
 import { isPublicMarketingPath } from "./utils/publicPaths.js";
 import { waitForStylesheets } from "./utils/waitForStylesheets.js";
@@ -374,16 +375,16 @@ function App() {
                                 <Route path="categories" element={<RequireCategoriesAccess><Category /></RequireCategoriesAccess>} />
                                 <Route path="reports/*" element={<RequireReportsAccess><Reports /></RequireReportsAccess>} />
                                 <Route path="finance" element={<RequireFinanceAccess><Finance /></RequireFinanceAccess>} />
-                                <Route path="accounting" element={<RequireAccountingAccess><Accounting /></RequireAccountingAccess>} />
+                                <Route path="accounting" element={<RequireAccountingAccess><OfflineGate><Accounting /></OfflineGate></RequireAccountingAccess>} />
                                 <Route path="fiscal-setup" element={<RequireFiscalSetupAccess><FiscalSetup /></RequireFiscalSetupAccess>} />
                                 <Route path="fiscal-setup/certificate-checkout" element={<RequireFiscalSetupAccess><CertificateOrderCheckout /></RequireFiscalSetupAccess>} />
                                 <Route path="fiscal-setup/certificate-payment-response" element={<RequireFiscalSetupAccess><CertificateOrderPaymentResponse /></RequireFiscalSetupAccess>} />
-                                <Route path="team" element={<Team />} />
-                                <Route path="billing" element={<RequireBillingAccess><Billing /></RequireBillingAccess>} />
+                                <Route path="team" element={<OfflineGate><Team /></OfflineGate>} />
+                                <Route path="billing" element={<RequireBillingAccess><OfflineGate><Billing /></OfflineGate></RequireBillingAccess>} />
                                 {/* Same owner-only gate as Billing (see RequireBillingAccess's comment) -
                                     API keys/integrations/webhooks are account-wide credentials/config,
                                     blocked for team members at the backend too (blockTeamMembers). */}
-                                <Route path="integrations" element={<RequireBillingAccess><Integrations /></RequireBillingAccess>} />
+                                <Route path="integrations" element={<RequireBillingAccess><OfflineGate><Integrations /></OfflineGate></RequireBillingAccess>} />
                                 <Route path="billing/payment-success" element={<RequireBillingAccess><PaymentSuccess /></RequireBillingAccess>} />
                                 <Route path="billing/epayco-checkout" element={<RequireBillingAccess><EpaycoCheckout /></RequireBillingAccess>} />
                                 <Route path="billing/epayco-response" element={<RequireBillingAccess><EpaycoResponseRedirect /></RequireBillingAccess>} />

@@ -18,7 +18,7 @@
 // meant to be indexed, so it doesn't need prerendering.
 
 import { spawn } from "node:child_process";
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -104,10 +104,12 @@ const linkAppStylesheet = () => {
 };
 
 const run = async () => {
-    // Preserve Vite's clean SPA document before the homepage prerender replaces
-    // dist/index.html. Private/deep routes are rewritten to this file in
-    // Vercel, so they never inherit the marketing page's HTML or CSS.
-    copyFileSync(join(distDir, "index.html"), join(distDir, "app.html"));
+    // app.html is now a real Vite build entry (vite.config.js
+    // rollupOptions.input) - already in dist/ with its own correctly-hashed
+    // script tag, and already part of the service worker's precache
+    // manifest. Only the CSS <link> injection below (main.jsx loads that
+    // stylesheet via a dynamic import Vite can't discover at HTML-transform
+    // time) still needs doing by hand.
     linkAppStylesheet();
 
     console.log("[prerender] Starting vite preview server...");

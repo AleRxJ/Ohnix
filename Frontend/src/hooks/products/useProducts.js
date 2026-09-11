@@ -49,6 +49,12 @@ export const useProducts = () => {
             const all = await readMirrorAll("products");
             setProducts(filterProductsLocally(all, filters));
             setError(null);
+            // `loading` defaults to true (initial mount, before any fetch has
+            // resolved) - unlike the online path below, this branch never
+            // went through try/finally, so without this the table stayed
+            // stuck showing its loading/disabled overlay forever despite
+            // already having real (mirrored) data to show.
+            setLoading(false);
             return;
         }
         try {

@@ -479,6 +479,12 @@ const SupplierForm = ({
                         <p className="text-xs text-[var(--ohnix-text-dim)] mt-1">
                             {t("suppliers.not_obligated_to_invoice_hint")}
                         </p>
+                        <Form.Item name="issues_electronic_invoice" valuePropName="checked" className="mb-0 mt-2">
+                            <Checkbox>{t("suppliers.issues_electronic_invoice")}</Checkbox>
+                        </Form.Item>
+                        <p className="text-xs text-[var(--ohnix-text-dim)] mt-1">
+                            {t("suppliers.issues_electronic_invoice_hint")}
+                        </p>
                     </Card>
                 )}
 

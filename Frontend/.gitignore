@@ -1,3 +1,7 @@
+# Throwaway scratch scripts (ad-hoc test drivers during manual testing) -
+# never meant to be committed; this is a safety net after one leaked in once.
+.tmp-*
+
 # Logs
 logs
 *.log

@@ -1106,6 +1106,7 @@ const loadManualVatAdjustments = async ({ userId, isAdmin, entryDateFilter }) =>
             id: true,
             entryDate: true,
             description: true,
+            sourceType: true,
             lines: { select: { debit: true, credit: true, chartAccount: { select: { code: true } } } },
         },
     });
@@ -1123,6 +1124,7 @@ const loadManualVatAdjustments = async ({ userId, isAdmin, entryDateFilter }) =>
             id: entry.id,
             entryDate: entry.entryDate,
             description: entry.description,
+            sourceType: entry.sourceType,
             generatedDelta: round2(amountForCode("240805", "credit") - amountForCode("240805", "debit")),
             deductibleDelta: round2(amountForCode("240810", "debit") - amountForCode("240810", "credit")),
         };

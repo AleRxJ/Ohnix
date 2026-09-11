@@ -54,7 +54,7 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                 borderRight: "1px solid var(--ohnix-line-4)",
             }}
         >
-            <SidebarLogo collapsed={collapsed} onClick={handleLogoClick} />
+            <SidebarLogo collapsed={collapsed} isLite={isLite} onClick={handleLogoClick} />
             <div className="mx-4 mb-4 h-px bg-[var(--ohnix-line-4)]"></div>
 
             <div className="ohnix-scrollbar-thin min-h-0 flex-1 touch-pan-y overscroll-contain overflow-y-auto px-3">
@@ -107,15 +107,19 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     );
 };
 
-// Ohnix_Icon_Transparent.png is line-art (thin gray strokes + a teal accent),
-// not a solid-color fill, so it never needed a separate "Lite" asset or a
-// background chip behind it - one logo, both themes. It's still tuned for a
-// dark surface though, so on Lite it picks up .ohnix-logo-adaptive (see
-// index.css), which darkens the strokes just enough to stay legible on the
-// white sidebar.
-const SidebarLogo = ({ collapsed, onClick }) => (
+// Ohnix_Icon_Transparent.png's pale strokes are tuned for a dark surface, and
+// it bakes the "OHNIX" wordmark into the raster itself - fine at the ~256px
+// this image ships at, but that text turns to mush once it's downscaled into
+// a 44-96px nav slot, and no color/CSS fix can recover text that was never
+// vector to begin with. Lite gets a different treatment instead of a filter
+// on the same file: Ohnix_Icon_Lite.png is cropped to just the cube+ring
+// glyph (no wordmark, no stray background dots) and pre-recoloured (dark
+// strokes, brand cyan kept) at 480px, so it stays crisp when scaled down and
+// reads fine directly on the white sidebar - no dark backing tile needed.
+// The "OHNIX" label is real text here instead, which is always crisp.
+const SidebarLogo = ({ collapsed, isLite, onClick }) => (
     <div
-        className={`flex items-center justify-center py-6 cursor-pointer group transition-all duration-200 ${collapsed ? "px-0" : "px-4"}`}
+        className={`flex flex-col items-center justify-center gap-2 py-6 cursor-pointer group transition-all duration-200 ${collapsed ? "px-0" : "px-4"}`}
         onClick={onClick}
     >
         <div
@@ -123,18 +127,21 @@ const SidebarLogo = ({ collapsed, onClick }) => (
         >
             {collapsed ? (
                 <img
-                    src="/Ohnix_Icon_Transparent.png"
+                    src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
                     alt="Ohnix icon"
-                    className="ohnix-logo-adaptive h-12 w-12 shrink-0 object-contain transition-transform duration-200 group-hover:scale-110 drop-shadow-lg"
+                    className="h-12 w-12 shrink-0 object-contain transition-transform duration-200 group-hover:scale-110 drop-shadow-lg"
                 />
             ) : (
                 <img
-                    src="/Ohnix_Icon_Transparent.png"
+                    src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
                     alt="Ohnix logo"
-                    className="ohnix-logo-adaptive h-24 w-24 object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
+                    className={`object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg ${isLite ? "h-16 w-16" : "h-24 w-24"}`}
                 />
             )}
         </div>
+        {!collapsed && isLite && (
+            <span className="text-sm font-bold tracking-[0.22em] text-[var(--ohnix-text-primary)]">OHNIX</span>
+        )}
     </div>
 );
 
