@@ -120,6 +120,9 @@ const ACCOUNTING_ERROR_CODES = {
     opening_balance_unbalanced: "accounting.error_opening_balance_unbalanced",
     opening_balance_already_exists: "accounting.error_opening_balance_already_exists",
     opening_balance_accounts_invalid: "accounting.error_opening_balance_accounts_invalid",
+    opening_balance_cost_centers_invalid: "accounting.error_opening_balance_cost_centers_invalid",
+    opening_balance_third_party_type_invalid: "accounting.error_opening_balance_third_party_type_invalid",
+    opening_balance_third_party_name_required: "accounting.error_opening_balance_third_party_name_required",
 };
 
 const accountingErrorMessage = (error, t, fallbackKey = "accounting.failed") =>
@@ -2362,12 +2365,20 @@ const OpeningBalanceTab = () => {
     const { formatCurrency } = useCurrency();
     const [form] = Form.useForm();
     const [accounts, setAccounts] = useState([]);
+    const [costCenters, setCostCenters] = useState([]);
     const [saving, setSaving] = useState(false);
     const [created, setCreated] = useState(false);
     const [importing, setImporting] = useState(false);
     const [importError, setImportError] = useState("");
     const lines = Form.useWatch("lines", form) || [];
-    useEffect(() => { accountingService.listChartOfAccounts().then((res) => setAccounts(res?.data || [])).catch(() => setAccounts([])); }, []);
+    useEffect(() => {
+        Promise.all([accountingService.listChartOfAccounts(), accountingService.listCostCenters()])
+            .then(([accountResponse, costCenterResponse]) => {
+                setAccounts(accountResponse?.data || []);
+                setCostCenters(costCenterResponse?.data || []);
+            })
+            .catch(() => { setAccounts([]); setCostCenters([]); });
+    }, []);
     const totals = lines.reduce((sum, line) => ({ debit: sum.debit + Number(line?.debit || 0), credit: sum.credit + Number(line?.credit || 0) }), { debit: 0, credit: 0 });
     const balanced = Math.abs(totals.debit - totals.credit) < 0.005 && totals.debit > 0;
     const normalizeHeader = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[\s_-]+/g, "");
@@ -2390,14 +2401,24 @@ const OpeningBalanceTab = () => {
             const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
             if (!rows.length) throw new Error(t("accounting.opening_balance_import_empty"));
             const byCode = new Map(accounts.map((account) => [String(account.code), account]));
+            const costCenterByCode = new Map(costCenters.map((center) => [String(center.code), center]));
             const imported = rows.map((row, index) => {
                 const normalized = Object.fromEntries(Object.entries(row).map(([key, value]) => [normalizeHeader(key), value]));
                 const code = String(normalized.codigo || normalized.code || "").trim();
                 const account = byCode.get(code);
                 if (!account || !account.is_active) throw new Error(t("accounting.opening_balance_import_row_invalid", { row: index + 2 }));
+                const costCenterCode = String(normalized.centrocosto || normalized.costcenter || normalized.costcentercode || "").trim();
+                const costCenter = costCenterCode ? costCenterByCode.get(costCenterCode) : null;
+                if (costCenterCode && (!costCenter || !costCenter.is_active)) throw new Error(t("accounting.opening_balance_import_cost_center_invalid", { row: index + 2 }));
                 const debit = parseImportAmount(normalized.debito || normalized.debit || 0);
                 const credit = parseImportAmount(normalized.credito || normalized.credit || 0);
-                return { chart_account_id: account._id, debit, credit, description: String(normalized.descripcion || normalized.description || "").trim() || null };
+                const importedType = normalizeHeader(normalized.tipotercero || normalized.thirdpartytype || "");
+                const thirdPartyType = ({ cliente: "customer", customer: "customer", proveedor: "supplier", supplier: "supplier", otro: "other", other: "other" })[importedType];
+                if (importedType && !thirdPartyType) throw new Error(t("accounting.opening_balance_import_third_party_invalid", { row: index + 2 }));
+                const thirdPartyName = String(normalized.tercero || normalized.nombretercero || normalized.thirdparty || normalized.thirdpartyname || "").trim();
+                const thirdPartyDocument = String(normalized.documentotercero || normalized.thirdpartydocument || "").trim();
+                if ((thirdPartyType || thirdPartyDocument) && !thirdPartyName) throw new Error(t("accounting.opening_balance_import_third_party_name_required", { row: index + 2 }));
+                return { chart_account_id: account._id, debit, credit, cost_center_id: costCenter?._id, third_party: thirdPartyType || thirdPartyName || thirdPartyDocument ? { type: thirdPartyType || "other", name: thirdPartyName, document: thirdPartyDocument || undefined } : undefined, description: String(normalized.descripcion || normalized.description || "").trim() || null };
             });
             form.setFieldsValue({ lines: imported });
         } catch (error) { setImportError(error.message || t("accounting.opening_balance_import_failed")); }
@@ -2418,7 +2439,23 @@ const OpeningBalanceTab = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><Form.Item name="entry_date" label={t("accounting.opening_balance_date")} rules={[{ required: true, message: t("validation.required_field") }]}><DatePicker className="w-full" /></Form.Item><Form.Item name="description" label={t("accounting.col_description")} initialValue={t("accounting.opening_balance_default_description")}><Input /></Form.Item></div>
             <div className="flex flex-wrap items-center gap-3 mb-4"><Upload accept=".csv,.xlsx,.xls" showUploadList={false} beforeUpload={importOpeningFile} disabled={importing}><Button icon={<UploadOutlined />} loading={importing}>{t("accounting.opening_balance_import")}</Button></Upload><span className="text-xs text-[var(--ohnix-text-muted)]">{t("accounting.opening_balance_import_hint")}</span></div>
             {importError && <Alert className="mb-4" type="error" showIcon message={importError} />}
-            <Form.List name="lines">{(fields, { add, remove }) => <div className="space-y-3">{fields.map((field, index) => <div key={field.key} className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_160px_160px_40px] gap-3 items-end"><Form.Item {...field} name={[field.name, "chart_account_id"]} label={index === 0 ? t("accounting.lines_col_account") : undefined} rules={[{ required: true, message: t("validation.required_field") }]}><Select showSearch optionFilterProp="label" options={accounts.filter((a) => a.is_active).map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))} placeholder={t("accounting.opening_balance_account_placeholder")} /></Form.Item><Form.Item {...field} name={[field.name, "debit"]} label={index === 0 ? t("accounting.lines_col_debit") : undefined}><InputNumber min={0} precision={2} className="w-full" /></Form.Item><Form.Item {...field} name={[field.name, "credit"]} label={index === 0 ? t("accounting.lines_col_credit") : undefined}><InputNumber min={0} precision={2} className="w-full" /></Form.Item>{fields.length > 2 ? <Button danger type="text" onClick={() => remove(field.name)}>{t("common.delete")}</Button> : <span />}</div>)}<Button type="dashed" icon={<PlusOutlined />} onClick={() => add({})}>{t("accounting.opening_balance_add_line")}</Button></div>}</Form.List>
+            <Form.List name="lines">{(fields, { add, remove }) => <div className="space-y-3">
+                {fields.map((field, index) => <div key={field.key} className="rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-4)] p-3">
+                    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_160px_160px_40px] gap-3 items-end">
+                        <Form.Item name={[field.name, "chart_account_id"]} label={index === 0 ? t("accounting.lines_col_account") : undefined} rules={[{ required: true, message: t("validation.required_field") }]}><Select showSearch optionFilterProp="label" options={accounts.filter((a) => a.is_active).map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))} placeholder={t("accounting.opening_balance_account_placeholder")} /></Form.Item>
+                        <Form.Item name={[field.name, "debit"]} label={index === 0 ? t("accounting.lines_col_debit") : undefined}><InputNumber min={0} precision={2} className="w-full" /></Form.Item>
+                        <Form.Item name={[field.name, "credit"]} label={index === 0 ? t("accounting.lines_col_credit") : undefined}><InputNumber min={0} precision={2} className="w-full" /></Form.Item>
+                        {fields.length > 2 ? <Button danger type="text" onClick={() => remove(field.name)}>{t("common.delete")}</Button> : <span />}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <Form.Item name={[field.name, "cost_center_id"]} label={index === 0 ? t("accounting.cost_center_optional") : undefined}><Select allowClear showSearch optionFilterProp="label" placeholder={t("accounting.cost_center_optional")} options={costCenters.filter((center) => center.is_active).map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} /></Form.Item>
+                        <Form.Item name={[field.name, "third_party", "type"]} label={index === 0 ? t("accounting.opening_balance_third_party_type") : undefined}><Select allowClear placeholder={t("accounting.opening_balance_third_party_type")} options={[{ value: "customer", label: t("accounting.third_party_customer") }, { value: "supplier", label: t("accounting.third_party_supplier") }, { value: "other", label: t("accounting.third_party_other") }]} /></Form.Item>
+                        <Form.Item name={[field.name, "third_party", "name"]} label={index === 0 ? t("accounting.third_party_name") : undefined}><Input placeholder={t("accounting.third_party_name")} /></Form.Item>
+                        <Form.Item name={[field.name, "third_party", "document"]} label={index === 0 ? t("accounting.third_party_document") : undefined}><Input placeholder={t("accounting.third_party_document")} /></Form.Item>
+                    </div>
+                </div>)}
+                <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({})}>{t("accounting.opening_balance_add_line")}</Button>
+            </div>}</Form.List>
             <Alert className="mt-5" type={balanced ? "success" : "warning"} showIcon message={`${t("accounting.lines_col_debit")}: ${formatCurrency(totals.debit)} · ${t("accounting.lines_col_credit")}: ${formatCurrency(totals.credit)}`} description={balanced ? t("accounting.opening_balance_balanced") : t("accounting.opening_balance_unbalanced")} />
             <div className="flex justify-end mt-5"><Button type="primary" htmlType="submit" loading={saving} disabled={!balanced}>{t("accounting.opening_balance_post")}</Button></div>
         </Form></Card>}

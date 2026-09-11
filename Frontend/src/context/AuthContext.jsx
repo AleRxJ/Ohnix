@@ -70,6 +70,28 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
+    // api.js's interceptor dispatches this the moment a silent token refresh
+    // fails for real (refresh token expired/invalid too, not a network
+    // failure - that case never reaches here) - the one signal that tells
+    // this context to stop believing it's logged in right now, instead of
+    // waiting for the next mount/reconnect check to happen to run. Mirrors
+    // checkAuthStatus's own real-401 branch: clears the session but
+    // deliberately leaves the offline outbox/mirror alone (same "requires
+    // login again to resume syncing, pending work isn't lost" policy
+    // OFFLINE_ARCHITECTURE.md section 8 describes for this exact case).
+    useEffect(() => {
+        const handleSessionExpired = () => {
+            setUser(null);
+            setAuthenticated(false);
+            localStorage.removeItem("accessToken");
+            clearUserSnapshot();
+            delete api.defaults.headers.common["Authorization"];
+            toast.error(t("auth.session_expired"), { duration: 6000 });
+        };
+        window.addEventListener("ohnix:session-expired", handleSessionExpired);
+        return () => window.removeEventListener("ohnix:session-expired", handleSessionExpired);
+    }, [t]);
+
     // Function to check if user is authenticated
     const checkAuthStatus = async () => {
         try {
@@ -145,8 +167,14 @@ export const AuthProvider = ({ children }) => {
                 return { success: false, message: data.message };
             }
         } catch (error) {
-            const errorMessage =
-                error.response?.data?.message || t("common.error");
+            // Logging in is the one thing that can never work offline - there's
+            // no prior session to fall back to yet (unlike checkAuthStatus's
+            // snapshot restore above, for a device that's logged in before).
+            // "Error" alone here told a user with no internet nothing useful
+            // about what to actually do next.
+            const errorMessage = !error.response
+                ? t("auth.login_requires_connection")
+                : error.response?.data?.message || t("common.error");
             if (!silent) toast.error(errorMessage);
             return { success: false, message: errorMessage };
         }
