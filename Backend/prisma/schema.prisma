@@ -311,6 +311,8 @@ model User {
 
   certificateOrdersRequested CertificateOrder[]
 
+  receivedInvoiceReceiptsCreated ReceivedInvoiceReceipt[]
+
   @@map("users")
 }
 
@@ -433,6 +435,7 @@ model Company {
   users                    User[]
   electronicInvoices       ElectronicInvoice[]
   purchaseSupportDocuments PurchaseSupportDocument[]
+  receivedInvoiceReceipts  ReceivedInvoiceReceipt[]
   apiKeys                  ApiKey[]
   dianTestMatrixRuns       DianTestMatrixRun[]
   certificateOrders        CertificateOrder[]
@@ -717,6 +720,14 @@ model Supplier {
   // "completed" gates sales invoicing. Only suppliers legally NOT required
   // to issue their own invoice need this document.
   notObligatedToInvoice      Boolean  @default(false) @map("not_obligated_to_invoice")
+  // Opposite end of the same fork as notObligatedToInvoice: this supplier
+  // issues its OWN real DIAN electronic invoice (UBL type "01"), so Ohnix's
+  // customer (the buyer) owes DIAN an acuse de recibo / recibo del bien /
+  // aceptación / reclamo referencing the SUPPLIER's CUFE (ET art. 616-1,
+  // Ley 2155 de 2021 art. 13) - never a self-issued Documento Soporte.
+  // Mutually exclusive with notObligatedToInvoice in practice (enforced in
+  // supplier.service.js, not at the DB level, same pattern as that field).
+  issuesElectronicInvoice    Boolean  @default(false) @map("issues_electronic_invoice")
   isTutorialData             Boolean  @default(false) @map("is_tutorial_data")
   createdById                String   @map("created_by")
   // Which location this supplier was created at - see Order.pointOfSaleId
@@ -1172,6 +1183,7 @@ model Purchase {
   purchaseDetails         PurchaseDetail[]
   payments                PurchasePayment[]
   purchaseSupportDocument PurchaseSupportDocument?
+  receivedInvoiceReceipt  ReceivedInvoiceReceipt?
   // Back-relation for PurchaseQuotation.convertedPurchase - set only when
   // this Purchase was created by approving a quotation, never on a purchase
   // created directly.
@@ -1661,6 +1673,89 @@ model PurchaseSupportDocumentEvent {
 
   @@index([purchaseSupportDocumentId, createdAt])
   @@map("purchase_support_document_events")
+}
+
+/// Buyer-side acknowledgment tracking for a THIRD-PARTY supplier invoice
+/// (ET art. 616-1, Ley 2155 de 2021 art. 13) - distinct from and unrelated
+/// to PurchaseSupportDocument, which is for self-issued Documento Soporte.
+/// Only relevant when purchase.supplier.issuesElectronicInvoice is true.
+/// PHASE 1: itcycle-api-dian only accepts these events in
+/// DIAN_SIMULATION_MODE - see that repo's
+/// receiptAcknowledgment.service.ts#assertSimulationOnly. One row per
+/// Purchase, created the first time any of the four events is triggered.
+model ReceivedInvoiceReceipt {
+  id          String  @id @default(cuid())
+  purchaseId  String  @unique @map("purchase_id")
+  companyId   String  @map("company_id")
+  countryCode String  @map("country_code")
+  provider    String  @default("itcycle")
+
+  // The supplier's OWN invoice being acknowledged - entered by the buyer,
+  // never computed by Ohnix. supplierCufe is the primary legal reference
+  // every one of the four events must carry to DIAN.
+  supplierInvoiceNumber String    @map("supplier_invoice_number")
+  supplierCufe          String    @map("supplier_cufe")
+  supplierIssuedAt      DateTime? @map("supplier_issued_at")
+
+  // --- Acuse de recibo (ET art. 616-1 par. 4) ---
+  acuseStatus     ElectronicInvoiceStatus @default(draft) @map("acuse_status")
+  acuseExternalId String?                 @map("acuse_external_id")
+  acuseSentAt     DateTime?               @map("acuse_sent_at")
+
+  // --- Recibo del bien y/o servicio (ET art. 616-1 par. 4) ---
+  recepcionStatus     ElectronicInvoiceStatus @default(draft) @map("recepcion_status")
+  recepcionExternalId String?                 @map("recepcion_external_id")
+  recepcionSentAt     DateTime?               @map("recepcion_sent_at")
+
+  // --- Aceptación expresa (buyer's explicit choice, mutually exclusive with reclamo) ---
+  aceptacionExpresaStatus     ElectronicInvoiceStatus? @map("aceptacion_expresa_status")
+  aceptacionExpresaExternalId String?                  @map("aceptacion_expresa_external_id")
+  aceptacionExpresaSentAt     DateTime?                @map("aceptacion_expresa_sent_at")
+
+  // --- Reclamo (buyer's explicit choice, mutually exclusive with aceptación expresa) ---
+  reclamoStatus     ElectronicInvoiceStatus? @map("reclamo_status")
+  reclamoExternalId String?                  @map("reclamo_external_id")
+  reclamoSentAt     DateTime?                @map("reclamo_sent_at")
+  reclamoReason     String?                  @map("reclamo_reason") @db.Text
+
+  // --- Aceptación tácita - PURELY COMPUTED, never transmitted to DIAN ---
+  // Populated only once recepcionSentAt is set: recepcionSentAt + 3
+  // business days (see utils/businessDays.js + receiptTacitaScheduler.js).
+  // Colombian public holidays are NOT excluded (known Phase 1 limitation,
+  // informational-only impact since this is never sent to DIAN).
+  tacitaDeadlineAt DateTime? @map("tacita_deadline_at")
+  tacitaAppliedAt  DateTime? @map("tacita_applied_at")
+
+  errorMessage String? @map("error_message") @db.Text
+
+  createdById String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  purchase  Purchase                      @relation(fields: [purchaseId], references: [id])
+  company   Company                       @relation(fields: [companyId], references: [id])
+  createdBy User                          @relation(fields: [createdById], references: [id])
+  events    ReceivedInvoiceReceiptEvent[]
+
+  @@index([companyId, createdAt])
+  // Drives the tácita scheduler's sweep: "recepción sent, no reclamo yet,
+  // deadline in the past" without a full table scan.
+  @@index([tacitaDeadlineAt])
+  @@map("received_invoice_receipts")
+}
+
+model ReceivedInvoiceReceiptEvent {
+  id                       String                   @id @default(cuid())
+  receivedInvoiceReceiptId String                   @map("received_invoice_receipt_id")
+  eventType                String                   @map("event_type")
+  status                   ElectronicInvoiceStatus?
+  payload                  Json?                    @map("payload")
+  createdAt                DateTime                 @default(now()) @map("created_at")
+
+  receivedInvoiceReceipt ReceivedInvoiceReceipt @relation(fields: [receivedInvoiceReceiptId], references: [id], onDelete: Cascade)
+
+  @@index([receivedInvoiceReceiptId, createdAt])
+  @@map("received_invoice_receipt_events")
 }
 
 // ─── Teams (collaborative accounts, Business plan and up) ──────────────────
@@ -2256,6 +2351,7 @@ enum JournalSourceType {
   cash_transfer
   cash_adjustment
   recurring_expense
+  opening_balance
 }
 
 model AccountingConfigAudit {

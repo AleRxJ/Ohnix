@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
     Modal,
     Table,
@@ -10,8 +10,11 @@ import {
     Space,
     Button,
     Spin,
+    Input,
+    DatePicker,
 } from "antd";
 import { WalletOutlined } from "@ant-design/icons";
+import toast from "react-hot-toast";
 import dayjs from "dayjs";
 import { calculatePurchaseFinancials, getStatusColor } from "../../utils/purchaseUtils";
 import { getStatusIconPurchase } from "../../data";
@@ -21,6 +24,42 @@ import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
 import { useResourcePresence } from "../../hooks/useResourcePresence";
 import PresenceLockBar from "../team/PresenceLockBar";
+import { receiptAcknowledgmentService } from "../../services/receiptAcknowledgmentService";
+import { resolveApiErrorMessage } from "../../utils/apiError";
+import { getConnectivityState } from "../../offline/connectivity";
+import { mirrorGet, mirrorUpsert, queueUpdate } from "../../offline/entityQueue";
+import { enqueueOperation } from "../../offline/outbox";
+
+// Same reasoning as PurchaseSupportDocuments.jsx's PLAN_GATE_CODE_MESSAGES -
+// receiptAcknowledgment.service.js's own ensureElectronicInvoicingPlan
+// throws the same English-by-design, code-tagged error.
+const RECEIPT_CODE_MESSAGES = {
+    electronic_invoicing_plan_required: "fiscal_setup.plan_required",
+};
+
+const RECEIPT_STATUS_COLORS = {
+    accepted: "var(--ohnix-accent-2)",
+    issuing: "var(--ohnix-status-purple)",
+    submitted: "var(--ohnix-status-purple)",
+    rejected: "var(--ohnix-status-rose)",
+    error: "var(--ohnix-status-rose)",
+    cancelled: "var(--ohnix-text-dim)",
+    draft: "var(--ohnix-status-amber)",
+    contingency: "var(--ohnix-status-amber)",
+};
+
+const ReceiptStatusPill = ({ status, t }) => {
+    if (!status) {
+        return <Tag className="!bg-[var(--ohnix-line-1)] !border-[var(--ohnix-line-4)] !text-[var(--ohnix-text-muted)]">{t("purchase_acknowledgment.status_not_sent")}</Tag>;
+    }
+    const color = RECEIPT_STATUS_COLORS[status] || "var(--ohnix-text-dim)";
+    return (
+        <span className="status-pill" style={{ color, background: `${color}18`, border: `1px solid ${color}33` }}>
+            <span className={`status-dot status-dot--${status}`} />
+            {t(`purchase_acknowledgment.status.${status}`, { defaultValue: status })}
+        </span>
+    );
+};
 
 const { Text, Title } = Typography;
 
@@ -45,6 +84,186 @@ const PurchaseDetails = ({
         resourceId: purchase?._id,
         active: visible && Boolean(team) && Boolean(purchase?._id),
     });
+
+    // RADIAN buyer-side acknowledgment (acuse de recibo / recibo del bien /
+    // aceptación expresa / reclamo) - only relevant when this purchase's
+    // supplier issues its own real electronic invoice (opposite precondition
+    // from Documento Soporte). Self-fetched here since this modal doesn't
+    // otherwise pull purchase-scoped side data through the parent hook.
+    const supplierIssuesElectronicInvoice = Boolean(purchase?.supplier_id?.issues_electronic_invoice);
+    const [receiptState, setReceiptState] = useState(null);
+    const [receiptLoading, setReceiptLoading] = useState(false);
+    const [receiptBusy, setReceiptBusy] = useState("");
+    const [referenceForm, setReferenceForm] = useState({ number: "", cufe: "", issuedAt: null });
+    const [reclamoReason, setReclamoReason] = useState("");
+    const [reclamoModalOpen, setReclamoModalOpen] = useState(false);
+
+    // Invented per-purchase mirror (keyed by purchaseId), same shape as
+    // LocationStockPanel.jsx's locationStockSummaries - GET .../receipt-acknowledgment
+    // isn't a list endpoint, so there's nothing to register a full-resync
+    // pull against in entitySync.js; this is write-through-on-view only.
+    const refreshReceipt = async () => {
+        if (!purchase?._id) return;
+        setReceiptLoading(true);
+        if (!getConnectivityState()) {
+            const cached = await mirrorGet("receiptAcknowledgments", purchase._id);
+            setReceiptState(cached || null);
+            setReceiptLoading(false);
+            return;
+        }
+        try {
+            const response = await receiptAcknowledgmentService.getForPurchase(purchase._id);
+            const data = response?.data || null;
+            setReceiptState(data);
+            if (data) await mirrorUpsert("receiptAcknowledgments", { ...data, _id: purchase._id });
+        } catch (error) {
+            if (!error.response) {
+                const cached = await mirrorGet("receiptAcknowledgments", purchase._id);
+                setReceiptState(cached || null);
+                return;
+            }
+            setReceiptState(null);
+        } finally {
+            setReceiptLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (visible && purchase?._id && supplierIssuesElectronicInvoice) {
+            refreshReceipt();
+        } else {
+            setReceiptState(null);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible, purchase?._id, supplierIssuesElectronicInvoice]);
+
+    const receipt = receiptState?.receipt;
+
+    const handleSaveReference = async () => {
+        try {
+            setReceiptBusy("reference");
+            const supplierIssuedAtIso = referenceForm.issuedAt ? referenceForm.issuedAt.toISOString() : null;
+            if (!getConnectivityState()) {
+                // User-typed data, no server-computed side effect (no DIAN
+                // call happens here at all - just recording a reference) -
+                // safe to reflect optimistically, unlike the DIAN-triggering
+                // actions below. optimisticPatch rebuilds the nested
+                // `receipt.*` shape the UI reads, since the raw request body
+                // (snake_case, flat) doesn't match it - same reasoning as
+                // adjust-stock's own optimisticPatch in entityQueue.js's doc
+                // comment.
+                const existingMirror = await mirrorGet("receiptAcknowledgments", purchase._id);
+                const existingReceipt = existingMirror?.receipt;
+                await queueUpdate({
+                    entity: "receiptAcknowledgments",
+                    url: `/purchases/${purchase._id}/receipt-acknowledgment/reference`,
+                    id: purchase._id,
+                    method: "post",
+                    fields: {
+                        supplier_invoice_number: referenceForm.number,
+                        supplier_cufe: referenceForm.cufe,
+                        supplier_issued_at: supplierIssuedAtIso,
+                    },
+                    optimisticPatch: {
+                        purchaseId: purchase._id,
+                        purchaseNo: purchase.purchase_no,
+                        supplierIssuesElectronicInvoice: true,
+                        receipt: {
+                            ...(existingReceipt || {
+                                acuse: { status: "draft", externalId: null, sentAt: null },
+                                recepcion: { status: "draft", externalId: null, sentAt: null },
+                                aceptacionExpresa: { status: null, externalId: null, sentAt: null },
+                                reclamo: { status: null, externalId: null, sentAt: null, reason: null },
+                                tacita: { deadlineAt: null, appliedAt: null },
+                            }),
+                            supplierInvoiceNumber: referenceForm.number,
+                            supplierCufe: referenceForm.cufe,
+                            supplierIssuedAt: supplierIssuedAtIso,
+                        },
+                    },
+                });
+                toast.success(t("common.offline_saved_locally"));
+                await refreshReceipt();
+                return;
+            }
+            await receiptAcknowledgmentService.recordReference(purchase._id, {
+                supplierInvoiceNumber: referenceForm.number,
+                supplierCufe: referenceForm.cufe,
+                supplierIssuedAt: supplierIssuedAtIso || undefined,
+            });
+            toast.success(t("purchase_acknowledgment.reference_saved"));
+            await refreshReceipt();
+        } catch (error) {
+            toast.error(resolveApiErrorMessage(error, t, RECEIPT_CODE_MESSAGES, "purchase_acknowledgment.reference_error"));
+        } finally {
+            setReceiptBusy("");
+        }
+    };
+
+    // Aceptación expresa / reclamo trigger real DIAN/RADIAN state transitions
+    // computed server-side (same principle as useOrderOperations.js's
+    // registerOrderPayment / LocationStockPanel's handleQuickTransfer) - the
+    // client must never guess/optimistically set acuse/aceptación/reclamo
+    // status. Queued as opType "custom" with no mirror mutation at all; the
+    // pill keeps showing the last-confirmed state until the real sync
+    // completes and refreshReceipt is called again.
+    const handleTriggerAceptacion = async () => {
+        try {
+            setReceiptBusy("aceptacion");
+            if (!getConnectivityState()) {
+                await enqueueOperation({
+                    entity: "receiptAcknowledgments",
+                    opType: "custom",
+                    request: { method: "post", url: `/purchases/${purchase._id}/receipt-acknowledgment/aceptacion-expresa` },
+                });
+                toast.success(t("common.offline_saved_locally"));
+                return;
+            }
+            await receiptAcknowledgmentService.triggerAceptacionExpresa(purchase._id);
+            toast.success(t("purchase_acknowledgment.aceptacion_sent"));
+            await refreshReceipt();
+        } catch (error) {
+            toast.error(resolveApiErrorMessage(error, t, RECEIPT_CODE_MESSAGES, "purchase_acknowledgment.aceptacion_error"));
+        } finally {
+            setReceiptBusy("");
+        }
+    };
+
+    const handleTriggerReclamo = async () => {
+        try {
+            setReceiptBusy("reclamo");
+            if (!getConnectivityState()) {
+                await enqueueOperation({
+                    entity: "receiptAcknowledgments",
+                    opType: "custom",
+                    request: { method: "post", url: `/purchases/${purchase._id}/receipt-acknowledgment/reclamo`, data: { reason: reclamoReason } },
+                });
+                toast.success(t("common.offline_saved_locally"));
+                setReclamoModalOpen(false);
+                setReclamoReason("");
+                return;
+            }
+            await receiptAcknowledgmentService.triggerReclamo(purchase._id, reclamoReason);
+            toast.success(t("purchase_acknowledgment.reclamo_sent"));
+            setReclamoModalOpen(false);
+            setReclamoReason("");
+            await refreshReceipt();
+        } catch (error) {
+            toast.error(resolveApiErrorMessage(error, t, RECEIPT_CODE_MESSAGES, "purchase_acknowledgment.reclamo_error"));
+        } finally {
+            setReceiptBusy("");
+        }
+    };
+
+    const tacitaWindowOpen = Boolean(
+        receipt?.recepcion?.status &&
+        ["accepted", "contingency"].includes(receipt.recepcion.status) &&
+        !receipt.tacita?.appliedAt &&
+        !receipt.aceptacionExpresa?.status &&
+        !receipt.reclamo?.status &&
+        (!receipt.tacita?.deadlineAt || dayjs(receipt.tacita.deadlineAt).isAfter(dayjs()))
+    );
+
     const detailColumns = [
         {
             title: t("products.product"),
@@ -345,6 +564,116 @@ const PurchaseDetails = ({
                 </>
             )}
 
+            {purchase && supplierIssuesElectronicInvoice && (
+                <>
+                    <Divider orientation="left" className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                        {t("purchase_acknowledgment.section_title")}
+                    </Divider>
+                    {receiptLoading ? (
+                        <div className="text-center py-6"><Spin /></div>
+                    ) : !receipt ? (
+                        <Card className="border-0 shadow-sm">
+                            <p className="text-sm text-[var(--ohnix-text-muted)] mb-3">{t("purchase_acknowledgment.reference_hint")}</p>
+                            <Space direction="vertical" size="middle" className="w-full">
+                                <Space wrap>
+                                    <Input
+                                        className="auth-ohnix-input"
+                                        style={{ width: 220 }}
+                                        placeholder={t("purchase_acknowledgment.field_invoice_number")}
+                                        value={referenceForm.number}
+                                        onChange={(e) => setReferenceForm((prev) => ({ ...prev, number: e.target.value }))}
+                                    />
+                                    <Input
+                                        className="auth-ohnix-input"
+                                        style={{ width: 320 }}
+                                        placeholder={t("purchase_acknowledgment.field_cufe")}
+                                        value={referenceForm.cufe}
+                                        onChange={(e) => setReferenceForm((prev) => ({ ...prev, cufe: e.target.value }))}
+                                    />
+                                    <DatePicker
+                                        placeholder={t("purchase_acknowledgment.field_issued_at")}
+                                        value={referenceForm.issuedAt}
+                                        onChange={(value) => setReferenceForm((prev) => ({ ...prev, issuedAt: value }))}
+                                    />
+                                </Space>
+                                <Button
+                                    type="primary"
+                                    loading={receiptBusy === "reference"}
+                                    disabled={!referenceForm.number || !referenceForm.cufe}
+                                    onClick={handleSaveReference}
+                                >
+                                    {t("purchase_acknowledgment.save_reference")}
+                                </Button>
+                            </Space>
+                        </Card>
+                    ) : (
+                        <Card className="border-0 shadow-sm">
+                            <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-[var(--ohnix-text-muted)]">
+                                <span>{t("purchase_acknowledgment.field_invoice_number")}: <span className="font-medium text-[var(--ohnix-text-primary)]">{receipt.supplierInvoiceNumber}</span></span>
+                                <span>{t("purchase_acknowledgment.field_cufe")}: <span className="font-medium text-[var(--ohnix-text-primary)]">{receipt.supplierCufe}</span></span>
+                            </div>
+                            <Space direction="vertical" size="middle" className="w-full">
+                                <div className="flex items-center justify-between">
+                                    <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("purchase_acknowledgment.event_acuse")}</Text>
+                                    <ReceiptStatusPill status={receipt.acuse?.status} t={t} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("purchase_acknowledgment.event_recepcion")}</Text>
+                                    <ReceiptStatusPill status={receipt.recepcion?.status} t={t} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("purchase_acknowledgment.event_aceptacion")}</Text>
+                                    <ReceiptStatusPill status={receipt.aceptacionExpresa?.status} t={t} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("purchase_acknowledgment.event_reclamo")}</Text>
+                                    <ReceiptStatusPill status={receipt.reclamo?.status} t={t} />
+                                </div>
+                                <Divider className="!my-2" />
+                                <div className="flex items-center justify-between">
+                                    <Text className="text-sm text-[var(--ohnix-text-muted)]">{t("purchase_acknowledgment.tacita_label")}</Text>
+                                    {receipt.tacita?.appliedAt ? (
+                                        <Tag color="cyan">{t("purchase_acknowledgment.tacita_applied", { date: dayjs(receipt.tacita.appliedAt).format("DD/MM/YYYY") })}</Tag>
+                                    ) : receipt.reclamo?.status ? (
+                                        <Tag>{t("purchase_acknowledgment.tacita_cancelled")}</Tag>
+                                    ) : receipt.tacita?.deadlineAt ? (
+                                        <Tag color="gold">{t("purchase_acknowledgment.tacita_countdown", { date: dayjs(receipt.tacita.deadlineAt).format("DD/MM/YYYY") })}</Tag>
+                                    ) : (
+                                        <Tag>{t("purchase_acknowledgment.tacita_not_applicable")}</Tag>
+                                    )}
+                                </div>
+                                {tacitaWindowOpen && (
+                                    <Space wrap className="pt-2">
+                                        <Button loading={receiptBusy === "aceptacion"} onClick={handleTriggerAceptacion}>
+                                            {t("purchase_acknowledgment.action_aceptacion")}
+                                        </Button>
+                                        <Button danger onClick={() => setReclamoModalOpen(true)}>
+                                            {t("purchase_acknowledgment.action_reclamo")}
+                                        </Button>
+                                    </Space>
+                                )}
+                            </Space>
+                        </Card>
+                    )}
+                </>
+            )}
+
+            <Modal
+                title={t("purchase_acknowledgment.reclamo_modal_title")}
+                open={reclamoModalOpen}
+                onCancel={() => setReclamoModalOpen(false)}
+                onOk={handleTriggerReclamo}
+                confirmLoading={receiptBusy === "reclamo"}
+                okButtonProps={{ danger: true, disabled: reclamoReason.trim().length < 10 }}
+                okText={t("purchase_acknowledgment.action_reclamo")}
+            >
+                <Input.TextArea
+                    rows={4}
+                    placeholder={t("purchase_acknowledgment.reclamo_reason_placeholder")}
+                    value={reclamoReason}
+                    onChange={(e) => setReclamoReason(e.target.value)}
+                />
+            </Modal>
         </Modal>
     );
 };

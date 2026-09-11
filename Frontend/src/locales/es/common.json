@@ -2905,7 +2905,9 @@
     "dian_identification": "Número de identificación",
     "dian_identification_required": "La identificación es obligatoria",
     "not_obligated_to_invoice": "No obligado a facturar",
-    "not_obligated_to_invoice_hint": "Marca esta casilla si el proveedor no está legalmente obligado a expedir factura electrónica — Ohnix generará un Documento Soporte automáticamente al completar cada compra a este proveedor."
+    "not_obligated_to_invoice_hint": "Marca esta casilla si el proveedor no está legalmente obligado a expedir factura electrónica — Ohnix generará un Documento Soporte automáticamente al completar cada compra a este proveedor.",
+    "issues_electronic_invoice": "Este proveedor emite su propia factura electrónica",
+    "issues_electronic_invoice_hint": "Actívalo si el proveedor está obligado a facturar electrónicamente ante la DIAN. Ohnix generará automáticamente el acuse de recibo y el recibo del bien/servicio en tus compras a este proveedor."
   },
   "categories": {
     "category": "Categoría",
@@ -4169,6 +4171,44 @@
       "manual_sync": "Estado sincronizado manualmente",
       "manual_sync_error": "Error al sincronizar",
       "empty": "Documento en preparación"
+    }
+  },
+  "purchase_acknowledgment": {
+    "section_title": "Acuse de recibo DIAN",
+    "reference_hint": "Este proveedor factura electrónicamente. Registra el número y CUFE de su factura para que Ohnix envíe el acuse de recibo y el recibo del bien/servicio.",
+    "field_invoice_number": "Número de factura del proveedor",
+    "field_cufe": "CUFE de la factura",
+    "field_issued_at": "Fecha de emisión",
+    "save_reference": "Guardar referencia",
+    "reference_saved": "Referencia de la factura guardada",
+    "reference_error": "No fue posible guardar la referencia",
+    "event_acuse": "Acuse de recibo",
+    "event_recepcion": "Recibo del bien/servicio",
+    "event_aceptacion": "Aceptación expresa",
+    "event_reclamo": "Reclamo",
+    "action_aceptacion": "Aceptar expresamente",
+    "action_reclamo": "Presentar reclamo",
+    "aceptacion_sent": "Aceptación expresa enviada",
+    "aceptacion_error": "No fue posible enviar la aceptación expresa",
+    "reclamo_sent": "Reclamo enviado",
+    "reclamo_error": "No fue posible enviar el reclamo",
+    "reclamo_modal_title": "Presentar reclamo",
+    "reclamo_reason_placeholder": "Describe el motivo del reclamo (mínimo 10 caracteres)",
+    "tacita_label": "Aceptación tácita",
+    "tacita_applied": "Aplicada el {{date}}",
+    "tacita_countdown": "Se aplica el {{date}} si no hay reclamo",
+    "tacita_not_applicable": "No aplica todavía",
+    "tacita_cancelled": "Cancelada por reclamo",
+    "status_not_sent": "No enviado",
+    "status": {
+      "draft": "Sin enviar",
+      "issuing": "Enviando",
+      "submitted": "Enviado",
+      "accepted": "Aceptado",
+      "rejected": "Rechazado",
+      "error": "Error",
+      "cancelled": "Cancelado",
+      "contingency": "Contingencia"
     }
   },
   "integrations_page": {

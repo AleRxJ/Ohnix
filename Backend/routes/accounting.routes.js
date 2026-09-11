@@ -48,6 +48,7 @@ import {
     distributeAnnualBudget,
     copyAnnualBudget,
     deleteBudget,
+    createOpeningBalance,
 } from "../controllers/accounting.controller.js";
 
 const router = Router();
@@ -98,6 +99,7 @@ router.route("/journal-entries/:id").get(requireModulePermission("accounting", "
 router.route("/manual-vouchers")
     .get(requireModulePermission("accounting", "view"), listManualVouchers)
     .post(requireModulePermission("accounting", "edit"), createManualVoucher);
+router.post("/opening-balance", requireModulePermission("accounting", "admin"), createOpeningBalance);
 router.route("/manual-vouchers/:id")
     .get(requireModulePermission("accounting", "view"), getManualVoucher)
     .put(requireModulePermission("accounting", "edit"), updateManualVoucher);

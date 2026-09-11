@@ -615,3 +615,29 @@ export const retryItcycleSupportDocumentSend = async ({ apiKey, id, send }) => {
         authHeader: companyAuthHeader(apiKey),
     });
 };
+
+// Receipt acknowledgment events (acuse de recibo / recibo del bien / aceptación
+// expresa / reclamo) for a THIRD-PARTY supplier's own DIAN invoice - ET art.
+// 616-1 / Ley 2155 de 2021 art. 13. PHASE 1: itcycle-api-dian only accepts
+// this when its own DIAN_SIMULATION_MODE=true - see that repo's
+// receiptAcknowledgment.service.ts#assertSimulationOnly. No `send` field -
+// there is no real DianProvider path for this document type yet. Body field
+// names match itcycle-api-dian's CreateReceiptAcknowledgmentBodySchema.
+export const createItcycleReceiptAcknowledgment = async ({ apiKey, internalReference, eventType, referencedCufe, referencedInvoiceId, responseCode, description }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "POST",
+        path: "/api/v1/documents/receipt-acknowledgments",
+        body: { internalReference, eventType, referencedCufe, referencedInvoiceId, responseCode, description },
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
+export const getItcycleReceiptAcknowledgmentStatus = async ({ apiKey, id }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "GET",
+        path: `/api/v1/documents/receipt-acknowledgments/${id}`,
+        authHeader: companyAuthHeader(apiKey),
+    });
+};

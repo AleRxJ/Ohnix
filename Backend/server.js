@@ -8,6 +8,7 @@ import renewalScheduler from "./utils/subscriptionRenewalScheduler.js";
 import webhookRetryScheduler from "./utils/webhookRetryScheduler.js";
 import firmaPassValidationScheduler from "./utils/firmaPassValidationScheduler.js";
 import recurringExpenseScheduler from "./utils/recurringExpenseScheduler.js";
+import receiptTacitaScheduler from "./utils/receiptTacitaScheduler.js";
 import itcycleKeepAliveScheduler from "./utils/itcycleKeepAliveScheduler.js";
 import { reconcileLegacyApprovedRequests, reconcileStuckPendingPayments } from "./utils/subscriptionReconcile.js";
 import { reconcileStuckCertificateOrderPayments } from "./utils/certificateOrderReconcile.js";
@@ -95,6 +96,8 @@ connectDB()
                 firmaPassValidationScheduler.start();
                 console.log("🧾 Starting recurring expense scheduler...");
                 recurringExpenseScheduler.start();
+                console.log("📜 Starting receipt tácita scheduler...");
+                receiptTacitaScheduler.start();
                 console.log("💤 Starting itcycle-api-dian keep-alive scheduler...");
                 itcycleKeepAliveScheduler.start();
             }
@@ -112,6 +115,7 @@ process.on("SIGTERM", () => {
     webhookRetryScheduler.stop();
     firmaPassValidationScheduler.stop();
     recurringExpenseScheduler.stop();
+    receiptTacitaScheduler.stop();
     itcycleKeepAliveScheduler.stop();
     process.exit(0);
 });
@@ -123,6 +127,7 @@ process.on("SIGINT", () => {
     webhookRetryScheduler.stop();
     firmaPassValidationScheduler.stop();
     recurringExpenseScheduler.stop();
+    receiptTacitaScheduler.stop();
     itcycleKeepAliveScheduler.stop();
     process.exit(0);
 });

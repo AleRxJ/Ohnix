@@ -6,6 +6,7 @@ import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
 import { buildAccountingThirdParty, postPurchaseJournalEntry, postPurchaseReturnJournalEntry } from "./accountingPosting.service.js";
 import { issueSupportDocumentForPurchase } from "./purchaseSupportDocument.service.js";
+import { triggerAcuseDeReciboForPurchase } from "./receiptAcknowledgment.service.js";
 import { buildPurchaseRetentionSnapshots, calculateRetentionReturn } from "./withholdingConcept.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
@@ -21,6 +22,27 @@ const triggerSupportDocumentIfCompleted = ({ purchaseId, userId, userRole, trigg
         trigger,
     }).catch((error) => {
         console.warn("[support-document] async issuance skipped/failed", {
+            purchaseId,
+            trigger,
+            message: error?.message || error,
+        });
+    });
+};
+
+// Same fire-and-forget pattern as triggerSupportDocumentIfCompleted above,
+// for the opposite supplier precondition (issuesElectronicInvoice, not
+// notObligatedToInvoice) - see receiptAcknowledgment.service.js. Internally
+// no-ops (via its own 409 checks) for a purchase whose supplier doesn't
+// need this, exactly like the support-document trigger does for its own
+// precondition - so it's safe to fire unconditionally alongside it.
+const triggerReceiptAcknowledgmentIfCompleted = ({ purchaseId, userId, userRole, trigger }) => {
+    triggerAcuseDeReciboForPurchase({
+        purchaseId,
+        requesterUserId: userId,
+        requesterRole: userRole,
+        trigger,
+    }).catch((error) => {
+        console.warn("[receipt-acknowledgment] async acuse skipped/failed", {
             purchaseId,
             trigger,
             message: error?.message || error,
@@ -431,6 +453,12 @@ class PurchaseService {
 
         if (newStatus === "completed" && !updatedPurchase.isTutorialData) {
             triggerSupportDocumentIfCompleted({
+                purchaseId: updatedPurchase.id,
+                userId,
+                userRole,
+                trigger: "purchase_status_completed",
+            });
+            triggerReceiptAcknowledgmentIfCompleted({
                 purchaseId: updatedPurchase.id,
                 userId,
                 userRole,

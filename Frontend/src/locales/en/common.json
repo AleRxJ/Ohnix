@@ -2904,7 +2904,9 @@
     "dian_identification": "Identification number",
     "dian_identification_required": "Identification is required",
     "not_obligated_to_invoice": "Not obligated to invoice",
-    "not_obligated_to_invoice_hint": "Check this if the supplier is not legally required to issue an electronic invoice — Ohnix will automatically generate a Documento Soporte when a purchase from this supplier is completed."
+    "not_obligated_to_invoice_hint": "Check this if the supplier is not legally required to issue an electronic invoice — Ohnix will automatically generate a Documento Soporte when a purchase from this supplier is completed.",
+    "issues_electronic_invoice": "This supplier issues its own electronic invoice",
+    "issues_electronic_invoice_hint": "Turn this on if the supplier is required to invoice electronically with DIAN. Ohnix will automatically send the acuse de recibo and recibo del bien/servicio on your purchases from this supplier."
   },
   "categories": {
     "category": "Category",
@@ -4174,6 +4176,44 @@
       "manual_sync": "Status synced manually",
       "manual_sync_error": "Sync error",
       "empty": "Document being prepared"
+    }
+  },
+  "purchase_acknowledgment": {
+    "section_title": "DIAN receipt acknowledgment",
+    "reference_hint": "This supplier invoices electronically. Record their invoice number and CUFE so Ohnix can send the acuse de recibo and recibo del bien/servicio.",
+    "field_invoice_number": "Supplier's invoice number",
+    "field_cufe": "Invoice CUFE",
+    "field_issued_at": "Issue date",
+    "save_reference": "Save reference",
+    "reference_saved": "Invoice reference saved",
+    "reference_error": "Could not save the reference",
+    "event_acuse": "Acuse de recibo",
+    "event_recepcion": "Recibo del bien/servicio",
+    "event_aceptacion": "Aceptación expresa",
+    "event_reclamo": "Reclamo",
+    "action_aceptacion": "Accept expressly",
+    "action_reclamo": "File a reclamo",
+    "aceptacion_sent": "Aceptación expresa sent",
+    "aceptacion_error": "Could not send the aceptación expresa",
+    "reclamo_sent": "Reclamo sent",
+    "reclamo_error": "Could not send the reclamo",
+    "reclamo_modal_title": "File a reclamo",
+    "reclamo_reason_placeholder": "Describe the reason for the reclamo (at least 10 characters)",
+    "tacita_label": "Aceptación tácita",
+    "tacita_applied": "Applied on {{date}}",
+    "tacita_countdown": "Applies on {{date}} if no reclamo is filed",
+    "tacita_not_applicable": "Not yet applicable",
+    "tacita_cancelled": "Cancelled by reclamo",
+    "status_not_sent": "Not sent",
+    "status": {
+      "draft": "Not sent",
+      "issuing": "Sending",
+      "submitted": "Submitted",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "error": "Error",
+      "cancelled": "Cancelled",
+      "contingency": "Contingency"
     }
   },
   "integrations_page": {

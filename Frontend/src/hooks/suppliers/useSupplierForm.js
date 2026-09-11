@@ -51,6 +51,7 @@ export const useSupplierForm = (onSuccess) => {
             municipality_code: supplier.municipality_code,
             country_code: supplier.country_code,
             not_obligated_to_invoice: supplier.not_obligated_to_invoice,
+            issues_electronic_invoice: supplier.issues_electronic_invoice,
         });
         if (supplier.photo && supplier.photo !== "default-supplier.png") {
             setFileList([

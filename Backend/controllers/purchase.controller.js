@@ -18,6 +18,10 @@ const mapPurchase = (purchase) => ({
               _id: toExternalId(purchase.supplier),
               name: purchase.supplier.name,
               shopname: purchase.supplier.shopname,
+              // Drives whether PurchaseDetails.jsx shows the receipt-acknowledgment
+              // panel (RADIAN acuse de recibo/recepción) - see
+              // receiptAcknowledgment.service.js.
+              issues_electronic_invoice: purchase.supplier.issuesElectronicInvoice,
           }
         : null,
     created_by: purchase.createdBy
@@ -99,6 +103,7 @@ const findPurchaseByAnyId = async (id) =>
                     legacyMongoId: true,
                     name: true,
                     shopname: true,
+                    issuesElectronicInvoice: true,
                 },
             },
             createdBy: {
@@ -165,6 +170,7 @@ const getAllPurchases = asyncHandler(async (req, res, next) => {
                         legacyMongoId: true,
                         name: true,
                         shopname: true,
+                        issuesElectronicInvoice: true,
                     },
                 },
                 createdBy: {
