@@ -79,7 +79,7 @@ class PurchaseQuotationService {
         const trimmedNo = String(quotation_no).trim();
         const existing = await prisma.purchaseQuotation.findUnique({ where: { quotationNo: trimmedNo }, select: { id: true } });
         if (existing) {
-            throw new ApiError(409, "Quotation number already exists");
+            throw new ApiError(409, "Quotation number already exists", [], "", "quotation_number_already_exists");
         }
 
         try {
@@ -111,7 +111,7 @@ class PurchaseQuotationService {
             });
         } catch (err) {
             if (err.code === "P2002") {
-                throw new ApiError(409, "Quotation number already exists");
+                throw new ApiError(409, "Quotation number already exists", [], "", "quotation_number_already_exists");
             }
             throw err;
         }

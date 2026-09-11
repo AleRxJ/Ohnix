@@ -169,7 +169,7 @@ class PurchaseService {
             select: { id: true },
         });
         if (existing) {
-            throw new ApiError(409, "Purchase number already exists");
+            throw new ApiError(409, "Purchase number already exists", [], "", "purchase_number_already_exists");
         }
 
         const initialStatus = purchase_status || "pending";
@@ -332,7 +332,7 @@ class PurchaseService {
             };
         } catch (err) {
             if (err.code === "P2002") {
-                throw new ApiError(409, "Purchase number already exists");
+                throw new ApiError(409, "Purchase number already exists", [], "", "purchase_number_already_exists");
             }
             throw err;
         }

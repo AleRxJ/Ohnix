@@ -97,7 +97,7 @@ class SalesQuotationService {
         const total = roundMoney(subtotalAfterDiscount + calculated.tax);
         const quotationNo = String(quotation_no).trim();
         const existing = await prisma.salesQuotation.findUnique({ where: { quotationNo }, select: { id: true } });
-        if (existing) throw new ApiError(409, "Quotation number already exists");
+        if (existing) throw new ApiError(409, "Quotation number already exists", [], "", "quotation_number_already_exists");
 
         try {
             return await prisma.$transaction(async (tx) => {
@@ -124,7 +124,7 @@ class SalesQuotationService {
                 return quotation;
             });
         } catch (error) {
-            if (error.code === "P2002") throw new ApiError(409, "Quotation number already exists");
+            if (error.code === "P2002") throw new ApiError(409, "Quotation number already exists", [], "", "quotation_number_already_exists");
             throw error;
         }
     }

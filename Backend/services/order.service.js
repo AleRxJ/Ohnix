@@ -285,7 +285,9 @@ class OrderService {
                 throw new ApiError(
                     422,
                     "Insufficient stock for one or more products",
-                    insufficientItems
+                    insufficientItems,
+                    "",
+                    "insufficient_stock"
                 );
             }
         }
@@ -380,7 +382,9 @@ class OrderService {
                                     available,
                                     reason: "insufficient_stock",
                                 },
-                            ]
+                            ],
+                            "",
+                            "insufficient_stock"
                         );
                     }
 
@@ -427,7 +431,9 @@ class OrderService {
                                         requested: item.quantity,
                                         reason: "insufficient_stock",
                                     },
-                                ]
+                                ],
+                                "",
+                                "insufficient_stock"
                             );
                         }
                         await recordStockMovement(tx, {
@@ -764,7 +770,9 @@ class OrderService {
                 throw new ApiError(
                     422,
                     "Insufficient stock for one or more products",
-                    insufficientItems
+                    insufficientItems,
+                    "",
+                    "insufficient_stock"
                 );
             }
 
@@ -817,7 +825,9 @@ class OrderService {
                                     available,
                                     reason: "insufficient_stock",
                                 },
-                            ]
+                            ],
+                            "",
+                            "insufficient_stock"
                         );
                     }
 
@@ -844,7 +854,7 @@ class OrderService {
                     if (detail.variantId) {
                         const variantBalance = await claimVariantStock(tx, { variantId: detail.variantId, quantity: detail.quantity });
                         if (variantBalance === null) {
-                            throw new ApiError(422, "Insufficient stock for one or more product variants");
+                            throw new ApiError(422, "Insufficient stock for one or more product variants", [], "", "insufficient_stock");
                         }
                         await recordStockMovement(tx, {
                             productId: detail.product.id,

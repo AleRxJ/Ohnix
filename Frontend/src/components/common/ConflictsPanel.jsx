@@ -35,6 +35,50 @@ const OP_LABELS = {
     custom: { es: "Acción", en: "Action" },
 };
 
+// Maps Backend/utils/ApiError.js's machine-readable `code` (stored as
+// entry.lastErrorCode, see outbox.js#markConflict) to a translated message -
+// covers every code a create/update/delete on an offline-wired entity can
+// realistically produce today. Not every ApiError in the backend sets a
+// code yet (most are validation errors the form already caught before ever
+// reaching the outbox), so this is deliberately scoped to the ones that can
+// really surface here, not an exhaustive mirror of every backend error.
+const ERROR_CODE_KEYS = {
+    category_already_exists: "common.conflict_error_category_already_exists",
+    unit_already_exists: "common.conflict_error_unit_already_exists",
+    purchase_number_already_exists: "common.conflict_error_purchase_number_already_exists",
+    quotation_number_already_exists: "common.conflict_error_quotation_number_already_exists",
+    sales_quotation_already_converted: "common.conflict_error_sales_quotation_already_converted",
+    duplicate_quotation_products: "common.conflict_error_duplicate_quotation_products",
+    stale_edit_conflict: "common.conflict_error_stale_edit_conflict",
+    product_has_history: "common.conflict_error_product_has_history",
+    customer_has_orders: "common.conflict_error_customer_has_orders",
+    supplier_has_purchases: "common.conflict_error_supplier_has_purchases",
+    insufficient_stock: "common.conflict_error_insufficient_stock",
+    cash_transfer_accounts_required: "common.conflict_error_cash_transfer_accounts_required",
+    cash_transfer_same_account: "common.conflict_error_cash_transfer_same_account",
+    cash_transfer_amount_invalid: "common.conflict_error_cash_transfer_amount_invalid",
+    cash_transfer_date_invalid: "common.conflict_error_cash_transfer_date_invalid",
+    cash_transfer_account_not_found: "common.conflict_error_cash_transfer_account_not_found",
+    cash_transfer_insufficient_funds: "common.conflict_error_cash_transfer_insufficient_funds",
+    cash_adjustment_accounts_required: "common.conflict_error_cash_adjustment_accounts_required",
+    cash_adjustment_amount_invalid: "common.conflict_error_cash_adjustment_amount_invalid",
+    cash_adjustment_reason_required: "common.conflict_error_cash_adjustment_reason_required",
+    cash_adjustment_date_invalid: "common.conflict_error_cash_adjustment_date_invalid",
+    cash_adjustment_cash_account_not_found: "common.conflict_error_cash_adjustment_cash_account_not_found",
+    cash_adjustment_counterpart_not_found: "common.conflict_error_cash_adjustment_counterpart_not_found",
+    cash_adjustment_negative_balance: "common.conflict_error_cash_adjustment_negative_balance",
+    cash_adjustment_same_counterpart: "common.conflict_error_cash_adjustment_same_counterpart",
+};
+
+// Translated when the code is one we recognize; otherwise the raw backend
+// message (English dev-facing fallback) is shown verbatim rather than
+// nothing at all - see outbox.js#describeError.
+const describeConflictError = (entry, t) => {
+    const key = entry.lastErrorCode && ERROR_CODE_KEYS[entry.lastErrorCode];
+    if (key) return t(key);
+    return entry.lastError || t("common.conflicts_no_detail");
+};
+
 // Best-effort human label for *which* record this was, tried against the
 // common field names different entities' create/update payloads actually
 // use - there's no single shared "name" field across all of them. Returns
@@ -108,7 +152,7 @@ const ConflictsPanel = ({ open, onClose }) => {
                                     style={{ color: "var(--ohnix-text-muted)" }}
                                 >
                                     <WarningFilled style={{ color: "#f59e0b", marginTop: 2 }} />
-                                    <span>{entry.lastError || t("common.conflicts_no_detail")}</span>
+                                    <span>{describeConflictError(entry, t)}</span>
                                 </p>
                                 <Button
                                     danger

@@ -73,6 +73,15 @@ function describeError(error) {
     return error?.response?.data?.message || error?.message || String(error);
 }
 
+// Backend/utils/ApiError.js's `code` - a stable, machine-readable id (e.g.
+// "category_already_exists", "insufficient_stock") the frontend can map to
+// a translated string, unlike `message`, which is only ever an English
+// dev-facing fallback. Not every ApiError sets one yet, so this is often
+// null - ConflictsPanel.jsx falls back to the raw message in that case.
+function describeErrorCode(error) {
+    return error?.response?.data?.code || null;
+}
+
 // Transient failure - eligible for another automatic retry.
 export async function markError(localId, error) {
     const attempts = await nextAttemptCount(localId);
@@ -80,6 +89,7 @@ export async function markError(localId, error) {
         status: OUTBOX_STATUS.ERROR,
         attempts,
         lastError: describeError(error),
+        lastErrorCode: describeErrorCode(error),
         lastAttemptAt: new Date().toISOString(),
     });
 }
@@ -90,6 +100,7 @@ export function markConflict(localId, error) {
     return db.outbox.update(localId, {
         status: OUTBOX_STATUS.CONFLICT,
         lastError: describeError(error),
+        lastErrorCode: describeErrorCode(error),
         lastAttemptAt: new Date().toISOString(),
     });
 }
