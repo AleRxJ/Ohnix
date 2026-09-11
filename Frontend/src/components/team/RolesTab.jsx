@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button, Tag, Popconfirm, Form } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, CrownOutlined, TeamOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, CopyOutlined, DeleteOutlined, CrownOutlined, TeamOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
@@ -13,6 +13,7 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
     const { team, isOwner } = useTeam();
     const [modalOpen, setModalOpen] = useState(false);
     const [editingRole, setEditingRole] = useState(null);
+    const [duplicatingRole, setDuplicatingRole] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [form] = Form.useForm();
 
@@ -20,11 +21,19 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
 
     const openCreate = () => {
         setEditingRole(null);
+        setDuplicatingRole(null);
         setModalOpen(true);
     };
 
     const openEdit = (role) => {
         setEditingRole(role);
+        setDuplicatingRole(null);
+        setModalOpen(true);
+    };
+
+    const openDuplicate = (role) => {
+        setEditingRole(null);
+        setDuplicatingRole(role);
         setModalOpen(true);
     };
 
@@ -36,7 +45,7 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
                 toast.success(t("team.role_updated"));
             } else {
                 await teamService.createRole(team.id, values);
-                toast.success(t("team.role_created"));
+                toast.success(duplicatingRole ? t("team.role_duplicated") : t("team.role_created"));
             }
             setModalOpen(false);
             form.resetFields();
@@ -87,23 +96,34 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
                                         </Tag>
                                     )}
                                 </div>
-                                {isOwner && !role.isOwnerRole && (
+                                {isOwner && (
                                     <div className="flex gap-1">
+                                        {!role.isOwnerRole && (
+                                            <Button
+                                                size="small"
+                                                type="text"
+                                                icon={<EditOutlined className="text-[var(--ohnix-text-muted)]" />}
+                                                onClick={() => openEdit(role)}
+                                            />
+                                        )}
                                         <Button
                                             size="small"
                                             type="text"
-                                            icon={<EditOutlined className="text-[var(--ohnix-text-muted)]" />}
-                                            onClick={() => openEdit(role)}
+                                            title={t("team.duplicate_role")}
+                                            icon={<CopyOutlined className="text-[var(--ohnix-text-muted)]" />}
+                                            onClick={() => openDuplicate(role)}
                                         />
-                                        <Popconfirm
-                                            title={t("team.delete_role_confirm_title")}
-                                            description={t("team.delete_role_confirm_content")}
-                                            okText={t("common.yes")}
-                                            cancelText={t("common.no")}
-                                            onConfirm={() => handleDelete(role)}
-                                        >
-                                            <Button size="small" type="text" danger icon={<DeleteOutlined />} />
-                                        </Popconfirm>
+                                        {!role.isOwnerRole && (
+                                            <Popconfirm
+                                                title={t("team.delete_role_confirm_title")}
+                                                description={t("team.delete_role_confirm_content")}
+                                                okText={t("common.yes")}
+                                                cancelText={t("common.no")}
+                                                onConfirm={() => handleDelete(role)}
+                                            >
+                                                <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+                                            </Popconfirm>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -136,6 +156,7 @@ const RolesTab = ({ roles, members = [], onRolesChanged }) => {
                 submitting={submitting}
                 form={form}
                 editingRole={editingRole}
+                duplicatingRole={duplicatingRole}
                 sharedByCount={editingRole ? memberCountForRole(editingRole.id) : 0}
             />
         </div>
