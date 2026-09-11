@@ -23,23 +23,35 @@ const darkModalStyles = {
 // role; a fresh independent copy is created for targetName instead (see
 // MembersTab's handleOpenPermissions). Informational, not a warning, since
 // nothing shared actually changes.
-const RoleFormModal = ({ open, onCancel, onSubmit, submitting, form, editingRole, sharedByCount = 0, forkNotice = null }) => {
+const RoleFormModal = ({
+    open,
+    onCancel,
+    onSubmit,
+    submitting,
+    form,
+    editingRole,
+    duplicatingRole = null,
+    sharedByCount = 0,
+    forkNotice = null,
+}) => {
     const { t } = useI18n();
 
     useEffect(() => {
         if (!open) return;
-        if (editingRole) {
+        const sourceRole = editingRole || duplicatingRole;
+        if (sourceRole) {
             const permissions = {};
-            for (const perm of editingRole.permissions || []) {
+            for (const perm of sourceRole.permissions || []) {
                 permissions[perm.moduleKey] = perm.level;
             }
-            form.setFieldsValue({ name: editingRole.name, permissions });
+            const name = duplicatingRole ? t("team.role_copy_suffix", { name: duplicatingRole.name }) : sourceRole.name;
+            form.setFieldsValue({ name, permissions });
         } else {
             const permissions = {};
             for (const key of VISIBLE_MODULE_KEYS) permissions[key] = "none";
             form.setFieldsValue({ name: "", permissions });
         }
-    }, [open, editingRole, form]);
+    }, [open, editingRole, duplicatingRole, form, t]);
 
     return (
         <Modal
@@ -49,7 +61,7 @@ const RoleFormModal = ({ open, onCancel, onSubmit, submitting, form, editingRole
                         <TeamOutlined className="text-[#44F3F0]" />
                     </div>
                     <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
-                        {editingRole ? t("team.edit_role") : t("team.add_role")}
+                        {editingRole ? t("team.edit_role") : duplicatingRole ? t("team.duplicate_role") : t("team.add_role")}
                     </span>
                 </div>
             }

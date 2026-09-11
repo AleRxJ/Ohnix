@@ -64,13 +64,32 @@ export function markSynced(localId, remoteId = null) {
     });
 }
 
+// The server's own JSON error body (e.g. "Ya existe una categoría con este
+// nombre", "Stock insuficiente") is far more useful to whoever eventually has
+// to resolve a CONFLICT than axios's own generic `error.message` ("Request
+// failed with status code 409") - fall back to that (and then to a plain
+// String() coercion) only when there's no real response body to read.
+function describeError(error) {
+    return error?.response?.data?.message || error?.message || String(error);
+}
+
+// Backend/utils/ApiError.js's `code` - a stable, machine-readable id (e.g.
+// "category_already_exists", "insufficient_stock") the frontend can map to
+// a translated string, unlike `message`, which is only ever an English
+// dev-facing fallback. Not every ApiError sets one yet, so this is often
+// null - ConflictsPanel.jsx falls back to the raw message in that case.
+function describeErrorCode(error) {
+    return error?.response?.data?.code || null;
+}
+
 // Transient failure - eligible for another automatic retry.
 export async function markError(localId, error) {
     const attempts = await nextAttemptCount(localId);
     return db.outbox.update(localId, {
         status: OUTBOX_STATUS.ERROR,
         attempts,
-        lastError: String(error?.message || error),
+        lastError: describeError(error),
+        lastErrorCode: describeErrorCode(error),
         lastAttemptAt: new Date().toISOString(),
     });
 }
@@ -80,7 +99,8 @@ export async function markError(localId, error) {
 export function markConflict(localId, error) {
     return db.outbox.update(localId, {
         status: OUTBOX_STATUS.CONFLICT,
-        lastError: String(error?.message || error),
+        lastError: describeError(error),
+        lastErrorCode: describeErrorCode(error),
         lastAttemptAt: new Date().toISOString(),
     });
 }

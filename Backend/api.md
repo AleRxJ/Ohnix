@@ -624,7 +624,7 @@ All routes require authentication except:
 
 **GitHub Repository**: [iTCycle/Ohnix](https://github.com/iTCycle/Ohnix)
 
-**Email**: info@itcycle.com
+**Email**: info@itcycle.co
 
 ---
 

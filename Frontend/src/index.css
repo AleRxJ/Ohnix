@@ -162,7 +162,8 @@
   box-shadow: 0 0 0 3px rgba(41,216,213,.10) !important;
 }
 .accounting-modal .ant-modal-content,
-.accounting-drawer .ant-drawer-content {
+.accounting-drawer .ant-drawer-content,
+.offline-conflicts-drawer .ant-drawer-content {
   border: 1px solid var(--ohnix-line-5);
   background:
     radial-gradient(circle at 90% 0, rgba(41,216,213,.09), transparent 28%),
@@ -170,13 +171,16 @@
   box-shadow: var(--ohnix-shadow-elevated);
 }
 .accounting-modal .ant-modal-header,
-.accounting-drawer .ant-drawer-header {
+.accounting-drawer .ant-drawer-header,
+.offline-conflicts-drawer .ant-drawer-header {
   border-bottom-color: var(--ohnix-line-3) !important;
   background: transparent !important;
 }
 .accounting-modal .ant-modal-title,
-.accounting-drawer .ant-drawer-title { color: var(--ohnix-text-primary) !important; font-weight: 700; }
-.accounting-drawer .ant-drawer-body { background: transparent; }
+.accounting-drawer .ant-drawer-title,
+.offline-conflicts-drawer .ant-drawer-title { color: var(--ohnix-text-primary) !important; font-weight: 700; }
+.accounting-drawer .ant-drawer-body,
+.offline-conflicts-drawer .ant-drawer-body { background: transparent; }
 .withholding-concepts-hero {
   display: flex;
   align-items: center;

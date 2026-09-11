@@ -53,7 +53,7 @@
   ],
   "rewrites": [
     {
-      "source": "/:path((?!assets/).*)",
+      "source": "/:path((?!assets/|cdn-cgi/).*)",
       "destination": "/app.html"
     }
   ]

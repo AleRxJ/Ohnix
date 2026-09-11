@@ -396,7 +396,7 @@ const LandingPage = () => {
         contactPoint: {
             "@type": "ContactPoint",
             contactType: "sales",
-            email: "info@itcycle.com",
+            email: "info@itcycle.co",
             availableLanguage: ["es", "en"],
         },
     };
@@ -566,7 +566,7 @@ const LandingPage = () => {
                         description: t("landing.contact.description"),
                     }}
                     contact={{
-                        email: "info@itcycle.com",
+                        email: "info@itcycle.co",
                     }}
                 />
 
