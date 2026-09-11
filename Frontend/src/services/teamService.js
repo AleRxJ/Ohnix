@@ -1,4 +1,6 @@
 import { api } from "../api/api";
+import { getOrCreateDeviceId } from "../utils/deviceId.js";
+import { getClientPlatform } from "../utils/platform.js";
 
 // Mirrors Backend/routes/team.routes.js one to one.
 export const teamService = {
@@ -89,6 +91,8 @@ export const teamService = {
             username,
             password,
             preferredLanguage,
+            deviceId: getOrCreateDeviceId(),
+            deviceClass: getClientPlatform(),
         });
         return response.data;
     },

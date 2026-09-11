@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import { ApiError } from "./ApiError.js";
 import { prisma } from "../db/prisma.js";
-import { generateSessionId, setActiveSession } from "./sessionStore.js";
+import { generateSessionId, registerSession, touchSession } from "./sessionStore.js";
 
 // Shared by user.controller.js (login/refresh) and team.controller.js
 // (invitation acceptance auto-login) so both mint tokens the exact same way -
@@ -32,7 +32,6 @@ export const userForTokenSelect = {
     legacyMongoId: true,
     username: true,
     email: true,
-    refreshToken: true,
     tokenVersion: true,
 };
 
@@ -40,12 +39,13 @@ export const userLookupByTokenId = (tokenUserId) => ({
     OR: [{ id: tokenUserId }, { legacyMongoId: tokenUserId }],
 });
 
-// sid (session id) is embedded in both tokens and mirrored in Redis (see
-// sessionStore.js) so a login on a new device can invalidate every token
-// issued before it - a fresh call (no sid passed) mints a new one, which
-// overwrites whatever was active; passing an existing sid (token refresh)
-// carries it forward instead of invalidating its own session.
-export const issueAuthTokens = async (userId, { sid, deviceInfo } = {}) => {
+// sid (session id) is embedded in both tokens and mirrored in Postgres (see
+// sessionStore.js): a fresh call (no sid passed - login/signup/accept-
+// invitation) mints a new one and registers it as its own device row,
+// alongside any other device already logged in; passing an existing sid
+// (token refresh) carries it forward and just touches that same row's
+// lastSeenAt instead of registering a new device.
+export const issueAuthTokens = async (userId, { sid, deviceId, deviceClass, deviceInfo } = {}) => {
     try {
         if (!process.env.ACCESS_TOKEN_SECRET || !process.env.REFRESH_TOKEN_SECRET) {
             throw new Error("JWT secrets are not configured");
@@ -61,6 +61,7 @@ export const issueAuthTokens = async (userId, { sid, deviceInfo } = {}) => {
         }
 
         const tokenUserId = user.legacyMongoId || user.id;
+        const isRefresh = Boolean(sid);
         const effectiveSid = sid || generateSessionId();
 
         const accessToken = jwt.sign(
@@ -94,12 +95,11 @@ export const issueAuthTokens = async (userId, { sid, deviceInfo } = {}) => {
             }
         );
 
-        await prisma.user.update({
-            where: { id: user.id },
-            data: { refreshToken },
-        });
-
-        await setActiveSession(user.id, effectiveSid, { deviceInfo });
+        if (isRefresh) {
+            await touchSession(effectiveSid, { refreshToken });
+        } else {
+            await registerSession(user.id, effectiveSid, { deviceId, deviceClass, deviceInfo, refreshToken });
+        }
 
         return { accessToken, refreshToken, sid: effectiveSid };
     } catch (error) {

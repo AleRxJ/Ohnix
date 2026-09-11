@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { issueAuthTokens } from "../utils/authTokens.js";
-import { clearActiveSession } from "../utils/sessionStore.js";
+import { revokeAllSessions } from "../utils/sessionStore.js";
 import { publishPosScopeChange } from "../utils/posScopeStore.js";
 import {
     ensureUserSubscription,
@@ -621,7 +621,15 @@ export const previewInvitation = async (token) => {
 // Public flow (no auth yet - the token IS the credential). Creates the
 // invitee's own login (email/username/password) and immediately logs them
 // in, same as a normal registration would.
-export const acceptInvitation = async ({ token, username, password, preferredLanguage, deviceInfo }) => {
+export const acceptInvitation = async ({
+    token,
+    username,
+    password,
+    preferredLanguage,
+    deviceId,
+    deviceClass,
+    deviceInfo,
+}) => {
     if (!`${token || ""}`.trim()) {
         throw new ApiError(400, "El token de invitación es obligatorio");
     }
@@ -715,7 +723,7 @@ export const acceptInvitation = async ({ token, username, password, preferredLan
         return createdUser;
     });
 
-    const tokens = await issueAuthTokens(newUser.id, { deviceInfo });
+    const tokens = await issueAuthTokens(newUser.id, { deviceId, deviceClass, deviceInfo });
 
     return { user: newUser, team: invitation.team, role: invitation.role, tokens };
 };
@@ -929,7 +937,7 @@ export const removeMember = async ({ team, actorId, userId }) => {
     // expire naturally - resources they touched stay with the owner's
     // account automatically (see the Team model comment), nothing to
     // reassign.
-    await clearActiveSession(userId);
+    await revokeAllSessions(userId);
 
     await logActivity(
         team.id,

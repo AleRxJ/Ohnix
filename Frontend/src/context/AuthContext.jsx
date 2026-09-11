@@ -4,6 +4,8 @@ import { api } from "../api/api.js";
 import useI18n from "../hooks/useI18n";
 import { clearOfflineDataOnLogout } from "../offline/db.js";
 import { subscribeConnectivity } from "../offline/connectivity.js";
+import { getOrCreateDeviceId } from "../utils/deviceId.js";
+import { getClientPlatform } from "../utils/platform.js";
 
 const AuthContext = createContext();
 
@@ -155,7 +157,11 @@ export const AuthProvider = ({ children }) => {
     // without a redundant "logged in" toast on top of "account created".
     const login = async (credentials, { silent = false } = {}) => {
         try {
-            const response = await api.post("/users/login", credentials);
+            const response = await api.post("/users/login", {
+                ...credentials,
+                deviceId: getOrCreateDeviceId(),
+                deviceClass: getClientPlatform(),
+            });
             const data = response.data;
 
             if (data.success) {

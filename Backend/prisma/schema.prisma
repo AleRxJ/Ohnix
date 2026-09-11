@@ -240,7 +240,6 @@ model User {
   resetOtp          String        @default("") @map("reset_otp")
   resetOtpExpiry    BigInt        @default(0) @map("reset_otp_expiry")
   avatar            String
-  refreshToken      String?       @map("refresh_token")
   // Bumped on password change/reset to invalidate every access token issued
   // before that point (embedded in the JWT payload, compared in verifyJWT).
   tokenVersion      Int           @default(0) @map("token_version")
@@ -313,7 +312,52 @@ model User {
 
   receivedInvoiceReceiptsCreated ReceivedInvoiceReceipt[]
 
+  sessions UserSession[]
+
   @@map("users")
+}
+
+// One row per device the user has an active login on (Web/Desktop/Mobile
+// simultaneously, e.g. a shop owner's Desktop at the counter and phone in
+// their pocket) - replaces the old single-sid-per-user model, which forced
+// any second login to kick the first one off. deviceId is generated once by
+// the client and persisted locally (localStorage - shared unchanged across
+// Web/Desktop/Mobile since Desktop/Mobile are WebViews of the same app), so
+// logging in again from the same browser/app updates this same row instead
+// of creating a new "device" every time. sid is what the JWT actually
+// carries and what isSessionValid checks per-request - see
+// utils/sessionStore.js.
+model UserSession {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  deviceId    String   @map("device_id")
+  sid         String   @unique
+  // "web" | "desktop" | "mobile" - derived from a custom User-Agent suffix
+  // Desktop/Mobile's native shell sets (see sessionStore.js); defaults to
+  // "web" when absent. Display-only plus lets the sessions list show an
+  // icon per platform - never a security boundary (spoofing it only affects
+  // your own account's device list, not access).
+  deviceClass String   @map("device_class")
+  // Raw User-Agent at last login, shown in the sessions UI so a user can
+  // tell "Chrome on Windows" apart from "Safari on iPhone" without any
+  // separate device-naming feature.
+  deviceLabel String?  @map("device_label")
+  // Replaces the old single global User.refreshToken column - one refresh
+  // token per device instead of one for the whole account, which is what
+  // actually lets two devices both stay logged in through their normal
+  // token-refresh cycles instead of the second login silently invalidating
+  // the first device's refresh token. Compared by exact value on rotation,
+  // same as the old column was (see refreshAccessToken in
+  // user.controller.js).
+  refreshToken String? @map("refresh_token")
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@map("user_sessions")
 }
 
 model Company {

@@ -191,13 +191,15 @@ export const previewInvitation = asyncHandler(async (req, res) => {
 
 // Public - no verifyJWT. The token itself is the credential.
 export const acceptInvitation = asyncHandler(async (req, res) => {
-    const { username, password, preferredLanguage } = req.body || {};
+    const { username, password, preferredLanguage, deviceId, deviceClass } = req.body || {};
 
     const { user, team, role, tokens } = await teamService.acceptInvitation({
         token: req.params.token,
         username,
         password,
         preferredLanguage: preferredLanguage || req.headers["accept-language"],
+        deviceId,
+        deviceClass,
         deviceInfo: req.header("User-Agent"),
     });
 

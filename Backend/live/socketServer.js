@@ -245,9 +245,11 @@ export const initSocketServer = (httpServer) => {
         });
     });
 
-    // A login/logout elsewhere publishes here (see sessionStore.js) - drop
-    // this user's live connections whose sid no longer matches instead of
-    // waiting for their next REST call to discover the session is gone.
+    // A device's session ending elsewhere publishes here (see
+    // sessionStore.js) - drop that exact device's live connection instead of
+    // waiting for its next REST call to discover the session is gone. Other
+    // devices logged in on the same account (a different sid) are untouched
+    // - see the multi-device session model in sessionStore.js.
     if (isRedisConfigured()) {
         const sessionSub = getRedisClient().duplicate();
         sessionSub.subscribe(SESSION_INVALIDATE_CHANNEL).catch((err) =>
@@ -262,11 +264,13 @@ export const initSocketServer = (httpServer) => {
                 return;
             }
             for (const socket of io.sockets.sockets.values()) {
-                if (socket.data.user?.id === payload.userId && socket.data.user?.sid !== payload.sid) {
-                    // Only an actual takeover (reason "login") deserves the
-                    // "signed out because you logged in elsewhere" toast - a
-                    // plain logout should just drop the connection quietly.
-                    if (payload.reason === "login") {
+                if (socket.data.user?.id === payload.userId && socket.data.user?.sid === payload.sid) {
+                    // A self-initiated logout should just drop the
+                    // connection quietly - "revoked" (the user closed this
+                    // device from their own sessions list) and "removed" (an
+                    // admin removed this team member entirely) are the only
+                    // ones that deserve the "you were signed out" toast.
+                    if (payload.reason === "revoked" || payload.reason === "removed") {
                         socket.emit("session:replaced");
                     }
                     socket.disconnect(true);

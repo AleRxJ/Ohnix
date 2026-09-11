@@ -126,4 +126,22 @@ export const userService = {
             throw error;
         }
     },
+
+    // Active sessions ("Sesiones activas") - one row per logged-in device,
+    // see Backend/utils/sessionStore.js.
+    async getSessions() {
+        const response = await api.get("/users/sessions");
+        return response.data;
+    },
+
+    async revokeSession(sessionId) {
+        try {
+            const response = await api.delete(`/users/sessions/${sessionId}`);
+            toast.success(i18n.t("profile.session_revoked_toast"));
+            return response.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || i18n.t("profile.session_revoke_failed_toast"));
+            throw error;
+        }
+    },
 };

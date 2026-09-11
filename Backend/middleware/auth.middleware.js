@@ -84,18 +84,20 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
             );
         }
 
-        // Single active session: a login on another device/tab mints a new
-        // sid and overwrites Redis's record of the active one for this user
-        // - once that happens, this (now-superseded) token stops working
-        // immediately instead of waiting for its natural expiry.
+        // Multi-device sessions: each login/device has its own row (see
+        // UserSession in schema.prisma) - explicitly logging out or revoking
+        // a device from the sessions list deletes its row, which makes this
+        // check fail on that device's very next request instead of waiting
+        // for its token to expire naturally. Other devices' sids are
+        // untouched, unlike the old single-active-session model.
         //
         // An impersonation token (minted by impersonateUser, never by
-        // issueAuthTokens) never touches this user's real
-        // session:active:<userId> record - checking it here would either
-        // reject every impersonation token outright (no matching sid) or,
-        // worse, require overwriting the target's real session to make it
-        // pass. It's validated against its own independent Redis namespace
-        // instead - see impersonationSession.js.
+        // issueAuthTokens) never touches this user's real UserSession rows -
+        // checking it here would either reject every impersonation token
+        // outright (no matching sid) or, worse, require overwriting the
+        // target's real session to make it pass. It's validated against its
+        // own independent Redis namespace instead - see
+        // impersonationSession.js.
         if (decodedToken.impersonatedBy) {
             if (!(await isImpersonationSessionValid(decodedToken.sid))) {
                 return next(
@@ -139,6 +141,10 @@ export const verifyJWT = asyncHandler(async (req, _, next) => {
             impersonatedBy: decodedToken.impersonatedBy || null,
             impersonatedByUsername: decodedToken.impersonatedByUsername || null,
             impersonationSid: decodedToken.impersonatedBy ? decodedToken.sid : null,
+            // This device's own session row id (see UserSession) - logout
+            // uses it to end just this device, and the sessions-list
+            // endpoint uses it to mark which row is "this device" in the UI.
+            sid: decodedToken.sid || null,
         };
         next();
     } catch (error) {

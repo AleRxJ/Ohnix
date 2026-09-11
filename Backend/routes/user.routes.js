@@ -2,6 +2,8 @@ import { Router } from "express";
 import {
     loginUser,
     logoutUser,
+    getMySessions,
+    revokeMySession,
     registerUser,
     refreshAccessToken,
     changeCurrentPassword,
@@ -54,6 +56,8 @@ router.route("/login").post(loginRateLimiter, loginUser);
 
 //secured routes
 router.route("/logout").post(verifyJWT, logoutUser);
+router.route("/sessions").get(verifyJWT, getMySessions);
+router.route("/sessions/:sessionId").delete(verifyJWT, revokeMySession);
 router.route("/refresh-token").post(refreshAccessToken);
 
 router.route("/change-password").post(verifyJWT, blockDuringImpersonation, changeCurrentPassword);
