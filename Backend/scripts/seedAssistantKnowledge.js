@@ -161,6 +161,76 @@ const ENTRIES = [
         tags: ["soporte", "ayuda", "escalamiento"],
         body: "Si tu pregunta trata sobre un problema específico de tu cuenta (por ejemplo, un saldo, un dato o un error puntual) o sobre algo que este asistente no tiene documentado todavía, lo mejor es contactar directamente al equipo de soporte de Ohnix, quienes pueden revisar el caso concreto de tu cuenta.",
     },
+    {
+        module: "profile",
+        title: "Sesiones activas y cierre de sesión remoto",
+        sourceType: "guide",
+        tags: ["sesiones", "seguridad", "dispositivos"],
+        body: "Desde Perfil > Sesiones puedes ver los dispositivos donde tu cuenta tiene una sesión activa (por ejemplo, si iniciaste sesión desde el celular y desde el computador) y cerrar cualquiera de ellas de forma individual, sin necesidad de cambiar tu contraseña. Es útil si olvidaste cerrar sesión en un equipo compartido o no reconoces un inicio de sesión.",
+    },
+    {
+        module: "team",
+        title: "Visibilidad de sesiones para el dueño de la cuenta y para administradores",
+        sourceType: "concept",
+        tags: ["equipo", "sesiones", "seguridad", "permisos"],
+        body: "El dueño de una cuenta puede ver las sesiones activas de su equipo y cerrar la sesión de un miembro específico (por ejemplo, si alguien dejó de trabajar contigo), pero solo dentro de su propio equipo. La visibilidad de todas las sesiones de todas las cuentas de la plataforma está reservada al equipo de administración de Ohnix, no a los dueños de cuentas individuales.",
+    },
+    {
+        module: "general",
+        title: "Tour guiado de introducción a Ohnix",
+        sourceType: "guide",
+        tags: ["tour", "onboarding", "ayuda", "tutorial"],
+        body: "Ohnix ofrece un tour guiado (el botón flotante con la brújula) que te lleva paso a paso por lo esencial: crear una categoría, una unidad de medida, un producto, un proveedor y un cliente, y luego registrar una compra y una venta de práctica. El tour avanza automáticamente cuando completas cada paso real y puedes cerrarlo y retomarlo después desde donde lo dejaste. Los registros que creas durante el tour quedan marcados como datos de práctica, y puedes borrarlos o conservarlos al descartar el botón del tour. Si ya lo descartaste y quieres volver a verlo, puedes reactivarlo desde Perfil > Configuración de la cuenta.",
+    },
+    {
+        module: "general",
+        title: "Trabajar sin conexión a internet (modo offline)",
+        sourceType: "concept",
+        tags: ["offline", "sin conexion", "sincronizacion"],
+        body: "En los módulos principales (Productos, Pedidos/Ventas, Compras, Clientes, Proveedores, Categorías) Ohnix sigue funcionando aunque se pierda la conexión a internet: puedes seguir creando y editando registros, y un indicador muestra que hay cambios pendientes por sincronizar. En cuanto vuelve la conexión, esos cambios se envían automáticamente al servidor; si un mismo registro cambió también desde otro lugar mientras estabas sin conexión, el sistema te avisa del conflicto para que decidas cómo resolverlo. Equipo, Facturación, Integraciones y Contabilidad no funcionan sin conexión, ya que dependen de datos que siempre deben estar sincronizados con el servidor; en esos módulos verás un aviso pidiendo restablecer la conexión en vez de un error.",
+    },
+    {
+        module: "team",
+        title: "Puntos de venta y traslados de stock entre ubicaciones",
+        sourceType: "guide",
+        tags: ["puntos de venta", "traslados", "inventario", "multi-ubicacion"],
+        body: "Si tu plan incluye múltiples ubicaciones (multi-location), puedes crear varios puntos de venta desde Equipo > Puntos de Venta y llevar el stock de cada producto por separado en cada uno. Para mover inventario de un punto de venta a otro se usa un traslado de stock: se solicita el traslado, la ubicación de origen lo despacha y la de destino lo recibe (o se puede cancelar antes de despacharlo). El stock disponible de un producto solo se actualiza en cada extremo cuando el traslado pasa por esos pasos, no al momento de solicitarlo.",
+    },
+    {
+        module: "products",
+        title: "Variantes de producto",
+        sourceType: "concept",
+        tags: ["variantes", "inventario", "productos"],
+        body: "Un producto puede tener variantes (por ejemplo, distintas tallas o colores), cada una con su propio stock que se ajusta de forma independiente al del producto base. Esto permite vender 'Camiseta talla M' y 'Camiseta talla L' como el mismo producto pero con inventarios separados, en lugar de crear un producto distinto por cada variante.",
+    },
+    {
+        module: "products",
+        title: "Galería de imágenes de producto",
+        sourceType: "concept",
+        tags: ["imagenes", "productos"],
+        body: "Cada producto admite varias imágenes, no solo una: puedes agregarlas, reordenarlas, eliminarlas y elegir cuál se muestra como imagen principal en los listados.",
+    },
+    {
+        module: "products",
+        title: "Carga masiva de productos desde un archivo",
+        sourceType: "guide",
+        tags: ["carga masiva", "importar", "productos", "csv"],
+        body: "Si tu plan incluye carga masiva (bulk upload), en Productos puedes importar muchos productos a la vez desde un archivo en lugar de crearlos uno por uno, útil cuando estás migrando un catálogo grande a Ohnix por primera vez.",
+    },
+    {
+        module: "integrations",
+        title: "Llaves API, webhooks e integraciones con Shopify/WooCommerce",
+        sourceType: "guide",
+        tags: ["api", "webhooks", "integraciones", "shopify", "woocommerce", "desarrolladores"],
+        body: "La sección Integraciones (disponible según el plan y solo para el dueño de la cuenta, no para miembros del equipo) permite generar llaves de API para conectar Ohnix con sistemas externos, registrar webhooks que notifican a otro sistema cuando ocurre un evento (por ejemplo, una venta nueva) y ver el historial de esas notificaciones. También permite conectar una tienda de Shopify o WooCommerce para publicar productos desde Ohnix y mantener el inventario sincronizado en ambos sentidos. Ohnix también expone documentación técnica de su API pública (Swagger) para que un desarrollador externo pueda integrarse.",
+    },
+    {
+        module: "general",
+        title: "Ohnix también está disponible como app de escritorio y móvil",
+        sourceType: "faq",
+        tags: ["desktop", "movil", "app"],
+        body: "Además de usarse desde el navegador, Ohnix tiene una versión de escritorio (Windows/Mac) y una app móvil que abren la misma plataforma web en una ventana o app dedicada, con actualizaciones automáticas. Por ahora ofrecen la misma experiencia que el navegador, sin funciones adicionales propias del dispositivo todavía.",
+    },
 ];
 
 const run = async () => {
@@ -215,7 +285,7 @@ const run = async () => {
         }
 
         console.log(`Assistant knowledge base seeded: ${created} created, ${updated} updated.`);
-        console.log("All entries default to isPublished = false on first creation - review and publish in the database before the assistant can use them.");
+        console.log("New entries default to isPublished = true on first creation (see ENTRIES comment above) - to hold one back for review, add isPublished: false to its object and re-run.");
     } catch (err) {
         console.error("Error seeding assistant knowledge base:", err);
         process.exitCode = 1;

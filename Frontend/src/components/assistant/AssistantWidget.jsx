@@ -15,6 +15,8 @@ import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import useIsMobile from "../../hooks/useIsMobile";
 import { assistantService } from "../../services/assistantService";
+import { useInventoryTour } from "../../context/InventoryTourContext";
+import { useTeam } from "../../context/TeamContext";
 
 const CONVERSATION_STORAGE_KEY = "ohnix.assistant.conversationId";
 const SUGGESTION_KEYS = ["suggestion_1", "suggestion_2", "suggestion_3", "suggestion_4"];
@@ -66,6 +68,20 @@ const AssistantWidget = () => {
     const { t, currentLanguage } = useI18n();
     const isMobile = useIsMobile();
     const currentModule = useCurrentModule();
+    // Mirrors InventoryTourFab's own visibility check - that button sits
+    // directly below this one at bottom-6, so whenever it hides itself
+    // (tour open/completed/dismissed, team member, still loading team info)
+    // this FAB needs to drop down into its spot instead of leaving a gap.
+    const tourState = useInventoryTour();
+    const { isTeamMember, loading: teamLoading } = useTeam();
+    const tourFabVisible = !(
+        tourState.isOpen ||
+        tourState.completed ||
+        tourState.fabDismissed ||
+        isTeamMember ||
+        teamLoading
+    );
+    const fabPositionClass = tourFabVisible ? "bottom-24" : "bottom-6";
     const [open, setOpen] = useState(false);
     const [messages, setMessages] = useState([]);
     const [conversationId, setConversationId] = useState(
@@ -172,7 +188,7 @@ const AssistantWidget = () => {
     return (
         <>
             {!open && (
-                <div className="no-print fixed bottom-24 right-6 z-[1050]">
+                <div className={`no-print fixed ${fabPositionClass} right-6 z-[1050]`}>
                     <button
                         type="button"
                         onClick={() => setOpen(true)}
@@ -194,7 +210,7 @@ const AssistantWidget = () => {
             {open && (
                 <div
                     ref={panelRef}
-                    className={`assistant-panel-in no-print fixed z-[1051] flex flex-col overflow-hidden ${isMobile ? "inset-0" : "bottom-24 right-6 rounded-3xl"}`}
+                    className={`assistant-panel-in no-print fixed z-[1051] flex flex-col overflow-hidden ${isMobile ? "inset-0" : `${fabPositionClass} right-6 rounded-3xl`}`}
                     style={
                         isMobile
                             ? { background: "var(--ohnix-surface-card)" }

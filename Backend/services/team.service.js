@@ -976,14 +976,19 @@ export const getMemberSessions = async ({ team, userId }) => {
     return listSessions(userId);
 };
 
-// Every device logged in across every active member of this team at once -
-// the team-scoped equivalent of the platform admin's "Sesiones" tab, so a
-// team owner doesn't have to open each member one by one to spot a
-// suspicious login. Same exclusion as above: the owner isn't a TeamMember
-// row, so their own sessions never show up here.
+// Every device logged in across every active member of this team at once,
+// PLUS the owner's own devices - the owner isn't a TeamMember row, so it
+// needs its own OR branch here (unlike requireActiveMember/getMemberSessions
+// above, which are about the owner managing a *member's* sessions and
+// correctly never take the owner's own userId).
 export const listTeamSessions = async (team) => {
     const sessions = await prisma.userSession.findMany({
-        where: { user: { teamMemberships: { some: { teamId: team.id, status: "active" } } } },
+        where: {
+            OR: [
+                { userId: team.ownerId },
+                { user: { teamMemberships: { some: { teamId: team.id, status: "active" } } } },
+            ],
+        },
         orderBy: { lastSeenAt: "desc" },
         include: { user: { select: { id: true, username: true, email: true } } },
     });
@@ -991,7 +996,13 @@ export const listTeamSessions = async (team) => {
 };
 
 export const revokeMemberSession = async ({ team, userId, sessionId }) => {
-    await requireActiveMember(team, userId);
+    // The owner's own row is now part of listTeamSessions above, so its
+    // revoke button reaches here too - requireActiveMember would 404 on it
+    // (the owner has no TeamMember row), so it needs the same explicit
+    // exception.
+    if (userId !== team.ownerId) {
+        await requireActiveMember(team, userId);
+    }
     const revoked = await revokeSession(userId, sessionId);
     if (!revoked) {
         throw new ApiError(404, "Sesión no encontrada");
