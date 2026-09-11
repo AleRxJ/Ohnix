@@ -54,6 +54,10 @@ const ERROR_CODE_KEYS = {
     customer_has_orders: "common.conflict_error_customer_has_orders",
     supplier_has_purchases: "common.conflict_error_supplier_has_purchases",
     insufficient_stock: "common.conflict_error_insufficient_stock",
+    products_not_found: "common.conflict_error_products_not_found",
+    product_variants_not_found: "common.conflict_error_product_variants_not_found",
+    customer_not_found: "common.conflict_error_customer_not_found",
+    supplier_not_found: "common.conflict_error_supplier_not_found",
     cash_transfer_accounts_required: "common.conflict_error_cash_transfer_accounts_required",
     cash_transfer_same_account: "common.conflict_error_cash_transfer_same_account",
     cash_transfer_amount_invalid: "common.conflict_error_cash_transfer_amount_invalid",
@@ -116,7 +120,7 @@ const ConflictsPanel = ({ open, onClose }) => {
             open={open}
             onClose={onClose}
             width={420}
-            className="offline-conflicts-drawer"
+            rootClassName="offline-conflicts-drawer"
         >
             {conflicts.length === 0 ? (
                 <Empty description={t("common.conflicts_panel_empty")} />

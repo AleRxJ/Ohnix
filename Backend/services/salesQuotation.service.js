@@ -30,7 +30,7 @@ const buildDetails = async (details, userId, userRole, companyVatResponsible) =>
 
     const products = await Promise.all(productIds.map(findProductByAnyId));
     if (products.some((product) => !product)) {
-        throw new ApiError(400, "One or more products were not found");
+        throw new ApiError(400, "One or more products were not found", [], "", "products_not_found");
     }
 
     const productById = new Map(products.map((product) => [product.id, product]));
@@ -77,7 +77,7 @@ class SalesQuotationService {
         if (!customer_id || !quotation_no) throw new ApiError(400, "Customer and quotation number are required");
 
         const customer = await findCustomerByAnyId(customer_id);
-        if (!customer) throw new ApiError(404, "Customer not found");
+        if (!customer) throw new ApiError(404, "Customer not found", [], "", "customer_not_found");
         if (userRole !== "admin" && customer.createdById !== userId) {
             throw new ApiError(403, "You do not have permission to use this customer");
         }

@@ -164,7 +164,7 @@ class OrderService {
 
         const customer = await findCustomerByAnyId(customer_id);
         if (!customer) {
-            throw new ApiError(404, "Customer not found");
+            throw new ApiError(404, "Customer not found", [], "", "customer_not_found");
         }
 
         if (userRole !== "admin" && customer.createdById !== userId) {
@@ -225,7 +225,7 @@ class OrderService {
         for (const item of orderItems) {
             const product = await findProductByAnyId(item.product_id);
             if (!product) {
-                throw new ApiError(400, "One or more products not found");
+                throw new ApiError(400, "One or more products not found", [], "", "products_not_found");
             }
             if (userRole !== "admin" && product.createdById !== userId) {
                 throw new ApiError(403, "You don't have permission to use one or more products");
@@ -238,7 +238,7 @@ class OrderService {
                     select: { id: true },
                 });
                 if (!variant) {
-                    throw new ApiError(400, "One or more variants not found for their product");
+                    throw new ApiError(400, "One or more variants not found for their product", [], "", "product_variants_not_found");
                 }
                 variantId = variant.id;
             }

@@ -36,7 +36,7 @@ const validateDetails = async (details, userRole, userId) => {
 
     const products = await Promise.all(uniqueProductIds.map((id) => findProductByAnyId(id)));
     if (products.some((p) => !p)) {
-        throw new ApiError(400, "One or more products not found");
+        throw new ApiError(400, "One or more products not found", [], "", "products_not_found");
     }
     for (const product of products) {
         if (userRole !== "admin" && product.createdById !== userId) {
@@ -64,7 +64,7 @@ class PurchaseQuotationService {
 
         const supplier = await findSupplierByAnyId(supplier_id);
         if (!supplier) {
-            throw new ApiError(404, "Supplier not found");
+            throw new ApiError(404, "Supplier not found", [], "", "supplier_not_found");
         }
         if (userRole !== "admin" && supplier.createdById !== userId) {
             throw new ApiError(403, "You don't have permission to use this supplier");

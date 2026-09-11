@@ -120,7 +120,7 @@ class PurchaseService {
 
         const supplier = await findSupplierByAnyId(supplier_id);
         if (!supplier) {
-            throw new ApiError(404, "Supplier not found");
+            throw new ApiError(404, "Supplier not found", [], "", "supplier_not_found");
         }
 
         if (userRole !== "admin" && supplier.createdById !== userId) {
@@ -146,7 +146,7 @@ class PurchaseService {
 
         const products = await Promise.all(uniqueProductIds.map((id) => findProductByAnyId(id)));
         if (products.some((p) => !p)) {
-            throw new ApiError(400, "One or more products not found");
+            throw new ApiError(400, "One or more products not found", [], "", "products_not_found");
         }
 
         for (const product of products) {
@@ -234,7 +234,7 @@ class PurchaseService {
                 for (const detail of details) {
                     const mappedProduct = await findProductByAnyId(detail.product_id);
                     if (!mappedProduct) {
-                        throw new ApiError(400, "One or more products not found");
+                        throw new ApiError(400, "One or more products not found", [], "", "products_not_found");
                     }
 
                     const itemTax = computePurchaseItemTax(
