@@ -25,6 +25,7 @@ import {
     acceptInvitation,
     listMembers,
     updateMember,
+    listTeamSessions,
     listMemberSessions,
     revokeMemberSession,
     listActivity,
@@ -66,6 +67,8 @@ router.route("/teams/:id/members")
     .get(requireTeamAccess, listMembers);
 router.route("/teams/:id/members/:userId")
     .patch(requireTeamOwnerActor, updateMember);
+router.route("/teams/:id/sessions")
+    .get(requireTeamOwnerActor, listTeamSessions);
 router.route("/teams/:id/members/:userId/sessions")
     .get(requireTeamOwnerActor, listMemberSessions);
 router.route("/teams/:id/members/:userId/sessions/:sessionId")

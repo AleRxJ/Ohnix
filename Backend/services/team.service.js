@@ -976,6 +976,20 @@ export const getMemberSessions = async ({ team, userId }) => {
     return listSessions(userId);
 };
 
+// Every device logged in across every active member of this team at once -
+// the team-scoped equivalent of the platform admin's "Sesiones" tab, so a
+// team owner doesn't have to open each member one by one to spot a
+// suspicious login. Same exclusion as above: the owner isn't a TeamMember
+// row, so their own sessions never show up here.
+export const listTeamSessions = async (team) => {
+    const sessions = await prisma.userSession.findMany({
+        where: { user: { teamMemberships: { some: { teamId: team.id, status: "active" } } } },
+        orderBy: { lastSeenAt: "desc" },
+        include: { user: { select: { id: true, username: true, email: true } } },
+    });
+    return sessions;
+};
+
 export const revokeMemberSession = async ({ team, userId, sessionId }) => {
     await requireActiveMember(team, userId);
     const revoked = await revokeSession(userId, sessionId);

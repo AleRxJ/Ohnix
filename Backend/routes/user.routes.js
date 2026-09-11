@@ -21,6 +21,8 @@ import {
     setUserPasswordAdmin,
     getUserSessionsAdmin,
     revokeUserSessionAdmin,
+    listAllSessionsAdmin,
+    revokeAnySessionAdmin,
     impersonateUser,
     endImpersonation,
     sendChangePasswordOtp,
@@ -79,6 +81,8 @@ router.route("/admin/users/:userId").patch(verifyJWT, isAdmin, updateUserAdmin);
 router.route("/admin/users/:userId/password").patch(verifyJWT, isAdmin, setUserPasswordAdmin);
 router.route("/admin/users/:userId/sessions").get(verifyJWT, isAdmin, getUserSessionsAdmin);
 router.route("/admin/users/:userId/sessions/:sessionId").delete(verifyJWT, isAdmin, revokeUserSessionAdmin);
+router.route("/admin/sessions").get(verifyJWT, isAdmin, listAllSessionsAdmin);
+router.route("/admin/sessions/:sessionId").delete(verifyJWT, isAdmin, revokeAnySessionAdmin);
 router.route("/admin/users/:userId/impersonate").post(verifyJWT, isAdmin, impersonateUser);
 router.route("/admin/users/:userId/team").get(verifyJWT, isAdmin, getUserTeamContextAdmin);
 router.route("/admin/users/:userId/team/member").patch(verifyJWT, isAdmin, updateUserTeamMemberAdmin);

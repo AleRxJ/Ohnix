@@ -12,8 +12,10 @@ import {
     endSession,
     getSessionBySid,
     listSessions,
+    listAllSessions,
     revokeAllSessions,
     revokeSession,
+    revokeSessionById,
 } from "../utils/sessionStore.js";
 import { issueAuthTokens, userLookupByTokenId, AUTH_COOKIE_OPTIONS } from "../utils/authTokens.js";
 import {
@@ -1067,6 +1069,45 @@ const revokeUserSessionAdmin = asyncHandler(async (req, res, next) => {
     return res.status(200).json(new ApiResponse(200, {}, "Session revoked successfully"));
 });
 
+// The system-wide "Sesiones" tab: every device logged in across every user
+// and company, not just one account - lets the platform admin spot and end
+// a suspicious session anywhere without first having to know which user it
+// belongs to.
+const listAllSessionsAdmin = asyncHandler(async (_req, res) => {
+    const sessions = await listAllSessions();
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            sessions.map((session) => ({
+                id: session.id,
+                deviceClass: session.deviceClass,
+                deviceLabel: session.deviceLabel,
+                lastSeenAt: session.lastSeenAt,
+                createdAt: session.createdAt,
+                user: session.user,
+            })),
+            "Sessions fetched successfully"
+        )
+    );
+});
+
+const revokeAnySessionAdmin = asyncHandler(async (req, res, next) => {
+    const { sessionId } = req.params;
+    const session = await revokeSessionById(sessionId);
+    if (!session) {
+        return next(new ApiError(404, "Session not found"));
+    }
+    await logAdminAction({
+        adminId: req.user.prismaId,
+        action: "revoke_user_session",
+        targetType: "user",
+        targetId: session.userId,
+        targetUserId: session.userId,
+        metadata: { sessionId },
+    });
+    return res.status(200).json(new ApiResponse(200, {}, "Session revoked successfully"));
+});
+
 // Send verification otp to users email
 const sendVerifyOtp = asyncHandler(async (req, res, next) => {
     try {
@@ -1500,6 +1541,8 @@ export {
     setUserPasswordAdmin,
     getUserSessionsAdmin,
     revokeUserSessionAdmin,
+    listAllSessionsAdmin,
+    revokeAnySessionAdmin,
     impersonateUser,
     endImpersonation,
     sendVerifyOtp,

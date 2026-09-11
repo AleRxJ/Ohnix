@@ -21,6 +21,7 @@ import ActivityTab from "../components/team/ActivityTab";
 import SettingsTab from "../components/team/SettingsTab";
 import PointsOfSaleTab from "../components/team/PointsOfSaleTab";
 import MemberOverview from "../components/team/MemberOverview";
+import SessionsTable from "../components/common/SessionsTable";
 
 const StatTile = ({ icon, label, value, accent = "#29D8D5" }) => (
     <div className="flex items-center gap-3 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] p-3 sm:p-4 shadow-[0_16px_40px_rgba(0,0,0,0.18)] min-w-0">
@@ -50,6 +51,8 @@ const Team = () => {
     const [roles, setRoles] = useState([]);
     const [members, setMembers] = useState([]);
     const [pendingCount, setPendingCount] = useState(null);
+    const [sessions, setSessions] = useState([]);
+    const [sessionsLoading, setSessionsLoading] = useState(true);
 
     const loadRoles = useCallback(async () => {
         if (!team || !isOwner) return;
@@ -71,10 +74,34 @@ const Team = () => {
         }
     }, [team, isOwner, t]);
 
+    const loadSessions = useCallback(async () => {
+        if (!team || !isOwner) return;
+        setSessionsLoading(true);
+        try {
+            const res = await teamService.getTeamSessions(team.id);
+            setSessions(res?.data || []);
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("common.error"));
+        } finally {
+            setSessionsLoading(false);
+        }
+    }, [team, isOwner, t]);
+
     useEffect(() => {
         loadRoles();
         loadMembers();
-    }, [loadRoles, loadMembers]);
+        loadSessions();
+    }, [loadRoles, loadMembers, loadSessions]);
+
+    const handleRevokeSession = async (session) => {
+        try {
+            await teamService.revokeMemberSession(team.id, session.user.id, session.id);
+            setSessions((prev) => prev.filter((s) => s.id !== session.id));
+            toast.success(t("profile.session_revoked_toast"));
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("common.error"));
+        }
+    };
 
     useEffect(() => {
         if (!team || !isOwner) return;
@@ -124,6 +151,18 @@ const Team = () => {
             key: "members",
             label: t("team.tab_members"),
             children: <MembersTab roles={roles} onRolesChanged={loadRoles} onMembersChanged={loadMembers} />,
+        },
+        {
+            key: "sessions",
+            label: t("team.tab_sessions"),
+            children: (
+                <SessionsTable
+                    sessions={sessions}
+                    loading={sessionsLoading}
+                    onRevoke={handleRevokeSession}
+                    showCompany={false}
+                />
+            ),
         },
         {
             key: "points-of-sale",

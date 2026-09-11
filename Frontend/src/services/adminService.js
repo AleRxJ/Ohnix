@@ -86,6 +86,31 @@ export const adminService = {
         return response.data;
     },
 
+    // Any user's active devices, not just the caller's own - e.g. a
+    // compromised-account report, or a user who can't reach their own
+    // "Sesiones activas" tab to sign out a lost device.
+    async getUserSessionsAdmin(userId) {
+        const response = await api.get(`/users/admin/users/${userId}/sessions`);
+        return response.data;
+    },
+
+    async revokeUserSessionAdmin(userId, sessionId) {
+        const response = await api.delete(`/users/admin/users/${userId}/sessions/${sessionId}`);
+        return response.data;
+    },
+
+    // System-wide "Sesiones" tab: every device logged in across every user
+    // and company at once, not scoped to a single account.
+    async listAllSessions() {
+        const response = await api.get("/users/admin/sessions");
+        return response.data;
+    },
+
+    async revokeAnySession(sessionId) {
+        const response = await api.delete(`/users/admin/sessions/${sessionId}`);
+        return response.data;
+    },
+
     // Runs the DIAN habilitación "set de pruebas" for a company already
     // provisioned with itcycle-api-dian - see
     // Backend/services/dianTestMatrix.service.js. Admin-only: this is the

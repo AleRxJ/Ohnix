@@ -34,6 +34,21 @@ export const teamService = {
         return response.data;
     },
 
+    async getTeamSessions(teamId) {
+        const response = await api.get(`/teams/${teamId}/sessions`);
+        return response.data;
+    },
+
+    async getMemberSessions(teamId, userId) {
+        const response = await api.get(`/teams/${teamId}/members/${userId}/sessions`);
+        return response.data;
+    },
+
+    async revokeMemberSession(teamId, userId, sessionId) {
+        const response = await api.delete(`/teams/${teamId}/members/${userId}/sessions/${sessionId}`);
+        return response.data;
+    },
+
     async getInvitations(teamId) {
         const response = await api.get(`/teams/${teamId}/invitations`);
         return response.data;

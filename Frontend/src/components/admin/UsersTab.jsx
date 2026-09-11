@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { Table, Button, Input, Select, Tag, Switch, Popconfirm, Card, Empty, Avatar } from "antd";
-import { PlusOutlined, SearchOutlined, UserOutlined, TeamOutlined, LockOutlined, LoginOutlined } from "@ant-design/icons";
+import { PlusOutlined, SearchOutlined, UserOutlined, TeamOutlined, LockOutlined, LoginOutlined, DesktopOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
 const tableShellClass = "rounded-xl shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)]";
 
-const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, onViewTeam, onSetPassword, onImpersonate, t }) => (
+const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, onViewTeam, onSetPassword, onViewSessions, onImpersonate, t }) => (
     <Card className="mb-4 module-shell overflow-hidden hover-lift" styles={{ body: { padding: 16 } }}>
         <div className="flex items-start gap-3">
             <Avatar size={44} icon={<UserOutlined />} className="flex-shrink-0" />
@@ -50,6 +50,9 @@ const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, onViewTea
                     <Button type="text" size="small" className="!px-0 !text-[var(--ohnix-text-muted)]" icon={<LockOutlined />} onClick={() => onSetPassword(user)}>
                         {t("admin.set_password")}
                     </Button>
+                    <Button type="text" size="small" className="!px-0 !text-[var(--ohnix-text-muted)]" icon={<DesktopOutlined />} onClick={() => onViewSessions(user)}>
+                        {t("admin.view_sessions")}
+                    </Button>
                     {user.role !== "admin" && (
                         <Popconfirm
                             title={t("admin.impersonate_confirm_title")}
@@ -69,7 +72,7 @@ const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, onViewTea
     </Card>
 );
 
-const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleVerification, onViewTeam, onSetPassword, onImpersonate }) => {
+const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleVerification, onViewTeam, onSetPassword, onViewSessions, onImpersonate }) => {
     const { t } = useI18n();
     const [search, setSearch] = useState("");
     const [companyFilter, setCompanyFilter] = useState(null);
@@ -186,6 +189,7 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
                     </Button>
                     <Button type="text" size="small" icon={<TeamOutlined />} title={t("admin.view_team")} onClick={() => onViewTeam(record)} />
                     <Button type="text" size="small" icon={<LockOutlined />} title={t("admin.set_password")} onClick={() => onSetPassword(record)} />
+                    <Button type="text" size="small" icon={<DesktopOutlined />} title={t("admin.view_sessions")} onClick={() => onViewSessions(record)} />
                     {record.role !== "admin" && (
                         <Popconfirm
                             title={t("admin.impersonate_confirm_title")}
@@ -250,6 +254,7 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
                             onToggleVerification={onToggleVerification}
                             onViewTeam={onViewTeam}
                             onSetPassword={onSetPassword}
+                            onViewSessions={onViewSessions}
                             onImpersonate={onImpersonate}
                             t={t}
                         />

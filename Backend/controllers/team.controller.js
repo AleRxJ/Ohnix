@@ -262,6 +262,24 @@ export const updateMember = asyncHandler(async (req, res, next) => {
     return next(new ApiError(400, "Proporciona roleId para cambiar el rol, scopeAll/pointOfSaleIds para el alcance, o status: \"removed\" para remover al miembro"));
 });
 
+export const listTeamSessions = asyncHandler(async (req, res) => {
+    const sessions = await teamService.listTeamSessions(req.team);
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            sessions.map((session) => ({
+                id: session.id,
+                deviceClass: session.deviceClass,
+                deviceLabel: session.deviceLabel,
+                lastSeenAt: session.lastSeenAt,
+                createdAt: session.createdAt,
+                user: session.user,
+            })),
+            "Sessions fetched successfully"
+        )
+    );
+});
+
 export const listMemberSessions = asyncHandler(async (req, res) => {
     const sessions = await teamService.getMemberSessions({ team: req.team, userId: req.params.userId });
     return res.status(200).json(

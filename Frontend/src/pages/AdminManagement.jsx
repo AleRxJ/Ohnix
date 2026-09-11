@@ -7,6 +7,8 @@ import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
 import { adminService } from "../services/adminService";
 import PageHeader from "../components/common/PageHeader";
+import SessionsModal from "../components/common/SessionsModal";
+import SessionsTable from "../components/common/SessionsTable";
 import {
     AdminStats,
     CompaniesTab,
@@ -27,6 +29,7 @@ const AdminManagement = () => {
     const [loading, setLoading] = useState(true);
     const [companies, setCompanies] = useState([]);
     const [users, setUsers] = useState([]);
+    const [sessions, setSessions] = useState([]);
 
     const [companyModalOpen, setCompanyModalOpen] = useState(false);
     const [companySubmitting, setCompanySubmitting] = useState(false);
@@ -38,6 +41,7 @@ const AdminManagement = () => {
     const [teamContextUser, setTeamContextUser] = useState(null);
     const [passwordUser, setPasswordUser] = useState(null);
     const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+    const [sessionsUser, setSessionsUser] = useState(null);
 
     const [companyForm] = Form.useForm();
     const [userForm] = Form.useForm();
@@ -52,13 +56,15 @@ const AdminManagement = () => {
     );
 
     const fetchData = async () => {
-        const [companiesResponse, usersResponse] = await Promise.all([
+        const [companiesResponse, usersResponse, sessionsResponse] = await Promise.all([
             adminService.listCompanies(),
             adminService.listUsers(),
+            adminService.listAllSessions(),
         ]);
 
         setCompanies(companiesResponse?.data || []);
         setUsers(usersResponse?.data || []);
+        setSessions(sessionsResponse?.data || []);
     };
 
     useEffect(() => {
@@ -211,6 +217,16 @@ const AdminManagement = () => {
         }
     };
 
+    const handleRevokeAnySession = async (session) => {
+        try {
+            await adminService.revokeAnySession(session.id);
+            setSessions((prev) => prev.filter((s) => s.id !== session.id));
+            toast.success(t("profile.session_revoked_toast"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        }
+    };
+
     // Swaps this browser's session to targetUser's - see Backend's
     // impersonateUser and AuthContext's applySession/endImpersonation.
     const handleImpersonate = async (targetUser) => {
@@ -268,7 +284,19 @@ const AdminManagement = () => {
                                     onToggleVerification={toggleUserVerification}
                                     onViewTeam={setTeamContextUser}
                                     onSetPassword={setPasswordUser}
+                                    onViewSessions={setSessionsUser}
                                     onImpersonate={handleImpersonate}
+                                />
+                            ),
+                        },
+                        {
+                            key: "sessions",
+                            label: t("admin.sessions_tab"),
+                            children: (
+                                <SessionsTable
+                                    sessions={sessions}
+                                    loading={loading}
+                                    onRevoke={handleRevokeAnySession}
                                 />
                             ),
                         },
@@ -317,6 +345,14 @@ const AdminManagement = () => {
                 onSubmit={handleSetPassword}
                 submitting={passwordSubmitting}
                 form={passwordForm}
+            />
+
+            <SessionsModal
+                target={sessionsUser}
+                title={t("admin.view_sessions_title", { username: sessionsUser?.username || "" })}
+                onCancel={() => setSessionsUser(null)}
+                fetchSessions={(targetUser) => adminService.getUserSessionsAdmin(targetUser.id)}
+                revokeSession={(targetUser, sessionId) => adminService.revokeUserSessionAdmin(targetUser.id, sessionId)}
             />
         </div>
     );

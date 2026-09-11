@@ -100,6 +100,43 @@ export const isSessionValid = async (userId, sid) => {
 export const listSessions = (userId) =>
     prisma.userSession.findMany({ where: { userId }, orderBy: { lastSeenAt: "desc" } });
 
+// Every device logged in across the whole platform, newest activity first -
+// backs the system admin's "Sesiones" tab (Frontend's AdminManagement),
+// unlike listSessions/getMemberSessions above which are always scoped to one
+// user or team.
+export const listAllSessions = () =>
+    prisma.userSession.findMany({
+        orderBy: { lastSeenAt: "desc" },
+        include: {
+            user: {
+                select: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    role: true,
+                    company: { select: { id: true, name: true } },
+                },
+            },
+        },
+    });
+
+// Same idea as revokeSession, but for the admin-wide list where the caller
+// doesn't already know which user owns the session - looked up by sessionId
+// alone since only an isAdmin-gated route ever calls this.
+export const revokeSessionById = async (sessionId) => {
+    let session;
+    try {
+        session = await prisma.userSession.findUnique({ where: { id: sessionId } });
+        if (!session) return null;
+        await prisma.userSession.delete({ where: { id: sessionId } });
+    } catch (err) {
+        console.error("[session] Failed to revoke session by id:", err?.message);
+        return null;
+    }
+    await publishInvalidate(session.userId, session.sid, "revoked");
+    return session;
+};
+
 const publishInvalidate = async (userId, sid, reason) => {
     if (!isRedisConfigured()) return;
     try {
