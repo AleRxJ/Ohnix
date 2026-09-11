@@ -128,6 +128,11 @@ export const accountingService = {
         return response.data;
     },
 
+    async createOpeningBalance(payload) {
+        const response = await api.post("/accounting/opening-balance", payload);
+        return response.data;
+    },
+
     async listManualVouchers({ status } = {}) {
         const response = await api.get("/accounting/manual-vouchers", {
             params: status ? { status } : undefined,

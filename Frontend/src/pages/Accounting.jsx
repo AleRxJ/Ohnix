@@ -113,6 +113,12 @@ const ACCOUNTING_ERROR_CODES = {
     manual_voucher_not_posted: "accounting.error_manual_voucher_not_posted",
     manual_voucher_void_reason_required: "accounting.error_manual_voucher_void_reason_required",
     manual_voucher_void_date_invalid: "accounting.error_manual_voucher_void_date_invalid",
+    opening_balance_date_invalid: "accounting.error_opening_balance_date_invalid",
+    opening_balance_lines_required: "accounting.error_opening_balance_lines_required",
+    opening_balance_line_invalid: "accounting.error_opening_balance_line_invalid",
+    opening_balance_unbalanced: "accounting.error_opening_balance_unbalanced",
+    opening_balance_already_exists: "accounting.error_opening_balance_already_exists",
+    opening_balance_accounts_invalid: "accounting.error_opening_balance_accounts_invalid",
 };
 
 const accountingErrorMessage = (error, t, fallbackKey = "accounting.failed") =>
@@ -221,6 +227,7 @@ const SOURCE_TYPE_LABEL_KEYS = {
     manual_income: "accounting.source_manual_income",
     cash_transfer: "accounting.source_cash_transfer",
     cash_adjustment: "accounting.source_cash_adjustment",
+    opening_balance: "accounting.source_opening_balance",
 };
 
 // Automatic descriptions are persisted for auditability. Translate only
