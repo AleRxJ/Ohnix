@@ -1759,6 +1759,7 @@
     "preferred_language": "Idioma preferido",
     "verified": "Verificado",
     "unverified": "No verificado",
+    "created_at": "Fecha de creación",
     "company_updated": "Configuración de compañía actualizada",
     "company_assigned": "Empresa asignada al usuario",
     "country_label": "País:",

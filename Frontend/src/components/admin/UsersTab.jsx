@@ -24,6 +24,9 @@ const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, onViewTea
                     <Tag color={user.role === "admin" ? "gold" : "blue"}>{user.role}</Tag>
                     <Tag>{t("admin.plan")} {user.subscription?.plan || "starter"}</Tag>
                     <Tag>{t("admin.company")} {user.company?.name || "-"}</Tag>
+                    {user.createdAt && (
+                        <Tag>{t("admin.created_at")}: {new Date(user.createdAt).toLocaleDateString()}</Tag>
+                    )}
                 </div>
 
                 <div className="mt-3 flex items-center justify-between">
@@ -137,6 +140,20 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
             render: (_, record) => <Tag>{record.subscription?.plan || "starter"}</Tag>,
         },
         {
+            title: t("admin.created_at"),
+            key: "createdAt",
+            width: 130,
+            responsive: ["lg"],
+            render: (_, record) =>
+                record.createdAt ? (
+                    <span className="text-xs text-[var(--ohnix-text-muted)]">
+                        {new Date(record.createdAt).toLocaleDateString()}
+                    </span>
+                ) : (
+                    "-"
+                ),
+        },
+        {
             title: t("admin.verified"),
             key: "verified",
             width: 170,
@@ -248,7 +265,7 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
                     rowKey="id"
                     loading={loading}
                     locale={{ emptyText: t("admin.no_users") }}
-                    scroll={{ x: 900 }}
+                    scroll={{ x: 1000 }}
                     className="custom-table module-dark-table"
                     pagination={{
                         pageSize: 10,
