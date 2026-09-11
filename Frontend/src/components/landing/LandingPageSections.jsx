@@ -2606,7 +2606,7 @@ export const ContactFormSection = ({ heading, primaryCta, contact }) => {
                                 </div>
                                 <div>
                                     <p className="text-sm text-[#A9B3B8]">{t("landing.contact_form.email_channel_label")}</p>
-                                    <a href="mailto:info@itcycle.com" className="text-white font-medium hover:text-[#29D8D5]">info@itcycle.com</a>
+                                    <a href="mailto:info@itcycle.co" className="text-white font-medium hover:text-[#29D8D5]">info@itcycle.co</a>
                                 </div>
                             </div>
                             <div className="flex items-center gap-4">

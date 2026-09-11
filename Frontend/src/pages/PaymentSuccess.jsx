@@ -460,7 +460,7 @@ const PaymentSuccess = () => {
             requestId: requestId || "N/A",
             errorMessage,
         }) || "";
-        window.location.href = `mailto:info@itcycle.com?subject=${encodeURIComponent(errorConfig.supportSubject || "Ohnix - soporte")}&body=${encodeURIComponent(body)}`;
+        window.location.href = `mailto:info@itcycle.co?subject=${encodeURIComponent(errorConfig.supportSubject || "Ohnix - soporte")}&body=${encodeURIComponent(body)}`;
     };
 
     return (
@@ -640,7 +640,7 @@ const PaymentSuccess = () => {
                                     size="large"
                                     className="!rounded-xl !border-[var(--ohnix-line-6)] !bg-[var(--ohnix-line-1)] !px-6 !text-[var(--ohnix-text-primary)] hover:!border-amber-400/40 hover:!text-amber-200 !h-11"
                                     onClick={() => {
-                                        const email = "info@itcycle.com";
+                                        const email = "info@itcycle.co";
                                         const subject = encodeURIComponent("Pago pendiente por mucho tiempo - Ohnix upgrade de plan");
                                         const body = encodeURIComponent(
                                             `Hola equipo, mi pago para actualizar de plan sigue en verificacion despues de varios minutos.\n\nUsuario: ${user?.email || "N/A"}\nSolicitud: ${requestId || "N/A"}`

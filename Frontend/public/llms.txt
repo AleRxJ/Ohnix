@@ -14,6 +14,6 @@
 ## Información
 
 - Idiomas: español e inglés.
-- Contacto: info@itcycle.com
+- Contacto: info@itcycle.co
 - Sitio canónico: https://ohnix.co/
 - Sitemap: https://ohnix.co/sitemap.xml

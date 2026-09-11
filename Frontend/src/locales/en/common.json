@@ -3705,7 +3705,7 @@
       "primary_cta": "Sign up free",
       "secondary_cta": "View demo",
       "email_label": "Email",
-      "email": "info@itcycle.com",
+      "email": "info@itcycle.co",
       "signal_label": "Support",
       "signal_description": "Questions about setup, migrations, or team access? We typically respond within one business day."
     },
@@ -3811,7 +3811,7 @@
     "footer": {
       "tagline": "Ohnix by iTcycle — inventory, purchases, sales, and reports with full traceability.",
       "contact_title": "Contact",
-      "email": "info@itcycle.com",
+      "email": "info@itcycle.co",
       "copyright": "All rights reserved.",
       "links": {
         "pymes": "SMB software",
