@@ -1,0 +1,82 @@
+name: Build Desktop
+
+# Compiles the Tauri desktop shell (Fase B - see
+# docs/architecture/ohnix-multiplatform-strategy.md and src-tauri/README.md)
+# into installers whenever native-level code changes - Cargo.toml,
+# tauri.conf.json, anything under src-tauri/, or the root package.json/
+# lockfile that pins the Tauri CLI version. Regular Frontend/web changes
+# never need this: the packaged app loads the live ohnix.co in production
+# (see src-tauri/README.md's "La ventana de producción carga la URL en
+# vivo" decision), so only actual native-shell changes (permissions, window
+# config, icons, future Fase C hardware plugins) warrant a new installer.
+#
+# macos-latest is included even though nobody asked for a Mac CI build
+# specifically - GitHub's macOS runners already have Xcode installed, so
+# this is a free way to get a .dmg without needing a local Mac, alongside
+# the Windows MSI/NSIS installers.
+#
+# Update the branch below (or switch to `main`) once Fase B merges - this
+# points at the feature branch for now so it's testable immediately.
+on:
+  push:
+    branches:
+      - worktree-multiplatform-fase-b
+    paths:
+      - "src-tauri/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/desktop-build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+          - platform: macos-latest
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install root tooling (Tauri CLI)
+        run: npm install
+
+      - name: Install Frontend dependencies
+        run: npm install --prefix Frontend
+
+      # Signs both the installers and the updater archives with the private
+      # half of the keypair in src-tauri/updater-signing-key.pem (never
+      # committed - see .gitignore). The installed app verifies signatures
+      # against the public half already baked into
+      # src-tauri/tauri.conf.json's plugins.updater.pubkey, so these two
+      # secrets are what let ONLY releases built here pass that check - see
+      # src-tauri/README.md for how to set them in this repo's Settings ->
+      # Secrets and variables -> Actions.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: desktop-v__VERSION__
+          releaseName: "Ohnix Desktop v__VERSION__"
+          releaseBody: |
+            Instaladores de Ohnix Desktop para esta version.
+            Ver docs/architecture/ohnix-multiplatform-strategy.md y src-tauri/README.md
+            para el contexto de la Fase B (por que la ventana de produccion
+            carga ohnix.co en vivo en vez de un build empaquetado).
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: true

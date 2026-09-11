@@ -58,6 +58,19 @@ if ("serviceWorker" in navigator) {
     });
 }
 
+// Desktop (Tauri) loads this document at the literal file path /app.html -
+// unlike the web, where vercel.json's rewrite transparently serves this
+// same file for any non-marketing path while the address bar keeps showing
+// the real path (e.g. /login). Tauri's window has no address bar and no
+// server-side rewrite layer, so /app.html is the one real request it makes;
+// normalize it to the app's actual entry route before BrowserRouter (in
+// App.jsx) reads window.location, or every route match falls through to the
+// 404 page. GuestRoute already sends an authenticated user from /login to
+// /dashboard, so this is a safe default regardless of session state.
+if (location.pathname === "/app.html") {
+    history.replaceState(null, "", "/login" + location.search + location.hash);
+}
+
 const rootElement = document.getElementById("root");
 const isPublicPath = isPublicMarketingPath(location.pathname);
 const isPrerendered = isPublicPath

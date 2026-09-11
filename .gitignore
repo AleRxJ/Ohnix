@@ -1,0 +1,14 @@
+node_modules/
+src-tauri/target/
+src-tauri/gen/
+
+# Updater signing key - private half must NEVER be committed. Only
+# updater-signing-key.pem.pub (the public half) is safe to commit; it's
+# embedded in tauri.conf.json's updater config anyway, so the .pub file
+# itself doesn't need to be tracked either. The private key + its password
+# live only as GitHub Actions secrets (TAURI_SIGNING_PRIVATE_KEY /
+# TAURI_SIGNING_PRIVATE_KEY_PASSWORD) and in your own local password
+# manager - see src-tauri/README.md.
+src-tauri/updater-signing-key.pem
+src-tauri/updater-signing-key.pem.pub
+src-tauri/.updater-key-password.txt
