@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal, Progress } from "antd";
-import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined, PartitionOutlined } from "@ant-design/icons";
+import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined, PartitionOutlined, UploadOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
+import * as XLSX from "xlsx";
 import toast from "react-hot-toast";
 import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
@@ -2356,6 +2357,74 @@ const TrialBalanceTab = () => {
     );
 };
 
+const OpeningBalanceTab = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const [form] = Form.useForm();
+    const [accounts, setAccounts] = useState([]);
+    const [saving, setSaving] = useState(false);
+    const [created, setCreated] = useState(false);
+    const [importing, setImporting] = useState(false);
+    const [importError, setImportError] = useState("");
+    const lines = Form.useWatch("lines", form) || [];
+    useEffect(() => { accountingService.listChartOfAccounts().then((res) => setAccounts(res?.data || [])).catch(() => setAccounts([])); }, []);
+    const totals = lines.reduce((sum, line) => ({ debit: sum.debit + Number(line?.debit || 0), credit: sum.credit + Number(line?.credit || 0) }), { debit: 0, credit: 0 });
+    const balanced = Math.abs(totals.debit - totals.credit) < 0.005 && totals.debit > 0;
+    const normalizeHeader = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[\s_-]+/g, "");
+    const parseImportAmount = (value) => {
+        if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+        const raw = String(value ?? "").trim().replace(/\s/g, "");
+        if (!raw) return 0;
+        const normalized = raw.includes(",") && raw.includes(".")
+            ? (raw.lastIndexOf(",") > raw.lastIndexOf(".") ? raw.replace(/\./g, "").replace(",", ".") : raw.replace(/,/g, ""))
+            : raw.replace(",", ".");
+        const amount = Number(normalized);
+        return Number.isFinite(amount) && amount >= 0 ? amount : 0;
+    };
+    const importOpeningFile = async (file) => {
+        setImporting(true); setImportError("");
+        try {
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+            if (!rows.length) throw new Error(t("accounting.opening_balance_import_empty"));
+            const byCode = new Map(accounts.map((account) => [String(account.code), account]));
+            const imported = rows.map((row, index) => {
+                const normalized = Object.fromEntries(Object.entries(row).map(([key, value]) => [normalizeHeader(key), value]));
+                const code = String(normalized.codigo || normalized.code || "").trim();
+                const account = byCode.get(code);
+                if (!account || !account.is_active) throw new Error(t("accounting.opening_balance_import_row_invalid", { row: index + 2 }));
+                const debit = parseImportAmount(normalized.debito || normalized.debit || 0);
+                const credit = parseImportAmount(normalized.credito || normalized.credit || 0);
+                return { chart_account_id: account._id, debit, credit, description: String(normalized.descripcion || normalized.description || "").trim() || null };
+            });
+            form.setFieldsValue({ lines: imported });
+        } catch (error) { setImportError(error.message || t("accounting.opening_balance_import_failed")); }
+        finally { setImporting(false); }
+        return false;
+    };
+    const save = async (values) => {
+        setSaving(true);
+        try {
+            await accountingService.createOpeningBalance({ entry_date: values.entry_date.toISOString(), description: values.description, lines: values.lines });
+            setCreated(true); toast.success(t("accounting.opening_balance_created"));
+        } catch (error) { toast.error(accountingErrorMessage(error, t)); }
+        finally { setSaving(false); }
+    };
+    return <>
+        <AccountingSectionGuide sectionKey="opening-balance" title={t("accounting.opening_balance_title")} summary={t("accounting.opening_balance_summary")} steps={[t("accounting.opening_balance_step_1"), t("accounting.opening_balance_step_2"), t("accounting.opening_balance_step_3")]} result={t("accounting.opening_balance_result")} concepts={[{ label: t("accounting.lines_col_debit"), help: t("accounting.guide_debit_help") }, { label: t("accounting.lines_col_credit"), help: t("accounting.guide_credit_help") }]} />
+        {created ? <Card className="module-shell"><EmptyState title={t("accounting.opening_balance_created_title")} subtitle={t("accounting.opening_balance_created_help")} action={<Button type="primary" onClick={() => { setCreated(false); form.resetFields(); }}>{t("accounting.opening_balance_new")}</Button>} /></Card> : <Card className="module-shell"><Form form={form} layout="vertical" initialValues={{ entry_date: dayjs(), lines: [{}, {}] }} onFinish={save}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><Form.Item name="entry_date" label={t("accounting.opening_balance_date")} rules={[{ required: true, message: t("validation.required_field") }]}><DatePicker className="w-full" /></Form.Item><Form.Item name="description" label={t("accounting.col_description")} initialValue={t("accounting.opening_balance_default_description")}><Input /></Form.Item></div>
+            <div className="flex flex-wrap items-center gap-3 mb-4"><Upload accept=".csv,.xlsx,.xls" showUploadList={false} beforeUpload={importOpeningFile} disabled={importing}><Button icon={<UploadOutlined />} loading={importing}>{t("accounting.opening_balance_import")}</Button></Upload><span className="text-xs text-[var(--ohnix-text-muted)]">{t("accounting.opening_balance_import_hint")}</span></div>
+            {importError && <Alert className="mb-4" type="error" showIcon message={importError} />}
+            <Form.List name="lines">{(fields, { add, remove }) => <div className="space-y-3">{fields.map((field, index) => <div key={field.key} className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_160px_160px_40px] gap-3 items-end"><Form.Item {...field} name={[field.name, "chart_account_id"]} label={index === 0 ? t("accounting.lines_col_account") : undefined} rules={[{ required: true, message: t("validation.required_field") }]}><Select showSearch optionFilterProp="label" options={accounts.filter((a) => a.is_active).map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))} placeholder={t("accounting.opening_balance_account_placeholder")} /></Form.Item><Form.Item {...field} name={[field.name, "debit"]} label={index === 0 ? t("accounting.lines_col_debit") : undefined}><InputNumber min={0} precision={2} className="w-full" /></Form.Item><Form.Item {...field} name={[field.name, "credit"]} label={index === 0 ? t("accounting.lines_col_credit") : undefined}><InputNumber min={0} precision={2} className="w-full" /></Form.Item>{fields.length > 2 ? <Button danger type="text" onClick={() => remove(field.name)}>{t("common.delete")}</Button> : <span />}</div>)}<Button type="dashed" icon={<PlusOutlined />} onClick={() => add({})}>{t("accounting.opening_balance_add_line")}</Button></div>}</Form.List>
+            <Alert className="mt-5" type={balanced ? "success" : "warning"} showIcon message={`${t("accounting.lines_col_debit")}: ${formatCurrency(totals.debit)} · ${t("accounting.lines_col_credit")}: ${formatCurrency(totals.credit)}`} description={balanced ? t("accounting.opening_balance_balanced") : t("accounting.opening_balance_unbalanced")} />
+            <div className="flex justify-end mt-5"><Button type="primary" htmlType="submit" loading={saving} disabled={!balanced}>{t("accounting.opening_balance_post")}</Button></div>
+        </Form></Card>}
+    </>;
+};
+
 const Accounting = () => {
     const { t } = useI18n();
     const { can, loading: subscriptionLoading } = useSubscription();
@@ -2379,6 +2448,7 @@ const Accounting = () => {
         { key: "chart", label: tabLabel(<ApartmentOutlined />, "accounting.tab_chart_of_accounts"), children: <ChartOfAccountsTab /> },
         { key: "journal", label: tabLabel(<UnorderedListOutlined />, "accounting.tab_journal"), children: <JournalTab initialSourceType={deepLink.sourceType} initialSourceId={deepLink.sourceId} /> },
         { key: "vouchers", label: tabLabel(<FileTextOutlined />, "accounting.tab_vouchers"), children: <ManualVouchersTab /> },
+        { key: "opening_balance", label: tabLabel(<PlusOutlined />, "accounting.tab_opening_balance"), children: <OpeningBalanceTab /> },
         { key: "third_parties", label: tabLabel(<TeamOutlined />, "accounting.tab_third_parties"), children: <ThirdPartyLedgerTab /> },
         { key: "cost_centers", label: tabLabel(<PartitionOutlined />, "accounting.tab_cost_centers"), children: <CostCentersTab /> },
         { key: "recurring_expenses", label: tabLabel(<ClockCircleOutlined />, "accounting.tab_recurring_expenses"), children: <RecurringExpensesTab /> },

@@ -64,13 +64,22 @@ export function markSynced(localId, remoteId = null) {
     });
 }
 
+// The server's own JSON error body (e.g. "Ya existe una categoría con este
+// nombre", "Stock insuficiente") is far more useful to whoever eventually has
+// to resolve a CONFLICT than axios's own generic `error.message` ("Request
+// failed with status code 409") - fall back to that (and then to a plain
+// String() coercion) only when there's no real response body to read.
+function describeError(error) {
+    return error?.response?.data?.message || error?.message || String(error);
+}
+
 // Transient failure - eligible for another automatic retry.
 export async function markError(localId, error) {
     const attempts = await nextAttemptCount(localId);
     return db.outbox.update(localId, {
         status: OUTBOX_STATUS.ERROR,
         attempts,
-        lastError: String(error?.message || error),
+        lastError: describeError(error),
         lastAttemptAt: new Date().toISOString(),
     });
 }
@@ -80,7 +89,7 @@ export async function markError(localId, error) {
 export function markConflict(localId, error) {
     return db.outbox.update(localId, {
         status: OUTBOX_STATUS.CONFLICT,
-        lastError: String(error?.message || error),
+        lastError: describeError(error),
         lastAttemptAt: new Date().toISOString(),
     });
 }

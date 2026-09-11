@@ -1,5 +1,5 @@
-import { db } from "./db.js";
-import { enqueueOperation } from "./outbox.js";
+import { db, MIRROR_ENTITIES } from "./db.js";
+import { enqueueOperation, removeEntry } from "./outbox.js";
 
 // FormData isn't structured-cloneable as-is, but its entries (strings and
 // File/Blob objects) are - IndexedDB stores File/Blob natively. Serializing
@@ -145,4 +145,20 @@ export async function queueDelete({ entity, url, id, meta = {} }) {
         request: { method: "delete", url },
         meta: { ...meta, recordId: id },
     });
+}
+
+// Called when the user chooses to give up on a CONFLICT entry rather than
+// fix and resubmit it (see outbox.js's OUTBOX_STATUS.CONFLICT comment - a
+// conflict never clears on its own). A rejected create's optimistic record
+// was never real (the server never accepted it) - remove it from the mirror
+// too, instead of leaving a fake `_pendingSync` row behind forever. An
+// update/delete's mirror row is left alone: reconcileMirrorAfterConflict
+// (syncEngine.js) already un-hid a rejected delete, and the next full
+// resync naturally overwrites any stale optimistic update with the server's
+// real record - there's no "previous state" saved to restore to here.
+export async function discardConflict(entry) {
+    if (entry.opType === "create" && entry.localTempId && MIRROR_ENTITIES.includes(entry.entity)) {
+        await mirrorRemove(entry.entity, entry.localTempId);
+    }
+    await removeEntry(entry.localId);
 }
