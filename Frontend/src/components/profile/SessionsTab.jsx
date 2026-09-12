@@ -10,6 +10,7 @@ import {
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import { userService } from "../../services/userService";
+import { useDataInvalidation } from "../../hooks/useDataInvalidation";
 
 const { Text } = Typography;
 
@@ -47,6 +48,11 @@ const SessionsTab = () => {
     useEffect(() => {
         loadSessions();
     }, []);
+
+    // Another device logging in/out, or a revoke from an admin/team-owner
+    // screen, should reflect here without a manual reload (see
+    // Backend/utils/sessionStore.js's notifySessionsChanged).
+    useDataInvalidation("sessions", loadSessions);
 
     const handleRevoke = async (sessionId) => {
         try {

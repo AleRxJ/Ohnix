@@ -22,6 +22,7 @@ import SettingsTab from "../components/team/SettingsTab";
 import PointsOfSaleTab from "../components/team/PointsOfSaleTab";
 import MemberOverview from "../components/team/MemberOverview";
 import SessionsTable from "../components/common/SessionsTable";
+import { useDataInvalidation } from "../hooks/useDataInvalidation";
 
 const StatTile = ({ icon, label, value, accent = "#29D8D5" }) => (
     <div className="flex items-center gap-3 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] p-3 sm:p-4 shadow-[0_16px_40px_rgba(0,0,0,0.18)] min-w-0">
@@ -92,6 +93,11 @@ const Team = () => {
         loadMembers();
         loadSessions();
     }, [loadRoles, loadMembers, loadSessions]);
+
+    // A member (or the owner) logging in/out elsewhere, or a revoke from
+    // this same screen on another tab, refreshes this list live instead of
+    // needing a manual reload (see Backend/utils/sessionStore.js).
+    useDataInvalidation("sessions", loadSessions);
 
     const handleRevokeSession = async (session) => {
         try {

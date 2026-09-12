@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import { prisma } from "../db/prisma.js";
 import { getRedisClient, isRedisConfigured } from "./redisClient.js";
+import { resolveAccountScope } from "./teamContext.js";
+import { emitAccountEvent, emitAdminEvent } from "../live/dataEvents.js";
 
 // Multi-device sessions: one row per device (see UserSession in
 // schema.prisma) instead of a single sid per user, so a shop owner's Desktop
@@ -60,7 +62,9 @@ export const registerSession = async (userId, sid, { deviceId, deviceClass, devi
         });
     } catch (err) {
         console.error("[session] Failed to register session:", err?.message);
+        return;
     }
+    await notifySessionsChanged(userId);
 };
 
 // The row currently holding this sid, if any - refreshAccessToken
@@ -143,7 +147,26 @@ export const revokeSessionById = async (sessionId) => {
         return null;
     }
     await publishInvalidate(session.userId, session.sid, "revoked");
+    await notifySessionsChanged(session.userId);
     return session;
+};
+
+// Live refresh for every "sessions" list a change to this user's devices
+// could affect: their own self-service panel, their team owner's Team-
+// Sesiones tab (both share the account room - see accountRoom in
+// socketServer.js), and the platform admin's unscoped "Sesiones" tab (its
+// own room, since it has no account boundary at all). Best-effort: a
+// missed event just means that screen needs a manual refresh instead of
+// updating live, never a functional failure - same posture as every other
+// use of emitAccountEvent in the app.
+const notifySessionsChanged = async (userId) => {
+    try {
+        const { accountId } = await resolveAccountScope(userId);
+        emitAccountEvent(accountId, "sessions");
+    } catch (err) {
+        console.error("[session] Failed to resolve account scope for live refresh:", err?.message);
+    }
+    emitAdminEvent("sessions");
 };
 
 const publishInvalidate = async (userId, sid, reason) => {
@@ -168,6 +191,7 @@ export const endSession = async (userId, sid) => {
         console.error("[session] Failed to end session:", err?.message);
     }
     await publishInvalidate(userId, sid, "logout");
+    await notifySessionsChanged(userId);
 };
 
 // Explicit revoke of one device from the user's own sessions list ("cerrar
@@ -184,6 +208,7 @@ export const revokeSession = async (userId, sessionId) => {
         return false;
     }
     await publishInvalidate(userId, session.sid, "revoked");
+    await notifySessionsChanged(userId);
     return true;
 };
 
@@ -199,4 +224,5 @@ export const revokeAllSessions = async (userId) => {
         return;
     }
     await Promise.all(sessions.map((session) => publishInvalidate(userId, session.sid, "removed")));
+    await notifySessionsChanged(userId);
 };

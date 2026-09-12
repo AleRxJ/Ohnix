@@ -47,6 +47,13 @@ export const accountRoom = (accountId) => `account:${accountId}`;
 // never "everyone on the account, trust the client to filter".
 export const posRoom = (accountId, pointOfSaleId) => `pos:${accountId}:${pointOfSaleId}`;
 
+// Every platform admin (role: "admin") joins this on connect - the one room
+// with no account boundary, mirroring the platform-wide "Sesiones" tab
+// itself (see user.controller.js's listAllSessionsAdmin). Only session
+// changes broadcast here for now (see sessionStore.js); extend the same way
+// if another admin-only screen ever needs live refresh across accounts.
+export const platformAdminRoom = () => "admin:platform";
+
 // Joins every Point of Sale room within this socket's scope. Full-scope
 // actors (owner, or a member with posScopeAll) join every room the account
 // currently has - see POS_SCOPE_INVALIDATE_CHANNEL below for what happens
@@ -112,6 +119,9 @@ export const initSocketServer = (httpServer) => {
         socket.data.posRooms = new Set();
         socket.data.focusedField = null;
         socket.join(accountRoom(user.accountId));
+        if (user.role === "admin") {
+            socket.join(platformAdminRoom());
+        }
         await joinPosRoomsForUser(socket, user);
 
         const resourceRoom = ({ resourceType, resourceId }) =>

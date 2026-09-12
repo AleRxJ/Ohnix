@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
 import { adminService } from "../services/adminService";
+import { useDataInvalidation } from "../hooks/useDataInvalidation";
 import PageHeader from "../components/common/PageHeader";
 import SessionsModal from "../components/common/SessionsModal";
 import SessionsTable from "../components/common/SessionsTable";
@@ -86,6 +87,11 @@ const AdminManagement = () => {
 
         run();
     }, [isAdmin, t]);
+
+    // Any session change anywhere on the platform (login/logout/revoke, any
+    // account) refreshes the "Sesiones" tab live - see the admin-wide room
+    // in Backend/live/socketServer.js's platformAdminRoom.
+    useDataInvalidation("sessions", fetchData);
 
     const openCompanyModal = (company = null) => {
         setEditingCompany(company);

@@ -34,6 +34,7 @@ export const authenticateSocket = async (socket) => {
             username: true,
             avatar: true,
             tokenVersion: true,
+            role: true,
         },
     });
 
@@ -55,6 +56,7 @@ export const authenticateSocket = async (socket) => {
         id: user.id,
         username: user.username,
         avatar: user.avatar,
+        role: user.role,
         sid: decodedToken.sid,
         accountId: accountScope.accountId,
         actorId: accountScope.actorId,

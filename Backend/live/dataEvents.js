@@ -1,4 +1,4 @@
-import { getIO, accountRoom, posRoom } from "./socketServer.js";
+import { getIO, accountRoom, posRoom, platformAdminRoom } from "./socketServer.js";
 
 // Account-wide "this changed" broadcast - deliberately payload-free beyond
 // resource/action. The multi-user concurrency audit (2026-08-20) found that
@@ -31,4 +31,15 @@ export const emitPosEvent = (accountId, pointOfSaleId, resource, action = "chang
     const io = getIO();
     if (!io || !accountId || !pointOfSaleId) return;
     io.to(posRoom(accountId, pointOfSaleId)).emit("data:changed", { resource, action, at: Date.now() });
+};
+
+// Platform-wide counterpart for the one screen with no account boundary -
+// the Ohnix admin's global "Sesiones" tab. Every connected admin gets this
+// regardless of whose account the change belongs to (see platformAdminRoom
+// in socketServer.js) - everyone else's account-scoped emitAccountEvent
+// above is what keeps their own team's/self view live instead.
+export const emitAdminEvent = (resource, action = "changed") => {
+    const io = getIO();
+    if (!io) return;
+    io.to(platformAdminRoom()).emit("data:changed", { resource, action, at: Date.now() });
 };
