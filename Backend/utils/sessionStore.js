@@ -103,7 +103,11 @@ export const listSessions = (userId) =>
 // Every device logged in across the whole platform, newest activity first -
 // backs the system admin's "Sesiones" tab (Frontend's AdminManagement),
 // unlike listSessions/getMemberSessions above which are always scoped to one
-// user or team.
+// user or team. Unfiltered on purpose: an independent account with no team
+// at all must show up here exactly like anyone else - this is the one view
+// with no team/company boundary, by design (see user.controller.js's
+// listAllSessionsAdmin for how ownedTeam/teamMemberships get turned into a
+// single display-friendly team name per row).
 export const listAllSessions = () =>
     prisma.userSession.findMany({
         orderBy: { lastSeenAt: "desc" },
@@ -115,6 +119,11 @@ export const listAllSessions = () =>
                     email: true,
                     role: true,
                     company: { select: { id: true, name: true } },
+                    ownedTeam: { select: { id: true, name: true } },
+                    teamMemberships: {
+                        where: { status: "active" },
+                        select: { team: { select: { id: true, name: true } } },
+                    },
                 },
             },
         },

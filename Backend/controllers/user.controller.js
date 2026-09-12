@@ -1069,10 +1069,25 @@ const revokeUserSessionAdmin = asyncHandler(async (req, res, next) => {
     return res.status(200).json(new ApiResponse(200, {}, "Session revoked successfully"));
 });
 
-// The system-wide "Sesiones" tab: every device logged in across every user
-// and company, not just one account - lets the platform admin spot and end
-// a suspicious session anywhere without first having to know which user it
-// belongs to.
+// ownedTeam/teamMemberships (raw Prisma relations, see
+// sessionStore.js's listAllSessions) collapse to a single display-friendly
+// fact per user: which team, and whether they're its owner or a member -
+// or null for a solo/independent account with no team at all. That null
+// case is deliberately still included in the response, never filtered out -
+// this admin view has no team boundary, unlike everywhere else sessions are
+// shown.
+const describeUserTeam = (user) => {
+    if (user.ownedTeam) {
+        return { name: user.ownedTeam.name, role: "owner" };
+    }
+    const membership = user.teamMemberships?.[0]?.team;
+    return membership ? { name: membership.name, role: "member" } : null;
+};
+
+// The system-wide "Sesiones" tab: every device logged in across every user,
+// regardless of team or company - lets the platform admin spot and end a
+// suspicious session anywhere without first having to know which user (or
+// which team, or whether they're even on one at all) it belongs to.
 const listAllSessionsAdmin = asyncHandler(async (_req, res) => {
     const sessions = await listAllSessions();
     return res.status(200).json(
@@ -1084,7 +1099,14 @@ const listAllSessionsAdmin = asyncHandler(async (_req, res) => {
                 deviceLabel: session.deviceLabel,
                 lastSeenAt: session.lastSeenAt,
                 createdAt: session.createdAt,
-                user: session.user,
+                user: {
+                    id: session.user.id,
+                    username: session.user.username,
+                    email: session.user.email,
+                    role: session.user.role,
+                    company: session.user.company,
+                    team: describeUserTeam(session.user),
+                },
             })),
             "Sessions fetched successfully"
         )

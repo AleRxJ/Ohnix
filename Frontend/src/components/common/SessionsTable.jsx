@@ -31,6 +31,26 @@ const DeviceCell = ({ session, t }) => {
     );
 };
 
+// The DIAN-facing "Company" (legal entity, invoicing) and Ohnix's own
+// "Team" (multi-user collaboration) are two unrelated concepts a session row
+// can have independently of each other - most solo/independent accounts have
+// neither. Always rendered (never hidden when there's no team), because
+// "not on any team" is itself the fact the platform admin needs to see, not
+// something to filter out of this one unscoped view.
+const TeamCell = ({ user, t }) => {
+    if (!user?.team) {
+        return <Tag>{t("admin.no_team")}</Tag>;
+    }
+    return (
+        <div className="flex items-center gap-1.5">
+            <Tag color={user.team.role === "owner" ? "cyan" : "default"}>{user.team.name}</Tag>
+            <Text className="text-xs text-[var(--ohnix-text-muted)]">
+                {user.team.role === "owner" ? t("team.role_owner") : t("team.role_member")}
+            </Text>
+        </div>
+    );
+};
+
 const MobileSessionCard = ({ session, onRevoke, revokingId, showCompany, t }) => (
     <Card className="mb-4 module-shell overflow-hidden hover-lift" styles={{ body: { padding: 16 } }}>
         <div className="flex items-start gap-3">
@@ -43,6 +63,7 @@ const MobileSessionCard = ({ session, onRevoke, revokingId, showCompany, t }) =>
                 {showCompany && (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Tag>{session.user?.company?.name || t("admin.company_filter_unassigned")}</Tag>
+                        <TeamCell user={session.user} t={t} />
                     </div>
                 )}
                 <div className="mt-2">
@@ -121,6 +142,12 @@ const SessionsTable = ({ sessions, loading, onRevoke, showCompany = true }) => {
                       key: "company",
                       responsive: ["md"],
                       render: (_, record) => <Tag>{record.user?.company?.name || t("admin.company_filter_unassigned")}</Tag>,
+                  },
+                  {
+                      title: t("admin.team_field"),
+                      key: "team",
+                      responsive: ["md"],
+                      render: (_, record) => <TeamCell user={record.user} t={t} />,
                   },
               ]
             : []),
