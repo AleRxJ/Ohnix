@@ -13,6 +13,8 @@ import * as accountingBudgetService from "../services/accountingBudget.service.j
 import * as costCenterService from "../services/costCenter.service.js";
 import * as recurringExpenseService from "../services/recurringExpense.service.js";
 import * as openingBalanceService from "../services/openingBalance.service.js";
+import * as accountingAuditService from "../services/accountingAudit.service.js";
+import * as journalReversalService from "../services/journalReversal.service.js";
 
 // `to`/`as_of` always arrives as a plain "YYYY-MM-DD" string (every date
 // picker on the frontend sends dayjs().format("YYYY-MM-DD")), which
@@ -398,6 +400,23 @@ export const createOpeningBalance = asyncHandler(async (req, res) => {
         source_type: entry.sourceType,
         source_id: entry.sourceId,
     }, "Opening balance posted successfully"));
+});
+
+export const listAccountingAudit = asyncHandler(async (req, res) => {
+    const rows = await accountingAuditService.listAccountingAudit({
+        accountId: req.user.prismaId,
+        from: req.query.from,
+        to: req.query.to,
+        entityType: req.query.entity_type,
+        action: req.query.action,
+        actorId: req.query.actor_id,
+    });
+    return res.status(200).json(new ApiResponse(200, rows, "Accounting audit fetched successfully."));
+});
+
+export const reverseJournalEntry = asyncHandler(async (req, res) => {
+    const result = await journalReversalService.reverseJournalEntry({ accountId: req.user.prismaId, actorId: req.user.actorId, id: req.params.id, reason: req.body?.reason, entryDate: req.body?.entry_date || new Date() });
+    return res.status(201).json(new ApiResponse(201, result, "Journal entry reversed successfully."));
 });
 
 export const getBudgetReport = asyncHandler(async (req, res) => {

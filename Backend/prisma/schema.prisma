@@ -272,7 +272,9 @@ model User {
   cashAccountsCreated             CashAccount[]
   cashMovementsCreated            CashMovement[]
   orderPaymentsRecorded           OrderPayment[]
+  orderPaymentAllocationsCreated  OrderPaymentAllocation[] @relation("OrderPaymentAllocationCreatedBy")
   purchasePaymentsRecorded        PurchasePayment[]
+  purchasePaymentAllocationsCreated PurchasePaymentAllocation[] @relation("PurchasePaymentAllocationCreatedBy")
   bankStatementEntriesAdded       BankStatementEntry[]
   chartAccountsCreated            ChartAccount[]
   accountingPeriodsCreated        AccountingPeriod[]         @relation("AccountingPeriodCreatedBy")
@@ -1226,6 +1228,7 @@ model Purchase {
   updatedBy               User?                    @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
   purchaseDetails         PurchaseDetail[]
   payments                PurchasePayment[]
+  paymentAllocations      PurchasePaymentAllocation[]
   purchaseSupportDocument PurchaseSupportDocument?
   receivedInvoiceReceipt  ReceivedInvoiceReceipt?
   // Back-relation for PurchaseQuotation.convertedPurchase - set only when
@@ -1496,6 +1499,7 @@ model Order {
   orderDetails       OrderDetail[]
   electronicInvoice  ElectronicInvoice?
   payments           OrderPayment[]
+  paymentAllocations OrderPaymentAllocation[]
   salesQuotation     SalesQuotation?
 
   @@unique([externalConnectionId, externalOrderId])
@@ -2073,6 +2077,7 @@ model OrderPayment {
   createdAt     DateTime @default(now()) @map("created_at")
 
   order       Order       @relation(fields: [orderId], references: [id])
+  allocations OrderPaymentAllocation[]
   cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
   createdBy   User        @relation(fields: [createdById], references: [id])
 
@@ -2095,12 +2100,43 @@ model PurchasePayment {
   createdAt     DateTime @default(now()) @map("created_at")
 
   purchase    Purchase    @relation(fields: [purchaseId], references: [id])
+  allocations PurchasePaymentAllocation[]
   cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
   createdBy   User        @relation(fields: [createdById], references: [id])
 
   @@index([purchaseId])
   @@index([cashAccountId, createdAt])
   @@map("purchase_payments")
+}
+
+model OrderPaymentAllocation {
+  id String @id @default(cuid())
+  orderPaymentId String @map("order_payment_id")
+  orderId String @map("order_id")
+  amount Decimal @db.Decimal(14, 2)
+  createdById String @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  payment OrderPayment @relation(fields: [orderPaymentId], references: [id])
+  order Order @relation(fields: [orderId], references: [id])
+  createdBy User @relation("OrderPaymentAllocationCreatedBy", fields: [createdById], references: [id])
+  @@index([orderId])
+  @@index([orderPaymentId])
+  @@map("order_payment_allocations")
+}
+
+model PurchasePaymentAllocation {
+  id String @id @default(cuid())
+  purchasePaymentId String @map("purchase_payment_id")
+  purchaseId String @map("purchase_id")
+  amount Decimal @db.Decimal(14, 2)
+  createdById String @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  payment PurchasePayment @relation(fields: [purchasePaymentId], references: [id])
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
+  createdBy User @relation("PurchasePaymentAllocationCreatedBy", fields: [createdById], references: [id])
+  @@index([purchaseId])
+  @@index([purchasePaymentId])
+  @@map("purchase_payment_allocations")
 }
 
 // Bank reconciliation, deliberately simple: one row per statement line,

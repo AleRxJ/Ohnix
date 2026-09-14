@@ -30,6 +30,10 @@ import {
     updatePurchaseDueDate,
     getAccountsReceivablePlan,
     updateOrderDueDate,
+    allocateOrderPayment,
+    allocatePurchasePayment,
+    listOrderPaymentAllocations,
+    listPurchasePaymentAllocations,
 } from "../controllers/finance.controller.js";
 
 const router = Router();
@@ -67,10 +71,14 @@ router.route("/integrity")
 router.route("/orders/:orderId/payments")
     .get(requireModulePermission("finance", "view"), listOrderPayments)
     .post(requireModulePermission("finance", "edit"), idempotent("finance.order-payment"), registerOrderPayment);
+router.post("/orders/:orderId/payments/:paymentId/allocate", requireModulePermission("finance", "edit"), allocateOrderPayment);
+router.get("/orders/:orderId/payments/:paymentId/allocations", requireModulePermission("finance", "view"), listOrderPaymentAllocations);
 
 router.route("/purchases/:purchaseId/payments")
     .get(requireModulePermission("finance", "view"), listPurchasePayments)
     .post(requireModulePermission("finance", "edit"), idempotent("finance.purchase-payment"), registerPurchasePayment);
+router.post("/purchases/:purchaseId/payments/:paymentId/allocate", requireModulePermission("finance", "edit"), allocatePurchasePayment);
+router.get("/purchases/:purchaseId/payments/:paymentId/allocations", requireModulePermission("finance", "view"), listPurchasePaymentAllocations);
 router.route("/accounts-payable")
     .get(requireModulePermission("finance", "view"), getAccountsPayablePlan);
 router.route("/purchases/:purchaseId/due-date")

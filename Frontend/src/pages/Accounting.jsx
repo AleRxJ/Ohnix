@@ -48,6 +48,9 @@ const ACCOUNTING_ERROR_CODES = {
     chart_account_active_invalid: "accounting.error_chart_account_active_invalid",
     journal_entry_unbalanced: "accounting.error_journal_entry_unbalanced",
     journal_entry_not_found: "accounting.error_journal_entry_not_found",
+    journal_reversal_reason_required: "accounting.error_journal_reversal_reason_required",
+    journal_reversal_date_invalid: "accounting.error_journal_reversal_date_invalid",
+    journal_reversal_not_allowed: "accounting.error_journal_reversal_not_allowed",
     accounting_period_closed: "accounting.error_period_closed",
     accounting_period_reopening_expired: "accounting.error_period_reopening_expired",
     accounting_period_not_found: "accounting.error_period_not_found",
@@ -1241,6 +1244,13 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
         { title: t("accounting.lines_col_credit"), dataIndex: "credit", key: "credit", align: "right", render: (v) => (v > 0 ? formatCurrency(v) : "") },
     ];
 
+    const submitReversal = async (values) => {
+        setReverseSaving(true);
+        try { await accountingService.reverseJournalEntry(reverseEntry._id, { reason: values.reason, entry_date: values.entry_date.toISOString() }); toast.success(t("accounting.journal_reversal_success")); setReverseEntry(null); reverseForm.resetFields(); await fetchEntries(); }
+        catch (error) { toast.error(accountingErrorMessage(error, t)); }
+        finally { setReverseSaving(false); }
+    };
+
     const columns = [
         { title: t("accounting.col_date"), dataIndex: "entry_date", key: "entry_date", render: (v) => dayjs(v).format("DD/MM/YYYY"), width: 120 },
         { title: t("accounting.col_description"), dataIndex: "description", key: "description", ellipsis: true, render: (_, row) => localizedEntryDescription(row, t) },
@@ -1256,6 +1266,7 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
             align: "right",
             render: (_, entry) => formatCurrency(entry.lines.reduce((sum, l) => sum + l.debit, 0)),
         },
+        { title: t("common.actions"), key: "actions", render: (_, entry) => !["period_close", "period_reopen", "period_reclose", "manual_journal_reversal"].includes(entry.source_type) ? <Button size="small" danger onClick={() => { setReverseEntry(entry); reverseForm.setFieldsValue({ entry_date: dayjs() }); }}>{t("accounting.journal_reverse")}</Button> : null },
     ];
 
     return (
@@ -1347,6 +1358,13 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
                     />
                 </Card>
             )}
+            <Modal className="accounting-modal" open={Boolean(reverseEntry)} title={t("accounting.journal_reverse_title")} onCancel={() => setReverseEntry(null)} onOk={() => reverseForm.submit()} confirmLoading={reverseSaving} destroyOnHidden>
+                <Alert className="dark-alert dark-alert-purple mb-4" type="warning" showIcon message={t("accounting.journal_reverse_help")} />
+                <Form form={reverseForm} layout="vertical" onFinish={submitReversal}>
+                    <Form.Item name="entry_date" label={t("accounting.journal_reverse_date")} rules={[{ required: true, message: t("validation.required_field") }]}><DatePicker className="w-full" /></Form.Item>
+                    <Form.Item name="reason" label={t("accounting.journal_reverse_reason")} rules={[{ required: true, message: t("accounting.error_journal_reversal_reason_required") }]}><Input.TextArea rows={4} maxLength={500} showCount /></Form.Item>
+                </Form>
+            </Modal>
         </>
     );
 };
@@ -2462,6 +2480,34 @@ const OpeningBalanceTab = () => {
     </>;
 };
 
+const AccountingAuditTab = () => {
+    const { t } = useI18n();
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [reverseEntry, setReverseEntry] = useState(null);
+    const [reverseSaving, setReverseSaving] = useState(false);
+    const [reverseForm] = Form.useForm();
+    const [range, setRange] = useState([dayjs().subtract(30, "day"), dayjs()]);
+    const [entityType, setEntityType] = useState();
+    const [action, setAction] = useState();
+    const load = async () => {
+        setLoading(true);
+        try {
+            const response = await accountingService.listAudit({ from: range?.[0]?.startOf("day").toISOString(), to: range?.[1]?.endOf("day").toISOString(), entity_type: entityType, action });
+            setRows(response?.data || []);
+        } catch { toast.error(t("accounting.audit_load_failed")); }
+        finally { setLoading(false); }
+    };
+    useEffect(() => { load(); }, [entityType, action]);
+    const actionLabel = (value) => t(`accounting.audit_action_${value}`, { defaultValue: value });
+    const entityLabel = (value) => ({ journal_entry: t("accounting.audit_entity_journal"), accounting_budget: t("accounting.audit_entity_budget"), cash_account: t("accounting.audit_entity_cash") }[value] || value);
+    return <>
+        <AccountingSectionGuide sectionKey="audit" title={t("accounting.audit_title")} summary={t("accounting.audit_summary")} steps={[t("accounting.audit_step_1"), t("accounting.audit_step_2")]} result={t("accounting.audit_result")} concepts={[{ label: t("accounting.audit_entity_journal"), help: t("accounting.audit_entity_help") }]} />
+        <Card className="module-shell mb-4"><div className="flex flex-wrap gap-3 items-center"><DatePicker.RangePicker value={range} onChange={(value) => value && setRange(value)} /><Select allowClear className="w-52" placeholder={t("accounting.audit_entity_filter")} value={entityType} onChange={setEntityType} options={[{ value: "journal_entry", label: t("accounting.audit_entity_journal") }, { value: "accounting_budget", label: t("accounting.audit_entity_budget") }, { value: "cash_account", label: t("accounting.audit_entity_cash") }]} /><Select allowClear className="w-44" placeholder={t("accounting.audit_action_filter")} value={action} onChange={setAction} options={[{ value: "posted", label: t("accounting.audit_action_posted") }, { value: "created", label: t("accounting.audit_action_created") }, { value: "updated", label: t("accounting.audit_action_updated") }, { value: "deleted", label: t("accounting.audit_action_deleted") }]} /><Button type="primary" onClick={load} loading={loading}>{t("reports.refresh_report")}</Button></div></Card>
+        <Card className="module-shell"><Table className="module-dark-table" rowKey="_id" loading={loading} dataSource={rows} pagination={{ pageSize: 20 }} expandable={{ expandedRowRender: (row) => <pre className="whitespace-pre-wrap text-xs overflow-auto max-h-96">{JSON.stringify({ before: row.before, after: row.after }, null, 2)}</pre> }} columns={[{ title: t("accounting.audit_date"), dataIndex: "created_at", render: (value) => dayjs(value).format("DD/MM/YYYY HH:mm") }, { title: t("accounting.audit_entity"), dataIndex: "entity_type", render: entityLabel }, { title: t("accounting.audit_action"), dataIndex: "action", render: actionLabel }, { title: t("accounting.audit_user"), render: (_, row) => row.actor?.username || row.actor?.email || "—" }, { title: t("accounting.audit_reference"), dataIndex: "entity_id", ellipsis: true }]} locale={{ emptyText: <EmptyState compact title={t("accounting.audit_empty_title")} subtitle={t("accounting.audit_empty_help")} /> }} /></Card>
+    </>;
+};
+
 const Accounting = () => {
     const { t } = useI18n();
     const { can, loading: subscriptionLoading } = useSubscription();
@@ -2486,6 +2532,7 @@ const Accounting = () => {
         { key: "journal", label: tabLabel(<UnorderedListOutlined />, "accounting.tab_journal"), children: <JournalTab initialSourceType={deepLink.sourceType} initialSourceId={deepLink.sourceId} /> },
         { key: "vouchers", label: tabLabel(<FileTextOutlined />, "accounting.tab_vouchers"), children: <ManualVouchersTab /> },
         { key: "opening_balance", label: tabLabel(<PlusOutlined />, "accounting.tab_opening_balance"), children: <OpeningBalanceTab /> },
+        { key: "audit", label: tabLabel(<SafetyCertificateOutlined />, "accounting.tab_audit"), children: <AccountingAuditTab /> },
         { key: "third_parties", label: tabLabel(<TeamOutlined />, "accounting.tab_third_parties"), children: <ThirdPartyLedgerTab /> },
         { key: "cost_centers", label: tabLabel(<PartitionOutlined />, "accounting.tab_cost_centers"), children: <CostCentersTab /> },
         { key: "recurring_expenses", label: tabLabel(<ClockCircleOutlined />, "accounting.tab_recurring_expenses"), children: <RecurringExpensesTab /> },

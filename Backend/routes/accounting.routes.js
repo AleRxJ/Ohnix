@@ -49,6 +49,8 @@ import {
     copyAnnualBudget,
     deleteBudget,
     createOpeningBalance,
+    listAccountingAudit,
+    reverseJournalEntry,
 } from "../controllers/accounting.controller.js";
 
 const router = Router();
@@ -95,11 +97,13 @@ router.post("/budgets-annual/copy", requireModulePermission("accounting", "edit"
 
 router.route("/journal-entries").get(requireModulePermission("accounting", "view"), listJournalEntries);
 router.route("/journal-entries/:id").get(requireModulePermission("accounting", "view"), getJournalEntry);
+router.post("/journal-entries/:id/reverse", requireModulePermission("accounting", "admin"), reverseJournalEntry);
 
 router.route("/manual-vouchers")
     .get(requireModulePermission("accounting", "view"), listManualVouchers)
     .post(requireModulePermission("accounting", "edit"), createManualVoucher);
 router.post("/opening-balance", requireModulePermission("accounting", "admin"), createOpeningBalance);
+router.get("/audit", requireModulePermission("accounting", "view"), listAccountingAudit);
 router.route("/manual-vouchers/:id")
     .get(requireModulePermission("accounting", "view"), getManualVoucher)
     .put(requireModulePermission("accounting", "edit"), updateManualVoucher);

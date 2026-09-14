@@ -12,7 +12,8 @@ export const buildReceivablePlan = ({ orders, now = new Date() }) => {
         const due = order.dueDate ? new Date(order.dueDate) : null;
         const rawDays = due ? Math.floor((now - due) / 86400000) : null;
         const status = rawDays === null ? "unscheduled" : rawDays > 0 ? "overdue" : rawDays >= -7 ? "due_soon" : "current";
-        return { id: order.id, number: order.invoiceNo, document_date: order.orderDate, due_date: order.dueDate, customer: order.customer, total, paid, pending, days_overdue: rawDays === null ? null : Math.max(rawDays, 0), aging_bucket: getAgingBucket(rawDays), status };
+        const paymentDetails = order.payments.map((payment) => ({ id: payment.id, amount: Number(payment.amount), allocated: round2((payment.allocations || []).reduce((sum, allocation) => sum + Number(allocation.amount), 0)), available: round2(Number(payment.amount) - (payment.allocations || []).reduce((sum, allocation) => sum + Number(allocation.amount), 0)), paid_at: payment.paidAt, method: payment.method, reference: payment.reference }));
+        return { id: order.id, number: order.invoiceNo, document_date: order.orderDate, due_date: order.dueDate, customer: order.customer, total, paid, pending, payment_details: paymentDetails, days_overdue: rawDays === null ? null : Math.max(rawDays, 0), aging_bucket: getAgingBucket(rawDays), status };
     }).filter((row) => row.pending > 0.001);
     const rank = { overdue: 0, due_soon: 1, current: 2, unscheduled: 3 };
     documents.sort((a, b) => rank[a.status] - rank[b.status] || new Date(a.due_date || a.document_date) - new Date(b.due_date || b.document_date));
@@ -23,7 +24,7 @@ export const buildReceivablePlan = ({ orders, now = new Date() }) => {
 export const getAccountsReceivablePlan = async ({ accountId, posScopeAll, posScopeIds }) => {
     const orders = await prisma.order.findMany({
         where: { createdById: accountId, ...(posScopeAll ? {} : { pointOfSaleId: { in: posScopeIds || [] } }), orderStatus: { in: ["completed", "returned"] } },
-        select: { id: true, invoiceNo: true, orderDate: true, dueDate: true, customer: { select: { id: true, name: true, identification: true, phone: true, email: true } }, orderDetails: { select: { total: true, taxAmount: true, refundAmount: true, returnedTaxAmount: true } }, payments: { select: { amount: true } } },
+        select: { id: true, invoiceNo: true, orderDate: true, dueDate: true, customer: { select: { id: true, name: true, identification: true, phone: true, email: true } }, orderDetails: { select: { total: true, taxAmount: true, refundAmount: true, returnedTaxAmount: true } }, payments: { select: { id: true, amount: true, paidAt: true, method: true, reference: true, allocations: { select: { amount: true } } } } },
     });
     const notes = orders.length ? await prisma.electronicCreditNote.findMany({ where: { invoice: { orderId: { in: orders.map((order) => order.id) } } }, select: { id: true, invoice: { select: { orderId: true } } } }) : [];
     const orderByNote = new Map(notes.map((note) => [note.id, note.invoice.orderId]));

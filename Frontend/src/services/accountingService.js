@@ -132,6 +132,14 @@ export const accountingService = {
         const response = await api.post("/accounting/opening-balance", payload);
         return response.data;
     },
+    async listAudit(params = {}) {
+        const response = await api.get("/accounting/audit", { params });
+        return response.data;
+    },
+    async reverseJournalEntry(id, payload) {
+        const response = await api.post(`/accounting/journal-entries/${id}/reverse`, payload);
+        return response.data;
+    },
 
     async listManualVouchers({ status } = {}) {
         const response = await api.get("/accounting/manual-vouchers", {

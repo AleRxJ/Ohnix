@@ -13,6 +13,7 @@ import * as cashAdjustmentService from "../services/cashAdjustment.service.js";
 import * as cashIntegrityService from "../services/cashIntegrity.service.js";
 import * as accountsPayableService from "../services/accountsPayable.service.js";
 import * as accountsReceivableService from "../services/accountsReceivable.service.js";
+import * as paymentAllocationService from "../services/paymentAllocation.service.js";
 
 const scope = (req) => ({
     accountId: req.user.prismaId,
@@ -335,4 +336,23 @@ export const getReconciliationReport = asyncHandler(async (req, res, next) => {
         status: row.matchedMovementId ? "matched" : "unmatched",
         movement: row.matchedMovement ? mapCashMovement({ ...row.matchedMovement, cashAccountId: row.cashAccountId, createdById: row.createdById }) : null,
     })), "Reconciliation report fetched successfully"));
+});
+export const allocateOrderPayment = asyncHandler(async (req, res) => {
+    const allocation = await paymentAllocationService.allocateReceivable({ accountId: req.user.prismaId, actorId: req.user.actorId, paymentId: req.params.paymentId, documentId: req.params.orderId, amount: req.body?.amount });
+    return res.status(201).json(new ApiResponse(201, allocation, "Payment allocated successfully."));
+});
+
+export const allocatePurchasePayment = asyncHandler(async (req, res) => {
+    const allocation = await paymentAllocationService.allocatePayable({ accountId: req.user.prismaId, actorId: req.user.actorId, paymentId: req.params.paymentId, documentId: req.params.purchaseId, amount: req.body?.amount });
+    return res.status(201).json(new ApiResponse(201, allocation, "Payment allocated successfully."));
+});
+
+export const listOrderPaymentAllocations = asyncHandler(async (req, res) => {
+    const rows = await paymentAllocationService.listOrderPaymentAllocations({ accountId: req.user.prismaId, paymentId: req.params.paymentId });
+    return res.status(200).json(new ApiResponse(200, rows, "Payment allocations fetched successfully."));
+});
+
+export const listPurchasePaymentAllocations = asyncHandler(async (req, res) => {
+    const rows = await paymentAllocationService.listPurchasePaymentAllocations({ accountId: req.user.prismaId, paymentId: req.params.paymentId });
+    return res.status(200).json(new ApiResponse(200, rows, "Payment allocations fetched successfully."));
 });

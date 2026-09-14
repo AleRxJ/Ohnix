@@ -16,7 +16,8 @@ export const buildPayablePlan = ({ purchases, availableCash, now = new Date() })
         const rawDays = due ? Math.floor((now - due) / 86400000) : null;
         const daysOverdue = rawDays === null ? null : Math.max(rawDays, 0);
         const status = rawDays === null ? "unscheduled" : rawDays > 0 ? "overdue" : rawDays >= -7 ? "due_soon" : "current";
-        return { id: purchase.id, number: purchase.purchaseNo, document_date: purchase.purchaseDate, due_date: purchase.dueDate, supplier: purchase.supplier, total, paid: round2(paid), pending, days_overdue: daysOverdue, aging_bucket: getAgingBucket(rawDays), status };
+        const paymentDetails = purchase.payments.map((payment) => ({ id: payment.id, amount: Number(payment.amount), allocated: round2((payment.allocations || []).reduce((sum, allocation) => sum + Number(allocation.amount), 0)), available: round2(Number(payment.amount) - (payment.allocations || []).reduce((sum, allocation) => sum + Number(allocation.amount), 0)), paid_at: payment.paidAt, method: payment.method, reference: payment.reference }));
+        return { id: purchase.id, number: purchase.purchaseNo, document_date: purchase.purchaseDate, due_date: purchase.dueDate, supplier: purchase.supplier, total, paid: round2(paid), pending, payment_details: paymentDetails, days_overdue: daysOverdue, aging_bucket: getAgingBucket(rawDays), status };
     }).filter((row) => row.pending > 0.001);
 
     const rank = { overdue: 0, due_soon: 1, current: 2, unscheduled: 3 };
@@ -41,7 +42,7 @@ export const getAccountsPayablePlan = async ({ accountId, posScopeAll, posScopeI
                 supplier: { select: { id: true, name: true, identification: true } },
                 purchaseDetails: { select: { total: true, taxAmount: true, refundAmount: true, returnedTaxAmount: true } },
                 retentions: { select: { withheldAmount: true, returnedWithheldAmount: true } },
-                payments: { select: { amount: true } },
+                payments: { select: { id: true, amount: true, paidAt: true, method: true, reference: true, allocations: { select: { amount: true } } } },
             },
         }),
         prisma.cashAccount.findMany({ where: { createdById: accountId, isActive: true, ...(posScopeAll ? {} : { OR: [{ pointOfSaleId: null }, { pointOfSaleId: { in: posScopeIds || [] } }] }) }, select: { balance: true } }),

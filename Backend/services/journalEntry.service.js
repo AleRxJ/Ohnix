@@ -138,6 +138,36 @@ export const recordJournalEntry = async (
         })),
     });
 
+    // Centralized immutable audit record: every posting path reaches this
+    // function, so sales, purchases, payments, adjustments and opening
+    // balances share the same trace without duplicating audit code.
+    await tx.accountingConfigAudit.create({
+        data: {
+            accountId,
+            actorId: createdById,
+            entityType: "journal_entry",
+            entityId: entry.id,
+            action: "posted",
+            after: {
+                entry_date: entryDate.toISOString(),
+                source_type: sourceType,
+                source_id: sourceId ?? null,
+                description: description ?? null,
+                lines: nonZeroLines.map((line) => ({
+                    chart_account_id: line.chartAccountId,
+                    debit: Number(line.debit || 0),
+                    credit: Number(line.credit || 0),
+                    cost_center_id: line.costCenterId ?? null,
+                    third_party_type: line.thirdPartyType ?? null,
+                    third_party_id: line.thirdPartyId ?? null,
+                    third_party_name: line.thirdPartyName ?? null,
+                    third_party_document: line.thirdPartyDocument ?? null,
+                    description: line.description ?? null,
+                })),
+            },
+        },
+    });
+
     return entry;
 };
 

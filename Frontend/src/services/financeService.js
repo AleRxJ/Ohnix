@@ -142,6 +142,10 @@ export const financeService = {
         const response = await api.get("/finance/reconciliation/report", { params: { cash_account_id: cashAccountId, ...params } });
         return response.data;
     },
+    async allocateOrderPayment(orderId, paymentId, amount) { const response = await api.post(`/finance/orders/${orderId}/payments/${paymentId}/allocate`, { amount }); return response.data; },
+    async listOrderPaymentAllocations(orderId, paymentId) { const response = await api.get(`/finance/orders/${orderId}/payments/${paymentId}/allocations`); return response.data; },
+    async allocatePurchasePayment(purchaseId, paymentId, amount) { const response = await api.post(`/finance/purchases/${purchaseId}/payments/${paymentId}/allocate`, { amount }); return response.data; },
+    async listPurchasePaymentAllocations(purchaseId, paymentId) { const response = await api.get(`/finance/purchases/${purchaseId}/payments/${paymentId}/allocations`); return response.data; },
 
     async getCarteraReport(params) {
         const response = await api.get("/reports/cartera", { params });
