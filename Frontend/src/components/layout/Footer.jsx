@@ -6,6 +6,7 @@ import {
     MailOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 // Plain HTML/Tailwind instead of antd (Layout/Row/Col/Space/Divider) - see
 // Navbar.jsx for why: this is public marketing chrome, and antd's vendor
@@ -86,6 +87,16 @@ const Footer = () => {
                         <Link to="/comparativa/ohnix-vs-alegra" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.comparison")}
                         </Link>
+                        {ELECTRONIC_INVOICING_ENABLED && (
+                            <Link to="/facturacion-electronica-sin-inventario" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
+                                {t("landing.footer.links.standalone_invoicing")}
+                            </Link>
+                        )}
+                        {ELECTRONIC_INVOICING_ENABLED && (
+                            <Link to="/certificado-digital-dian" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
+                                {t("landing.footer.links.certificates")}
+                            </Link>
+                        )}
                         <Link to="/integraciones" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.integrations")}
                         </Link>

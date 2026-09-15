@@ -1,6 +1,7 @@
 import {
     TeamOutlined,
     BarChartOutlined,
+    RadarChartOutlined,
     DashboardOutlined,
     AppstoreOutlined,
     ShoppingCartOutlined,
@@ -29,7 +30,7 @@ import { Link } from "react-router-dom";
 // ever hides items for someone acting on someone else's account. Defaults
 // to "always visible" so callers that don't pass it (or aren't inside a
 // team) see the full menu, same as before this existed.
-export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false, showFiscalSetup = false, needsFiscalSetup = false) => {
+export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false, showFiscalSetup = false, needsFiscalSetup = false, openDiscoveriesCount = 0) => {
     const items = [
         {
             key: "dashboard",
@@ -108,6 +109,23 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             moduleKey: "reports",
             icon: <BarChartOutlined />,
             label: <Link to="/reports">{t("common.reports")}</Link>,
+        },
+        {
+            key: "discoveries",
+            moduleKey: "reports",
+            icon: <RadarChartOutlined />,
+            // A live count, not a plain nav row - this is Ohnix's own
+            // headline capability (findings the engine produced on its own,
+            // see components/discoveries/), not a peer of the CRUD pages
+            // around it, and the badge is what says so at a glance.
+            label: (
+                <Link to="/discoveries" className="flex items-center justify-between gap-2">
+                    <span>{t("common.discoveries_nav")}</span>
+                    {openDiscoveriesCount > 0 && (
+                        <span className="sidebar-discovery-badge">{openDiscoveriesCount > 9 ? "9+" : openDiscoveriesCount}</span>
+                    )}
+                </Link>
+            ),
         },
         ...(showTeam ? [{
             key: "team",

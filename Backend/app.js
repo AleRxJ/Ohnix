@@ -148,6 +148,7 @@ import salesQuotationRouter from "./routes/salesQuotation.routes.js";
 import publicSalesQuotationRouter from "./routes/publicSalesQuotation.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import reportRouter from "./routes/report.routes.js";
+import discoveryRouter from "./routes/discovery.routes.js";
 import schedulerRouter from "./routes/scheduler.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import pricingRouter from "./routes/pricing.routes.js";
@@ -217,6 +218,7 @@ app.use("/api/v1/system-settings", systemSettingsRouter);
 app.use("/api/v1/finance", financeRouter);
 app.use("/api/v1/accounting", accountingRouter);
 app.use("/api/v1/assistant", assistantRouter);
+app.use("/api/v1/discoveries", discoveryRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________

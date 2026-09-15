@@ -16,6 +16,8 @@ import { useTheme } from "../../context/ThemeContext";
 import InventoryTour from "../inventoryTour/InventoryTour";
 import InventoryTourFab from "../inventoryTour/InventoryTourFab";
 import AssistantWidget from "../assistant/AssistantWidget";
+import DiscoveryWidget from "../discoveries/DiscoveryWidget";
+import DiscoveryRevealOverlay from "../discoveries/DiscoveryRevealOverlay";
 import { initConnectivityWatcher } from "../../offline/connectivity";
 import { startSyncEngine } from "../../offline/syncEngine";
 import { resetOfflineDataIfAccountChanged } from "../../offline/db";
@@ -41,6 +43,7 @@ const PAGE_TITLE_KEYS = {
     "electronic-invoices": "common.electronic_invoices_nav",
     "fiscal-setup": "common.settings",
     reports: "common.reports",
+    discoveries: "common.discoveries_nav",
     team: "common.team_nav",
     billing: "common.billing",
     integrations: "common.integrations_nav",
@@ -486,6 +489,8 @@ const DashboardLayout = () => {
             <InventoryTour />
             <InventoryTourFab />
             <AssistantWidget />
+            <DiscoveryWidget />
+            <DiscoveryRevealOverlay />
             <div className="pointer-events-none absolute inset-0 opacity-70 section-glow" />
             <DashboardSidebar
                 collapsed={collapsed}

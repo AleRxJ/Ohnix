@@ -7,12 +7,16 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import lowStockScheduler from "../utils/lowStockScheduler.js";
 import { checkForNewFirmaPassValidations } from "../utils/firmaPassValidationScheduler.js";
+import discoveryScheduler from "../utils/discoveryScheduler.js";
 
 const router = express.Router();
 
 router.use(verifyJWT); // Apply verifyJWT middleware to all routes
 
-// Get scheduler status (admin only)
+// Get scheduler status (admin only). Kept as one endpoint rather than one
+// per scheduler - the low-stock fields stay top-level so the existing
+// frontend consumer (LowStockAlertsPanel.jsx) keeps working unchanged; the
+// discovery engine's status is added as a nested `discovery` key.
 router.get(
     "/status",
     isAdmin,
@@ -23,7 +27,7 @@ router.get(
             .json(
                 new ApiResponse(
                     200,
-                    status,
+                    { ...status, discovery: discoveryScheduler.getStatus() },
                     "Scheduler status retrieved successfully"
                 )
             );
@@ -154,6 +158,20 @@ router.post(
         return res
             .status(200)
             .json(new ApiResponse(200, result, "FirmaPass validation check completed"));
+    })
+);
+
+// Force a discovery engine run right now, across every active account
+// (admin only) - same idea as /firmapass-validation-check, useful for
+// testing/demoing detectors without waiting for the 04:30 cron tick.
+router.post(
+    "/discovery-engine-run",
+    isAdmin,
+    asyncHandler(async (req, res) => {
+        const result = await discoveryScheduler.runNow();
+        return res
+            .status(200)
+            .json(new ApiResponse(200, result, "Discovery engine run completed"));
     })
 );
 

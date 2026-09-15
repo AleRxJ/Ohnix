@@ -316,6 +316,9 @@ model User {
 
   sessions UserSession[]
 
+  discoveriesOwned     Discovery[]
+  metricSnapshotsOwned MetricSnapshot[]
+
   @@map("users")
 }
 
@@ -2972,4 +2975,228 @@ model ChatFeedback {
 enum ChatFeedbackRating {
   up
   down
+}
+
+// ---------------------------------------------------------------------------
+// Discovery Engine (Fase 1 - base): Ohnix noticing things nobody asked about,
+// not another report/KPI screen. See docs/discovery-engine.md for the full
+// design. Detectors never write prose with invented numbers - everything a
+// Discovery says must trace back to a DiscoveryEvidence row.
+// ---------------------------------------------------------------------------
+
+enum DiscoveryType {
+  risk
+  opportunity
+  contradiction
+  new_pattern
+  connection
+  trajectory_shift
+  perception_gap
+}
+
+// detected: a detector produced a candidate. investigating: gathering more
+// evidence before it's shown to anyone. validated: evidence crossed the
+// detector's confidence bar. published: shown to the user ("Ohnix encontró
+// algo"). actioned: user did something about it. resolved: the underlying
+// situation is over (churned, fixed, expired). dismissed: user said "not
+// relevant" - stays for learning, just stops surfacing. learned: any
+// attached DiscoveryPrediction has been checked against reality and fed back
+// into DiscoveryPatternStats.
+enum DiscoveryStatus {
+  detected
+  investigating
+  validated
+  published
+  actioned
+  resolved
+  dismissed
+  learned
+}
+
+// One finding. dedupeKey scopes "is this the same thing we already raised" -
+// discoveryEngine.service.js only opens a new row when no non-resolved
+// Discovery shares (accountId, dedupeKey); a re-detection instead bumps
+// lastSeenAt on the existing row. Score fields are each 0-1, combined into
+// priorityScore by discoveryScoring.js so ranking logic lives in one place
+// instead of being re-derived ad hoc wherever discoveries are listed.
+model Discovery {
+  id              String          @id @default(cuid())
+  accountId       String          @map("account_id")
+  detectorKey     String          @map("detector_key")
+  type            DiscoveryType
+  status          DiscoveryStatus @default(detected)
+  dedupeKey       String          @map("dedupe_key")
+  title           String
+  summary         String          @db.Text
+  hypothesis      String?         @db.Text
+  unknowns        String?         @db.Text
+  recommendation  String?         @db.Text
+  confidence      Decimal         @db.Decimal(4, 3)
+  impactScore     Decimal         @map("impact_score") @db.Decimal(4, 3)
+  noveltyScore    Decimal         @map("novelty_score") @db.Decimal(4, 3)
+  urgencyScore    Decimal         @map("urgency_score") @db.Decimal(4, 3)
+  reversibility   Decimal         @db.Decimal(4, 3)
+  priorityScore   Decimal         @map("priority_score") @db.Decimal(6, 3)
+  entityCount     Int             @default(0) @map("entity_count")
+  // When the underlying pattern is believed to have started, per the
+  // detector's own evidence (e.g. earliest order in a decaying-frequency
+  // cohort) - distinct from firstDetectedAt, which is just when Ohnix
+  // noticed it.
+  patternSince    DateTime?       @map("pattern_since")
+  firstDetectedAt DateTime        @default(now()) @map("first_detected_at")
+  lastSeenAt      DateTime        @default(now()) @map("last_seen_at")
+  publishedAt     DateTime?       @map("published_at")
+  resolvedAt      DateTime?       @map("resolved_at")
+  // Mission case G ("errores de percepción"): the human's own stated reason
+  // for dismissing this finding - "lo que el equipo cree" is captured here
+  // rather than through any new belief-tracking UI. upsertDiscovery reads
+  // this back the next time the same dedupeKey fires again: a pattern that
+  // recurs after being dismissed with a reason is real, evidence-based
+  // grounds to gently surface "dijiste X, y volvió a pasar" - never framed
+  // as the user being wrong, just as a fact worth re-checking.
+  dismissReason   String?         @map("dismiss_reason") @db.Text
+  dismissedAt     DateTime?       @map("dismissed_at")
+  // Case G, generalized beyond dismissal: a belief the user can attach to
+  // ANY discovery at ANY time, not just when closing it - "¿qué crees que
+  // está pasando?". `teamExplanationTag` is a small closed set of
+  // structured, checkable claims (see EXPLANATION_TAGS in
+  // discoveryExplanation.service.js) rather than free-form NLP - a tagged
+  // explanation can get a real evidence-backed check (see
+  // DiscoveryEvidence kind "explanation_check"); an untagged one just gets
+  // stored for the perception-gap recurrence check upsertDiscovery already
+  // does for dismissals.
+  teamExplanation    String?    @map("team_explanation") @db.Text
+  teamExplanationTag String?    @map("team_explanation_tag")
+  teamExplanationAt  DateTime?  @map("team_explanation_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  account     User                  @relation(fields: [accountId], references: [id])
+  evidence    DiscoveryEvidence[]
+  entities    DiscoveryEntityLink[]
+  predictions DiscoveryPrediction[]
+
+  @@index([accountId, status, priorityScore])
+  @@index([accountId, dedupeKey, status])
+  @@index([detectorKey])
+  @@map("discoveries")
+}
+
+// Structured, numeric evidence backing a Discovery - the "how do I know
+// this" trail from section 12 of the mission. kind namespaces what's inside
+// `data` (e.g. "metric_series", "comparison", "cohort_sample") so the
+// frontend can render each shape without guessing; sourceType/sourceId point
+// back at the originating row (StockMovement, CashMovement, Order...) the
+// same way CashMovement/JournalEntry already reference their own sources.
+model DiscoveryEvidence {
+  id          String   @id @default(cuid())
+  discoveryId String   @map("discovery_id")
+  kind        String
+  label       String
+  data        Json
+  sourceType  String?  @map("source_type")
+  sourceId    String?  @map("source_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  discovery Discovery @relation(fields: [discoveryId], references: [id], onDelete: Cascade)
+
+  @@index([discoveryId])
+  @@map("discovery_evidence")
+}
+
+// Which real business entities a Discovery is about (17 customers, a
+// supplier, a cash account...), so the UI can deep-link to the affected
+// records instead of only showing a count. entityType is a free string
+// (customer/product/supplier/cash_account/...) on purpose, same convention
+// as AccountingConfigAudit.entityType - discovery types will keep needing
+// new entity kinds and an enum would need a migration every time.
+model DiscoveryEntityLink {
+  id          String   @id @default(cuid())
+  discoveryId String   @map("discovery_id")
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  role        String?
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  discovery Discovery @relation(fields: [discoveryId], references: [id], onDelete: Cascade)
+
+  @@index([discoveryId])
+  @@index([entityType, entityId])
+  @@map("discovery_entity_links")
+}
+
+enum DiscoveryPredictionOutcome {
+  correct
+  incorrect
+  inconclusive
+}
+
+// Fase 4 learning loop (mission section 9/10): a Discovery can register a
+// falsifiable prediction ("if this continues, X will happen by checkAfter").
+// discoveryLearning.service.js re-checks it against real data once
+// checkAfter passes, records actualData/outcome, and rolls the result into
+// DiscoveryPatternStats for that detectorKey.
+model DiscoveryPrediction {
+  id                String                      @id @default(cuid())
+  discoveryId       String                      @map("discovery_id")
+  statement         String                      @db.Text
+  predictedData     Json                        @map("predicted_data")
+  confidenceAtStake Decimal                     @map("confidence_at_stake") @db.Decimal(4, 3)
+  checkAfter        DateTime                    @map("check_after")
+  checkedAt         DateTime?                   @map("checked_at")
+  actualData        Json?                       @map("actual_data")
+  outcome           DiscoveryPredictionOutcome?
+  notes             String?                     @db.Text
+  createdAt         DateTime                    @default(now()) @map("created_at")
+
+  discovery Discovery @relation(fields: [discoveryId], references: [id], onDelete: Cascade)
+
+  @@index([discoveryId])
+  @@index([checkAfter, checkedAt])
+  @@map("discovery_predictions")
+}
+
+// Running accuracy per detector, not per account - the point is
+// cross-account learning ("this pattern type has historically been right
+// 68% of the time"), fed back into new Discovery.confidence for the same
+// detectorKey. Only written by discoveryLearning.service.js when a
+// DiscoveryPrediction gets checked.
+model DiscoveryPatternStats {
+  id                 String   @id @default(cuid())
+  detectorKey        String   @unique @map("detector_key")
+  totalPredictions   Int      @default(0) @map("total_predictions")
+  correctPredictions Int      @default(0) @map("correct_predictions")
+  currentConfidence  Decimal  @default(0.5) @map("current_confidence") @db.Decimal(4, 3)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("discovery_pattern_stats")
+}
+
+// The one piece of infrastructure this schema never had: metrics over time.
+// Every other report (report.controller.js) computes on demand and throws
+// the result away, so there was nothing to compare "now" against "history"
+// without rescanning full ledgers on every detector run. metricSnapshot
+// .service.js upserts one row per (account, entityType, entityId, metricKey,
+// periodStart); entityId is "" (not null - Postgres treats NULLs as
+// distinct in a unique index, which would silently defeat this constraint)
+// for account-level metrics that aren't about one entity.
+model MetricSnapshot {
+  id          String   @id @default(cuid())
+  accountId   String   @map("account_id")
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  metricKey   String   @map("metric_key")
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
+  value       Decimal  @db.Decimal(18, 4)
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  account User @relation(fields: [accountId], references: [id])
+
+  @@unique([accountId, entityType, entityId, metricKey, periodStart])
+  @@index([accountId, metricKey, periodStart])
+  @@map("metric_snapshots")
 }

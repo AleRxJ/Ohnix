@@ -1,7 +1,8 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Alert, Button, Card, DatePicker, Form, Input, Space, Tag, Typography, Upload } from "antd";
-import { CheckCircleOutlined, CopyOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined, SearchOutlined, UploadOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, CheckCircleOutlined, CopyOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined, SearchOutlined, UploadOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { companyService } from "../../services/companyService";
@@ -48,8 +49,9 @@ const normalizeDoc = (doc) => (typeof doc === "string"
 // keeps that boundary explicit, then lets the company owner complete every
 // remaining step without an Ohnix platform administrator handling documents
 // or credentials.
-const FirmaPassSelfService = ({ electronicInvoicingEnabled, electronicInvoicingAtRisk, onActivated }) => {
+const FirmaPassSelfService = ({ electronicInvoicingEnabled, electronicInvoicingAtRisk, canActivate = true, onActivated }) => {
     const { t } = useI18n();
+    const navigate = useNavigate();
     // Two ways to identify the validation FirmaPass created when the client
     // bought with the coupon: the order number FirmaPass's own checkout gives
     // them (resolved to a UUID server-side, no manual copy/paste needed), or
@@ -320,25 +322,40 @@ const FirmaPassSelfService = ({ electronicInvoicingEnabled, electronicInvoicingA
             )}
 
             {!electronicInvoicingEnabled && activeCertificate && (
+                // activateMyItcycleElectronicInvoicing is still Negocio-plan-gated
+                // server-side even though holding/activating a certificate isn't
+                // - swap the real activate button for the same upgrade CTA used
+                // elsewhere (LowStockAlertsPanel) instead of letting the click 403.
                 <Alert
-                    className="mt-4 dark-alert dark-alert-teal"
-                    type="success"
+                    className={`mt-4 dark-alert ${canActivate ? "dark-alert-teal" : "dark-alert-purple"}`}
+                    type={canActivate ? "success" : "info"}
                     showIcon
                     message={t("fiscal_setup.firmapass_ready_title")}
-                    description={t("fiscal_setup.firmapass_ready_hint")}
+                    description={canActivate ? t("fiscal_setup.firmapass_ready_hint") : t("fiscal_setup.plan_required")}
                     action={
-                        <Button
-                            size="small"
-                            type="primary"
-                            className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]"
-                            loading={busy === "activate"}
-                            onClick={() => run("activate", async () => {
-                                const response = await companyService.activateMyItcycleElectronicInvoicing(activateIdempotencyKey);
-                                onActivated?.(response?.data);
-                            }, t("fiscal_setup.firmapass_activate_success"), describeMissingReadiness)}
-                        >
-                            {t("fiscal_setup.firmapass_activate")}
-                        </Button>
+                        canActivate ? (
+                            <Button
+                                size="small"
+                                type="primary"
+                                className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]"
+                                loading={busy === "activate"}
+                                onClick={() => run("activate", async () => {
+                                    const response = await companyService.activateMyItcycleElectronicInvoicing(activateIdempotencyKey);
+                                    onActivated?.(response?.data);
+                                }, t("fiscal_setup.firmapass_activate_success"), describeMissingReadiness)}
+                            >
+                                {t("fiscal_setup.firmapass_activate")}
+                            </Button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => navigate("/profile?tab=billing")}
+                                className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#29D8D5] px-4 py-2 text-xs font-semibold text-[#021314] transition-colors hover:bg-[#44F3F0]"
+                            >
+                                {t("fiscal_setup.plan_required_cta")}
+                                <ArrowRightOutlined />
+                            </button>
+                        )
                     }
                 />
             )}

@@ -6,6 +6,7 @@ import { getMenuItems } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
+import { useDiscoveries } from "../../context/DiscoveryContext";
 import useSubscription from "../../hooks/useSubscription";
 import { useTheme } from "../../context/ThemeContext";
 import ThemeToggle from "../common/ThemeToggle";
@@ -17,6 +18,7 @@ const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
     const { user } = React.useContext(AuthContext);
     const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
+    const { openCount: openDiscoveriesCount } = useDiscoveries();
     const { plan } = useSubscription();
     const { t } = useI18n();
     const { isLite } = useTheme();
@@ -131,7 +133,8 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
                                     hasPermission,
                                     ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
                                     showFiscalSetup,
-                                    needsFiscalSetup
+                                    needsFiscalSetup,
+                                    openDiscoveriesCount
                                 )}
                                 onClick={onClose}
                                 className="border-r-0"

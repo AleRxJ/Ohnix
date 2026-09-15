@@ -181,6 +181,304 @@
 .offline-conflicts-drawer .ant-drawer-title { color: var(--ohnix-text-primary) !important; font-weight: 700; }
 .accounting-drawer .ant-drawer-body,
 .offline-conflicts-drawer .ant-drawer-body { background: transparent; }
+
+/* Discoveries: detail drawer, dismiss modal and page filters — same
+   themed-antd pattern as .accounting-drawer/.accounting-modal above, so the
+   feature's own dark surface, borders and inputs match the rest of the app
+   instead of falling back to stock (light) antd styling. Kept as its own
+   block rather than folded into .accounting-* since it has no relationship
+   to that module - only the underlying pattern is shared. */
+.discovery-modal .ant-input {
+  border-color: var(--ohnix-line-5) !important;
+  background: var(--ohnix-surface-4) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+.discovery-modal .ant-input::placeholder { color: var(--ohnix-text-dim); }
+.discovery-modal .ant-input:focus {
+  border-color: rgba(41,216,213,.72) !important;
+  box-shadow: 0 0 0 3px rgba(41,216,213,.10) !important;
+}
+.discovery-modal .ant-modal-content,
+.discovery-drawer .ant-drawer-content {
+  border: 1px solid var(--ohnix-line-5);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(41,216,213,.10), transparent 30%),
+    var(--ohnix-surface-card) !important;
+  box-shadow: var(--ohnix-shadow-elevated);
+}
+.discovery-modal .ant-modal-header,
+.discovery-drawer .ant-drawer-header {
+  border-bottom-color: var(--ohnix-line-3) !important;
+  background: transparent !important;
+}
+.discovery-modal .ant-modal-title,
+.discovery-modal .ant-modal-close,
+.discovery-drawer .ant-drawer-title { color: var(--ohnix-text-primary) !important; font-weight: 700; }
+.discovery-modal .ant-modal-body p { color: var(--ohnix-text-muted); }
+.discovery-drawer .ant-drawer-body { background: transparent; }
+
+/* Discoveries page filter bar - a custom pill-group (not antd Segmented,
+   see DiscoveryFilterTabs in pages/Discoveries.jsx) so each state reads as
+   its own deliberate choice with real breathing room instead of five
+   labels packed edge-to-edge, and carries a live count per bucket. Same
+   rounded-full track + gradient-filled active pill as ThemeToggle. */
+.discovery-filter-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  border: 1px solid var(--ohnix-line-5);
+  background: var(--ohnix-line-1);
+}
+.discovery-filter-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ohnix-text-muted);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+.discovery-filter-tab:hover:not(.is-active) { color: var(--ohnix-text-primary); background: var(--ohnix-hover-overlay); }
+.discovery-filter-tab.is-active {
+  color: var(--ohnix-accent-contrast);
+  background: linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%);
+  box-shadow: 0 6px 18px rgba(41,216,213,.28);
+}
+.discovery-filter-tab-count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: var(--ohnix-line-3);
+  color: var(--ohnix-text-dim);
+}
+.discovery-filter-tab.is-active .discovery-filter-tab-count { background: rgba(2,19,20,.16); color: var(--ohnix-accent-contrast); }
+@media (prefers-reduced-motion: reduce) { .discovery-filter-tab { transition: none; } }
+
+.discoveries-page .ant-empty-description { color: var(--ohnix-text-muted); }
+
+/* Sidebar/mobile-menu nav row for Descubrimientos - a live cyan count badge
+   instead of a plain menu label, same gradient as the FAB/action buttons,
+   so the entry itself signals "Ohnix found something" instead of reading
+   as one more item in the list. See data/index.jsx's getMenuItems. */
+.sidebar-discovery-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ohnix-accent-contrast);
+  background: linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%);
+  box-shadow: 0 0 10px rgba(41,216,213,.35);
+}
+
+/* Dashboard hero card for the top live Discovery - see
+   components/discoveries/DiscoveryDashboardHero.jsx. The single place on
+   the dashboard that gets a radial brand glow + pulsing signal dot, so
+   Ohnix's own flagship finding reads as the headline of the page, not one
+   more stat card in the grid below it. */
+.discovery-hero-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  padding: 22px 24px;
+  border-radius: 22px;
+  border: 1px solid rgba(41,216,213,.28);
+  background:
+    radial-gradient(circle at 4% 0%, rgba(41,216,213,.16), transparent 38%),
+    radial-gradient(circle at 100% 100%, rgba(124,106,247,.10), transparent 45%),
+    linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
+  box-shadow: var(--ohnix-shadow-elevated);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: transform 260ms cubic-bezier(.22,1,.36,1), border-color 260ms ease, box-shadow 260ms ease;
+}
+.discovery-hero-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(41,216,213,.5);
+  box-shadow: 0 26px 60px rgba(41,216,213,.14), var(--ohnix-shadow-elevated);
+}
+.discovery-hero-card__icon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.discovery-hero-card__body { flex: 1; min-width: 0; }
+.discovery-hero-card__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ohnix-alert-cyan-text);
+  margin-bottom: 8px;
+}
+.discovery-hero-card__pulse {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #44f3f0;
+  box-shadow: 0 0 10px rgba(68,243,240,.9);
+}
+.discovery-hero-card__pulse::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 999px;
+  border: 1px solid rgba(68,243,240,.5);
+  animation: ohnix-discovery-hero-pulse 2.4s cubic-bezier(.22,1,.36,1) infinite;
+}
+@keyframes ohnix-discovery-hero-pulse {
+  0% { transform: scale(.6); opacity: .9; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.discovery-hero-card__title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ohnix-text-primary);
+}
+.discovery-hero-card__summary {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ohnix-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.discovery-hero-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--ohnix-text-dim);
+  flex-wrap: wrap;
+}
+.discovery-hero-card__dot { width: 3px; height: 3px; border-radius: 999px; background: var(--ohnix-text-dim); }
+.discovery-hero-card__side {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+.discovery-hero-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ohnix-accent-contrast);
+  background: linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%);
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .discovery-hero-card { flex-direction: column; align-items: flex-start; }
+  .discovery-hero-card__side { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .discovery-hero-card { transition: none; }
+  .discovery-hero-card__pulse::before { animation: none; }
+}
+
+/* Detail drawer status actions (mark actioned/resolved, dismiss) - a
+   status-tinted chip, same color-mix idiom as every type/status badge in
+   this feature (--btn-color set per-button inline), instead of generic
+   antd Button chrome. */
+.discovery-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--btn-color);
+  background: color-mix(in srgb, var(--btn-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--btn-color) 30%, transparent);
+  cursor: pointer;
+  transition: transform 180ms cubic-bezier(.22,1,.36,1), background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.discovery-action-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--btn-color) 18%, transparent);
+  border-color: color-mix(in srgb, var(--btn-color) 46%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--btn-color) 22%, transparent);
+}
+.discovery-action-btn:active:not(:disabled) { transform: translateY(0); }
+.discovery-action-btn:disabled { opacity: .55; cursor: default; }
+
+/* Dismiss-confirmation modal footer - a plain ghost Cancel next to a solid
+   danger CTA, so the destructive action reads with clear weight instead of
+   antd's default OK/Cancel pair. */
+.discovery-ghost-btn {
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ohnix-text-muted);
+  background: transparent;
+  border: 1px solid var(--ohnix-line-4);
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+.discovery-ghost-btn:hover { color: var(--ohnix-text-primary); border-color: var(--ohnix-line-6); background: var(--ohnix-hover-overlay); }
+.discovery-danger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--ohnix-status-danger), #f43f5e);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--ohnix-status-danger) 35%, transparent);
+  transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+}
+.discovery-danger-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.discovery-danger-btn:disabled { opacity: .6; cursor: default; }
+@media (prefers-reduced-motion: reduce) {
+  .discovery-action-btn, .discovery-danger-btn { transition: none; }
+}
+
 .withholding-concepts-hero {
   display: flex;
   align-items: center;
@@ -684,6 +982,39 @@ body {
   .surface-shine::after,
   .section-glow::before {
     animation: none !important;
+  }
+}
+
+/* Discovery Engine "signal card" - a type-tinted glow bleeding from the
+   icon corner (set per-card via the --glow custom property), same lift-on-
+   hover language as .reveal-card. See components/discoveries/. */
+.discovery-signal-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), border-color 320ms ease;
+}
+
+.discovery-signal-card:hover {
+  transform: translateY(-3px);
+}
+
+.discovery-signal-card::before {
+  content: "";
+  position: absolute;
+  left: -30px;
+  top: -30px;
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  filter: blur(38px);
+  opacity: 0.35;
+  background: var(--glow);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discovery-signal-card {
+    transition: none;
   }
 }
 

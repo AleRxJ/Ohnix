@@ -9,6 +9,7 @@ import AuthContext from "./context/AuthContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { TeamProvider, useTeam } from "./context/TeamContext";
+import { DiscoveryProvider } from "./context/DiscoveryContext";
 import { InventoryTourProvider } from "./context/InventoryTourContext";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
 import OfflineGate from "./components/common/OfflineGate";
@@ -126,6 +127,8 @@ const BlogPost = lazy(() => import("./pages/BlogPost"));
 const Precios = lazy(() => import("./pages/Precios"));
 const SoftwareInventarioPymes = lazy(() => import("./pages/SoftwareInventarioPymes"));
 const FacturacionElectronica = lazy(() => import("./pages/FacturacionElectronica"));
+const FacturacionSinInventario = lazy(() => import("./pages/FacturacionSinInventario"));
+const CertificadosDigitales = lazy(() => import("./pages/CertificadosDigitales"));
 const OhnixVsAlegra = lazy(() => import("./pages/OhnixVsAlegra"));
 const ColaboracionEquipo = lazy(() => import("./pages/ColaboracionEquipo"));
 const Integraciones = lazy(() => import("./pages/Integraciones"));
@@ -142,6 +145,7 @@ const Customers = lazy(() => import("./pages/Customers"));
 const Suppliers = lazy(() => import("./pages/Suppliers"));
 const Category = lazy(() => import("./pages/Category"));
 const Reports = lazy(() => import("./pages/Reports"));
+const Discoveries = lazy(() => import("./pages/Discoveries"));
 const Billing = lazy(() => import("./pages/Billing"));
 const Integrations = lazy(() => import("./pages/Integrations"));
 const Finance = lazy(() => import("./pages/Finance"));
@@ -245,6 +249,10 @@ const requireModuleAccess = (moduleKey) => ({ children }) => {
         : <Navigate to="/dashboard" replace />;
 };
 const RequireReportsAccess = requireModuleAccess("reports");
+// Discoveries piggybacks on the "reports" module permission, same as its
+// backend route (see Backend/routes/discovery.routes.js's own comment) -
+// not an independently grantable module.
+const RequireDiscoveriesAccess = requireModuleAccess("reports");
 const RequireProductsAccess = requireModuleAccess("products");
 const RequireOrdersAccess = requireModuleAccess("orders");
 const RequirePurchasesAccess = requireModuleAccess("purchases");
@@ -275,6 +283,7 @@ function App() {
                     <InventoryTourProvider>
                     <BrowserRouter>
                         <TeamProvider>
+                        <DiscoveryProvider>
                         <UpdateToast />
                         <Toaster
                             position="top-right"
@@ -314,6 +323,12 @@ function App() {
                             <Route path="/software-inventario-pymes" element={<SoftwareInventarioPymes />} />
                             {ELECTRONIC_INVOICING_ENABLED && (
                                 <Route path="/facturacion-electronica-dian" element={<FacturacionElectronica />} />
+                            )}
+                            {ELECTRONIC_INVOICING_ENABLED && (
+                                <Route path="/facturacion-electronica-sin-inventario" element={<FacturacionSinInventario />} />
+                            )}
+                            {ELECTRONIC_INVOICING_ENABLED && (
+                                <Route path="/certificado-digital-dian" element={<CertificadosDigitales />} />
                             )}
                             <Route path="/comparativa/ohnix-vs-alegra" element={<OhnixVsAlegra />} />
                             <Route path="/colaboracion-en-equipo" element={<ColaboracionEquipo />} />
@@ -374,6 +389,7 @@ function App() {
                                 <Route path="suppliers" element={<RequireSuppliersAccess><Suppliers /></RequireSuppliersAccess>} />
                                 <Route path="categories" element={<RequireCategoriesAccess><Category /></RequireCategoriesAccess>} />
                                 <Route path="reports/*" element={<RequireReportsAccess><Reports /></RequireReportsAccess>} />
+                                <Route path="discoveries" element={<RequireDiscoveriesAccess><Discoveries /></RequireDiscoveriesAccess>} />
                                 <Route path="finance" element={<RequireFinanceAccess><Finance /></RequireFinanceAccess>} />
                                 <Route path="accounting" element={<RequireAccountingAccess><OfflineGate><Accounting /></OfflineGate></RequireAccountingAccess>} />
                                 <Route path="fiscal-setup" element={<RequireFiscalSetupAccess><FiscalSetup /></RequireFiscalSetupAccess>} />
@@ -401,6 +417,7 @@ function App() {
                         </div>
                         </StyleBundleGate>
                         </Suspense>
+                        </DiscoveryProvider>
                         </TeamProvider>
                     </BrowserRouter>
                     </InventoryTourProvider>

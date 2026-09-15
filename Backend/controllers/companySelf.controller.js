@@ -269,7 +269,15 @@ export const registerMyCompanyWithItcycle = asyncHandler(async (req, res) => {
     // Legacy provider values may remain until the normalization migration is
     // deployed. They never block provisioning: itcycle is Ohnix's only
     // operational issuer and registration normalizes the company to it.
-    await ensureElectronicInvoicingPlan(req.user.prismaId);
+    //
+    // No plan gate here (product decision, 2026-09): this is also the only
+    // way to obtain an itcycleCompanyId, which every certificate flow below
+    // requires - a company that only wants a digital certificate (no
+    // invoicing) must still be able to reach this step on any plan. Actually
+    // ISSUING invoices stays gated at activateMyItcycleElectronicInvoicing
+    // and at numbering-resolution management below, so this alone doesn't
+    // unlock paid invoicing - a Starter company can register + hold a
+    // certificate but still can't flip electronicInvoicingEnabled on.
     const { dianConfiguration, supplierProfile, numberingResolutions, certificate } = req.body || {};
     assertValidDianConfiguration(dianConfiguration);
     for (const resolution of numberingResolutions || []) assertValidNumberingResolution(resolution);
@@ -309,9 +317,12 @@ export const updateMyItcycleNumberingResolution = asyncHandler(async (req, res) 
     return res.status(200).json(new ApiResponse(200, data, "Resolución actualizada correctamente"));
 });
 
+// No plan gate on this or the FirmaPass wizard steps below (registerMyCompanyWithItcycle's
+// own comment has the full reasoning): a digital certificate is sold and paid
+// for on its own (requireActiveCertificateEntitlement, in createMyViafirmaRequest
+// below) independently of the Negocio plan.
 export const resolveMyFirmaPassOrderNumber = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
-    await ensureElectronicInvoicingPlan(req.user.prismaId);
     const orderNumber = `${req.params.orderNumber || ""}`.trim();
     if (!orderNumber) throw new ApiError(400, "El número de orden es obligatorio.");
     const data = await resolveCompanyFirmaPassOrderNumber({ companyId: company.id, orderNumber });
@@ -327,28 +338,24 @@ export const resolveMyFirmaPassOrderNumber = asyncHandler(async (req, res) => {
 // to the caller's own company - FirmaPass's API has no such scoping itself.
 export const getMyFirmaPassValidationDetail = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
-    await ensureElectronicInvoicingPlan(req.user.prismaId);
     const data = await getCompanyFirmaPassValidationDetail({ companyId: company.id, validationUuid: req.params.validationUuid });
     return res.status(200).json(new ApiResponse(200, data, "Validación de FirmaPass obtenida"));
 });
 
 export const uploadMyFirmaPassRut = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
-    await ensureElectronicInvoicingPlan(req.user.prismaId);
     const data = await uploadCompanyFirmaPassRut({ companyId: company.id, validationUuid: req.params.validationUuid, ...(req.body || {}) });
     return res.status(200).json(new ApiResponse(200, data, "RUT enviado a FirmaPass"));
 });
 
 export const uploadMyFirmaPassArchivo = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
-    await ensureElectronicInvoicingPlan(req.user.prismaId);
     const data = await uploadCompanyFirmaPassArchivo({ companyId: company.id, validationUuid: req.params.validationUuid, ...(req.body || {}) });
     return res.status(200).json(new ApiResponse(200, data, "Documento enviado a FirmaPass"));
 });
 
 export const confirmMyFirmaPassValidation = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
-    await ensureElectronicInvoicingPlan(req.user.prismaId);
     const data = await confirmCompanyFirmaPassValidation({ companyId: company.id, validationUuid: req.params.validationUuid });
     return res.status(200).json(new ApiResponse(200, data, "Validación de FirmaPass confirmada"));
 });
@@ -361,7 +368,6 @@ export const confirmMyFirmaPassValidation = asyncHandler(async (req, res) => {
 // registerMyCompanyWithItcycle's one-shot `certificate` param.
 export const uploadMyCertificate = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
-    await ensureElectronicInvoicingPlan(req.user.prismaId);
     const { provider, certificateIdentifier, p12Base64, password, expiresAt } = req.body || {};
     const data = await uploadCompanyCertificate({ companyId: company.id, provider, certificateIdentifier, p12Base64, password, expiresAt });
     return res.status(200).json(new ApiResponse(200, data, "Certificado cargado correctamente"));
@@ -405,13 +411,14 @@ export const getMyViafirmaTerms = asyncHandler(async (req, res) => {
 
 export const createMyViafirmaRequest = asyncHandler(async (req, res) => {
     const company = await getOwnedCompanyOrThrow(req.user.prismaId);
-    await ensureElectronicInvoicingPlan(req.user.prismaId);
     // DIAN-mandatory: the certificate must be paid for before it can be
     // requested - see CertificateOrder's own doc comment in schema.prisma.
     // Checked here (not deeper in viafirmaProvisioning.service.js) so it
-    // gates the one action that actually costs Ohnix a Viafirma
-    // consumption unit, the same layer ensureElectronicInvoicingPlan
-    // already gates on above.
+    // gates the one action that actually costs Ohnix a Viafirma consumption
+    // unit. This is the ONLY gate on this endpoint (no plan check, product
+    // decision 2026-09 - see registerMyCompanyWithItcycle's comment): a paid
+    // certificate entitlement already covers that cost, independently of
+    // whether the company subscribes to Negocio.
     await requireActiveCertificateEntitlement({ companyId: company.id });
     const { profileKind, subject, identityType, countryCode, identity, emailCertificate, organizationType, termsAccepted } = req.body || {};
     if (termsAccepted !== true) {

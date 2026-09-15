@@ -144,6 +144,24 @@ const FacturacionElectronica = () => {
                         </div>
                     </div>
 
+                    <p className="mt-8 text-sm text-[#6B7880]">
+                        Necesitas un certificado digital para firmar tus documentos electronicos?{" "}
+                        <Link
+                            to="/certificado-digital-dian"
+                            className="text-[#44F3F0] underline underline-offset-2 hover:text-white"
+                        >
+                            Compra y activa tu certificado
+                        </Link>
+                        . Tienes tu propio software (POS, ERP o SaaS) y solo necesitas el motor de facturacion?{" "}
+                        <Link
+                            to="/facturacion-electronica-sin-inventario"
+                            className="text-[#44F3F0] underline underline-offset-2 hover:text-white"
+                        >
+                            Conoce nuestra API de facturacion electronica
+                        </Link>
+                        .
+                    </p>
+
                     <div className="mt-12">
                         <h2 className="text-2xl font-semibold text-white">Preguntas frecuentes</h2>
                         <div className="mt-6 grid gap-4 lg:grid-cols-2">

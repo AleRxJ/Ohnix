@@ -532,6 +532,62 @@ const LandingPage = () => {
                     paymentMethodsNote={t("landing.pricing.payment_methods_note")}
                 />
 
+                {/* Two separate sections, deliberately not merged into one -
+                    a company integrating the invoicing API into its own
+                    POS/ERP/SaaS and someone buying a digital certificate are
+                    generally different buyers, each with their own heading
+                    and CTA rather than sharing a single "also available"
+                    block (see git history for the earlier combined version). */}
+                {ELECTRONIC_INVOICING_ENABLED && (
+                    <ContentSection id="api-facturacion-electronica">
+                        <SectionHeading
+                            eyebrow={t("landing.apiInvoicingTeaser.eyebrow")}
+                            title={t("landing.apiInvoicingTeaser.title")}
+                            description={t("landing.apiInvoicingTeaser.description")}
+                        />
+                        <div className="mt-10 rounded-[28px] border border-white/10 bg-white/[0.03] p-7 md:p-9">
+                            <h3 className="text-xl font-semibold text-white">
+                                {t("landing.apiInvoicingTeaser.card.title")}
+                            </h3>
+                            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#A9B3B8]">
+                                {t("landing.apiInvoicingTeaser.card.description")}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/facturacion-electronica-sin-inventario")}
+                                className="mt-6 inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white hover:border-[#29D8D5]/40"
+                            >
+                                {t("landing.apiInvoicingTeaser.card.cta")}
+                            </button>
+                        </div>
+                    </ContentSection>
+                )}
+
+                {ELECTRONIC_INVOICING_ENABLED && (
+                    <ContentSection id="certificado-digital">
+                        <SectionHeading
+                            eyebrow={t("landing.certificateTeaser.eyebrow")}
+                            title={t("landing.certificateTeaser.title")}
+                            description={t("landing.certificateTeaser.description")}
+                        />
+                        <div className="mt-10 rounded-[28px] border border-[#29D8D5]/25 bg-[#29D8D5]/8 p-7 md:p-9">
+                            <h3 className="text-xl font-semibold text-white">
+                                {t("landing.certificateTeaser.card.title")}
+                            </h3>
+                            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#CFE8E8]">
+                                {t("landing.certificateTeaser.card.description")}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/certificado-digital-dian")}
+                                className="mt-6 inline-flex items-center justify-center rounded-full bg-[#29D8D5] px-5 py-3 text-sm font-semibold text-[#021314] hover:bg-[#44F3F0]"
+                            >
+                                {t("landing.certificateTeaser.card.cta")}
+                            </button>
+                        </div>
+                    </ContentSection>
+                )}
+
                 <FaqSection
                     heading={{
                         eyebrow: t("landing.faq.eyebrow"),

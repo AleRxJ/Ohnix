@@ -5,6 +5,7 @@ import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
+import { useDiscoveries } from "../../context/DiscoveryContext";
 import useSubscription from "../../hooks/useSubscription";
 import { getMenuItems } from "../../data";
 import useI18n from "../../hooks/useI18n";
@@ -18,6 +19,7 @@ const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     const { user, logout } = useContext(AuthContext);
     const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
+    const { openCount: openDiscoveriesCount } = useDiscoveries();
     const { plan } = useSubscription();
     const { t } = useI18n();
     const { isLite } = useTheme();
@@ -90,7 +92,8 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                             hasPermission,
                             ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
                             showFiscalSetup,
-                            needsFiscalSetup
+                            needsFiscalSetup,
+                            openDiscoveriesCount
                         ).map((item) => ({
                             ...item,
                         }))}

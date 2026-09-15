@@ -10,6 +10,7 @@ import firmaPassValidationScheduler from "./utils/firmaPassValidationScheduler.j
 import recurringExpenseScheduler from "./utils/recurringExpenseScheduler.js";
 import receiptTacitaScheduler from "./utils/receiptTacitaScheduler.js";
 import itcycleKeepAliveScheduler from "./utils/itcycleKeepAliveScheduler.js";
+import discoveryScheduler from "./utils/discoveryScheduler.js";
 import { reconcileLegacyApprovedRequests, reconcileStuckPendingPayments } from "./utils/subscriptionReconcile.js";
 import { reconcileStuckCertificateOrderPayments } from "./utils/certificateOrderReconcile.js";
 import { reconcileOrphanedDianTestMatrixRuns } from "./services/dianTestMatrix.service.js";
@@ -100,6 +101,8 @@ connectDB()
                 receiptTacitaScheduler.start();
                 console.log("💤 Starting itcycle-api-dian keep-alive scheduler...");
                 itcycleKeepAliveScheduler.start();
+                console.log("🔎 Starting discovery engine scheduler...");
+                discoveryScheduler.start();
             }
         });
     })
@@ -117,6 +120,7 @@ process.on("SIGTERM", () => {
     recurringExpenseScheduler.stop();
     receiptTacitaScheduler.stop();
     itcycleKeepAliveScheduler.stop();
+    discoveryScheduler.stop();
     process.exit(0);
 });
 
@@ -129,5 +133,6 @@ process.on("SIGINT", () => {
     recurringExpenseScheduler.stop();
     receiptTacitaScheduler.stop();
     itcycleKeepAliveScheduler.stop();
+    discoveryScheduler.stop();
     process.exit(0);
 });

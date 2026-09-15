@@ -30,6 +30,7 @@ import { isValidNit, isValidPrefix, isValidSoftwareId, isValidTechnicalKey } fro
 import FirmaPassSelfService from "./FirmaPassSelfService";
 import ViafirmaSelfService from "./ViafirmaSelfService";
 import DianHabilitacionPanel from "./DianHabilitacionPanel";
+import PlanGate from "../common/PlanGate";
 
 const validatorRule = (isValid, message) => ({
     validator: (_, value) => (!value || isValid(value) ? Promise.resolve() : Promise.reject(new Error(message))),
@@ -68,7 +69,7 @@ const stepFields = [
 // once and keep using. Pre-filling sensible values here (a distinct 2-letter
 // prefix + a wide, decades-long range) turns "figure out what DIAN wants"
 // into "review these defaults and click Agregar."
-const NumberingResolutionForm = ({ documentType, titleKey, hintKey, buttonKey, onAdded, autoAssignPrefix }) => {
+const NumberingResolutionForm = ({ documentType, titleKey, hintKey, buttonKey, onAdded, autoAssignPrefix, planAllowed = true }) => {
     const { t } = useI18n();
     const [form] = Form.useForm();
     const [adding, setAdding] = useState(false);
@@ -102,6 +103,18 @@ const NumberingResolutionForm = ({ documentType, titleKey, hintKey, buttonKey, o
             setAdding(false);
         }
     };
+
+    // addMyItcycleNumberingResolution still requires the Negocio plan
+    // server-side (unlike registerMyCompanyWithItcycle/uploadMyCertificate,
+    // which any plan can now reach) - show the same upsell used everywhere
+    // else a feature is plan-gated instead of letting the click 403.
+    if (!planAllowed) {
+        return (
+            <div className="mt-4">
+                <PlanGate featureKey="electronicInvoicing" />
+            </div>
+        );
+    }
 
     return (
         <Card className="mt-4 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)]">
@@ -219,7 +232,7 @@ const MISSING_READINESS_LABEL_KEYS = {
 // (see updateMyCompany's vatResponsibleEffectiveFrom tracking) and had no
 // edit path left once the wizard disappeared - so it gets its own inline
 // editor instead of just being displayed.
-const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged, onResolutionsChanged }) => {
+const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged, onResolutionsChanged, canEditResolutions = true }) => {
     const { t } = useI18n();
     const [vatResponsible, setVatResponsible] = useState(company?.vatResponsible === "unset" ? undefined : company?.vatResponsible);
     const [savingVat, setSavingVat] = useState(false);
@@ -422,9 +435,21 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged, onResol
                                             </td>
                                             <td className="py-2">
                                                 {canEdit && (
-                                                    <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEditResolution(resolution)}>
-                                                        {t("fiscal_setup.resolutions_edit")}
-                                                    </Button>
+                                                    canEditResolutions ? (
+                                                        <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEditResolution(resolution)}>
+                                                            {t("fiscal_setup.resolutions_edit")}
+                                                        </Button>
+                                                    ) : (
+                                                        // updateMyItcycleNumberingResolution is still Negocio-plan-gated
+                                                        // server-side - a disabled, locked button with the same
+                                                        // upsell copy PlanGate uses is clearer here than letting the
+                                                        // owner open the modal only to have the save fail with a 403.
+                                                        <Tooltip title={t("fiscal_setup.plan_required")}>
+                                                            <Button size="small" type="text" icon={<LockOutlined />} disabled>
+                                                                {t("fiscal_setup.resolutions_edit")}
+                                                            </Button>
+                                                        </Tooltip>
+                                                    )
                                                 )}
                                             </td>
                                         </tr>
@@ -505,7 +530,14 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged, onResol
     );
 };
 
-const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
+// canActivateInvoicing mirrors useSubscription()'s can("electronicInvoicing")
+// from the parent page - true on Negocio/Escala/Enterprise. It no longer
+// gates this whole component (registerMyCompanyWithItcycle,
+// uploadMyCertificate and the certificate provider flows below are reachable
+// on every plan now, matching the backend), only the specific pieces still
+// gated server-side: activating invoicing, and adding/editing a numbering
+// resolution.
+const ElectronicInvoicingSettings = ({ company, onCompanyChanged, canActivateInvoicing = true }) => {
     const { t } = useI18n();
     const [form] = Form.useForm();
     const [step, setStep] = useState(0);
@@ -832,7 +864,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                             }
                         />
                     )}
-                    <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} onResolutionsChanged={refresh} />
+                    <RegisteredConfigSummary company={company} readiness={status.readiness} onCompanyChanged={onCompanyChanged} onResolutionsChanged={refresh} canEditResolutions={canActivateInvoicing} />
                     {showCertificateProviderSelector && (
                         // Two visual weights, same control: unresolved (override still
                         // null, silently defaulting to Viafirma) genuinely needs
@@ -893,6 +925,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                         <FirmaPassSelfService
                             electronicInvoicingEnabled={Boolean(status.electronicInvoicingEnabled)}
                             electronicInvoicingAtRisk={Boolean(status.electronicInvoicingAtRisk)}
+                            canActivate={canActivateInvoicing}
                             onActivated={onCompanyChanged}
                         />
                     )}
@@ -905,6 +938,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                                     hintKey="fiscal_setup.support_document_hint"
                                     buttonKey="fiscal_setup.add_support_document_resolution"
                                     onAdded={refresh}
+                                    planAllowed={canActivateInvoicing}
                                 />
                             )}
                             {isSandbox && !hasResolution("91") && (
@@ -915,6 +949,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                                     buttonKey="fiscal_setup.add_credit_note_resolution"
                                     autoAssignPrefix="NC"
                                     onAdded={refresh}
+                                    planAllowed={canActivateInvoicing}
                                 />
                             )}
                             {isSandbox && !hasResolution("92") && (
@@ -924,6 +959,7 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged }) => {
                                     hintKey="fiscal_setup.debit_note_resolution_hint"
                                     buttonKey="fiscal_setup.add_debit_note_resolution"
                                     autoAssignPrefix="ND"
+                                    planAllowed={canActivateInvoicing}
                                     onAdded={refresh}
                                 />
                             )}
