@@ -61,6 +61,34 @@ export const adminService = {
         return response.data;
     },
 
+    // Cross-company CertificateOrder visibility - see
+    // Backend/services/certificateOrder.service.js#listCertificateOrdersAdmin.
+    async listCertificateOrders() {
+        const response = await api.get("/companies/admin/itcycle/certificate-orders");
+        return response.data;
+    },
+
+    // External API clients: companies with no Ohnix account (their own
+    // POS/ERP/SaaS) provisioned directly on itcycle-api-dian to integrate
+    // against Ohnix's DIAN e-invoicing engine via API - see
+    // Backend/services/externalApiClient.service.js. issueExternalApiClientApiKey
+    // returns the raw key in the response body EXACTLY ONCE; it is never
+    // persisted anywhere, so there is no "get key" call to pair with this.
+    async listExternalApiClients() {
+        const response = await api.get("/companies/admin/itcycle/external-clients");
+        return response.data;
+    },
+
+    async createExternalApiClient(payload) {
+        const response = await api.post("/companies/admin/itcycle/external-clients", payload);
+        return response.data;
+    },
+
+    async issueExternalApiClientApiKey(id, label) {
+        const response = await api.post(`/companies/admin/itcycle/external-clients/${id}/api-keys`, { label });
+        return response.data;
+    },
+
     async listUsers() {
         const response = await api.get("/users/admin/users");
         return response.data;

@@ -32,11 +32,15 @@ const buildFixtureOrders = () => [
     ...buildGroup({ n: 140, returnedCount: 8, channel: "ohnix", customerType: "regular" }), // filler baseline ~5.7%
 ];
 
+// No config rows -> every dimension falls back to its own registry
+// defaultEnabled, i.e. today's actual behavior in an unconfigured
+// environment (see discoveryDimensionConfig.service.js).
 const createFixtureDb = () => {
     const orders = buildFixtureOrders();
     return {
         order: { findMany: async () => orders },
         pointOfSale: { findMany: async () => [{ id: "pos1", name: "Sede Principal" }] },
+        discoveryDimensionConfig: { findMany: async () => [] },
     };
 };
 

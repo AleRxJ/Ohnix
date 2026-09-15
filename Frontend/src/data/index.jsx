@@ -21,6 +21,7 @@ import {
     ExperimentOutlined,
     TagsOutlined,
     ApiOutlined,
+    CloudServerOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 
@@ -195,6 +196,25 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             key: "admin-firmapass-validations",
             icon: <SafetyCertificateOutlined />,
             label: <Link to="/admin/firmapass-validations">{t("common.admin_firmapass_validations")}</Link>,
+        });
+        items.push({
+            key: "admin-certificate-orders",
+            // Distinct from admin-firmapass-validations right above (which
+            // uses SafetyCertificateOutlined too) - two adjacent identical
+            // icons in the same submenu read as one item at a glance. This
+            // page is about CertificateOrder payments/expirations, so the
+            // billing-flavored icon (same one "billing" uses above) fits.
+            icon: <CreditCardOutlined />,
+            label: <Link to="/admin/certificate-orders">{t("common.admin_certificate_orders")}</Link>,
+        });
+        items.push({
+            key: "admin-api-clients",
+            // Companies with no Ohnix account calling itcycle-api-dian
+            // directly via their own API key - distinct concept from every
+            // other item in this submenu (all of which are about Ohnix's
+            // own tenants), so it gets its own icon.
+            icon: <CloudServerOutlined />,
+            label: <Link to="/admin/api-clients">{t("common.admin_api_clients")}</Link>,
         });
         items.push({
             key: "admin-dian-test-matrix",

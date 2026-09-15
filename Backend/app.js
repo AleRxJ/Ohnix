@@ -149,6 +149,7 @@ import publicSalesQuotationRouter from "./routes/publicSalesQuotation.routes.js"
 import orderRouter from "./routes/order.routes.js";
 import reportRouter from "./routes/report.routes.js";
 import discoveryRouter from "./routes/discovery.routes.js";
+import discoveryDimensionConfigRouter from "./routes/discoveryDimensionConfig.routes.js";
 import schedulerRouter from "./routes/scheduler.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import pricingRouter from "./routes/pricing.routes.js";
@@ -219,6 +220,7 @@ app.use("/api/v1/finance", financeRouter);
 app.use("/api/v1/accounting", accountingRouter);
 app.use("/api/v1/assistant", assistantRouter);
 app.use("/api/v1/discoveries", discoveryRouter);
+app.use("/api/v1/discovery-dimension-config", discoveryDimensionConfigRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________

@@ -63,6 +63,36 @@ export const createOrReuseMyCertificateOrder = async ({ companyId, requestedByUs
 export const listMyCertificateOrders = ({ companyId }) =>
     prisma.certificateOrder.findMany({ where: { companyId }, orderBy: { createdAt: "desc" } });
 
+// Cross-company visibility for Ohnix ops (company.controller.js's
+// listCertificateOrdersAdmin) - "who has a certificate, what provider,
+// payment status, expiration" across every company, not just one. Read-only:
+// unlike getActiveCertificateEntitlement, this deliberately does NOT call
+// resolvePendingCertificateOrderPaymentStatus first - reconciling every
+// pending order against ePayco on every admin page load would be a lot of
+// outbound calls for a list view, and a stale "pending" row here is a minor
+// display staleness, not a gate blocking anything.
+export const listCertificateOrdersAdmin = () =>
+    prisma.certificateOrder.findMany({
+        orderBy: { createdAt: "desc" },
+        include: {
+            company: {
+                select: {
+                    id: true,
+                    name: true,
+                    legalName: true,
+                    taxIdentification: true,
+                    taxIdentificationDv: true,
+                    countryCode: true,
+                    electronicInvoicingProvider: true,
+                    electronicInvoicingEnabled: true,
+                },
+            },
+            requestedByUser: {
+                select: { id: true, username: true, email: true },
+            },
+        },
+    });
+
 const addYears = (date, years) => {
     const result = new Date(date);
     result.setFullYear(result.getFullYear() + years);

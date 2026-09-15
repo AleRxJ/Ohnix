@@ -21,6 +21,8 @@ import { runSupplierDelayConnectionDetector } from "../services/detectors/suppli
 import { runTrajectoryShiftDetector } from "../services/detectors/trajectoryShift.detector.js";
 import { runNewPatternReturnRateDetector } from "../services/detectors/newPatternReturnRate.detector.js";
 import { runCrossFactorCorrelationDetector } from "../services/detectors/crossFactorCorrelation.detector.js";
+import { writeEinvoiceRejectionRateMetric } from "../services/metrics/einvoiceRejectionRate.metric.js";
+import { writeMonthlyPurchaseSpendMetric } from "../services/metrics/monthlyPurchaseSpend.metric.js";
 import { checkDuePredictions } from "../services/discoveryLearning.service.js";
 
 // New detectors register here as Fase 2 adds them - each just needs to
@@ -35,6 +37,15 @@ const DETECTORS = [
     runCrossFactorCorrelationDetector,
 ];
 
+// Runs BEFORE the detectors above, once per account, so their
+// MetricSnapshot writes are fresh when trajectoryShift.detector.js's
+// generic "scan whatever else is in MetricSnapshot" pass runs this same
+// tick. A future module gets covered by the Discovery Engine by adding
+// itself here - a one-line registration, not a new detector - see
+// services/metrics/einvoiceRejectionRate.metric.js's header comment for
+// the exact shape a new entry should take.
+const METRIC_WRITERS = [writeEinvoiceRejectionRateMetric, writeMonthlyPurchaseSpendMetric];
+
 // "Has activity" is approximated by "has placed at least one Order ever",
 // so brand-new/empty accounts aren't scanned for nothing every night.
 const getActiveAccountIds = async () => {
@@ -48,8 +59,18 @@ export const runDiscoveryEngineOnce = async () => {
     let updated = 0;
     let skipped = 0;
     let failed = 0;
+    let metricWritersFailed = 0;
 
     for (const accountId of accountIds) {
+        for (const writeMetric of METRIC_WRITERS) {
+            try {
+                await writeMetric({ accountId });
+            } catch (err) {
+                metricWritersFailed += 1;
+                console.error(`[discovery-scheduler] metric writer failed for account ${accountId}:`, err?.message);
+            }
+        }
+
         for (const detector of DETECTORS) {
             try {
                 const result = await detector({ accountId });
@@ -72,7 +93,7 @@ export const runDiscoveryEngineOnce = async () => {
 
     const learning = await checkDuePredictions();
 
-    return { accounts: accountIds.length, created, updated, skipped, failed, learning };
+    return { accounts: accountIds.length, created, updated, skipped, failed, metricWritersFailed, learning };
 };
 
 class DiscoveryScheduler {
@@ -123,7 +144,7 @@ class DiscoveryScheduler {
             try {
                 const result = await this._runAndRecord();
                 console.log(
-                    `[discovery-scheduler] accounts=${result.accounts} created=${result.created} updated=${result.updated} skipped=${result.skipped} failed=${result.failed}`
+                    `[discovery-scheduler] accounts=${result.accounts} created=${result.created} updated=${result.updated} skipped=${result.skipped} failed=${result.failed} metricWritersFailed=${result.metricWritersFailed}`
                 );
                 console.log(
                     `[discovery-scheduler] learning: due=${result.learning.due} checked=${result.learning.checked} failed=${result.learning.failed}`

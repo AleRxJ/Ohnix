@@ -17,4 +17,15 @@ export const discoveryService = {
         const response = await api.patch(`/discoveries/${id}/explanation`, { explanation, tag });
         return response.data.data;
     },
+    // Admin-only - see Backend/controllers/discoveryDimensionConfig.controller.js.
+    // Lets an operator turn a registered-but-dormant search dimension on (or
+    // a default-on one off) for a config-driven detector without a deploy.
+    listDimensionConfig: async (detectorKey) => {
+        const response = await api.get("/discovery-dimension-config", { params: { detectorKey } });
+        return response.data.data;
+    },
+    setDimensionConfig: async ({ detectorKey, dimensionKey, enabled }) => {
+        const response = await api.patch("/discovery-dimension-config", { detectorKey, dimensionKey, enabled });
+        return response.data.data;
+    },
 };

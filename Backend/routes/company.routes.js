@@ -11,6 +11,10 @@ import {
     listFirmaPassValidationsAdmin,
     getNextFirmaPassValidationAdmin,
     getFirmaPassValidationDetailAdmin,
+    listCertificateOrdersAdmin,
+    createExternalApiClientAdmin,
+    listExternalApiClientsAdmin,
+    issueExternalApiClientApiKeyAdmin,
 } from "../controllers/company.controller.js";
 
 const router = Router();
@@ -26,5 +30,14 @@ router.route("/admin/:companyId/itcycle/firmapass/status").get(getCompanyFirmaPa
 router.route("/admin/itcycle/firmapass/validations").get(listFirmaPassValidationsAdmin);
 router.route("/admin/itcycle/firmapass/validations/nueva-solicitud").get(getNextFirmaPassValidationAdmin);
 router.route("/admin/itcycle/firmapass/validations/:validationUuid").get(getFirmaPassValidationDetailAdmin);
+// Cross-company CertificateOrder visibility (every company, not just one) -
+// see Backend/services/certificateOrder.service.js#listCertificateOrdersAdmin.
+router.route("/admin/itcycle/certificate-orders").get(listCertificateOrdersAdmin);
+// External API clients: companies with no Ohnix account/Company row (their
+// own POS/ERP/SaaS) provisioned directly on itcycle-api-dian to integrate
+// against Ohnix's DIAN e-invoicing engine via API - see
+// Backend/services/externalApiClient.service.js.
+router.route("/admin/itcycle/external-clients").get(listExternalApiClientsAdmin).post(createExternalApiClientAdmin);
+router.route("/admin/itcycle/external-clients/:id/api-keys").post(issueExternalApiClientApiKeyAdmin);
 
 export default router;

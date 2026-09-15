@@ -314,6 +314,9 @@ model User {
 
   certificateOrdersRequested CertificateOrder[]
 
+  externalApiClientsCreated ExternalApiClient[]
+  externalApiKeyIssuances   ExternalApiClientKeyIssuance[]
+
   receivedInvoiceReceiptsCreated ReceivedInvoiceReceipt[]
 
   sessions UserSession[]
@@ -623,6 +626,59 @@ model CertificateOrder {
 
   @@index([companyId, paymentStatus])
   @@map("certificate_orders")
+}
+
+// A company with NO Ohnix account/Company row - their own POS/ERP/SaaS -
+// that wants to integrate itcycle-api-dian's DIAN e-invoicing engine
+// directly via API, bypassing Ohnix's own app entirely. Distinct from
+// Company: this row is Ohnix-side bookkeeping only (who did an Ohnix admin
+// provision on itcycle-api-dian, and when), never a tenant of Ohnix itself.
+// Deliberately carries NO api-key column of any kind (encrypted or not) -
+// unlike Company.itcycleApiKeyCiphertext, Ohnix's backend never needs to
+// call itcycle-api-dian on this client's behalf, so there is nothing here
+// for it to decrypt and reuse later. See
+// Backend/services/externalApiClient.service.js.
+model ExternalApiClient {
+  id                  String   @id @default(cuid())
+  companyName         String   @map("company_name")
+  taxIdentification   String   @map("tax_identification")
+  taxIdentificationDv String   @map("tax_identification_dv")
+  personType          String   @map("person_type")
+  contactName         String?  @map("contact_name")
+  contactEmail        String?  @map("contact_email")
+  contactPhone        String?  @map("contact_phone")
+  notes               String?  @db.Text
+  // itcycle-api-dian's own company id (from provisionItcycleCompany) - the
+  // credential this client actually integrates against lives entirely on
+  // itcycle-api-dian's side from here on.
+  itcycleCompanyId    String   @unique @map("itcycle_company_id")
+  createdByUserId     String   @map("created_by_user_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  createdByUser   User                            @relation(fields: [createdByUserId], references: [id])
+  apiKeyIssuances ExternalApiClientKeyIssuance[]
+
+  @@map("external_api_clients")
+}
+
+// An audit trail of "a raw itcycle-api-dian API key was issued for this
+// external client, by this admin, at this time" - deliberately NEVER the key
+// value itself (see issueApiKeyForExternalClient's own comment). The raw key
+// is shown to the admin exactly once in the API response/UI and then gone
+// for good, same as itcycle-api-dian's own one-time reveal for Company.
+model ExternalApiClientKeyIssuance {
+  id                  String   @id @default(cuid())
+  externalApiClientId String   @map("external_api_client_id")
+  label               String?
+  issuedByUserId      String   @map("issued_by_user_id")
+  issuedAt            DateTime @default(now()) @map("issued_at")
+
+  externalApiClient ExternalApiClient @relation(fields: [externalApiClientId], references: [id])
+  issuedByUser      User              @relation(fields: [issuedByUserId], references: [id])
+
+  @@index([externalApiClientId])
+  @@map("external_api_client_key_issuances")
 }
 
 model Subscription {
@@ -1211,6 +1267,30 @@ model SystemSetting {
   updatedAt                          DateTime @updatedAt @map("updated_at")
 
   @@map("system_settings")
+}
+
+// Turns a registered-but-not-yet-searched dimension in
+// crossFactorCorrelation.detector.js's DIMENSION_REGISTRY on or off,
+// globally, WITHOUT a deploy - see that file's header comment for why this
+// exists (config-as-data instead of the detector writing its own code).
+// Absence of a row for a given (detectorKey, dimensionKey) means "use that
+// registry entry's own defaultEnabled" - so an empty table is identical to
+// today's hardcoded behavior, no seed/migration data required for this to
+// be safe on day one. dimensionKey must name an entry the code registry
+// actually defines; this table can only narrow or widen WHICH of those
+// already-reviewed extractors run, never add extraction logic of its own -
+// that distinction is the whole safety argument for this being data, not
+// code that writes itself.
+model DiscoveryDimensionConfig {
+  id           String   @id @default(cuid())
+  detectorKey  String   @map("detector_key")
+  dimensionKey String   @map("dimension_key")
+  enabled      Boolean
+  updatedById  String?  @map("updated_by")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([detectorKey, dimensionKey])
+  @@map("discovery_dimension_configs")
 }
 
 model Purchase {

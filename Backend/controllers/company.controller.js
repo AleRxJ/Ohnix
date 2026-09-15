@@ -13,6 +13,12 @@ import {
     confirmCompanyFirmaPassValidation,
     getCompanyFirmaPassStatus,
 } from "../services/firmaPassProvisioning.service.js";
+import { listCertificateOrdersAdmin as listCertificateOrdersAdminService } from "../services/certificateOrder.service.js";
+import {
+    createExternalApiClient,
+    listExternalApiClients,
+    issueApiKeyForExternalClient,
+} from "../services/externalApiClient.service.js";
 
 // Deliberately distinct from companyCountry.service.js#normalizeCountryCode:
 // that one just normalizes an already-stored value for fiscal checks, while
@@ -362,6 +368,86 @@ export const getCompanyFirmaPassStatusAdmin = asyncHandler(async (req, res) => {
     const { companyId } = req.params;
     const data = await getCompanyFirmaPassStatus({ companyId, requesterRole: req.user.role });
     return res.status(200).json(new ApiResponse(200, data, "FirmaPass status retrieved"));
+});
+
+// Cross-company CertificateOrder visibility for Ohnix ops - see
+// Backend/services/certificateOrder.service.js#listCertificateOrdersAdmin.
+// Unlike listFirmaPassValidationsAdmin (FirmaPass's own alliance-wide queue),
+// this reads Ohnix's own CertificateOrder rows, so it naturally spans every
+// company already; no per-company scoping to add.
+export const listCertificateOrdersAdmin = asyncHandler(async (_req, res) => {
+    const data = await listCertificateOrdersAdminService();
+    return res.status(200).json(new ApiResponse(200, data, "Certificate orders retrieved"));
+});
+
+// Provisions a company with NO Ohnix account (their own POS/ERP/SaaS) on
+// itcycle-api-dian directly, so it can integrate against Ohnix's DIAN
+// e-invoicing engine via API without ever becoming an Ohnix tenant. See
+// Backend/services/externalApiClient.service.js.
+export const createExternalApiClientAdmin = asyncHandler(async (req, res, next) => {
+    const {
+        companyName,
+        taxIdentification,
+        taxIdentificationDv,
+        personType,
+        contactName,
+        contactEmail,
+        contactPhone,
+        notes,
+    } = req.body || {};
+
+    if (!companyName?.trim()) {
+        return next(new ApiError(400, "companyName is required"));
+    }
+    if (!taxIdentification?.trim()) {
+        return next(new ApiError(400, "taxIdentification is required"));
+    }
+    const normalizedDv = `${taxIdentificationDv ?? ""}`.trim();
+    if (!normalizedDv) {
+        return next(new ApiError(400, "taxIdentificationDv is required"));
+    }
+    if (!personType?.trim()) {
+        return next(new ApiError(400, "personType is required"));
+    }
+
+    const client = await createExternalApiClient({
+        companyName: companyName.trim(),
+        taxIdentification: taxIdentification.trim(),
+        taxIdentificationDv: normalizedDv,
+        personType: personType.trim(),
+        contactName: contactName?.trim() || null,
+        contactEmail: contactEmail?.trim().toLowerCase() || null,
+        contactPhone: contactPhone?.trim() || null,
+        notes: notes?.trim() || null,
+        createdByUserId: req.user.prismaId,
+    });
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, client, "External API client created successfully"));
+});
+
+export const listExternalApiClientsAdmin = asyncHandler(async (_req, res) => {
+    const data = await listExternalApiClients();
+    return res.status(200).json(new ApiResponse(200, data, "External API clients retrieved"));
+});
+
+// Returns the raw itcycle-api-dian API key in the response body EXACTLY
+// ONCE - see issueApiKeyForExternalClient's own comment for why it is never
+// persisted anywhere in Ohnix's DB.
+export const issueExternalApiClientApiKeyAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { label } = req.body || {};
+
+    const rawKey = await issueApiKeyForExternalClient({
+        externalApiClientId: id,
+        label: label?.trim() || null,
+        issuedByUserId: req.user.prismaId,
+    });
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, { apiKey: rawKey }, "API key issued successfully"));
 });
 
 export const updateCompanyLogoAdmin = asyncHandler(async (req, res, next) => {

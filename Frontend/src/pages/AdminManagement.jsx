@@ -15,6 +15,7 @@ import {
     CompaniesTab,
     UsersTab,
     ColombiaTaxSettingsTab,
+    DiscoveryEngineTab,
     CompanyFormModal,
     UserFormModal,
     AssignCompanyModal,
@@ -310,6 +311,11 @@ const AdminManagement = () => {
                             key: "colombia-tax",
                             label: t("admin.colombia_tax_tab"),
                             children: <ColombiaTaxSettingsTab />,
+                        },
+                        {
+                            key: "discovery-engine",
+                            label: t("admin.discovery_engine_tab"),
+                            children: <DiscoveryEngineTab />,
                         },
                     ]}
                 />

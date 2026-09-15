@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal, Progress } from "antd";
-import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined, PartitionOutlined, UploadOutlined } from "@ant-design/icons";
+import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal, Progress, Upload } from "antd";
+import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined, PartitionOutlined, UploadOutlined, DownloadOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
@@ -130,6 +130,19 @@ const ACCOUNTING_ERROR_CODES = {
 
 const accountingErrorMessage = (error, t, fallbackKey = "accounting.failed") =>
     resolveApiErrorMessage(error, t, ACCOUNTING_ERROR_CODES, fallbackKey);
+
+// Built entirely from data already on screen (no extra request), so unlike
+// Reports' export buttons this doesn't call exportReport.js's authorize
+// endpoint - that one is gated behind requireModulePermission("reports"),
+// which a user with only accounting access wouldn't have.
+const exportAccountingExcel = (filename, sheets) => {
+    const workbook = XLSX.utils.book_new();
+    sheets.forEach(({ name, rows }) => {
+        const worksheet = XLSX.utils.aoa_to_sheet(rows);
+        XLSX.utils.book_append_sheet(workbook, worksheet, name.slice(0, 31));
+    });
+    XLSX.writeFile(workbook, filename);
+};
 
 const { RangePicker } = DatePicker;
 
@@ -327,6 +340,19 @@ const AccountLedgerDrawer = ({ account, onClose }) => {
         { title: t("accounting.ledger_col_running_balance"), dataIndex: "running_balance", key: "running_balance", align: "right", render: (v) => formatCurrency(v) },
     ];
 
+    const exportLedger = () => {
+        const header = [t("accounting.col_date"), t("accounting.col_description"), t("accounting.col_source_type"), t("accounting.lines_col_debit"), t("accounting.lines_col_credit"), t("accounting.ledger_col_running_balance")];
+        const rows = (ledger?.movements || []).map((m) => [
+            dayjs(m.date).format("DD/MM/YYYY"),
+            localizedEntryDescription(m, t),
+            t(SOURCE_TYPE_LABEL_KEYS[m.source_type] || m.source_type),
+            m.debit || 0,
+            m.credit || 0,
+            m.running_balance,
+        ]);
+        exportAccountingExcel(`libro-mayor-${account.code}-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.xlsx`, [{ name: account.code, rows: [header, ...rows] }]);
+    };
+
     return (
         <Drawer
             rootClassName="accounting-drawer"
@@ -346,6 +372,9 @@ const AccountLedgerDrawer = ({ account, onClose }) => {
                 />
                 <Button icon={<CalendarOutlined />} onClick={fetchLedger} loading={loading} block={isMobile}>
                     {t("reports.refresh_report")}
+                </Button>
+                <Button icon={<DownloadOutlined />} disabled={!ledger?.movements?.length} onClick={exportLedger} block={isMobile}>
+                    {t("reports.export_to_excel")}
                 </Button>
             </div>
             {ledger && (
@@ -393,7 +422,7 @@ const AccountLedgerDrawer = ({ account, onClose }) => {
                     className="module-dark-table"
                     size="small"
                     scroll={{ x: "max-content" }}
-                    locale={{ emptyText: <Empty description={t("accounting.ledger_empty")} /> }}
+                    locale={{ emptyText: <EmptyState compact title={t("accounting.ledger_empty")} /> }}
                 />
             )}
         </Drawer>
@@ -880,7 +909,7 @@ const RecurringExpensesTab = () => {
     };
 
     return <>
-        <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("accounting.recurring_expense_help")} />
+        <AccountingSectionGuide sectionKey="recurring-expenses" title={t("accounting.guide_recurring_title")} summary={t("accounting.tab_recurring_expenses_caption")} steps={[t("accounting.guide_recurring_step_1"), t("accounting.guide_recurring_step_2")]} result={t("accounting.guide_recurring_result")} concepts={[{ label: t("accounting.recurring_expense_day_of_month"), help: t("accounting.recurring_expense_day_of_month_help") }]} />
         <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.recurring_expense_new")}</Button>}</div>
         <Table
             className="module-dark-table"
@@ -1148,7 +1177,7 @@ const ManualVouchersTab = () => {
                     ),
                 }}
             />
-            <Modal className="accounting-modal" title={editing ? t("accounting.voucher_edit") : t("accounting.voucher_new")} open={open} onCancel={() => setOpen(false)} onOk={save} confirmLoading={saving} width={980} destroyOnHidden>
+            <Modal className="accounting-modal" title={editing ? t("accounting.voucher_edit") : t("accounting.voucher_new")} open={open} onCancel={() => setOpen(false)} onOk={save} confirmLoading={saving} okButtonProps={{ disabled: !balanced }} width={980} destroyOnHidden>
                 <Form form={form} layout="vertical">
                     <Alert className="dark-alert dark-alert-purple mb-4" type="info" showIcon message={t("accounting.voucher_editor_guidance")} />
                     <Row gutter={16}>
@@ -1198,6 +1227,9 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
     const [costCenters, setCostCenters] = useState([]);
     const [costCenterId, setCostCenterId] = useState();
     const [loading, setLoading] = useState(false);
+    const [reverseEntry, setReverseEntry] = useState(null);
+    const [reverseSaving, setReverseSaving] = useState(false);
+    const [reverseForm] = Form.useForm();
 
     const fetchEntries = async (overrides = {}) => {
         // "sourceId" in overrides (not a !== undefined check) so an explicit
@@ -1269,6 +1301,20 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
         { title: t("common.actions"), key: "actions", render: (_, entry) => !["period_close", "period_reopen", "period_reclose", "manual_journal_reversal"].includes(entry.source_type) ? <Button size="small" danger onClick={() => { setReverseEntry(entry); reverseForm.setFieldsValue({ entry_date: dayjs() }); }}>{t("accounting.journal_reverse")}</Button> : null },
     ];
 
+    const exportJournal = () => {
+        const header = [t("accounting.col_date"), t("accounting.col_description"), t("accounting.col_source_type"), t("accounting.lines_col_account"), t("accounting.cost_center"), t("accounting.lines_col_debit"), t("accounting.lines_col_credit")];
+        const rows = entries.flatMap((entry) => entry.lines.map((line) => [
+            dayjs(entry.entry_date).format("DD/MM/YYYY"),
+            localizedEntryDescription(entry, t),
+            t(SOURCE_TYPE_LABEL_KEYS[entry.source_type] || entry.source_type),
+            `${line.chart_account.code} · ${line.chart_account.name}`,
+            line.cost_center ? `${line.cost_center.code} · ${line.cost_center.name}` : "",
+            line.debit || 0,
+            line.credit || 0,
+        ]));
+        exportAccountingExcel(`libro-diario-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.xlsx`, [{ name: t("accounting.tab_journal"), rows: [header, ...rows] }]);
+    };
+
     return (
         <>
             <AccountingSectionGuide sectionKey="journal" title={t("accounting.guide_journal_title")} summary={t("accounting.tab_journal_caption")} steps={[t("accounting.guide_journal_step_1"), t("accounting.guide_journal_step_2")]} result={t("accounting.guide_journal_result")} concepts={[{ label: t("accounting.lines_col_debit"), help: t("accounting.guide_debit_help") }, { label: t("accounting.lines_col_credit"), help: t("accounting.guide_credit_help") }]} />
@@ -1286,6 +1332,9 @@ const JournalTab = ({ initialSourceType, initialSourceId }) => {
                     <Select allowClear showSearch optionFilterProp="label" placeholder={t("accounting.cost_center")} className="w-full sm:w-56" value={costCenterId} onChange={setCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
                     <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={() => fetchEntries()} loading={loading}>
                         {t("reports.refresh_report")}
+                    </Button>
+                    <Button className="w-full sm:w-auto" icon={<DownloadOutlined />} disabled={!entries.length} onClick={exportJournal}>
+                        {t("reports.export_to_excel")}
                     </Button>
                     {sourceId && (
                         <Tag
@@ -1596,6 +1645,36 @@ const FinancialStatementsTab = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const exportIncomeStatement = () => {
+        const header = [t("accounting.col_code"), t("accounting.col_account"), t("accounting.col_amount")];
+        const section = (title, items) => [[title], ...items.map((item) => [item.code, item.name, item.amount]), []];
+        const rows = [
+            ...section(t("accounting.section_revenue"), income.revenue || []),
+            ...section(t("accounting.section_costs"), income.costs || []),
+            ...section(t("accounting.section_expenses"), income.expenses || []),
+            [t("accounting.total_revenue"), "", income.total_revenue],
+            [t("accounting.total_costs"), "", income.total_costs],
+            [t("accounting.gross_profit"), "", income.gross_profit],
+            [t("accounting.total_expenses"), "", income.total_expenses],
+            [t("accounting.net_income"), "", income.net_income],
+        ];
+        exportAccountingExcel(`estado-de-resultados-${incomeRange[0].format("YYYY-MM-DD")}_${incomeRange[1].format("YYYY-MM-DD")}.xlsx`, [{ name: t("accounting.income_statement_title"), rows: [header, ...rows] }]);
+    };
+
+    const exportBalanceSheet = () => {
+        const header = [t("accounting.col_code"), t("accounting.col_account"), t("accounting.col_amount")];
+        const section = (title, items) => [[title], ...items.map((item) => [item.code, item.name, item.amount]), []];
+        const rows = [
+            ...section(t("accounting.section_assets"), balance.assets || []),
+            ...section(t("accounting.section_liabilities"), balance.liabilities || []),
+            ...section(t("accounting.section_equity"), [...(balance.equity || []), { code: "", name: t("accounting.current_earnings_row"), amount: balance.current_earnings }]),
+            [t("accounting.total_assets"), "", balance.total_assets],
+            [t("accounting.total_liabilities"), "", balance.total_liabilities],
+            [t("accounting.total_equity"), "", balance.total_equity],
+        ];
+        exportAccountingExcel(`balance-general-${asOfDate.format("YYYY-MM-DD")}.xlsx`, [{ name: t("accounting.balance_sheet_title"), rows: [header, ...rows] }]);
+    };
+
     const accountColumns = [
         { title: t("accounting.col_code"), dataIndex: "code", key: "code", width: 100 },
         {
@@ -1645,6 +1724,9 @@ const FinancialStatementsTab = () => {
                         <Button onClick={toggleComparison} loading={comparisonLoading}>
                             {comparisonOpen ? t("accounting.income_statement_compare_hide") : t("accounting.income_statement_compare_show")}
                         </Button>
+                        <Button icon={<DownloadOutlined />} disabled={!income} onClick={exportIncomeStatement}>
+                            {t("reports.export_to_excel")}
+                        </Button>
                     </div>
                 </Card>
                 {comparisonOpen && (
@@ -1658,7 +1740,7 @@ const FinancialStatementsTab = () => {
                             pagination={false}
                             size="small"
                             scroll={{ x: "max-content" }}
-                            locale={{ emptyText: t("accounting.empty_cost_centers_title") }}
+                            locale={{ emptyText: <EmptyState compact title={t("accounting.empty_cost_centers_title")} /> }}
                             columns={[
                                 { title: t("accounting.cost_center"), render: (_, row) => (row.cost_center ? `${row.cost_center.code} · ${row.cost_center.name}` : t("accounting.cost_center_none")) },
                                 { title: t("accounting.total_revenue"), dataIndex: "total_revenue", align: "right", render: (v) => formatCurrency(v) },
@@ -1706,17 +1788,17 @@ const FinancialStatementsTab = () => {
                         <Row gutter={[16, 16]}>
                             <Col xs={24} md={8}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_revenue")}>
-                                    <Table columns={accountColumns} dataSource={income.revenue} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} />
+                                    <Table columns={accountColumns} dataSource={income.revenue} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} locale={{ emptyText: <EmptyState compact title={t("common.no_data")} subtitle={t("accounting.section_revenue_empty")} /> }} />
                                 </Card>
                             </Col>
                             <Col xs={24} md={8}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_costs")}>
-                                    <Table columns={accountColumns} dataSource={income.costs} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} />
+                                    <Table columns={accountColumns} dataSource={income.costs} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} locale={{ emptyText: <EmptyState compact title={t("common.no_data")} subtitle={t("accounting.section_costs_empty")} /> }} />
                                 </Card>
                             </Col>
                             <Col xs={24} md={8}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_expenses")}>
-                                    <Table columns={accountColumns} dataSource={income.expenses} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} locale={{ emptyText: t("accounting.section_expenses_empty") }} />
+                                    <Table columns={accountColumns} dataSource={income.expenses} rowKey="code" pagination={false} loading={incomeLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} locale={{ emptyText: <EmptyState compact title={t("common.no_data")} subtitle={t("accounting.section_expenses_empty")} /> }} />
                                 </Card>
                             </Col>
                         </Row>
@@ -1732,6 +1814,9 @@ const FinancialStatementsTab = () => {
                         <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={balanceCostCenterId} onChange={setBalanceCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
                         <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)]" icon={<CalendarOutlined />} onClick={fetchBalance} loading={balanceLoading}>
                             {t("reports.refresh_report")}
+                        </Button>
+                        <Button icon={<DownloadOutlined />} disabled={!balance} onClick={exportBalanceSheet}>
+                            {t("reports.export_to_excel")}
                         </Button>
                     </div>
                 </Card>
@@ -1755,12 +1840,12 @@ const FinancialStatementsTab = () => {
                         <Row gutter={[16, 16]}>
                             <Col xs={24} md={8}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_assets")}>
-                                    <Table columns={accountColumns} dataSource={balance.assets} rowKey="code" pagination={false} loading={balanceLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} />
+                                    <Table columns={accountColumns} dataSource={balance.assets} rowKey="code" pagination={false} loading={balanceLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} locale={{ emptyText: <EmptyState compact title={t("common.no_data")} subtitle={t("accounting.section_assets_empty")} /> }} />
                                 </Card>
                             </Col>
                             <Col xs={24} md={8}>
                                 <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.section_liabilities")}>
-                                    <Table columns={accountColumns} dataSource={balance.liabilities} rowKey="code" pagination={false} loading={balanceLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} />
+                                    <Table columns={accountColumns} dataSource={balance.liabilities} rowKey="code" pagination={false} loading={balanceLoading} size="small" className="module-dark-table" scroll={{ x: "max-content" }} locale={{ emptyText: <EmptyState compact title={t("common.no_data")} subtitle={t("accounting.section_liabilities_empty")} /> }} />
                                 </Card>
                             </Col>
                             <Col xs={24} md={8}>
@@ -2067,7 +2152,7 @@ const WithholdingReportCard = () => {
             <Row gutter={[12, 12]} className="mb-5">{[["base", "withholding_report_total_base"], ["withheld", "withholding_report_caused"], ["reversed", "withholding_report_reversed"], ["net", "withholding_report_current"]].map(([key, label]) => <Col xs={12} lg={6} key={key}><div className={`withholding-report-kpi withholding-report-kpi--${key}`}><span>{t(`accounting.${label}`)}</span><strong>{formatCurrency(report.totals?.[key] || 0)}</strong></div></Col>)}</Row>
             <Table className="module-dark-table" loading={loading} rowKey="id" columns={columns} dataSource={report.rows || []} scroll={{ x: 1180 }} pagination={{ pageSize: 8, hideOnSinglePage: true }} locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<div><strong>{t("accounting.withholding_report_empty_title")}</strong><p>{t("accounting.withholding_report_empty_desc")}</p></div>} /> }} />
         </Card>
-        <Drawer className="accounting-drawer withholding-certificate-drawer" width={isMobile ? "100%" : 620} open={Boolean(certificate)} onClose={() => setCertificate(null)} title={t("accounting.withholding_certificate_title")} extra={<Button type="primary" icon={<FileTextOutlined />} loading={pdfLoading} onClick={downloadCertificate}>{t("accounting.withholding_certificate_download")}</Button>}>
+        <Drawer rootClassName="accounting-drawer" className="withholding-certificate-drawer" width={isMobile ? "100%" : 620} open={Boolean(certificate)} onClose={() => setCertificate(null)} title={t("accounting.withholding_certificate_title")} extra={<Button type="primary" icon={<FileTextOutlined />} loading={pdfLoading} onClick={downloadCertificate}>{t("accounting.withholding_certificate_download")}</Button>}>
             {certificate && <div className="withholding-certificate" id="withholding-certificate-print"><div className="withholding-certificate__brand"><span>OHNIX</span><small>{t("accounting.withholding_certificate_generated")}</small></div><h2>{t("accounting.withholding_certificate_heading")}</h2><p>{t("accounting.withholding_certificate_period", { year: certificate.year })}</p><div className="withholding-certificate__party"><span>{t("accounting.withholding_certificate_withholder")}</span><strong>{certificate.company?.legalName || certificate.company?.name || t("accounting.withholding_certificate_company_missing")}</strong><small>{certificate.company?.taxIdentification ? `NIT ${certificate.company.taxIdentification}${certificate.company.taxIdentificationDv ? `-${certificate.company.taxIdentificationDv}` : ""}` : t("accounting.withholding_certificate_nit_missing")}</small></div><div className="withholding-certificate__party"><span>{t("accounting.withholding_report_supplier")}</span><strong>{certificate.supplier.name}</strong><small>{certificate.supplier.identification || "—"}</small></div><Row gutter={[12, 12]}>{certificate.by_type.map((item) => <Col span={24} key={item.tax_type}><div className="withholding-certificate__line"><div><strong>{t(`accounting.withholding_type_${item.tax_type}`)}</strong><small>{t("accounting.withholding_certificate_documents", { count: item.documents })}</small></div><div><span>{t("accounting.withholding_report_current")}</span><strong>{formatCurrency(item.net)}</strong></div></div></Col>)}</Row><div className="withholding-certificate__total"><span>{t("accounting.withholding_certificate_total")}</span><strong>{formatCurrency(certificate.totals.net || 0)}</strong></div>{!certificate.company?.taxIdentification && <Alert className="dark-alert dark-alert-amber mt-5" type="warning" showIcon message={t("accounting.withholding_certificate_complete_company")} />}<Alert className="dark-alert dark-alert-teal mt-5" type="info" showIcon message={t("accounting.withholding_certificate_notice")} /></div>}
         </Drawer>
     </>;
@@ -2339,6 +2424,13 @@ const TrialBalanceTab = () => {
         { title: <ContextLabel help={t("accounting.guide_closing_help")}>{t("accounting.trial_balance_col_closing")}</ContextLabel>, dataIndex: "closing_balance", key: "closing_balance", align: "right", render: (v) => <strong>{formatCurrency(v)}</strong> },
     ];
 
+    const exportTrialBalance = () => {
+        const header = [t("accounting.col_code"), t("accounting.col_name"), t("accounting.trial_balance_col_opening"), t("accounting.lines_col_debit"), t("accounting.lines_col_credit"), t("accounting.trial_balance_col_closing")];
+        const rows_ = rows.map((r) => [r.code, r.name, r.opening_balance, r.debit, r.credit, r.closing_balance]);
+        rows_.push(["", t("common.total"), "", totals.debit, totals.credit, ""]);
+        exportAccountingExcel(`balance-comprobacion-${dateRange[0].format("YYYY-MM-DD")}_${dateRange[1].format("YYYY-MM-DD")}.xlsx`, [{ name: t("accounting.tab_trial_balance"), rows: [header, ...rows_] }]);
+    };
+
     return (
         <>
             <AccountingSectionGuide sectionKey="trial-balance" title={t("accounting.guide_trial_title")} summary={t("accounting.tab_trial_balance_caption")} steps={[t("accounting.guide_trial_step_1"), t("accounting.guide_trial_step_2")]} result={t("accounting.guide_trial_result")} concepts={[{ label: t("accounting.trial_balance_col_opening"), help: t("accounting.guide_opening_help") }, { label: t("accounting.trial_balance_col_closing"), help: t("accounting.guide_closing_help") }]} />
@@ -2348,6 +2440,9 @@ const TrialBalanceTab = () => {
                     <Select allowClear showSearch optionFilterProp="label" className="w-full sm:w-64" placeholder={t("accounting.cost_center_all")} value={costCenterId} onChange={setCostCenterId} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} />
                     <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)] w-full sm:w-auto" icon={<CalendarOutlined />} onClick={fetchRows} loading={loading}>
                         {t("reports.refresh_report")}
+                    </Button>
+                    <Button className="w-full sm:w-auto" icon={<DownloadOutlined />} disabled={!rows.length} onClick={exportTrialBalance}>
+                        {t("reports.export_to_excel")}
                     </Button>
                 </div>
             </Card>
@@ -2361,7 +2456,7 @@ const TrialBalanceTab = () => {
                     className="module-dark-table"
                     scroll={{ x: "max-content" }}
                     size={isMobile ? "small" : "middle"}
-                    locale={{ emptyText: t("accounting.no_chart_accounts") }}
+                    locale={{ emptyText: <EmptyState compact title={t("accounting.no_chart_accounts")} subtitle={t("accounting.empty_chart_help")} /> }}
                     summary={() =>
                         rows.length > 0 && (
                             <Table.Summary.Row>
@@ -2459,18 +2554,18 @@ const OpeningBalanceTab = () => {
             {importError && <Alert className="mb-4" type="error" showIcon message={importError} />}
             <Form.List name="lines">{(fields, { add, remove }) => <div className="space-y-3">
                 {fields.map((field, index) => <div key={field.key} className="rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-4)] p-3">
-                    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_160px_160px_40px] gap-3 items-end">
-                        <Form.Item name={[field.name, "chart_account_id"]} label={index === 0 ? t("accounting.lines_col_account") : undefined} rules={[{ required: true, message: t("validation.required_field") }]}><Select showSearch optionFilterProp="label" options={accounts.filter((a) => a.is_active).map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))} placeholder={t("accounting.opening_balance_account_placeholder")} /></Form.Item>
-                        <Form.Item name={[field.name, "debit"]} label={index === 0 ? t("accounting.lines_col_debit") : undefined}><InputNumber min={0} precision={2} className="w-full" /></Form.Item>
-                        <Form.Item name={[field.name, "credit"]} label={index === 0 ? t("accounting.lines_col_credit") : undefined}><InputNumber min={0} precision={2} className="w-full" /></Form.Item>
-                        {fields.length > 2 ? <Button danger type="text" onClick={() => remove(field.name)}>{t("common.delete")}</Button> : <span />}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <Form.Item name={[field.name, "cost_center_id"]} label={index === 0 ? t("accounting.cost_center_optional") : undefined}><Select allowClear showSearch optionFilterProp="label" placeholder={t("accounting.cost_center_optional")} options={costCenters.filter((center) => center.is_active).map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} /></Form.Item>
-                        <Form.Item name={[field.name, "third_party", "type"]} label={index === 0 ? t("accounting.opening_balance_third_party_type") : undefined}><Select allowClear placeholder={t("accounting.opening_balance_third_party_type")} options={[{ value: "customer", label: t("accounting.third_party_customer") }, { value: "supplier", label: t("accounting.third_party_supplier") }, { value: "other", label: t("accounting.third_party_other") }]} /></Form.Item>
-                        <Form.Item name={[field.name, "third_party", "name"]} label={index === 0 ? t("accounting.third_party_name") : undefined}><Input placeholder={t("accounting.third_party_name")} /></Form.Item>
-                        <Form.Item name={[field.name, "third_party", "document"]} label={index === 0 ? t("accounting.third_party_document") : undefined}><Input placeholder={t("accounting.third_party_document")} /></Form.Item>
-                    </div>
+                    <Row gutter={8} align="middle">
+                        <Col xs={24} md={10}><Form.Item name={[field.name, "chart_account_id"]} label={index === 0 ? t("accounting.lines_col_account") : undefined} rules={[{ required: true, message: t("validation.required_field") }]}><Select showSearch optionFilterProp="label" options={accounts.filter((a) => a.is_active).map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))} placeholder={t("accounting.opening_balance_account_placeholder")} /></Form.Item></Col>
+                        <Col xs={12} md={5}><Form.Item name={[field.name, "debit"]} label={index === 0 ? t("accounting.lines_col_debit") : undefined}><InputNumber min={0} precision={2} className="w-full" /></Form.Item></Col>
+                        <Col xs={12} md={5}><Form.Item name={[field.name, "credit"]} label={index === 0 ? t("accounting.lines_col_credit") : undefined}><InputNumber min={0} precision={2} className="w-full" /></Form.Item></Col>
+                        <Col xs={24} md={4}>{fields.length > 2 ? <Button danger type="text" onClick={() => remove(field.name)}>{t("common.delete")}</Button> : <span />}</Col>
+                    </Row>
+                    <Row gutter={8}>
+                        <Col xs={24} md={6}><Form.Item name={[field.name, "cost_center_id"]} label={index === 0 ? t("accounting.cost_center_optional") : undefined}><Select allowClear showSearch optionFilterProp="label" placeholder={t("accounting.cost_center_optional")} options={costCenters.filter((center) => center.is_active).map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} /></Form.Item></Col>
+                        <Col xs={24} md={6}><Form.Item name={[field.name, "third_party", "type"]} label={index === 0 ? t("accounting.opening_balance_third_party_type") : undefined}><Select allowClear placeholder={t("accounting.opening_balance_third_party_type")} options={[{ value: "customer", label: t("accounting.third_party_customer") }, { value: "supplier", label: t("accounting.third_party_supplier") }, { value: "other", label: t("accounting.third_party_other") }]} /></Form.Item></Col>
+                        <Col xs={24} md={6}><Form.Item name={[field.name, "third_party", "name"]} label={index === 0 ? t("accounting.third_party_name") : undefined}><Input placeholder={t("accounting.third_party_name")} /></Form.Item></Col>
+                        <Col xs={24} md={6}><Form.Item name={[field.name, "third_party", "document"]} label={index === 0 ? t("accounting.third_party_document") : undefined}><Input placeholder={t("accounting.third_party_document")} /></Form.Item></Col>
+                    </Row>
                 </div>)}
                 <Button type="dashed" icon={<PlusOutlined />} onClick={() => add({})}>{t("accounting.opening_balance_add_line")}</Button>
             </div>}</Form.List>
@@ -2484,9 +2579,6 @@ const AccountingAuditTab = () => {
     const { t } = useI18n();
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [reverseEntry, setReverseEntry] = useState(null);
-    const [reverseSaving, setReverseSaving] = useState(false);
-    const [reverseForm] = Form.useForm();
     const [range, setRange] = useState([dayjs().subtract(30, "day"), dayjs()]);
     const [entityType, setEntityType] = useState();
     const [action, setAction] = useState();

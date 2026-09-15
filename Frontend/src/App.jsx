@@ -153,6 +153,8 @@ const Accounting = lazy(() => import("./pages/Accounting"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 const AdminFirmaPassValidations = lazy(() => import("./pages/AdminFirmaPassValidations"));
+const AdminCertificateOrders = lazy(() => import("./pages/AdminCertificateOrders"));
+const AdminApiClients = lazy(() => import("./pages/AdminApiClients"));
 const AdminDianTestMatrix = lazy(() => import("./pages/AdminDianTestMatrix"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
@@ -407,6 +409,8 @@ function App() {
                                 <Route path="admin/management" element={<AdminManagement />} />
                                 <Route path="admin/subscriptions" element={<AdminSubscriptions />} />
                                 <Route path="admin/firmapass-validations" element={<AdminFirmaPassValidations />} />
+                                <Route path="admin/certificate-orders" element={<AdminCertificateOrders />} />
+                                <Route path="admin/api-clients" element={<AdminApiClients />} />
                                 <Route path="admin/dian-test-matrix" element={<AdminDianTestMatrix />} />
                             </Route>
 

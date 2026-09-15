@@ -23,6 +23,7 @@
 
 import { prisma } from "../../db/prisma.js";
 import { upsertDiscovery } from "../discoveryEngine.service.js";
+import { getEnabledDimensionKeys } from "../discoveryDimensionConfig.service.js";
 
 export const DETECTOR_KEY = "cross_factor_correlation";
 
@@ -39,6 +40,7 @@ const MIN_INTERACTION_LIFT = 1.25;
 const MAX_FINDINGS = 2;
 
 const DAY_LABELS_ES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const MONTH_LABELS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 const round1 = (n) => Number(n.toFixed(1));
 const round2 = (n) => Number(n.toFixed(2));
@@ -48,40 +50,84 @@ const zScoreForProportion = (sliceRate, baselineRate, sliceN) => {
     return se > 0 ? (sliceRate - baselineRate) / se : 0;
 };
 
-// Same 4 account attributes new_pattern_return_rate.detector.js already
-// searches individually - this detector's novelty is combining them, not
-// adding more of them (a 5th dimension would multiply the number of pairs
-// and dilute slice sizes for no real gain at current account scale).
-const DIMENSIONS = [
+// Every dimension this detector is ALLOWED to cross - the reviewed,
+// tested extraction logic (valueOf/labelOf) stays here in code on purpose,
+// never as a string evaluated from the database (see
+// DiscoveryDimensionConfig's schema.prisma comment: that's the whole
+// "config, not code that writes itself" boundary). What DOES live in the
+// database is WHICH of these actually run right now - see
+// discoveryDimensionConfig.service.js#getEnabledDimensionKeys, read at the
+// top of computeCrossFactorFindings below. `defaultEnabled` is only the
+// fallback used when nobody has ever added a config row for that key -
+// the original 4 stay on by default (byte-for-byte the same behavior this
+// detector always had); the 2 newer ones below ship OFF by default so
+// adding search surface is a deliberate config change, not a silent
+// widening of what a deploy does. Turning one on later is a database write,
+// not a deploy - that's the entire point of this being data.
+const DIMENSION_REGISTRY = [
     {
         key: "day_of_week",
         label: "Día de la semana",
+        defaultEnabled: true,
         valueOf: (order) => String(new Date(order.orderDate).getUTCDay()),
         labelOf: (value) => DAY_LABELS_ES[Number(value)],
     },
     {
         key: "channel",
         label: "Canal de venta",
+        defaultEnabled: true,
         valueOf: (order) => order.channel,
         labelOf: (value) => value,
     },
     {
         key: "point_of_sale",
         label: "Punto de venta",
+        defaultEnabled: true,
         valueOf: (order) => order.pointOfSaleId,
         labelOf: (value, posNames) => posNames.get(value) || value,
     },
     {
         key: "customer_type",
         label: "Tipo de cliente",
+        defaultEnabled: true,
         valueOf: (order) => order.customerType || "regular",
         labelOf: (value) => value,
     },
+    {
+        key: "is_weekend",
+        label: "Fin de semana",
+        defaultEnabled: false,
+        valueOf: (order) => {
+            const day = new Date(order.orderDate).getUTCDay();
+            return day === 0 || day === 6 ? "weekend" : "weekday";
+        },
+        labelOf: (value) => (value === "weekend" ? "fin de semana" : "entre semana"),
+    },
+    {
+        key: "month_of_year",
+        label: "Mes del año",
+        defaultEnabled: false,
+        valueOf: (order) => String(new Date(order.orderDate).getUTCMonth()),
+        labelOf: (value) => MONTH_LABELS_ES[Number(value)],
+    },
 ];
 
-const DIMENSION_PAIRS = DIMENSIONS.flatMap((a, i) => DIMENSIONS.slice(i + 1).map((b) => [a, b]));
+const pairsOf = (dimensions) => dimensions.flatMap((a, i) => dimensions.slice(i + 1).map((b) => [a, b]));
 
-export const computeCrossFactorFindings = async ({ accountId, db = prisma }) => {
+// Metadata-only view for the admin config endpoint (routes/
+// discoveryDimensionConfig.routes.js) - deliberately excludes valueOf/
+// labelOf: those are the reviewed extraction logic itself and must never
+// leave this module, let alone reach an HTTP response.
+export const DIMENSION_METADATA = DIMENSION_REGISTRY.map(({ key, label, defaultEnabled }) => ({ key, label, defaultEnabled }));
+
+// `dimensionKeys`, when passed, FORCES exactly those dimensions into the
+// search regardless of what's currently enabled - used only by
+// checkPrediction below, so re-verifying a Discovery that was published
+// while a dimension was active still works correctly even if that
+// dimension has since been turned off (disabling one only stops NEW
+// searches from using it, it must never make an already-published finding
+// impossible to re-check).
+export const computeCrossFactorFindings = async ({ accountId, db = prisma, dimensionKeys = null }) => {
     const rawOrders = await db.order.findMany({
         where: { createdById: accountId, orderStatus: { in: ["completed", "returned"] } },
         select: { orderDate: true, channel: true, pointOfSaleId: true, orderStatus: true, customer: { select: { type: true } } },
@@ -99,11 +145,17 @@ export const computeCrossFactorFindings = async ({ accountId, db = prisma }) => 
         (await db.pointOfSale.findMany({ where: { accountId }, select: { id: true, name: true } })).map((p) => [p.id, p.name])
     );
 
+    const activeKeys = dimensionKeys
+        ? new Set(dimensionKeys)
+        : await getEnabledDimensionKeys({ detectorKey: DETECTOR_KEY, registry: DIMENSION_REGISTRY, db });
+    const activeDimensions = DIMENSION_REGISTRY.filter((d) => activeKeys.has(d.key));
+    const activePairs = pairsOf(activeDimensions);
+
     // Single-dimension rates for every (dimension, value) - needed as the
     // "what would we already have expected" baseline each pair is tested
     // against, not just the account-wide rate.
     const singleRateOf = new Map(); // `${dimKey}:${value}` -> rate
-    for (const dimension of DIMENSIONS) {
+    for (const dimension of activeDimensions) {
         const byValue = new Map();
         for (const order of orders) {
             const value = dimension.valueOf(order);
@@ -119,7 +171,7 @@ export const computeCrossFactorFindings = async ({ accountId, db = prisma }) => 
     }
 
     const candidates = [];
-    for (const [dimA, dimB] of DIMENSION_PAIRS) {
+    for (const [dimA, dimB] of activePairs) {
         const combined = new Map(); // `${valueA}||${valueB}` -> { valueA, valueB, total, returned }
         for (const order of orders) {
             const valueA = dimA.valueOf(order);
@@ -295,7 +347,7 @@ export const checkPrediction = async ({ accountId, prediction, db = prisma }) =>
         return { outcome: "inconclusive", actualData: {}, notes: "La predicción no registró una combinación específica para volver a evaluar." };
     }
 
-    const { candidates } = await computeCrossFactorFindings({ accountId, db });
+    const { candidates } = await computeCrossFactorFindings({ accountId, db, dimensionKeys: [dimAKey, dimBKey] });
     const stillFlagged = (candidates || []).find(
         (f) => f.dimAKey === dimAKey && String(f.valueA) === String(valueA) && f.dimBKey === dimBKey && String(f.valueB) === String(valueB)
     );

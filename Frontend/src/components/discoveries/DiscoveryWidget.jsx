@@ -60,6 +60,7 @@ const DiscoveryWidget = () => {
     const [pos, setPos] = useState(() => loadStoredPosition());
     const [dragging, setDragging] = useState(false);
     const panelRef = useRef(null);
+    const wrapRef = useRef(null);
     const dragInfo = useRef(null);
     const posRef = useRef(pos);
     const suppressClickRef = useRef(false);
@@ -104,7 +105,10 @@ const DiscoveryWidget = () => {
 
     const handlePointerDown = (e) => {
         if (!draggable || (e.button !== undefined && e.button !== 0)) return;
-        const rect = e.currentTarget.getBoundingClientRect();
+        // The wrapper's own rect, not the button's - Badge shifts the button
+        // a few px within it for the count bubble, and left/top below are
+        // applied to the wrapper, so measuring anything else would drift.
+        const rect = wrapRef.current.getBoundingClientRect();
         dragInfo.current = {
             startX: e.clientX,
             startY: e.clientY,
@@ -175,7 +179,7 @@ const DiscoveryWidget = () => {
                 // desktop this clears past it instead of floating on top of it.
                 // Once the user has dragged it, `pos` (persisted) takes over instead.
                 <div
-                    className={`no-print fixed z-[1050] discovery-fab-wrap${dragging ? " is-dragging" : ""}${draggable ? " is-draggable" : ""}`}
+                    ref={wrapRef}
                     style={pos ? { left: pos.left, top: pos.top } : undefined}
                     className={
                         `no-print fixed z-[1050] discovery-fab-wrap${dragging ? " is-dragging" : ""}${draggable ? " is-draggable" : ""}` +
@@ -191,7 +195,7 @@ const DiscoveryWidget = () => {
                             onPointerUp={handlePointerUp}
                             aria-label={t("discoveries.widget_fab_label")}
                             title={t("discoveries.widget_fab_label")}
-                            className="discovery-fab relative flex items-center justify-center h-12 w-12 rounded-full transition-transform duration-150"
+                            className="discovery-fab relative flex items-center justify-center h-12 w-12 rounded-full transition-transform duration-150 hover:-translate-y-0.5"
                             style={{
                                 background: "linear-gradient(135deg, rgba(41,216,213,0.16), rgba(68,243,240,0.2))",
                                 border: "1px solid rgba(41,216,213,0.4)",
@@ -305,6 +309,9 @@ const DiscoveryWidget = () => {
                     0% { transform: scale(0.75); opacity: 0.8; }
                     100% { transform: scale(1.7); opacity: 0; }
                 }
+                .discovery-fab {
+                    cursor: pointer;
+                }
                 .discovery-fab:hover {
                     box-shadow: 0 10px 32px rgba(41,216,213,0.4) !important;
                 }
@@ -312,14 +319,11 @@ const DiscoveryWidget = () => {
                 .discovery-fab-wrap.is-draggable.is-dragging .discovery-fab { cursor: grabbing; }
                 .discovery-fab-wrap.is-draggable {
                     opacity: 0.55;
-                    transition: opacity 220ms ease, transform 150ms ease;
+                    transition: opacity 220ms ease;
                 }
                 .discovery-fab-wrap.is-draggable:hover,
                 .discovery-fab-wrap.is-draggable.is-dragging {
                     opacity: 1;
-                }
-                .discovery-fab-wrap.is-draggable:not(:hover) .discovery-fab:hover {
-                    transform: none;
                 }
                 .discovery-panel-in {
                     animation: ohnix-discovery-panel-in 200ms ease-out;
