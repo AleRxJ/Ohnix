@@ -272,6 +272,8 @@ model User {
   cashAccountsCreated             CashAccount[]
   cashMovementsCreated            CashMovement[]
   orderPaymentsRecorded           OrderPayment[]
+  paymentCreditsCreated           PaymentCreditBalance[] @relation("PaymentCreditCreatedBy")
+  paymentCreditAccounts           PaymentCreditBalance[] @relation("PaymentCreditAccount")
   orderPaymentAllocationsCreated  OrderPaymentAllocation[] @relation("OrderPaymentAllocationCreatedBy")
   purchasePaymentsRecorded        PurchasePayment[]
   purchasePaymentAllocationsCreated PurchasePaymentAllocation[] @relation("PurchasePaymentAllocationCreatedBy")
@@ -791,6 +793,7 @@ model Supplier {
   createdBy   User                @relation(fields: [createdById], references: [id])
   pointOfSale PointOfSale         @relation(fields: [pointOfSaleId], references: [id])
   purchases   Purchase[]
+  paymentCredits PaymentCreditBalance[]
   quotations  PurchaseQuotation[]
 
   @@index([createdById])
@@ -848,6 +851,7 @@ model Customer {
   createdBy       User             @relation(fields: [createdById], references: [id])
   pointOfSale     PointOfSale      @relation(fields: [pointOfSaleId], references: [id])
   orders          Order[]
+  paymentCredits  PaymentCreditBalance[]
   salesQuotations SalesQuotation[]
 
   @@index([createdById])
@@ -2081,6 +2085,7 @@ model OrderPayment {
 
   order       Order       @relation(fields: [orderId], references: [id])
   allocations OrderPaymentAllocation[]
+  creditBalances PaymentCreditBalance[] @relation("OrderPaymentCreditSource")
   cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
   createdBy   User        @relation(fields: [createdById], references: [id])
 
@@ -2104,6 +2109,7 @@ model PurchasePayment {
 
   purchase    Purchase    @relation(fields: [purchaseId], references: [id])
   allocations PurchasePaymentAllocation[]
+  creditBalances PaymentCreditBalance[] @relation("PurchasePaymentCreditSource")
   cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
   createdBy   User        @relation(fields: [createdById], references: [id])
 
@@ -2125,6 +2131,30 @@ model OrderPaymentAllocation {
   @@index([orderId])
   @@index([orderPaymentId])
   @@map("order_payment_allocations")
+}
+
+model PaymentCreditBalance {
+  id String @id @default(cuid())
+  accountId String @map("account_id")
+  customerId String? @map("customer_id")
+  supplierId String? @map("supplier_id")
+  sourceOrderPaymentId String? @map("source_order_payment_id")
+  sourcePurchasePaymentId String? @map("source_purchase_payment_id")
+  amount Decimal @db.Decimal(14, 2)
+  appliedAmount Decimal @default(0) @map("applied_amount") @db.Decimal(14, 2)
+  status String @default("open")
+  createdById String @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  account User @relation("PaymentCreditAccount", fields: [accountId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  sourceOrderPayment OrderPayment? @relation("OrderPaymentCreditSource", fields: [sourceOrderPaymentId], references: [id])
+  sourcePurchasePayment PurchasePayment? @relation("PurchasePaymentCreditSource", fields: [sourcePurchasePaymentId], references: [id])
+  createdBy User @relation("PaymentCreditCreatedBy", fields: [createdById], references: [id])
+  @@index([accountId, status])
+  @@index([customerId, status])
+  @@index([supplierId, status])
+  @@map("payment_credit_balances")
 }
 
 model PurchasePaymentAllocation {

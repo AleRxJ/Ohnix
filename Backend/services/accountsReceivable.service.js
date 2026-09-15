@@ -1,4 +1,5 @@
 import { prisma } from "../db/prisma.js";
+import { documentPaymentDetails } from "../utils/paymentAvailability.js";
 import { ApiError } from "../utils/ApiError.js";
 import { getAgingBucket, summarizeAging } from "../utils/accountAging.js";
 
@@ -12,7 +13,7 @@ export const buildReceivablePlan = ({ orders, now = new Date() }) => {
         const due = order.dueDate ? new Date(order.dueDate) : null;
         const rawDays = due ? Math.floor((now - due) / 86400000) : null;
         const status = rawDays === null ? "unscheduled" : rawDays > 0 ? "overdue" : rawDays >= -7 ? "due_soon" : "current";
-        const paymentDetails = order.payments.map((payment) => ({ id: payment.id, amount: Number(payment.amount), allocated: round2((payment.allocations || []).reduce((sum, allocation) => sum + Number(allocation.amount), 0)), available: round2(Number(payment.amount) - (payment.allocations || []).reduce((sum, allocation) => sum + Number(allocation.amount), 0)), paid_at: payment.paidAt, method: payment.method, reference: payment.reference }));
+        const paymentDetails = order.payments.map(documentPaymentDetails);
         return { id: order.id, number: order.invoiceNo, document_date: order.orderDate, due_date: order.dueDate, customer: order.customer, total, paid, pending, payment_details: paymentDetails, days_overdue: rawDays === null ? null : Math.max(rawDays, 0), aging_bucket: getAgingBucket(rawDays), status };
     }).filter((row) => row.pending > 0.001);
     const rank = { overdue: 0, due_soon: 1, current: 2, unscheduled: 3 };

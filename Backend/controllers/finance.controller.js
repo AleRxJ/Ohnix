@@ -14,6 +14,7 @@ import * as cashIntegrityService from "../services/cashIntegrity.service.js";
 import * as accountsPayableService from "../services/accountsPayable.service.js";
 import * as accountsReceivableService from "../services/accountsReceivable.service.js";
 import * as paymentAllocationService from "../services/paymentAllocation.service.js";
+import * as paymentCreditService from "../services/paymentCredit.service.js";
 
 const scope = (req) => ({
     accountId: req.user.prismaId,
@@ -355,4 +356,19 @@ export const listOrderPaymentAllocations = asyncHandler(async (req, res) => {
 export const listPurchasePaymentAllocations = asyncHandler(async (req, res) => {
     const rows = await paymentAllocationService.listPurchasePaymentAllocations({ accountId: req.user.prismaId, paymentId: req.params.paymentId });
     return res.status(200).json(new ApiResponse(200, rows, "Payment allocations fetched successfully."));
+});
+
+export const listUnallocatedPayments = asyncHandler(async (req, res) => {
+    const rows = await paymentAllocationService.listUnallocatedPayments({ accountId: req.user.prismaId, payable: req.query.type === "payable" });
+    return res.status(200).json(new ApiResponse(200, rows, "Unallocated payments fetched successfully."));
+});
+
+export const listPaymentCredits = asyncHandler(async (req, res) => {
+    const rows = await paymentCreditService.listPaymentCredits({ accountId: req.user.prismaId, customerId: req.query.customer_id, supplierId: req.query.supplier_id });
+    return res.status(200).json(new ApiResponse(200, rows, "Payment credits fetched successfully."));
+});
+
+export const applyPaymentCredit = asyncHandler(async (req, res) => {
+    const allocation = await paymentCreditService.applyCreditBalance({ accountId: req.user.prismaId, actorId: req.user.actorId, creditId: req.params.creditId, documentId: req.body?.document_id, amount: req.body?.amount, payable: req.body?.type === "payable" });
+    return res.status(201).json(new ApiResponse(201, allocation, "Payment credit applied successfully."));
 });

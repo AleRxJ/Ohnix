@@ -657,6 +657,8 @@
     }
   },
   "finance": {
+    "payment_effect": "This payment already reduced the document balance when recorded. This allocation adds detail; it does not move money or reduce the debt again.",
+    "payment_confirmation": "I confirm the amount and understand that this allocation does not change the outstanding balance.",
     "page_title": "Finance",
     "page_subtitle": "Control cash, banks, reconciliation, and payment commitments from one place.",
     "create_cta": "New account",
@@ -951,6 +953,7 @@
     "reference_placeholder": "Optional",
     "payment_registered": "Payment registered",
     "payables_title": "Accounts payable planner",
+    "payment_reference": "Reference", "payment_amount": "Payment amount", "payment_allocated": "Allocated", "payment_available": "Available", "payment_apply": "Apply", "payment_apply_title": "Apply payment", "payment_apply_help": "You can apply up to {{available}} to this document.", "payment_apply_amount": "Amount to apply", "payment_apply_invalid": "The amount exceeds the available or pending balance.", "payment_allocated_success": "Payment applied successfully.", "payment_allocation_failed": "The payment could not be applied.", "payment_no_details": "No payments are available for this document.",
     "payables_eyebrow": "CASH DECISIONS",
     "payables_heading": "Pay urgent commitments first without losing liquidity",
     "payables_desc": "Ohnix prioritizes purchases by due date and allocates available cash as a recommendation. You decide and record every payment.",

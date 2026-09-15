@@ -657,6 +657,8 @@
     }
   },
   "finance": {
+    "payment_effect": "Este pago ya descontó el saldo del documento al registrarse. Esta asignación añade detalle; no mueve dinero ni vuelve a reducir la deuda.",
+    "payment_confirmation": "Confirmo el monto y entiendo que el saldo pendiente no cambia con esta asignación.",
     "page_title": "Finanzas",
     "page_subtitle": "Controla caja, bancos, conciliaciones y compromisos de pago desde un solo lugar.",
     "create_cta": "Nueva cuenta",
@@ -951,6 +953,7 @@
     "reference_placeholder": "Opcional",
     "payment_registered": "Pago registrado",
     "payables_title": "Planificador de cuentas por pagar",
+    "payment_reference": "Referencia", "payment_amount": "Monto del pago", "payment_allocated": "Aplicado", "payment_available": "Disponible", "payment_apply": "Aplicar", "payment_apply_title": "Aplicar pago", "payment_apply_help": "Puedes aplicar hasta {{available}} a este documento.", "payment_apply_amount": "Monto a aplicar", "payment_apply_invalid": "El monto supera el saldo disponible o pendiente.", "payment_allocated_success": "Pago aplicado correctamente.", "payment_allocation_failed": "No fue posible aplicar el pago.", "payment_no_details": "No hay pagos disponibles para este documento.",
     "payables_eyebrow": "DECISIONES DE CAJA",
     "payables_heading": "Paga primero lo urgente sin perder liquidez",
     "payables_desc": "Ohnix ordena las compras por vencimiento y distribuye el efectivo disponible como una recomendación. Tú decides y registras cada pago.",

@@ -131,10 +131,14 @@ const run = async () => {
             const page = await browser.newPage();
             const url = `${HOST}${route}?ohnix-prerender=1`;
             console.log(`[prerender] Rendering ${route}`);
-            await page.goto(url, { waitUntil: "networkidle0", timeout: 30000 });
-            // Give SeoHead's useEffect (title/meta/structured data) and any
-            // lazy-loaded route chunk a beat to settle after network idle.
-            await new Promise((resolve) => setTimeout(resolve, 300));
+            // Marketing pages can keep analytics, images, or animations active,
+            // so networkidle0 is not a reliable readiness signal in Vercel's
+            // cold build container. The document load plus the React root is
+            // enough for SeoHead and the route chunk to be rendered.
+            await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+            await page.waitForSelector("#root > *", { timeout: 30000 });
+            // Give SeoHead's useEffect (title/meta/structured data) a beat to settle.
+            await new Promise((resolve) => setTimeout(resolve, 500));
             await page.evaluate(() => {
                 document.querySelector("#root").dataset.prerendered = "true";
                 // Vite adds these while the build-time browser hydrates. Keeping

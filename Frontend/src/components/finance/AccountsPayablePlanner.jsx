@@ -25,6 +25,7 @@ import { financeService } from "../../services/financeService";
 import { useCurrency } from "../../context/CurrencyContext";
 import useI18n from "../../hooks/useI18n";
 import { financeErrorMessage } from "../../utils/financeError";
+import PaymentDetailsTable from "./PaymentDetailsTable";
 
 const STATUS_COLORS = {
     overdue: "error",
@@ -259,6 +260,7 @@ const AccountsPayablePlanner = ({ canEdit }) => {
                     ))}
                 </Row>
                 <Table
+                    expandable={{ expandedRowRender: (row) => <PaymentDetailsTable payments={row.payment_details} documentId={row.id} payable pending={row.pending} canEdit={canEdit} onApplied={load} /> }}
                     className="module-dark-table"
                     rowKey="id"
                     loading={loading}

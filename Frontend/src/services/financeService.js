@@ -146,6 +146,9 @@ export const financeService = {
     async listOrderPaymentAllocations(orderId, paymentId) { const response = await api.get(`/finance/orders/${orderId}/payments/${paymentId}/allocations`); return response.data; },
     async allocatePurchasePayment(purchaseId, paymentId, amount) { const response = await api.post(`/finance/purchases/${purchaseId}/payments/${paymentId}/allocate`, { amount }); return response.data; },
     async listPurchasePaymentAllocations(purchaseId, paymentId) { const response = await api.get(`/finance/purchases/${purchaseId}/payments/${paymentId}/allocations`); return response.data; },
+    async listUnallocatedPayments(type) { const response = await api.get("/finance/payments/unallocated", { params: { type } }); return response.data; },
+    async listPaymentCredits(params = {}) { const response = await api.get("/finance/payment-credits", { params }); return response.data; },
+    async applyPaymentCredit(creditId, payload) { const response = await api.post(`/finance/payment-credits/${creditId}/apply`, payload); return response.data; },
 
     async getCarteraReport(params) {
         const response = await api.get("/reports/cartera", { params });
