@@ -3,6 +3,7 @@ import { MenuOutlined, GlobalOutlined, CloseOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import useI18n from "../../hooks/useI18n";
 import useScrollLock from "../../hooks/useScrollLock";
+import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 // Plain HTML/Tailwind instead of antd (Layout/Button/Drawer/Dropdown) - this
 // is public-facing marketing chrome, rendered on every marketing page, and
@@ -24,6 +25,15 @@ const Navbar = () => {
         { label: t("landing.nav.features"), path: "features" },
         { label: t("landing.nav.process"), path: "timeline" },
         { label: t("pricing.eyebrow", { defaultValue: "Pricing" }), path: "pricing" },
+        // Same ELECTRONIC_INVOICING_ENABLED gate as the sections themselves
+        // (LandingPage.jsx) - without it, this link would scroll to nothing
+        // whenever the flag is off, since the section never renders at all.
+        ...(ELECTRONIC_INVOICING_ENABLED
+            ? [
+                  { label: t("landing.nav.api_invoicing"), path: "api-facturacion-electronica" },
+                  { label: t("landing.nav.certificate"), path: "certificado-digital" },
+              ]
+            : []),
         { label: t("landing.nav.faq"), path: "faq" },
         { label: t("landing.nav.contact"), path: "contact" },
     ];

@@ -281,6 +281,8 @@ model User {
   chartAccountsCreated            ChartAccount[]
   accountingPeriodsCreated        AccountingPeriod[]         @relation("AccountingPeriodCreatedBy")
   accountingPeriodsClosed         AccountingPeriod[]         @relation("AccountingPeriodClosedBy")
+  fiscalYearClosuresOwned         FiscalYearClosure[]        @relation("FiscalYearClosureCreatedBy")
+  fiscalYearClosuresClosed        FiscalYearClosure[]        @relation("FiscalYearClosureClosedBy")
   journalEntriesCreated           JournalEntry[]
   accountingConfigAuditsOwned     AccountingConfigAudit[]    @relation("AccountingConfigAuditAccount")
   costCentersOwned                CostCenter[]               @relation("CostCenterAccount")
@@ -2535,6 +2537,19 @@ enum JournalSourceType {
   period_close
   period_reopen
   period_reclose
+  // Fase 6 - fiscal year close: sweeps the "Utilidad del ejercicio" balance
+  // (chartOfAccounts.service.js's CURRENT_YEAR_EARNINGS_ACCOUNT, 3610) that
+  // year's 12 monthly period_close entries accumulated into "Utilidades
+  // acumuladas" (RETAINED_EARNINGS_ACCOUNT, 3605) - see
+  // fiscalYear.service.js#closeFiscalYear. Distinct from period_close: this
+  // never touches revenue/cost/expense accounts directly, only the two
+  // equity accounts. year_reopen/year_reclose mirror period_reopen/
+  // period_reclose exactly, same reason: a fresh sourceId per reopen event
+  // (FiscalYearReopening.id) is what lets recordJournalEntry's idempotency
+  // dedup tell a year's first close apart from its second, third, etc.
+  year_close
+  year_reopen
+  year_reclose
   inventory_adjustment
   transfer_discrepancy
   manual_journal
@@ -2545,6 +2560,58 @@ enum JournalSourceType {
   cash_adjustment
   recurring_expense
   opening_balance
+}
+
+enum FiscalYearClosureStatus {
+  closed
+  reopened
+}
+
+// One row per (tenant, calendar year) once that year has been closed - only
+// created by fiscalYear.service.js#closeFiscalYear, which requires all 12
+// AccountingPeriod rows for that year that ever had activity to already be
+// `closed` (a month with no activity never gets an AccountingPeriod row at
+// all, so it can't block the year). `status` is a fast flag mirroring
+// AccountingPeriod.status; `reopenings` is the event log that makes a
+// close -> reopen -> reclose cycle possible, same split as
+// AccountingPeriod/AccountingPeriodReopening.
+model FiscalYearClosure {
+  id            String                  @id @default(cuid())
+  createdById   String                  @map("created_by")
+  year          Int
+  status        FiscalYearClosureStatus @default(closed)
+  closedById    String                  @map("closed_by")
+  closedAt      DateTime                @default(now()) @map("closed_at")
+  reopenedUntil DateTime?               @map("reopened_until")
+  createdAt     DateTime                @default(now()) @map("created_at")
+  updatedAt     DateTime                @updatedAt @map("updated_at")
+
+  createdBy  User                  @relation("FiscalYearClosureCreatedBy", fields: [createdById], references: [id])
+  closedBy   User                  @relation("FiscalYearClosureClosedBy", fields: [closedById], references: [id])
+  reopenings FiscalYearReopening[]
+
+  @@unique([createdById, year])
+  @@index([createdById, status])
+  @@map("fiscal_year_closures")
+}
+
+// Mirrors AccountingPeriodReopening exactly (same field shape, same lack of
+// a User relation on reopenedById/reclosedById - plain tenant-scoped id
+// columns, not FK-constrained, same as that model).
+model FiscalYearReopening {
+  id           String    @id @default(cuid())
+  closureId    String    @map("closure_id")
+  reason       String    @db.Text
+  reopenedById String    @map("reopened_by")
+  reopenedAt   DateTime  @default(now()) @map("reopened_at")
+  expiresAt    DateTime  @map("expires_at")
+  reclosedById String?   @map("reclosed_by")
+  reclosedAt   DateTime? @map("reclosed_at")
+
+  closure FiscalYearClosure @relation(fields: [closureId], references: [id])
+
+  @@index([closureId, reopenedAt])
+  @@map("fiscal_year_reopenings")
 }
 
 model AccountingConfigAudit {

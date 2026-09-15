@@ -68,13 +68,31 @@ const RETAINED_EARNINGS_ACCOUNT = { code: "3605", name: "Utilidades acumuladas",
 // Lazily adds the retained-earnings account for tenants whose chart was
 // seeded before period-close existed (their 9 DEFAULT_ACCOUNTS won't include
 // it) - same "created on first use" idiom as ensureDefaultChartOfAccounts,
-// called only from accountingPeriod.service.js#closeAccountingPeriod right
-// before it needs somewhere to post that period's net result.
+// called from fiscalYear.service.js#closeFiscalYear right before it needs
+// somewhere to post a closed year's net result.
 export const ensureRetainedEarningsAccount = async (tx, accountId) => {
     await ensureDefaultChartOfAccounts(tx, accountId);
     const existing = await tx.chartAccount.findFirst({ where: { createdById: accountId, code: RETAINED_EARNINGS_ACCOUNT.code } });
     if (existing) return existing;
     return tx.chartAccount.create({ data: { ...RETAINED_EARNINGS_ACCOUNT, createdById: accountId } });
+};
+
+const CURRENT_YEAR_EARNINGS_ACCOUNT = { code: "3610", name: "Utilidad del ejercicio", accountType: "equity" };
+
+// Fase 6 - where a MONTHLY period close now posts that month's net result,
+// instead of RETAINED_EARNINGS_ACCOUNT directly (see
+// accountingPeriod.service.js#closeAccountingPeriod). This account
+// accumulates the current fiscal year's result month by month; closing the
+// FISCAL YEAR (fiscalYear.service.js#closeFiscalYear) sweeps its balance into
+// 3605 and leaves it at zero for the next year. Keeping the two separate is
+// what lets the balance sheet show "this year's result" and "accumulated
+// from prior years" as distinct equity lines instead of one indistinguishable
+// bucket - the gap a plain 3605-only close left unaddressed.
+export const ensureCurrentYearEarningsAccount = async (tx, accountId) => {
+    await ensureDefaultChartOfAccounts(tx, accountId);
+    const existing = await tx.chartAccount.findFirst({ where: { createdById: accountId, code: CURRENT_YEAR_EARNINGS_ACCOUNT.code } });
+    if (existing) return existing;
+    return tx.chartAccount.create({ data: { ...CURRENT_YEAR_EARNINGS_ACCOUNT, createdById: accountId } });
 };
 
 // Manual additions to the default 9-account seed - e.g. a company that wants

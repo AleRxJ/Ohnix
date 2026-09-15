@@ -126,6 +126,15 @@ const ACCOUNTING_ERROR_CODES = {
     opening_balance_cost_centers_invalid: "accounting.error_opening_balance_cost_centers_invalid",
     opening_balance_third_party_type_invalid: "accounting.error_opening_balance_third_party_type_invalid",
     opening_balance_third_party_name_required: "accounting.error_opening_balance_third_party_name_required",
+    fiscal_year_invalid: "accounting.error_fiscal_year_invalid",
+    fiscal_year_not_elapsed: "accounting.error_fiscal_year_not_elapsed",
+    fiscal_year_months_not_closed: "accounting.error_fiscal_year_months_not_closed",
+    fiscal_year_already_closed: "accounting.error_fiscal_year_already_closed",
+    fiscal_year_concurrent_change: "accounting.error_fiscal_year_concurrent_change",
+    fiscal_year_not_found: "accounting.error_fiscal_year_not_found",
+    fiscal_year_not_closed: "accounting.error_fiscal_year_not_closed",
+    fiscal_year_reopen_reason_required: "accounting.error_fiscal_year_reopen_reason_required",
+    fiscal_year_reopen_duration_invalid: "accounting.error_fiscal_year_reopen_duration_invalid",
 };
 
 const accountingErrorMessage = (error, t, fallbackKey = "accounting.failed") =>
@@ -1425,6 +1434,10 @@ const PeriodsTab = () => {
     const [periods, setPeriods] = useState([]);
     const [loading, setLoading] = useState(true);
     const [checkingPeriodId, setCheckingPeriodId] = useState(null);
+    const [fiscalYears, setFiscalYears] = useState([]);
+    const [fiscalYearsLoading, setFiscalYearsLoading] = useState(true);
+    const [checkingYear, setCheckingYear] = useState(null);
+    const [selectedYear, setSelectedYear] = useState();
 
     const load = async () => {
         setLoading(true);
@@ -1438,10 +1451,102 @@ const PeriodsTab = () => {
         }
     };
 
+    const loadFiscalYears = async () => {
+        setFiscalYearsLoading(true);
+        try {
+            const res = await accountingService.listFiscalYearClosures();
+            setFiscalYears(res?.data || []);
+        } catch {
+            toast.error(t("accounting.failed"));
+        } finally {
+            setFiscalYearsLoading(false);
+        }
+    };
+
     useEffect(() => {
         load();
+        loadFiscalYears();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Years the user can pick to close: every past year with at least one
+    // AccountingPeriod, regardless of whether it's already closed - closing
+    // an already-closed year just surfaces "already closed" from the
+    // readiness check instead of silently omitting it from the list.
+    const currentYear = dayjs().year();
+    const closableYears = [...new Set(periods.map((p) => p.year))].filter((year) => year < currentYear).sort((a, b) => b - a);
+
+    const reviewAndCloseYear = async (year) => {
+        if (!year) return;
+        setCheckingYear(year);
+        try {
+            const response = await accountingService.getFiscalYearCloseReadiness(year);
+            const readiness = response?.data;
+            const openMonths = readiness?.open_months || [];
+            const alreadyClosed = readiness?.closure?.status === "closed";
+            Modal.confirm({
+                className: "accounting-modal",
+                title: t("accounting.fiscal_year_close_readiness_title", { year }),
+                width: 580,
+                icon: null,
+                content: (
+                    <div className="space-y-3 mt-4">
+                        {!readiness?.year_elapsed ? (
+                            <Alert type="error" showIcon message={t("accounting.fiscal_year_not_elapsed_title")} description={t("accounting.fiscal_year_not_elapsed_desc")} />
+                        ) : alreadyClosed ? (
+                            <Alert type="error" showIcon message={t("accounting.fiscal_year_already_closed_title")} description={t("accounting.fiscal_year_already_closed_desc")} />
+                        ) : openMonths.length > 0 ? (
+                            <Alert type="error" showIcon message={t("accounting.fiscal_year_months_not_closed_title")} description={t("accounting.fiscal_year_months_not_closed_desc", { months: openMonths.map((m) => String(m).padStart(2, "0")).join(", ") })} />
+                        ) : (
+                            <Alert className="dark-alert dark-alert-teal" type="success" showIcon message={t("accounting.fiscal_year_ready_title")} description={t("accounting.fiscal_year_ready_desc", { year })} />
+                        )}
+                        <p className="text-xs text-[var(--ohnix-text-muted)] m-0">{t("accounting.fiscal_year_close_footer")}</p>
+                    </div>
+                ),
+                okText: readiness?.can_close ? t("accounting.fiscal_year_close_action") : t("accounting.close_readiness_blocked_cta"),
+                okButtonProps: { disabled: !readiness?.can_close },
+                cancelText: t("common.cancel"),
+                onOk: readiness?.can_close ? () => handleCloseYear(year) : undefined,
+            });
+        } catch (err) {
+            toast.error(accountingErrorMessage(err, t, "accounting.close_readiness_failed"));
+        } finally {
+            setCheckingYear(null);
+        }
+    };
+
+    const handleCloseYear = async (year) => {
+        try {
+            await accountingService.closeFiscalYear(year);
+            toast.success(t("accounting.fiscal_year_closed", { year }));
+            await loadFiscalYears();
+        } catch (err) {
+            toast.error(accountingErrorMessage(err, t));
+        }
+    };
+
+    const handleReopenYear = (closure) => {
+        let reason = "";
+        let durationHours = 24;
+        Modal.confirm({
+            className: "accounting-modal",
+            title: t("accounting.fiscal_year_reopen_title", { year: closure.year }),
+            content: (
+                <div className="space-y-3 mt-4">
+                    <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.fiscal_year_reopen_guidance")} />
+                    <Input.TextArea rows={3} placeholder={t("accounting.reopen_period_reason")} onChange={(event) => { reason = event.target.value; }} />
+                    <InputNumber min={1} max={168} defaultValue={24} addonAfter={t("accounting.hours")} onChange={(value) => { durationHours = value; }} />
+                </div>
+            ),
+            okText: t("accounting.fiscal_year_reopen_action"),
+            onOk: async () => {
+                if (!reason.trim()) throw new Error(t("accounting.reopen_period_reason_required"));
+                await accountingService.reopenFiscalYear(closure.year, { reason, durationHours });
+                toast.success(t("accounting.fiscal_year_reopened", { year: closure.year }));
+                await loadFiscalYears();
+            },
+        });
+    };
 
     const handleClose = async (id) => {
         try {
@@ -1560,6 +1665,63 @@ const PeriodsTab = () => {
                         rowExpandable: (period) => period.reopenings?.length > 0,
                         expandedRowRender: (period) => (
                             <Table className="module-dark-table" size="small" pagination={false} rowKey="_id" dataSource={period.reopenings} columns={[
+                                { title: t("accounting.reopen_period_reason"), dataIndex: "reason" },
+                                { title: t("accounting.reopened_at"), dataIndex: "reopened_at", render: (value) => dayjs(value).format("DD/MM/YYYY HH:mm") },
+                                { title: t("accounting.reopened_until"), dataIndex: "expires_at", render: (value) => dayjs(value).format("DD/MM/YYYY HH:mm") },
+                                { title: t("accounting.reclosed_at"), dataIndex: "reclosed_at", render: (value) => value ? dayjs(value).format("DD/MM/YYYY HH:mm") : "—" },
+                            ]} />
+                        ),
+                    }}
+                />
+            </Card>
+
+            <h3 className="text-base font-semibold text-[var(--ohnix-text-primary)] mt-8 mb-3">{t("accounting.fiscal_year_section_title")}</h3>
+            <Alert className="dark-alert dark-alert-purple mb-4" type="info" showIcon message={t("accounting.fiscal_year_section_help")} />
+            {canClose && (
+                <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <Select
+                            placeholder={t("accounting.fiscal_year_select_placeholder")}
+                            className="w-full sm:w-48"
+                            value={selectedYear}
+                            onChange={setSelectedYear}
+                            options={closableYears.map((year) => ({ value: year, label: year }))}
+                        />
+                        <Button type="primary" disabled={!selectedYear} loading={checkingYear === selectedYear} onClick={() => reviewAndCloseYear(selectedYear)}>
+                            {t("accounting.fiscal_year_verify_and_close")}
+                        </Button>
+                    </div>
+                </Card>
+            )}
+            <Card className="module-shell border border-[var(--ohnix-line-4)]">
+                <Table
+                    columns={[
+                        { title: t("accounting.col_fiscal_year"), dataIndex: "year", key: "year" },
+                        {
+                            title: t("accounting.col_status"),
+                            dataIndex: "status",
+                            key: "status",
+                            render: (v) => v === "closed" ? <Tag color="default">{t("accounting.status_closed")}</Tag> : <Tag color="orange">{t("accounting.status_reopened")}</Tag>,
+                        },
+                        { title: t("accounting.col_closed_at"), dataIndex: "closed_at", key: "closed_at", render: (v) => (v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "—") },
+                        { title: t("accounting.reopened_until"), dataIndex: "reopened_until", key: "reopened_until", render: (v) => (v ? dayjs(v).format("DD/MM/YYYY HH:mm") : "—") },
+                        {
+                            title: "",
+                            key: "actions",
+                            render: (_, closure) => canClose && closure.status === "closed" ? <Button size="small" onClick={() => handleReopenYear(closure)}>{t("accounting.fiscal_year_reopen_action")}</Button> : null,
+                        },
+                    ]}
+                    dataSource={fiscalYears}
+                    rowKey="_id"
+                    loading={fiscalYearsLoading}
+                    pagination={false}
+                    className="module-dark-table"
+                    scroll={{ x: "max-content" }}
+                    locale={{ emptyText: <EmptyState compact title={t("accounting.no_fiscal_year_closures")} subtitle={t("accounting.empty_fiscal_year_closures_help")} /> }}
+                    expandable={{
+                        rowExpandable: (closure) => closure.reopenings?.length > 0,
+                        expandedRowRender: (closure) => (
+                            <Table className="module-dark-table" size="small" pagination={false} rowKey="_id" dataSource={closure.reopenings} columns={[
                                 { title: t("accounting.reopen_period_reason"), dataIndex: "reason" },
                                 { title: t("accounting.reopened_at"), dataIndex: "reopened_at", render: (value) => dayjs(value).format("DD/MM/YYYY HH:mm") },
                                 { title: t("accounting.reopened_until"), dataIndex: "expires_at", render: (value) => dayjs(value).format("DD/MM/YYYY HH:mm") },

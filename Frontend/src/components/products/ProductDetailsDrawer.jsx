@@ -161,7 +161,7 @@ const ProductDetailsDrawer = ({
                     <div className="module-shell rounded-2xl sm:rounded-3xl p-4 sm:p-5 reveal-card">
                         <div className="flex gap-3 sm:gap-5">
                             <div className="flex-shrink-0">
-                                <div className="w-28 h-full rounded-lg overflow-hidden bg-white/[0.04] border border-[var(--ohnix-line-4)] flex items-center justify-center">
+                                <div className="w-28 h-full rounded-lg overflow-hidden bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] flex items-center justify-center">
                                     <Image
                                         src={product.product_image}
                                         alt={product.product_name}
@@ -204,7 +204,7 @@ const ProductDetailsDrawer = ({
                                 .map((img) => (
                                     <div
                                         key={img._id}
-                                        className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-[var(--ohnix-line-4)] bg-white/[0.04]"
+                                        className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)]"
                                     >
                                         <Image
                                             src={img.url}

@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import * as chartOfAccountsService from "../services/chartOfAccounts.service.js";
 import * as journalEntryService from "../services/journalEntry.service.js";
 import * as accountingPeriodService from "../services/accountingPeriod.service.js";
+import * as fiscalYearService from "../services/fiscalYear.service.js";
 import * as financialStatementsService from "../services/financialStatements.service.js";
 import * as manualVoucherService from "../services/manualJournalVoucher.service.js";
 import * as thirdPartyLedgerService from "../services/thirdPartyLedger.service.js";
@@ -69,6 +70,21 @@ const mapPeriod = (p) => ({
     closed_at: p.closedAt,
     reopened_until: p.reopenedUntil,
     reopenings: (p.reopenings || []).map((reopening) => ({
+        _id: reopening.id,
+        reason: reopening.reason,
+        reopened_at: reopening.reopenedAt,
+        expires_at: reopening.expiresAt,
+        reclosed_at: reopening.reclosedAt,
+    })),
+});
+
+const mapFiscalYearClosure = (c) => c && ({
+    _id: c.id,
+    year: c.year,
+    status: c.status,
+    closed_at: c.closedAt,
+    reopened_until: c.reopenedUntil,
+    reopenings: (c.reopenings || []).map((reopening) => ({
         _id: reopening.id,
         reason: reopening.reason,
         reopened_at: reopening.reopenedAt,
@@ -485,6 +501,41 @@ export const reopenAccountingPeriod = asyncHandler(async (req, res) => {
         durationHours: req.body?.duration_hours ?? 24,
     });
     return res.status(200).json(new ApiResponse(200, mapPeriod(period), "Accounting period reopened successfully."));
+});
+
+export const listFiscalYearClosures = asyncHandler(async (req, res) => {
+    const closures = await fiscalYearService.listFiscalYearClosures(req.user.prismaId);
+    return res.status(200).json(new ApiResponse(200, closures.map(mapFiscalYearClosure), "Fiscal year closures fetched successfully"));
+});
+
+export const getFiscalYearCloseReadiness = asyncHandler(async (req, res, next) => {
+    const year = Number(req.params.year);
+    if (!Number.isInteger(year)) return next(new ApiError(400, "A valid fiscal year is required.", [], "", "fiscal_year_invalid"));
+
+    const result = await fiscalYearService.getFiscalYearCloseReadiness({ accountId: req.user.prismaId, year });
+    return res.status(200).json(new ApiResponse(200, { ...result, closure: mapFiscalYearClosure(result.closure) }, "Fiscal year close readiness fetched successfully"));
+});
+
+export const closeFiscalYear = asyncHandler(async (req, res, next) => {
+    const year = Number(req.params.year);
+    if (!Number.isInteger(year)) return next(new ApiError(400, "A valid fiscal year is required.", [], "", "fiscal_year_invalid"));
+
+    const closure = await fiscalYearService.closeFiscalYear({ accountId: req.user.prismaId, actorId: req.user.actorId, year });
+    return res.status(200).json(new ApiResponse(200, mapFiscalYearClosure(closure), "Fiscal year closed successfully"));
+});
+
+export const reopenFiscalYear = asyncHandler(async (req, res, next) => {
+    const year = Number(req.params.year);
+    if (!Number.isInteger(year)) return next(new ApiError(400, "A valid fiscal year is required.", [], "", "fiscal_year_invalid"));
+
+    const closure = await fiscalYearService.reopenFiscalYear({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        year,
+        reason: req.body?.reason,
+        durationHours: req.body?.duration_hours ?? 24,
+    });
+    return res.status(200).json(new ApiResponse(200, mapFiscalYearClosure(closure), "Fiscal year reopened successfully."));
 });
 
 export const listWithholdingConcepts = asyncHandler(async (req, res) => {

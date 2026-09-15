@@ -1156,6 +1156,145 @@ body {
   color: var(--ohnix-text-dim) !important;
 }
 
+/* DatePicker/RangePicker - unscoped fallback so every closed field is themed
+   even where the enclosing modal/drawer never got its own .ant-picker rule
+   (e.g. CreateOrderModal, PurchaseForm, Finance's transfer/adjustment
+   modals). A more specific scoped rule (.dashboard-app .ant-picker etc.)
+   still wins where one exists, same as .ant-select above. */
+.ant-picker {
+  background: var(--ohnix-surface-2) !important;
+  border-color: var(--ohnix-line-5) !important;
+}
+.ant-picker:not(.ant-picker-disabled):hover {
+  border-color: rgba(41, 216, 213, 0.45) !important;
+}
+.ant-picker-focused {
+  border-color: #29d8d5 !important;
+  box-shadow: 0 0 0 2px rgba(41, 216, 213, 0.18) !important;
+}
+.ant-picker .ant-picker-input > input {
+  color: var(--ohnix-text-primary) !important;
+}
+.ant-picker .ant-picker-input > input::placeholder {
+  color: var(--ohnix-text-dim) !important;
+}
+.ant-picker .ant-picker-suffix,
+.ant-picker .ant-picker-clear {
+  color: #7f8b92 !important;
+  background: var(--ohnix-surface-2) !important;
+}
+.ant-picker .ant-picker-separator {
+  color: var(--ohnix-text-dim) !important;
+}
+
+/* The calendar/time popup always portals to document.body, outside any
+   scoped wrapper class, so it needs its own unscoped rule - without this,
+   every DatePicker in the app (even ones with a themed closed field) opens
+   a plain white antd-default calendar. */
+.ant-picker-dropdown {
+  box-shadow: var(--ohnix-shadow-dropdown) !important;
+}
+.ant-picker-dropdown .ant-picker-panel-container {
+  background: var(--ohnix-surface-4) !important;
+  border: 1px solid var(--ohnix-line-5) !important;
+  box-shadow: none !important;
+}
+.ant-picker-dropdown .ant-picker-panel {
+  background: transparent !important;
+  border-color: var(--ohnix-line-4) !important;
+}
+.ant-picker-dropdown .ant-picker-header {
+  color: var(--ohnix-text-primary) !important;
+  border-bottom-color: var(--ohnix-line-4) !important;
+}
+.ant-picker-dropdown .ant-picker-header button {
+  color: var(--ohnix-text-muted) !important;
+}
+.ant-picker-dropdown .ant-picker-header button:hover {
+  color: var(--ohnix-text-primary) !important;
+}
+.ant-picker-dropdown .ant-picker-content th,
+.ant-picker-dropdown .ant-picker-cell {
+  color: var(--ohnix-text-dim) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-in-view {
+  color: var(--ohnix-text-soft) !important;
+}
+.ant-picker-dropdown .ant-picker-cell:hover:not(.ant-picker-cell-in-view) .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-in-view:hover .ant-picker-cell-inner {
+  background: var(--ohnix-hover-overlay-strong) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-color: rgba(41, 216, 213, 0.55) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-range-start .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-range-end .ant-picker-cell-inner {
+  background: #29d8d5 !important;
+  color: var(--ohnix-accent-contrast) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-in-range::before {
+  background: rgba(41, 216, 213, 0.14) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-disabled .ant-picker-cell-inner {
+  color: var(--ohnix-text-dim) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-disabled::before {
+  background: var(--ohnix-hover-overlay) !important;
+}
+.ant-picker-dropdown .ant-picker-footer,
+.ant-picker-dropdown .ant-picker-ranges {
+  border-top-color: var(--ohnix-line-4) !important;
+}
+.ant-picker-dropdown .ant-picker-today-btn {
+  color: var(--ohnix-accent) !important;
+}
+.ant-picker-dropdown .ant-picker-time-panel-column {
+  border-left-color: var(--ohnix-line-4) !important;
+}
+.ant-picker-dropdown .ant-picker-time-panel-cell-inner {
+  color: var(--ohnix-text-soft) !important;
+}
+.ant-picker-dropdown .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner {
+  background: rgba(41, 216, 213, 0.2) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+/* Generic dropdown menu portal (antd <Dropdown>, e.g. the header user menu
+   and per-row action menus) - same "portals to body, never themed" gap as
+   the picker popup above. */
+.ant-dropdown .ant-dropdown-menu {
+  background: var(--ohnix-surface-4) !important;
+  border: 1px solid var(--ohnix-line-5) !important;
+  box-shadow: var(--ohnix-shadow-dropdown) !important;
+}
+.ant-dropdown .ant-dropdown-menu-item {
+  color: var(--ohnix-text-soft) !important;
+}
+.ant-dropdown .ant-dropdown-menu-item:hover,
+.ant-dropdown .ant-dropdown-menu-item-active {
+  background: var(--ohnix-hover-overlay-strong) !important;
+}
+.ant-dropdown .ant-dropdown-menu-item-danger {
+  color: #ff6b6b !important;
+}
+.ant-dropdown .ant-dropdown-menu-item-disabled {
+  color: var(--ohnix-text-dim) !important;
+}
+.ant-dropdown .ant-dropdown-menu-item-divider {
+  background: var(--ohnix-line-4) !important;
+}
+
+.ant-color-picker-panel {
+  background: var(--ohnix-surface-4) !important;
+  border: 1px solid var(--ohnix-line-5) !important;
+  box-shadow: var(--ohnix-shadow-dropdown) !important;
+}
+.ant-color-picker-panel .ant-color-picker-input-container .ant-input {
+  background: var(--ohnix-surface-2) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
 /* Switch - first real usage of antd's <Switch> in the app was the physical-
    characteristics form (ProductModal), which is exactly why ThemeToggle.jsx
    avoided reusing an antd control: nothing here had ever given one a themed

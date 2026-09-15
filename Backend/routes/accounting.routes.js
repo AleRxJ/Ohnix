@@ -13,6 +13,10 @@ import {
     closeAccountingPeriod,
     getAccountingPeriodCloseReadiness,
     reopenAccountingPeriod,
+    listFiscalYearClosures,
+    getFiscalYearCloseReadiness,
+    closeFiscalYear,
+    reopenFiscalYear,
     getIncomeStatement,
     getIncomeStatementComparison,
     getBalanceSheet,
@@ -141,5 +145,13 @@ router.route("/periods").get(requireModulePermission("accounting", "view"), list
 router.route("/periods/:id/close").post(requireModulePermission("accounting", "admin"), closeAccountingPeriod);
 router.route("/periods/:id/close-readiness").get(requireModulePermission("accounting", "view"), getAccountingPeriodCloseReadiness);
 router.route("/periods/:id/reopen").post(requireModulePermission("accounting", "admin"), reopenAccountingPeriod);
+
+router.route("/fiscal-years").get(requireModulePermission("accounting", "view"), listFiscalYearClosures);
+router.route("/fiscal-years/:year/close-readiness").get(requireModulePermission("accounting", "view"), getFiscalYearCloseReadiness);
+// Same "admin" gate as /periods/:id/close - closing a fiscal year is even
+// more consequential (it locks every one of that year's months for good and
+// reclassifies a whole year's equity), not routine data entry.
+router.route("/fiscal-years/:year/close").post(requireModulePermission("accounting", "admin"), closeFiscalYear);
+router.route("/fiscal-years/:year/reopen").post(requireModulePermission("accounting", "admin"), reopenFiscalYear);
 
 export default router;

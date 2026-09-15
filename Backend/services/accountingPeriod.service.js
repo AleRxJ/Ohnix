@@ -1,6 +1,6 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
-import { ensureRetainedEarningsAccount } from "./chartOfAccounts.service.js";
+import { ensureCurrentYearEarningsAccount } from "./chartOfAccounts.service.js";
 import { getPeriodClosingPlan } from "./financialStatements.service.js";
 import { recordJournalEntry } from "./journalEntry.service.js";
 import { getCashIntegrity } from "./cashIntegrity.service.js";
@@ -84,11 +84,16 @@ export const closeAccountingPeriod = async ({ accountId, actorId, periodId }) =>
         const { reversalLines, netIncome } = await getPeriodClosingPlan({ accountId, startDate, endDate, db: tx });
 
         if (reversalLines.length > 0 || netIncome !== 0) {
-            const retainedEarnings = await ensureRetainedEarningsAccount(tx, accountId);
+            // Posts to "Utilidad del ejercicio" (3610), not "Utilidades
+            // acumuladas" (3605) directly - the fiscal year isn't closed yet,
+            // so this month's result isn't permanent retained earnings until
+            // fiscalYear.service.js#closeFiscalYear sweeps the whole year's
+            // accumulated 3610 balance into 3605.
+            const currentYearEarnings = await ensureCurrentYearEarningsAccount(tx, accountId);
             const lines = [
                 ...reversalLines,
                 {
-                    chartAccountId: retainedEarnings.id,
+                    chartAccountId: currentYearEarnings.id,
                     debit: netIncome < 0 ? Math.abs(netIncome) : 0,
                     credit: netIncome > 0 ? netIncome : 0,
                 },

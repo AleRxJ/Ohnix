@@ -259,6 +259,29 @@ export const accountingService = {
         return response.data;
     },
 
+    async listFiscalYearClosures() {
+        const response = await api.get("/accounting/fiscal-years");
+        return response.data;
+    },
+
+    async getFiscalYearCloseReadiness(year) {
+        const response = await api.get(`/accounting/fiscal-years/${year}/close-readiness`);
+        return response.data;
+    },
+
+    async closeFiscalYear(year) {
+        const response = await api.post(`/accounting/fiscal-years/${year}/close`);
+        return response.data;
+    },
+
+    async reopenFiscalYear(year, { reason, durationHours }) {
+        const response = await api.post(`/accounting/fiscal-years/${year}/reopen`, {
+            reason,
+            duration_hours: durationHours,
+        });
+        return response.data;
+    },
+
     async getIncomeStatement({ from, to, costCenterId } = {}) {
         const response = await api.get("/accounting/reports/income-statement", {
             params: { ...(from ? { from } : {}), ...(to ? { to } : {}), ...(costCenterId ? { cost_center_id: costCenterId } : {}) },

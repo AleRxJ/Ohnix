@@ -15,6 +15,9 @@ export const SINGLE_ENTRY_SOURCE_TYPES = new Set([
     "period_close",
     "period_reopen",
     "period_reclose",
+    "year_close",
+    "year_reopen",
+    "year_reclose",
     "inventory_adjustment",
     "transfer_discrepancy",
     "manual_journal",
@@ -93,7 +96,14 @@ export const recordJournalEntry = async (
     }
 
     const period = await getOrCreateAccountingPeriod(tx, { accountId, entryDate });
-    if (period.status === "closed") {
+    // A fiscal-year close/reopen/reclose is dated Dec 31 of the year it
+    // affects (real-world "closing entries" convention: dated the fiscal
+    // year's last day so an as-of-Dec-31 balance sheet already reflects it),
+    // which always resolves to that year's December AccountingPeriod - one
+    // fiscalYear.service.js#closeFiscalYear already requires to be closed
+    // before it runs. Without this exemption no such entry could ever post.
+    const isFiscalYearSourceType = sourceType === "year_close" || sourceType === "year_reopen" || sourceType === "year_reclose";
+    if (period.status === "closed" && !isFiscalYearSourceType) {
         throw new ApiError(
             409,
             "The accounting period is closed for new entries.",
