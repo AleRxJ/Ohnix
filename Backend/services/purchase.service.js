@@ -2,6 +2,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { recordStockMovement } from "./stockMovement.service.js";
 import { claimLocationStockWithCost, creditLocationStockWithCost } from "./productLocationStock.service.js";
+import { creditBatch, claimNamedBatch } from "./productBatch.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
 import { buildAccountingThirdParty, postPurchaseJournalEntry, postPurchaseReturnJournalEntry } from "./accountingPosting.service.js";
@@ -72,7 +73,45 @@ const findProductByAnyId = async (id) =>
             stock: true,
             taxTreatment: true,
             taxRate: true,
+            purchaseUnitId: true,
+            purchaseUnitConversionFactor: true,
+            tracksBatches: true,
         },
+    });
+
+// A purchase line may arrive in the product's configured purchase unit
+// (purchase_unit_quantity/purchase_unit_cost, e.g. "3 cajas de 12") instead
+// of its base stock unit (quantity/unitcost, e.g. "36 unidades") - see
+// Product.purchaseUnitId's schema comment. Converted once, here, before
+// anything downstream (stock claim/credit, weighted-average costing,
+// accounting posting, retentions) ever reads `details` - every one of
+// those already assumes quantity/unitcost are in base units, exactly as
+// they were before this feature existed, so nothing past this point needs
+// to know a conversion happened.
+const resolvePurchaseUnitDetails = (details, productsById) =>
+    details.map((detail) => {
+        if (detail.purchase_unit_quantity === undefined || detail.purchase_unit_quantity === null) return detail;
+
+        const product = productsById.get(detail.product_id?.toString());
+        const factor = product ? Number(product.purchaseUnitConversionFactor) : NaN;
+        if (!product?.purchaseUnitId || !Number.isFinite(factor) || factor <= 0) {
+            throw new ApiError(400, `${product?.productName || detail.product_id} does not have a purchase unit configured.`, [], "", "product_purchase_unit_not_configured");
+        }
+
+        const purchaseQuantity = Number(detail.purchase_unit_quantity);
+        const purchaseUnitCost = Number(detail.purchase_unit_cost);
+        if (!Number.isFinite(purchaseQuantity) || purchaseQuantity <= 0) {
+            throw new ApiError(400, "Purchase unit quantity must be greater than 0.", [], "", "product_purchase_unit_quantity_invalid");
+        }
+        if (!Number.isFinite(purchaseUnitCost) || purchaseUnitCost < 0) {
+            throw new ApiError(400, "Purchase unit cost must be non-negative.", [], "", "product_purchase_unit_cost_invalid");
+        }
+
+        return {
+            ...detail,
+            quantity: Math.round(purchaseQuantity * factor),
+            unitcost: Number((purchaseUnitCost / factor).toFixed(2)),
+        };
     });
 
 // IVA descontable (input VAT credit, ET art. 485-490) - same shape as
@@ -107,7 +146,8 @@ const findPurchaseByAnyId = async (id) =>
 
 class PurchaseService {
     async createPurchase(purchaseData, userId, userRole, pointOfSaleId) {
-        const { supplier_id, purchase_no, purchase_status, due_date, details, is_tutorial_data, source_quotation_id, withholding_concept_ids } = purchaseData;
+        const { supplier_id, purchase_no, purchase_status, due_date, is_tutorial_data, source_quotation_id, withholding_concept_ids } = purchaseData;
+        let { details } = purchaseData;
 
         if (
             !supplier_id ||
@@ -155,12 +195,28 @@ class PurchaseService {
             }
         }
 
+        // Keyed by both id and legacyMongoId, same dual lookup
+        // findProductByAnyId itself does - detail.product_id may arrive as
+        // either, exactly like it does for every other product reference
+        // in this payload.
+        const productsById = new Map(products.flatMap((p) => [[p.id, p], ...(p.legacyMongoId ? [[p.legacyMongoId, p]] : [])]));
+        details = resolvePurchaseUnitDetails(details, productsById);
+
         for (const d of details) {
             if (!d.quantity || Number(d.quantity) < 1) {
                 throw new ApiError(400, "Quantity must be at least 1 for all items");
             }
             if (d.unitcost === undefined || Number(d.unitcost) < 0) {
                 throw new ApiError(400, "Unit cost must be non-negative for all items");
+            }
+            // Captured at creation time even for a "pending" purchase - the
+            // lot number is information the receiver states once, at
+            // intake, not something to ask for again at the "pending" ->
+            // "completed" transition that actually credits it (see
+            // updatePurchaseStatus below).
+            const product = productsById.get(d.product_id?.toString());
+            if (product?.tracksBatches && !String(d.batch_number || "").trim()) {
+                throw new ApiError(400, `${product.productName} requires a lot/batch number for every purchase line.`, [], "", "product_batch_number_required");
             }
         }
 
@@ -254,6 +310,10 @@ class PurchaseService {
                             taxTreatmentApplied: itemTax.treatment,
                             taxRateApplied: itemTax.rate,
                             taxAmount: itemTax.amount,
+                            ...(mappedProduct.tracksBatches && {
+                                batchNumber: String(detail.batch_number).trim(),
+                                batchExpirationDate: detail.batch_expiration_date ? new Date(detail.batch_expiration_date) : null,
+                            }),
                         },
                     });
 
@@ -264,6 +324,17 @@ class PurchaseService {
                             quantity: Number(detail.quantity),
                             incomingUnitCost: Number(detail.unitcost),
                         });
+
+                        if (mappedProduct.tracksBatches) {
+                            await creditBatch(tx, {
+                                productId: mappedProduct.id,
+                                pointOfSaleId,
+                                batchNumber: detail.batch_number,
+                                expirationDate: detail.batch_expiration_date || null,
+                                quantity: Number(detail.quantity),
+                                createdById: userId,
+                            });
+                        }
 
                         await recordStockMovement(tx, {
                             productId: mappedProduct.id,
@@ -401,7 +472,9 @@ class PurchaseService {
                         unitcost: true,
                         total: true,
                         taxAmount: true,
-                        product: { select: { createdById: true } },
+                        batchNumber: true,
+                        batchExpirationDate: true,
+                        product: { select: { createdById: true, tracksBatches: true } },
                     },
                 });
 
@@ -412,6 +485,17 @@ class PurchaseService {
                         quantity: detail.quantity,
                         incomingUnitCost: Number(detail.unitcost),
                     });
+
+                    if (detail.product.tracksBatches) {
+                        await creditBatch(tx, {
+                            productId: detail.productId,
+                            pointOfSaleId: purchase.pointOfSaleId,
+                            batchNumber: detail.batchNumber,
+                            expirationDate: detail.batchExpirationDate,
+                            quantity: detail.quantity,
+                            createdById: userId,
+                        });
+                    }
 
                     await recordStockMovement(tx, {
                         productId: detail.productId,
@@ -543,6 +627,7 @@ class PurchaseService {
                         productName: true,
                         stock: true,
                         createdById: true,
+                        tracksBatches: true,
                     },
                 },
             },
@@ -622,6 +707,25 @@ class PurchaseService {
                         409,
                         `Not enough stock left to return "${detail.product.productName}". Please refresh and try again.`
                     );
+                }
+
+                // Gives back the exact lot this line received, not
+                // whatever FEFO would pick - this line's own batchNumber
+                // already identifies it precisely, more precise than the
+                // generic FEFO claim a sale has to use.
+                if (detail.product.tracksBatches) {
+                    const batchClaim = await claimNamedBatch(tx, {
+                        productId: detail.product.id,
+                        pointOfSaleId: purchase.pointOfSaleId,
+                        batchNumber: detail.batchNumber,
+                        quantity,
+                    });
+                    if (batchClaim === null) {
+                        throw new ApiError(
+                            409,
+                            `Lot "${detail.batchNumber}" doesn't have enough left to return this quantity of "${detail.product.productName}".`
+                        );
+                    }
                 }
 
                 await recordStockMovement(tx, {

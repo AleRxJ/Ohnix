@@ -15,6 +15,8 @@ import {
     createExternalApiClientAdmin,
     listExternalApiClientsAdmin,
     issueExternalApiClientApiKeyAdmin,
+    listExternalApiClientLiveKeysAdmin,
+    getExternalApiClientUsageAdmin,
 } from "../controllers/company.controller.js";
 
 const router = Router();
@@ -39,5 +41,11 @@ router.route("/admin/itcycle/certificate-orders").get(listCertificateOrdersAdmin
 // Backend/services/externalApiClient.service.js.
 router.route("/admin/itcycle/external-clients").get(listExternalApiClientsAdmin).post(createExternalApiClientAdmin);
 router.route("/admin/itcycle/external-clients/:id/api-keys").post(issueExternalApiClientApiKeyAdmin);
+// Live cross-check against itcycle-api-dian's own records (metadata only) -
+// see Backend/services/externalApiClient.service.js#listLiveApiKeysForExternalClient.
+router.route("/admin/itcycle/external-clients/:id/live-api-keys").get(listExternalApiClientLiveKeysAdmin);
+// Read-only billable-usage count (current calendar month, ACCEPTED documents
+// only) - see Backend/services/externalApiClient.service.js#getUsageForExternalClient.
+router.route("/admin/itcycle/external-clients/:id/usage").get(getExternalApiClientUsageAdmin);
 
 export default router;

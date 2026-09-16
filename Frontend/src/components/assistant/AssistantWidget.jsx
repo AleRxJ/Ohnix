@@ -327,7 +327,6 @@ const AssistantWidget = () => {
                             background: "linear-gradient(135deg, rgba(41,216,213,0.18), rgba(68,243,240,0.22))",
                             border: "1px solid rgba(41,216,213,0.4)",
                             boxShadow: "0 8px 28px rgba(41,216,213,0.35)",
-                            backdropFilter: "blur(6px)",
                             touchAction: draggable ? "none" : undefined,
                         }}
                     >

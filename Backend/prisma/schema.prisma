@@ -295,6 +295,7 @@ model User {
   financialStatementNotesUpdated  FinancialStatementNote[]   @relation("FinancialStatementNoteUpdatedBy")
   fixedAssetsOwned                FixedAsset[]               @relation("FixedAssetCreatedBy")
   recurringJournalTemplatesOwned  RecurringJournalTemplate[] @relation("RecurringJournalTemplateCreatedBy")
+  productBatchesCreated           ProductBatch[]
   accountingConfigAuditsPerformed AccountingConfigAudit[]    @relation("AccountingConfigAuditActor")
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
@@ -800,6 +801,7 @@ model Unit {
   createdBy User      @relation("UnitCreatedBy", fields: [createdById], references: [id])
   updatedBy User?     @relation("UnitUpdatedBy", fields: [updatedById], references: [id])
   products  Product[]
+  productsAsPurchaseUnit Product[] @relation("ProductPurchaseUnit")
 
   // See Category's matching constraint - same duplicate-name race, same fix.
   @@unique([unitName, createdById])
@@ -943,6 +945,15 @@ model Product {
   status             ProductStatus       @default(active)
   categoryId         String              @map("category_id")
   unitId             String              @map("unit_id")
+  // Optional alternate unit this product is BOUGHT in (e.g. "Caja") when it
+  // differs from `unit` (the stock/sale unit, e.g. "Unidad") -
+  // purchase.service.js converts a line entered in this unit into base-unit
+  // quantity/cost before it ever reaches PurchaseDetail, so stock and
+  // weighted-average costing never need to know a conversion happened. Both
+  // columns are set together or not at all (enforced at the service layer,
+  // not the DB) - a factor with no unit, or vice versa, means nothing.
+  purchaseUnitId               String?  @map("purchase_unit_id")
+  purchaseUnitConversionFactor Decimal? @map("purchase_unit_conversion_factor") @db.Decimal(10, 2)
   buyingPrice        Decimal             @map("buying_price") @db.Decimal(12, 2)
   sellingPrice       Decimal             @map("selling_price") @db.Decimal(12, 2)
   // Account-wide total across every Point of Sale - a fast-read cache kept
@@ -965,6 +976,27 @@ model Product {
   // Per-product override for the low-stock alert threshold (Escala+ plan
   // feature). Null means "use the account-wide default threshold".
   lowStockThreshold  Int?                @map("low_stock_threshold")
+  // A kit/combo never has its own ProductLocationStock row - selling one
+  // claims stock from its `kitComponents` instead (order.service.js's
+  // createOrder), scaled by each component's own quantity. `stock` above
+  // stays 0 and unused for a kit, same "field allowed to be meaningless in
+  // this one case" idiom as isPhysical's own block. No nested kits (a
+  // kit's components must themselves be non-kit products) - enforced at
+  // the service layer, not the DB, to keep the recursion this would
+  // otherwise need out of both the schema and the sale-time stock claim.
+  isKit              Boolean             @default(false) @map("is_kit")
+  // Opt-in lot/expiration tracking - mutually exclusive with isKit (a kit's
+  // stock is virtual, there's nothing to lot-track) and, like isKit, only
+  // togglable while stock is 0 (product.controller.js), since there's no
+  // way to retroactively assign existing stock to a lot. When true, every
+  // stock credit (purchase receipt, positive adjustment, inbound transfer)
+  // must name a lot via productBatch.service.js#creditBatch, and every
+  // debit (sale, negative adjustment, outbound transfer, purchase return)
+  // consumes lots oldest-expiration-first via that same service's
+  // claimBatchesFEFO - see ProductBatch's own comment for why this stays a
+  // best-effort approximation on the return/cancel path rather than an
+  // exact snapshot like costBasisApplied.
+  tracksBatches      Boolean             @default(false) @map("tracks_batches")
   // Physical characteristics for shipping/logistics (see the WeightUnit
   // enum comment for the storage-vs-display-unit split). isPhysical
   // defaults true so every pre-existing product stays valid; a digital
@@ -1010,6 +1042,7 @@ model Product {
 
   category              Category                  @relation(fields: [categoryId], references: [id])
   unit                  Unit                      @relation(fields: [unitId], references: [id])
+  purchaseUnit          Unit?                     @relation("ProductPurchaseUnit", fields: [purchaseUnitId], references: [id])
   createdBy             User                      @relation("ProductCreatedBy", fields: [createdById], references: [id])
   updatedBy             User?                     @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
   orderDetails          OrderDetail[]
@@ -1021,13 +1054,79 @@ model Product {
   transfers             StockTransfer[]
   images                ProductImage[]
   variants              ProductVariant[]
+  kitComponents         ProductKitComponent[] @relation("KitComponents")
+  componentOfKits       ProductKitComponent[] @relation("ComponentOfKits")
+  batches               ProductBatch[]
 
   @@unique([productCode, createdById])
   @@unique([sku, createdById])
   @@index([createdById])
   @@index([categoryId])
   @@index([unitId])
+  @@index([purchaseUnitId])
   @@map("products")
+}
+
+// One line of a kit/combo's recipe: selling `quantity` of `componentProductId`
+// per unit of `kitProductId` sold - see Product.isKit's own comment. Kept as
+// a flat list (no nested kits) so order.service.js#createOrder can resolve
+// and claim every component's stock in one pass without recursion.
+model ProductKitComponent {
+  id                String   @id @default(cuid())
+  kitProductId      String   @map("kit_product_id")
+  componentProductId String  @map("component_product_id")
+  quantity          Decimal  @db.Decimal(10, 2)
+  position          Int      @default(0)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  kitProduct       Product @relation("KitComponents", fields: [kitProductId], references: [id], onDelete: Cascade)
+  componentProduct Product @relation("ComponentOfKits", fields: [componentProductId], references: [id])
+
+  @@unique([kitProductId, componentProductId])
+  @@index([kitProductId, position])
+  @@index([componentProductId])
+  @@map("product_kit_components")
+}
+
+// One received lot of a tracksBatches product at one location - the
+// per-(product, location, lot) counterpart to ProductLocationStock's
+// per-(product, location) balance, kept purely as a quantity/expiration
+// sub-ledger layered on top of it (cost stays entirely in
+// ProductLocationStock's weighted average - a lot never carries its own
+// cost). `quantity` is the lot's current remaining balance, credited on
+// receipt (purchase, positive adjustment, inbound transfer) and debited
+// FEFO (earliest expirationDate first, nulls last, then oldest first) on
+// every sale/decrement - see productBatch.service.js. A null
+// expirationDate means "this lot doesn't expire" and sorts last in FEFO
+// order, never first.
+//
+// Deliberately NOT symmetric with returns/cancellations the way
+// costBasisApplied is: reversing a sale/adjustment credits the returned
+// quantity back to whichever lot currently expires soonest, not
+// necessarily the exact lot it was claimed from. Exact per-line lot
+// snapshotting (mirroring OrderDetail.costBasisApplied) would need a new
+// JSON column on every detail table this touches (order, purchase,
+// adjustment) for a return path that's comparatively rare - the same
+// "simplify the reversal, keep the forward path exact" tradeoff already
+// made for kit returns (see Product.isKit's own comment).
+model ProductBatch {
+  id             String    @id @default(cuid())
+  productId      String    @map("product_id")
+  pointOfSaleId  String    @map("point_of_sale_id")
+  batchNumber    String    @map("batch_number")
+  expirationDate DateTime? @map("expiration_date")
+  quantity       Int       @default(0)
+  createdById    String    @map("created_by")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  product     Product     @relation(fields: [productId], references: [id])
+  pointOfSale PointOfSale @relation(fields: [pointOfSaleId], references: [id])
+  createdBy   User        @relation(fields: [createdById], references: [id])
+
+  @@unique([productId, pointOfSaleId, batchNumber])
+  @@index([productId, pointOfSaleId, expirationDate])
+  @@map("product_batches")
 }
 
 // One sellable combination of a product's options (e.g. "Negra / M" for a
@@ -1179,6 +1278,15 @@ model StockTransfer {
   isQuickTransfer   Boolean             @default(false) @map("is_quick_transfer")
   notes             String?             @db.Text
   cancelReason      String?             @map("cancel_reason") @db.Text
+  // Only set for a tracksBatches product - the exact per-lot breakdown
+  // claimed at ship time ([{batchNumber, expirationDate, quantity}], see
+  // productBatch.service.js#claimBatchesFEFO's return shape), reused at
+  // receive time to credit the destination with the SAME lot identity
+  // (not a fresh FEFO guess) and at cancel time to credit it straight back
+  // to the source - same "freeze what was actually claimed, replay it on
+  // reversal" idiom as unitCostApplied above, just structured instead of
+  // scalar.
+  batchAllocations Json?               @map("batch_allocations")
 
   requestedById String    @map("requested_by")
   requestedAt   DateTime  @default(now()) @map("requested_at")
@@ -1400,6 +1508,14 @@ model PurchaseDetail {
   returnedQuantity    Int                 @default(0) @map("returned_quantity")
   refundAmount        Decimal             @default(0) @map("refund_amount") @db.Decimal(12, 2)
   returnedTaxAmount   Decimal             @default(0) @map("returned_tax_amount") @db.Decimal(12, 2)
+  // Only set for a tracksBatches product - captured at purchase creation
+  // (whether the purchase starts "pending" or "completed") since the lot
+  // number is information the receiver states once, at intake, not
+  // something to ask for again at the "pending" -> "completed" transition
+  // that actually credits the stock. See purchase.service.js and
+  // productBatch.service.js#creditBatch.
+  batchNumber         String?             @map("batch_number")
+  batchExpirationDate DateTime?           @map("batch_expiration_date")
   createdAt           DateTime            @default(now()) @map("created_at")
   updatedAt           DateTime            @updatedAt @map("updated_at")
 
@@ -2055,6 +2171,7 @@ model PointOfSale {
   locationStock     ProductLocationStock[]
   transfersOut      StockTransfer[]         @relation("StockTransferFrom")
   transfersIn       StockTransfer[]         @relation("StockTransferTo")
+  productBatches    ProductBatch[]
   customers         Customer[]
   suppliers         Supplier[]
   cashAccounts      CashAccount[]

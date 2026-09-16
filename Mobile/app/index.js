@@ -67,6 +67,14 @@ export default function Index() {
                 domStorageEnabled
                 sharedCookiesEnabled
                 startInLoadingState={false}
+                // Web's floating FABs (AssistantWidget, InventoryTourFab) use
+                // backdrop-filter/blur + position:fixed - Android's default
+                // WebView layer ('none', i.e. whatever the system falls back
+                // to) can render those as clipped/torn rectangles instead of
+                // proper blurred circles on GPUs with flaky hw-accel passthrough
+                // (seen on BlueStacks). Forcing the hardware-composited layer
+                // is the standard fix for this class of WebView rendering bug.
+                androidLayerType="hardware"
             />
             {loading ? (
                 <View style={styles.loadingOverlay} pointerEvents="none">

@@ -18,6 +18,8 @@ export const MARKETING_ROUTES = [
     "/demo",
     "/software-inventario-pymes",
     "/facturacion-electronica-dian",
+    "/facturacion-electronica-sin-inventario",
+    "/certificado-digital-dian",
     "/comparativa/ohnix-vs-alegra",
     "/colaboracion-en-equipo",
     "/integraciones",

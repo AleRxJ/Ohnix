@@ -114,8 +114,13 @@ const PurchaseForm = ({
             due_date: values.due_date ? values.due_date.endOf("day").toISOString() : null,
             details: values.details.map((detail) => ({
                 product_id: detail.product_id,
-                quantity: detail.quantity,
-                unitcost: detail.unitcost,
+                ...(detail.purchase_unit_quantity !== undefined
+                    ? { purchase_unit_quantity: detail.purchase_unit_quantity, purchase_unit_cost: detail.purchase_unit_cost }
+                    : { quantity: detail.quantity, unitcost: detail.unitcost }),
+                ...(detail.batch_number !== undefined && {
+                    batch_number: detail.batch_number,
+                    batch_expiration_date: detail.batch_expiration_date ? detail.batch_expiration_date.toISOString() : null,
+                }),
             })),
             withholding_concept_ids: values.withholding_concept_ids || [],
             ...(isConvertingQuotation && { source_quotation_id: initialQuotation.id }),

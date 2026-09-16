@@ -8,7 +8,7 @@
 // first Ohnix admin UI for it. See Backend/services/externalApiClient.service.js.
 import { useContext, useEffect, useMemo, useState } from "react";
 import { Alert, Button, Empty, Form, Input, Modal, Select, Table, Tooltip } from "antd";
-import { CloudServerOutlined, CopyOutlined, KeyOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { BarChartOutlined, CloudServerOutlined, CopyOutlined, KeyOutlined, PlusOutlined, SafetyCertificateOutlined, SearchOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
@@ -52,6 +52,26 @@ const AdminApiClients = () => {
     const [issuing, setIssuing] = useState(false);
     const [issuedKey, setIssuedKey] = useState(null);
     const [keyLabel, setKeyLabel] = useState("");
+
+    // Live cross-check against itcycle-api-dian's own records (see
+    // adminService.listExternalApiClientLiveKeys) - separate from the
+    // Ohnix-side issuance log the "apiKeys" column already shows, so the
+    // admin can tell "what we think we issued" apart from "what
+    // itcycle-api-dian actually has on file" for this client.
+    const [liveKeysClient, setLiveKeysClient] = useState(null);
+    const [liveKeysLoading, setLiveKeysLoading] = useState(false);
+    const [liveKeys, setLiveKeys] = useState(null);
+    const [liveKeysError, setLiveKeysError] = useState("");
+
+    // Billable-usage modal (current calendar month, ACCEPTED documents only)
+    // - see adminService.getExternalApiClientUsage. Same
+    // open/loading/error/close shape as the live-keys modal above, so an
+    // admin can see real numbers before sending a manual invoice against the
+    // published per-document pricing.
+    const [usageClient, setUsageClient] = useState(null);
+    const [usageLoading, setUsageLoading] = useState(false);
+    const [usage, setUsage] = useState(null);
+    const [usageError, setUsageError] = useState("");
 
     const fetchData = async () => {
         try {
@@ -151,6 +171,48 @@ const AdminApiClients = () => {
         }
     };
 
+    const openLiveKeysModal = async (client) => {
+        setLiveKeysClient(client);
+        setLiveKeys(null);
+        setLiveKeysError("");
+        setLiveKeysLoading(true);
+        try {
+            const response = await adminService.listExternalApiClientLiveKeys(client.id);
+            setLiveKeys(response?.data || []);
+        } catch (error) {
+            setLiveKeysError(error.response?.data?.message || t("common.error"));
+        } finally {
+            setLiveKeysLoading(false);
+        }
+    };
+
+    const closeLiveKeysModal = () => {
+        setLiveKeysClient(null);
+        setLiveKeys(null);
+        setLiveKeysError("");
+    };
+
+    const openUsageModal = async (client) => {
+        setUsageClient(client);
+        setUsage(null);
+        setUsageError("");
+        setUsageLoading(true);
+        try {
+            const response = await adminService.getExternalApiClientUsage(client.id);
+            setUsage(response?.data || null);
+        } catch (error) {
+            setUsageError(error.response?.data?.message || t("common.error"));
+        } finally {
+            setUsageLoading(false);
+        }
+    };
+
+    const closeUsageModal = () => {
+        setUsageClient(null);
+        setUsage(null);
+        setUsageError("");
+    };
+
     const formatDate = (value) => (value ? new Date(value).toLocaleDateString() : "—");
 
     const columns = [
@@ -206,9 +268,27 @@ const AdminApiClients = () => {
             key: "actions",
             fixed: "right",
             render: (_, record) => (
-                <Button type="text" size="small" icon={<KeyOutlined />} onClick={() => openKeyModal(record)}>
-                    {t("admin.api_clients_issue_key_button")}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button type="text" size="small" icon={<KeyOutlined />} onClick={() => openKeyModal(record)}>
+                        {t("admin.api_clients_issue_key_button")}
+                    </Button>
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={<SafetyCertificateOutlined />}
+                        onClick={() => openLiveKeysModal(record)}
+                    >
+                        {t("admin.api_clients_verify_button")}
+                    </Button>
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={<BarChartOutlined />}
+                        onClick={() => openUsageModal(record)}
+                    >
+                        {t("admin.api_clients_usage_button")}
+                    </Button>
+                </div>
             ),
         },
     ];
@@ -393,6 +473,127 @@ const AdminApiClients = () => {
                                 <Button icon={<CopyOutlined />} onClick={copyIssuedKey} className="h-10" />
                             </Tooltip>
                         </Input.Group>
+                    </div>
+                )}
+            </Modal>
+
+            <Modal
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                            <SafetyCertificateOutlined className="text-[#44F3F0]" />
+                        </div>
+                        <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                            {t("admin.api_clients_verify_modal_title")}
+                        </span>
+                    </div>
+                }
+                open={Boolean(liveKeysClient)}
+                onCancel={closeLiveKeysModal}
+                footer={<Button onClick={closeLiveKeysModal}>{t("admin.api_clients_issue_key_close")}</Button>}
+                destroyOnClose
+                width={560}
+                styles={darkModalStyles}
+            >
+                {liveKeysClient && (
+                    <div className="mt-2 space-y-4">
+                        <p className="text-sm text-[var(--ohnix-text-muted)]">
+                            {t("admin.api_clients_verify_intro", { name: liveKeysClient.companyName })}
+                        </p>
+                        {liveKeysLoading && (
+                            <p className="text-sm text-[var(--ohnix-text-muted)]">{t("admin.api_clients_verify_loading")}</p>
+                        )}
+                        {!liveKeysLoading && liveKeysError && (
+                            <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={liveKeysError} />
+                        )}
+                        {!liveKeysLoading && !liveKeysError && liveKeys && liveKeys.length === 0 && (
+                            <Empty description={t("admin.api_clients_verify_empty")} />
+                        )}
+                        {!liveKeysLoading && !liveKeysError && liveKeys && liveKeys.length > 0 && (
+                            <div className="space-y-2">
+                                {liveKeys.map((key) => (
+                                    <div
+                                        key={key.id}
+                                        className="flex items-center justify-between rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] px-4 py-3"
+                                    >
+                                        <div>
+                                            <div className="text-sm font-medium text-[var(--ohnix-text-primary)]">
+                                                {key.label || "—"}
+                                            </div>
+                                            <div className="text-xs text-[var(--ohnix-text-muted)]">
+                                                {key.keyPrefix}••••••• · {formatDate(key.createdAt)}
+                                            </div>
+                                        </div>
+                                        <span className="text-xs uppercase tracking-wide text-[var(--ohnix-text-muted)]">
+                                            {key.status}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </Modal>
+
+            <Modal
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                            <BarChartOutlined className="text-[#44F3F0]" />
+                        </div>
+                        <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                            {t("admin.api_clients_usage_modal_title")}
+                        </span>
+                    </div>
+                }
+                open={Boolean(usageClient)}
+                onCancel={closeUsageModal}
+                footer={<Button onClick={closeUsageModal}>{t("admin.api_clients_issue_key_close")}</Button>}
+                destroyOnClose
+                width={560}
+                styles={darkModalStyles}
+            >
+                {usageClient && (
+                    <div className="mt-2 space-y-4">
+                        {usageLoading && (
+                            <p className="text-sm text-[var(--ohnix-text-muted)]">{t("admin.api_clients_usage_loading")}</p>
+                        )}
+                        {!usageLoading && usageError && (
+                            <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={usageError} />
+                        )}
+                        {!usageLoading && !usageError && usage && (
+                            <div className="space-y-3">
+                                <p className="text-sm text-[var(--ohnix-text-muted)]">
+                                    {t("admin.api_clients_usage_intro", {
+                                        name: usageClient.companyName,
+                                        month: usage.month,
+                                        year: usage.year,
+                                    })}
+                                </p>
+                                <div className="space-y-2">
+                                    {[
+                                        { label: t("admin.api_clients_usage_row_invoices"), value: usage.invoices },
+                                        { label: t("admin.api_clients_usage_row_credit_notes"), value: usage.creditNotes },
+                                        { label: t("admin.api_clients_usage_row_debit_notes"), value: usage.debitNotes },
+                                        { label: t("admin.api_clients_usage_row_support_documents"), value: usage.supportDocuments },
+                                    ].map((row) => (
+                                        <div
+                                            key={row.label}
+                                            className="flex items-center justify-between rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] px-4 py-3"
+                                        >
+                                            <span className="text-sm text-[var(--ohnix-text-primary)]">{row.label}</span>
+                                            <span className="text-sm font-medium text-[var(--ohnix-text-primary)]">{row.value}</span>
+                                        </div>
+                                    ))}
+                                    <div className="flex items-center justify-between rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] px-4 py-3">
+                                        <span className="text-sm font-semibold text-[var(--ohnix-text-primary)]">
+                                            {t("admin.api_clients_usage_row_total")}
+                                        </span>
+                                        <span className="text-sm font-semibold text-[#44F3F0]">{usage.total}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </Modal>

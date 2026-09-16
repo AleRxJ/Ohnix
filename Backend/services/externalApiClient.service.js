@@ -15,7 +15,7 @@
 
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
-import { provisionItcycleCompany, createItcycleApiKey } from "./itcycleDian.service.js";
+import { provisionItcycleCompany, createItcycleApiKey, listItcycleApiKeys, getItcycleCompanyUsage } from "./itcycleDian.service.js";
 
 // Calls itcycle-api-dian FIRST, before touching Ohnix's own DB - if
 // provisioning fails there, no ExternalApiClient row is ever created, so a
@@ -91,4 +91,28 @@ export const issueApiKeyForExternalClient = async ({ externalApiClientId, label,
     });
 
     return rawKey;
+};
+
+// Cross-checks Ohnix's own issuance log (ExternalApiClientKeyIssuance, which
+// only ever records metadata) against what itcycle-api-dian actually has on
+// file for this company - itcycle-api-dian's admin API had no way to
+// enumerate this before, so until now this admin UI's "keys issued" count
+// was pure Ohnix bookkeeping, never verified against the source of truth.
+export const listLiveApiKeysForExternalClient = async ({ externalApiClientId }) => {
+    const client = await prisma.externalApiClient.findUnique({ where: { id: externalApiClientId } });
+    if (!client) {
+        throw new ApiError(404, "External API client not found");
+    }
+
+    return listItcycleApiKeys({ companyId: client.itcycleCompanyId });
+};
+
+// Read-only billable-usage lookup (current calendar month, ACCEPTED
+// documents only) - see getItcycleCompanyUsage. Lets Ohnix's admin panel
+// show real numbers before manually invoicing an external client against its
+// published per-document pricing.
+export const getUsageForExternalClient = async ({ externalApiClientId }) => {
+    const client = await prisma.externalApiClient.findUnique({ where: { id: externalApiClientId } });
+    if (!client) throw new ApiError(404, "External API client not found");
+    return getItcycleCompanyUsage({ companyId: client.itcycleCompanyId });
 };

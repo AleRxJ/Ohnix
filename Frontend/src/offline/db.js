@@ -116,9 +116,23 @@ db.version(8).stores({
     receiptAcknowledgments: "_id",
 });
 
+// Lotes/vencimiento (tracksBatches products). Same invented-mirror shape as
+// locationStockSummaries - GET /products/:id/batches is a per-product list,
+// not something with a "give me everyone's" endpoint, so this is keyed by
+// product id under `_id`, write-through only (one row per product actually
+// viewed via BatchesPanel), no full-resync pull registered in
+// entitySync.js. The batches themselves aren't independently mutable from
+// the client (no create/edit-batch UI - they're a byproduct of purchases/
+// adjustments/transfers, which already queue offline through their own
+// entities), so this table only ever needs read-through caching, never the
+// outbox.
+db.version(9).stores({
+    productBatches: "_id",
+});
+
 // Mirror tables added as each module is wired for offline support - keep in
 // sync with the list above so account/logout resets actually clear them.
-export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments"];
+export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches"];
 
 const CURRENT_ACCOUNT_KEY = "currentAccountId";
 

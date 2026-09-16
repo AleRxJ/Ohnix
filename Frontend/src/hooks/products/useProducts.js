@@ -204,7 +204,15 @@ export const useProducts = () => {
         }
     };
 
-    const adjustStock = async (productId, { delta, reason, pointOfSaleId }) => {
+    const adjustStock = async (productId, { delta, reason, pointOfSaleId, batchNumber, batchExpirationDate }) => {
+        // Only meaningful for a tracksBatches product's positive adjustment
+        // (see product.controller.js#adjustProductStock) - omitted entirely
+        // for every other product/direction so the request body matches
+        // what it always looked like before this feature existed.
+        const batchFields =
+            batchNumber !== undefined
+                ? { batch_number: batchNumber, ...(batchExpirationDate ? { batch_expiration_date: batchExpirationDate } : {}) }
+                : {};
         if (!getConnectivityState()) {
             // Delta, never an absolute value - the server does its own
             // atomic claim against the real (possibly different) stock at
@@ -214,7 +222,7 @@ export const useProducts = () => {
                 entity: "products",
                 url: `/products/${productId}/adjust-stock`,
                 id: productId,
-                fields: { delta, reason, ...(pointOfSaleId ? { pointOfSaleId } : {}) },
+                fields: { delta, reason, ...(pointOfSaleId ? { pointOfSaleId } : {}), ...batchFields },
                 optimisticPatch: { stock: (existing?.stock ?? 0) + delta },
                 method: "post",
             });
@@ -225,7 +233,7 @@ export const useProducts = () => {
         try {
             const response = await api.post(
                 `/products/${productId}/adjust-stock`,
-                { delta, reason, ...(pointOfSaleId ? { pointOfSaleId } : {}) },
+                { delta, reason, ...(pointOfSaleId ? { pointOfSaleId } : {}), ...batchFields },
                 idempotencyHeaders()
             );
 

@@ -16,6 +16,12 @@ const CONTACT_EMAIL = "info@itcycle.co";
 const CONTACT_SUBJECT = "Quiero integrar la API de facturacion electronica DIAN";
 const WHATSAPP_NUMBER = "573142193936";
 const WHATSAPP_MESSAGE = "Hola, quiero integrar la API de facturacion electronica DIAN de Ohnix en mi sistema.";
+// Real OpenAPI 3.0.3 spec for the customer-facing document endpoints (see
+// itcycle-api-dian's src/openapi/spec.ts) - hand-authored from the actual
+// TypeScript types, not a marketing mockup. Public, no auth required to view.
+const OPENAPI_DOCS_URL = "https://itcycle-api-dian.onrender.com/api/v1/openapi.json";
+
+const formatCOP = (amount) => `$${amount.toLocaleString("es-CO")}`;
 
 const FacturacionSinInventario = () => {
     const navigate = useNavigate();
@@ -66,6 +72,19 @@ const FacturacionSinInventario = () => {
         },
     ];
 
+    // Real, published rate - no "hablanos y cotizamos" for the base price.
+    // Structure mirrors a real public precedent (Facturama, Mexico: flat
+    // base package + a per-document ladder that decreases with volume) since
+    // no Colombian competitor (Factus, Alanube) publishes pricing at all -
+    // see project_standalone_dian_services memory for the research behind this.
+    const BASE_PACKAGE_PRICE = 310000;
+    const BASE_PACKAGE_DOCS = 100;
+    const priceTiers = [
+        { range: "1 - 10.000 documentos", price: "$95 COP", detail: "por documento adicional" },
+        { range: "10.001 - 50.000 documentos", price: "$85 COP", detail: "por documento adicional" },
+        { range: "Mas de 50.000 documentos", price: "$75 COP", detail: "por documento adicional" },
+    ];
+
     const faq = [
         {
             q: "Necesito usar el dashboard o el inventario de Ohnix?",
@@ -81,7 +100,7 @@ const FacturacionSinInventario = () => {
         },
         {
             q: "Cuanto cuesta?",
-            a: "Depende del volumen de documentos que emitas. Conversamos contigo para definir una tarifa a la medida de tu operacion.",
+            a: `${formatCOP(BASE_PACKAGE_PRICE)} COP al año, con ${BASE_PACKAGE_DOCS} documentos incluidos. Cada documento adicional se cobra segun tu volumen mensual: desde $95 COP hasta $75 COP por documento entre mas factures. Sin cotizacion oculta.`,
         },
     ];
 
@@ -154,7 +173,17 @@ const FacturacionSinInventario = () => {
                     </div>
 
                     <div className="mt-8 rounded-[24px] border border-white/10 bg-white/[0.03] p-6">
-                        <h2 className="text-xl font-semibold text-white">Documentos que puedes emitir</h2>
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                            <h2 className="text-xl font-semibold text-white">Documentos que puedes emitir</h2>
+                            <a
+                                href={OPENAPI_DOCS_URL}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-white hover:border-[#29D8D5]/40"
+                            >
+                                Ver documentacion tecnica (OpenAPI)
+                            </a>
+                        </div>
                         <div className="mt-4 flex flex-wrap gap-2">
                             {documents.map((doc) => (
                                 <span
@@ -184,10 +213,31 @@ const FacturacionSinInventario = () => {
                     </div>
 
                     <div className="mt-12 rounded-[28px] border border-[#29D8D5]/25 bg-[#29D8D5]/8 p-7">
-                        <h2 className="text-2xl font-semibold text-white">Tarifa segun tu volumen de documentos</h2>
+                        <h2 className="text-2xl font-semibold text-white">Precio publico, sin cotizacion oculta</h2>
                         <p className="mt-3 text-sm leading-7 text-[#CFE8E8]">
-                            No es un plan de Ohnix ni requiere usar nuestro inventario: cuentanos cuanto facturas y te damos una tarifa a la medida para integrar la API en tu propio sistema.
+                            No es un plan de Ohnix ni requiere usar nuestro inventario. Pagas un paquete base anual con documentos incluidos, y cada documento adicional se cobra segun tu volumen mensual: entre mas factures, menos pagas por documento.
                         </p>
+
+                        <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-5">
+                            <div className="flex flex-wrap items-baseline gap-2">
+                                <span className="text-3xl font-semibold text-white">{formatCOP(BASE_PACKAGE_PRICE)}</span>
+                                <span className="text-sm text-[#A9B3B8]">COP / año</span>
+                                <span className="inline-flex items-center rounded-full border border-[#29D8D5]/25 bg-[#29D8D5]/8 px-2 py-0.5 text-[10px] font-semibold uppercase text-[#44F3F0]">
+                                    {BASE_PACKAGE_DOCS} documentos incluidos
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                            {priceTiers.map((tier) => (
+                                <div key={tier.range} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <div className="text-xs uppercase tracking-wide text-[#A9B3B8]">{tier.range}</div>
+                                    <div className="mt-1 text-xl font-semibold text-white">{tier.price}</div>
+                                    <div className="text-xs text-[#A9B3B8]">{tier.detail}</div>
+                                </div>
+                            ))}
+                        </div>
+
                         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                             <a
                                 href={mailtoHref}

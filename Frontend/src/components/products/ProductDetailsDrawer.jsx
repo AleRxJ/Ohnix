@@ -19,6 +19,7 @@ import useIsMobile from "../../hooks/useIsMobile";
 import { DEFAULT_LOW_STOCK_THRESHOLD, PRODUCT_IMAGE_FALLBACK } from "../../utils/productUtils";
 import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 import LocationStockPanel from "./LocationStockPanel";
+import BatchesPanel from "./BatchesPanel";
 import MovementRow from "./MovementRow";
 import MovementHistoryModal from "./MovementHistoryModal";
 import EmptyState from "../common/EmptyState";
@@ -287,6 +288,7 @@ const ProductDetailsDrawer = ({
                 </div>
 
                 <LocationStockPanel product={product} />
+                <BatchesPanel product={product} />
 
                 <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
                     <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)]">

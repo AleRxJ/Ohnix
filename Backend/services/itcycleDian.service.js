@@ -219,6 +219,39 @@ export const createItcycleApiKey = async ({ companyId, label }) => {
     return result?.rawKey;
 };
 
+// Metadata only (keyPrefix/label/status/lastUsedAt) - itcycle-api-dian never
+// returns a key's hash or the raw secret here, only createItcycleApiKey's
+// response ever carries the raw key, exactly once. Lets Ohnix's own admin UI
+// cross-check its own issuance log (ExternalApiClientKeyIssuance) against
+// what itcycle-api-dian actually has on file for a company, instead of
+// trusting Ohnix's bookkeeping blindly.
+export const listItcycleApiKeys = async ({ companyId }) => {
+    requireAdminConfigured();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/api-keys`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
+// Read-only billable-usage count (ACCEPTED documents only) for a calendar
+// month, defaulting to the current one - see itcycle-api-dian's
+// admin.service.ts#getCompanyDocumentUsage. Lets Ohnix's admin panel show
+// real numbers before manually invoicing an external API client against its
+// published per-document pricing.
+export const getItcycleCompanyUsage = async ({ companyId, year, month }) => {
+    requireAdminConfigured();
+    const params = new URLSearchParams();
+    if (year) params.set("year", year);
+    if (month) params.set("month", month);
+    const qs = params.toString();
+    return request({
+        method: "GET",
+        path: `/api/v1/admin/companies/${companyId}/usage${qs ? `?${qs}` : ""}`,
+        authHeader: adminAuthHeader(),
+    });
+};
+
 // ---------------------------------------------------------------------------
 // FirmaPass digital-certificate issuance (admin-only, see
 // itcycle-api-dian's src/modules/firmapass/firmaPassIssuance.service.ts).

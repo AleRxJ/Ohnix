@@ -18,6 +18,8 @@ import {
     createExternalApiClient,
     listExternalApiClients,
     issueApiKeyForExternalClient,
+    listLiveApiKeysForExternalClient,
+    getUsageForExternalClient,
 } from "../services/externalApiClient.service.js";
 
 // Deliberately distinct from companyCountry.service.js#normalizeCountryCode:
@@ -448,6 +450,23 @@ export const issueExternalApiClientApiKeyAdmin = asyncHandler(async (req, res) =
     return res
         .status(201)
         .json(new ApiResponse(201, { apiKey: rawKey }, "API key issued successfully"));
+});
+
+// Live cross-check against itcycle-api-dian itself (metadata only, never a
+// usable key) - see listLiveApiKeysForExternalClient's own comment for why
+// this exists alongside the Ohnix-side issuance log above.
+export const listExternalApiClientLiveKeysAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const data = await listLiveApiKeysForExternalClient({ externalApiClientId: id });
+    return res.status(200).json(new ApiResponse(200, data, "Live API keys retrieved"));
+});
+
+// Read-only billable-usage lookup (current calendar month, ACCEPTED documents
+// only) - see getUsageForExternalClient's own comment for why this exists.
+export const getExternalApiClientUsageAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const data = await getUsageForExternalClient({ externalApiClientId: id });
+    return res.status(200).json(new ApiResponse(200, data, "Usage retrieved"));
 });
 
 export const updateCompanyLogoAdmin = asyncHandler(async (req, res, next) => {

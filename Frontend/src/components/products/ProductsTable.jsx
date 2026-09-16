@@ -9,6 +9,7 @@ import {
     Image,
     Typography,
     Card,
+    Tag,
 } from "antd";
 import {
     EditOutlined,
@@ -65,9 +66,21 @@ const ProductsTable = ({
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-2">
                         <div className="flex-1 min-w-0">
-                            <Text strong className="text-sm block truncate text-[var(--ohnix-text-primary)]">
-                                {product.product_name}
-                            </Text>
+                            <div className="flex items-center gap-1.5">
+                                <Text strong className="text-sm block truncate text-[var(--ohnix-text-primary)]">
+                                    {product.product_name}
+                                </Text>
+                                {product.is_kit && (
+                                    <Tag color="#29D8D5" className="!m-0 !text-[10px] !leading-4 !px-1">
+                                        {t("products.kit_badge")}
+                                    </Tag>
+                                )}
+                                {product.tracks_batches && (
+                                    <Tag color="#f59e0b" className="!m-0 !text-[10px] !leading-4 !px-1">
+                                        {t("products.batch_badge")}
+                                    </Tag>
+                                )}
+                            </div>
                             <Text className="text-xs text-[var(--ohnix-text-muted)]">
                                 {t("products.product_code")}: {product.product_code}
                             </Text>
@@ -190,9 +203,21 @@ const ProductsTable = ({
             sorter: (a, b) => a.product_name.localeCompare(b.product_name),
             render: (text, record) => (
                 <div className="flex flex-col">
-                    <Text strong className="text-sm text-[var(--ohnix-text-primary)]">
-                        {text}
-                    </Text>
+                    <div className="flex items-center gap-1.5">
+                        <Text strong className="text-sm text-[var(--ohnix-text-primary)]">
+                            {text}
+                        </Text>
+                        {record.is_kit && (
+                            <Tag color="#29D8D5" className="!m-0 !text-[10px] !leading-4 !px-1">
+                                {t("products.kit_badge")}
+                            </Tag>
+                        )}
+                        {record.tracks_batches && (
+                            <Tag color="#f59e0b" className="!m-0 !text-[10px] !leading-4 !px-1">
+                                {t("products.batch_badge")}
+                            </Tag>
+                        )}
+                    </div>
                     <Text className="text-xs text-[var(--ohnix-text-muted)]">
                         {t("products.product_code")}: {record.product_code}
                     </Text>

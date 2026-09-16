@@ -9,6 +9,8 @@ import {
     adjustProductStock,
     getProductStockMovements,
     getProductLocationStock,
+    getProductBatchesList,
+    getExpiringProductBatches,
     transferProductStock,
 } from "../controllers/product.controller.js";
 import { bulkUploadProducts } from "../controllers/product.bulk.controller.js";
@@ -47,6 +49,11 @@ router
     .get(requireModulePermission("products", "view"), getAllProducts);
 
 router.route("/bulk-low-stock-threshold").patch(requireModulePermission("products", "edit"), bulkUpdateLowStockThreshold);
+
+// Account-wide "vencimientos próximos" report - must be registered before
+// "/:id/batches" below since it's a sibling static path, not a sub-resource
+// of one product.
+router.route("/batches/expiring").get(requireModulePermission("products", "view"), getExpiringProductBatches);
 
 // Admin route
 router.route("/all").get(isAdmin, getAllProductsAdmin);
@@ -90,6 +97,7 @@ router
     .post(requireModulePermission("products", "edit"), idempotent("product.adjust-stock"), adjustProductStock);
 router.route("/:id/stock-movements").get(requireModulePermission("products", "view"), getProductStockMovements);
 router.route("/:id/location-stock").get(requireModulePermission("products", "view"), getProductLocationStock);
+router.route("/:id/batches").get(requireModulePermission("products", "view"), getProductBatchesList);
 router
     .route("/:id/transfer-stock")
     .post(

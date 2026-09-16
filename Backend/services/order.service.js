@@ -6,6 +6,7 @@ import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../mi
 import { getLowStockDefaultThreshold } from "../utils/systemSettings.js";
 import { recordStockMovement } from "./stockMovement.service.js";
 import { claimLocationStockWithCost, creditLocationStockWithCost, getLocationStock } from "./productLocationStock.service.js";
+import { claimBatchesFEFO, creditBatchReturn } from "./productBatch.service.js";
 import { claimVariantStock, creditVariantStock } from "./variant.service.js";
 import { enqueueWebhookEvent } from "./webhookDispatch.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
@@ -61,6 +62,17 @@ const findProductByAnyId = async (id) =>
             // weighted-average), same simplification the Fase 4 plan
             // documents explicitly.
             buyingPrice: true,
+            isKit: true,
+            tracksBatches: true,
+            kitComponents: {
+                select: {
+                    componentProductId: true,
+                    quantity: true,
+                    componentProduct: {
+                        select: { id: true, legacyMongoId: true, productName: true, productCode: true, createdById: true },
+                    },
+                },
+            },
         },
     });
 
@@ -258,28 +270,41 @@ class OrderService {
             // PointOfSale this order is for. This is a pre-check for a nice
             // batched error only; claimLocationStock inside the transaction
             // below is what's actually atomic against a concurrent request.
+            //
+            // A kit has no ProductLocationStock row of its own (see
+            // Product.isKit's schema comment) - its availability is derived
+            // from its components' own location stock instead, one kit's
+            // worth requiring `component.quantity` of each.
+            const plainProductIds = resolvedItems.filter((item) => !item.product.isKit).map((item) => item.product.id);
+            const componentProductIds = resolvedItems.filter((item) => item.product.isKit).flatMap((item) => item.product.kitComponents.map((c) => c.componentProductId));
             const locationRows = await prisma.productLocationStock.findMany({
                 where: {
                     pointOfSaleId,
-                    productId: { in: resolvedItems.map((item) => item.product.id) },
+                    productId: { in: [...new Set([...plainProductIds, ...componentProductIds])] },
                 },
                 select: { productId: true, stock: true },
             });
             const locationStockById = new Map(locationRows.map((row) => [row.productId, row.stock]));
 
+            const availableForItem = (item) => {
+                if (!item.product.isKit) return locationStockById.get(item.product.id) ?? 0;
+                if (item.product.kitComponents.length === 0) return 0;
+                return Math.min(
+                    ...item.product.kitComponents.map((c) => Math.floor((locationStockById.get(c.componentProductId) ?? 0) / Number(c.quantity)))
+                );
+            };
+
             const insufficientItems = resolvedItems
-                .filter((item) => (locationStockById.get(item.product.id) ?? 0) < item.quantity)
-                .map((item) => {
-                    const available = locationStockById.get(item.product.id) ?? 0;
-                    return {
-                        product_id: toExternalId(item.product),
-                        product_name: item.product.productName,
-                        product_code: item.product.productCode,
-                        requested: item.quantity,
-                        available,
-                        reason: available === 0 ? "out_of_stock" : "insufficient_stock",
-                    };
-                });
+                .map((item) => ({ item, available: availableForItem(item) }))
+                .filter(({ item, available }) => available < item.quantity)
+                .map(({ item, available }) => ({
+                    product_id: toExternalId(item.product),
+                    product_name: item.product.productName,
+                    product_code: item.product.productCode,
+                    requested: item.quantity,
+                    available,
+                    reason: available === 0 ? "out_of_stock" : "insufficient_stock",
+                }));
 
             if (insufficientItems.length > 0) {
                 throw new ApiError(
@@ -353,7 +378,69 @@ class OrderService {
                     },
                 });
 
-                if (shouldDeductStock) {
+                if (shouldDeductStock && item.product.isKit) {
+                    // A kit claims from each of its components instead of
+                    // itself (it has no ProductLocationStock row - see
+                    // Product.isKit's schema comment). Every component still
+                    // gets its own real StockMovement tagged to this same
+                    // order, so each component's own kardex shows exactly
+                    // why its stock moved; the kit's OrderDetail line above
+                    // just carries the *sum* of every component's cost as
+                    // its costBasisApplied, for reporting.
+                    let kitCost = 0;
+                    for (const component of item.product.kitComponents) {
+                        const requiredQuantity = Math.round(item.quantity * Number(component.quantity));
+                        if (requiredQuantity <= 0) continue;
+
+                        const costing = await claimLocationStockWithCost(tx, {
+                            productId: component.componentProductId,
+                            pointOfSaleId,
+                            quantity: requiredQuantity,
+                        });
+
+                        if (costing === null) {
+                            const available = await getLocationStock(component.componentProductId, pointOfSaleId);
+                            throw new ApiError(
+                                422,
+                                "Insufficient stock for one or more products",
+                                [
+                                    {
+                                        product_id: toExternalId(component.componentProduct),
+                                        product_name: `${item.product.productName} → ${component.componentProduct.productName}`,
+                                        product_code: component.componentProduct.productCode,
+                                        requested: requiredQuantity,
+                                        available,
+                                        reason: "insufficient_stock",
+                                    },
+                                ],
+                                "",
+                                "insufficient_stock"
+                            );
+                        }
+
+                        await recordStockMovement(tx, {
+                            productId: component.componentProductId,
+                            accountId: component.componentProduct.createdById,
+                            pointOfSaleId,
+                            delta: -requiredQuantity,
+                            balanceAfter: costing.balanceAfter,
+                            unitCostApplied: costing.unitCostApplied,
+                            valueDelta: costing.valueDelta,
+                            valueBalanceAfter: costing.valueBalanceAfter,
+                            sourceType: "order",
+                            sourceId: createdOrder.id,
+                            createdById: userId,
+                        });
+
+                        kitCost += -costing.valueDelta;
+                    }
+
+                    await tx.orderDetail.update({
+                        where: { id: createdDetail.id },
+                        data: { costBasisApplied: item.quantity > 0 ? Number((kitCost / item.quantity).toFixed(2)) : 0 },
+                    });
+                    cogs += kitCost;
+                } else if (shouldDeductStock) {
                     // Claims at the (product, location) level, not the
                     // product's account-wide total - the stock read used for
                     // the pre-check above happened before this transaction
@@ -401,6 +488,17 @@ class OrderService {
                         sourceId: createdOrder.id,
                         createdById: userId,
                     });
+
+                    if (item.product.tracksBatches) {
+                        const batchClaim = await claimBatchesFEFO(tx, {
+                            productId: item.product.id,
+                            pointOfSaleId,
+                            quantity: item.quantity,
+                        });
+                        if (batchClaim === null) {
+                            throw new ApiError(422, "Insufficient lot/batch stock for one or more products", [], "", "insufficient_stock");
+                        }
+                    }
 
                     await tx.orderDetail.update({
                         where: { id: createdDetail.id },
@@ -595,7 +693,17 @@ class OrderService {
                     returnedTaxAmount: true,
                     productId: true,
                     variantId: true,
-                    product: { select: { createdById: true, buyingPrice: true } },
+                    product: {
+                        select: {
+                            createdById: true,
+                            buyingPrice: true,
+                            isKit: true,
+                            tracksBatches: true,
+                            kitComponents: {
+                                select: { componentProductId: true, quantity: true, componentProduct: { select: { createdById: true, buyingPrice: true } } },
+                            },
+                        },
+                    },
                 },
             });
 
@@ -627,26 +735,69 @@ class OrderService {
                     const pending = detail.quantity - detail.returnedQuantity;
                     if (pending <= 0) continue;
 
-                    const costing = await creditLocationStockWithCost(tx, {
-                        productId: detail.productId,
-                        pointOfSaleId: order.pointOfSaleId,
-                        quantity: pending,
-                        incomingUnitCost: Number(detail.costBasisApplied ?? detail.product.buyingPrice),
-                    });
+                    if (detail.product.isKit) {
+                        // Credits each component back at its OWN buyingPrice
+                        // (not detail.costBasisApplied, which is the
+                        // blended per-kit-unit cost across every component
+                        // combined and can't be split back out per
+                        // component) - same fallback creditLocationStockWithCost
+                        // itself uses when a precise cost basis isn't known.
+                        for (const component of detail.product.kitComponents) {
+                            const requiredQuantity = Math.round(pending * Number(component.quantity));
+                            if (requiredQuantity <= 0) continue;
 
-                    await recordStockMovement(tx, {
-                        productId: detail.productId,
-                        accountId: detail.product.createdById,
-                        pointOfSaleId: order.pointOfSaleId,
-                        delta: pending,
-                        balanceAfter: costing.balanceAfter,
-                        unitCostApplied: costing.unitCostApplied,
-                        valueDelta: costing.valueDelta,
-                        valueBalanceAfter: costing.valueBalanceAfter,
-                        sourceType: "order_cancellation",
-                        sourceId: order.id,
-                        createdById: userId,
-                    });
+                            const componentCosting = await creditLocationStockWithCost(tx, {
+                                productId: component.componentProductId,
+                                pointOfSaleId: order.pointOfSaleId,
+                                quantity: requiredQuantity,
+                                incomingUnitCost: Number(component.componentProduct.buyingPrice),
+                            });
+
+                            await recordStockMovement(tx, {
+                                productId: component.componentProductId,
+                                accountId: component.componentProduct.createdById,
+                                pointOfSaleId: order.pointOfSaleId,
+                                delta: requiredQuantity,
+                                balanceAfter: componentCosting.balanceAfter,
+                                unitCostApplied: componentCosting.unitCostApplied,
+                                valueDelta: componentCosting.valueDelta,
+                                valueBalanceAfter: componentCosting.valueBalanceAfter,
+                                sourceType: "order_cancellation",
+                                sourceId: order.id,
+                                createdById: userId,
+                            });
+                        }
+                    } else {
+                        const costing = await creditLocationStockWithCost(tx, {
+                            productId: detail.productId,
+                            pointOfSaleId: order.pointOfSaleId,
+                            quantity: pending,
+                            incomingUnitCost: Number(detail.costBasisApplied ?? detail.product.buyingPrice),
+                        });
+
+                        await recordStockMovement(tx, {
+                            productId: detail.productId,
+                            accountId: detail.product.createdById,
+                            pointOfSaleId: order.pointOfSaleId,
+                            delta: pending,
+                            balanceAfter: costing.balanceAfter,
+                            unitCostApplied: costing.unitCostApplied,
+                            valueDelta: costing.valueDelta,
+                            valueBalanceAfter: costing.valueBalanceAfter,
+                            sourceType: "order_cancellation",
+                            sourceId: order.id,
+                            createdById: userId,
+                        });
+
+                        if (detail.product.tracksBatches) {
+                            await creditBatchReturn(tx, {
+                                productId: detail.productId,
+                                pointOfSaleId: order.pointOfSaleId,
+                                quantity: pending,
+                                createdById: userId,
+                            });
+                        }
+                    }
 
                     if (detail.variantId) {
                         const variantBalance = await creditVariantStock(tx, { variantId: detail.variantId, quantity: pending });
@@ -741,30 +892,50 @@ class OrderService {
                             stock: true,
                             createdById: true,
                             buyingPrice: true,
+                            isKit: true,
+                            tracksBatches: true,
+                            kitComponents: {
+                                select: {
+                                    componentProductId: true,
+                                    quantity: true,
+                                    componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, createdById: true } },
+                                },
+                            },
                         },
                     },
                 },
             });
 
+            // Same kit-aware availability check as createOrder's pre-check -
+            // see that one's comment for why a kit's own id never appears in
+            // the ProductLocationStock lookup.
+            const plainDetailProductIds = details.filter((d) => !d.product.isKit).map((d) => d.product.id);
+            const componentDetailProductIds = details.filter((d) => d.product.isKit).flatMap((d) => d.product.kitComponents.map((c) => c.componentProductId));
             const locationRowsForCompletion = await prisma.productLocationStock.findMany({
-                where: { pointOfSaleId: order.pointOfSaleId, productId: { in: details.map((d) => d.product.id) } },
+                where: { pointOfSaleId: order.pointOfSaleId, productId: { in: [...new Set([...plainDetailProductIds, ...componentDetailProductIds])] } },
                 select: { productId: true, stock: true },
             });
             const locationStockForCompletion = new Map(locationRowsForCompletion.map((r) => [r.productId, r.stock]));
 
+            const availableForDetail = (d) => {
+                if (!d.product.isKit) return locationStockForCompletion.get(d.product.id) ?? 0;
+                if (d.product.kitComponents.length === 0) return 0;
+                return Math.min(
+                    ...d.product.kitComponents.map((c) => Math.floor((locationStockForCompletion.get(c.componentProductId) ?? 0) / Number(c.quantity)))
+                );
+            };
+
             const insufficientItems = details
-                .filter((d) => (locationStockForCompletion.get(d.product.id) ?? 0) < d.quantity)
-                .map((d) => {
-                    const available = locationStockForCompletion.get(d.product.id) ?? 0;
-                    return {
-                        product_id: toExternalId(d.product),
-                        product_name: d.product.productName,
-                        product_code: d.product.productCode,
-                        requested: d.quantity,
-                        available,
-                        reason: available === 0 ? "out_of_stock" : "insufficient_stock",
-                    };
-                });
+                .map((d) => ({ d, available: availableForDetail(d) }))
+                .filter(({ d, available }) => available < d.quantity)
+                .map(({ d, available }) => ({
+                    product_id: toExternalId(d.product),
+                    product_name: d.product.productName,
+                    product_code: d.product.productCode,
+                    requested: d.quantity,
+                    available,
+                    reason: available === 0 ? "out_of_stock" : "insufficient_stock",
+                }));
 
             if (insufficientItems.length > 0) {
                 throw new ApiError(
@@ -799,6 +970,67 @@ class OrderService {
 
                 let cogs = 0;
                 for (const detail of details) {
+                    if (detail.product.isKit) {
+                        // Same per-component claim as createOrder's
+                        // immediate-completion path - see that branch's
+                        // comment for why a kit never claims against its
+                        // own (nonexistent) location stock row.
+                        let kitCost = 0;
+                        for (const component of detail.product.kitComponents) {
+                            const requiredQuantity = Math.round(detail.quantity * Number(component.quantity));
+                            if (requiredQuantity <= 0) continue;
+
+                            const componentCosting = await claimLocationStockWithCost(tx, {
+                                productId: component.componentProductId,
+                                pointOfSaleId: order.pointOfSaleId,
+                                quantity: requiredQuantity,
+                            });
+
+                            if (componentCosting === null) {
+                                const available = await getLocationStock(component.componentProductId, order.pointOfSaleId);
+                                throw new ApiError(
+                                    422,
+                                    "Insufficient stock for one or more products",
+                                    [
+                                        {
+                                            product_id: toExternalId(component.componentProduct),
+                                            product_name: `${detail.product.productName} → ${component.componentProduct.productName}`,
+                                            product_code: component.componentProduct.productCode,
+                                            requested: requiredQuantity,
+                                            available,
+                                            reason: "insufficient_stock",
+                                        },
+                                    ],
+                                    "",
+                                    "insufficient_stock"
+                                );
+                            }
+
+                            await recordStockMovement(tx, {
+                                productId: component.componentProductId,
+                                accountId: component.componentProduct.createdById,
+                                pointOfSaleId: order.pointOfSaleId,
+                                delta: -requiredQuantity,
+                                balanceAfter: componentCosting.balanceAfter,
+                                unitCostApplied: componentCosting.unitCostApplied,
+                                valueDelta: componentCosting.valueDelta,
+                                valueBalanceAfter: componentCosting.valueBalanceAfter,
+                                sourceType: "order",
+                                sourceId: order.id,
+                                createdById: userId,
+                            });
+
+                            kitCost += -componentCosting.valueDelta;
+                        }
+
+                        await tx.orderDetail.update({
+                            where: { id: detail.id },
+                            data: { costBasisApplied: detail.quantity > 0 ? Number((kitCost / detail.quantity).toFixed(2)) : 0 },
+                        });
+                        cogs += kitCost;
+                        continue;
+                    }
+
                     // Same guarded claim as createOrder, against the
                     // location now instead of the product's account-wide
                     // total: the stock read above predates this transaction,
@@ -844,6 +1076,17 @@ class OrderService {
                         sourceId: order.id,
                         createdById: userId,
                     });
+
+                    if (detail.product.tracksBatches) {
+                        const batchClaim = await claimBatchesFEFO(tx, {
+                            productId: detail.product.id,
+                            pointOfSaleId: order.pointOfSaleId,
+                            quantity: detail.quantity,
+                        });
+                        if (batchClaim === null) {
+                            throw new ApiError(422, "Insufficient lot/batch stock for one or more products", [], "", "insufficient_stock");
+                        }
+                    }
 
                     await tx.orderDetail.update({
                         where: { id: detail.id },
@@ -999,6 +1242,11 @@ class OrderService {
                         productName: true,
                         createdById: true,
                         buyingPrice: true,
+                        isKit: true,
+                        tracksBatches: true,
+                        kitComponents: {
+                            select: { componentProductId: true, quantity: true, componentProduct: { select: { createdById: true, buyingPrice: true } } },
+                        },
                     },
                 },
             },
@@ -1042,26 +1290,67 @@ class OrderService {
                 const detail = detailById.get(line.order_detail_id);
                 const quantity = Number(line.quantity);
 
-                const costing = await creditLocationStockWithCost(tx, {
-                    productId: detail.product.id,
-                    pointOfSaleId: order.pointOfSaleId,
-                    quantity,
-                    incomingUnitCost: Number(detail.costBasisApplied ?? detail.product.buyingPrice),
-                });
+                if (detail.product.isKit) {
+                    // Same per-component credit as full-order cancellation
+                    // above - see that branch's comment for why each
+                    // component uses its own buyingPrice instead of this
+                    // line's blended costBasisApplied.
+                    for (const component of detail.product.kitComponents) {
+                        const requiredQuantity = Math.round(quantity * Number(component.quantity));
+                        if (requiredQuantity <= 0) continue;
 
-                await recordStockMovement(tx, {
-                    productId: detail.product.id,
-                    accountId: detail.product.createdById,
-                    pointOfSaleId: order.pointOfSaleId,
-                    delta: quantity,
-                    balanceAfter: costing.balanceAfter,
-                    unitCostApplied: costing.unitCostApplied,
-                    valueDelta: costing.valueDelta,
-                    valueBalanceAfter: costing.valueBalanceAfter,
-                    sourceType: "order_return",
-                    sourceId: order.id,
-                    createdById: userId,
-                });
+                        const componentCosting = await creditLocationStockWithCost(tx, {
+                            productId: component.componentProductId,
+                            pointOfSaleId: order.pointOfSaleId,
+                            quantity: requiredQuantity,
+                            incomingUnitCost: Number(component.componentProduct.buyingPrice),
+                        });
+
+                        await recordStockMovement(tx, {
+                            productId: component.componentProductId,
+                            accountId: component.componentProduct.createdById,
+                            pointOfSaleId: order.pointOfSaleId,
+                            delta: requiredQuantity,
+                            balanceAfter: componentCosting.balanceAfter,
+                            unitCostApplied: componentCosting.unitCostApplied,
+                            valueDelta: componentCosting.valueDelta,
+                            valueBalanceAfter: componentCosting.valueBalanceAfter,
+                            sourceType: "order_return",
+                            sourceId: order.id,
+                            createdById: userId,
+                        });
+                    }
+                } else {
+                    const costing = await creditLocationStockWithCost(tx, {
+                        productId: detail.product.id,
+                        pointOfSaleId: order.pointOfSaleId,
+                        quantity,
+                        incomingUnitCost: Number(detail.costBasisApplied ?? detail.product.buyingPrice),
+                    });
+
+                    await recordStockMovement(tx, {
+                        productId: detail.product.id,
+                        accountId: detail.product.createdById,
+                        pointOfSaleId: order.pointOfSaleId,
+                        delta: quantity,
+                        balanceAfter: costing.balanceAfter,
+                        unitCostApplied: costing.unitCostApplied,
+                        valueDelta: costing.valueDelta,
+                        valueBalanceAfter: costing.valueBalanceAfter,
+                        sourceType: "order_return",
+                        sourceId: order.id,
+                        createdById: userId,
+                    });
+
+                    if (detail.product.tracksBatches) {
+                        await creditBatchReturn(tx, {
+                            productId: detail.product.id,
+                            pointOfSaleId: order.pointOfSaleId,
+                            quantity,
+                            createdById: userId,
+                        });
+                    }
+                }
 
                 if (detail.variantId) {
                     const variantBalance = await creditVariantStock(tx, { variantId: detail.variantId, quantity });

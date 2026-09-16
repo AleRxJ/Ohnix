@@ -91,7 +91,19 @@ export const runDiscoveryEngineOnce = async () => {
         }
     }
 
-    const learning = await checkDuePredictions();
+    // Runs after the whole per-account loop above, which already survived
+    // whatever individual detectors/writers failed - a DB hiccup landing
+    // exactly here must not throw away those real created/updated counts by
+    // 500ing the entire response (see the commit that added this: a Neon
+    // connectivity blip mid-run did exactly that during manual admin
+    // testing of the /discovery-engine-run route).
+    let learning = { due: 0, checked: 0, skippedNoChecker: 0, failed: 0, outcomeCounts: { correct: 0, incorrect: 0, inconclusive: 0 } };
+    try {
+        learning = await checkDuePredictions();
+    } catch (err) {
+        console.error("[discovery-scheduler] checkDuePredictions failed:", err?.message);
+        learning = { ...learning, error: err?.message || String(err) };
+    }
 
     return { accounts: accountIds.length, created, updated, skipped, failed, metricWritersFailed, learning };
 };

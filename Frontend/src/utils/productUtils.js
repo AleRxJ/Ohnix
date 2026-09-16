@@ -89,6 +89,21 @@ export const validateProductData = (productData, t) => {
         isValid = false;
     }
 
+    // Same "both or neither" rule as the backend (product.controller.js#resolvePurchaseUnit) -
+    // caught here first so the error lands on the right field instead of a
+    // generic toast after a round trip.
+    if (Boolean(productData.purchase_unit_id) !== Boolean(productData.purchase_unit_conversion_factor)) {
+        errors.purchase_unit_id = t("products.purchase_unit_incomplete");
+        isValid = false;
+    }
+
+    // Mirrors product.controller.js#resolveKitComponents's own guard so the
+    // error lands on the component builder instead of a generic toast.
+    if (productData.is_kit && (!Array.isArray(productData.components) || productData.components.length === 0)) {
+        errors.components = t("products.kit_components_required");
+        isValid = false;
+    }
+
     return { isValid, errors };
 };
 
@@ -101,7 +116,15 @@ export const prepareProductFormData = (formValues, imageFile = null) => {
             formValues[key] !== undefined &&
             formValues[key] !== null
         ) {
-            formData.append(key, formValues[key]);
+            // Multipart fields are always strings - an array/object would
+            // otherwise stringify as "[object Object]" - so the kit
+            // component list travels as JSON, matching what
+            // product.controller.js#resolveKitComponents parses it back into.
+            if (key === "components" && Array.isArray(formValues[key])) {
+                formData.append(key, JSON.stringify(formValues[key]));
+            } else {
+                formData.append(key, formValues[key]);
+            }
         }
     });
 

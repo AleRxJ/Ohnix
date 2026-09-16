@@ -89,6 +89,20 @@ export const adminService = {
         return response.data;
     },
 
+    // Live cross-check against itcycle-api-dian's own records (metadata
+    // only) - see Backend/services/externalApiClient.service.js#listLiveApiKeysForExternalClient.
+    async listExternalApiClientLiveKeys(id) {
+        const response = await api.get(`/companies/admin/itcycle/external-clients/${id}/live-api-keys`);
+        return response.data;
+    },
+
+    // Read-only billable-usage count (current calendar month, ACCEPTED
+    // documents only) - see Backend/services/externalApiClient.service.js#getUsageForExternalClient.
+    async getExternalApiClientUsage(id) {
+        const response = await api.get(`/companies/admin/itcycle/external-clients/${id}/usage`);
+        return response.data;
+    },
+
     async listUsers() {
         const response = await api.get("/users/admin/users");
         return response.data;
