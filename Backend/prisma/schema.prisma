@@ -2101,6 +2101,7 @@ model CashAccount {
   movements                 CashMovement[]
   orderPayments             OrderPayment[]
   purchasePayments          PurchasePayment[]
+  paymentCredits             PaymentCreditBalance[]
   statementEntries          BankStatementEntry[]
   recurringExpenseTemplates RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateCashAccount")
 
@@ -2112,6 +2113,8 @@ model CashAccount {
 enum CashMovementSourceType {
   order_payment
   purchase_payment
+  customer_advance
+  supplier_advance
   manual_deposit
   manual_withdrawal
   // Internal cash/bank transfers create one outgoing and one incoming
@@ -2157,6 +2160,7 @@ model OrderPayment {
   orderId       String   @map("order_id")
   amount        Decimal  @db.Decimal(14, 2)
   cashAccountId String   @map("cash_account_id")
+  appliedCreditId String? @map("applied_credit_id")
   // Free-text, same looseness as Supplier.type/Customer.type elsewhere in
   // this schema - "cash"/"transfer"/"card"/whatever the business uses.
   method        String?
@@ -2168,11 +2172,13 @@ model OrderPayment {
   order       Order       @relation(fields: [orderId], references: [id])
   allocations OrderPaymentAllocation[]
   creditBalances PaymentCreditBalance[] @relation("OrderPaymentCreditSource")
+  appliedCredit PaymentCreditBalance? @relation("OrderPaymentAppliedCredit", fields: [appliedCreditId], references: [id])
   cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
   createdBy   User        @relation(fields: [createdById], references: [id])
 
   @@index([orderId])
   @@index([cashAccountId, createdAt])
+  @@index([appliedCreditId])
   @@map("order_payments")
 }
 
@@ -2183,6 +2189,7 @@ model PurchasePayment {
   purchaseId    String   @map("purchase_id")
   amount        Decimal  @db.Decimal(14, 2)
   cashAccountId String   @map("cash_account_id")
+  appliedCreditId String? @map("applied_credit_id")
   method        String?
   reference     String?
   paidAt        DateTime @default(now()) @map("paid_at")
@@ -2192,11 +2199,13 @@ model PurchasePayment {
   purchase    Purchase    @relation(fields: [purchaseId], references: [id])
   allocations PurchasePaymentAllocation[]
   creditBalances PaymentCreditBalance[] @relation("PurchasePaymentCreditSource")
+  appliedCredit PaymentCreditBalance? @relation("PurchasePaymentAppliedCredit", fields: [appliedCreditId], references: [id])
   cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
   createdBy   User        @relation(fields: [createdById], references: [id])
 
   @@index([purchaseId])
   @@index([cashAccountId, createdAt])
+  @@index([appliedCreditId])
   @@map("purchase_payments")
 }
 
@@ -2222,6 +2231,7 @@ model PaymentCreditBalance {
   supplierId String? @map("supplier_id")
   sourceOrderPaymentId String? @map("source_order_payment_id")
   sourcePurchasePaymentId String? @map("source_purchase_payment_id")
+  cashAccountId String? @map("cash_account_id")
   amount Decimal @db.Decimal(14, 2)
   appliedAmount Decimal @default(0) @map("applied_amount") @db.Decimal(14, 2)
   status String @default("open")
@@ -2232,6 +2242,9 @@ model PaymentCreditBalance {
   supplier Supplier? @relation(fields: [supplierId], references: [id])
   sourceOrderPayment OrderPayment? @relation("OrderPaymentCreditSource", fields: [sourceOrderPaymentId], references: [id])
   sourcePurchasePayment PurchasePayment? @relation("PurchasePaymentCreditSource", fields: [sourcePurchasePaymentId], references: [id])
+  cashAccount CashAccount? @relation(fields: [cashAccountId], references: [id])
+  appliedOrderPayments OrderPayment[] @relation("OrderPaymentAppliedCredit")
+  appliedPurchasePayments PurchasePayment[] @relation("PurchasePaymentAppliedCredit")
   createdBy User @relation("PaymentCreditCreatedBy", fields: [createdById], references: [id])
   @@index([accountId, status])
   @@index([customerId, status])
@@ -2517,6 +2530,9 @@ enum JournalSourceType {
   purchase
   order_payment
   purchase_payment
+  customer_advance
+  supplier_advance
+  payment_credit_application
   // Fase 4b (reversas) - same granularity as StockMovementSourceType's
   // matching values for these exact same events, rather than one generic
   // "reversal" value, so the ledger records why each reversal happened.

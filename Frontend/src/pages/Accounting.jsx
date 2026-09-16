@@ -115,6 +115,7 @@ const ACCOUNTING_ERROR_CODES = {
     manual_voucher_not_draft: "accounting.error_manual_voucher_not_draft",
     manual_voucher_already_processed: "accounting.error_manual_voucher_already_processed",
     manual_voucher_not_posted: "accounting.error_manual_voucher_not_posted",
+    manual_voucher_self_post_not_allowed: "accounting.error_manual_voucher_self_post_not_allowed",
     manual_voucher_void_reason_required: "accounting.error_manual_voucher_void_reason_required",
     manual_voucher_void_date_invalid: "accounting.error_manual_voucher_void_date_invalid",
     opening_balance_date_invalid: "accounting.error_opening_balance_date_invalid",
@@ -1150,7 +1151,7 @@ const ManualVouchersTab = () => {
 
     return (
         <>
-            <AccountingSectionGuide sectionKey="vouchers" title={t("accounting.guide_vouchers_title")} summary={t("accounting.tab_vouchers_caption")} steps={[t("accounting.guide_voucher_step_1"), t("accounting.guide_voucher_step_2"), t("accounting.guide_voucher_step_3")]} result={t("accounting.guide_voucher_result")} concepts={[{ label: t("accounting.voucher_status_draft"), help: t("accounting.guide_draft_help") }, { label: t("accounting.voucher_status_posted"), help: t("accounting.guide_posted_help") }]} />
+            <AccountingSectionGuide sectionKey="vouchers" title={t("accounting.guide_vouchers_title")} summary={t("accounting.tab_vouchers_caption")} steps={[t("accounting.guide_voucher_step_1"), t("accounting.guide_voucher_step_2"), t("accounting.guide_voucher_step_3")]} result={t("accounting.guide_voucher_result")} concepts={[{ label: t("accounting.voucher_status_draft"), help: t("accounting.guide_draft_help") }, { label: t("accounting.voucher_status_posted"), help: t("accounting.guide_posted_help") }, { label: t("accounting.voucher_maker_checker_label"), help: t("accounting.voucher_maker_checker_help") }]} />
             <div className="flex items-center justify-between gap-3 mb-4">
                 <span />
                 {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.voucher_new")}</Button>}

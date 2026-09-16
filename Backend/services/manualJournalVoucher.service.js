@@ -95,6 +95,24 @@ const includeVoucher = {
     lines: { orderBy: { position: "asc" }, include: { chartAccount: true, costCenter: true } },
 };
 
+// Maker-checker only means something when there's someone else who could do
+// the checking - a solo owner (no team, or a team where nobody else has
+// accounting edit/admin) must still be able to post their own vouchers, or
+// this control would just lock them out of their own books. The owner
+// always counts as 1 (canAccessModule's "solo users are never gated" rule -
+// see team.permissions.js) plus any ACTIVE team member whose role grants
+// "accounting" edit or admin.
+const countEligibleApprovers = async (tx, accountId) => {
+    const otherApprovers = await tx.teamMember.count({
+        where: {
+            status: "active",
+            team: { ownerId: accountId },
+            role: { permissions: { some: { moduleKey: "accounting", level: { in: ["edit", "admin"] } } } },
+        },
+    });
+    return 1 + otherApprovers;
+};
+
 const lockVoucher = async (tx, accountId, id) => {
     const rows = await tx.$queryRaw`
         SELECT id FROM manual_journal_vouchers
@@ -143,6 +161,11 @@ export const postDraft = async ({ accountId, actorId, id }) =>
     prisma.$transaction(async (tx) => {
         const voucher = await lockVoucher(tx, accountId, id);
         if (voucher.status !== "draft") throw new ApiError(409, "Voucher has already been posted or voided.", [], "", "manual_voucher_already_processed");
+
+        if (voucher.createdById === actorId && (await countEligibleApprovers(tx, accountId)) > 1) {
+            throw new ApiError(403, "A different user must post this voucher.", [], "", "manual_voucher_self_post_not_allowed");
+        }
+
         const lines = await validateLines(
             tx,
             accountId,

@@ -26,6 +26,7 @@ import { useCurrency } from "../../context/CurrencyContext";
 import useI18n from "../../hooks/useI18n";
 import { financeErrorMessage } from "../../utils/financeError";
 import PaymentDetailsTable from "./PaymentDetailsTable";
+import PaymentCreditsPanel from "./PaymentCreditsPanel";
 
 const COLORS = {
     overdue: "error",
@@ -289,6 +290,7 @@ const AccountsReceivablePlanner = ({ canEdit }) => {
                     </div>
                 )}
             </Card>
+            <PaymentCreditsPanel />
             <Modal
                 open={Boolean(editing)}
                 title={t("finance.receivables_edit_due_title")}

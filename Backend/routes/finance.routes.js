@@ -36,6 +36,7 @@ import {
     listPurchasePaymentAllocations,
     listUnallocatedPayments,
     listPaymentCredits,
+    registerPaymentAdvance,
     applyPaymentCredit,
 } from "../controllers/finance.controller.js";
 
@@ -84,6 +85,7 @@ router.post("/purchases/:purchaseId/payments/:paymentId/allocate", requireModule
 router.get("/purchases/:purchaseId/payments/:paymentId/allocations", requireModulePermission("finance", "view"), listPurchasePaymentAllocations);
 router.get("/payments/unallocated", requireModulePermission("finance", "view"), listUnallocatedPayments);
 router.get("/payment-credits", requireModulePermission("finance", "view"), listPaymentCredits);
+router.post("/payment-credits", requireModulePermission("finance", "edit"), idempotent("finance.payment-credit"), registerPaymentAdvance);
 router.post("/payment-credits/:creditId/apply", requireModulePermission("finance", "edit"), applyPaymentCredit);
 router.route("/accounts-payable")
     .get(requireModulePermission("finance", "view"), getAccountsPayablePlan);

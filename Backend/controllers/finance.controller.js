@@ -368,6 +368,16 @@ export const listPaymentCredits = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, rows, "Payment credits fetched successfully."));
 });
 
+export const registerPaymentAdvance = asyncHandler(async (req, res) => {
+    const result = await paymentCreditService.registerPaymentAdvance({
+        accountId: req.user.prismaId, actorId: req.user.actorId,
+        customerId: req.body?.customer_id, supplierId: req.body?.supplier_id,
+        cashAccountId: req.body?.cash_account_id, amount: req.body?.amount,
+        reference: req.body?.reference, payable: req.body?.type === "payable",
+    });
+    return res.status(201).json(new ApiResponse(201, result, "Payment advance registered successfully."));
+});
+
 export const applyPaymentCredit = asyncHandler(async (req, res) => {
     const allocation = await paymentCreditService.applyCreditBalance({ accountId: req.user.prismaId, actorId: req.user.actorId, creditId: req.params.creditId, documentId: req.body?.document_id, amount: req.body?.amount, payable: req.body?.type === "payable" });
     return res.status(201).json(new ApiResponse(201, allocation, "Payment credit applied successfully."));
