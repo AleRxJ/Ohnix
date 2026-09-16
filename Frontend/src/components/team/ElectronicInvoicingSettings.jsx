@@ -242,6 +242,16 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged, onResol
     const [editingResolution, setEditingResolution] = useState(null);
     const [editForm] = Form.useForm();
     const [savingResolution, setSavingResolution] = useState(false);
+    // A company registered via the certificate-only lite path (see
+    // ElectronicInvoicingSettings's step-1 escape hatch) has an
+    // itcycleCompanyId but no DianConfiguration yet - readiness?.softwareId
+    // and company?.dianSoftwareId are both null/missing in that case. This
+    // lets them fill it in later, once DIAN actually hands them their
+    // habilitación (softwareId/PIN/clave técnica), without redoing the whole
+    // wizard.
+    const [dianConfigModalOpen, setDianConfigModalOpen] = useState(false);
+    const [savingDianConfig, setSavingDianConfig] = useState(false);
+    const [dianConfigForm] = Form.useForm();
 
     useEffect(() => {
         setVatResponsible(company?.vatResponsible === "unset" ? undefined : company?.vatResponsible);
@@ -292,6 +302,32 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged, onResol
             if (!error?.errorFields) toast.error(resolveApiErrorMessage(error, t, {}, "fiscal_setup.resolutions_edit_error"));
         } finally {
             setSavingResolution(false);
+        }
+    };
+
+    const hasDianConfiguration = Boolean(readiness?.softwareId || company?.dianSoftwareId);
+
+    const submitDianConfig = async () => {
+        try {
+            const values = await dianConfigForm.validateFields();
+            setSavingDianConfig(true);
+            const response = await companyService.setMyItcycleDianConfiguration({
+                dianConfiguration: {
+                    environment: values.environment,
+                    softwareId: values.softwareId,
+                    softwarePin: values.softwarePin,
+                    technicalKey: values.technicalKey,
+                },
+            });
+            onCompanyChanged?.({ ...company, dianSoftwareId: response?.data?.dianSoftwareId });
+            toast.success(t("fiscal_setup.dian_configuration_saved"));
+            setDianConfigModalOpen(false);
+            dianConfigForm.resetFields();
+            onResolutionsChanged?.();
+        } catch (error) {
+            if (!error?.errorFields) toast.error(resolveApiErrorMessage(error, t, {}, "fiscal_setup.dian_configuration_error"));
+        } finally {
+            setSavingDianConfig(false);
         }
     };
 
@@ -362,9 +398,15 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged, onResol
                         only a fallback for when readiness couldn't be fetched (see
                         status.readinessError above). */}
                         <Text className="text-sm font-medium text-[var(--ohnix-text-primary)]">{readiness?.softwareId || company?.dianSoftwareId || "-"}</Text>
-                        <Tooltip title={t("fiscal_setup.config_locked_hint")}>
-                            <LockOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
-                        </Tooltip>
+                        {hasDianConfiguration ? (
+                            <Tooltip title={t("fiscal_setup.config_locked_hint")}>
+                                <LockOutlined className="text-xs text-[var(--ohnix-text-muted)]" />
+                            </Tooltip>
+                        ) : (
+                            <Button size="small" type="link" className="h-auto p-0" onClick={() => setDianConfigModalOpen(true)}>
+                                {t("fiscal_setup.configure_dian_credentials")}
+                            </Button>
+                        )}
                     </div>
                 </div>
                 <div className="sm:col-span-2">
@@ -526,6 +568,47 @@ const RegisteredConfigSummary = ({ company, readiness, onCompanyChanged, onResol
                     </div>
                 </Form>
             </Modal>
+
+            <Modal
+                title={t("fiscal_setup.configure_dian_credentials")}
+                open={dianConfigModalOpen}
+                onCancel={() => setDianConfigModalOpen(false)}
+                onOk={submitDianConfig}
+                confirmLoading={savingDianConfig}
+                okText={t("fiscal_setup.dian_configuration_save")}
+                cancelText={t("fiscal_setup.habilitacion_confirm_cancel")}
+                destroyOnClose
+            >
+                <Form form={dianConfigForm} layout="vertical" className="mt-4" initialValues={{ environment: "SANDBOX" }}>
+                    <Form.Item name="environment" label={t("fiscal_setup.environment")} tooltip={t("fiscal_setup.environment_hint")}>
+                        <Select size="large" disabled options={[{ value: "SANDBOX", label: t("fiscal_setup.environment_sandbox") }]} />
+                    </Form.Item>
+                    <Form.Item
+                        name="softwareId"
+                        label={t("fiscal_setup.software_id")}
+                        extra={t("fiscal_setup.software_id_hint")}
+                        rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidSoftwareId, t("fiscal_setup.software_id_invalid"))]}
+                    >
+                        <Input size="large" className="auth-ohnix-input" placeholder="deb9167c-e2f6-4796-9b4d-d102472e2397" />
+                    </Form.Item>
+                    <Form.Item
+                        name="softwarePin"
+                        label={t("fiscal_setup.software_pin")}
+                        extra={t("fiscal_setup.software_pin_hint")}
+                        rules={[{ required: true, whitespace: true, message: t("fiscal_setup.software_pin_invalid") }]}
+                    >
+                        <Input size="large" type="password" className="auth-ohnix-input" />
+                    </Form.Item>
+                    <Form.Item
+                        name="technicalKey"
+                        label={t("fiscal_setup.technical_key")}
+                        extra={t("fiscal_setup.technical_key_hint")}
+                        rules={[{ required: true, message: t("fiscal_setup.field_required") }, validatorRule(isValidTechnicalKey, t("fiscal_setup.technical_key_invalid"))]}
+                    >
+                        <Input size="large" type="password" className="auth-ohnix-input" />
+                    </Form.Item>
+                </Form>
+            </Modal>
         </Card>
     );
 };
@@ -566,6 +649,15 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged, canActivateInv
     // crypto.randomUUID() on every submit would make each retry look like a
     // brand-new request and could double-post the numbering resolution.
     const [registerIdempotencyKey] = useState(() => crypto.randomUUID());
+    // Lite escape hatch at step 1 (DIAN software step): a company that
+    // doesn't have its DIAN habilitación (softwareId/PIN/clave técnica) yet
+    // can still activate a digital certificate now and fill in
+    // DianConfiguration later (see RegisteredConfigSummary's own "Configurar
+    // credenciales DIAN" button). Separate loading state and idempotency key
+    // from the full wizard's `saving`/registerIdempotencyKey - these are two
+    // different logical operations, not retries of each other.
+    const [provisioningCertificateOnly, setProvisioningCertificateOnly] = useState(false);
+    const [certificateOnlyIdempotencyKey, setCertificateOnlyIdempotencyKey] = useState(() => crypto.randomUUID());
 
     const refreshCertificateProviderStatus = async () => {
         try {
@@ -737,6 +829,37 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged, canActivateInv
             if (!error?.errorFields) toast.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "fiscal_setup.submit_error"));
         } finally {
             setSaving(false);
+        }
+    };
+
+    // Escape hatch for someone who "just wants a certificate" and doesn't
+    // have DIAN's own habilitación credentials yet - skips the DIAN software
+    // step (stepFields[1]) entirely and only validates/saves the tax-info
+    // step (stepFields[0]) already filled in. DianConfiguration can be added
+    // later via RegisteredConfigSummary's "Configurar credenciales DIAN".
+    const provisionCertificateOnly = async () => {
+        try {
+            await form.validateFields(stepFields[0]);
+            setProvisioningCertificateOnly(true);
+            const value = form.getFieldsValue();
+            const saved = await companyService.updateMyCompany({
+                name: company?.name || value.legalName,
+                legalName: value.legalName,
+                contactEmail: value.email,
+                taxIdentification: value.taxIdentification,
+                countryCode: "CO",
+                vatResponsible: value.vatResponsible,
+            });
+            const entity = saved?.data;
+            await companyService.provisionMyCompanyForCertificate(certificateOnlyIdempotencyKey);
+            setCertificateOnlyIdempotencyKey(crypto.randomUUID());
+            onCompanyChanged?.(entity);
+            await refresh();
+            toast.success(t("fiscal_setup.certificate_only_success"));
+        } catch (error) {
+            if (!error?.errorFields) toast.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "fiscal_setup.certificate_only_error"));
+        } finally {
+            setProvisioningCertificateOnly(false);
         }
     };
 
@@ -1119,6 +1242,33 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged, canActivateInv
                                     <Input size="large" type="password" prefix={<KeyOutlined className="text-[var(--ohnix-text-dim)]" />} className="auth-ohnix-input" />
                                 </Form.Item>
                             </div>
+                            {/* Secondary, visually de-emphasized alternative for someone who
+                            doesn't have their DIAN habilitación yet - not competing with the
+                            primary "fill in your credentials and continue" path above. Only
+                            reachable here because this whole wizard only renders while
+                            !status?.provisioned (see the top-level status?.provisioned ?
+                            ... : ... below), i.e. the company has no itcycleCompanyId yet. */}
+                            <div className="mt-5 rounded-2xl border border-dashed border-[var(--ohnix-line-5)] bg-[var(--ohnix-line-1)] p-4">
+                                <div className="flex items-start gap-3">
+                                    <SafetyCertificateOutlined className="mt-0.5 text-base text-[var(--ohnix-text-muted)]" />
+                                    <div className="flex-1">
+                                        <Text className="block text-sm font-semibold text-[var(--ohnix-text-primary)]">
+                                            {t("fiscal_setup.certificate_only_title")}
+                                        </Text>
+                                        <Text className="mt-1 block text-xs text-[var(--ohnix-text-muted)]">
+                                            {t("fiscal_setup.certificate_only_hint")}
+                                        </Text>
+                                        <Button
+                                            className="mt-3"
+                                            loading={provisioningCertificateOnly}
+                                            disabled={saving}
+                                            onClick={provisionCertificateOnly}
+                                        >
+                                            {t("fiscal_setup.certificate_only_button")}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div style={{ display: step === 2 ? undefined : "none" }} className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
                             {field("street", t("fiscal_setup.address"), { required: true, icon: <EnvironmentOutlined className="text-[var(--ohnix-text-dim)]" />, hint: t("fiscal_setup.address_hint") })}
@@ -1213,10 +1363,10 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged, canActivateInv
                         </div>
                     </Form>
                     <div className="mt-6 flex justify-between border-t border-[var(--ohnix-line-4)] pt-5">
-                        <Button icon={<ArrowLeftOutlined />} onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0}>{t("fiscal_setup.back")}</Button>
+                        <Button icon={<ArrowLeftOutlined />} onClick={() => setStep((current) => Math.max(0, current - 1))} disabled={step === 0 || provisioningCertificateOnly}>{t("fiscal_setup.back")}</Button>
                         {step < 3
-                            ? <Button type="primary" iconPosition="end" icon={<ArrowRightOutlined />} className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" onClick={next}>{t("fiscal_setup.continue")}</Button>
-                            : <Button type="primary" icon={<RocketOutlined />} className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" loading={saving} onClick={submit}>{t("fiscal_setup.submit")}</Button>}
+                            ? <Button type="primary" iconPosition="end" icon={<ArrowRightOutlined />} className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" onClick={next} disabled={provisioningCertificateOnly}>{t("fiscal_setup.continue")}</Button>
+                            : <Button type="primary" icon={<RocketOutlined />} className="hover:shadow-[0_0_26px_rgba(41,216,213,0.22)]" loading={saving} disabled={provisioningCertificateOnly} onClick={submit}>{t("fiscal_setup.submit")}</Button>}
                     </div>
                 </>
             )}

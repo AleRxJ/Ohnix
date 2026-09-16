@@ -19,7 +19,7 @@ import {
 import PurchaseFormItem from "./PurchaseFormItem";
 import useI18n from "../../hooks/useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
-import PointOfSaleField from "../common/PointOfSaleField";
+import PointOfSaleField, { usePointOfSaleFieldVisible } from "../common/PointOfSaleField";
 import { accountingService } from "../../services/accountingService";
 
 const { Option } = Select;
@@ -55,6 +55,7 @@ const PurchaseForm = ({
     const isConvertingQuotation = Boolean(initialQuotation);
     const fieldsLocked = isTourCreateStep || isConvertingQuotation;
     const [withholdingConcepts, setWithholdingConcepts] = React.useState([]);
+    const { visible: showPointOfSale } = usePointOfSaleFieldVisible();
     const selectedPointOfSaleId = Form.useWatch("pointOfSaleId", form);
 
     // Suppliers are assigned to a single point of sale at creation (see
@@ -176,9 +177,11 @@ const PurchaseForm = ({
                     }
                 >
                     <Row gutter={16}>
-                        <Col xs={24} sm={12}>
-                            <PointOfSaleField disabled={fieldsLocked} />
-                        </Col>
+                        {showPointOfSale && (
+                            <Col xs={24} sm={12}>
+                                <PointOfSaleField disabled={fieldsLocked} />
+                            </Col>
+                        )}
                         <Col xs={24} sm={12}>
                             <Form.Item
                                 label={

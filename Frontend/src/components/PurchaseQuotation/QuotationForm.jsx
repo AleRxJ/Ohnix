@@ -3,7 +3,7 @@ import { Modal, Form, Input, Select, Row, Col, Divider, Button, Card, DatePicker
 import { PlusOutlined, FileTextOutlined, TagsOutlined } from "@ant-design/icons";
 import PurchaseFormItem from "../Purchase/PurchaseFormItem";
 import useI18n from "../../hooks/useI18n";
-import PointOfSaleField from "../common/PointOfSaleField";
+import PointOfSaleField, { usePointOfSaleFieldVisible } from "../common/PointOfSaleField";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -19,6 +19,7 @@ const sectionCardProps = {
 // and converted into a real Purchase.
 const QuotationForm = ({ visible, onCancel, onSubmit, suppliers, products, form, initialValues, submitting }) => {
     const { t } = useI18n();
+    const { visible: showPointOfSale } = usePointOfSaleFieldVisible();
 
     const handleProductChange = (productId, fieldName) => {
         const product = products.find((p) => p._id === productId);
@@ -86,10 +87,12 @@ const QuotationForm = ({ visible, onCancel, onSubmit, suppliers, products, form,
                     }
                 >
                     <Row gutter={16}>
-                        <Col xs={24} sm={12} className="quotation-pos-column">
-                            <PointOfSaleField />
-                        </Col>
-                        <Col xs={24} sm={12}>
+                        {showPointOfSale && (
+                            <Col xs={24} sm={12} className="quotation-pos-column">
+                                <PointOfSaleField />
+                            </Col>
+                        )}
+                        <Col xs={24} sm={showPointOfSale ? 12 : 24}>
                             <Form.Item
                                 label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("quotations.quotation_number")}</span>}
                                 name="quotation_no"

@@ -103,7 +103,7 @@ export const ensureCurrentYearEarningsAccount = async (tx, accountId) => {
 // parentId is the hierarchy the schema always supported but the default
 // seed never used (ChartAccount.parentId's own comment) - optional here too,
 // a flat chart is still perfectly valid.
-export const createChartAccount = async (accountId, { code, name, accountType, parentId }) => {
+export const createChartAccount = async (accountId, actorId, { code, name, accountType, parentId }) => {
     if (!code?.trim()) throw new ApiError(400, "Account code is required.", [], "", "chart_account_code_required");
     if (!name?.trim()) throw new ApiError(400, "Account name is required.", [], "", "chart_account_name_required");
     if (!ACCOUNT_TYPES.includes(accountType)) {
@@ -119,8 +119,15 @@ export const createChartAccount = async (accountId, { code, name, accountType, p
         if (!parent) throw new ApiError(400, "The selected parent account does not exist.", [], "", "chart_account_parent_not_found");
     }
 
-    return prisma.chartAccount.create({
-        data: { code: trimmedCode, name: name.trim(), accountType, parentId: parentId || null, createdById: accountId },
+    const trimmedName = name.trim();
+    return prisma.$transaction(async (tx) => {
+        const account = await tx.chartAccount.create({
+            data: { code: trimmedCode, name: trimmedName, accountType, parentId: parentId || null, createdById: accountId },
+        });
+        await tx.accountingConfigAudit.create({
+            data: { accountId, actorId, entityType: "chart_account", entityId: account.id, action: "created", after: { code: trimmedCode, name: trimmedName, account_type: accountType, parent_id: parentId || null, is_active: true } },
+        });
+        return account;
     });
 };
 
@@ -128,8 +135,14 @@ export const createChartAccount = async (accountId, { code, name, accountType, p
 // points at this account intact - same "never delete, only isActive" idiom
 // used for products/cash accounts elsewhere. Reactivating is the same call
 // with isActive: true.
-export const setChartAccountActive = async (accountId, chartAccountId, isActive) => {
+export const setChartAccountActive = async (accountId, actorId, chartAccountId, isActive) => {
     const account = await prisma.chartAccount.findFirst({ where: { id: chartAccountId, createdById: accountId } });
     if (!account) throw new ApiError(404, "Chart account not found.", [], "", "chart_account_not_found");
-    return prisma.chartAccount.update({ where: { id: chartAccountId }, data: { isActive } });
+    return prisma.$transaction(async (tx) => {
+        const updated = await tx.chartAccount.update({ where: { id: chartAccountId }, data: { isActive } });
+        await tx.accountingConfigAudit.create({
+            data: { accountId, actorId, entityType: "chart_account", entityId: chartAccountId, action: isActive ? "activated" : "deactivated", before: { is_active: account.isActive }, after: { is_active: isActive } },
+        });
+        return updated;
+    });
 };

@@ -213,7 +213,7 @@ export const listChartOfAccounts = asyncHandler(async (req, res) => {
 
 export const createChartOfAccount = asyncHandler(async (req, res) => {
     const { code, name, account_type, parent_id } = req.body || {};
-    const account = await chartOfAccountsService.createChartAccount(req.user.prismaId, {
+    const account = await chartOfAccountsService.createChartAccount(req.user.prismaId, req.user.actorId, {
         code,
         name,
         accountType: account_type,
@@ -226,7 +226,7 @@ export const setChartOfAccountActive = asyncHandler(async (req, res, next) => {
     const { is_active } = req.body || {};
     if (typeof is_active !== "boolean") return next(new ApiError(400, "is_active must be a boolean.", [], "", "chart_account_active_invalid"));
 
-    const account = await chartOfAccountsService.setChartAccountActive(req.user.prismaId, req.params.id, is_active);
+    const account = await chartOfAccountsService.setChartAccountActive(req.user.prismaId, req.user.actorId, req.params.id, is_active);
     return res.status(200).json(new ApiResponse(200, mapChartAccount(account), "Chart account updated successfully"));
 });
 
@@ -546,13 +546,14 @@ export const listWithholdingConcepts = asyncHandler(async (req, res) => {
 });
 
 export const createWithholdingConcept = asyncHandler(async (req, res) => {
-    const concept = await withholdingConceptService.createWithholdingConcept(req.user.prismaId, req.body || {});
+    const concept = await withholdingConceptService.createWithholdingConcept(req.user.prismaId, req.user.actorId, req.body || {});
     return res.status(201).json(new ApiResponse(201, concept, "Withholding concept created successfully."));
 });
 
 export const setWithholdingConceptActive = asyncHandler(async (req, res) => {
     const concept = await withholdingConceptService.setWithholdingConceptActive(
         req.user.prismaId,
+        req.user.actorId,
         req.params.id,
         req.body?.is_active
     );

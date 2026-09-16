@@ -26,6 +26,8 @@ import {
     getMyViafirmaTerms,
     listMyViafirmaDocuments,
     registerMyCompanyWithItcycle,
+    provisionMyCompanyForCertificate,
+    setMyItcycleDianConfiguration,
     resolveMyFirmaPassOrderNumber,
     revokeMyViafirmaCertificate,
     setMyCertificateProviderOverride,
@@ -51,6 +53,8 @@ router.route("/me/logo").patch(upload.single("logo"), updateMyCompanyLogo).delet
 router.route("/me/itcycle/status").get(getMyItcycleStatus);
 router.route("/me/itcycle/certificate-provider").get(getMyCertificateProviderStatus).put(setMyCertificateProviderOverride);
 router.route("/me/itcycle/register").post(idempotent("company.itcycle.register"), registerMyCompanyWithItcycle);
+router.route("/me/itcycle/register-for-certificate").post(idempotent("company.itcycle.registerForCertificate"), provisionMyCompanyForCertificate);
+router.route("/me/itcycle/dian-configuration").put(setMyItcycleDianConfiguration);
 router.route("/me/itcycle/activate").post(idempotent("company.itcycle.activate"), activateMyItcycleElectronicInvoicing);
 router.route("/me/itcycle/numbering-resolutions").post(idempotent("company.itcycle.numbering-resolution"), addMyItcycleNumberingResolution);
 router.route("/me/itcycle/numbering-resolutions/:resolutionId").patch(updateMyItcycleNumberingResolution);

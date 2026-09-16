@@ -107,7 +107,7 @@ export const listWithholdingConcepts = async (accountId, { activeAt } = {}) => {
     return concepts.map(serialize);
 };
 
-export const createWithholdingConcept = async (accountId, payload) => {
+export const createWithholdingConcept = async (accountId, actorId, payload) => {
     const code = String(payload.code || "").trim();
     const name = String(payload.name || "").trim();
     const taxType = payload.tax_type;
@@ -143,24 +143,39 @@ export const createWithholdingConcept = async (accountId, payload) => {
     });
     if (overlap) throw new ApiError(409, `Withholding concept ${code} already has an effective version in that date range.`, [], "", "withholding_effective_range_overlap");
 
-    const created = await prisma.withholdingConcept.create({
-        data: {
-            accountId, code, name, taxType, baseType, ratePercent, minimumBaseAmount,
-            effectiveFrom, effectiveTo,
-            municipalityCode: taxType === "ica" ? String(payload.municipality_code).trim() : null,
-            chartAccountId: chartAccount.id,
-        },
-        include: { chartAccount: { select: { id: true, code: true, name: true } } },
+    const created = await prisma.$transaction(async (tx) => {
+        const concept = await tx.withholdingConcept.create({
+            data: {
+                accountId, code, name, taxType, baseType, ratePercent, minimumBaseAmount,
+                effectiveFrom, effectiveTo,
+                municipalityCode: taxType === "ica" ? String(payload.municipality_code).trim() : null,
+                chartAccountId: chartAccount.id,
+            },
+            include: { chartAccount: { select: { id: true, code: true, name: true } } },
+        });
+        await tx.accountingConfigAudit.create({
+            data: {
+                accountId, actorId, entityType: "withholding_concept", entityId: concept.id, action: "created",
+                after: { code, name, tax_type: taxType, base_type: baseType, rate_percent: ratePercent, minimum_base_amount: minimumBaseAmount, effective_from: effectiveFrom, effective_to: effectiveTo, is_active: true },
+            },
+        });
+        return concept;
     });
     return serialize(created);
 };
 
-export const setWithholdingConceptActive = async (accountId, id, isActive) => {
+export const setWithholdingConceptActive = async (accountId, actorId, id, isActive) => {
     const concept = await prisma.withholdingConcept.findFirst({ where: { id, accountId } });
     if (!concept) throw new ApiError(404, "Withholding concept not found.", [], "", "withholding_concept_not_found");
-    const updated = await prisma.withholdingConcept.update({
-        where: { id }, data: { isActive: isActive === true },
-        include: { chartAccount: { select: { id: true, code: true, name: true } } },
+    const updated = await prisma.$transaction(async (tx) => {
+        const result = await tx.withholdingConcept.update({
+            where: { id }, data: { isActive: isActive === true },
+            include: { chartAccount: { select: { id: true, code: true, name: true } } },
+        });
+        await tx.accountingConfigAudit.create({
+            data: { accountId, actorId, entityType: "withholding_concept", entityId: id, action: isActive ? "activated" : "deactivated", before: { is_active: concept.isActive }, after: { is_active: isActive === true } },
+        });
+        return result;
     });
     return serialize(updated);
 };

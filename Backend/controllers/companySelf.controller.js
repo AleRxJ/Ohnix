@@ -18,6 +18,8 @@ import {
     updateItcycleNumberingResolutionForCompany,
     ensureElectronicInvoicingPlan,
     registerCompanyWithItcycle,
+    provisionCompanyWithItcycleForCertificate,
+    setCompanyItcycleDianConfiguration,
 } from "../services/electronicInvoicing.service.js";
 import {
     confirmCompanyFirmaPassValidation,
@@ -289,6 +291,43 @@ export const registerMyCompanyWithItcycle = asyncHandler(async (req, res) => {
         certificate,
     });
     return res.status(200).json(new ApiResponse(200, data, "Empresa configurada para facturación electrónica"));
+});
+
+// Lite counterpart to registerMyCompanyWithItcycle: provisions the company in
+// itcycle-api-dian (companyId + API key) without requiring any
+// DianConfiguration up front - for someone who "just wants a certificate"
+// and has never gone through DIAN's own habilitación (see
+// provisionCompanyWithItcycleForCertificate's own comment).
+//
+// No plan gate here either (same product decision, 2026-09, as
+// registerMyCompanyWithItcycle above): this is also a way to obtain an
+// itcycleCompanyId, which every certificate flow requires - a company that
+// only wants a digital certificate (no invoicing) must still be able to
+// reach this on any plan. Actually issuing invoices stays gated at
+// activateMyItcycleElectronicInvoicing and numbering-resolution management.
+export const provisionMyCompanyForCertificate = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const data = await provisionCompanyWithItcycleForCertificate({ companyId: company.id });
+    return res.status(200).json(new ApiResponse(200, data, "Empresa configurada para emitir certificado digital"));
+});
+
+// Fills in DianConfiguration later, once the company actually has its DIAN
+// habilitación credentials - whether it registered via the lite certificate
+// path above or just wants to (re)set its configuration. No plan gate:
+// setting credentials doesn't cost anything or unlock invoicing by itself -
+// activateMyItcycleElectronicInvoicing and numbering-resolution management
+// stay the only Negocio-gated actions.
+export const setMyItcycleDianConfiguration = asyncHandler(async (req, res) => {
+    const company = await getOwnedCompanyOrThrow(req.user.prismaId);
+    const { dianConfiguration, supplierProfile } = req.body || {};
+    assertValidDianConfiguration(dianConfiguration);
+    const data = await setCompanyItcycleDianConfiguration({
+        companyId: company.id,
+        requesterRole: req.user.role,
+        dianConfiguration,
+        supplierProfile,
+    });
+    return res.status(200).json(new ApiResponse(200, data, "Configuración DIAN actualizada correctamente"));
 });
 
 export const addMyItcycleNumberingResolution = asyncHandler(async (req, res) => {

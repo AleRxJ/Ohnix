@@ -53,6 +53,28 @@ export const companyService = {
         return response.data;
     },
 
+    // Lite counterpart to registerMyCompanyWithItcycle above: provisions the
+    // company in itcycle-api-dian (companyId + API key) without requiring
+    // any DianConfiguration up front - for a company that only wants a
+    // digital certificate and has never gone through DIAN's own
+    // habilitación. See Backend/services/electronicInvoicing.service.js's
+    // provisionCompanyWithItcycleForCertificate.
+    async provisionMyCompanyForCertificate(idempotencyKey) {
+        const response = await api.post("/company/me/itcycle/register-for-certificate", undefined, {
+            headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+        });
+        return response.data;
+    },
+
+    // Fills in DianConfiguration later, once the company actually has its
+    // DIAN habilitación credentials (softwareId/PIN/technicalKey) - whether
+    // it registered via provisionMyCompanyForCertificate above or just
+    // wants to (re)set its configuration.
+    async setMyItcycleDianConfiguration(payload) {
+        const response = await api.put("/company/me/itcycle/dian-configuration", payload);
+        return response.data;
+    },
+
     async addMyItcycleNumberingResolution(payload, idempotencyKey) {
         const response = await api.post("/company/me/itcycle/numbering-resolutions", payload, {
             headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,

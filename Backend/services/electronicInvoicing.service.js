@@ -939,6 +939,91 @@ export const registerCompanyWithItcycle = async ({ companyId, requesterRole, dia
 };
 
 /**
+ * Lite counterpart to registerCompanyWithItcycle, for a company that only
+ * wants a digital certificate and has never gone through DIAN's own
+ * habilitación process (no softwareId/PIN/technicalKey yet). Mirrors the
+ * FIRST HALF of registerCompanyWithItcycle above - same guards, same
+ * provisionItcycleCompany/createItcycleApiKey calls - but skips
+ * DianConfiguration/numbering/certificate entirely. dianSoftwareId is
+ * deliberately left null (no DianConfiguration exists yet); it's filled in
+ * later, once the company actually has its DIAN credentials, by
+ * setCompanyItcycleDianConfiguration below.
+ */
+export const provisionCompanyWithItcycleForCertificate = async ({ companyId }) => {
+    if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) throw new ApiError(404, "Company not found");
+    if (company.itcycleCompanyId) throw new ApiError(409, "Tu empresa ya está configurada para facturar.");
+    if (normalizeCountryCode(company.countryCode) !== "CO") {
+        throw new ApiError(422, "Electronic invoicing with DIAN requires a company configured in Colombia");
+    }
+    if (!text(company.taxIdentification)) {
+        throw new ApiError(422, "company.taxIdentification (NIT) is required before provisioning with itcycle-api-dian");
+    }
+
+    const dv = text(company.taxIdentificationDv) || computeNitCheckDigit(company.taxIdentification);
+
+    try {
+        const itcycleCompany = await provisionItcycleCompany({
+            name: company.legalName || company.name,
+            nit: company.taxIdentification,
+            dv,
+            personType: "1",
+        });
+        const rawApiKey = await createItcycleApiKey({ companyId: itcycleCompany.id, label: `Ohnix - ${company.name}` });
+        if (!rawApiKey) throw new Error("itcycle-api-dian did not return an API key");
+
+        const updated = await prisma.company.update({
+            where: { id: companyId },
+            data: {
+                taxIdentificationDv: dv,
+                itcycleCompanyId: itcycleCompany.id,
+                itcycleApiKeyCiphertext: encryptSecret(rawApiKey),
+                electronicInvoicingProvider: ITCYCLE_PROVIDER,
+                electronicInvoicingEnabled: false,
+            },
+        });
+
+        return { companyId: updated.id, itcycleCompanyId: updated.itcycleCompanyId };
+    } catch (error) {
+        const providerPayload = error instanceof ItcycleDianError ? error.payload : null;
+        throw new ApiError(502, error.message || "Failed to provision company with itcycle-api-dian", providerPayload ? [providerPayload] : undefined);
+    }
+};
+
+/**
+ * Fills in DianConfiguration LATER for a company that already has an
+ * itcycleCompanyId (whether obtained via the certificate-only lite path
+ * above or the full registerCompanyWithItcycle wizard) - once it actually
+ * has its DIAN habilitación credentials (softwareId/PIN/technicalKey). Same
+ * self-service SANDBOX-forcing rule as registerCompanyWithItcycle (see that
+ * function's comment): a non-admin caller can never set PRODUCTION directly.
+ */
+export const setCompanyItcycleDianConfiguration = async ({ companyId, requesterRole, dianConfiguration, supplierProfile }) => {
+    if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian is not configured for this environment");
+
+    const effectiveDianConfiguration = requesterRole === "admin"
+        ? dianConfiguration
+        : { ...dianConfiguration, environment: "SANDBOX" };
+
+    const company = await prisma.company.findUnique({ where: { id: companyId } });
+    if (!company?.itcycleCompanyId) throw new ApiError(422, "Primero registra tu empresa en itcycle-api-dian.");
+
+    try {
+        await setItcycleDianConfiguration({ companyId: company.itcycleCompanyId, ...effectiveDianConfiguration, supplierProfile });
+        const updated = await prisma.company.update({
+            where: { id: companyId },
+            data: { dianSoftwareId: dianConfiguration.softwareId },
+        });
+        return { companyId: updated.id, itcycleCompanyId: updated.itcycleCompanyId, dianSoftwareId: updated.dianSoftwareId };
+    } catch (error) {
+        const providerPayload = error instanceof ItcycleDianError ? error.payload : null;
+        throw new ApiError(502, error.message || "Failed to set DIAN configuration with itcycle-api-dian", providerPayload ? [providerPayload] : undefined);
+    }
+};
+
+/**
  * Registers ONE additional itcycle-api-dian numbering resolution (e.g.
  * documentType "05" for Documento Soporte) for an already-provisioned
  * company, without going through registerCompanyWithItcycle's full

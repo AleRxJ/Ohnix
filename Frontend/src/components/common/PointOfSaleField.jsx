@@ -25,8 +25,20 @@ import { readMirrorAll } from "../../offline/entityQueue";
 // possible answer. Options are the actor's own scope only (inOwnScope) -
 // creating a customer/order/etc. at a location outside your own access
 // isn't something this field needs to support.
-const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false }) => {
-    const { t } = useI18n();
+// Shared visibility decision, exported so a parent laid out in a fixed grid
+// (antd Row/Col) can skip rendering the wrapping Col entirely instead of
+// leaving it empty - an empty Col still reserves its 50% track, which reads
+// as a blank gap next to the sibling field rather than a normal one-field
+// row. Plain flex/grid layouts (a bare <PointOfSaleField /> among CSS grid
+// children, or standalone outside any Row) don't need this: when this
+// component returns null there, no DOM node is created and the layout
+// reflows on its own.
+//
+// `visible` defaults to true while anything is still loading, matching the
+// select's own loading-spinner state below - only flips to false once both
+// the plan and the point-of-sale list are resolved and confirm there's
+// nothing to choose from.
+export const usePointOfSaleFieldVisible = () => {
     const { can, loading: subscriptionLoading } = useSubscription();
     const canUseMultiLocation = can("multiLocation");
     const [options, setOptions] = useState(null); // null = still loading
@@ -63,7 +75,16 @@ const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false }) => {
             });
     }, [canUseMultiLocation, subscriptionLoading]);
 
-    if (!subscriptionLoading && (!canUseMultiLocation || (options && options.length <= 1))) return null;
+    const resolved = !subscriptionLoading && options !== null;
+    const visible = !resolved || (canUseMultiLocation && options.length > 1);
+    return { visible, options, subscriptionLoading, canUseMultiLocation };
+};
+
+const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false }) => {
+    const { t } = useI18n();
+    const { visible, options, subscriptionLoading } = usePointOfSaleFieldVisible();
+
+    if (!visible) return null;
 
     return (
         <Form.Item

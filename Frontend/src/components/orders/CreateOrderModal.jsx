@@ -2,7 +2,7 @@ import React from "react";
 import { Modal, Form, Row, Col, Select, Button, Divider, Card, DatePicker } from "antd";
 import { PlusOutlined, ShoppingCartOutlined, FileTextOutlined } from "@ant-design/icons";
 import OrderFormItems from "./OrderFormItems";
-import PointOfSaleField from "../common/PointOfSaleField";
+import PointOfSaleField, { usePointOfSaleFieldVisible } from "../common/PointOfSaleField";
 import useI18n from "../../hooks/useI18n";
 
 const { Option } = Select;
@@ -27,6 +27,7 @@ const CreateOrderModal = ({
     submitting,
 }) => {
     const { t } = useI18n();
+    const { visible: showPointOfSale } = usePointOfSaleFieldVisible();
     const selectedPointOfSaleId = Form.useWatch("pointOfSaleId", form);
 
     // Customers are assigned to a single point of sale at creation (see
@@ -107,10 +108,12 @@ const CreateOrderModal = ({
                     }
                 >
                     <Row gutter={16}>
-                        <Col xs={24} sm={12}>
-                            <PointOfSaleField disabled={isTourCreateStep} />
-                        </Col>
-                        <Col xs={24} sm={12}>
+                        {showPointOfSale && (
+                            <Col xs={24} sm={12}>
+                                <PointOfSaleField disabled={isTourCreateStep} />
+                            </Col>
+                        )}
+                        <Col xs={24} sm={showPointOfSale ? 12 : 24}>
                             <Form.Item
                                 name="customer_id"
                                 label={
