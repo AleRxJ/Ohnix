@@ -243,7 +243,11 @@ const AssistantWidget = () => {
         window.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
     };
 
-    const draggable = !isMobile;
+    // Draggable (and idle-faded via the is-draggable class) on touch too,
+    // not just mouse - pointer events already unify both, and requiring a
+    // mouse to reposition it would strand phone/tablet users with exactly
+    // the overlap problem this dragging exists to solve.
+    const draggable = true;
 
     // Draggable + idle-fade + panel-follows-the-FAB, same pattern (and same
     // reasoning) as DiscoveryWidget.jsx/InventoryTourFab.jsx: a chat bubble
@@ -333,7 +337,7 @@ const AssistantWidget = () => {
                             background: "linear-gradient(135deg, rgba(41,216,213,0.18), rgba(68,243,240,0.22))",
                             border: "1px solid rgba(41,216,213,0.4)",
                             boxShadow: "0 8px 28px rgba(41,216,213,0.35)",
-                            touchAction: draggable ? "none" : "manipulation",
+                            touchAction: "none",
                         }}
                     >
                         <AssistantSparkleIcon size={24} />

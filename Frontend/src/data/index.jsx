@@ -71,6 +71,12 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: <Link to="/production-orders">{t("common.production_orders_nav")}</Link>,
         },
         {
+            key: "payroll",
+            moduleKey: "payroll",
+            icon: <WalletOutlined />,
+            label: <Link to="/payroll">{t("common.payroll_nav")}</Link>,
+        },
+        {
             key: "categories",
             moduleKey: "categories",
             icon: <AppstoreOutlined />,

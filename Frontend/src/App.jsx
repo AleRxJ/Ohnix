@@ -137,6 +137,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DashboardLayout = lazy(() => import("./components/layout/DashboardLayout"));
 const Products = lazy(() => import("./pages/Products"));
 const ProductionOrders = lazy(() => import("./pages/ProductionOrders"));
+const Payroll = lazy(() => import("./pages/Payroll"));
 const Orders = lazy(() => import("./pages/Orders"));
 const Purchase = lazy(() => import("./pages/Purchase"));
 const Quotations = lazy(() => import("./pages/Quotations"));
@@ -264,6 +265,7 @@ const RequireSuppliersAccess = requireModuleAccess("suppliers");
 const RequireCategoriesAccess = requireModuleAccess("categories");
 const RequireFinanceAccess = requireModuleAccess("finance");
 const RequireAccountingAccess = requireModuleAccess("accounting");
+const RequirePayrollAccess = requireModuleAccess("payroll");
 
 // AntdConfigProvider pulls in the whole "vendor-antd" chunk (see
 // vite.config.js) - the marketing pages below (LandingPage, Precios, Demo,
@@ -383,6 +385,7 @@ function App() {
                                 <Route path="dashboard" element={<Dashboard />} />
                                 <Route path="products" element={<RequireProductsAccess><Products /></RequireProductsAccess>} />
                                 <Route path="production-orders" element={<RequireProductsAccess><ProductionOrders /></RequireProductsAccess>} />
+                                <Route path="payroll" element={<RequirePayrollAccess><Payroll /></RequirePayrollAccess>} />
                                 <Route path="orders" element={<RequireOrdersAccess><Orders /></RequireOrdersAccess>} />
                                 <Route path="electronic-invoices" element={<ColombiaInvoiceRoute><ElectronicInvoices /></ColombiaInvoiceRoute>} />
                                 <Route path="purchase-support-documents" element={<SupportDocumentRoute><PurchaseSupportDocuments /></SupportDocumentRoute>} />

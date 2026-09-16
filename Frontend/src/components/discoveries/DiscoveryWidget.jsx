@@ -45,12 +45,13 @@ const savePosition = (pos) => {
 // brand teal (Ohnix's own "signal" idiom, see DiscoveryRevealOverlay) -
 // individual findings get their own type color once opened.
 //
-// Draggable + idle-fade on desktop only (see isMobile gates below): a fixed
-// widget parked over live content for an entire session is exactly the
-// "estorboso" (in the way) complaint this responds to, so it can be dragged
-// anywhere and rests at reduced opacity until the mouse is actually on it.
-// Touch layouts skip both - there's no hover state to fade against, and
-// drag would fight the page's own scroll gesture.
+// Draggable + idle-fade on both mouse and touch: a fixed widget parked over
+// live content for an entire session is exactly the "estorboso" (in the
+// way) complaint this responds to, so it can be dragged anywhere and rests
+// at reduced opacity until it's actually being interacted with. On touch
+// there's no hover to fade back in on, so it just stays faded except while
+// mid-drag (touchAction: "none" on the handle keeps that drag from fighting
+// the page's own scroll gesture).
 const DiscoveryWidget = () => {
     const { t } = useI18n();
     const navigate = useNavigate();
@@ -96,7 +97,9 @@ const DiscoveryWidget = () => {
     if (!canView || (!loading && discoveries.length === 0)) return null;
 
     const top = sortedTop.slice(0, 3);
-    const draggable = !isMobile;
+    // Draggable (and idle-faded via the is-draggable class) on touch too,
+    // not just mouse - see AssistantWidget.jsx for the same change and why.
+    const draggable = true;
 
     const goToDiscoveries = (openId) => {
         setOpen(false);
@@ -200,7 +203,7 @@ const DiscoveryWidget = () => {
                                 background: "linear-gradient(135deg, rgba(41,216,213,0.16), rgba(68,243,240,0.2))",
                                 border: "1px solid rgba(41,216,213,0.4)",
                                 backdropFilter: "blur(6px)",
-                                touchAction: draggable ? "none" : "manipulation",
+                                touchAction: "none",
                             }}
                         >
                             <span className="discovery-fab-ring" aria-hidden="true" />

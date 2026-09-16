@@ -259,63 +259,68 @@ model User {
   subscription      Subscription?
   company           Company?      @relation(fields: [companyId], references: [id])
 
-  categoriesCreated               Category[]                 @relation("CategoryCreatedBy")
-  categoriesUpdated               Category[]                 @relation("CategoryUpdatedBy")
-  unitsCreated                    Unit[]                     @relation("UnitCreatedBy")
-  unitsUpdated                    Unit[]                     @relation("UnitUpdatedBy")
-  productsCreated                 Product[]                  @relation("ProductCreatedBy")
-  productsUpdated                 Product[]                  @relation("ProductUpdatedBy")
-  customers                       Customer[]
-  suppliers                       Supplier[]
-  purchasesCreated                Purchase[]                 @relation("PurchaseCreatedBy")
-  purchasesUpdated                Purchase[]                 @relation("PurchaseUpdatedBy")
-  quotationsCreated               PurchaseQuotation[]        @relation("QuotationCreatedBy")
-  quotationsUpdated               PurchaseQuotation[]        @relation("QuotationUpdatedBy")
-  salesQuotationsCreated          SalesQuotation[]           @relation("SalesQuotationCreatedBy")
-  salesQuotationsUpdated          SalesQuotation[]           @relation("SalesQuotationUpdatedBy")
-  ordersCreated                   Order[]                    @relation("OrderCreatedBy")
-  ordersUpdated                   Order[]                    @relation("OrderUpdatedBy")
-  planUpgradeRequests             PlanUpgradeRequest[]
-  apiKeys                         ApiKey[]
-  integrationConnections          IntegrationConnection[]
-  webhookEndpoints                WebhookEndpoint[]
-  stockMovementsCreated           StockMovement[]            @relation("StockMovementCreatedBy")
-  cashAccountsCreated             CashAccount[]
-  cashMovementsCreated            CashMovement[]
-  orderPaymentsRecorded           OrderPayment[]
-  paymentCreditsCreated           PaymentCreditBalance[] @relation("PaymentCreditCreatedBy")
-  paymentCreditAccounts           PaymentCreditBalance[] @relation("PaymentCreditAccount")
-  orderPaymentAllocationsCreated  OrderPaymentAllocation[] @relation("OrderPaymentAllocationCreatedBy")
-  purchasePaymentsRecorded        PurchasePayment[]
+  categoriesCreated                 Category[]                  @relation("CategoryCreatedBy")
+  categoriesUpdated                 Category[]                  @relation("CategoryUpdatedBy")
+  unitsCreated                      Unit[]                      @relation("UnitCreatedBy")
+  unitsUpdated                      Unit[]                      @relation("UnitUpdatedBy")
+  productsCreated                   Product[]                   @relation("ProductCreatedBy")
+  productsUpdated                   Product[]                   @relation("ProductUpdatedBy")
+  customers                         Customer[]
+  suppliers                         Supplier[]
+  purchasesCreated                  Purchase[]                  @relation("PurchaseCreatedBy")
+  purchasesUpdated                  Purchase[]                  @relation("PurchaseUpdatedBy")
+  quotationsCreated                 PurchaseQuotation[]         @relation("QuotationCreatedBy")
+  quotationsUpdated                 PurchaseQuotation[]         @relation("QuotationUpdatedBy")
+  salesQuotationsCreated            SalesQuotation[]            @relation("SalesQuotationCreatedBy")
+  salesQuotationsUpdated            SalesQuotation[]            @relation("SalesQuotationUpdatedBy")
+  ordersCreated                     Order[]                     @relation("OrderCreatedBy")
+  ordersUpdated                     Order[]                     @relation("OrderUpdatedBy")
+  planUpgradeRequests               PlanUpgradeRequest[]
+  apiKeys                           ApiKey[]
+  integrationConnections            IntegrationConnection[]
+  webhookEndpoints                  WebhookEndpoint[]
+  stockMovementsCreated             StockMovement[]             @relation("StockMovementCreatedBy")
+  cashAccountsCreated               CashAccount[]
+  cashMovementsCreated              CashMovement[]
+  orderPaymentsRecorded             OrderPayment[]
+  paymentCreditsCreated             PaymentCreditBalance[]      @relation("PaymentCreditCreatedBy")
+  paymentCreditAccounts             PaymentCreditBalance[]      @relation("PaymentCreditAccount")
+  orderPaymentAllocationsCreated    OrderPaymentAllocation[]    @relation("OrderPaymentAllocationCreatedBy")
+  purchasePaymentsRecorded          PurchasePayment[]
   purchasePaymentAllocationsCreated PurchasePaymentAllocation[] @relation("PurchasePaymentAllocationCreatedBy")
-  bankStatementEntriesAdded       BankStatementEntry[]
-  chartAccountsCreated            ChartAccount[]
-  accountingPeriodsCreated        AccountingPeriod[]         @relation("AccountingPeriodCreatedBy")
-  accountingPeriodsClosed         AccountingPeriod[]         @relation("AccountingPeriodClosedBy")
-  fiscalYearClosuresOwned         FiscalYearClosure[]        @relation("FiscalYearClosureCreatedBy")
-  fiscalYearClosuresClosed        FiscalYearClosure[]        @relation("FiscalYearClosureClosedBy")
-  journalEntriesCreated           JournalEntry[]
-  accountingConfigAuditsOwned     AccountingConfigAudit[]    @relation("AccountingConfigAuditAccount")
-  costCentersOwned                CostCenter[]               @relation("CostCenterAccount")
-  recurringExpenseTemplatesOwned  RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateAccount")
-  accountingBudgetsOwned          AccountingBudget[]         @relation("AccountingBudgetAccount")
-  accountingBudgetsCreated        AccountingBudget[]         @relation("AccountingBudgetCreatedBy")
-  accountingBudgetsUpdated        AccountingBudget[]         @relation("AccountingBudgetUpdatedBy")
-  financialStatementNotesOwned    FinancialStatementNote[]   @relation("FinancialStatementNoteAccount")
-  financialStatementNotesCreated  FinancialStatementNote[]   @relation("FinancialStatementNoteCreatedBy")
-  financialStatementNotesUpdated  FinancialStatementNote[]   @relation("FinancialStatementNoteUpdatedBy")
-  fixedAssetsOwned                FixedAsset[]               @relation("FixedAssetCreatedBy")
-  recurringJournalTemplatesOwned  RecurringJournalTemplate[] @relation("RecurringJournalTemplateCreatedBy")
-  productBatchesCreated           ProductBatch[]
-  productionOrdersCreated         ProductionOrder[]          @relation("ProductionOrderCreatedBy")
-  productionOrdersUpdated         ProductionOrder[]          @relation("ProductionOrderUpdatedBy")
-  accountingConfigAuditsPerformed AccountingConfigAudit[]    @relation("AccountingConfigAuditActor")
+  bankStatementEntriesAdded         BankStatementEntry[]
+  chartAccountsCreated              ChartAccount[]
+  accountingPeriodsCreated          AccountingPeriod[]          @relation("AccountingPeriodCreatedBy")
+  accountingPeriodsClosed           AccountingPeriod[]          @relation("AccountingPeriodClosedBy")
+  fiscalYearClosuresOwned           FiscalYearClosure[]         @relation("FiscalYearClosureCreatedBy")
+  fiscalYearClosuresClosed          FiscalYearClosure[]         @relation("FiscalYearClosureClosedBy")
+  journalEntriesCreated             JournalEntry[]
+  accountingConfigAuditsOwned       AccountingConfigAudit[]     @relation("AccountingConfigAuditAccount")
+  costCentersOwned                  CostCenter[]                @relation("CostCenterAccount")
+  recurringExpenseTemplatesOwned    RecurringExpenseTemplate[]  @relation("RecurringExpenseTemplateAccount")
+  accountingBudgetsOwned            AccountingBudget[]          @relation("AccountingBudgetAccount")
+  accountingBudgetsCreated          AccountingBudget[]          @relation("AccountingBudgetCreatedBy")
+  accountingBudgetsUpdated          AccountingBudget[]          @relation("AccountingBudgetUpdatedBy")
+  financialStatementNotesOwned      FinancialStatementNote[]    @relation("FinancialStatementNoteAccount")
+  financialStatementNotesCreated    FinancialStatementNote[]    @relation("FinancialStatementNoteCreatedBy")
+  financialStatementNotesUpdated    FinancialStatementNote[]    @relation("FinancialStatementNoteUpdatedBy")
+  fixedAssetsOwned                  FixedAsset[]                @relation("FixedAssetCreatedBy")
+  recurringJournalTemplatesOwned    RecurringJournalTemplate[]  @relation("RecurringJournalTemplateCreatedBy")
+  productBatchesCreated             ProductBatch[]
+  productionOrdersCreated           ProductionOrder[]           @relation("ProductionOrderCreatedBy")
+  productionOrdersUpdated           ProductionOrder[]           @relation("ProductionOrderUpdatedBy")
+  employeesCreated                  Employee[]                  @relation("EmployeeCreatedBy")
+  employeesUpdated                  Employee[]                  @relation("EmployeeUpdatedBy")
+  payrollPeriodsCreated             PayrollPeriod[]             @relation("PayrollPeriodCreatedBy")
+  payrollPeriodsUpdated             PayrollPeriod[]             @relation("PayrollPeriodUpdatedBy")
+  payrollBenefitSettlementsCreated  PayrollBenefitSettlement[]
+  accountingConfigAuditsPerformed   AccountingConfigAudit[]     @relation("AccountingConfigAuditActor")
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
   // (starter/growth without a Team row) still need exactly one default
   // location - see PointOfSale below.
-  pointsOfSaleOwned               PointOfSale[]              @relation("PointOfSaleAccount")
-  stockTransfersRequested         StockTransfer[]            @relation("StockTransferRequestedBy")
+  pointsOfSaleOwned                 PointOfSale[]               @relation("PointOfSaleAccount")
+  stockTransfersRequested           StockTransfer[]             @relation("StockTransferRequestedBy")
 
   // Teams: a user is either a team owner (ownedTeam), a member of exactly one
   // active team at a time (via TeamMember, enforced in team.service.js - not
@@ -359,20 +364,20 @@ model User {
 // carries and what isSessionValid checks per-request - see
 // utils/sessionStore.js.
 model UserSession {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  deviceId    String   @map("device_id")
-  sid         String   @unique
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  deviceId     String   @map("device_id")
+  sid          String   @unique
   // "web" | "desktop" | "mobile" - derived from a custom User-Agent suffix
   // Desktop/Mobile's native shell sets (see sessionStore.js); defaults to
   // "web" when absent. Display-only plus lets the sessions list show an
   // icon per platform - never a security boundary (spoofing it only affects
   // your own account's device list, not access).
-  deviceClass String   @map("device_class")
+  deviceClass  String   @map("device_class")
   // Raw User-Agent at last login, shown in the sessions UI so a user can
   // tell "Chrome on Windows" apart from "Safari on iPhone" without any
   // separate device-naming feature.
-  deviceLabel String?  @map("device_label")
+  deviceLabel  String?  @map("device_label")
   // Replaces the old single global User.refreshToken column - one refresh
   // token per device instead of one for the whole account, which is what
   // actually lets two devices both stay logged in through their normal
@@ -380,9 +385,9 @@ model UserSession {
   // the first device's refresh token. Compared by exact value on rotation,
   // same as the old column was (see refreshAccessToken in
   // user.controller.js).
-  refreshToken String? @map("refresh_token")
-  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+  refreshToken String?  @map("refresh_token")
+  lastSeenAt   DateTime @default(now()) @map("last_seen_at")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -503,6 +508,14 @@ model Company {
   icaMunicipalityCode              String?           @map("ica_municipality_code")
   icaActivityCode                  String?           @map("ica_activity_code")
   icaRatePerThousand               Decimal?          @map("ica_rate_per_thousand") @db.Decimal(6, 3)
+  // Ley 1819/2016 exoneración de aportes: whether THIS company qualifies for
+  // the exemption regime at all (declarante de renta, not a natural person
+  // employing fewer than 2 workers) - same "configuration fact the user
+  // enters, ideally with their accountant" convention as isWithholdingAgent
+  // above. The per-EMPLOYEE part of the rule (only wages under 10 SMLMV
+  // qualify) is evaluated at calculation time, not stored here - see
+  // payroll.service.js#calculatePayrollDocument.
+  payrollAportesExonerados         Boolean           @default(false) @map("payroll_aportes_exonerados")
   isActive                         Boolean           @default(true) @map("is_active")
   createdAt                        DateTime          @default(now()) @map("created_at")
   updatedAt                        DateTime          @updatedAt @map("updated_at")
@@ -610,9 +623,9 @@ model PlanUpgradeRequest {
 // Same ePayco checkout/webhook shape as PlanUpgradeRequest on purpose - see
 // services/certificateOrderPayment.service.js, which mirrors epayco.service.js.
 model CertificateOrder {
-  id                String   @id @default(cuid())
-  companyId         String   @map("company_id")
-  requestedByUserId String   @map("requested_by_user_id")
+  id                  String    @id @default(cuid())
+  companyId           String    @map("company_id")
+  requestedByUserId   String    @map("requested_by_user_id")
   // Fixed at Viafirma's own certificate validity (see
   // ViafirmaCertificateProvider - every profile issues a 730-day/2-year
   // certificate regardless of what's paid for). A "1 año" purchase buys a
@@ -620,18 +633,18 @@ model CertificateOrder {
   // certificate, not a technically different certificate - the customer
   // must pay again after 1 year to keep using it, even though the
   // underlying Viafirma certificate itself is still technically valid.
-  durationYears     Int      @map("duration_years")
-  amount            Int
-  currency          String   @default("COP")
-  paymentProvider   String?  @default("epayco") @map("payment_provider")
-  paymentSessionId  String?  @unique @map("payment_session_id")
+  durationYears       Int       @map("duration_years")
+  amount              Int
+  currency            String    @default("COP")
+  paymentProvider     String?   @default("epayco") @map("payment_provider")
+  paymentSessionId    String?   @unique @map("payment_session_id")
   // pending -> paid | rejected | failed | expired | cancelled | amount_mismatch
   // Same vocabulary as PlanUpgradeRequest.paymentStatus/handleEpaycoConfirmation.
-  paymentStatus     String   @default("pending") @map("payment_status")
-  isTestPayment     Boolean? @map("is_test_payment")
-  paidAt            DateTime? @map("paid_at")
-  paidAmount        Int?     @map("paid_amount")
-  paidCurrency      String?  @map("paid_currency")
+  paymentStatus       String    @default("pending") @map("payment_status")
+  isTestPayment       Boolean?  @map("is_test_payment")
+  paidAt              DateTime? @map("paid_at")
+  paidAmount          Int?      @map("paid_amount")
+  paidCurrency        String?   @map("paid_currency")
   // The window during which createMyViafirmaRequest is allowed - starts at
   // paidAt, ends durationYears later. Once entitlementEndsAt lapses, the
   // company must create (and pay for) a new CertificateOrder before
@@ -639,8 +652,8 @@ model CertificateOrder {
   // a salir para pagar y solicitar otro").
   entitlementStartsAt DateTime? @map("entitlement_starts_at")
   entitlementEndsAt   DateTime? @map("entitlement_ends_at")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
 
   company         Company @relation(fields: [companyId], references: [id])
   requestedByUser User    @relation(fields: [requestedByUserId], references: [id])
@@ -677,7 +690,7 @@ model ExternalApiClient {
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
-  createdByUser   User                            @relation(fields: [createdByUserId], references: [id])
+  createdByUser   User                           @relation(fields: [createdByUserId], references: [id])
   apiKeyIssuances ExternalApiClientKeyIssuance[]
 
   @@map("external_api_clients")
@@ -811,9 +824,9 @@ model Unit {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  createdBy User      @relation("UnitCreatedBy", fields: [createdById], references: [id])
-  updatedBy User?     @relation("UnitUpdatedBy", fields: [updatedById], references: [id])
-  products  Product[]
+  createdBy              User      @relation("UnitCreatedBy", fields: [createdById], references: [id])
+  updatedBy              User?     @relation("UnitUpdatedBy", fields: [updatedById], references: [id])
+  products               Product[]
   productsAsPurchaseUnit Product[] @relation("ProductPurchaseUnit")
 
   // See Category's matching constraint - same duplicate-name race, same fix.
@@ -868,11 +881,11 @@ model Supplier {
   createdAt                  DateTime @default(now()) @map("created_at")
   updatedAt                  DateTime @updatedAt @map("updated_at")
 
-  createdBy   User                @relation(fields: [createdById], references: [id])
-  pointOfSale PointOfSale         @relation(fields: [pointOfSaleId], references: [id])
-  purchases   Purchase[]
+  createdBy      User                   @relation(fields: [createdById], references: [id])
+  pointOfSale    PointOfSale            @relation(fields: [pointOfSaleId], references: [id])
+  purchases      Purchase[]
   paymentCredits PaymentCreditBalance[]
-  quotations  PurchaseQuotation[]
+  quotations     PurchaseQuotation[]
 
   @@index([createdById])
   @@index([pointOfSaleId])
@@ -926,8 +939,8 @@ model Customer {
   createdAt                  DateTime @default(now()) @map("created_at")
   updatedAt                  DateTime @updatedAt @map("updated_at")
 
-  createdBy       User             @relation(fields: [createdById], references: [id])
-  pointOfSale     PointOfSale      @relation(fields: [pointOfSaleId], references: [id])
+  createdBy       User                   @relation(fields: [createdById], references: [id])
+  pointOfSale     PointOfSale            @relation(fields: [pointOfSaleId], references: [id])
   orders          Order[]
   paymentCredits  PaymentCreditBalance[]
   salesQuotations SalesQuotation[]
@@ -938,26 +951,26 @@ model Customer {
 }
 
 model Product {
-  id                 String              @id @default(cuid())
-  legacyMongoId      String?             @unique @map("legacy_mongo_id")
-  productName        String              @map("product_name")
-  productCode        String              @map("product_code")
+  id                           String              @id @default(cuid())
+  legacyMongoId                String?             @unique @map("legacy_mongo_id")
+  productName                  String              @map("product_name")
+  productCode                  String              @map("product_code")
   // E-commerce-facing identifiers, independent of productCode (which
   // predates any channel-integration concept and is free-form/not always
   // unique in spirit). Both optional and nullable - most existing products
   // have neither yet. sku is unique per account when set (multiple NULLs
   // are allowed by Postgres's unique-index semantics).
-  sku                String?
-  barcode            String?
-  brand              String?
+  sku                          String?
+  barcode                      String?
+  brand                        String?
   // draft/archived exist for the e-commerce publishing flow (see
   // connectors/ - a product shouldn't be pushed to a channel until it's
   // "active", and "archived" hides it from new publishes without deleting
   // sale history). Every pre-existing product defaults to active so this
   // is a no-op for the POS-only flows that predate it.
-  status             ProductStatus       @default(active)
-  categoryId         String              @map("category_id")
-  unitId             String              @map("unit_id")
+  status                       ProductStatus       @default(active)
+  categoryId                   String              @map("category_id")
+  unitId                       String              @map("unit_id")
   // Optional alternate unit this product is BOUGHT in (e.g. "Caja") when it
   // differs from `unit` (the stock/sale unit, e.g. "Unidad") -
   // purchase.service.js converts a line entered in this unit into base-unit
@@ -965,30 +978,30 @@ model Product {
   // weighted-average costing never need to know a conversion happened. Both
   // columns are set together or not at all (enforced at the service layer,
   // not the DB) - a factor with no unit, or vice versa, means nothing.
-  purchaseUnitId               String?  @map("purchase_unit_id")
-  purchaseUnitConversionFactor Decimal? @map("purchase_unit_conversion_factor") @db.Decimal(10, 2)
-  buyingPrice        Decimal             @map("buying_price") @db.Decimal(12, 2)
-  sellingPrice       Decimal             @map("selling_price") @db.Decimal(12, 2)
+  purchaseUnitId               String?             @map("purchase_unit_id")
+  purchaseUnitConversionFactor Decimal?            @map("purchase_unit_conversion_factor") @db.Decimal(10, 2)
+  buyingPrice                  Decimal             @map("buying_price") @db.Decimal(12, 2)
+  sellingPrice                 Decimal             @map("selling_price") @db.Decimal(12, 2)
   // Account-wide total across every Point of Sale - a fast-read cache kept
   // in sync with ProductLocationStock the same way ProductLocationStock
   // itself is a fast-read cache in front of StockMovement (see that
   // model's comment). Always equals the sum of this product's
   // ProductLocationStock rows; never written directly except by that sync -
   // see productLocationStock.service.js#claimLocationStock.
-  stock              Int                 @default(0)
-  productImage       String              @default("default-product.png") @map("product_image")
-  unitMeasureCode    String              @default("94") @map("unit_measure_code")
-  standardCode       String              @default("999") @map("standard_code")
-  taxCode            String?             @default("01") @map("tax_code")
-  taxRate            Decimal?            @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  stock                        Int                 @default(0)
+  productImage                 String              @default("default-product.png") @map("product_image")
+  unitMeasureCode              String              @default("94") @map("unit_measure_code")
+  standardCode                 String              @default("999") @map("standard_code")
+  taxCode                      String?             @default("01") @map("tax_code")
+  taxRate                      Decimal?            @default(0) @map("tax_rate") @db.Decimal(5, 2)
   // Replaces the old isTaxExcluded boolean - see ProductTaxTreatment for why
   // "excluded" and "exempt" can't be the same flag. taxRate keeps meaning
   // "the rate to charge when taxTreatment is taxed"; it's ignored for
   // excluded/exempt (exempt is always 0% by definition, ET art. 477/478/481).
-  taxTreatment       ProductTaxTreatment @default(taxed) @map("tax_treatment")
+  taxTreatment                 ProductTaxTreatment @default(taxed) @map("tax_treatment")
   // Per-product override for the low-stock alert threshold (Escala+ plan
   // feature). Null means "use the account-wide default threshold".
-  lowStockThreshold  Int?                @map("low_stock_threshold")
+  lowStockThreshold            Int?                @map("low_stock_threshold")
   // A kit/combo never has its own ProductLocationStock row - selling one
   // claims stock from its `kitComponents` instead (order.service.js's
   // createOrder), scaled by each component's own quantity. `stock` above
@@ -997,7 +1010,7 @@ model Product {
   // kit's components must themselves be non-kit products) - enforced at
   // the service layer, not the DB, to keep the recursion this would
   // otherwise need out of both the schema and the sale-time stock claim.
-  isKit              Boolean             @default(false) @map("is_kit")
+  isKit                        Boolean             @default(false) @map("is_kit")
   // Opt-in lot/expiration tracking - mutually exclusive with isKit (a kit's
   // stock is virtual, there's nothing to lot-track) and, like isKit, only
   // togglable while stock is 0 (product.controller.js), since there's no
@@ -1009,7 +1022,7 @@ model Product {
   // claimBatchesFEFO - see ProductBatch's own comment for why this stays a
   // best-effort approximation on the return/cancel path rather than an
   // exact snapshot like costBasisApplied.
-  tracksBatches      Boolean             @default(false) @map("tracks_batches")
+  tracksBatches                Boolean             @default(false) @map("tracks_batches")
   // Opt-in manufacturing: this product's stock is produced from a recipe
   // (recipeComponents, raw materials) via a ProductionOrder, instead of
   // (or in addition to) being purchased directly - mutually exclusive with
@@ -1019,19 +1032,19 @@ model Product {
   // tracksBatches: only togglable while stock is 0, enforced in
   // product.controller.js, since existing stock has no recipe history to
   // attribute it to.
-  isManufactured     Boolean             @default(false) @map("is_manufactured")
+  isManufactured               Boolean             @default(false) @map("is_manufactured")
   // Physical characteristics for shipping/logistics (see the WeightUnit
   // enum comment for the storage-vs-display-unit split). isPhysical
   // defaults true so every pre-existing product stays valid; a digital
   // good/service is the only case that sets it false, which is also the
   // only case where the rest of this block is allowed to be null.
-  isPhysical         Boolean             @default(true) @map("is_physical")
-  weightValue        Decimal?            @map("weight_value") @db.Decimal(10, 2)
-  weightUnit         WeightUnit          @default(g) @map("weight_unit")
-  heightValue        Decimal?            @map("height_value") @db.Decimal(10, 2)
-  widthValue         Decimal?            @map("width_value") @db.Decimal(10, 2)
-  lengthValue        Decimal?            @map("length_value") @db.Decimal(10, 2)
-  dimensionUnit      DimensionUnit       @default(cm) @map("dimension_unit")
+  isPhysical                   Boolean             @default(true) @map("is_physical")
+  weightValue                  Decimal?            @map("weight_value") @db.Decimal(10, 2)
+  weightUnit                   WeightUnit          @default(g) @map("weight_unit")
+  heightValue                  Decimal?            @map("height_value") @db.Decimal(10, 2)
+  widthValue                   Decimal?            @map("width_value") @db.Decimal(10, 2)
+  lengthValue                  Decimal?            @map("length_value") @db.Decimal(10, 2)
+  dimensionUnit                DimensionUnit       @default(cm) @map("dimension_unit")
   // Derived from height/width/length by product.controller.js
   // (computeVolumetricWeightGrams) every time any of the three changes -
   // never a direct user input, so it can't drift from the dimensions it
@@ -1039,35 +1052,35 @@ model Product {
   // major Colombian carrier (Servientrega, Coordinadora, Interrápidísimo,
   // TCC); a carrier-specific divisor belongs in that carrier's future
   // adapter, not here.
-  volumetricWeight   Decimal?            @map("volumetric_weight") @db.Decimal(10, 2)
+  volumetricWeight             Decimal?            @map("volumetric_weight") @db.Decimal(10, 2)
   // How many physical units make up one sellable/dispatched unit of this
   // product - e.g. a "six-pack" SKU where unitsPerPackage = 6. Doesn't
   // affect weight/dimensions (those already describe the dispatched
   // package), it's informational for whoever packs the order.
-  unitsPerPackage    Int                 @default(1) @map("units_per_package")
-  packagingType      PackagingType       @default(box) @map("packaging_type")
-  isFragile          Boolean             @default(false) @map("is_fragile")
+  unitsPerPackage              Int                 @default(1) @map("units_per_package")
+  packagingType                PackagingType       @default(box) @map("packaging_type")
+  isFragile                    Boolean             @default(false) @map("is_fragile")
   // Package-for-dispatch overrides. Null means "the dispatched package IS
   // the unit itself" (weightValue/height/width/lengthValue above already
   // describe it) - the common case of one unit = one box, which this way
   // doesn't force every seller to fill in the same numbers twice. Only set
   // when what actually ships differs from the bare unit (e.g. bundled with
   // extra packaging material).
-  packageWeightValue Decimal?            @map("package_weight_value") @db.Decimal(10, 2)
-  packageHeightValue Decimal?            @map("package_height_value") @db.Decimal(10, 2)
-  packageWidthValue  Decimal?            @map("package_width_value") @db.Decimal(10, 2)
-  packageLengthValue Decimal?            @map("package_length_value") @db.Decimal(10, 2)
-  isTutorialData     Boolean             @default(false) @map("is_tutorial_data")
-  createdById        String              @map("created_by")
-  updatedById        String?             @map("updated_by")
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
+  packageWeightValue           Decimal?            @map("package_weight_value") @db.Decimal(10, 2)
+  packageHeightValue           Decimal?            @map("package_height_value") @db.Decimal(10, 2)
+  packageWidthValue            Decimal?            @map("package_width_value") @db.Decimal(10, 2)
+  packageLengthValue           Decimal?            @map("package_length_value") @db.Decimal(10, 2)
+  isTutorialData               Boolean             @default(false) @map("is_tutorial_data")
+  createdById                  String              @map("created_by")
+  updatedById                  String?             @map("updated_by")
+  createdAt                    DateTime            @default(now()) @map("created_at")
+  updatedAt                    DateTime            @updatedAt @map("updated_at")
 
-  category              Category                  @relation(fields: [categoryId], references: [id])
-  unit                  Unit                      @relation(fields: [unitId], references: [id])
-  purchaseUnit          Unit?                     @relation("ProductPurchaseUnit", fields: [purchaseUnitId], references: [id])
-  createdBy             User                      @relation("ProductCreatedBy", fields: [createdById], references: [id])
-  updatedBy             User?                     @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
+  category              Category                    @relation(fields: [categoryId], references: [id])
+  unit                  Unit                        @relation(fields: [unitId], references: [id])
+  purchaseUnit          Unit?                       @relation("ProductPurchaseUnit", fields: [purchaseUnitId], references: [id])
+  createdBy             User                        @relation("ProductCreatedBy", fields: [createdById], references: [id])
+  updatedBy             User?                       @relation("ProductUpdatedBy", fields: [updatedById], references: [id])
   orderDetails          OrderDetail[]
   purchaseDetails       PurchaseDetail[]
   quotationDetails      PurchaseQuotationDetail[]
@@ -1077,13 +1090,13 @@ model Product {
   transfers             StockTransfer[]
   images                ProductImage[]
   variants              ProductVariant[]
-  kitComponents         ProductKitComponent[] @relation("KitComponents")
-  componentOfKits       ProductKitComponent[] @relation("ComponentOfKits")
+  kitComponents         ProductKitComponent[]       @relation("KitComponents")
+  componentOfKits       ProductKitComponent[]       @relation("ComponentOfKits")
   batches               ProductBatch[]
   recipeComponents      ProductionRecipeComponent[] @relation("RecipeFor")
   usedInRecipes         ProductionRecipeComponent[] @relation("RecipeComponentOf")
-  productionOrders      ProductionOrder[]      @relation("ProductionOrderProduct")
-  productionOrderLines  ProductionOrderLine[]  @relation("ProductionOrderLineComponent")
+  productionOrders      ProductionOrder[]           @relation("ProductionOrderProduct")
+  productionOrderLines  ProductionOrderLine[]       @relation("ProductionOrderLineComponent")
 
   @@unique([productCode, createdById])
   @@unique([sku, createdById])
@@ -1099,12 +1112,12 @@ model Product {
 // a flat list (no nested kits) so order.service.js#createOrder can resolve
 // and claim every component's stock in one pass without recursion.
 model ProductKitComponent {
-  id                String   @id @default(cuid())
-  kitProductId      String   @map("kit_product_id")
-  componentProductId String  @map("component_product_id")
-  quantity          Decimal  @db.Decimal(10, 2)
-  position          Int      @default(0)
-  createdAt         DateTime @default(now()) @map("created_at")
+  id                 String   @id @default(cuid())
+  kitProductId       String   @map("kit_product_id")
+  componentProductId String   @map("component_product_id")
+  quantity           Decimal  @db.Decimal(10, 2)
+  position           Int      @default(0)
+  createdAt          DateTime @default(now()) @map("created_at")
 
   kitProduct       Product @relation("KitComponents", fields: [kitProductId], references: [id], onDelete: Cascade)
   componentProduct Product @relation("ComponentOfKits", fields: [componentProductId], references: [id])
@@ -1199,42 +1212,42 @@ enum ProductionOrderStatus {
 // isn't still fully on hand (already sold/transferred/consumed by another
 // order) rather than silently going negative.
 model ProductionOrder {
-  id            String                @id @default(cuid())
-  productId     String                @map("product_id")
-  pointOfSaleId String                @map("point_of_sale_id")
-  quantity      Int
-  status        ProductionOrderStatus @default(draft)
+  id                  String                @id @default(cuid())
+  productId           String                @map("product_id")
+  pointOfSaleId       String                @map("point_of_sale_id")
+  quantity            Int
+  status              ProductionOrderStatus @default(draft)
   // Entered by the user, applied to the finished product's cost on
   // completion (see accountingPosting.service.js#postProductionJournalEntry)
   // - unlike materialsCost below, these never change once the order is
   // completed (there's no "current cost" to re-derive them from the way
   // materials have a live weighted-average).
-  laborCost     Decimal               @default(0) @map("labor_cost") @db.Decimal(12, 2)
-  overheadCost  Decimal               @default(0) @map("overhead_cost") @db.Decimal(12, 2)
+  laborCost           Decimal               @default(0) @map("labor_cost") @db.Decimal(12, 2)
+  overheadCost        Decimal               @default(0) @map("overhead_cost") @db.Decimal(12, 2)
   // Sum of every line's actual consumed cost - 0 (meaningless) until
   // completion, when it's computed from each line's own weighted-average
   // claim, same "frozen at the moment it happened" convention as
   // OrderDetail.costBasisApplied.
-  materialsCost   Decimal  @default(0) @map("materials_cost") @db.Decimal(12, 2)
-  unitCostApplied Decimal? @map("unit_cost_applied") @db.Decimal(14, 4)
+  materialsCost       Decimal               @default(0) @map("materials_cost") @db.Decimal(12, 2)
+  unitCostApplied     Decimal?              @map("unit_cost_applied") @db.Decimal(14, 4)
   // Only meaningful when `product.tracksBatches` - captured here at draft
   // time (same "state it once, at intake" reasoning as
   // PurchaseDetail.batchNumber) and applied to the finished product's own
   // lot at completion.
-  batchNumber         String?   @map("batch_number")
-  batchExpirationDate DateTime? @map("batch_expiration_date")
-  notes         String?   @db.Text
-  completedAt   DateTime? @map("completed_at")
-  cancelledAt   DateTime? @map("cancelled_at")
-  createdById   String    @map("created_by")
-  updatedById   String?   @map("updated_by")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  batchNumber         String?               @map("batch_number")
+  batchExpirationDate DateTime?             @map("batch_expiration_date")
+  notes               String?               @db.Text
+  completedAt         DateTime?             @map("completed_at")
+  cancelledAt         DateTime?             @map("cancelled_at")
+  createdById         String                @map("created_by")
+  updatedById         String?               @map("updated_by")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
 
-  product     Product              @relation("ProductionOrderProduct", fields: [productId], references: [id])
-  pointOfSale PointOfSale          @relation(fields: [pointOfSaleId], references: [id])
-  createdBy   User                 @relation("ProductionOrderCreatedBy", fields: [createdById], references: [id])
-  updatedBy   User?                @relation("ProductionOrderUpdatedBy", fields: [updatedById], references: [id])
+  product     Product               @relation("ProductionOrderProduct", fields: [productId], references: [id])
+  pointOfSale PointOfSale           @relation(fields: [pointOfSaleId], references: [id])
+  createdBy   User                  @relation("ProductionOrderCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?                 @relation("ProductionOrderUpdatedBy", fields: [updatedById], references: [id])
   lines       ProductionOrderLine[]
 
   @@index([createdById, status])
@@ -1422,7 +1435,7 @@ model StockTransfer {
   // to the source - same "freeze what was actually claimed, replay it on
   // reversal" idiom as unitCostApplied above, just structured instead of
   // scalar.
-  batchAllocations Json?               @map("batch_allocations")
+  batchAllocations  Json?               @map("batch_allocations")
 
   requestedById String    @map("requested_by")
   requestedAt   DateTime  @default(now()) @map("requested_at")
@@ -1560,10 +1573,10 @@ model Purchase {
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  supplier                Supplier                 @relation(fields: [supplierId], references: [id])
-  pointOfSale             PointOfSale              @relation(fields: [pointOfSaleId], references: [id])
-  createdBy               User                     @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
-  updatedBy               User?                    @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
+  supplier                Supplier                    @relation(fields: [supplierId], references: [id])
+  pointOfSale             PointOfSale                 @relation(fields: [pointOfSaleId], references: [id])
+  createdBy               User                        @relation("PurchaseCreatedBy", fields: [createdById], references: [id])
+  updatedBy               User?                       @relation("PurchaseUpdatedBy", fields: [updatedById], references: [id])
   purchaseDetails         PurchaseDetail[]
   payments                PurchasePayment[]
   paymentAllocations      PurchasePaymentAllocation[]
@@ -1837,11 +1850,11 @@ model Order {
   createdAt            DateTime    @default(now()) @map("created_at")
   updatedAt            DateTime    @updatedAt @map("updated_at")
 
-  customer           Customer               @relation(fields: [customerId], references: [id])
-  pointOfSale        PointOfSale            @relation(fields: [pointOfSaleId], references: [id])
-  createdBy          User                   @relation("OrderCreatedBy", fields: [createdById], references: [id])
-  updatedBy          User?                  @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
-  externalConnection IntegrationConnection? @relation(fields: [externalConnectionId], references: [id])
+  customer           Customer                 @relation(fields: [customerId], references: [id])
+  pointOfSale        PointOfSale              @relation(fields: [pointOfSaleId], references: [id])
+  createdBy          User                     @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  updatedBy          User?                    @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
+  externalConnection IntegrationConnection?   @relation(fields: [externalConnectionId], references: [id])
   orderDetails       OrderDetail[]
   electronicInvoice  ElectronicInvoice?
   payments           OrderPayment[]
@@ -2078,11 +2091,11 @@ model PurchaseSupportDocumentEvent {
 /// receiptAcknowledgment.service.ts#assertSimulationOnly. One row per
 /// Purchase, created the first time any of the four events is triggered.
 model ReceivedInvoiceReceipt {
-  id          String  @id @default(cuid())
-  purchaseId  String  @unique @map("purchase_id")
-  companyId   String  @map("company_id")
-  countryCode String  @map("country_code")
-  provider    String  @default("itcycle")
+  id          String @id @default(cuid())
+  purchaseId  String @unique @map("purchase_id")
+  companyId   String @map("company_id")
+  countryCode String @map("country_code")
+  provider    String @default("itcycle")
 
   // The supplier's OWN invoice being acknowledged - entered by the buyer,
   // never computed by Ohnix. supplierCufe is the primary legal reference
@@ -2309,6 +2322,7 @@ model PointOfSale {
   transfersIn       StockTransfer[]         @relation("StockTransferTo")
   productBatches    ProductBatch[]
   productionOrders  ProductionOrder[]
+  employees         Employee[]
   customers         Customer[]
   suppliers         Supplier[]
   cashAccounts      CashAccount[]
@@ -2360,7 +2374,7 @@ model CashAccount {
   movements                 CashMovement[]
   orderPayments             OrderPayment[]
   purchasePayments          PurchasePayment[]
-  paymentCredits             PaymentCreditBalance[]
+  paymentCredits            PaymentCreditBalance[]
   statementEntries          BankStatementEntry[]
   recurringExpenseTemplates RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateCashAccount")
 
@@ -2381,6 +2395,8 @@ enum CashMovementSourceType {
   transfer_out
   transfer_in
   adjustment
+  payroll_payment
+  payroll_benefit_settlement
 }
 
 // Append-only ledger - literal mirror of StockMovement, money instead of
@@ -2415,25 +2431,25 @@ model CashMovement {
 // report, not stored, same principle as Product.stock being the only
 // stored balance while a sale's own remaining-to-ship quantity is derived.
 model OrderPayment {
-  id            String   @id @default(cuid())
-  orderId       String   @map("order_id")
-  amount        Decimal  @db.Decimal(14, 2)
-  cashAccountId String   @map("cash_account_id")
-  appliedCreditId String? @map("applied_credit_id")
+  id              String   @id @default(cuid())
+  orderId         String   @map("order_id")
+  amount          Decimal  @db.Decimal(14, 2)
+  cashAccountId   String   @map("cash_account_id")
+  appliedCreditId String?  @map("applied_credit_id")
   // Free-text, same looseness as Supplier.type/Customer.type elsewhere in
   // this schema - "cash"/"transfer"/"card"/whatever the business uses.
-  method        String?
-  reference     String?
-  paidAt        DateTime @default(now()) @map("paid_at")
-  createdById   String   @map("created_by")
-  createdAt     DateTime @default(now()) @map("created_at")
+  method          String?
+  reference       String?
+  paidAt          DateTime @default(now()) @map("paid_at")
+  createdById     String   @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  order       Order       @relation(fields: [orderId], references: [id])
-  allocations OrderPaymentAllocation[]
-  creditBalances PaymentCreditBalance[] @relation("OrderPaymentCreditSource")
-  appliedCredit PaymentCreditBalance? @relation("OrderPaymentAppliedCredit", fields: [appliedCreditId], references: [id])
-  cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
-  createdBy   User        @relation(fields: [createdById], references: [id])
+  order          Order                    @relation(fields: [orderId], references: [id])
+  allocations    OrderPaymentAllocation[]
+  creditBalances PaymentCreditBalance[]   @relation("OrderPaymentCreditSource")
+  appliedCredit  PaymentCreditBalance?    @relation("OrderPaymentAppliedCredit", fields: [appliedCreditId], references: [id])
+  cashAccount    CashAccount              @relation(fields: [cashAccountId], references: [id])
+  createdBy      User                     @relation(fields: [createdById], references: [id])
 
   @@index([orderId])
   @@index([cashAccountId, createdAt])
@@ -2444,23 +2460,23 @@ model OrderPayment {
 // Cartera (accounts payable) - mirrors OrderPayment exactly; money leaves
 // cashAccount instead of entering it (see purchasePayment.service.js).
 model PurchasePayment {
-  id            String   @id @default(cuid())
-  purchaseId    String   @map("purchase_id")
-  amount        Decimal  @db.Decimal(14, 2)
-  cashAccountId String   @map("cash_account_id")
-  appliedCreditId String? @map("applied_credit_id")
-  method        String?
-  reference     String?
-  paidAt        DateTime @default(now()) @map("paid_at")
-  createdById   String   @map("created_by")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id              String   @id @default(cuid())
+  purchaseId      String   @map("purchase_id")
+  amount          Decimal  @db.Decimal(14, 2)
+  cashAccountId   String   @map("cash_account_id")
+  appliedCreditId String?  @map("applied_credit_id")
+  method          String?
+  reference       String?
+  paidAt          DateTime @default(now()) @map("paid_at")
+  createdById     String   @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  purchase    Purchase    @relation(fields: [purchaseId], references: [id])
-  allocations PurchasePaymentAllocation[]
-  creditBalances PaymentCreditBalance[] @relation("PurchasePaymentCreditSource")
-  appliedCredit PaymentCreditBalance? @relation("PurchasePaymentAppliedCredit", fields: [appliedCreditId], references: [id])
-  cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
-  createdBy   User        @relation(fields: [createdById], references: [id])
+  purchase       Purchase                    @relation(fields: [purchaseId], references: [id])
+  allocations    PurchasePaymentAllocation[]
+  creditBalances PaymentCreditBalance[]      @relation("PurchasePaymentCreditSource")
+  appliedCredit  PaymentCreditBalance?       @relation("PurchasePaymentAppliedCredit", fields: [appliedCreditId], references: [id])
+  cashAccount    CashAccount                 @relation(fields: [cashAccountId], references: [id])
+  createdBy      User                        @relation(fields: [createdById], references: [id])
 
   @@index([purchaseId])
   @@index([cashAccountId, createdAt])
@@ -2469,42 +2485,44 @@ model PurchasePayment {
 }
 
 model OrderPaymentAllocation {
-  id String @id @default(cuid())
-  orderPaymentId String @map("order_payment_id")
-  orderId String @map("order_id")
-  amount Decimal @db.Decimal(14, 2)
-  createdById String @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
-  payment OrderPayment @relation(fields: [orderPaymentId], references: [id])
-  order Order @relation(fields: [orderId], references: [id])
-  createdBy User @relation("OrderPaymentAllocationCreatedBy", fields: [createdById], references: [id])
+  id             String       @id @default(cuid())
+  orderPaymentId String       @map("order_payment_id")
+  orderId        String       @map("order_id")
+  amount         Decimal      @db.Decimal(14, 2)
+  createdById    String       @map("created_by")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  payment        OrderPayment @relation(fields: [orderPaymentId], references: [id])
+  order          Order        @relation(fields: [orderId], references: [id])
+  createdBy      User         @relation("OrderPaymentAllocationCreatedBy", fields: [createdById], references: [id])
+
   @@index([orderId])
   @@index([orderPaymentId])
   @@map("order_payment_allocations")
 }
 
 model PaymentCreditBalance {
-  id String @id @default(cuid())
-  accountId String @map("account_id")
-  customerId String? @map("customer_id")
-  supplierId String? @map("supplier_id")
-  sourceOrderPaymentId String? @map("source_order_payment_id")
-  sourcePurchasePaymentId String? @map("source_purchase_payment_id")
-  cashAccountId String? @map("cash_account_id")
-  amount Decimal @db.Decimal(14, 2)
-  appliedAmount Decimal @default(0) @map("applied_amount") @db.Decimal(14, 2)
-  status String @default("open")
-  createdById String @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
-  account User @relation("PaymentCreditAccount", fields: [accountId], references: [id])
-  customer Customer? @relation(fields: [customerId], references: [id])
-  supplier Supplier? @relation(fields: [supplierId], references: [id])
-  sourceOrderPayment OrderPayment? @relation("OrderPaymentCreditSource", fields: [sourceOrderPaymentId], references: [id])
-  sourcePurchasePayment PurchasePayment? @relation("PurchasePaymentCreditSource", fields: [sourcePurchasePaymentId], references: [id])
-  cashAccount CashAccount? @relation(fields: [cashAccountId], references: [id])
-  appliedOrderPayments OrderPayment[] @relation("OrderPaymentAppliedCredit")
+  id                      String            @id @default(cuid())
+  accountId               String            @map("account_id")
+  customerId              String?           @map("customer_id")
+  supplierId              String?           @map("supplier_id")
+  sourceOrderPaymentId    String?           @map("source_order_payment_id")
+  sourcePurchasePaymentId String?           @map("source_purchase_payment_id")
+  cashAccountId           String?           @map("cash_account_id")
+  amount                  Decimal           @db.Decimal(14, 2)
+  appliedAmount           Decimal           @default(0) @map("applied_amount") @db.Decimal(14, 2)
+  status                  String            @default("open")
+  createdById             String            @map("created_by")
+  createdAt               DateTime          @default(now()) @map("created_at")
+  account                 User              @relation("PaymentCreditAccount", fields: [accountId], references: [id])
+  customer                Customer?         @relation(fields: [customerId], references: [id])
+  supplier                Supplier?         @relation(fields: [supplierId], references: [id])
+  sourceOrderPayment      OrderPayment?     @relation("OrderPaymentCreditSource", fields: [sourceOrderPaymentId], references: [id])
+  sourcePurchasePayment   PurchasePayment?  @relation("PurchasePaymentCreditSource", fields: [sourcePurchasePaymentId], references: [id])
+  cashAccount             CashAccount?      @relation(fields: [cashAccountId], references: [id])
+  appliedOrderPayments    OrderPayment[]    @relation("OrderPaymentAppliedCredit")
   appliedPurchasePayments PurchasePayment[] @relation("PurchasePaymentAppliedCredit")
-  createdBy User @relation("PaymentCreditCreatedBy", fields: [createdById], references: [id])
+  createdBy               User              @relation("PaymentCreditCreatedBy", fields: [createdById], references: [id])
+
   @@index([accountId, status])
   @@index([customerId, status])
   @@index([supplierId, status])
@@ -2512,15 +2530,16 @@ model PaymentCreditBalance {
 }
 
 model PurchasePaymentAllocation {
-  id String @id @default(cuid())
-  purchasePaymentId String @map("purchase_payment_id")
-  purchaseId String @map("purchase_id")
-  amount Decimal @db.Decimal(14, 2)
-  createdById String @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
-  payment PurchasePayment @relation(fields: [purchasePaymentId], references: [id])
-  purchase Purchase @relation(fields: [purchaseId], references: [id])
-  createdBy User @relation("PurchasePaymentAllocationCreatedBy", fields: [createdById], references: [id])
+  id                String          @id @default(cuid())
+  purchasePaymentId String          @map("purchase_payment_id")
+  purchaseId        String          @map("purchase_id")
+  amount            Decimal         @db.Decimal(14, 2)
+  createdById       String          @map("created_by")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  payment           PurchasePayment @relation(fields: [purchasePaymentId], references: [id])
+  purchase          Purchase        @relation(fields: [purchaseId], references: [id])
+  createdBy         User            @relation("PurchasePaymentAllocationCreatedBy", fields: [createdById], references: [id])
+
   @@index([purchaseId])
   @@index([purchasePaymentId])
   @@map("purchase_payment_allocations")
@@ -2594,19 +2613,19 @@ model ChartAccount {
   createdAt   DateTime              @default(now()) @map("created_at")
   updatedAt   DateTime              @updatedAt @map("updated_at")
 
-  parent                    ChartAccount?              @relation("ChartAccountHierarchy", fields: [parentId], references: [id])
-  children                  ChartAccount[]             @relation("ChartAccountHierarchy")
-  createdBy                 User                       @relation(fields: [createdById], references: [id])
-  cashAccounts              CashAccount[]
-  journalEntryLines         JournalEntryLine[]
-  manualVoucherLines        ManualJournalVoucherLine[]
-  withholdingConcepts       WithholdingConcept[]
-  purchaseRetentions        PurchaseRetention[]
-  accountingBudgets         AccountingBudget[]
-  recurringExpenseTemplates RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateExpenseAccount")
-  fixedAssetsAsAsset        FixedAsset[]               @relation("FixedAssetAssetAccount")
-  fixedAssetsAsDepreciation FixedAsset[]               @relation("FixedAssetDepreciationAccount")
-  fixedAssetsAsExpense      FixedAsset[]                @relation("FixedAssetExpenseAccount")
+  parent                        ChartAccount?                  @relation("ChartAccountHierarchy", fields: [parentId], references: [id])
+  children                      ChartAccount[]                 @relation("ChartAccountHierarchy")
+  createdBy                     User                           @relation(fields: [createdById], references: [id])
+  cashAccounts                  CashAccount[]
+  journalEntryLines             JournalEntryLine[]
+  manualVoucherLines            ManualJournalVoucherLine[]
+  withholdingConcepts           WithholdingConcept[]
+  purchaseRetentions            PurchaseRetention[]
+  accountingBudgets             AccountingBudget[]
+  recurringExpenseTemplates     RecurringExpenseTemplate[]     @relation("RecurringExpenseTemplateExpenseAccount")
+  fixedAssetsAsAsset            FixedAsset[]                   @relation("FixedAssetAssetAccount")
+  fixedAssetsAsDepreciation     FixedAsset[]                   @relation("FixedAssetDepreciationAccount")
+  fixedAssetsAsExpense          FixedAsset[]                   @relation("FixedAssetExpenseAccount")
   recurringJournalTemplateLines RecurringJournalTemplateLine[]
 
   @@unique([createdById, code])
@@ -2624,12 +2643,12 @@ model CostCenter {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  account            User                       @relation("CostCenterAccount", fields: [accountId], references: [id])
-  journalEntryLines  JournalEntryLine[]
-  manualVoucherLines ManualJournalVoucherLine[]
-  pointsOfSale       PointOfSale[]
-  accountingBudgets  AccountingBudget[]
-  fixedAssets        FixedAsset[]
+  account                       User                           @relation("CostCenterAccount", fields: [accountId], references: [id])
+  journalEntryLines             JournalEntryLine[]
+  manualVoucherLines            ManualJournalVoucherLine[]
+  pointsOfSale                  PointOfSale[]
+  accountingBudgets             AccountingBudget[]
+  fixedAssets                   FixedAsset[]
   recurringJournalTemplateLines RecurringJournalTemplateLine[]
 
   @@unique([accountId, code])
@@ -2997,6 +3016,15 @@ enum JournalSourceType {
   // to journal (see accountingPosting.service.js#postProductionJournalEntry).
   production
   production_reversal
+  // Fase 10 - nómina (see PayrollPeriod/PayrollDocument above). `payroll` is
+  // posted once a period is approved (gross expense + every liability it
+  // creates); `payroll_payment` when net pay + that period's aportes are
+  // actually paid out; `payroll_benefit_settlement` when an accrued
+  // prestación social (cesantías/prima/...) is paid out later, on its own
+  // legal calendar - see accountingPosting.service.js.
+  payroll
+  payroll_payment
+  payroll_benefit_settlement
 }
 
 enum FiscalYearClosureStatus {
@@ -3634,33 +3662,33 @@ enum DiscoveryStatus {
 // priorityScore by discoveryScoring.js so ranking logic lives in one place
 // instead of being re-derived ad hoc wherever discoveries are listed.
 model Discovery {
-  id              String          @id @default(cuid())
-  accountId       String          @map("account_id")
-  detectorKey     String          @map("detector_key")
-  type            DiscoveryType
-  status          DiscoveryStatus @default(detected)
-  dedupeKey       String          @map("dedupe_key")
-  title           String
-  summary         String          @db.Text
-  hypothesis      String?         @db.Text
-  unknowns        String?         @db.Text
-  recommendation  String?         @db.Text
-  confidence      Decimal         @db.Decimal(4, 3)
-  impactScore     Decimal         @map("impact_score") @db.Decimal(4, 3)
-  noveltyScore    Decimal         @map("novelty_score") @db.Decimal(4, 3)
-  urgencyScore    Decimal         @map("urgency_score") @db.Decimal(4, 3)
-  reversibility   Decimal         @db.Decimal(4, 3)
-  priorityScore   Decimal         @map("priority_score") @db.Decimal(6, 3)
-  entityCount     Int             @default(0) @map("entity_count")
+  id                 String          @id @default(cuid())
+  accountId          String          @map("account_id")
+  detectorKey        String          @map("detector_key")
+  type               DiscoveryType
+  status             DiscoveryStatus @default(detected)
+  dedupeKey          String          @map("dedupe_key")
+  title              String
+  summary            String          @db.Text
+  hypothesis         String?         @db.Text
+  unknowns           String?         @db.Text
+  recommendation     String?         @db.Text
+  confidence         Decimal         @db.Decimal(4, 3)
+  impactScore        Decimal         @map("impact_score") @db.Decimal(4, 3)
+  noveltyScore       Decimal         @map("novelty_score") @db.Decimal(4, 3)
+  urgencyScore       Decimal         @map("urgency_score") @db.Decimal(4, 3)
+  reversibility      Decimal         @db.Decimal(4, 3)
+  priorityScore      Decimal         @map("priority_score") @db.Decimal(6, 3)
+  entityCount        Int             @default(0) @map("entity_count")
   // When the underlying pattern is believed to have started, per the
   // detector's own evidence (e.g. earliest order in a decaying-frequency
   // cohort) - distinct from firstDetectedAt, which is just when Ohnix
   // noticed it.
-  patternSince    DateTime?       @map("pattern_since")
-  firstDetectedAt DateTime        @default(now()) @map("first_detected_at")
-  lastSeenAt      DateTime        @default(now()) @map("last_seen_at")
-  publishedAt     DateTime?       @map("published_at")
-  resolvedAt      DateTime?       @map("resolved_at")
+  patternSince       DateTime?       @map("pattern_since")
+  firstDetectedAt    DateTime        @default(now()) @map("first_detected_at")
+  lastSeenAt         DateTime        @default(now()) @map("last_seen_at")
+  publishedAt        DateTime?       @map("published_at")
+  resolvedAt         DateTime?       @map("resolved_at")
   // Mission case G ("errores de percepción"): the human's own stated reason
   // for dismissing this finding - "lo que el equipo cree" is captured here
   // rather than through any new belief-tracking UI. upsertDiscovery reads
@@ -3668,8 +3696,8 @@ model Discovery {
   // recurs after being dismissed with a reason is real, evidence-based
   // grounds to gently surface "dijiste X, y volvió a pasar" - never framed
   // as the user being wrong, just as a fact worth re-checking.
-  dismissReason   String?         @map("dismiss_reason") @db.Text
-  dismissedAt     DateTime?       @map("dismissed_at")
+  dismissReason      String?         @map("dismiss_reason") @db.Text
+  dismissedAt        DateTime?       @map("dismissed_at")
   // Case G, generalized beyond dismissal: a belief the user can attach to
   // ANY discovery at ANY time, not just when closing it - "¿qué crees que
   // está pasando?". `teamExplanationTag` is a small closed set of
@@ -3679,11 +3707,11 @@ model Discovery {
   // DiscoveryEvidence kind "explanation_check"); an untagged one just gets
   // stored for the perception-gap recurrence check upsertDiscovery already
   // does for dismissals.
-  teamExplanation    String?    @map("team_explanation") @db.Text
-  teamExplanationTag String?    @map("team_explanation_tag")
-  teamExplanationAt  DateTime?  @map("team_explanation_at")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  teamExplanation    String?         @map("team_explanation") @db.Text
+  teamExplanationTag String?         @map("team_explanation_tag")
+  teamExplanationAt  DateTime?       @map("team_explanation_at")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
 
   account     User                  @relation(fields: [accountId], references: [id])
   evidence    DiscoveryEvidence[]
@@ -3813,4 +3841,358 @@ model MetricSnapshot {
   @@unique([accountId, entityType, entityId, metricKey, periodStart])
   @@index([accountId, metricKey, periodStart])
   @@map("metric_snapshots")
+}
+
+// ============================================================================
+// Nómina Electrónica - Fases 1-6 (empleados, parámetros legales, motor de
+// cálculo, ciclo de vida del período + contabilización, prestaciones
+// sociales). El envío del documento a la DIAN (CUNE, XML UBL de nómina,
+// habilitación) es una fase posterior y separada - ver el plan de fases;
+// nada aquí depende de eso ni lo anticipa con columnas muertas.
+// ============================================================================
+
+enum PayrollPeriodicity {
+  monthly
+  biweekly
+  weekly
+}
+
+// Colombian labor-code contract shapes that actually go through payroll
+// (nómina) - "prestación de servicios" (independent contractors) is
+// deliberately excluded: they're not employees, don't appear here, and are
+// invoiced/paid through a completely different DIAN mechanism.
+enum EmployeeContractType {
+  indefinido
+  fijo
+  obra_labor
+  aprendizaje
+}
+
+// DIAN's own "SubtipoTrabajador" is a much longer catalog (judicial,
+// personal_dian, madre_gestante, etc.) - this is the practical subset most
+// SMB payrolls actually need. `aprendiz` and `pensionado` change which
+// contributions apply (see payroll.service.js); `alto_riesgo` is informational
+// today (feeds the DIAN XML in the later phase) and doesn't change the
+// calculation - a high-risk worker's real difference is their ARL riskLevel,
+// tracked separately below, not this field.
+enum EmployeeWorkerType {
+  normal
+  pensionado
+  aprendiz
+  alto_riesgo
+}
+
+enum EmployeeStatus {
+  active
+  inactive
+  terminated
+}
+
+// Decreto 1607 de 2002's five ARL risk classes - the rate each maps to is a
+// fixed national table (payroll.service.js's ARL_RATES_BY_RISK_LEVEL), not a
+// per-year legal parameter like SMLMV, so it isn't in PayrollLegalParameter.
+enum ArlRiskLevel {
+  I
+  II
+  III
+  IV
+  V
+}
+
+// A person paid through payroll - deliberately its own model, NOT the same
+// thing as User/TeamMember (an Ohnix login/access-control concept). An
+// employee usually has no Ohnix account at all, and a User is never
+// implicitly an Employee just because they work at the company.
+model Employee {
+  id                String               @id @default(cuid())
+  documentType      String               @default("CC") @map("document_type")
+  documentNumber    String               @map("document_number")
+  firstName         String               @map("first_name")
+  secondName        String?              @map("second_name")
+  lastName          String               @map("last_name")
+  secondLastName    String?              @map("second_last_name")
+  email             String?
+  phone             String?
+  address           String?
+  hireDate          DateTime             @map("hire_date")
+  terminationDate   DateTime?            @map("termination_date")
+  contractType      EmployeeContractType @default(indefinido) @map("contract_type")
+  workerType        EmployeeWorkerType   @default(normal) @map("worker_type")
+  payFrequency      PayrollPeriodicity   @default(monthly) @map("pay_frequency")
+  baseSalary        Decimal              @map("base_salary") @db.Decimal(14, 2)
+  // Salario integral (CST art. 132, >= 13 SMLMV): already bundles prestaciones
+  // sociales into the agreed pay, so payroll.service.js skips computing
+  // separate cesantías/intereses/prima/vacaciones provisions for this
+  // employee entirely rather than double-paying them.
+  isIntegralSalary  Boolean              @default(false) @map("is_integral_salary")
+  riskLevel         ArlRiskLevel         @default(I) @map("risk_level")
+  position          String?
+  eps               String?
+  pensionFund       String?              @map("pension_fund")
+  severanceFund     String?              @map("severance_fund")
+  compensationFund  String?              @map("compensation_fund")
+  bankName          String?              @map("bank_name")
+  bankAccountType   String?              @map("bank_account_type")
+  bankAccountNumber String?              @map("bank_account_number")
+  workCity          String?              @map("work_city")
+  // Optional cost-center attribution for payroll's accounting posting - same
+  // resolveLocationCostCenter mechanism orders/purchases already use, keyed
+  // off where this employee actually works rather than off the period/order.
+  pointOfSaleId     String?              @map("point_of_sale_id")
+  status            EmployeeStatus       @default(active)
+  createdById       String               @map("created_by")
+  updatedById       String?              @map("updated_by")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  createdBy          User                       @relation("EmployeeCreatedBy", fields: [createdById], references: [id])
+  updatedBy          User?                      @relation("EmployeeUpdatedBy", fields: [updatedById], references: [id])
+  pointOfSale        PointOfSale?               @relation(fields: [pointOfSaleId], references: [id])
+  payrollDocuments   PayrollDocument[]
+  benefitAccruals    EmployeeBenefitAccrual[]
+  benefitSettlements PayrollBenefitSettlement[]
+
+  @@unique([documentNumber, createdById])
+  @@index([createdById, status])
+  @@index([pointOfSaleId])
+  @@map("employees")
+}
+
+// Legal constants set annually by the Colombian government - global, not
+// per-tenant (every account operating in Colombia uses the same SMLMV in the
+// same year), platform-admin managed the same way SystemSetting is. Seeded
+// once per year; payroll.service.js reads the row matching the period's
+// year and throws a clear error if that year hasn't been entered yet rather
+// than silently falling back to a stale one.
+model PayrollLegalParameter {
+  id                        String   @id @default(cuid())
+  year                      Int      @unique
+  smlmv                     Decimal  @db.Decimal(14, 2)
+  // Auxilio de transporte - only owed when baseSalary <= 2 * smlmv (checked
+  // at calculation time, not stored here).
+  transportAllowance        Decimal  @map("transport_allowance") @db.Decimal(14, 2)
+  // UVT (Unidad de Valor Tributario) - the retención en la fuente monthly
+  // table (ET art. 383, procedimiento 1) is expressed in UVT brackets.
+  uvt                       Decimal  @db.Decimal(14, 2)
+  // Legal monthly work-hours divisor used for the hourly rate behind
+  // overtime/surcharges (CST art. 161, salary / monthlyWorkHours). Ley
+  // 2101/2023 is phasing the legal workweek down from 48h to 42h through
+  // 2026 in scheduled steps, so this is a per-year configured value, not a
+  // hardcoded 240 or 230 - whoever maintains PayrollLegalParameter each year
+  // sets it to whatever the CST's schedule actually requires that year.
+  monthlyWorkHours          Decimal  @default(240) @map("monthly_work_hours") @db.Decimal(6, 2)
+  // Fondo de solidaridad pensional brackets (Ley 100/1993 art. 27): each
+  // entry is {"minSmlmv": number, "rate": number (percentage points on top
+  // of the base 4% pensión employee contribution)} - e.g.
+  // [{"minSmlmv":4,"rate":1},{"minSmlmv":16,"rate":1.2},...]. A salary below
+  // the first bracket's minSmlmv pays no solidarity-fund surcharge at all.
+  pensionSolidarityBrackets Json     @map("pension_solidarity_brackets")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  @@map("payroll_legal_parameters")
+}
+
+enum PayrollPeriodStatus {
+  draft
+  calculated
+  approved
+  paid
+  cancelled
+}
+
+// One payroll run for a group of employees sharing the same periodicity -
+// e.g. "nómina mensual de marzo 2027". Mirrors the draft -> calculated ->
+// approved -> paid lifecycle purchases/orders/production orders already use
+// in this codebase: nothing touches accounting until `approved`, and `paid`
+// is the only transition that records the actual cash outflow.
+model PayrollPeriod {
+  id           String              @id @default(cuid())
+  periodicity  PayrollPeriodicity
+  startDate    DateTime            @map("start_date")
+  endDate      DateTime            @map("end_date")
+  paymentDate  DateTime?           @map("payment_date")
+  status       PayrollPeriodStatus @default(draft)
+  createdById  String              @map("created_by")
+  updatedById  String?             @map("updated_by")
+  calculatedAt DateTime?           @map("calculated_at")
+  approvedAt   DateTime?           @map("approved_at")
+  paidAt       DateTime?           @map("paid_at")
+  cancelledAt  DateTime?           @map("cancelled_at")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  createdBy User              @relation("PayrollPeriodCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?             @relation("PayrollPeriodUpdatedBy", fields: [updatedById], references: [id])
+  documents PayrollDocument[]
+
+  @@index([createdById, status])
+  @@map("payroll_periods")
+}
+
+enum PayrollDocumentStatus {
+  draft
+  calculated
+  approved
+  paid
+  cancelled
+}
+
+// One employee's payslip within a PayrollPeriod - the eventual 1:1
+// counterpart to a DIAN "NominaIndividual" document once the submission
+// phase exists, but nothing here assumes that yet (no cune/xml columns -
+// those get added when that phase actually starts). Status mirrors the
+// parent period's own transitions (kept on both, not derived, since a
+// period could in principle need per-employee exceptions later - e.g.
+// someone excluded from a batch approval - even though today the service
+// layer always moves every document in a period together).
+model PayrollDocument {
+  id                         String                @id @default(cuid())
+  payrollPeriodId            String                @map("payroll_period_id")
+  employeeId                 String                @map("employee_id")
+  workedDays                 Decimal               @default(30) @map("worked_days") @db.Decimal(5, 2)
+  // Snapshot of Employee.baseSalary at calculation time - an employee's
+  // salary can change between periods; this is what THIS payslip was
+  // actually computed against, same "freeze what was actually used"
+  // convention as OrderDetail.costBasisApplied.
+  baseSalarySnapshot         Decimal               @map("base_salary_snapshot") @db.Decimal(14, 2)
+  status                     PayrollDocumentStatus @default(draft)
+  totalEarnings              Decimal               @default(0) @map("total_earnings") @db.Decimal(14, 2)
+  totalDeductions            Decimal               @default(0) @map("total_deductions") @db.Decimal(14, 2)
+  totalEmployerContributions Decimal               @default(0) @map("total_employer_contributions") @db.Decimal(14, 2)
+  netPay                     Decimal               @default(0) @map("net_pay") @db.Decimal(14, 2)
+  createdAt                  DateTime              @default(now()) @map("created_at")
+  updatedAt                  DateTime              @updatedAt @map("updated_at")
+
+  payrollPeriod PayrollPeriod         @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  employee      Employee              @relation(fields: [employeeId], references: [id])
+  lines         PayrollDocumentLine[]
+
+  @@unique([payrollPeriodId, employeeId])
+  @@index([employeeId])
+  @@map("payroll_documents")
+}
+
+enum PayrollConceptCategory {
+  earning
+  deduction
+  employer_contribution
+}
+
+// DIAN's own "nómina individual" concept catalog, trimmed to what
+// payroll.service.js actually computes in this phase - extending this enum
+// later (e.g. for the XML-submission phase's exact DIAN codes) is additive
+// and never renames an existing value, so historical PayrollDocumentLine
+// rows keep meaning exactly what they meant when they were written.
+enum PayrollConceptCode {
+  basic_salary
+  transport_allowance
+  overtime_day
+  overtime_night
+  surcharge_night
+  surcharge_sunday_holiday
+  overtime_sunday_holiday_day
+  overtime_sunday_holiday_night
+  common_vacation
+  bonus
+  other_earning
+  health_employee
+  pension_employee
+  pension_solidarity_fund
+  withholding_tax
+  other_deduction
+  health_employer
+  pension_employer
+  arl
+  sena
+  icbf
+  compensation_fund
+  severance_employer
+  severance_interest_employer
+  service_bonus_employer
+  vacation_provision
+}
+
+// One line of a PayrollDocument - the same flat, tagged-line shape
+// PayrollLegalParameter's siblings (JournalEntryLine, OrderDetail) already
+// use instead of a wide table with one column per possible concept.
+// quantity/rate are only meaningful for hour-based concepts (overtime,
+// surcharges); amount is always the final line value regardless.
+model PayrollDocumentLine {
+  id                String                 @id @default(cuid())
+  payrollDocumentId String                 @map("payroll_document_id")
+  category          PayrollConceptCategory
+  conceptCode       PayrollConceptCode     @map("concept_code")
+  description       String?
+  quantity          Decimal?               @db.Decimal(10, 2)
+  rate              Decimal?               @db.Decimal(14, 4)
+  amount            Decimal                @db.Decimal(14, 2)
+  createdAt         DateTime               @default(now()) @map("created_at")
+
+  payrollDocument PayrollDocument @relation(fields: [payrollDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([payrollDocumentId])
+  @@map("payroll_document_lines")
+}
+
+// Which recurring social-benefit provision this accrual row tracks -
+// severance/severance_interest/vacation run per calendar year, service_bonus
+// runs per semester within a year (see `semester` below).
+enum BenefitAccrualType {
+  severance
+  severance_interest
+  service_bonus
+  vacation
+}
+
+// Running provision balance per employee/year(/semester) - accrued a little
+// more each time a PayrollPeriod for that employee is approved (see
+// payroll.service.js#accrueBenefits), settled (paid out) via
+// PayrollBenefitSettlement below. `vacation` is the one type tracked in DAYS
+// (accruedDays/usedDays) instead of money - CST art. 186 grants 15 WORKING
+// days per year worked (1.25 days/month), and "how many days are owed" is
+// the number that actually matters operationally, not a currency value that
+// would just be days * daily-rate anyway and go stale the moment the
+// employee's salary changes.
+model EmployeeBenefitAccrual {
+  id            String             @id @default(cuid())
+  employeeId    String             @map("employee_id")
+  year          Int
+  semester      Int?
+  type          BenefitAccrualType
+  accruedAmount Decimal            @default(0) @map("accrued_amount") @db.Decimal(14, 2)
+  settledAmount Decimal            @default(0) @map("settled_amount") @db.Decimal(14, 2)
+  accruedDays   Decimal            @default(0) @map("accrued_days") @db.Decimal(7, 3)
+  usedDays      Decimal            @default(0) @map("used_days") @db.Decimal(7, 3)
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, year, semester, type])
+  @@index([employeeId, type])
+  @@map("employee_benefit_accruals")
+}
+
+// Audit trail of an actual payout against an EmployeeBenefitAccrual balance
+// (prima de junio/diciembre, cesantías consignadas al fondo antes del 14 de
+// febrero) - see payroll.service.js#settleBenefit. Never mutates the
+// accrual's history away; `settledAmount` on the accrual row is the running
+// total these settlements sum to.
+model PayrollBenefitSettlement {
+  id          String             @id @default(cuid())
+  employeeId  String             @map("employee_id")
+  type        BenefitAccrualType
+  year        Int
+  semester    Int?
+  amount      Decimal            @db.Decimal(14, 2)
+  paymentDate DateTime           @default(now()) @map("payment_date")
+  createdById String             @map("created_by")
+  createdAt   DateTime           @default(now()) @map("created_at")
+
+  employee  Employee @relation(fields: [employeeId], references: [id])
+  createdBy User     @relation(fields: [createdById], references: [id])
+
+  @@index([employeeId, type])
+  @@map("payroll_benefit_settlements")
 }

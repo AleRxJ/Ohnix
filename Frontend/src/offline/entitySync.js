@@ -42,3 +42,5 @@ registerFullResync("stockTransfers", "/stock-transfers");
 registerFullResync("purchaseQuotations", "/purchase-quotations");
 registerFullResync("salesQuotations", "/sales-quotations");
 registerFullResync("productionOrders", "/production-orders");
+registerFullResync("employees", "/employees");
+registerFullResync("payrollPeriods", "/payroll/periods");

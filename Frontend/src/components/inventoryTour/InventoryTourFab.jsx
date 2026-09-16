@@ -103,7 +103,9 @@ const InventoryTourFab = () => {
     // would flash it at exactly the members it shouldn't appear for.
     if (isOpen || completed || fabDismissed || isTeamMember || teamLoading) return null;
 
-    const draggable = !isMobile;
+    // Draggable (and idle-faded via the is-draggable class) on touch too,
+    // not just mouse - see AssistantWidget.jsx for the same change and why.
+    const draggable = true;
 
     const handlePointerDown = (e) => {
         if (!draggable || (e.button !== undefined && e.button !== 0)) return;
@@ -211,7 +213,7 @@ const InventoryTourFab = () => {
                     background: "linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%)",
                     color: "#021314",
                     boxShadow: "0 8px 28px rgba(41,216,213,0.4)",
-                    touchAction: draggable ? "none" : "manipulation",
+                    touchAction: "none",
                 }}
             >
                 <CompassOutlined className="text-lg" />

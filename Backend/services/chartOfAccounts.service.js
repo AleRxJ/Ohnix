@@ -31,6 +31,24 @@ const DEFAULT_ACCOUNTS = [
     // utility payment against it) is a manual journal entry, same as any
     // other accrued liability - out of scope for this phase.
     { code: "2335", name: "Costos y gastos por pagar", accountType: "liability" },
+    // Fase 4 - nómina (see accountingPosting.service.js#postPayrollJournalEntry).
+    // Net pay and every provisioned social benefit each get their own
+    // payable account (rather than one lump "nómina por pagar") so the
+    // balance sheet shows what's actually owed and when: 2505 is due almost
+    // immediately, 2510/2515/2520/2525 are due on their own legal calendar
+    // (cesantías by Feb 14, prima in June/December), and settling one of
+    // them later never touches the others.
+    { code: "5105", name: "Gastos de personal - Salarios", accountType: "expense" },
+    { code: "5115", name: "Gastos de personal - Prestaciones sociales", accountType: "expense" },
+    { code: "5120", name: "Gastos de personal - Aportes sobre la nómina", accountType: "expense" },
+    { code: "2505", name: "Salarios por pagar", accountType: "liability" },
+    { code: "2510", name: "Cesantías consolidadas", accountType: "liability" },
+    { code: "2515", name: "Intereses sobre cesantías", accountType: "liability" },
+    { code: "2520", name: "Prima de servicios por pagar", accountType: "liability" },
+    { code: "2525", name: "Vacaciones consolidadas", accountType: "liability" },
+    { code: "2530", name: "Aportes de seguridad social por pagar", accountType: "liability" },
+    { code: "2531", name: "Aportes parafiscales por pagar", accountType: "liability" },
+    { code: "2370", name: "Retención en la fuente por pagar (nómina)", accountType: "liability" },
 ];
 
 // Lazily seeds the default chart the first time a tenant needs one - same

@@ -137,9 +137,19 @@ db.version(10).stores({
     productionOrders: "_id",
 });
 
+// Nómina (Fases 1-6). Employees and PayrollPeriods each return everything
+// in one call (no pagination) - same full-mirror shape as Purchases.
+// PayrollPeriod's own documents/lines travel embedded in its own row (see
+// payroll.controller.js#mapPeriod), so there's no separate mirror table for
+// those - exactly like Purchase's own PurchaseDetail lines.
+db.version(11).stores({
+    employees: "_id",
+    payrollPeriods: "_id",
+});
+
 // Mirror tables added as each module is wired for offline support - keep in
 // sync with the list above so account/logout resets actually clear them.
-export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches", "productionOrders"];
+export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches", "productionOrders", "employees", "payrollPeriods"];
 
 const CURRENT_ACCOUNT_KEY = "currentAccountId";
 

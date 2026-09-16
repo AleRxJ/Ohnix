@@ -159,6 +159,139 @@ export const postProductionReversalJournalEntry = async (
     });
 };
 
+// Employee-withheld health/pensión/fondo de solidaridad and the employer's
+// own health/pensión/ARL share the SAME payable account (2530) - both get
+// remitted together through PILA to the same operators, so splitting them
+// into two liability accounts would just be a distinction the balance sheet
+// never needs. SENA/ICBF/caja get their own (2531) since they're a
+// different legal category (parafiscales, not seguridad social) even
+// though they're paid through the same PILA form. See
+// payroll.service.js#calculatePayrollPeriod for how `documents` accumulates
+// these totals from each employee's own PayrollDocumentLine rows.
+export const postPayrollJournalEntry = async (
+    tx,
+    { accountId, createdById, period, totals, costCenterId, entryDate = new Date() }
+) => {
+    const coa = await getChartAccountMap(tx, accountId);
+    const {
+        grossEarnings,
+        employeeSocialSecurity,
+        withholdingTax,
+        netPay,
+        employerSocialSecurity,
+        employerParafiscal,
+        severanceProvision,
+        severanceInterestProvision,
+        serviceBonusProvision,
+        vacationProvision,
+    } = totals;
+
+    const employerContributionsExpense = round2(employerSocialSecurity + employerParafiscal);
+    const benefitsExpense = round2(severanceProvision + severanceInterestProvision + serviceBonusProvision + vacationProvision);
+
+    const lines = [
+        { chartAccountId: coa.get("5105").id, debit: grossEarnings, credit: 0 },
+        { chartAccountId: coa.get("2530").id, debit: 0, credit: round2(employeeSocialSecurity + employerSocialSecurity) },
+        { chartAccountId: coa.get("2505").id, debit: 0, credit: netPay },
+    ];
+    if (withholdingTax > 0) {
+        lines.push({ chartAccountId: coa.get("2370").id, debit: 0, credit: withholdingTax });
+    }
+    if (employerContributionsExpense > 0) {
+        lines.push({ chartAccountId: coa.get("5120").id, debit: employerContributionsExpense, credit: 0 });
+    }
+    if (employerParafiscal > 0) {
+        lines.push({ chartAccountId: coa.get("2531").id, debit: 0, credit: employerParafiscal });
+    }
+    if (benefitsExpense > 0) {
+        lines.push({ chartAccountId: coa.get("5115").id, debit: benefitsExpense, credit: 0 });
+    }
+    if (severanceProvision > 0) lines.push({ chartAccountId: coa.get("2510").id, debit: 0, credit: severanceProvision });
+    if (severanceInterestProvision > 0) lines.push({ chartAccountId: coa.get("2515").id, debit: 0, credit: severanceInterestProvision });
+    if (serviceBonusProvision > 0) lines.push({ chartAccountId: coa.get("2520").id, debit: 0, credit: serviceBonusProvision });
+    if (vacationProvision > 0) lines.push({ chartAccountId: coa.get("2525").id, debit: 0, credit: vacationProvision });
+
+    return recordJournalEntry(tx, {
+        accountId,
+        createdById,
+        entryDate,
+        description: `Nómina ${period.periodicity} ${period.startDate.toISOString().slice(0, 10)} - ${period.endDate.toISOString().slice(0, 10)}`,
+        sourceType: "payroll",
+        sourceId: period.id,
+        lines: withCostCenter(lines, costCenterId),
+    });
+};
+
+// "Mark paid" only settles what actually gets paid out alongside net pay
+// (salarios + los aportes de ese mismo período vía PILA) - cesantías,
+// intereses, prima y vacaciones stay provisioned liabilities until their
+// own settlement event (postBenefitSettlementJournalEntry below), since
+// those follow their own legal payment calendar, not the payroll's.
+export const postPayrollPaymentJournalEntry = async (
+    tx,
+    { accountId, createdById, period, totals, cashAccount, costCenterId, entryDate = new Date() }
+) => {
+    const coa = await getChartAccountMap(tx, accountId);
+    const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
+    const { netPay, employeeSocialSecurity, employerSocialSecurity, employerParafiscal, withholdingTax } = totals;
+    const socialSecurity = round2(employeeSocialSecurity + employerSocialSecurity);
+    const total = round2(netPay + socialSecurity + employerParafiscal + withholdingTax);
+    if (total <= 0) return null;
+
+    const lines = [{ chartAccountId: coa.get("2505").id, debit: netPay, credit: 0 }];
+    if (socialSecurity > 0) lines.push({ chartAccountId: coa.get("2530").id, debit: socialSecurity, credit: 0 });
+    if (employerParafiscal > 0) lines.push({ chartAccountId: coa.get("2531").id, debit: employerParafiscal, credit: 0 });
+    if (withholdingTax > 0) lines.push({ chartAccountId: coa.get("2370").id, debit: withholdingTax, credit: 0 });
+    lines.push({ chartAccountId: cashChartAccountId, debit: 0, credit: total });
+
+    return recordJournalEntry(tx, {
+        accountId,
+        createdById,
+        entryDate,
+        description: `Pago de nómina ${period.periodicity} ${period.startDate.toISOString().slice(0, 10)} - ${period.endDate.toISOString().slice(0, 10)}`,
+        sourceType: "payroll_payment",
+        sourceId: period.id,
+        lines: withCostCenter(lines, costCenterId),
+    });
+};
+
+const BENEFIT_ACCRUAL_ACCOUNT_CODE = {
+    severance: "2510",
+    severance_interest: "2515",
+    service_bonus: "2520",
+    vacation: "2525",
+};
+
+// Settles a PayrollBenefitSettlement (prima de junio/diciembre, cesantías
+// anuales) - debits the provision liability that's been accumulating since
+// it was accrued (see postPayrollJournalEntry above), credits the cash
+// account that actually paid it. No expense line here: the expense was
+// already recognized when the provision was accrued, this is purely a
+// balance-sheet settlement.
+export const postBenefitSettlementJournalEntry = async (
+    tx,
+    { accountId, createdById, settlement, cashAccount, entryDate = new Date() }
+) => {
+    const amount = round2(settlement.amount);
+    if (amount <= 0) return null;
+    const coa = await getChartAccountMap(tx, accountId);
+    const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
+    const liabilityAccountId = coa.get(BENEFIT_ACCRUAL_ACCOUNT_CODE[settlement.type]).id;
+
+    return recordJournalEntry(tx, {
+        accountId,
+        createdById,
+        entryDate,
+        description: `Liquidación de ${settlement.type} - ${settlement.year}${settlement.semester ? ` S${settlement.semester}` : ""}`,
+        sourceType: "payroll_benefit_settlement",
+        sourceId: settlement.id,
+        lines: [
+            { chartAccountId: liabilityAccountId, debit: amount, credit: 0 },
+            { chartAccountId: cashChartAccountId, debit: 0, credit: amount },
+        ],
+    });
+};
+
 export const postTransferDiscrepancyJournalEntry = async (
     tx,
     { accountId, createdById, transferId, amount, entryDate = new Date() }
