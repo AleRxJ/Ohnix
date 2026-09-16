@@ -330,7 +330,7 @@ const SalesQuotations = () => {
                 </div>
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
                     <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-                        <PointOfSaleField />
+                        <PointOfSaleField salesOnly />
                         <Form.Item label={t("sales_quotations.customer" )} name="customer_id" rules={[{ required: true, message: t("sales_quotations.customer_required") }]}>
                             <Select showSearch optionFilterProp="label" options={customers.map((customer) => ({ value: customer._id || customer.id, label: `${customer.name} · ${customer.email}` }))} placeholder={t("sales_quotations.customer_placeholder")} />
                         </Form.Item>

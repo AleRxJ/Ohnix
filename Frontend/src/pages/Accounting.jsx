@@ -179,6 +179,7 @@ const ACCOUNTING_ERROR_CODES = {
     recurring_journal_inactive: "accounting.error_recurring_journal_inactive",
     recurring_journal_already_generated: "accounting.error_recurring_journal_already_generated",
     recurring_journal_generation_failed: "accounting.recurring_journal_run_failed",
+    exogena_invalid_year: "accounting.error_exogena_invalid_year",
 };
 
 const accountingErrorMessage = (error, t, fallbackKey = "accounting.failed") =>
@@ -2967,6 +2968,93 @@ const WithholdingReportCard = () => {
     </>;
 };
 
+// NOT a certified DIAN exógena file - see exogenaReport.service.js's own
+// comment. This groups what Ohnix already has (pagos por proveedor,
+// retenciones por concepto) the way Formato 1001 asks for it, as a starting
+// point for whoever actually files the exógena - the disclaimer below is
+// deliberately not collapsible/dismissable the way other Alerts here are.
+const ExogenaReportCard = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const [year, setYear] = useState(dayjs().year() - 1);
+    const [report, setReport] = useState({ suppliers: [], totals: {} });
+    const [loading, setLoading] = useState(false);
+
+    const load = async (targetYear = year) => {
+        setLoading(true);
+        try {
+            const response = await accountingService.getExogenaReport(targetYear);
+            setReport(response?.data || { suppliers: [], totals: {} });
+        } catch (error) {
+            toast.error(accountingErrorMessage(error, t));
+        } finally { setLoading(false); }
+    };
+    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const exportExogena = () => {
+        const header = [t("accounting.exogena_col_document"), t("accounting.exogena_col_supplier"), t("accounting.exogena_col_total_payments"), t("accounting.withholding_concept"), t("accounting.exogena_col_concept_code"), t("accounting.withholding_report_base"), t("accounting.exogena_col_withheld")];
+        const rows = report.suppliers.flatMap((supplier) =>
+            supplier.retentions.length > 0
+                ? supplier.retentions.map((retention) => [supplier.document || "", supplier.name, supplier.total_payments, retention.concept_name, retention.concept_code, retention.base_amount, retention.withheld_amount])
+                : [[supplier.document || "", supplier.name, supplier.total_payments, "", "", "", ""]]
+        );
+        exportAccountingExcel(`informacion-exogena-${year}.xlsx`, [{ name: t("accounting.exogena_title"), rows: [header, ...rows] }]);
+    };
+
+    return (
+        <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.exogena_title")}>
+            <Alert className="dark-alert dark-alert-amber mb-4" type="warning" showIcon message={t("accounting.exogena_disclaimer")} />
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                <Select
+                    className="w-full sm:w-40"
+                    value={year}
+                    onChange={(value) => { setYear(value); load(value); }}
+                    options={Array.from({ length: 6 }, (_, i) => dayjs().year() - i).map((y) => ({ value: y, label: y }))}
+                />
+                <Button type="primary" icon={<CalendarOutlined />} loading={loading} onClick={() => load()}>{t("reports.refresh_report")}</Button>
+                <Button icon={<DownloadOutlined />} disabled={!report.suppliers.length} onClick={exportExogena}>{t("reports.export_to_excel")}</Button>
+            </div>
+            <Row gutter={[16, 16]} className="mb-4">
+                <Col xs={24} sm={12}><StatCard title={t("accounting.exogena_col_total_payments")} value={report.totals?.total_payments || 0} formatter={formatCurrency} /></Col>
+                <Col xs={24} sm={12}><StatCard title={t("accounting.exogena_col_withheld")} value={report.totals?.total_withheld || 0} formatter={formatCurrency} /></Col>
+            </Row>
+            <Table
+                className="module-dark-table"
+                loading={loading}
+                rowKey="supplier_id"
+                dataSource={report.suppliers}
+                pagination={{ pageSize: 10 }}
+                scroll={{ x: "max-content" }}
+                locale={{ emptyText: <EmptyState compact title={t("common.no_data")} subtitle={t("accounting.exogena_empty_help")} /> }}
+                columns={[
+                    { title: t("accounting.exogena_col_supplier"), dataIndex: "name", render: (value, row) => <div><strong>{value}</strong><small className="block text-[var(--ohnix-text-dim)]">{row.document || "—"}</small></div> },
+                    { title: t("accounting.exogena_col_total_payments"), dataIndex: "total_payments", align: "right", render: (v) => formatCurrency(v) },
+                    { title: t("accounting.exogena_col_withheld"), dataIndex: "total_withheld", align: "right", render: (v) => formatCurrency(v) },
+                    { title: t("accounting.withholding_concept"), render: (_, row) => row.retentions.length ? row.retentions.map((r) => <Tag key={r.concept_code} className="mb-1">{r.concept_name}: {formatCurrency(r.withheld_amount)}</Tag>) : "—" },
+                ]}
+                expandable={{
+                    rowExpandable: (row) => row.retentions.length > 0,
+                    expandedRowRender: (row) => (
+                        <Table
+                            className="module-dark-table"
+                            size="small"
+                            pagination={false}
+                            rowKey="concept_code"
+                            dataSource={row.retentions}
+                            columns={[
+                                { title: t("accounting.exogena_col_concept_code"), dataIndex: "concept_code", width: 100 },
+                                { title: t("accounting.withholding_concept"), dataIndex: "concept_name" },
+                                { title: t("accounting.withholding_report_base"), dataIndex: "base_amount", align: "right", render: (v) => formatCurrency(v) },
+                                { title: t("accounting.exogena_col_withheld"), dataIndex: "withheld_amount", align: "right", render: (v) => formatCurrency(v) },
+                            ]}
+                        />
+                    ),
+                }}
+            />
+        </Card>
+    );
+};
+
 const WithholdingConfigCard = () => {
     const { t } = useI18n();
     const [form] = Form.useForm();
@@ -3079,6 +3167,7 @@ const TaxesTab = () => {
             <WithholdingConfigCard />
             <WithholdingConceptsCard />
             <WithholdingReportCard />
+            <ExogenaReportCard />
             <ComingSoonTaxCard titleKey="accounting.taxes_renta_title" descKey="accounting.taxes_renta_desc" />
             <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.taxes_professional_review_notice")} />
         </div>

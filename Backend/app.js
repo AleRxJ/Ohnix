@@ -150,6 +150,7 @@ import orderRouter from "./routes/order.routes.js";
 import reportRouter from "./routes/report.routes.js";
 import discoveryRouter from "./routes/discovery.routes.js";
 import discoveryDimensionConfigRouter from "./routes/discoveryDimensionConfig.routes.js";
+import discoveryPatternStatsRouter from "./routes/discoveryPatternStats.routes.js";
 import schedulerRouter from "./routes/scheduler.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import pricingRouter from "./routes/pricing.routes.js";
@@ -174,6 +175,7 @@ import integrationRouter from "./routes/integration.routes.js";
 import webhookEndpointRouter from "./routes/webhookEndpoint.routes.js";
 import apiDocsRouter from "./routes/apiDocs.routes.js";
 import assistantRouter from "./routes/assistant.routes.js";
+import guestCertificateCheckoutRouter from "./routes/guestCertificateCheckout.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -192,6 +194,10 @@ app.use("/api/v1/scheduler", schedulerRouter);
 app.use("/api/v1/subscriptions", subscriptionRouter);
 app.use("/api/v1/pricing", pricingRouter);
 app.use("/api/v1/companies", companyRouter);
+// Public guest-checkout entry point for the certificado-digital-dian
+// landing page (CertificadosDigitales.jsx) - see its own router file for why
+// it carries no auth middleware.
+app.use("/api/v1/certificate-checkout", guestCertificateCheckoutRouter);
 app.use("/api/v1/admin/dian-test-matrix", dianTestMatrixRouter);
 app.use("/api/v1/company/dian-test-matrix", dianTestMatrixSelfRouter);
 app.use("/api/v1/company", companySelfRouter);
@@ -221,6 +227,7 @@ app.use("/api/v1/accounting", accountingRouter);
 app.use("/api/v1/assistant", assistantRouter);
 app.use("/api/v1/discoveries", discoveryRouter);
 app.use("/api/v1/discovery-dimension-config", discoveryDimensionConfigRouter);
+app.use("/api/v1/discovery-pattern-stats", discoveryPatternStatsRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________

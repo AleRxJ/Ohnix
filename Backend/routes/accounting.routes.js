@@ -40,6 +40,7 @@ import {
     setWithholdingConceptActive,
     previewWithholdings,
     getWithholdingReport,
+    getExogenaReport,
     getWithholdingCertificate,
     downloadWithholdingCertificate,
     listCostCenters,
@@ -166,6 +167,8 @@ router.route("/reports/withholdings/certificates/:supplierId")
     .get(requireModulePermission("accounting", "view"), getWithholdingCertificate);
 router.route("/reports/withholdings/certificates/:supplierId/pdf")
     .get(requireModulePermission("accounting", "view"), downloadWithholdingCertificate);
+router.route("/reports/exogena")
+    .get(requireModulePermission("accounting", "view"), getExogenaReport);
 
 router.route("/reports/income-statement").get(requireModulePermission("accounting", "view"), getIncomeStatement);
 router.route("/reports/income-statement/comparison").get(requireModulePermission("accounting", "view"), getIncomeStatementComparison);

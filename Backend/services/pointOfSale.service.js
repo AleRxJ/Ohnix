@@ -4,6 +4,8 @@ import { getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { emitAccountEvent } from "../live/dataEvents.js";
 import { publishPosScopeChange } from "../utils/posScopeStore.js";
 
+const LOCATION_TYPES = new Set(["point_of_sale", "warehouse", "distribution_center"]);
+
 // Every account (team owner or solo user - see teamContext.js) has exactly
 // one default PointOfSale, created lazily the first time anything asks for
 // it rather than at signup - this way there is exactly one place in the
@@ -36,14 +38,17 @@ export const listPointOfSales = async (accountId) =>
 // account to actually be allowed more than one at all, which is really
 // just re-stating multiLocation, kept here too as a defense against this
 // service ever being called from somewhere that skipped the route guard.
-export const createPointOfSale = async ({ accountId, name }) => {
+export const createPointOfSale = async ({ accountId, name, locationType }) => {
     const trimmed = `${name || ""}`.trim();
     if (!trimmed) {
         throw new ApiError(400, "El nombre del punto de venta es obligatorio.");
     }
+    if (locationType !== undefined && !LOCATION_TYPES.has(locationType)) {
+        throw new ApiError(400, "El tipo de ubicación no es válido.");
+    }
 
     const pos = await prisma.pointOfSale.create({
-        data: { accountId, name: trimmed, isDefault: false, isActive: true },
+        data: { accountId, name: trimmed, locationType: locationType || "point_of_sale", isDefault: false, isActive: true },
     });
 
     emitAccountEvent(accountId, "pointOfSale", "created");
@@ -54,10 +59,13 @@ export const createPointOfSale = async ({ accountId, name }) => {
     return pos;
 };
 
-export const renamePointOfSale = async ({ accountId, pointOfSaleId, name }) => {
+export const renamePointOfSale = async ({ accountId, pointOfSaleId, name, locationType }) => {
     const trimmed = `${name || ""}`.trim();
     if (!trimmed) {
         throw new ApiError(400, "El nombre del punto de venta es obligatorio.");
+    }
+    if (locationType !== undefined && !LOCATION_TYPES.has(locationType)) {
+        throw new ApiError(400, "El tipo de ubicación no es válido.");
     }
 
     const existing = await prisma.pointOfSale.findUnique({ where: { id: pointOfSaleId } });
@@ -67,7 +75,7 @@ export const renamePointOfSale = async ({ accountId, pointOfSaleId, name }) => {
 
     const updated = await prisma.pointOfSale.update({
         where: { id: pointOfSaleId },
-        data: { name: trimmed },
+        data: { name: trimmed, ...(locationType !== undefined ? { locationType } : {}) },
     });
 
     emitAccountEvent(accountId, "pointOfSale", "updated");

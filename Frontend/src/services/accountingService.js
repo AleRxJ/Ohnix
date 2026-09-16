@@ -268,6 +268,11 @@ export const accountingService = {
         return response.data;
     },
 
+    async getExogenaReport(year) {
+        const response = await api.get("/accounting/reports/exogena", { params: { year } });
+        return response.data;
+    },
+
     async getWithholdingCertificate(supplierId, year) {
         const response = await api.get(`/accounting/reports/withholdings/certificates/${encodeURIComponent(supplierId)}`, { params: { year } });
         return response.data;

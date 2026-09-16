@@ -11,6 +11,7 @@ import * as manualVoucherService from "../services/manualJournalVoucher.service.
 import * as thirdPartyLedgerService from "../services/thirdPartyLedger.service.js";
 import * as withholdingConceptService from "../services/withholdingConcept.service.js";
 import * as withholdingReportService from "../services/withholdingReport.service.js";
+import * as exogenaReportService from "../services/exogenaReport.service.js";
 import * as accountingBudgetService from "../services/accountingBudget.service.js";
 import * as costCenterService from "../services/costCenter.service.js";
 import * as recurringExpenseService from "../services/recurringExpense.service.js";
@@ -685,6 +686,14 @@ export const getWithholdingReport = asyncHandler(async (req, res) => {
         supplierId: req.query.supplier_id,
     });
     return res.status(200).json(new ApiResponse(200, report, "Withholding report fetched successfully."));
+});
+
+export const getExogenaReport = asyncHandler(async (req, res, next) => {
+    const year = Number(req.query.year);
+    if (!Number.isInteger(year)) return next(new ApiError(400, "A valid year is required.", [], "", "exogena_invalid_year"));
+
+    const report = await exogenaReportService.getExogenaReport({ accountId: req.user.prismaId, year });
+    return res.status(200).json(new ApiResponse(200, report, "Exogena report fetched successfully."));
 });
 
 export const getWithholdingCertificate = asyncHandler(async (req, res) => {

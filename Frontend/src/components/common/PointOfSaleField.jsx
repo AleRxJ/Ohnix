@@ -38,7 +38,15 @@ import { readMirrorAll } from "../../offline/entityQueue";
 // select's own loading-spinner state below - only flips to false once both
 // the plan and the point-of-sale list are resolved and confirm there's
 // nothing to choose from.
-export const usePointOfSaleFieldVisible = () => {
+// `salesOnly` drops warehouse/distribution_center locations from the
+// options - a bodega doesn't serve walk-in customers (per PointOfSale's own
+// schema comment: "selling FROM a warehouse isn't blocked at this layer -
+// that's a product/business decision"). This is that decision, applied only
+// where it belongs: sales/quotation forms pass salesOnly, purchases/
+// customers/suppliers don't, since receiving a purchase at a warehouse (or
+// naming one as a customer/supplier's home location) is exactly what a
+// warehouse is for.
+export const usePointOfSaleFieldVisible = ({ salesOnly = false } = {}) => {
     const { can, loading: subscriptionLoading } = useSubscription();
     const canUseMultiLocation = can("multiLocation");
     const [options, setOptions] = useState(null); // null = still loading
@@ -48,7 +56,7 @@ export const usePointOfSaleFieldVisible = () => {
             if (!subscriptionLoading) setOptions([]);
             return;
         }
-        const filterOwn = (rows) => (rows || []).filter((pos) => pos.isActive && pos.inOwnScope);
+        const filterOwn = (rows) => (rows || []).filter((pos) => pos.isActive && pos.inOwnScope && (!salesOnly || pos.locationType === "point_of_sale" || !pos.locationType));
         if (!getConnectivityState()) {
             // pointsOfSale is a full-mirror entity (entitySync.js) - same
             // shape as the live GET /points-of-sale response, so it filters
@@ -73,16 +81,16 @@ export const usePointOfSaleFieldVisible = () => {
                 }
                 setOptions([]);
             });
-    }, [canUseMultiLocation, subscriptionLoading]);
+    }, [canUseMultiLocation, subscriptionLoading, salesOnly]);
 
     const resolved = !subscriptionLoading && options !== null;
     const visible = !resolved || (canUseMultiLocation && options.length > 1);
     return { visible, options, subscriptionLoading, canUseMultiLocation };
 };
 
-const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false }) => {
+const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false, salesOnly = false }) => {
     const { t } = useI18n();
-    const { visible, options, subscriptionLoading } = usePointOfSaleFieldVisible();
+    const { visible, options, subscriptionLoading } = usePointOfSaleFieldVisible({ salesOnly });
 
     if (!visible) return null;
 
@@ -112,4 +120,5 @@ export default PointOfSaleField;
 PointOfSaleField.propTypes = {
     name: PropTypes.string,
     disabled: PropTypes.bool,
+    salesOnly: PropTypes.bool,
 };

@@ -27,7 +27,7 @@ const CreateOrderModal = ({
     submitting,
 }) => {
     const { t } = useI18n();
-    const { visible: showPointOfSale } = usePointOfSaleFieldVisible();
+    const { visible: showPointOfSale } = usePointOfSaleFieldVisible({ salesOnly: true });
     const selectedPointOfSaleId = Form.useWatch("pointOfSaleId", form);
 
     // Customers are assigned to a single point of sale at creation (see
@@ -110,7 +110,7 @@ const CreateOrderModal = ({
                     <Row gutter={16}>
                         {showPointOfSale && (
                             <Col xs={24} sm={12}>
-                                <PointOfSaleField disabled={isTourCreateStep} />
+                                <PointOfSaleField disabled={isTourCreateStep} salesOnly />
                             </Col>
                         )}
                         <Col xs={24} sm={showPointOfSale ? 12 : 24}>

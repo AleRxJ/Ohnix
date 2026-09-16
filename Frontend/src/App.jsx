@@ -394,9 +394,6 @@ function App() {
                                 <Route path="discoveries" element={<RequireDiscoveriesAccess><Discoveries /></RequireDiscoveriesAccess>} />
                                 <Route path="finance" element={<RequireFinanceAccess><Finance /></RequireFinanceAccess>} />
                                 <Route path="accounting" element={<RequireAccountingAccess><OfflineGate><Accounting /></OfflineGate></RequireAccountingAccess>} />
-                                <Route path="fiscal-setup" element={<RequireFiscalSetupAccess><FiscalSetup /></RequireFiscalSetupAccess>} />
-                                <Route path="fiscal-setup/certificate-checkout" element={<RequireFiscalSetupAccess><CertificateOrderCheckout /></RequireFiscalSetupAccess>} />
-                                <Route path="fiscal-setup/certificate-payment-response" element={<RequireFiscalSetupAccess><CertificateOrderPaymentResponse /></RequireFiscalSetupAccess>} />
                                 <Route path="team" element={<OfflineGate><Team /></OfflineGate>} />
                                 <Route path="billing" element={<RequireBillingAccess><OfflineGate><Billing /></OfflineGate></RequireBillingAccess>} />
                                 {/* Same owner-only gate as Billing (see RequireBillingAccess's comment) -
@@ -412,6 +409,28 @@ function App() {
                                 <Route path="admin/certificate-orders" element={<AdminCertificateOrders />} />
                                 <Route path="admin/api-clients" element={<AdminApiClients />} />
                                 <Route path="admin/dian-test-matrix" element={<AdminDianTestMatrix />} />
+                            </Route>
+
+                            {/* Fiscal setup (including the certificate checkout) deliberately does NOT
+                                require email verification: the certificate's own identity check
+                                (FirmaPass/Viafirma, a real ID document) is already a stronger identity
+                                proof than an email click, so gating it behind requireVerified too just
+                                adds friction without adding safety. This also lets the guest-checkout
+                                flow (CertificadosDigitales.jsx) land a freshly auto-logged-in,
+                                not-yet-email-verified account straight on this page. Sibling route
+                                group (not nested in the requireVerified block above) so every other
+                                dashboard route keeps its exact existing gating. */}
+                            <Route
+                                path="/"
+                                element={
+                                    <ProtectedRoute>
+                                        <DashboardLayout />
+                                    </ProtectedRoute>
+                                }
+                            >
+                                <Route path="fiscal-setup" element={<RequireFiscalSetupAccess><FiscalSetup /></RequireFiscalSetupAccess>} />
+                                <Route path="fiscal-setup/certificate-checkout" element={<RequireFiscalSetupAccess><CertificateOrderCheckout /></RequireFiscalSetupAccess>} />
+                                <Route path="fiscal-setup/certificate-payment-response" element={<RequireFiscalSetupAccess><CertificateOrderPaymentResponse /></RequireFiscalSetupAccess>} />
                             </Route>
 
                             {/* catch all - uses antd (Result/Button), stays inside AntdRoutesLayout */}

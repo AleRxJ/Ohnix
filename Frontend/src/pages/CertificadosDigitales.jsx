@@ -1,9 +1,241 @@
-import { useNavigate, Link } from "react-router-dom";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import PropTypes from "prop-types";
+import { toast } from "react-hot-toast";
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
 import useI18n from "../hooks/useI18n";
 import { ContentSection, SectionHeading } from "../components/landing/LandingPageSections";
+import { guestCertificateCheckoutService } from "../services/guestCertificateCheckoutService";
+
+const inputClassName =
+    "w-full rounded-xl border border-white/15 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-[#6B7880] focus:border-[#29D8D5]/50 focus:outline-none";
+
+const EMPTY_FORM = {
+    companyName: "",
+    taxIdentification: "",
+    taxIdentificationDv: "",
+    personType: "1",
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
+};
+
+// Guest checkout: a single form (company + contact info) that creates the
+// Ohnix account AND the certificate order behind the scenes, then hard-
+// navigates into the EXISTING CertificateOrderCheckout.jsx paywall - see
+// Backend/controllers/guestCertificateCheckout.controller.js. Plain HTML
+// inputs (no antd) to keep this marketing page antd-free, same reasoning as
+// Navbar.jsx's own top comment.
+const GuestCertificateCheckoutModal = ({ plan, onClose }) => {
+    const [form, setForm] = useState(EMPTY_FORM);
+    const [submitting, setSubmitting] = useState(false);
+    const [accountExists, setAccountExists] = useState(false);
+
+    const updateField = (field) => (event) =>
+        setForm((current) => ({ ...current, [field]: event.target.value }));
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        if (submitting) return;
+        setAccountExists(false);
+        setSubmitting(true);
+        try {
+            const response = await guestCertificateCheckoutService.registerForCertificateCheckout({
+                companyName: form.companyName.trim(),
+                taxIdentification: form.taxIdentification.trim(),
+                taxIdentificationDv: form.taxIdentificationDv.trim(),
+                personType: form.personType,
+                contactName: form.contactName.trim(),
+                contactEmail: form.contactEmail.trim(),
+                contactPhone: form.contactPhone.trim(),
+                durationYears: plan.durationYears,
+            });
+            const orderId = response?.data?.orderId;
+            // Hard reload (not react-router's navigate()) so AuthContext
+            // re-bootstraps from the freshly-set auth cookies on a clean
+            // load, instead of trying to manually sync client-side auth state.
+            window.location.href = `/fiscal-setup/certificate-checkout?orderId=${orderId}`;
+        } catch (error) {
+            const code = error?.response?.data?.code;
+            if (error?.response?.status === 409 && code === "account_already_exists") {
+                setAccountExists(true);
+            } else {
+                toast.error(
+                    error?.response?.data?.message ||
+                        "No pudimos crear tu cuenta y tu orden. Intenta de nuevo en unos minutos."
+                );
+            }
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-8">
+            <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[24px] border border-white/10 bg-[#0B0B0B] p-6 sm:p-8">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-[#29D8D5]">
+                            {plan.label}
+                        </p>
+                        <h2 className="mt-1 text-xl font-semibold text-white">
+                            Crea tu cuenta y compra tu certificado
+                        </h2>
+                        <p className="mt-2 text-sm text-[#A9B3B8]">
+                            Con estos datos creamos tu cuenta Ohnix y tu orden de certificado, e ingresas directo al pago.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Cerrar"
+                        className="shrink-0 rounded-full border border-white/15 p-2 text-[#A9B3B8] hover:border-[#29D8D5]/40 hover:text-white"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                {accountExists ? (
+                    <div className="mt-6 rounded-xl border border-[#29D8D5]/30 bg-[#29D8D5]/10 p-4 text-sm text-[#D4DBDF]">
+                        Ya tienes una cuenta con este correo.{" "}
+                        <Link to="/login" className="text-[#44F3F0] underline underline-offset-2 hover:text-white">
+                            Inicia sesión
+                        </Link>{" "}
+                        para continuar tu compra.
+                    </div>
+                ) : (
+                    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                        <div>
+                            <label className="mb-1.5 block text-xs font-medium text-[#A9B3B8]">
+                                Nombre de la empresa
+                            </label>
+                            <input
+                                required
+                                type="text"
+                                value={form.companyName}
+                                onChange={updateField("companyName")}
+                                placeholder="Mi Empresa S.A.S."
+                                className={inputClassName}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="mb-1.5 block text-xs font-medium text-[#A9B3B8]">
+                                    NIT / documento
+                                </label>
+                                <input
+                                    required
+                                    type="text"
+                                    value={form.taxIdentification}
+                                    onChange={updateField("taxIdentification")}
+                                    placeholder="900123456"
+                                    className={inputClassName}
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-1.5 block text-xs font-medium text-[#A9B3B8]">
+                                    DV
+                                </label>
+                                <input
+                                    required
+                                    type="text"
+                                    value={form.taxIdentificationDv}
+                                    onChange={updateField("taxIdentificationDv")}
+                                    placeholder="7"
+                                    className={inputClassName}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-xs font-medium text-[#A9B3B8]">
+                                Tipo de persona
+                            </label>
+                            <select
+                                value={form.personType}
+                                onChange={updateField("personType")}
+                                className={inputClassName}
+                            >
+                                <option value="1">Persona Jurídica</option>
+                                <option value="2">Persona Natural</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-xs font-medium text-[#A9B3B8]">
+                                Nombre de contacto
+                            </label>
+                            <input
+                                type="text"
+                                value={form.contactName}
+                                onChange={updateField("contactName")}
+                                placeholder="Tu nombre"
+                                className={inputClassName}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-xs font-medium text-[#A9B3B8]">
+                                Correo electrónico
+                            </label>
+                            <input
+                                required
+                                type="email"
+                                value={form.contactEmail}
+                                onChange={updateField("contactEmail")}
+                                placeholder="tucorreo@empresa.com"
+                                className={inputClassName}
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-xs font-medium text-[#A9B3B8]">
+                                Teléfono (opcional)
+                            </label>
+                            <input
+                                type="tel"
+                                value={form.contactPhone}
+                                onChange={updateField("contactPhone")}
+                                placeholder="300 123 4567"
+                                className={inputClassName}
+                            />
+                        </div>
+
+                        <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="rounded-full border border-white/15 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white hover:border-[#29D8D5]/40"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={submitting}
+                                className="rounded-full bg-[#29D8D5] px-5 py-3 text-sm font-semibold text-[#021314] hover:bg-[#44F3F0] disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {submitting ? "Creando tu cuenta..." : `Continuar al pago (${plan.price})`}
+                            </button>
+                        </div>
+                    </form>
+                )}
+            </div>
+        </div>
+    );
+};
+
+GuestCertificateCheckoutModal.propTypes = {
+    plan: PropTypes.shape({
+        key: PropTypes.string.isRequired,
+        label: PropTypes.string.isRequired,
+        price: PropTypes.string.isRequired,
+        durationYears: PropTypes.number.isRequired,
+    }).isRequired,
+    onClose: PropTypes.func.isRequired,
+};
 
 // Prices mirror the fallback in Backend/services/certificateOrderPayment.service.js
 // (EPAYCO_AMOUNT_CERTIFICATE_1_YEAR_COP / _2_YEARS_COP) - keep both in sync if
@@ -14,8 +246,8 @@ const CERTIFICATE_PRICE_2_YEARS = 220000;
 const formatCOP = (amount) => `$${amount.toLocaleString("es-CO")}`;
 
 const CertificadosDigitales = () => {
-    const navigate = useNavigate();
     const { currentLanguage } = useI18n();
+    const [checkoutPlan, setCheckoutPlan] = useState(null);
 
     const description =
         "Certificado digital para facturacion electronica DIAN en Colombia. Gestiona la firma de tus documentos electronicos desde Ohnix, con emision y renovacion a 1 o 2 años, sin necesidad de usar nuestro modulo de inventario.";
@@ -26,6 +258,7 @@ const CertificadosDigitales = () => {
             label: "1 año de vigencia",
             price: formatCOP(CERTIFICATE_PRICE_1_YEAR),
             detail: "Ideal si facturas de forma regular y prefieres renovar cada año.",
+            durationYears: 1,
         },
         {
             key: "2-years",
@@ -33,6 +266,7 @@ const CertificadosDigitales = () => {
             price: formatCOP(CERTIFICATE_PRICE_2_YEARS),
             detail: "La opcion mas usada: menos renovaciones y continuidad para tu operacion.",
             featured: true,
+            durationYears: 2,
         },
     ];
 
@@ -233,7 +467,7 @@ const CertificadosDigitales = () => {
                                 <p className="mt-4 text-sm leading-7 text-[#D4DBDF]">{plan.detail}</p>
                                 <button
                                     type="button"
-                                    onClick={() => navigate(`/signup?source=seo-certificado-digital-${plan.key}`)}
+                                    onClick={() => setCheckoutPlan(plan)}
                                     className={`mt-6 w-full rounded-full px-5 py-3 text-sm font-semibold ${
                                         plan.featured
                                             ? "bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0]"
@@ -302,6 +536,9 @@ const CertificadosDigitales = () => {
                 </ContentSection>
             </main>
             <Footer />
+            {checkoutPlan && (
+                <GuestCertificateCheckoutModal plan={checkoutPlan} onClose={() => setCheckoutPlan(null)} />
+            )}
         </div>
     );
 };

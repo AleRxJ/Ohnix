@@ -7,13 +7,13 @@ export const pointOfSaleService = {
         return response.data;
     },
 
-    async create(name) {
-        const response = await api.post("/points-of-sale", { name });
+    async create(name, locationType) {
+        const response = await api.post("/points-of-sale", { name, location_type: locationType });
         return response.data;
     },
 
-    async rename(id, name) {
-        const response = await api.patch(`/points-of-sale/${id}`, { name });
+    async rename(id, name, locationType) {
+        const response = await api.patch(`/points-of-sale/${id}`, { name, location_type: locationType });
         return response.data;
     },
 

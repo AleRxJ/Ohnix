@@ -28,4 +28,25 @@ export const discoveryService = {
         const response = await api.patch("/discovery-dimension-config", { detectorKey, dimensionKey, enabled });
         return response.data.data;
     },
+    // Admin-only - see Backend/controllers/discoveryPatternStats.controller.js.
+    // The Fase 4 learning loop's own track record per detector: how often a
+    // registered prediction actually held up, and the confidence that gets
+    // blended into that detector's future findings as a result.
+    getPatternStats: async () => {
+        const response = await api.get("/discovery-pattern-stats");
+        return response.data.data;
+    },
+    // Admin-only - manually triggers the same nightly pipeline
+    // (utils/discoveryScheduler.js#runDiscoveryEngineOnce) the 04:30 cron
+    // runs, for testing/demoing without waiting for it - see
+    // Backend/routes/scheduler.routes.js's /discovery-engine-run. Every
+    // detector x every active account, genuinely took ~200s against the 13
+    // real/demo accounts that exist today (measured directly, not a guess) -
+    // api.js's global 30s timeout exists for stalled requests, not for a
+    // real batch job that's still working, so this overrides it per-request
+    // exactly the way that file's own comment says to.
+    runSchedulerNow: async () => {
+        const response = await api.post("/scheduler/discovery-engine-run", null, { timeout: 300000 });
+        return response.data.data;
+    },
 };
