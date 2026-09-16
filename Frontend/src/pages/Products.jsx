@@ -155,6 +155,11 @@ const Products = () => {
                 quantity: c.quantity,
             })),
             tracks_batches: product.tracks_batches,
+            is_manufactured: product.is_manufactured,
+            recipe_components: (product.recipe_components || []).map((c) => ({
+                product_id: c.product_id,
+                quantity: c.quantity,
+            })),
             buying_price: product.buying_price,
             selling_price: product.selling_price,
             unit_measure_code: product.unit_measure_code,

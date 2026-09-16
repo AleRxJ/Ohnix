@@ -211,7 +211,7 @@ const InventoryTourFab = () => {
                     background: "linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%)",
                     color: "#021314",
                     boxShadow: "0 8px 28px rgba(41,216,213,0.4)",
-                    touchAction: draggable ? "none" : undefined,
+                    touchAction: draggable ? "none" : "manipulation",
                 }}
             >
                 <CompassOutlined className="text-lg" />

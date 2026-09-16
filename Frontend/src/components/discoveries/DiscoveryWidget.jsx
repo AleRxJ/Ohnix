@@ -200,7 +200,7 @@ const DiscoveryWidget = () => {
                                 background: "linear-gradient(135deg, rgba(41,216,213,0.16), rgba(68,243,240,0.2))",
                                 border: "1px solid rgba(41,216,213,0.4)",
                                 backdropFilter: "blur(6px)",
-                                touchAction: draggable ? "none" : undefined,
+                                touchAction: draggable ? "none" : "manipulation",
                             }}
                         >
                             <span className="discovery-fab-ring" aria-hidden="true" />

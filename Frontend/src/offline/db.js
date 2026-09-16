@@ -130,9 +130,16 @@ db.version(9).stores({
     productBatches: "_id",
 });
 
+// Production orders (manufacturing) - GET /production-orders returns
+// everything in one call (no pagination), same full-mirror shape as
+// Purchases/StockTransfers.
+db.version(10).stores({
+    productionOrders: "_id",
+});
+
 // Mirror tables added as each module is wired for offline support - keep in
 // sync with the list above so account/logout resets actually clear them.
-export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches"];
+export const MIRROR_ENTITIES = ["products", "categories", "units", "customers", "suppliers", "orders", "purchases", "cashAccounts", "pointsOfSale", "stockTransfers", "locationStockSummaries", "purchaseQuotations", "salesQuotations", "receiptAcknowledgments", "productBatches", "productionOrders"];
 
 const CURRENT_ACCOUNT_KEY = "currentAccountId";
 

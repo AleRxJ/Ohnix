@@ -22,6 +22,7 @@ import {
     TagsOutlined,
     ApiOutlined,
     CloudServerOutlined,
+    BuildOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 
@@ -62,6 +63,12 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             moduleKey: "products",
             icon: <AppstoreOutlined />,
             label: <Link to="/products">{t("common.products")}</Link>,
+        },
+        {
+            key: "production-orders",
+            moduleKey: "products",
+            icon: <BuildOutlined />,
+            label: <Link to="/production-orders">{t("common.production_orders_nav")}</Link>,
         },
         {
             key: "categories",

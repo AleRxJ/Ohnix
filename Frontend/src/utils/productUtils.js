@@ -104,6 +104,13 @@ export const validateProductData = (productData, t) => {
         isValid = false;
     }
 
+    // Same guard, mirroring resolveRecipeComponents, for a manufactured
+    // product's recipe.
+    if (productData.is_manufactured && (!Array.isArray(productData.recipe_components) || productData.recipe_components.length === 0)) {
+        errors.recipe_components = t("products.recipe_components_required");
+        isValid = false;
+    }
+
     return { isValid, errors };
 };
 
@@ -117,10 +124,11 @@ export const prepareProductFormData = (formValues, imageFile = null) => {
             formValues[key] !== null
         ) {
             // Multipart fields are always strings - an array/object would
-            // otherwise stringify as "[object Object]" - so the kit
-            // component list travels as JSON, matching what
-            // product.controller.js#resolveKitComponents parses it back into.
-            if (key === "components" && Array.isArray(formValues[key])) {
+            // otherwise stringify as "[object Object]" - so the kit/recipe
+            // component lists travel as JSON, matching what
+            // product.controller.js#resolveKitComponents/
+            // resolveRecipeComponents parse them back into.
+            if ((key === "components" || key === "recipe_components") && Array.isArray(formValues[key])) {
                 formData.append(key, JSON.stringify(formValues[key]));
             } else {
                 formData.append(key, formValues[key]);

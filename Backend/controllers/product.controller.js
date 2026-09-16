@@ -317,6 +317,14 @@ const mapProduct = (product, scopedStock) => ({
         stock: c.componentProduct.stock,
         quantity: Number(c.quantity),
     })),
+    is_manufactured: product.isManufactured === true,
+    recipe_components: (product.recipeComponents || []).map((c) => ({
+        product_id: toExternalId(c.componentProduct),
+        product_name: c.componentProduct.productName,
+        product_code: c.componentProduct.productCode,
+        stock: c.componentProduct.stock,
+        quantity: Number(c.quantity),
+    })),
     buying_price: Number(product.buyingPrice),
     selling_price: Number(product.sellingPrice),
     stock: scopedStock !== undefined ? scopedStock : product.stock,
@@ -394,6 +402,10 @@ const findProductByAnyId = async (id) =>
                 select: { id: true, legacyMongoId: true, unitName: true },
             },
             kitComponents: {
+                orderBy: { position: "asc" },
+                include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+            },
+            recipeComponents: {
                 orderBy: { position: "asc" },
                 include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
             },
@@ -531,6 +543,59 @@ const resolveKitComponents = async (components, ownProductId, user) => {
     });
 };
 
+// Same validation shape as resolveKitComponents, for a manufactured
+// product's recipe - production.service.js#createProductionOrder trusts
+// this completely (no re-validation there) the same way createOrder trusts
+// a kit's resolved components. The one deliberate difference: no "nested
+// not allowed" check - a recipe component IS allowed to itself be
+// isManufactured (a multi-level BOM), since there's no recursive
+// derivation here to protect against (see ProductionRecipeComponent's
+// schema comment). Still blocks a kit as a component, same reasoning as
+// isKit/isManufactured being mutually exclusive on the product itself - a
+// kit has no real stock to consume.
+const resolveRecipeComponents = async (components, ownProductId, user) => {
+    if (!Array.isArray(components) || components.length === 0) {
+        throw new ApiError(400, "A recipe must have at least one raw material.", [], "", "product_recipe_components_required");
+    }
+    if (components.length > 50) {
+        throw new ApiError(400, "A recipe can have at most 50 raw materials.", [], "", "product_recipe_too_many_components");
+    }
+
+    const normalized = components.map((c, index) => {
+        const quantity = Number(c.quantity);
+        if (!c.product_id || !Number.isFinite(quantity) || quantity <= 0) {
+            throw new ApiError(400, `Recipe material ${index + 1} is invalid.`, [], "", "product_recipe_component_invalid");
+        }
+        return { productId: String(c.product_id), quantity };
+    });
+
+    const productIds = normalized.map((c) => c.productId);
+    if (new Set(productIds).size !== productIds.length) {
+        throw new ApiError(400, "A recipe cannot list the same raw material twice.", [], "", "product_recipe_duplicate_component");
+    }
+    if (ownProductId && productIds.includes(ownProductId)) {
+        throw new ApiError(400, "A recipe cannot contain itself as a raw material.", [], "", "product_recipe_self_reference");
+    }
+
+    const components_ = await prisma.product.findMany({
+        where: { OR: [{ id: { in: productIds } }, { legacyMongoId: { in: productIds } }] },
+        select: { id: true, legacyMongoId: true, createdById: true, isKit: true },
+    });
+    const byAnyId = new Map(components_.flatMap((p) => [[p.id, p], ...(p.legacyMongoId ? [[p.legacyMongoId, p]] : [])]));
+
+    return normalized.map((c, index) => {
+        const product = byAnyId.get(c.productId);
+        if (!product) throw new ApiError(400, `Recipe material ${index + 1} was not found.`, [], "", "product_recipe_component_not_found");
+        if (user.role !== "admin" && product.createdById !== user.prismaId) {
+            throw new ApiError(403, "You don't have permission to use one or more raw materials");
+        }
+        if (product.isKit) {
+            throw new ApiError(400, "A recipe's raw materials cannot be kits.", [], "", "product_recipe_kit_not_allowed");
+        }
+        return { componentProductId: product.id, quantity: c.quantity, position: index };
+    });
+};
+
 const createProduct = asyncHandler(async (req, res, next) => {
     const {
         product_name,
@@ -555,6 +620,8 @@ const createProduct = asyncHandler(async (req, res, next) => {
         is_kit,
         components,
         tracks_batches,
+        is_manufactured,
+        recipe_components,
     } = req.body;
 
     const PRODUCT_STATUSES = ["draft", "active", "archived"];
@@ -641,6 +708,21 @@ const createProduct = asyncHandler(async (req, res, next) => {
             return next(new ApiError(400, "A kit's stock is virtual - it can't also track lots/expiration.", [], "", "product_kit_cannot_track_batches"));
         }
 
+        const isManufactured = is_manufactured === true || is_manufactured === "true";
+        if (isKit && isManufactured) {
+            return next(new ApiError(400, "A kit's stock is virtual - it can't also be manufactured.", [], "", "product_kit_cannot_be_manufactured"));
+        }
+        let resolvedRecipeComponents = [];
+        if (isManufactured) {
+            let parsedRecipeComponents;
+            try {
+                parsedRecipeComponents = typeof recipe_components === "string" ? JSON.parse(recipe_components) : recipe_components;
+            } catch {
+                return next(new ApiError(400, "Recipe components must be a valid list.", [], "", "product_recipe_component_invalid"));
+            }
+            resolvedRecipeComponents = await resolveRecipeComponents(parsedRecipeComponents, null, req.user);
+        }
+
         let productImageUrl = "default-product.png";
         if (req.file) {
             const image = await uploadFile(req.file, {
@@ -674,6 +756,8 @@ const createProduct = asyncHandler(async (req, res, next) => {
                 isKit,
                 ...(isKit && { kitComponents: { create: resolvedComponents } }),
                 tracksBatches,
+                isManufactured,
+                ...(isManufactured && { recipeComponents: { create: resolvedRecipeComponents } }),
                 isTutorialData: is_tutorial_data === true || is_tutorial_data === "true",
                 createdById: req.user.prismaId,
                 ...(unit_measure_code !== undefined && { unitMeasureCode: String(unit_measure_code).trim() }),
@@ -695,6 +779,10 @@ const createProduct = asyncHandler(async (req, res, next) => {
                     select: { id: true, legacyMongoId: true, unitName: true },
                 },
                 kitComponents: {
+                    orderBy: { position: "asc" },
+                    include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+                },
+                recipeComponents: {
                     orderBy: { position: "asc" },
                     include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
                 },
@@ -793,6 +881,10 @@ const getAllProducts = asyncHandler(async (req, res, next) => {
                     select: { id: true, legacyMongoId: true, unitName: true },
                 },
                 kitComponents: {
+                    orderBy: { position: "asc" },
+                    include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+                },
+                recipeComponents: {
                     orderBy: { position: "asc" },
                     include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
                 },
@@ -944,10 +1036,38 @@ const updateProduct = asyncHandler(async (req, res, next) => {
                 return next(new ApiError(409, "This product already has stock recorded and cannot start tracking lots/expiration.", [], "", "product_batch_conversion_has_stock"));
             }
         }
+        // Same "undefined leaves it alone" convention and stock-guard as
+        // is_kit above - see Product.isManufactured's schema comment.
+        // Turning it off is always safe; the recipe is simply cleared, same
+        // as a kit's own.
+        let nextIsManufactured;
+        let resolvedRecipeComponents;
+        if (updateData.is_manufactured !== undefined) {
+            nextIsManufactured = updateData.is_manufactured === true || updateData.is_manufactured === "true";
+            if (nextIsManufactured && !existingProduct.isManufactured && existingProduct.stock !== 0) {
+                return next(new ApiError(409, "This product already has stock recorded and cannot be converted into a manufactured product.", [], "", "product_manufactured_conversion_has_stock"));
+            }
+            if (nextIsManufactured) {
+                let parsedRecipeComponents;
+                try {
+                    parsedRecipeComponents = typeof updateData.recipe_components === "string" ? JSON.parse(updateData.recipe_components) : updateData.recipe_components;
+                } catch {
+                    return next(new ApiError(400, "Recipe components must be a valid list.", [], "", "product_recipe_component_invalid"));
+                }
+                resolvedRecipeComponents = await resolveRecipeComponents(parsedRecipeComponents, existingProduct.id, req.user);
+            } else {
+                resolvedRecipeComponents = [];
+            }
+        }
+
         const effectiveIsKit = nextIsKit !== undefined ? nextIsKit : existingProduct.isKit;
         const effectiveTracksBatches = nextTracksBatches !== undefined ? nextTracksBatches : existingProduct.tracksBatches;
+        const effectiveIsManufactured = nextIsManufactured !== undefined ? nextIsManufactured : existingProduct.isManufactured;
         if (effectiveIsKit && effectiveTracksBatches) {
             return next(new ApiError(400, "A kit's stock is virtual - it can't also track lots/expiration.", [], "", "product_kit_cannot_track_batches"));
+        }
+        if (effectiveIsKit && effectiveIsManufactured) {
+            return next(new ApiError(400, "A kit's stock is virtual - it can't also be manufactured.", [], "", "product_kit_cannot_be_manufactured"));
         }
 
         // Handled after the product row itself is updated below (see
@@ -990,6 +1110,7 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             }),
             ...(nextIsKit !== undefined && { isKit: nextIsKit }),
             ...(nextTracksBatches !== undefined && { tracksBatches: nextTracksBatches }),
+            ...(nextIsManufactured !== undefined && { isManufactured: nextIsManufactured }),
             ...(updateData.buying_price !== undefined && {
                 buyingPrice: Number(updateData.buying_price),
             }),
@@ -1075,6 +1196,10 @@ const updateProduct = asyncHandler(async (req, res, next) => {
                     orderBy: { position: "asc" },
                     include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
                 },
+                recipeComponents: {
+                    orderBy: { position: "asc" },
+                    include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+                },
                 createdBy: {
                     select: { id: true, legacyMongoId: true, username: true },
                 },
@@ -1097,6 +1222,20 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             if (resolvedComponents.length > 0) {
                 await prisma.productKitComponent.createMany({
                     data: resolvedComponents.map((c) => ({ ...c, kitProductId: existingProduct.id })),
+                });
+            }
+            product = await findProductByAnyId(existingProduct.id);
+        }
+
+        // Same "separate step after the conflict-checked update" workaround
+        // as resolvedComponents above - updateWithConflictCheck's
+        // expectedUpdatedAt branch goes through updateMany, which can't
+        // carry a nested relation write.
+        if (resolvedRecipeComponents !== undefined) {
+            await prisma.productionRecipeComponent.deleteMany({ where: { productId: existingProduct.id } });
+            if (resolvedRecipeComponents.length > 0) {
+                await prisma.productionRecipeComponent.createMany({
+                    data: resolvedRecipeComponents.map((c) => ({ ...c, productId: existingProduct.id })),
                 });
             }
             product = await findProductByAnyId(existingProduct.id);

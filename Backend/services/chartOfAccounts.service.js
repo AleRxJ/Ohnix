@@ -21,6 +21,16 @@ const DEFAULT_ACCOUNTS = [
     { code: "6135", name: "Costo de ventas", accountType: "cost" },
     { code: "4295", name: "Ingresos por ajustes de inventario", accountType: "revenue" },
     { code: "5195", name: "Pérdidas y ajustes de inventario", accountType: "expense" },
+    // Fase 9 - manufacturing (see accountingPosting.service.js#
+    // postProductionJournalEntry). Labor/overhead entered on a production
+    // order gets capitalized into 1435 Inventarios (debit) against this one
+    // accrued-liability account (credit) - the standard PUC code for a
+    // recognized cost not yet paid out through cash/bank, since this
+    // system has no payroll module a production order could otherwise
+    // debit directly. Settling it later (recording the actual wage/
+    // utility payment against it) is a manual journal entry, same as any
+    // other accrued liability - out of scope for this phase.
+    { code: "2335", name: "Costos y gastos por pagar", accountType: "liability" },
 ];
 
 // Lazily seeds the default chart the first time a tenant needs one - same

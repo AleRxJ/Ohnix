@@ -80,6 +80,11 @@ const ProductsTable = ({
                                         {t("products.batch_badge")}
                                     </Tag>
                                 )}
+                                {product.is_manufactured && (
+                                    <Tag color="#7c6af7" className="!m-0 !text-[10px] !leading-4 !px-1">
+                                        {t("products.manufactured_badge")}
+                                    </Tag>
+                                )}
                             </div>
                             <Text className="text-xs text-[var(--ohnix-text-muted)]">
                                 {t("products.product_code")}: {product.product_code}
@@ -215,6 +220,11 @@ const ProductsTable = ({
                         {record.tracks_batches && (
                             <Tag color="#f59e0b" className="!m-0 !text-[10px] !leading-4 !px-1">
                                 {t("products.batch_badge")}
+                            </Tag>
+                        )}
+                        {record.is_manufactured && (
+                            <Tag color="#7c6af7" className="!m-0 !text-[10px] !leading-4 !px-1">
+                                {t("products.manufactured_badge")}
                             </Tag>
                         )}
                     </div>

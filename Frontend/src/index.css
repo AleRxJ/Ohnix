@@ -581,6 +581,18 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Mobile Chrome/WebView (e.g. Android/BlueStacks) draws a default gray/black
+   rounded-rect tap-highlight box behind any element with a click/pointer
+   handler, sized to its bounding box - on a small circular floating button
+   (assistant FAB, inventory tour FAB, discovery FAB) this reads as a large
+   square backdrop appearing "behind" what should be a plain floating
+   circle. Buttons already have their own hover/active styling, so the
+   default highlight and long-press callout are pure noise everywhere. */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
 /* ---------------------------------------------------------------------
    Design tokens — Dark is the existing, approved theme: every value below
    is copied verbatim from the previous hardcoded styles, so the computed

@@ -174,6 +174,17 @@ enum StockMovementSourceType {
   // only on the StockTransfer record's own discrepancy field. See
   // stockTransfer.service.js#receiveTransfer.
   transfer_discrepancy
+  // A completed ProductionOrder - production_consumption for each raw
+  // material line leaving stock, production_output for the finished
+  // product arriving, both sharing the order's id as sourceId so the two
+  // sides of the same run are traceable to each other, same pairing idiom
+  // as transfer_out/transfer_in. production_reversal covers every
+  // movement (finished good OUT, every material back IN) when a completed
+  // order gets cancelled - one type for the whole reversal event, same
+  // "cancellation gets its own single value" idiom as order_cancellation.
+  production_consumption
+  production_output
+  production_reversal
 }
 
 // Whether a company is a "responsable" or "no responsable" of VAT under
@@ -296,6 +307,8 @@ model User {
   fixedAssetsOwned                FixedAsset[]               @relation("FixedAssetCreatedBy")
   recurringJournalTemplatesOwned  RecurringJournalTemplate[] @relation("RecurringJournalTemplateCreatedBy")
   productBatchesCreated           ProductBatch[]
+  productionOrdersCreated         ProductionOrder[]          @relation("ProductionOrderCreatedBy")
+  productionOrdersUpdated         ProductionOrder[]          @relation("ProductionOrderUpdatedBy")
   accountingConfigAuditsPerformed AccountingConfigAudit[]    @relation("AccountingConfigAuditActor")
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
@@ -997,6 +1010,16 @@ model Product {
   // best-effort approximation on the return/cancel path rather than an
   // exact snapshot like costBasisApplied.
   tracksBatches      Boolean             @default(false) @map("tracks_batches")
+  // Opt-in manufacturing: this product's stock is produced from a recipe
+  // (recipeComponents, raw materials) via a ProductionOrder, instead of
+  // (or in addition to) being purchased directly - mutually exclusive with
+  // isKit (a kit has no real stock to produce into) but freely combinable
+  // with tracksBatches (a production run can absolutely carry its own lot/
+  // expiration, e.g. a bakery's daily batch). Same stock-guard as isKit/
+  // tracksBatches: only togglable while stock is 0, enforced in
+  // product.controller.js, since existing stock has no recipe history to
+  // attribute it to.
+  isManufactured     Boolean             @default(false) @map("is_manufactured")
   // Physical characteristics for shipping/logistics (see the WeightUnit
   // enum comment for the storage-vs-display-unit split). isPhysical
   // defaults true so every pre-existing product stays valid; a digital
@@ -1057,6 +1080,10 @@ model Product {
   kitComponents         ProductKitComponent[] @relation("KitComponents")
   componentOfKits       ProductKitComponent[] @relation("ComponentOfKits")
   batches               ProductBatch[]
+  recipeComponents      ProductionRecipeComponent[] @relation("RecipeFor")
+  usedInRecipes         ProductionRecipeComponent[] @relation("RecipeComponentOf")
+  productionOrders      ProductionOrder[]      @relation("ProductionOrderProduct")
+  productionOrderLines  ProductionOrderLine[]  @relation("ProductionOrderLineComponent")
 
   @@unique([productCode, createdById])
   @@unique([sku, createdById])
@@ -1127,6 +1154,115 @@ model ProductBatch {
   @@unique([productId, pointOfSaleId, batchNumber])
   @@index([productId, pointOfSaleId, expirationDate])
   @@map("product_batches")
+}
+
+// One raw-material line of a manufactured product's recipe - the
+// production counterpart to ProductKitComponent, but consumed at
+// PRODUCTION time (a discrete, user-triggered ProductionOrder) rather than
+// at sale time, and against a component that has its own real stock (no
+// "no nested manufacturing" restriction the way kits block nested kits -
+// there's no recursive derivation to protect against here, a multi-level
+// BOM just means the sub-assembly was produced by its own earlier
+// ProductionOrder and already has ordinary stock to consume).
+model ProductionRecipeComponent {
+  id                 String   @id @default(cuid())
+  productId          String   @map("product_id")
+  componentProductId String   @map("component_product_id")
+  quantity           Decimal  @db.Decimal(10, 2)
+  position           Int      @default(0)
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  product          Product @relation("RecipeFor", fields: [productId], references: [id], onDelete: Cascade)
+  componentProduct Product @relation("RecipeComponentOf", fields: [componentProductId], references: [id])
+
+  @@unique([productId, componentProductId])
+  @@index([productId, position])
+  @@index([componentProductId])
+  @@map("production_recipe_components")
+}
+
+enum ProductionOrderStatus {
+  draft
+  completed
+  cancelled
+}
+
+// A single manufacturing run: produce `quantity` of `product` at
+// `pointOfSale`, consuming its recipe (ProductionRecipeComponent) scaled by
+// that quantity. Stays a no-op for stock/accounting while `draft` (lines
+// below are a snapshot of what WILL be consumed, not yet claimed) - only
+// the draft -> completed transition actually moves anything, same
+// "review, then commit" shape purchases/orders already use for their own
+// pending -> completed transition. completed -> cancelled reverses it
+// (production.service.js#cancelProductionOrder), guarded the same way
+// every other reversal in this codebase is: fails if the produced quantity
+// isn't still fully on hand (already sold/transferred/consumed by another
+// order) rather than silently going negative.
+model ProductionOrder {
+  id            String                @id @default(cuid())
+  productId     String                @map("product_id")
+  pointOfSaleId String                @map("point_of_sale_id")
+  quantity      Int
+  status        ProductionOrderStatus @default(draft)
+  // Entered by the user, applied to the finished product's cost on
+  // completion (see accountingPosting.service.js#postProductionJournalEntry)
+  // - unlike materialsCost below, these never change once the order is
+  // completed (there's no "current cost" to re-derive them from the way
+  // materials have a live weighted-average).
+  laborCost     Decimal               @default(0) @map("labor_cost") @db.Decimal(12, 2)
+  overheadCost  Decimal               @default(0) @map("overhead_cost") @db.Decimal(12, 2)
+  // Sum of every line's actual consumed cost - 0 (meaningless) until
+  // completion, when it's computed from each line's own weighted-average
+  // claim, same "frozen at the moment it happened" convention as
+  // OrderDetail.costBasisApplied.
+  materialsCost   Decimal  @default(0) @map("materials_cost") @db.Decimal(12, 2)
+  unitCostApplied Decimal? @map("unit_cost_applied") @db.Decimal(14, 4)
+  // Only meaningful when `product.tracksBatches` - captured here at draft
+  // time (same "state it once, at intake" reasoning as
+  // PurchaseDetail.batchNumber) and applied to the finished product's own
+  // lot at completion.
+  batchNumber         String?   @map("batch_number")
+  batchExpirationDate DateTime? @map("batch_expiration_date")
+  notes         String?   @db.Text
+  completedAt   DateTime? @map("completed_at")
+  cancelledAt   DateTime? @map("cancelled_at")
+  createdById   String    @map("created_by")
+  updatedById   String?   @map("updated_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  product     Product              @relation("ProductionOrderProduct", fields: [productId], references: [id])
+  pointOfSale PointOfSale          @relation(fields: [pointOfSaleId], references: [id])
+  createdBy   User                 @relation("ProductionOrderCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User?                @relation("ProductionOrderUpdatedBy", fields: [updatedById], references: [id])
+  lines       ProductionOrderLine[]
+
+  @@index([createdById, status])
+  @@index([productId])
+  @@index([pointOfSaleId])
+  @@map("production_orders")
+}
+
+// One raw-material line of a ProductionOrder - a snapshot of
+// ProductionRecipeComponent at the moment the order was drafted
+// (quantityRequired = recipe.quantity * order.quantity, rounded the same
+// way ProductKitComponent's sale-time consumption is), so editing the
+// product's recipe afterward never rewrites an order already in flight.
+// unitCostApplied is null until completion.
+model ProductionOrderLine {
+  id                 String   @id @default(cuid())
+  productionOrderId  String   @map("production_order_id")
+  componentProductId String   @map("component_product_id")
+  quantityRequired   Decimal  @map("quantity_required") @db.Decimal(12, 2)
+  unitCostApplied    Decimal? @map("unit_cost_applied") @db.Decimal(14, 4)
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  productionOrder  ProductionOrder @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  componentProduct Product         @relation("ProductionOrderLineComponent", fields: [componentProductId], references: [id])
+
+  @@index([productionOrderId])
+  @@index([componentProductId])
+  @@map("production_order_lines")
 }
 
 // One sellable combination of a product's options (e.g. "Negra / M" for a
@@ -2172,6 +2308,7 @@ model PointOfSale {
   transfersOut      StockTransfer[]         @relation("StockTransferFrom")
   transfersIn       StockTransfer[]         @relation("StockTransferTo")
   productBatches    ProductBatch[]
+  productionOrders  ProductionOrder[]
   customers         Customer[]
   suppliers         Supplier[]
   cashAccounts      CashAccount[]
@@ -2854,6 +2991,12 @@ enum JournalSourceType {
   // net book value - see fixedAsset.service.js#disposeFixedAsset.
   fixed_asset_depreciation
   fixed_asset_disposal
+  // Fase 9 - manufacturing (see ProductionOrder above). Only posted when a
+  // completed order actually applied labor/overhead cost - a materials-only
+  // run nets to zero within the single Inventarios account and has nothing
+  // to journal (see accountingPosting.service.js#postProductionJournalEntry).
+  production
+  production_reversal
 }
 
 enum FiscalYearClosureStatus {

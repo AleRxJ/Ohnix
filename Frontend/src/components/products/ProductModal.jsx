@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Modal, Form, Input, Select, InputNumber, Row, Col, Button, Tooltip, Switch, Collapse } from "antd";
-import { AppstoreOutlined, ScanOutlined, LockOutlined, InboxOutlined, PlusOutlined, DeleteOutlined, GiftOutlined } from "@ant-design/icons";
+import { AppstoreOutlined, ScanOutlined, LockOutlined, InboxOutlined, PlusOutlined, DeleteOutlined, GiftOutlined, BuildOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import ProductImagesUpload from "./ProductImagesUpload";
 import BarcodeScannerModal from "./BarcodeScannerModal";
@@ -65,6 +65,18 @@ const ProductModal = ({
     // from product.controller.js#updateProduct's product_batch_conversion_
     // has_stock check.
     const batchConversionBlocked = Boolean(tracksBatches) && !editingProduct?.tracks_batches && Number(editingProduct?.stock) > 0;
+    const isManufactured = Form.useWatch("is_manufactured", form);
+    // Same stock-guard rationale as kitConversionBlocked above, mirrored
+    // from product.controller.js#updateProduct's product_manufactured_
+    // conversion_has_stock check.
+    const manufacturedConversionBlocked = Boolean(isManufactured) && !editingProduct?.is_manufactured && Number(editingProduct?.stock) > 0;
+    // A recipe's raw materials can be any non-kit product - unlike a kit's
+    // own component picker, a manufactured product IS allowed to appear
+    // here (multi-level BOM, see ProductionRecipeComponent's schema
+    // comment), so this only excludes kits and self.
+    const recipeComponentOptions = (allProducts || []).filter(
+        (p) => !p.is_kit && p._id !== editingProduct?._id
+    );
     const isPhysical = Form.useWatch("is_physical", form);
     const weightUnit = Form.useWatch("weight_unit", form) || "g";
     const dimensionUnit = Form.useWatch("dimension_unit", form) || "cm";
@@ -384,8 +396,8 @@ const ProductModal = ({
                                         <Switch
                                             checkedChildren={t("products.kit_yes")}
                                             unCheckedChildren={t("products.kit_no")}
-                                            disabled={Boolean(tracksBatches)}
-                                            onChange={(checked) => checked && form.setFieldsValue({ tracks_batches: false })}
+                                            disabled={Boolean(tracksBatches) || Boolean(isManufactured)}
+                                            onChange={(checked) => checked && form.setFieldsValue({ tracks_batches: false, is_manufactured: false })}
                                         />
                                     </Form.Item>
                                 </div>
@@ -492,6 +504,103 @@ const ProductModal = ({
                                     <p className="text-xs text-[#ff7875] mt-2 mb-0">
                                         {t("products.batch_conversion_has_stock")}
                                     </p>
+                                )}
+                            </div>
+
+                            <div className="module-shell p-4 reveal-card">
+                                <div className="flex items-center justify-between gap-3 mb-3 pb-2 border-b border-[var(--ohnix-line-3)]">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
+                                        <h3 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide inline-flex items-center gap-1.5">
+                                            <BuildOutlined />
+                                            {t("products.manufactured_section")}
+                                        </h3>
+                                    </div>
+                                    <Form.Item name="is_manufactured" valuePropName="checked" noStyle initialValue={false}>
+                                        <Switch
+                                            checkedChildren={t("products.manufactured_yes")}
+                                            unCheckedChildren={t("products.manufactured_no")}
+                                            disabled={Boolean(isKit)}
+                                            onChange={(checked) => checked && form.setFieldsValue({ is_kit: false })}
+                                        />
+                                    </Form.Item>
+                                </div>
+                                {isManufactured ? (
+                                    <>
+                                        <p className="text-xs text-[var(--ohnix-text-dim)] mb-3">
+                                            {t("products.manufactured_hint")}
+                                        </p>
+                                        {manufacturedConversionBlocked && (
+                                            <p className="text-xs text-[#ff7875] mb-3">
+                                                {t("products.manufactured_conversion_has_stock")}
+                                            </p>
+                                        )}
+                                        <Form.List name="recipe_components">
+                                            {(fields, { add, remove }) => (
+                                                <div className="space-y-2">
+                                                    {fields.map(({ key, name, ...restField }) => (
+                                                        <Row gutter={8} key={key} align="middle">
+                                                            <Col flex="auto">
+                                                                <Form.Item
+                                                                    {...restField}
+                                                                    name={[name, "product_id"]}
+                                                                    className="mb-2"
+                                                                    rules={[{ required: true, message: t("products.recipe_component_required") }]}
+                                                                >
+                                                                    <Select
+                                                                        showSearch
+                                                                        placeholder={t("products.recipe_component_placeholder")}
+                                                                        optionFilterProp="children"
+                                                                        className="rounded-md auth-ohnix-input"
+                                                                    >
+                                                                        {recipeComponentOptions.map((p) => (
+                                                                            <Option key={p._id} value={p._id}>
+                                                                                {p.product_name} ({p.product_code})
+                                                                            </Option>
+                                                                        ))}
+                                                                    </Select>
+                                                                </Form.Item>
+                                                            </Col>
+                                                            <Col flex="120px">
+                                                                <Form.Item
+                                                                    {...restField}
+                                                                    name={[name, "quantity"]}
+                                                                    className="mb-2"
+                                                                    rules={[{ required: true, message: t("products.recipe_component_quantity_required") }]}
+                                                                >
+                                                                    <InputNumber
+                                                                        min={0.01}
+                                                                        precision={2}
+                                                                        className="w-full auth-ohnix-input"
+                                                                        placeholder={t("products.recipe_component_quantity")}
+                                                                    />
+                                                                </Form.Item>
+                                                            </Col>
+                                                            <Col flex="32px">
+                                                                <Button
+                                                                    type="text"
+                                                                    danger
+                                                                    icon={<DeleteOutlined />}
+                                                                    onClick={() => remove(name)}
+                                                                />
+                                                            </Col>
+                                                        </Row>
+                                                    ))}
+                                                    <Button
+                                                        type="dashed"
+                                                        onClick={() => add()}
+                                                        icon={<PlusOutlined />}
+                                                        block
+                                                        disabled={fields.length >= 50}
+                                                    >
+                                                        {t("products.recipe_add_component")}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </Form.List>
+                                    </>
+                                ) : (
+                                    <p className="text-xs text-[var(--ohnix-text-dim)] mb-0">{t("products.manufactured_off_hint")}</p>
                                 )}
                             </div>
 

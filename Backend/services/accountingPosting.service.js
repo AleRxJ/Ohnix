@@ -89,6 +89,76 @@ export const postInventoryAdjustmentJournalEntry = async (
     });
 };
 
+// Only the labor/overhead entered on the order gets journaled - the raw
+// materials' cost simply moves from one 1435 balance to another within the
+// same account (claimLocationStockWithCost's -materialsCost and
+// creditLocationStockWithCost's +materialsCost-as-part-of-unitCostApplied
+// cancel out), so a materials-only run has no accounting effect to record
+// at all. See ProductionOrder's schema comment and the new 2335 chart
+// account's comment for why this is a liability, not an expense/cost line.
+export const postProductionJournalEntry = async (
+    tx,
+    { accountId, createdById, order, entryDate = new Date() }
+) => {
+    const laborCost = round2(order.laborCost);
+    const overheadCost = round2(order.overheadCost);
+    const applied = round2(laborCost + overheadCost);
+    if (applied === 0) return null;
+
+    const coa = await getChartAccountMap(tx, accountId);
+    const costCenterId = await resolveLocationCostCenter(tx, accountId, order.pointOfSaleId);
+
+    return recordJournalEntry(tx, {
+        accountId,
+        createdById,
+        entryDate,
+        description: `Producción de ${order.quantity} unidad(es)`,
+        sourceType: "production",
+        sourceId: order.id,
+        lines: withCostCenter(
+            [
+                { chartAccountId: coa.get("1435").id, debit: applied, credit: 0 },
+                ...(laborCost > 0 ? [{ chartAccountId: coa.get("2335").id, debit: 0, credit: laborCost, description: "Mano de obra directa" }] : []),
+                ...(overheadCost > 0 ? [{ chartAccountId: coa.get("2335").id, debit: 0, credit: overheadCost, description: "Costos indirectos de fabricación" }] : []),
+            ],
+            costCenterId
+        ),
+    });
+};
+
+// Exact mirror-image reversal of the entry above - only ever posted
+// alongside cancelProductionOrder undoing a completed run whose
+// postProductionJournalEntry actually fired (applied > 0).
+export const postProductionReversalJournalEntry = async (
+    tx,
+    { accountId, createdById, order, entryDate = new Date() }
+) => {
+    const laborCost = round2(order.laborCost);
+    const overheadCost = round2(order.overheadCost);
+    const applied = round2(laborCost + overheadCost);
+    if (applied === 0) return null;
+
+    const coa = await getChartAccountMap(tx, accountId);
+    const costCenterId = await resolveLocationCostCenter(tx, accountId, order.pointOfSaleId);
+
+    return recordJournalEntry(tx, {
+        accountId,
+        createdById,
+        entryDate,
+        description: `Reversión de producción de ${order.quantity} unidad(es)`,
+        sourceType: "production_reversal",
+        sourceId: order.id,
+        lines: withCostCenter(
+            [
+                ...(laborCost > 0 ? [{ chartAccountId: coa.get("2335").id, debit: laborCost, credit: 0, description: "Mano de obra directa" }] : []),
+                ...(overheadCost > 0 ? [{ chartAccountId: coa.get("2335").id, debit: overheadCost, credit: 0, description: "Costos indirectos de fabricación" }] : []),
+                { chartAccountId: coa.get("1435").id, debit: 0, credit: applied },
+            ],
+            costCenterId
+        ),
+    });
+};
+
 export const postTransferDiscrepancyJournalEntry = async (
     tx,
     { accountId, createdById, transferId, amount, entryDate = new Date() }

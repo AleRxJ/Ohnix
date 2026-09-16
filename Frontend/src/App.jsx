@@ -136,6 +136,7 @@ const ProfilePage = lazy(() => import("./components/ProfilePage"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DashboardLayout = lazy(() => import("./components/layout/DashboardLayout"));
 const Products = lazy(() => import("./pages/Products"));
+const ProductionOrders = lazy(() => import("./pages/ProductionOrders"));
 const Orders = lazy(() => import("./pages/Orders"));
 const Purchase = lazy(() => import("./pages/Purchase"));
 const Quotations = lazy(() => import("./pages/Quotations"));
@@ -381,6 +382,7 @@ function App() {
                             >
                                 <Route path="dashboard" element={<Dashboard />} />
                                 <Route path="products" element={<RequireProductsAccess><Products /></RequireProductsAccess>} />
+                                <Route path="production-orders" element={<RequireProductsAccess><ProductionOrders /></RequireProductsAccess>} />
                                 <Route path="orders" element={<RequireOrdersAccess><Orders /></RequireOrdersAccess>} />
                                 <Route path="electronic-invoices" element={<ColombiaInvoiceRoute><ElectronicInvoices /></ColombiaInvoiceRoute>} />
                                 <Route path="purchase-support-documents" element={<SupportDocumentRoute><PurchaseSupportDocuments /></SupportDocumentRoute>} />

@@ -95,9 +95,10 @@ const AssistantWidget = () => {
     const isMobile = useIsMobile();
     const currentModule = useCurrentModule();
     // Mirrors InventoryTourFab's own visibility check - that button sits
-    // directly below this one at bottom-6, so whenever it hides itself
-    // (tour open/completed/dismissed, team member, still loading team info)
-    // this FAB needs to drop down into its spot instead of leaving a gap.
+    // directly below this one (both right-6, so perfectly column-aligned),
+    // so whenever it hides itself (tour open/completed/dismissed, team
+    // member, still loading team info) this FAB needs to drop down into its
+    // spot instead of leaving a gap.
     const tourState = useInventoryTour();
     const { isTeamMember, loading: teamLoading } = useTeam();
     const tourFabVisible = !(
@@ -107,7 +108,12 @@ const AssistantWidget = () => {
         isTeamMember ||
         teamLoading
     );
-    const fabPositionClass = tourFabVisible ? "bottom-24" : "bottom-6";
+    // bottom-24 (96px) left only a 24px gap above the tour pill's top edge
+    // (bottom-6 + 48px tall) - visually too tight once both buttons' 28px
+    // shadow blur is factored in, which is exactly what read as "overlapping"
+    // on a real phone screen (reported on Android/BlueStacks). bottom-28
+    // doubles that clearance to 40px.
+    const fabPositionClass = tourFabVisible ? "bottom-28" : "bottom-6";
     const [open, setOpen] = useState(false);
     const [messages, setMessages] = useState([]);
     const [conversationId, setConversationId] = useState(
@@ -327,7 +333,7 @@ const AssistantWidget = () => {
                             background: "linear-gradient(135deg, rgba(41,216,213,0.18), rgba(68,243,240,0.22))",
                             border: "1px solid rgba(41,216,213,0.4)",
                             boxShadow: "0 8px 28px rgba(41,216,213,0.35)",
-                            touchAction: draggable ? "none" : undefined,
+                            touchAction: draggable ? "none" : "manipulation",
                         }}
                     >
                         <AssistantSparkleIcon size={24} />
