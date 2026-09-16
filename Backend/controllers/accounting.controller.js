@@ -5,6 +5,7 @@ import * as chartOfAccountsService from "../services/chartOfAccounts.service.js"
 import * as journalEntryService from "../services/journalEntry.service.js";
 import * as accountingPeriodService from "../services/accountingPeriod.service.js";
 import * as fiscalYearService from "../services/fiscalYear.service.js";
+import * as financialStatementNoteService from "../services/financialStatementNote.service.js";
 import * as financialStatementsService from "../services/financialStatements.service.js";
 import * as manualVoucherService from "../services/manualJournalVoucher.service.js";
 import * as thirdPartyLedgerService from "../services/thirdPartyLedger.service.js";
@@ -13,6 +14,8 @@ import * as withholdingReportService from "../services/withholdingReport.service
 import * as accountingBudgetService from "../services/accountingBudget.service.js";
 import * as costCenterService from "../services/costCenter.service.js";
 import * as recurringExpenseService from "../services/recurringExpense.service.js";
+import * as fixedAssetService from "../services/fixedAsset.service.js";
+import * as recurringJournalService from "../services/recurringJournal.service.js";
 import * as openingBalanceService from "../services/openingBalance.service.js";
 import * as accountingAuditService from "../services/accountingAudit.service.js";
 import * as journalReversalService from "../services/journalReversal.service.js";
@@ -76,6 +79,16 @@ const mapPeriod = (p) => ({
         expires_at: reopening.expiresAt,
         reclosed_at: reopening.reclosedAt,
     })),
+});
+
+const mapFinancialStatementNote = (note) => ({
+    _id: note.id,
+    year: note.year,
+    title: note.title,
+    content: note.content,
+    position: note.position,
+    created_at: note.createdAt,
+    updated_at: note.updatedAt,
 });
 
 const mapFiscalYearClosure = (c) => c && ({
@@ -314,6 +327,55 @@ export const runRecurringExpenseTemplateNow = asyncHandler(async (req, res) => {
     return res.status(201).json(new ApiResponse(201, { entry_id: entry.id }, "Gasto recurrente generado."));
 });
 
+export const listFixedAssets = asyncHandler(async (req, res) => {
+    const assets = await fixedAssetService.listFixedAssets(req.user.prismaId, { includeInactive: req.query.include_inactive === "true" });
+    return res.status(200).json(new ApiResponse(200, assets, "Activos fijos obtenidos."));
+});
+
+export const createFixedAsset = asyncHandler(async (req, res) => {
+    const asset = await fixedAssetService.createFixedAsset(req.user.prismaId, req.user.actorId, req.body || {});
+    return res.status(201).json(new ApiResponse(201, asset, "Activo fijo creado."));
+});
+
+export const updateFixedAsset = asyncHandler(async (req, res) => {
+    const asset = await fixedAssetService.updateFixedAsset(req.user.prismaId, req.user.actorId, req.params.id, req.body || {});
+    return res.status(200).json(new ApiResponse(200, asset, "Activo fijo actualizado."));
+});
+
+export const disposeFixedAsset = asyncHandler(async (req, res) => {
+    const asset = await fixedAssetService.disposeFixedAsset(req.user.prismaId, req.user.actorId, req.params.id, {
+        reason: req.body?.reason,
+        disposalAmount: req.body?.disposal_amount,
+        cashAccountId: req.body?.cash_account_id,
+    });
+    return res.status(200).json(new ApiResponse(200, asset, "Activo fijo dado de baja."));
+});
+
+export const runFixedAssetDepreciationNow = asyncHandler(async (req, res) => {
+    const entry = await fixedAssetService.runFixedAssetDepreciationNow(req.user.prismaId, req.user.actorId, req.params.id);
+    return res.status(201).json(new ApiResponse(201, { entry_id: entry.id }, "Depreciación generada."));
+});
+
+export const listRecurringJournalTemplates = asyncHandler(async (req, res) => {
+    const templates = await recurringJournalService.listRecurringJournalTemplates(req.user.prismaId, { includeInactive: req.query.include_inactive === "true" });
+    return res.status(200).json(new ApiResponse(200, templates, "Plantillas de asiento recurrente obtenidas."));
+});
+
+export const createRecurringJournalTemplate = asyncHandler(async (req, res) => {
+    const template = await recurringJournalService.createRecurringJournalTemplate(req.user.prismaId, req.body || {});
+    return res.status(201).json(new ApiResponse(201, template, "Plantilla de asiento recurrente creada."));
+});
+
+export const updateRecurringJournalTemplate = asyncHandler(async (req, res) => {
+    const template = await recurringJournalService.updateRecurringJournalTemplate(req.user.prismaId, req.params.id, req.body || {});
+    return res.status(200).json(new ApiResponse(200, template, "Plantilla de asiento recurrente actualizada."));
+});
+
+export const runRecurringJournalTemplateNow = asyncHandler(async (req, res) => {
+    const entry = await recurringJournalService.runRecurringJournalTemplateNow(req.user.prismaId, req.user.actorId, req.params.id);
+    return res.status(201).json(new ApiResponse(201, { entry_id: entry.id }, "Asiento recurrente generado."));
+});
+
 export const getJournalEntry = asyncHandler(async (req, res) => {
     const entry = await journalEntryService.getJournalEntryById({ accountId: req.user.prismaId, id: req.params.id });
     return res.status(200).json(new ApiResponse(200, mapJournalEntry(entry), "Journal entry fetched successfully"));
@@ -367,6 +429,16 @@ export const getIncomeStatementComparison = asyncHandler(async (req, res) => {
         endDate: endOfDay(to),
     });
     return res.status(200).json(new ApiResponse(200, comparison, "Estado de resultados comparativo obtenido."));
+});
+
+export const getCashFlowStatement = asyncHandler(async (req, res) => {
+    const { from, to } = req.query;
+    const statement = await financialStatementsService.getCashFlowStatement({
+        accountId: req.user.prismaId,
+        startDate: from ? new Date(from) : undefined,
+        endDate: endOfDay(to),
+    });
+    return res.status(200).json(new ApiResponse(200, statement, "Cash flow statement fetched successfully"));
 });
 
 export const getBalanceSheet = asyncHandler(async (req, res) => {
@@ -536,6 +608,45 @@ export const reopenFiscalYear = asyncHandler(async (req, res, next) => {
         durationHours: req.body?.duration_hours ?? 24,
     });
     return res.status(200).json(new ApiResponse(200, mapFiscalYearClosure(closure), "Fiscal year reopened successfully."));
+});
+
+export const listFinancialStatementNotes = asyncHandler(async (req, res, next) => {
+    const year = Number(req.query.year);
+    if (!Number.isInteger(year)) return next(new ApiError(400, "A valid year is required.", [], "", "financial_statement_note_invalid_year"));
+
+    const notes = await financialStatementNoteService.listFinancialStatementNotes(req.user.prismaId, year);
+    return res.status(200).json(new ApiResponse(200, notes.map(mapFinancialStatementNote), "Financial statement notes fetched successfully"));
+});
+
+export const createFinancialStatementNote = asyncHandler(async (req, res) => {
+    const note = await financialStatementNoteService.createFinancialStatementNote({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        year: req.body?.year,
+        title: req.body?.title,
+        content: req.body?.content,
+    });
+    return res.status(201).json(new ApiResponse(201, mapFinancialStatementNote(note), "Financial statement note created successfully"));
+});
+
+export const updateFinancialStatementNote = asyncHandler(async (req, res) => {
+    const note = await financialStatementNoteService.updateFinancialStatementNote({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        id: req.params.id,
+        title: req.body?.title,
+        content: req.body?.content,
+    });
+    return res.status(200).json(new ApiResponse(200, mapFinancialStatementNote(note), "Financial statement note updated successfully"));
+});
+
+export const deleteFinancialStatementNote = asyncHandler(async (req, res) => {
+    await financialStatementNoteService.deleteFinancialStatementNote({
+        accountId: req.user.prismaId,
+        actorId: req.user.actorId,
+        id: req.params.id,
+    });
+    return res.status(200).json(new ApiResponse(200, null, "Financial statement note deleted successfully"));
 });
 
 export const listWithholdingConcepts = asyncHandler(async (req, res) => {

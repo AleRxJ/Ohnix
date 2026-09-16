@@ -1088,7 +1088,7 @@ export const PageOrbitalLayer = () => {
             </div>
 
             {/* Ring E — tiny accent, upper-left, xs reverse */}
-            <div ref={(el) => { ringRefs.current[4] = el; }} className="absolute left-[12%] top-[10%] hidden md:block" style={{ willChange: "transform" }}>
+            <div ref={(el) => { ringRefs.current[4] = el; }} className="absolute left-[12%] top-[10%] hidden lg:block" style={{ willChange: "transform" }}>
                 <div className="rounded-full animate-orbit-xs" style={{ width: 131, height: 131, border: "1.5px solid rgba(68,243,240,0.25)" }}>
                     <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
                         <div className="absolute inset-0 rounded-full animate-ripple" style={{ width: 18, height: 18, border: pingCyan }} />
@@ -1314,7 +1314,7 @@ export const OrbitalHero = ({
     return (
         <section
             id="home"
-            className="relative overflow-hidden border-b border-white/[0.025] bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.12),transparent_24%),radial-gradient(circle_at_20%_20%,rgba(68,243,240,0.08),transparent_24%),linear-gradient(180deg,#070707_0%,#050505_36%,#050505_100%)] md:border-white/5"
+            className="relative scroll-mt-24 overflow-hidden border-b border-white/[0.025] bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.12),transparent_24%),radial-gradient(circle_at_20%_20%,rgba(68,243,240,0.08),transparent_24%),linear-gradient(180deg,#070707_0%,#050505_36%,#050505_100%)] md:border-white/5"
             onPointerMove={(event) => {
                 const rect = event.currentTarget.getBoundingClientRect();
                 const x = ((event.clientX - rect.left) / rect.width) * 100;
@@ -1479,11 +1479,15 @@ export const ContentSection = ({ id, children, className = "", shell = true }) =
     );
 
     if (!shell) {
-        return <section id={id}>{content}</section>;
+        return (
+            <section id={id} className="scroll-mt-24">
+                {content}
+            </section>
+        );
     }
 
     return (
-        <section id={id} className={sectionShell}>
+        <section id={id} className={`scroll-mt-24 ${sectionShell}`}>
             <div className="absolute inset-0 opacity-70 [background-image:radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.04)_1px,transparent_0)] [background-size:34px_34px]" />
             {content}
         </section>
@@ -1720,7 +1724,7 @@ export const ComparisonTeaserSection = ({ heading, headers, rows, cta, onCtaClic
         />
 
         <div className="mt-10 overflow-hidden rounded-[24px] border border-white/10">
-            <div className="grid grid-cols-3 bg-white/[0.06] px-5 py-4 text-sm font-semibold text-white">
+            <div className="hidden bg-white/[0.06] px-5 py-4 text-sm font-semibold text-white sm:grid sm:grid-cols-3">
                 <div>{headers.criteria}</div>
                 <div>{headers.ohnix}</div>
                 <div>{headers.competitor}</div>
@@ -1728,11 +1732,21 @@ export const ComparisonTeaserSection = ({ heading, headers, rows, cta, onCtaClic
             {rows.map((row) => (
                 <div
                     key={row.criteria}
-                    className="grid grid-cols-3 gap-4 border-t border-white/10 px-5 py-4 text-sm"
+                    className="grid grid-cols-1 gap-3 border-t border-white/10 px-5 py-4 text-sm sm:grid-cols-3 sm:gap-4"
                 >
-                    <div className="text-white">{row.criteria}</div>
-                    <div className="text-[#CFE8E8]">{row.ohnix}</div>
-                    <div className="text-[#A9B3B8]">{row.competitor}</div>
+                    <div className="font-semibold text-white sm:font-normal">{row.criteria}</div>
+                    <div className="text-[#CFE8E8]">
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#29D8D5] sm:hidden">
+                            {headers.ohnix}
+                        </span>
+                        {row.ohnix}
+                    </div>
+                    <div className="text-[#A9B3B8]">
+                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[#8B969C] sm:hidden">
+                            {headers.competitor}
+                        </span>
+                        {row.competitor}
+                    </div>
                 </div>
             ))}
         </div>

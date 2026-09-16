@@ -36,10 +36,48 @@ const CertificadosDigitales = () => {
         },
     ];
 
+    // What a "certificado digital" actually is - competitors (Certicamara, GSE,
+    // Andes SCD) all lead with this kind of plain-language explainer since
+    // most buyers are non-technical SMB owners who've never heard the term
+    // before landing here.
+    const whatIsIt = [
+        {
+            title: "Que es",
+            detail: "Es tu firma digital ante la DIAN: el mecanismo que respalda legalmente que un documento electronico (factura, nota credito o debito) lo emitiste tu, y no fue alterado despues.",
+        },
+        {
+            title: "Para que lo necesitas",
+            detail: "La DIAN exige que toda factura electronica este firmada con un certificado digital vigente. Sin el, no es posible emitir documentos electronicos validos, sin importar el software que uses.",
+        },
+        {
+            title: "Quien lo puede solicitar",
+            detail: "Tanto personas naturales como empresas (persona juridica) obligadas a facturar electronicamente. El tramite y los documentos que pedimos varian segun el tipo.",
+        },
+    ];
+
+    // Steps mirror the real flow already built (see ViafirmaSelfService.jsx /
+    // FirmaPassSelfService.jsx): payment first, then identity verification -
+    // never invent a turnaround-time promise here (no confirmed SLA exists
+    // yet), same reasoning as project_landing_support_model's own fix.
+    const howItWorks = [
+        {
+            title: "Elige tu tipo y paga",
+            detail: "Selecciona 1 o 2 años y si eres persona natural o juridica. El pago se hace de una sola vez, sin cotizacion ni llamada previa.",
+        },
+        {
+            title: "Verifica tu identidad",
+            detail: "Aceptas los terminos y completas una verificacion de identidad (documento y datos de tu empresa o los tuyos) a traves de un enlace seguro. Es un requisito de la DIAN, no un tramite adicional de Ohnix.",
+        },
+        {
+            title: "Tu certificado queda activo",
+            detail: "En cuanto se confirma tu identidad, el certificado queda activo en tu configuracion fiscal y listo para respaldar tus documentos electronicos. Te avisamos por correo en cada paso.",
+        },
+    ];
+
     const benefits = [
         {
-            title: "Habilitado para la DIAN",
-            detail: "El certificado queda asociado a tu empresa dentro de Ohnix y respalda la firma de tus documentos electronicos ante la DIAN.",
+            title: "Precio claro, sin cotizacion",
+            detail: "El precio de tu certificado es el que ves aqui: no necesitas pedir una cotizacion ni hablar con un asesor para saber cuanto cuesta.",
         },
         {
             title: "Sin necesidad de usar el inventario",
@@ -47,7 +85,7 @@ const CertificadosDigitales = () => {
         },
         {
             title: "Activacion desde un solo lugar",
-            detail: "Compra, pago y activacion del certificado se hacen desde el panel de configuracion fiscal, sin tramites externos ni archivos que instalar por tu cuenta.",
+            detail: "Compra, verificacion y activacion del certificado se hacen desde el panel de configuracion fiscal, sin tramites externos ni archivos que instalar por tu cuenta.",
         },
         {
             title: "Vigencia a tu medida",
@@ -56,6 +94,14 @@ const CertificadosDigitales = () => {
     ];
 
     const faq = [
+        {
+            q: "Necesito verificar mi identidad para obtener el certificado?",
+            a: "Si. Es un requisito que la DIAN exige a cualquier proveedor de certificados digitales, no algo particular de Ohnix. Despues de pagar, aceptas los terminos y completas una verificacion de identidad antes de que el certificado quede activo.",
+        },
+        {
+            q: "Que documentos necesito segun mi tipo de persona?",
+            a: "Como persona natural, tu documento de identidad. Como persona juridica (empresa), el NIT/Camara de Comercio de la empresa y el documento de identidad de quien la representa. Te lo pedimos en el paso de verificacion, no antes de pagar.",
+        },
         {
             q: "Necesito usar el inventario de Ohnix para comprar un certificado digital?",
             a: "No. El certificado digital esta ligado a tu empresa y a tu configuracion fiscal, no al modulo de inventario. Puedes usarlo aunque factures desde otro sistema o solo factures manualmente.",
@@ -66,7 +112,7 @@ const CertificadosDigitales = () => {
         },
         {
             q: "Como se activa el certificado despues de comprarlo?",
-            a: "Una vez confirmado el pago, el certificado queda activo en tu configuracion fiscal y disponible para respaldar la emision de tus documentos electronicos ante la DIAN.",
+            a: "Despues de pagar y completar la verificacion de identidad, el certificado queda activo en tu configuracion fiscal y disponible para respaldar la emision de tus documentos electronicos ante la DIAN.",
         },
         {
             q: "Puedo comprar el certificado si todavia no facturo electronicamente con Ohnix?",
@@ -155,7 +201,19 @@ const CertificadosDigitales = () => {
                         description={description}
                     />
 
-                    <div className="mt-10 grid gap-5 md:grid-cols-2">
+                    <div className="mt-10 grid gap-5 md:grid-cols-3">
+                        {whatIsIt.map((item) => (
+                            <article
+                                key={item.title}
+                                className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6"
+                            >
+                                <h2 className="text-lg font-semibold text-white">{item.title}</h2>
+                                <p className="mt-3 text-sm leading-7 text-[#A9B3B8]">{item.detail}</p>
+                            </article>
+                        ))}
+                    </div>
+
+                    <div className="mt-12 grid gap-5 md:grid-cols-2">
                         {plans.map((plan) => (
                             <article
                                 key={plan.key}
@@ -186,6 +244,22 @@ const CertificadosDigitales = () => {
                                 </button>
                             </article>
                         ))}
+                    </div>
+
+                    <div className="mt-12">
+                        <h2 className="text-2xl font-semibold text-white">Como funciona</h2>
+                        <div className="mt-6 grid gap-4 md:grid-cols-3">
+                            {howItWorks.map((step, index) => (
+                                <article
+                                    key={step.title}
+                                    className="rounded-[24px] border border-white/10 bg-white/[0.03] p-5"
+                                >
+                                    <span className="font-mono text-xs text-[#29D8D5]">0{index + 1}</span>
+                                    <h3 className="mt-2 text-base font-semibold text-white">{step.title}</h3>
+                                    <p className="mt-2 text-sm leading-6 text-[#A9B3B8]">{step.detail}</p>
+                                </article>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="mt-12 grid gap-5 md:grid-cols-2">

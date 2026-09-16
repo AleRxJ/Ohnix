@@ -290,6 +290,11 @@ model User {
   accountingBudgetsOwned          AccountingBudget[]         @relation("AccountingBudgetAccount")
   accountingBudgetsCreated        AccountingBudget[]         @relation("AccountingBudgetCreatedBy")
   accountingBudgetsUpdated        AccountingBudget[]         @relation("AccountingBudgetUpdatedBy")
+  financialStatementNotesOwned    FinancialStatementNote[]   @relation("FinancialStatementNoteAccount")
+  financialStatementNotesCreated  FinancialStatementNote[]   @relation("FinancialStatementNoteCreatedBy")
+  financialStatementNotesUpdated  FinancialStatementNote[]   @relation("FinancialStatementNoteUpdatedBy")
+  fixedAssetsOwned                FixedAsset[]               @relation("FixedAssetCreatedBy")
+  recurringJournalTemplatesOwned  RecurringJournalTemplate[] @relation("RecurringJournalTemplateCreatedBy")
   accountingConfigAuditsPerformed AccountingConfigAudit[]    @relation("AccountingConfigAuditActor")
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
@@ -2345,6 +2350,10 @@ model ChartAccount {
   purchaseRetentions        PurchaseRetention[]
   accountingBudgets         AccountingBudget[]
   recurringExpenseTemplates RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateExpenseAccount")
+  fixedAssetsAsAsset        FixedAsset[]               @relation("FixedAssetAssetAccount")
+  fixedAssetsAsDepreciation FixedAsset[]               @relation("FixedAssetDepreciationAccount")
+  fixedAssetsAsExpense      FixedAsset[]                @relation("FixedAssetExpenseAccount")
+  recurringJournalTemplateLines RecurringJournalTemplateLine[]
 
   @@unique([createdById, code])
   @@index([createdById])
@@ -2366,6 +2375,8 @@ model CostCenter {
   manualVoucherLines ManualJournalVoucherLine[]
   pointsOfSale       PointOfSale[]
   accountingBudgets  AccountingBudget[]
+  fixedAssets        FixedAsset[]
+  recurringJournalTemplateLines RecurringJournalTemplateLine[]
 
   @@unique([accountId, code])
   @@index([accountId, isActive])
@@ -2398,6 +2409,33 @@ model AccountingBudget {
   @@index([costCenterId])
   @@index([chartAccountId])
   @@map("accounting_budgets")
+}
+
+// Free-form disclosures attached to a fiscal year's financial statements
+// (accounting policies, contingencies, related-party transactions, etc.) -
+// purely informational, never posted or aggregated into any report the way
+// AccountingBudget/ChartAccount are. `position` orders them for display;
+// new notes are appended at the end (financialStatementNote.service.js
+// assigns it, not a DB default, since it depends on the current count for
+// that year).
+model FinancialStatementNote {
+  id          String   @id @default(cuid())
+  accountId   String   @map("account_id")
+  year        Int
+  title       String
+  content     String   @db.Text
+  position    Int      @default(0)
+  createdById String   @map("created_by")
+  updatedById String   @map("updated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  account   User @relation("FinancialStatementNoteAccount", fields: [accountId], references: [id])
+  createdBy User @relation("FinancialStatementNoteCreatedBy", fields: [createdById], references: [id])
+  updatedBy User @relation("FinancialStatementNoteUpdatedBy", fields: [updatedById], references: [id])
+
+  @@index([accountId, year, position])
+  @@map("financial_statement_notes")
 }
 
 // A standing instruction to post the same operating expense (arriendo,
@@ -2448,6 +2486,119 @@ model RecurringExpenseTemplate {
 
   @@index([createdById, isActive])
   @@map("recurring_expense_templates")
+}
+
+// A standing multi-line manual journal entry (provisions, accrued interest,
+// depreciation booked by hand for an asset class outside FixedAsset, etc.)
+// that posts every month - the generic sibling of RecurringExpenseTemplate,
+// which only covers the one fixed expense/cash shape. Same cron + manual
+// "run now" + dedupe-by-period idiom (recurringJournal.service.js), but the
+// lines themselves are exactly ManualJournalVoucherLine's shape (any
+// account, either side, optional cost center/third party) and are fixed
+// amounts set once at template creation - unlike a recurring expense there's
+// no tax decomposition, the user already knows the peso amount to repeat.
+model RecurringJournalTemplate {
+  id                  String   @id @default(cuid())
+  createdById         String   @map("created_by")
+  description         String
+  dayOfMonth          Int      @default(1) @map("day_of_month")
+  isActive            Boolean  @default(true) @map("is_active")
+  lastGeneratedPeriod String?  @map("last_generated_period")
+  lastRunStatus       String?  @map("last_run_status")
+  lastRunError        String?  @map("last_run_error")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  createdBy User                           @relation("RecurringJournalTemplateCreatedBy", fields: [createdById], references: [id])
+  lines     RecurringJournalTemplateLine[]
+
+  @@index([createdById, isActive])
+  @@map("recurring_journal_templates")
+}
+
+model RecurringJournalTemplateLine {
+  id                 String                    @id @default(cuid())
+  templateId         String                    @map("template_id")
+  chartAccountId     String                    @map("chart_account_id")
+  costCenterId       String?                   @map("cost_center_id")
+  debit              Decimal                   @default(0) @db.Decimal(14, 2)
+  credit             Decimal                   @default(0) @db.Decimal(14, 2)
+  description        String?                   @db.Text
+  thirdPartyType     AccountingThirdPartyType? @map("third_party_type")
+  thirdPartyId       String?                   @map("third_party_id")
+  thirdPartyName     String?                   @map("third_party_name")
+  thirdPartyDocument String?                   @map("third_party_document")
+  position           Int
+
+  template     RecurringJournalTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  chartAccount ChartAccount             @relation(fields: [chartAccountId], references: [id])
+  costCenter   CostCenter?              @relation(fields: [costCenterId], references: [id])
+
+  @@index([templateId, position])
+  @@index([chartAccountId])
+  @@index([costCenterId])
+  @@map("recurring_journal_template_lines")
+}
+
+enum FixedAssetStatus {
+  active
+  // Depreciation stopped and a real disposal entry posted
+  // (fixedAsset.service.js#disposeFixedAsset): removes the asset's cost and
+  // its accumulated depreciation from the books, deposits any proceeds into
+  // a cash account, and books the difference as a gain or loss.
+  disposed
+  // usefulLifeMonths reached - depreciationScheduler.js stops posting on
+  // its own once monthsDepreciated hits usefulLifeMonths, no user action
+  // needed to reach this state (unlike "disposed").
+  fully_depreciated
+}
+
+// A registered fixed asset and its straight-line depreciation schedule.
+// Structurally the non-cash sibling of RecurringExpenseTemplate (same
+// monthly cron + manual "run now" + dedupe-by-period idiom - see
+// fixedAssetDepreciationScheduler.js/fixedAsset.service.js#runFixedAssetDepreciationNow),
+// except each posting debits an expense account and credits accumulated
+// depreciation instead of crediting cash. No running "accumulated
+// depreciation" balance is stored beyond `monthsDepreciated` (the dedupe/cap
+// counter) - the actual peso amount is always derived from the ledger
+// (depreciationAccount's balance), same "derive, don't cache" rule as every
+// other balance in this schema.
+model FixedAsset {
+  id                    String           @id @default(cuid())
+  createdById           String           @map("created_by")
+  name                  String
+  description           String?          @db.Text
+  acquisitionDate       DateTime         @map("acquisition_date")
+  acquisitionCost       Decimal          @db.Decimal(14, 2)
+  salvageValue          Decimal          @default(0) @map("salvage_value") @db.Decimal(14, 2)
+  usefulLifeMonths      Int              @map("useful_life_months")
+  assetAccountId        String           @map("asset_account_id")
+  depreciationAccountId String           @map("depreciation_account_id")
+  expenseAccountId      String           @map("expense_account_id")
+  costCenterId          String?          @map("cost_center_id")
+  status                FixedAssetStatus @default(active)
+  monthsDepreciated     Int              @default(0) @map("months_depreciated")
+  // "YYYY-MM" of the last calendar month this asset successfully posted
+  // depreciation for - same cron dedupe key as RecurringExpenseTemplate.
+  lastDepreciatedPeriod String?          @map("last_depreciated_period")
+  lastRunStatus         String?          @map("last_run_status")
+  lastRunError          String?          @map("last_run_error")
+  disposedAt            DateTime?        @map("disposed_at")
+  disposedById          String?          @map("disposed_by")
+  disposalReason        String?          @map("disposal_reason") @db.Text
+  disposalAmount        Decimal?         @map("disposal_amount") @db.Decimal(14, 2)
+  disposalGainLoss      Decimal?         @map("disposal_gain_loss") @db.Decimal(14, 2)
+  createdAt             DateTime         @default(now()) @map("created_at")
+  updatedAt             DateTime         @updatedAt @map("updated_at")
+
+  createdBy           User         @relation("FixedAssetCreatedBy", fields: [createdById], references: [id])
+  assetAccount        ChartAccount @relation("FixedAssetAssetAccount", fields: [assetAccountId], references: [id])
+  depreciationAccount ChartAccount @relation("FixedAssetDepreciationAccount", fields: [depreciationAccountId], references: [id])
+  expenseAccount      ChartAccount @relation("FixedAssetExpenseAccount", fields: [expenseAccountId], references: [id])
+  costCenter          CostCenter?  @relation(fields: [costCenterId], references: [id])
+
+  @@index([createdById, status])
+  @@map("fixed_assets")
 }
 
 model WithholdingConcept {
@@ -2575,7 +2726,17 @@ enum JournalSourceType {
   cash_transfer
   cash_adjustment
   recurring_expense
+  // Fase 8 - RecurringJournalTemplate's monthly posting (see model above) -
+  // a generic multi-line recurring entry, unlike recurring_expense's fixed
+  // expense/cash shape.
+  recurring_journal
   opening_balance
+  // Fase 7 - fixed assets (see FixedAsset above). fixed_asset_disposal books
+  // a "baja de activo": removes the asset's cost and accumulated
+  // depreciation, deposits any sale proceeds, and posts the gain/loss vs.
+  // net book value - see fixedAsset.service.js#disposeFixedAsset.
+  fixed_asset_depreciation
+  fixed_asset_disposal
 }
 
 enum FiscalYearClosureStatus {

@@ -15,7 +15,7 @@ const Footer = () => {
     const { t } = useI18n();
 
     return (
-        <footer className="border-t border-white/5 bg-[#050505] pt-16 pb-8 text-[#A9B3B8]">
+        <footer className="border-t border-white/5 bg-[#050505] pt-16 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] text-[#A9B3B8] md:pb-8">
             <div className="container mx-auto max-w-[1440px] px-6">
                 <div className="flex flex-col items-start gap-12 md:flex-row md:items-center md:justify-between">
                     <div>
@@ -71,7 +71,7 @@ const Footer = () => {
                     <p className="text-sm text-[#8B969C]">
                         © {new Date().getFullYear()} iTcycle. {t("landing.footer.copyright")}
                     </p>
-                    <div className="flex gap-8 text-sm">
+                    <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm md:justify-end md:gap-8">
                         <Link to="/#home" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.nav.home")}
                         </Link>

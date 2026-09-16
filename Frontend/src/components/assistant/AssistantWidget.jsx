@@ -21,6 +21,32 @@ import { useTeam } from "../../context/TeamContext";
 const CONVERSATION_STORAGE_KEY = "ohnix.assistant.conversationId";
 const SUGGESTION_KEYS = ["suggestion_1", "suggestion_2", "suggestion_3", "suggestion_4"];
 
+const FAB_SIZE = 48;
+const EDGE_MARGIN = 8;
+const DRAG_THRESHOLD = 6;
+const POSITION_STORAGE_KEY = "ohnix.assistant.fabPosition";
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const loadStoredPosition = () => {
+    try {
+        const raw = JSON.parse(window.localStorage.getItem(POSITION_STORAGE_KEY) || "null");
+        if (!raw || typeof raw.left !== "number" || typeof raw.top !== "number") return null;
+        return raw;
+    } catch {
+        return null;
+    }
+};
+
+const savePosition = (pos) => {
+    try {
+        window.localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(pos));
+    } catch {
+        // localStorage unavailable - the drag just doesn't persist across
+        // reloads, not a functional failure.
+    }
+};
+
 // Mirrors DashboardLayout's own currentPage derivation (first path segment,
 // "admin-<sub>" for /admin/*) - kept as its own tiny copy rather than a
 // shared hook since this is the only other consumer and the two have no
@@ -91,12 +117,38 @@ const AssistantWidget = () => {
     const [sending, setSending] = useState(false);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [feedbackGiven, setFeedbackGiven] = useState({});
+    const [pos, setPos] = useState(() => loadStoredPosition());
+    const [dragging, setDragging] = useState(false);
     const listEndRef = useRef(null);
     const panelRef = useRef(null);
+    const wrapRef = useRef(null);
+    const dragInfo = useRef(null);
+    const posRef = useRef(pos);
+    const suppressClickRef = useRef(false);
 
     useEffect(() => {
         listEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, sending]);
+
+    // A dragged position is only meaningful for the viewport it was dragged
+    // in - re-clamp on resize so shrinking the window (or rotating a
+    // tablet) can't leave the FAB stuck partly or fully off-screen. Same
+    // pattern as DiscoveryWidget.jsx/InventoryTourFab.jsx.
+    useEffect(() => {
+        if (!pos) return;
+        const handleResize = () => {
+            setPos((prev) => {
+                if (!prev) return prev;
+                const next = {
+                    left: clamp(prev.left, EDGE_MARGIN, window.innerWidth - FAB_SIZE - EDGE_MARGIN),
+                    top: clamp(prev.top, EDGE_MARGIN, window.innerHeight - FAB_SIZE - EDGE_MARGIN),
+                };
+                return next.left === prev.left && next.top === prev.top ? prev : next;
+            });
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, [pos]);
 
     // Floating-card widgets (unlike a full Drawer with its own dimming mask)
     // are expected to dismiss on an outside click - there's nothing else on
@@ -185,13 +237,89 @@ const AssistantWidget = () => {
         window.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
     };
 
+    const draggable = !isMobile;
+
+    // Draggable + idle-fade + panel-follows-the-FAB, same pattern (and same
+    // reasoning) as DiscoveryWidget.jsx/InventoryTourFab.jsx: a chat bubble
+    // fixed in one corner for an entire session eventually sits on top of
+    // something the user needs to click. Once dragged, `pos` (persisted)
+    // takes over from the tour-aware fabPositionClass entirely - the user
+    // has taken manual control of where it lives.
+    const handlePointerDown = (e) => {
+        if (!draggable || (e.button !== undefined && e.button !== 0)) return;
+        const rect = wrapRef.current.getBoundingClientRect();
+        dragInfo.current = { startX: e.clientX, startY: e.clientY, startLeft: rect.left, startTop: rect.top, moved: false };
+        e.currentTarget.setPointerCapture(e.pointerId);
+    };
+
+    const handlePointerMove = (e) => {
+        if (!dragInfo.current) return;
+        const dx = e.clientX - dragInfo.current.startX;
+        const dy = e.clientY - dragInfo.current.startY;
+        if (!dragInfo.current.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        dragInfo.current.moved = true;
+        if (!dragging) setDragging(true);
+        const next = {
+            left: clamp(dragInfo.current.startLeft + dx, EDGE_MARGIN, window.innerWidth - FAB_SIZE - EDGE_MARGIN),
+            top: clamp(dragInfo.current.startTop + dy, EDGE_MARGIN, window.innerHeight - FAB_SIZE - EDGE_MARGIN),
+        };
+        posRef.current = next;
+        setPos(next);
+    };
+
+    const handlePointerUp = () => {
+        const wasDrag = Boolean(dragInfo.current?.moved);
+        dragInfo.current = null;
+        setDragging(false);
+        if (wasDrag) {
+            suppressClickRef.current = true;
+            if (posRef.current) savePosition(posRef.current);
+        }
+    };
+
+    const handleFabClick = () => {
+        if (suppressClickRef.current) {
+            suppressClickRef.current = false;
+            return;
+        }
+        setOpen(true);
+    };
+
+    // Once dragged, the panel opens anchored to wherever the FAB now sits
+    // instead of always the bottom-right corner - preferring upward (its
+    // original corner's direction) but flipping below when there isn't
+    // enough room above, clamped so it can never spill past the viewport.
+    let panelStyle = null;
+    if (pos && !isMobile) {
+        const panelWidth = Math.min(400, window.innerWidth - EDGE_MARGIN * 2);
+        const panelHeight = Math.min(640, window.innerHeight - EDGE_MARGIN * 2);
+        let panelTop = pos.top - panelHeight - 12;
+        if (panelTop < EDGE_MARGIN) panelTop = pos.top + FAB_SIZE + 12;
+        panelStyle = {
+            left: clamp(pos.left, EDGE_MARGIN, window.innerWidth - panelWidth - EDGE_MARGIN),
+            top: clamp(panelTop, EDGE_MARGIN, window.innerHeight - panelHeight - EDGE_MARGIN),
+            width: panelWidth,
+            height: panelHeight,
+        };
+    }
+
     return (
         <>
             {!open && (
-                <div className={`no-print fixed ${fabPositionClass} right-6 z-[1050]`}>
+                <div
+                    ref={wrapRef}
+                    style={pos ? { left: pos.left, top: pos.top } : undefined}
+                    className={
+                        `no-print fixed z-[1050] assistant-fab-wrap${dragging ? " is-dragging" : ""}${draggable ? " is-draggable" : ""}` +
+                        (pos ? "" : ` ${fabPositionClass} right-6`)
+                    }
+                >
                     <button
                         type="button"
-                        onClick={() => setOpen(true)}
+                        onClick={handleFabClick}
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
                         aria-label={t("assistant.fab_label")}
                         title={t("assistant.fab_label")}
                         className="assistant-fab flex items-center justify-center h-12 w-12 rounded-full cursor-pointer transition-transform duration-150 hover:-translate-y-0.5"
@@ -200,6 +328,7 @@ const AssistantWidget = () => {
                             border: "1px solid rgba(41,216,213,0.4)",
                             boxShadow: "0 8px 28px rgba(41,216,213,0.35)",
                             backdropFilter: "blur(6px)",
+                            touchAction: draggable ? "none" : undefined,
                         }}
                     >
                         <AssistantSparkleIcon size={24} />
@@ -210,14 +339,14 @@ const AssistantWidget = () => {
             {open && (
                 <div
                     ref={panelRef}
-                    className={`assistant-panel-in no-print fixed z-[1051] flex flex-col overflow-hidden ${isMobile ? "inset-0" : `${fabPositionClass} right-6 rounded-3xl`}`}
+                    className={`assistant-panel-in no-print fixed z-[1051] flex flex-col overflow-hidden ${
+                        isMobile ? "inset-0" : panelStyle ? "rounded-3xl" : `${fabPositionClass} right-6 rounded-3xl`
+                    }`}
                     style={
                         isMobile
                             ? { background: "var(--ohnix-surface-card)" }
                             : {
-                                  width: 400,
-                                  maxWidth: "calc(100vw - 48px)",
-                                  height: "min(640px, calc(100vh - 140px))",
+                                  ...(panelStyle || { width: 400, maxWidth: "calc(100vw - 48px)", height: "min(640px, calc(100vh - 140px))" }),
                                   background: "linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft))",
                                   border: "1px solid var(--ohnix-line-3)",
                                   boxShadow: "0 24px 70px rgba(0,0,0,0.35)",
@@ -417,6 +546,16 @@ const AssistantWidget = () => {
                     0%, 100% { box-shadow: 0 8px 28px rgba(41,216,213,0.35), 0 0 0 0 rgba(41,216,213,0.35); }
                     50% { box-shadow: 0 8px 28px rgba(41,216,213,0.35), 0 0 0 8px rgba(41,216,213,0); }
                 }
+                .assistant-fab-wrap.is-draggable .assistant-fab { cursor: grab; }
+                .assistant-fab-wrap.is-draggable.is-dragging .assistant-fab { cursor: grabbing; }
+                .assistant-fab-wrap.is-draggable {
+                    opacity: 0.55;
+                    transition: opacity 220ms ease;
+                }
+                .assistant-fab-wrap.is-draggable:hover,
+                .assistant-fab-wrap.is-draggable.is-dragging {
+                    opacity: 1;
+                }
                 .assistant-suggestion-chip:hover {
                     border-color: #29D8D5 !important;
                 }
@@ -451,6 +590,7 @@ const AssistantWidget = () => {
                     .assistant-fab, .assistant-message-in, .assistant-typing-dot, .assistant-panel-in {
                         animation: none;
                     }
+                    .assistant-fab-wrap.is-draggable { transition: none; }
                 }
             `}</style>
         </>

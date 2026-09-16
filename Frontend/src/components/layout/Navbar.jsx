@@ -228,7 +228,7 @@ const Navbar = () => {
                     </div>
                 </div>
 
-                <div className="md:hidden">
+                <div className="lg:hidden">
                     <button
                         type="button"
                         onClick={showDrawer}

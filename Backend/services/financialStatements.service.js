@@ -373,3 +373,89 @@ export const getTrialBalance = async ({ accountId, startDate, endDate, costCente
         };
     });
 };
+
+// "Caja" (1105) and "Bancos" (1110) - chartOfAccounts.service.js's
+// DEFAULT_ACCOUNTS - are what count as "cash and cash equivalents" for this
+// report. Grouped together (not per-account) on purpose: a cash_transfer
+// between them is one leg debiting one and crediting the other for the same
+// amount, so summing both accounts together makes that transfer cancel out
+// to zero automatically, exactly like it should (moving cash from the caja
+// to the bank isn't an inflow or outflow of the business, just a relocation).
+const CASH_EQUIVALENT_CODES = ["1105", "1110"];
+
+// Direct method: every cash-touching line grouped by what caused it
+// (JournalEntry.sourceType), bucketed into the standard 3 activity
+// categories. `adjustments` is a 4th bucket for entries that aren't a real
+// business activity for the period (an opening balance being entered, a
+// reconciliation correction) - keeping them out of "operating" avoids
+// making a one-time correction look like recurring business cash flow.
+// Investing/financing are structurally ready but will read empty today:
+// nothing in chartOfAccounts/accountingPosting yet posts a fixed-asset
+// purchase or a loan/capital contribution to a dedicated account - the day
+// that exists, whatever its sourceType is falls into "operating" (the
+// default below) until this map is extended, same safety net as
+// getIncomeStatement's "expenses only reflect what's been entered" note.
+const CASH_FLOW_ADJUSTMENT_SOURCE_TYPES = new Set(["opening_balance", "cash_adjustment", "inventory_adjustment", "transfer_discrepancy"]);
+const cashFlowCategory = (sourceType) => (CASH_FLOW_ADJUSTMENT_SOURCE_TYPES.has(sourceType) ? "adjustments" : "operating");
+
+const emptyCashFlowCategories = () => ({
+    operating: { total: 0, lines: [] },
+    investing: { total: 0, lines: [] },
+    financing: { total: 0, lines: [] },
+    adjustments: { total: 0, lines: [] },
+});
+
+export const getCashFlowStatement = async ({ accountId, startDate, endDate }) => {
+    const cashAccounts = await prisma.chartAccount.findMany({ where: { createdById: accountId, code: { in: CASH_EQUIVALENT_CODES } }, select: { id: true } });
+    const cashAccountIds = cashAccounts.map((a) => a.id);
+    if (cashAccountIds.length === 0) {
+        return { start_date: startDate ?? null, end_date: endDate ?? null, beginning_balance: 0, ending_balance: 0, net_change: 0, categories: emptyCashFlowCategories() };
+    }
+
+    const priorAgg = startDate
+        ? await prisma.journalEntryLine.aggregate({
+              where: { chartAccountId: { in: cashAccountIds }, journalEntry: { period: { createdById: accountId }, entryDate: { lt: startDate } } },
+              _sum: { debit: true, credit: true },
+          })
+        : { _sum: { debit: 0, credit: 0 } };
+    const beginningBalance = round2(Number(priorAgg._sum.debit || 0) - Number(priorAgg._sum.credit || 0));
+
+    const rangeLines = await prisma.journalEntryLine.findMany({
+        where: {
+            chartAccountId: { in: cashAccountIds },
+            journalEntry: {
+                period: { createdById: accountId },
+                ...(startDate || endDate ? { entryDate: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } } : {}),
+            },
+        },
+        select: { debit: true, credit: true, journalEntry: { select: { sourceType: true } } },
+    });
+
+    const bySourceType = new Map();
+    for (const line of rangeLines) {
+        const sourceType = line.journalEntry.sourceType;
+        const amount = Number(line.debit) - Number(line.credit);
+        bySourceType.set(sourceType, (bySourceType.get(sourceType) || 0) + amount);
+    }
+
+    const categories = emptyCashFlowCategories();
+    for (const [sourceType, amount] of bySourceType) {
+        if (Math.round(amount * 100) === 0) continue;
+        const bucket = categories[cashFlowCategory(sourceType)];
+        bucket.lines.push({ source_type: sourceType, amount: round2(amount) });
+        bucket.total = round2(bucket.total + amount);
+    }
+    Object.values(categories).forEach((bucket) => bucket.lines.sort((a, b) => a.source_type.localeCompare(b.source_type)));
+
+    const netChange = round2(Object.values(categories).reduce((sum, bucket) => sum + bucket.total, 0));
+    const endingBalance = round2(beginningBalance + netChange);
+
+    return {
+        start_date: startDate ?? null,
+        end_date: endDate ?? null,
+        beginning_balance: beginningBalance,
+        ending_balance: endingBalance,
+        net_change: netChange,
+        categories,
+    };
+};

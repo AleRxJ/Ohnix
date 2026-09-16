@@ -97,6 +97,50 @@ export const ensureCurrentYearEarningsAccount = async (tx, accountId) => {
     return tx.chartAccount.create({ data: { ...CURRENT_YEAR_EARNINGS_ACCOUNT, createdById: accountId } });
 };
 
+// Fase 7 - a starting point for fixedAsset.service.js#createFixedAsset, not
+// a hard requirement: registering an asset can point at any active asset/
+// expense account instead (e.g. a company that wants "Flota y equipo de
+// transporte" split from "Equipo de oficina"). Seeded together, one call,
+// since a fixed asset always needs all three at once.
+const FIXED_ASSET_DEFAULT_ACCOUNTS = {
+    asset: { code: "1524", name: "Equipo de oficina", accountType: "asset" },
+    depreciation: { code: "1592", name: "Depreciación acumulada", accountType: "asset" },
+    expense: { code: "5160", name: "Depreciación", accountType: "expense" },
+};
+
+export const ensureDefaultFixedAssetAccounts = async (tx, accountId) => {
+    await ensureDefaultChartOfAccounts(tx, accountId);
+    const codes = Object.values(FIXED_ASSET_DEFAULT_ACCOUNTS).map((a) => a.code);
+    const existing = await tx.chartAccount.findMany({ where: { createdById: accountId, code: { in: codes } } });
+    const byCode = new Map(existing.map((a) => [a.code, a]));
+    const result = {};
+    for (const [key, definition] of Object.entries(FIXED_ASSET_DEFAULT_ACCOUNTS)) {
+        result[key] = byCode.get(definition.code) || await tx.chartAccount.create({ data: { ...definition, createdById: accountId } });
+    }
+    return result;
+};
+
+// Fase 7 - gain/loss vs. net book value when a fixed asset is disposed (see
+// fixedAsset.service.js#disposeFixedAsset). Two separate accounts (not one)
+// because a single ChartAccount can't be both revenue and expense typed -
+// only whichever side actually applies to a given disposal gets posted to.
+const FIXED_ASSET_DISPOSAL_ACCOUNTS = {
+    gain: { code: "4245", name: "Utilidad en venta de activos fijos", accountType: "revenue" },
+    loss: { code: "530595", name: "Pérdida en venta de activos fijos", accountType: "expense" },
+};
+
+export const ensureFixedAssetDisposalAccounts = async (tx, accountId) => {
+    await ensureDefaultChartOfAccounts(tx, accountId);
+    const codes = Object.values(FIXED_ASSET_DISPOSAL_ACCOUNTS).map((a) => a.code);
+    const existing = await tx.chartAccount.findMany({ where: { createdById: accountId, code: { in: codes } } });
+    const byCode = new Map(existing.map((a) => [a.code, a]));
+    const result = {};
+    for (const [key, definition] of Object.entries(FIXED_ASSET_DISPOSAL_ACCOUNTS)) {
+        result[key] = byCode.get(definition.code) || await tx.chartAccount.create({ data: { ...definition, createdById: accountId } });
+    }
+    return result;
+};
+
 // Manual additions to the default 9-account seed - e.g. a company that wants
 // its own expense accounts (never auto-posted to, see accountingPosting.
 // service.js's scope note) or a finer-grained split of an existing class.

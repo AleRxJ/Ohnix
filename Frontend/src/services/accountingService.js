@@ -53,6 +53,55 @@ export const accountingService = {
         return response.data;
     },
 
+    async listFixedAssets({ includeInactive = false } = {}) {
+        const response = await api.get("/accounting/fixed-assets", { params: { include_inactive: includeInactive } });
+        return response.data;
+    },
+
+    async createFixedAsset(payload) {
+        const response = await api.post("/accounting/fixed-assets", payload);
+        return response.data;
+    },
+
+    async updateFixedAsset(id, payload) {
+        const response = await api.patch(`/accounting/fixed-assets/${id}`, payload);
+        return response.data;
+    },
+
+    async disposeFixedAsset(id, { reason, disposalAmount, cashAccountId }) {
+        const response = await api.post(`/accounting/fixed-assets/${id}/dispose`, {
+            reason,
+            disposal_amount: disposalAmount,
+            cash_account_id: cashAccountId,
+        });
+        return response.data;
+    },
+
+    async runFixedAssetDepreciationNow(id) {
+        const response = await api.post(`/accounting/fixed-assets/${id}/run`);
+        return response.data;
+    },
+
+    async listRecurringJournalTemplates({ includeInactive = false } = {}) {
+        const response = await api.get("/accounting/recurring-journals", { params: { include_inactive: includeInactive } });
+        return response.data;
+    },
+
+    async createRecurringJournalTemplate(payload) {
+        const response = await api.post("/accounting/recurring-journals", payload);
+        return response.data;
+    },
+
+    async updateRecurringJournalTemplate(id, payload) {
+        const response = await api.patch(`/accounting/recurring-journals/${id}`, payload);
+        return response.data;
+    },
+
+    async runRecurringJournalTemplateNow(id) {
+        const response = await api.post(`/accounting/recurring-journals/${id}/run`);
+        return response.data;
+    },
+
     async getBudgetReport({ year, month, costCenterId } = {}) {
         const response = await api.get("/accounting/budgets", { params: { year, month, ...(costCenterId ? { cost_center_id: costCenterId } : {}) } });
         return response.data;
@@ -282,6 +331,26 @@ export const accountingService = {
         return response.data;
     },
 
+    async listFinancialStatementNotes(year) {
+        const response = await api.get("/accounting/financial-statement-notes", { params: { year } });
+        return response.data;
+    },
+
+    async createFinancialStatementNote({ year, title, content }) {
+        const response = await api.post("/accounting/financial-statement-notes", { year, title, content });
+        return response.data;
+    },
+
+    async updateFinancialStatementNote(id, { title, content }) {
+        const response = await api.put(`/accounting/financial-statement-notes/${id}`, { title, content });
+        return response.data;
+    },
+
+    async deleteFinancialStatementNote(id) {
+        const response = await api.delete(`/accounting/financial-statement-notes/${id}`);
+        return response.data;
+    },
+
     async getIncomeStatement({ from, to, costCenterId } = {}) {
         const response = await api.get("/accounting/reports/income-statement", {
             params: { ...(from ? { from } : {}), ...(to ? { to } : {}), ...(costCenterId ? { cost_center_id: costCenterId } : {}) },
@@ -291,6 +360,13 @@ export const accountingService = {
 
     async getIncomeStatementComparison({ from, to } = {}) {
         const response = await api.get("/accounting/reports/income-statement/comparison", {
+            params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+        });
+        return response.data;
+    },
+
+    async getCashFlowStatement({ from, to } = {}) {
+        const response = await api.get("/accounting/reports/cash-flow", {
             params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
         });
         return response.data;

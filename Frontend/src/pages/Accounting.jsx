@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Tabs, Table, Card, DatePicker, Select, Button, Popconfirm, Tag, Row, Col, Alert, Tooltip, Drawer, Empty, Collapse, Form, Switch, Input, InputNumber, Modal, Progress, Upload } from "antd";
-import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined, PartitionOutlined, UploadOutlined, DownloadOutlined } from "@ant-design/icons";
+import { BookOutlined, CalendarOutlined, InfoCircleOutlined, WarningOutlined, EyeOutlined, ArrowRightOutlined, ClockCircleOutlined, DownOutlined, PlusOutlined, StopOutlined, CheckCircleOutlined, DashboardOutlined, ApartmentOutlined, UnorderedListOutlined, FileTextOutlined, TeamOutlined, CalculatorOutlined, LockOutlined, BarChartOutlined, SafetyCertificateOutlined, BulbOutlined, QuestionCircleOutlined, PartitionOutlined, UploadOutlined, DownloadOutlined, ToolOutlined, RetweetOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
 import * as XLSX from "xlsx";
@@ -136,6 +136,49 @@ const ACCOUNTING_ERROR_CODES = {
     fiscal_year_not_closed: "accounting.error_fiscal_year_not_closed",
     fiscal_year_reopen_reason_required: "accounting.error_fiscal_year_reopen_reason_required",
     fiscal_year_reopen_duration_invalid: "accounting.error_fiscal_year_reopen_duration_invalid",
+    financial_statement_note_invalid_year: "accounting.error_note_invalid_year",
+    financial_statement_note_title_required: "accounting.error_note_title_required",
+    financial_statement_note_title_too_long: "accounting.error_note_title_too_long",
+    financial_statement_note_content_required: "accounting.error_note_content_required",
+    financial_statement_note_content_too_long: "accounting.error_note_content_too_long",
+    financial_statement_note_not_found: "accounting.error_note_not_found",
+    fixed_asset_name_required: "accounting.error_fixed_asset_name_required",
+    fixed_asset_name_too_long: "accounting.error_fixed_asset_name_too_long",
+    fixed_asset_acquisition_date_invalid: "accounting.error_fixed_asset_acquisition_date_invalid",
+    fixed_asset_acquisition_cost_invalid: "accounting.error_fixed_asset_acquisition_cost_invalid",
+    fixed_asset_salvage_value_invalid: "accounting.error_fixed_asset_salvage_value_invalid",
+    fixed_asset_useful_life_invalid: "accounting.error_fixed_asset_useful_life_invalid",
+    fixed_asset_asset_account_unavailable: "accounting.error_fixed_asset_asset_account_unavailable",
+    fixed_asset_depreciation_account_unavailable: "accounting.error_fixed_asset_depreciation_account_unavailable",
+    fixed_asset_accounts_must_differ: "accounting.error_fixed_asset_accounts_must_differ",
+    fixed_asset_expense_account_unavailable: "accounting.error_fixed_asset_expense_account_unavailable",
+    fixed_asset_cost_center_invalid: "accounting.error_fixed_asset_cost_center_invalid",
+    fixed_asset_not_found: "accounting.error_fixed_asset_not_found",
+    fixed_asset_not_active: "accounting.error_fixed_asset_not_active",
+    fixed_asset_schedule_locked: "accounting.error_fixed_asset_schedule_locked",
+    fixed_asset_disposal_reason_required: "accounting.error_fixed_asset_disposal_reason_required",
+    fixed_asset_not_depreciable: "accounting.error_fixed_asset_not_depreciable",
+    fixed_asset_fully_depreciated: "accounting.error_fixed_asset_fully_depreciated",
+    fixed_asset_already_depreciated: "accounting.error_fixed_asset_already_depreciated",
+    fixed_asset_depreciation_failed: "accounting.fixed_asset_run_failed",
+    fixed_asset_disposal_amount_invalid: "accounting.error_fixed_asset_disposal_amount_invalid",
+    fixed_asset_disposal_cash_account_required: "accounting.error_fixed_asset_disposal_cash_account_required",
+    fixed_asset_disposal_cash_account_unavailable: "accounting.error_fixed_asset_disposal_cash_account_unavailable",
+    recurring_journal_lines_required: "accounting.error_recurring_journal_lines_required",
+    recurring_journal_line_invalid: "accounting.error_recurring_journal_line_invalid",
+    recurring_journal_line_side_invalid: "accounting.error_recurring_journal_line_side_invalid",
+    recurring_journal_third_party_type_invalid: "accounting.error_recurring_journal_third_party_type_invalid",
+    recurring_journal_third_party_name_required: "accounting.error_recurring_journal_third_party_name_required",
+    recurring_journal_accounts_invalid: "accounting.error_recurring_journal_accounts_invalid",
+    recurring_journal_cost_centers_invalid: "accounting.error_recurring_journal_cost_centers_invalid",
+    recurring_journal_unbalanced: "accounting.error_recurring_journal_unbalanced",
+    recurring_journal_description_required: "accounting.error_recurring_journal_description_required",
+    recurring_journal_description_too_long: "accounting.error_recurring_journal_description_too_long",
+    recurring_journal_day_invalid: "accounting.error_recurring_journal_day_invalid",
+    recurring_journal_not_found: "accounting.error_recurring_journal_not_found",
+    recurring_journal_inactive: "accounting.error_recurring_journal_inactive",
+    recurring_journal_already_generated: "accounting.error_recurring_journal_already_generated",
+    recurring_journal_generation_failed: "accounting.recurring_journal_run_failed",
 };
 
 const accountingErrorMessage = (error, t, fallbackKey = "accounting.failed") =>
@@ -249,15 +292,22 @@ const SOURCE_TYPE_LABEL_KEYS = {
     period_close: "accounting.source_period_close",
     period_reopen: "accounting.source_period_reopen",
     period_reclose: "accounting.source_period_reclose",
+    year_close: "accounting.source_year_close",
+    year_reopen: "accounting.source_year_reopen",
+    year_reclose: "accounting.source_year_reclose",
     inventory_adjustment: "accounting.source_inventory_adjustment",
     transfer_discrepancy: "accounting.source_transfer_discrepancy",
     manual_journal: "accounting.source_manual_journal",
     manual_journal_reversal: "accounting.source_manual_journal_reversal",
     manual_expense: "accounting.source_manual_expense",
     manual_income: "accounting.source_manual_income",
+    recurring_expense: "accounting.source_recurring_expense",
     cash_transfer: "accounting.source_cash_transfer",
     cash_adjustment: "accounting.source_cash_adjustment",
     opening_balance: "accounting.source_opening_balance",
+    fixed_asset_depreciation: "accounting.source_fixed_asset_depreciation",
+    fixed_asset_disposal: "accounting.source_fixed_asset_disposal",
+    recurring_journal: "accounting.source_recurring_journal",
 };
 
 // Automatic descriptions are persisted for auditability. Translate only
@@ -1012,6 +1062,395 @@ const RecurringExpensesTab = () => {
     </>;
 };
 
+const RecurringJournalsTab = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("accounting", "edit");
+    const [form] = Form.useForm();
+    const [templates, setTemplates] = useState([]);
+    const [accounts, setAccounts] = useState([]);
+    const [costCenters, setCostCenters] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [editing, setEditing] = useState(null);
+    const [open, setOpen] = useState(false);
+    const [runningId, setRunningId] = useState(null);
+    const watchedLines = Form.useWatch("lines", form) || [];
+    const totalDebit = watchedLines.reduce((sum, line) => sum + Number(line?.debit || 0), 0);
+    const totalCredit = watchedLines.reduce((sum, line) => sum + Number(line?.credit || 0), 0);
+    const balanced = Math.round(totalDebit * 100) === Math.round(totalCredit * 100) && totalDebit > 0;
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const [templateResponse, chartResponse, costCenterResponse] = await Promise.all([
+                accountingService.listRecurringJournalTemplates({ includeInactive: true }),
+                accountingService.listChartOfAccounts(),
+                accountingService.listCostCenters(),
+            ]);
+            setTemplates(templateResponse?.data || []);
+            setAccounts((chartResponse?.data || []).filter((a) => a.is_active));
+            setCostCenters((costCenterResponse?.data || []).filter((c) => c.is_active));
+        } catch { toast.error(t("accounting.failed")); }
+        finally { setLoading(false); }
+    };
+    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const showEditor = (template = null) => {
+        setEditing(template);
+        form.setFieldsValue({
+            description: template?.description || "",
+            day_of_month: template?.day_of_month ?? 1,
+            is_active: template?.is_active ?? true,
+            lines: template?.lines?.map((line) => ({
+                chart_account_id: line.chart_account._id,
+                cost_center_id: line.cost_center?._id,
+                debit: line.debit || undefined,
+                credit: line.credit || undefined,
+                third_party_type: line.third_party?.type,
+                third_party_name: line.third_party?.name,
+                third_party_document: line.third_party?.document,
+            })) || [{}, {}],
+        });
+        setOpen(true);
+    };
+    const save = async () => {
+        const values = await form.validateFields();
+        setSaving(true);
+        try {
+            const payload = {
+                description: values.description,
+                day_of_month: values.day_of_month,
+                is_active: values.is_active,
+                lines: values.lines.map((line) => ({
+                    chart_account_id: line.chart_account_id,
+                    cost_center_id: line.cost_center_id,
+                    debit: line.debit || 0,
+                    credit: line.credit || 0,
+                    third_party: line.third_party_type ? { type: line.third_party_type, name: line.third_party_name, document: line.third_party_document } : undefined,
+                })),
+            };
+            if (editing) await accountingService.updateRecurringJournalTemplate(editing._id, payload);
+            else await accountingService.createRecurringJournalTemplate(payload);
+            toast.success(t(editing ? "accounting.recurring_journal_updated" : "accounting.recurring_journal_created"));
+            setOpen(false);
+            form.resetFields();
+            await load();
+        } catch (error) {
+            if (!error?.errorFields) toast.error(accountingErrorMessage(error, t));
+        } finally { setSaving(false); }
+    };
+    const runNow = async (template) => {
+        setRunningId(template._id);
+        try {
+            await accountingService.runRecurringJournalTemplateNow(template._id);
+            toast.success(t("accounting.recurring_journal_run_success"));
+            await load();
+        } catch (error) {
+            toast.error(accountingErrorMessage(error, t));
+        } finally { setRunningId(null); }
+    };
+
+    return <>
+        <AccountingSectionGuide sectionKey="recurring-journals" title={t("accounting.guide_recurring_journal_title")} summary={t("accounting.tab_recurring_journals_caption")} steps={[t("accounting.guide_recurring_journal_step_1"), t("accounting.guide_recurring_journal_step_2")]} result={t("accounting.guide_recurring_journal_result")} concepts={[{ label: t("accounting.recurring_expense_day_of_month"), help: t("accounting.recurring_expense_day_of_month_help") }]} />
+        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.recurring_journal_new")}</Button>}</div>
+        <Table
+            className="module-dark-table"
+            loading={loading}
+            rowKey="_id"
+            dataSource={templates}
+            pagination={{ pageSize: 15 }}
+            scroll={{ x: "max-content" }}
+            locale={{ emptyText: <EmptyState compact title={t("accounting.empty_recurring_journals_title")} subtitle={t("accounting.empty_recurring_journals_help")} action={canEdit ? <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.recurring_journal_new")}</Button> : null} /> }}
+            columns={[
+                { title: t("accounting.col_description"), dataIndex: "description" },
+                { title: t("accounting.col_amount"), render: (_, row) => formatCurrency(row.lines.reduce((sum, l) => sum + Number(l.debit || 0), 0)) },
+                { title: t("accounting.recurring_expense_day_of_month"), dataIndex: "day_of_month", width: 90, align: "center" },
+                {
+                    title: t("accounting.col_status"),
+                    render: (_, row) => (
+                        <div className="flex flex-col gap-1">
+                            <Tag color={row.is_active ? "green" : "default"}>{t(row.is_active ? "common.active" : "common.inactive")}</Tag>
+                            {row.last_run_status === "failed" && (
+                                <Tooltip title={t(ACCOUNTING_ERROR_CODES[row.last_run_error] || "accounting.recurring_journal_run_failed")}>
+                                    <Tag color="red" icon={<WarningOutlined />}>{t("accounting.recurring_expense_last_run_failed")}</Tag>
+                                </Tooltip>
+                            )}
+                            {row.last_generated_period && row.last_run_status !== "failed" && (
+                                <span className="text-xs text-[var(--ohnix-text-dim)]">{t("accounting.recurring_expense_last_generated", { period: row.last_generated_period })}</span>
+                            )}
+                        </div>
+                    ),
+                },
+                {
+                    title: t("common.actions"),
+                    width: 220,
+                    render: (_, template) => (
+                        <div className="flex gap-2">
+                            {canEdit && (
+                                <Button size="small" loading={runningId === template._id} disabled={!template.is_active} onClick={() => runNow(template)}>
+                                    {t("accounting.recurring_expense_run_now")}
+                                </Button>
+                            )}
+                            {canEdit && <Button size="small" onClick={() => showEditor(template)}>{t("common.edit")}</Button>}
+                        </div>
+                    ),
+                },
+            ]}
+        />
+        <Modal className="accounting-modal" title={editing ? t("accounting.recurring_journal_edit") : t("accounting.recurring_journal_new")} open={open} onCancel={() => setOpen(false)} onOk={save} okButtonProps={{ disabled: !balanced }} confirmLoading={saving} width={980} destroyOnHidden>
+            <Alert className="dark-alert dark-alert-teal mb-4" showIcon type="info" message={t("accounting.recurring_journal_form_help")} />
+            <Form form={form} layout="vertical">
+                <Row gutter={16}>
+                    <Col xs={24} md={16}><Form.Item name="description" label={t("accounting.col_description")} rules={[{ required: true, max: 160 }]}><Input /></Form.Item></Col>
+                    <Col xs={24} md={8}><Form.Item name="day_of_month" label={t("accounting.recurring_expense_day_of_month")} extra={t("accounting.recurring_expense_day_of_month_help")} rules={[{ required: true, type: "number", min: 1, max: 28 }]}><InputNumber min={1} max={28} className="w-full" /></Form.Item></Col>
+                </Row>
+                <Form.List name="lines">
+                    {(fields, { add, remove }) => (
+                        <div className="space-y-3">
+                            {fields.map(({ key, name }) => (
+                                <div key={key} className="border-b border-[var(--ohnix-line-3)] pb-2">
+                                    <Row gutter={8} align="middle">
+                                        <Col xs={24} md={9}><Form.Item name={[name, "chart_account_id"]} rules={[{ required: true }]}><Select showSearch optionFilterProp="label" placeholder={t("accounting.lines_col_account")} options={accounts.map((account) => ({ value: account._id, label: `${account.code} · ${account.name}` }))} /></Form.Item></Col>
+                                        <Col xs={10} md={5}><Form.Item name={[name, "debit"]}><InputNumber min={0} precision={2} className="w-full" placeholder={t("accounting.lines_col_debit")} /></Form.Item></Col>
+                                        <Col xs={10} md={5}><Form.Item name={[name, "credit"]}><InputNumber min={0} precision={2} className="w-full" placeholder={t("accounting.lines_col_credit")} /></Form.Item></Col>
+                                        <Col xs={4} md={5}><Button danger disabled={fields.length <= 2} onClick={() => remove(name)}>{t("common.delete")}</Button></Col>
+                                    </Row>
+                                    <Row gutter={8}>
+                                        <Col xs={24} md={8}><Form.Item name={[name, "cost_center_id"]}><Select allowClear showSearch optionFilterProp="label" placeholder={t("accounting.cost_center_optional")} options={costCenters.map((center) => ({ value: center._id, label: `${center.code} · ${center.name}` }))} /></Form.Item></Col>
+                                        <Col xs={24} md={4}><Form.Item name={[name, "third_party_type"]}><Select allowClear placeholder={t("accounting.col_type")} options={[{ value: "customer", label: t("accounting.third_party_customer") }, { value: "supplier", label: t("accounting.third_party_supplier") }, { value: "other", label: t("accounting.third_party_other") }]} /></Form.Item></Col>
+                                        <Col xs={24} md={7}><Form.Item name={[name, "third_party_name"]}><Input placeholder={t("accounting.third_party_name")} /></Form.Item></Col>
+                                        <Col xs={24} md={5}><Form.Item name={[name, "third_party_document"]}><Input placeholder={t("accounting.third_party_document")} /></Form.Item></Col>
+                                    </Row>
+                                </div>
+                            ))}
+                            <Button onClick={() => add({})} icon={<PlusOutlined />}>{t("accounting.voucher_add_line")}</Button>
+                        </div>
+                    )}
+                </Form.List>
+                <Alert className="mt-4" type={balanced ? "success" : "warning"} showIcon message={`${t("accounting.lines_col_debit")}: ${formatCurrency(totalDebit)} · ${t("accounting.lines_col_credit")}: ${formatCurrency(totalCredit)}`} description={balanced ? t("accounting.voucher_balanced") : t("accounting.voucher_unbalanced")} />
+                {editing && <Form.Item name="is_active" label={t("accounting.col_status")} valuePropName="checked" className="mt-4"><Switch /></Form.Item>}
+            </Form>
+        </Modal>
+    </>;
+};
+
+const FixedAssetsTab = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("accounting", "edit");
+    const canAdmin = hasPermission("accounting", "admin");
+    const [form] = Form.useForm();
+    const [disposeForm] = Form.useForm();
+    const [assets, setAssets] = useState([]);
+    const [assetAccounts, setAssetAccounts] = useState([]);
+    const [expenseAccounts, setExpenseAccounts] = useState([]);
+    const [costCenters, setCostCenters] = useState([]);
+    const [cashAccounts, setCashAccounts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [editing, setEditing] = useState(null);
+    const [open, setOpen] = useState(false);
+    const [runningId, setRunningId] = useState(null);
+    const [disposeAsset, setDisposeAsset] = useState(null);
+    const [disposing, setDisposing] = useState(false);
+    const watchedDisposalAmount = Form.useWatch("disposal_amount", disposeForm);
+    const watchedCost = Form.useWatch("acquisition_cost", form);
+    const watchedSalvage = Form.useWatch("salvage_value", form);
+    const watchedLife = Form.useWatch("useful_life_months", form);
+    const monthlyPreview = Number(watchedCost) > 0 && Number(watchedLife) > 0
+        ? (Number(watchedCost) - Number(watchedSalvage || 0)) / Number(watchedLife)
+        : null;
+    const editingLocked = Boolean(editing) && editing.months_depreciated > 0;
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const [assetResponse, chartResponse, costCenterResponse, cashResponse] = await Promise.all([
+                accountingService.listFixedAssets({ includeInactive: true }),
+                accountingService.listChartOfAccounts(),
+                accountingService.listCostCenters(),
+                financeService.listCashAccounts(),
+            ]);
+            setAssets(assetResponse?.data || []);
+            setAssetAccounts((chartResponse?.data || []).filter((a) => a.account_type === "asset" && a.is_active));
+            setExpenseAccounts((chartResponse?.data || []).filter((a) => a.account_type === "expense" && a.is_active));
+            setCostCenters((costCenterResponse?.data || []).filter((c) => c.is_active));
+            setCashAccounts((cashResponse?.data || []).filter((a) => a.is_active));
+        } catch { toast.error(t("accounting.failed")); }
+        finally { setLoading(false); }
+    };
+    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const showEditor = (asset = null) => {
+        setEditing(asset);
+        form.setFieldsValue({
+            name: asset?.name || "",
+            description: asset?.description || "",
+            acquisition_date: asset ? dayjs(asset.acquisition_date) : dayjs(),
+            acquisition_cost: asset?.acquisition_cost ?? undefined,
+            salvage_value: asset?.salvage_value ?? 0,
+            useful_life_months: asset?.useful_life_months ?? 36,
+            asset_account_id: asset?.asset_account?._id,
+            depreciation_account_id: asset?.depreciation_account?._id,
+            expense_account_id: asset?.expense_account?._id,
+            cost_center_id: asset?.cost_center?._id,
+        });
+        setOpen(true);
+    };
+    const save = async () => {
+        const values = await form.validateFields();
+        setSaving(true);
+        try {
+            const payload = { ...values, acquisition_date: values.acquisition_date.toISOString() };
+            if (editing) await accountingService.updateFixedAsset(editing._id, payload);
+            else await accountingService.createFixedAsset(payload);
+            toast.success(t(editing ? "accounting.fixed_asset_updated" : "accounting.fixed_asset_created"));
+            setOpen(false);
+            form.resetFields();
+            await load();
+        } catch (error) {
+            if (!error?.errorFields) toast.error(accountingErrorMessage(error, t));
+        } finally { setSaving(false); }
+    };
+    const runNow = async (asset) => {
+        setRunningId(asset._id);
+        try {
+            await accountingService.runFixedAssetDepreciationNow(asset._id);
+            toast.success(t("accounting.fixed_asset_run_success"));
+            await load();
+        } catch (error) {
+            toast.error(accountingErrorMessage(error, t));
+        } finally { setRunningId(null); }
+    };
+    const openDispose = (asset) => {
+        setDisposeAsset(asset);
+        disposeForm.setFieldsValue({ reason: "", disposal_amount: 0, cash_account_id: undefined });
+    };
+    const confirmDispose = async () => {
+        const values = await disposeForm.validateFields();
+        setDisposing(true);
+        try {
+            await accountingService.disposeFixedAsset(disposeAsset._id, {
+                reason: values.reason,
+                disposalAmount: values.disposal_amount || 0,
+                cashAccountId: values.cash_account_id,
+            });
+            toast.success(t("accounting.fixed_asset_disposed"));
+            setDisposeAsset(null);
+            disposeForm.resetFields();
+            await load();
+        } catch (error) {
+            if (!error?.errorFields) toast.error(accountingErrorMessage(error, t));
+        } finally { setDisposing(false); }
+    };
+    return <>
+        <AccountingSectionGuide sectionKey="fixed-assets" title={t("accounting.guide_fixed_assets_title")} summary={t("accounting.tab_fixed_assets_caption")} steps={[t("accounting.guide_fixed_assets_step_1"), t("accounting.guide_fixed_assets_step_2"), t("accounting.guide_fixed_assets_step_3")]} result={t("accounting.guide_fixed_assets_result")} concepts={[{ label: t("accounting.fixed_asset_salvage_value"), help: t("accounting.guide_fixed_assets_salvage_help") }, { label: t("accounting.fixed_asset_useful_life"), help: t("accounting.guide_fixed_assets_life_help") }]} />
+        <div className="flex justify-end mb-4">{canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.fixed_asset_new")}</Button>}</div>
+        <Table
+            className="module-dark-table"
+            loading={loading}
+            rowKey="_id"
+            dataSource={assets}
+            pagination={{ pageSize: 15 }}
+            scroll={{ x: "max-content" }}
+            locale={{ emptyText: <EmptyState compact title={t("accounting.empty_fixed_assets_title")} subtitle={t("accounting.empty_fixed_assets_help")} action={canEdit ? <Button type="primary" icon={<PlusOutlined />} onClick={() => showEditor()}>{t("accounting.fixed_asset_new")}</Button> : null} /> }}
+            columns={[
+                { title: t("accounting.col_description"), dataIndex: "name" },
+                { title: t("accounting.fixed_asset_acquisition_cost"), dataIndex: "acquisition_cost", align: "right", render: (v) => formatCurrency(v) },
+                { title: t("accounting.fixed_asset_monthly_depreciation"), dataIndex: "monthly_depreciation", align: "right", render: (v) => formatCurrency(v) },
+                {
+                    title: t("accounting.fixed_asset_progress"),
+                    render: (_, row) => (
+                        <div className="min-w-32">
+                            <Progress percent={Math.round((row.months_depreciated / row.useful_life_months) * 100)} size="small" status={row.status === "disposed" ? "exception" : undefined} />
+                            <span className="text-xs text-[var(--ohnix-text-dim)]">{row.months_depreciated}/{row.useful_life_months} {t("accounting.fixed_asset_months")}</span>
+                        </div>
+                    ),
+                },
+                {
+                    title: t("accounting.col_status"),
+                    render: (_, row) => (
+                        <div className="flex flex-col gap-1">
+                            <Tag color={row.status === "active" ? "green" : row.status === "fully_depreciated" ? "blue" : "default"}>{t(`accounting.fixed_asset_status_${row.status}`)}</Tag>
+                            {row.status === "disposed" && row.disposal_gain_loss != null && (
+                                <span className="text-xs" style={{ color: row.disposal_gain_loss >= 0 ? "var(--ohnix-status-success)" : "var(--ohnix-status-warning)" }}>
+                                    {row.disposal_gain_loss >= 0 ? t("accounting.fixed_asset_disposal_gain") : t("accounting.fixed_asset_disposal_loss")}: {formatCurrency(Math.abs(row.disposal_gain_loss))}
+                                </span>
+                            )}
+                            {row.last_run_status === "failed" && (
+                                <Tooltip title={t(ACCOUNTING_ERROR_CODES[row.last_run_error] || "accounting.fixed_asset_run_failed")}>
+                                    <Tag color="red" icon={<WarningOutlined />}>{t("accounting.fixed_asset_last_run_failed")}</Tag>
+                                </Tooltip>
+                            )}
+                        </div>
+                    ),
+                },
+                {
+                    title: t("common.actions"),
+                    width: 260,
+                    render: (_, asset) => (
+                        <div className="flex gap-2">
+                            {canEdit && asset.status === "active" && (
+                                <Button size="small" loading={runningId === asset._id} onClick={() => runNow(asset)}>
+                                    {t("accounting.fixed_asset_run_now")}
+                                </Button>
+                            )}
+                            {canEdit && asset.status === "active" && <Button size="small" onClick={() => showEditor(asset)}>{t("common.edit")}</Button>}
+                            {canAdmin && asset.status === "active" && <Button size="small" danger onClick={() => openDispose(asset)}>{t("accounting.fixed_asset_dispose_action")}</Button>}
+                        </div>
+                    ),
+                },
+            ]}
+        />
+        <Modal className="accounting-modal" title={editing ? t("accounting.fixed_asset_edit") : t("accounting.fixed_asset_new")} open={open} onCancel={() => setOpen(false)} onOk={save} confirmLoading={saving} destroyOnHidden>
+            <Alert className="dark-alert dark-alert-teal mb-4" showIcon type="info" message={t("accounting.fixed_asset_form_help")} />
+            {editingLocked && <Alert className="mb-4" type="warning" showIcon message={t("accounting.fixed_asset_schedule_locked_help")} />}
+            <Form form={form} layout="vertical">
+                <Form.Item name="name" label={t("accounting.col_description")} rules={[{ required: true, max: 160 }]}><Input /></Form.Item>
+                <Form.Item name="description" label={t("accounting.note_content_label")}><Input.TextArea rows={2} maxLength={2000} /></Form.Item>
+                <Row gutter={12}>
+                    <Col xs={24} sm={12}><Form.Item name="acquisition_date" label={t("accounting.fixed_asset_acquisition_date")} rules={[{ required: true }]}><DatePicker className="w-full" disabled={editingLocked} /></Form.Item></Col>
+                    <Col xs={24} sm={12}><Form.Item name="acquisition_cost" label={t("accounting.fixed_asset_acquisition_cost")} rules={[{ required: true, type: "number" }]}><InputNumber min={0.01} step={1000} className="w-full" disabled={editingLocked} /></Form.Item></Col>
+                </Row>
+                <Row gutter={12}>
+                    <Col xs={24} sm={12}><Form.Item name="salvage_value" label={t("accounting.fixed_asset_salvage_value")} extra={t("accounting.fixed_asset_salvage_value_help")} rules={[{ required: true, type: "number" }]}><InputNumber min={0} step={1000} className="w-full" disabled={editingLocked} /></Form.Item></Col>
+                    <Col xs={24} sm={12}><Form.Item name="useful_life_months" label={t("accounting.fixed_asset_useful_life")} extra={t("accounting.fixed_asset_useful_life_help")} rules={[{ required: true, type: "number", min: 1, max: 600 }]}><InputNumber min={1} max={600} className="w-full" disabled={editingLocked} /></Form.Item></Col>
+                </Row>
+                {monthlyPreview !== null && (
+                    <Alert className="dark-alert dark-alert-purple mb-4" type="info" showIcon message={t("accounting.fixed_asset_monthly_preview", { amount: formatCurrency(monthlyPreview) })} />
+                )}
+                <Form.Item name="asset_account_id" label={t("accounting.fixed_asset_asset_account")} rules={[{ required: true }]}>
+                    <Select showSearch optionFilterProp="label" options={assetAccounts.map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))} />
+                </Form.Item>
+                <Form.Item name="depreciation_account_id" label={t("accounting.fixed_asset_depreciation_account")} extra={t("accounting.fixed_asset_depreciation_account_help")} rules={[{ required: true }]}>
+                    <Select showSearch optionFilterProp="label" options={assetAccounts.map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))} />
+                </Form.Item>
+                <Form.Item name="expense_account_id" label={t("accounting.fixed_asset_expense_account")} rules={[{ required: true }]}>
+                    <Select showSearch optionFilterProp="label" options={expenseAccounts.map((a) => ({ value: a._id, label: `${a.code} · ${a.name}` }))} />
+                </Form.Item>
+                <Form.Item name="cost_center_id" label={t("accounting.cost_center_optional")}>
+                    <Select allowClear showSearch optionFilterProp="label" options={costCenters.map((c) => ({ value: c._id, label: `${c.code} · ${c.name}` }))} />
+                </Form.Item>
+            </Form>
+        </Modal>
+        <Modal className="accounting-modal" title={disposeAsset ? t("accounting.fixed_asset_dispose_title", { name: disposeAsset.name }) : ""} open={Boolean(disposeAsset)} onCancel={() => setDisposeAsset(null)} onOk={confirmDispose} confirmLoading={disposing} okButtonProps={{ danger: true }} okText={t("accounting.fixed_asset_dispose_action")} destroyOnHidden>
+            <Alert className="dark-alert dark-alert-amber mb-4" type="warning" showIcon message={t("accounting.fixed_asset_dispose_guidance")} />
+            <Form form={disposeForm} layout="vertical">
+                <Form.Item name="reason" label={t("accounting.fixed_asset_dispose_reason")} rules={[{ required: true, message: t("accounting.fixed_asset_dispose_reason_required") }]}><Input.TextArea rows={3} /></Form.Item>
+                <Form.Item name="disposal_amount" label={t("accounting.fixed_asset_disposal_amount")} extra={t("accounting.fixed_asset_disposal_amount_help")} rules={[{ required: true, type: "number", min: 0 }]}><InputNumber min={0} step={1000} className="w-full" /></Form.Item>
+                {Number(watchedDisposalAmount) > 0 && (
+                    <Form.Item name="cash_account_id" label={t("accounting.fixed_asset_disposal_cash_account")} rules={[{ required: true, message: t("validation.required_field") }]}>
+                        <Select showSearch optionFilterProp="label" options={cashAccounts.map((a) => ({ value: a._id, label: a.name }))} />
+                    </Form.Item>
+                )}
+            </Form>
+        </Modal>
+    </>;
+};
+
 const ManualVouchersTab = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
@@ -1573,7 +2012,20 @@ const PeriodsTab = () => {
                 icon: null,
                 content: <div className="space-y-3 mt-4">
                     {blockers.length > 0 ? <Alert type="error" showIcon message={t("accounting.close_readiness_blocked_title")} description={t("accounting.close_readiness_blocked_desc", { count: blockers.length })} /> : <Alert className="dark-alert dark-alert-teal" type="success" showIcon message={t("accounting.close_readiness_ok_title")} description={t("accounting.close_readiness_ok_desc")} />}
-                    {(warnings.unmatched_statement_entries > 0 || warnings.unmatched_cash_movements > 0) && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_reconciliation_title")} description={t("accounting.close_readiness_reconciliation_desc", { entries: warnings.unmatched_statement_entries || 0, movements: warnings.unmatched_cash_movements || 0 })} />}
+                    {(warnings.unmatched_statement_entries > 0 || warnings.unmatched_cash_movements > 0) && (
+                        <Alert
+                            className="dark-alert dark-alert-amber"
+                            type="warning"
+                            showIcon
+                            message={t("accounting.close_readiness_reconciliation_title")}
+                            description={
+                                <div className="space-y-2">
+                                    <p className="m-0">{t("accounting.close_readiness_reconciliation_desc", { entries: warnings.unmatched_statement_entries || 0, movements: warnings.unmatched_cash_movements || 0 })}</p>
+                                    <a href="/finance" target="_blank" rel="noreferrer" className="text-[var(--ohnix-accent)] hover:underline text-xs font-medium">{t("accounting.close_readiness_reconciliation_link")}</a>
+                                </div>
+                            }
+                        />
+                    )}
                     {(warnings.accounting_differences || []).length > 0 && <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.close_readiness_accounting_title")} description={t("accounting.close_readiness_accounting_desc", { count: warnings.accounting_differences.length })} />}
                     <p className="text-xs text-[var(--ohnix-text-muted)] m-0">{t("accounting.close_readiness_footer")}</p>
                 </div>,
@@ -1739,6 +2191,8 @@ const PeriodsTab = () => {
 const FinancialStatementsTab = () => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
+    const { hasPermission } = useTeam();
+    const canEdit = hasPermission("accounting", "edit");
     const [incomeRange, setIncomeRange] = useState([dayjs().subtract(30, "days"), dayjs()]);
     const [asOfDate, setAsOfDate] = useState(dayjs());
     const [balanceCostCenterId, setBalanceCostCenterId] = useState();
@@ -1751,6 +2205,64 @@ const FinancialStatementsTab = () => {
     const [comparisonOpen, setComparisonOpen] = useState(false);
     const [comparison, setComparison] = useState(null);
     const [comparisonLoading, setComparisonLoading] = useState(false);
+    const [cashFlowRange, setCashFlowRange] = useState([dayjs().startOf("month"), dayjs()]);
+    const [cashFlow, setCashFlow] = useState(null);
+    const [cashFlowLoading, setCashFlowLoading] = useState(false);
+    const [notesYear, setNotesYear] = useState(dayjs().year());
+    const [notes, setNotes] = useState([]);
+    const [notesLoading, setNotesLoading] = useState(false);
+    const [noteModal, setNoteModal] = useState(null);
+    const [noteForm] = Form.useForm();
+    const [noteSaving, setNoteSaving] = useState(false);
+
+    const loadNotes = async (year = notesYear) => {
+        setNotesLoading(true);
+        try {
+            const res = await accountingService.listFinancialStatementNotes(year);
+            setNotes(res?.data || []);
+        } catch {
+            toast.error(t("accounting.failed"));
+        } finally {
+            setNotesLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadNotes();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [notesYear]);
+
+    const showNoteEditor = (note = null) => {
+        setNoteModal(note || {});
+        noteForm.setFieldsValue({ title: note?.title || "", content: note?.content || "" });
+    };
+
+    const saveNote = async () => {
+        const values = await noteForm.validateFields();
+        setNoteSaving(true);
+        try {
+            if (noteModal?._id) await accountingService.updateFinancialStatementNote(noteModal._id, values);
+            else await accountingService.createFinancialStatementNote({ year: notesYear, ...values });
+            toast.success(t(noteModal?._id ? "accounting.note_updated" : "accounting.note_created"));
+            setNoteModal(null);
+            noteForm.resetFields();
+            await loadNotes();
+        } catch (error) {
+            if (!error?.errorFields) toast.error(accountingErrorMessage(error, t));
+        } finally {
+            setNoteSaving(false);
+        }
+    };
+
+    const deleteNote = async (note) => {
+        try {
+            await accountingService.deleteFinancialStatementNote(note._id);
+            toast.success(t("accounting.note_deleted"));
+            await loadNotes();
+        } catch (error) {
+            toast.error(accountingErrorMessage(error, t));
+        }
+    };
 
     const fetchIncome = async () => {
         setIncomeLoading(true);
@@ -1801,9 +2313,22 @@ const FinancialStatementsTab = () => {
         }
     };
 
+    const fetchCashFlow = async () => {
+        setCashFlowLoading(true);
+        try {
+            const res = await accountingService.getCashFlowStatement({ from: cashFlowRange[0].format("YYYY-MM-DD"), to: cashFlowRange[1].format("YYYY-MM-DD") });
+            setCashFlow(res?.data || null);
+        } catch {
+            toast.error(t("accounting.failed"));
+        } finally {
+            setCashFlowLoading(false);
+        }
+    };
+
     useEffect(() => {
         accountingService.listCostCenters().then((response) => setCostCenters(response?.data || [])).catch(() => {});
         fetchIncome();
+        fetchCashFlow();
         fetchBalance();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -1836,6 +2361,22 @@ const FinancialStatementsTab = () => {
             [t("accounting.total_equity"), "", balance.total_equity],
         ];
         exportAccountingExcel(`balance-general-${asOfDate.format("YYYY-MM-DD")}.xlsx`, [{ name: t("accounting.balance_sheet_title"), rows: [header, ...rows] }]);
+    };
+
+    const exportCashFlow = () => {
+        const header = [t("accounting.col_description"), t("accounting.col_amount")];
+        const section = (title, category) => [[title], ...category.lines.map((line) => [t(SOURCE_TYPE_LABEL_KEYS[line.source_type] || line.source_type), line.amount]), [t("common.total"), category.total], []];
+        const rows = [
+            [t("accounting.cash_flow_beginning"), cashFlow.beginning_balance],
+            [],
+            ...section(t("accounting.cash_flow_operating"), cashFlow.categories.operating),
+            ...section(t("accounting.cash_flow_investing"), cashFlow.categories.investing),
+            ...section(t("accounting.cash_flow_financing"), cashFlow.categories.financing),
+            ...section(t("accounting.cash_flow_adjustments"), cashFlow.categories.adjustments),
+            [t("accounting.cash_flow_net_change"), cashFlow.net_change],
+            [t("accounting.cash_flow_ending"), cashFlow.ending_balance],
+        ];
+        exportAccountingExcel(`flujo-de-efectivo-${cashFlowRange[0].format("YYYY-MM-DD")}_${cashFlowRange[1].format("YYYY-MM-DD")}.xlsx`, [{ name: t("accounting.cash_flow_title"), rows: [header, ...rows] }]);
     };
 
     const accountColumns = [
@@ -2028,6 +2569,111 @@ const FinancialStatementsTab = () => {
                         </Row>
                     </>
                 )}
+            </div>
+
+            <div>
+                <h3 className="text-base font-semibold text-[var(--ohnix-text-primary)] mb-3">{t("accounting.cash_flow_title")}</h3>
+                <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <RangePicker value={cashFlowRange} onChange={(dates) => dates && setCashFlowRange(dates)} format="YYYY-MM-DD" allowClear={false} />
+                        <Button type="primary" className="hover:shadow-[var(--ohnix-accent-glow-hover)]" icon={<CalendarOutlined />} onClick={fetchCashFlow} loading={cashFlowLoading}>
+                            {t("reports.refresh_report")}
+                        </Button>
+                        <Button icon={<DownloadOutlined />} disabled={!cashFlow} onClick={exportCashFlow}>
+                            {t("reports.export_to_excel")}
+                        </Button>
+                    </div>
+                </Card>
+                {cashFlow && (
+                    <>
+                        <Row gutter={[16, 16]} className="mb-4">
+                            <Col xs={24} sm={8}>
+                                <StatCard title={t("accounting.cash_flow_beginning")} value={cashFlow.beginning_balance} formatter={formatCurrency} />
+                            </Col>
+                            <Col xs={24} sm={8}>
+                                <StatCard title={t("accounting.cash_flow_net_change")} value={cashFlow.net_change} formatter={formatCurrency} valueStyle={{ color: cashFlow.net_change >= 0 ? "var(--ohnix-status-success)" : "var(--ohnix-status-warning)", fontWeight: 700 }} />
+                            </Col>
+                            <Col xs={24} sm={8}>
+                                <StatCard title={t("accounting.cash_flow_ending")} value={cashFlow.ending_balance} formatter={formatCurrency} valueStyle={{ fontWeight: 700 }} />
+                            </Col>
+                        </Row>
+                        <Row gutter={[16, 16]}>
+                            {["operating", "investing", "financing", "adjustments"].map((key) => (
+                                <Col xs={24} md={12} key={key}>
+                                    <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t(`accounting.cash_flow_${key}`)}>
+                                        <Table
+                                            columns={[
+                                                { title: t("accounting.col_description"), dataIndex: "source_type", render: (v) => t(SOURCE_TYPE_LABEL_KEYS[v] || v) },
+                                                { title: t("accounting.col_amount"), dataIndex: "amount", align: "right", render: (v) => formatCurrency(v) },
+                                            ]}
+                                            dataSource={cashFlow.categories[key].lines}
+                                            rowKey="source_type"
+                                            pagination={false}
+                                            size="small"
+                                            className="module-dark-table"
+                                            scroll={{ x: "max-content" }}
+                                            locale={{ emptyText: <EmptyState compact title={t("common.no_data")} /> }}
+                                            summary={() => cashFlow.categories[key].lines.length > 0 && (
+                                                <Table.Summary.Row>
+                                                    <Table.Summary.Cell index={0}><strong>{t("common.total")}</strong></Table.Summary.Cell>
+                                                    <Table.Summary.Cell index={1} align="right"><strong>{formatCurrency(cashFlow.categories[key].total)}</strong></Table.Summary.Cell>
+                                                </Table.Summary.Row>
+                                            )}
+                                        />
+                                    </Card>
+                                </Col>
+                            ))}
+                        </Row>
+                    </>
+                )}
+            </div>
+
+            <div>
+                <h3 className="text-base font-semibold text-[var(--ohnix-text-primary)] mb-3">{t("accounting.notes_title")}</h3>
+                <Alert className="mb-4 dark-alert dark-alert-purple" type="info" showIcon message={t("accounting.notes_help")} />
+                <Card className="module-shell border border-[var(--ohnix-line-4)] mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <Select
+                            className="w-full sm:w-40"
+                            value={notesYear}
+                            onChange={setNotesYear}
+                            options={Array.from({ length: 6 }, (_, i) => dayjs().year() - i).map((year) => ({ value: year, label: year }))}
+                        />
+                        {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => showNoteEditor()}>{t("accounting.note_new")}</Button>}
+                    </div>
+                </Card>
+                {notesLoading ? (
+                    <div className="text-center py-8 text-[var(--ohnix-text-muted)]">{t("common.loading")}</div>
+                ) : notes.length === 0 ? (
+                    <Card className="module-shell border border-[var(--ohnix-line-4)]">
+                        <EmptyState compact title={t("accounting.notes_empty_title")} subtitle={t("accounting.notes_empty_help")} action={canEdit ? <Button type="primary" icon={<PlusOutlined />} onClick={() => showNoteEditor()}>{t("accounting.note_new")}</Button> : null} />
+                    </Card>
+                ) : (
+                    <div className="space-y-3">
+                        {notes.map((note) => (
+                            <div key={note._id} className="rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-4)] p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <h4 className="text-sm font-semibold text-[var(--ohnix-text-primary)] m-0">{note.title}</h4>
+                                    {canEdit && (
+                                        <div className="flex gap-2 shrink-0">
+                                            <Button size="small" onClick={() => showNoteEditor(note)}>{t("common.edit")}</Button>
+                                            <Popconfirm title={t("accounting.note_delete_confirm")} onConfirm={() => deleteNote(note)}>
+                                                <Button size="small" danger>{t("common.delete")}</Button>
+                                            </Popconfirm>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-sm text-[var(--ohnix-text-soft)] whitespace-pre-wrap mt-2 mb-0">{note.content}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <Modal className="accounting-modal" title={noteModal?._id ? t("accounting.note_edit") : t("accounting.note_new")} open={Boolean(noteModal)} onCancel={() => setNoteModal(null)} onOk={saveNote} confirmLoading={noteSaving} destroyOnHidden>
+                    <Form form={noteForm} layout="vertical">
+                        <Form.Item name="title" label={t("accounting.note_title_label")} rules={[{ required: true, message: t("validation.required_field") }]}><Input maxLength={200} showCount /></Form.Item>
+                        <Form.Item name="content" label={t("accounting.note_content_label")} rules={[{ required: true, message: t("validation.required_field") }]}><Input.TextArea rows={8} maxLength={20000} showCount /></Form.Item>
+                    </Form>
+                </Modal>
             </div>
         </div>
     );
@@ -2799,6 +3445,8 @@ const Accounting = () => {
         { key: "third_parties", label: tabLabel(<TeamOutlined />, "accounting.tab_third_parties"), children: <ThirdPartyLedgerTab /> },
         { key: "cost_centers", label: tabLabel(<PartitionOutlined />, "accounting.tab_cost_centers"), children: <CostCentersTab /> },
         { key: "recurring_expenses", label: tabLabel(<ClockCircleOutlined />, "accounting.tab_recurring_expenses"), children: <RecurringExpensesTab /> },
+        { key: "fixed_assets", label: tabLabel(<ToolOutlined />, "accounting.tab_fixed_assets"), children: <FixedAssetsTab /> },
+        { key: "recurring_journals", label: tabLabel(<RetweetOutlined />, "accounting.tab_recurring_journals"), children: <RecurringJournalsTab /> },
         { key: "budgets", label: tabLabel(<BarChartOutlined />, "accounting.tab_budgets"), children: <BudgetsTab /> },
         { key: "trial_balance", label: tabLabel(<CalculatorOutlined />, "accounting.tab_trial_balance"), children: <TrialBalanceTab /> },
         { key: "periods", label: tabLabel(<LockOutlined />, "accounting.tab_periods"), children: <PeriodsTab /> },

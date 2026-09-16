@@ -17,8 +17,13 @@ import {
     getFiscalYearCloseReadiness,
     closeFiscalYear,
     reopenFiscalYear,
+    listFinancialStatementNotes,
+    createFinancialStatementNote,
+    updateFinancialStatementNote,
+    deleteFinancialStatementNote,
     getIncomeStatement,
     getIncomeStatementComparison,
+    getCashFlowStatement,
     getBalanceSheet,
     getTrialBalance,
     getAccountingStatus,
@@ -46,6 +51,15 @@ import {
     createRecurringExpenseTemplate,
     updateRecurringExpenseTemplate,
     runRecurringExpenseTemplateNow,
+    listFixedAssets,
+    createFixedAsset,
+    updateFixedAsset,
+    disposeFixedAsset,
+    runFixedAssetDepreciationNow,
+    listRecurringJournalTemplates,
+    createRecurringJournalTemplate,
+    updateRecurringJournalTemplate,
+    runRecurringJournalTemplateNow,
     getBudgetReport,
     saveBudgets,
     getAnnualBudgetReport,
@@ -89,6 +103,26 @@ router.route("/recurring-expenses/:id")
     .patch(requireModulePermission("accounting", "edit"), updateRecurringExpenseTemplate);
 router.route("/recurring-expenses/:id/run")
     .post(requireModulePermission("accounting", "edit"), runRecurringExpenseTemplateNow);
+
+router.route("/fixed-assets")
+    .get(requireModulePermission("accounting", "view"), listFixedAssets)
+    .post(requireModulePermission("accounting", "edit"), createFixedAsset);
+router.route("/fixed-assets/:id")
+    .patch(requireModulePermission("accounting", "edit"), updateFixedAsset);
+router.route("/fixed-assets/:id/run")
+    .post(requireModulePermission("accounting", "edit"), runFixedAssetDepreciationNow);
+// Disposing is business-consequential (stops depreciation for good) - same
+// "admin" gate as closing a period, not routine data entry.
+router.route("/fixed-assets/:id/dispose")
+    .post(requireModulePermission("accounting", "admin"), disposeFixedAsset);
+
+router.route("/recurring-journals")
+    .get(requireModulePermission("accounting", "view"), listRecurringJournalTemplates)
+    .post(requireModulePermission("accounting", "edit"), createRecurringJournalTemplate);
+router.route("/recurring-journals/:id")
+    .patch(requireModulePermission("accounting", "edit"), updateRecurringJournalTemplate);
+router.route("/recurring-journals/:id/run")
+    .post(requireModulePermission("accounting", "edit"), runRecurringJournalTemplateNow);
 
 router.route("/budgets")
     .get(requireModulePermission("accounting", "view"), getBudgetReport)
@@ -135,6 +169,7 @@ router.route("/reports/withholdings/certificates/:supplierId/pdf")
 
 router.route("/reports/income-statement").get(requireModulePermission("accounting", "view"), getIncomeStatement);
 router.route("/reports/income-statement/comparison").get(requireModulePermission("accounting", "view"), getIncomeStatementComparison);
+router.route("/reports/cash-flow").get(requireModulePermission("accounting", "view"), getCashFlowStatement);
 router.route("/reports/balance-sheet").get(requireModulePermission("accounting", "view"), getBalanceSheet);
 router.route("/reports/trial-balance").get(requireModulePermission("accounting", "view"), getTrialBalance);
 
@@ -153,5 +188,14 @@ router.route("/fiscal-years/:year/close-readiness").get(requireModulePermission(
 // reclassifies a whole year's equity), not routine data entry.
 router.route("/fiscal-years/:year/close").post(requireModulePermission("accounting", "admin"), closeFiscalYear);
 router.route("/fiscal-years/:year/reopen").post(requireModulePermission("accounting", "admin"), reopenFiscalYear);
+
+// Purely informational disclosures, not a posting or a lock - "edit" is
+// enough, same level as cost centers/recurring expenses.
+router.route("/financial-statement-notes")
+    .get(requireModulePermission("accounting", "view"), listFinancialStatementNotes)
+    .post(requireModulePermission("accounting", "edit"), createFinancialStatementNote);
+router.route("/financial-statement-notes/:id")
+    .put(requireModulePermission("accounting", "edit"), updateFinancialStatementNote)
+    .delete(requireModulePermission("accounting", "edit"), deleteFinancialStatementNote);
 
 export default router;

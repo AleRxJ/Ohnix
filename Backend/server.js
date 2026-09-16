@@ -8,6 +8,8 @@ import renewalScheduler from "./utils/subscriptionRenewalScheduler.js";
 import webhookRetryScheduler from "./utils/webhookRetryScheduler.js";
 import firmaPassValidationScheduler from "./utils/firmaPassValidationScheduler.js";
 import recurringExpenseScheduler from "./utils/recurringExpenseScheduler.js";
+import fixedAssetDepreciationScheduler from "./utils/fixedAssetDepreciationScheduler.js";
+import recurringJournalScheduler from "./utils/recurringJournalScheduler.js";
 import receiptTacitaScheduler from "./utils/receiptTacitaScheduler.js";
 import itcycleKeepAliveScheduler from "./utils/itcycleKeepAliveScheduler.js";
 import discoveryScheduler from "./utils/discoveryScheduler.js";
@@ -97,6 +99,10 @@ connectDB()
                 firmaPassValidationScheduler.start();
                 console.log("🧾 Starting recurring expense scheduler...");
                 recurringExpenseScheduler.start();
+                console.log("🏢 Starting fixed asset depreciation scheduler...");
+                fixedAssetDepreciationScheduler.start();
+                console.log("🔁 Starting recurring journal scheduler...");
+                recurringJournalScheduler.start();
                 console.log("📜 Starting receipt tácita scheduler...");
                 receiptTacitaScheduler.start();
                 console.log("💤 Starting itcycle-api-dian keep-alive scheduler...");
@@ -118,6 +124,8 @@ process.on("SIGTERM", () => {
     webhookRetryScheduler.stop();
     firmaPassValidationScheduler.stop();
     recurringExpenseScheduler.stop();
+    fixedAssetDepreciationScheduler.stop();
+    recurringJournalScheduler.stop();
     receiptTacitaScheduler.stop();
     itcycleKeepAliveScheduler.stop();
     discoveryScheduler.stop();
@@ -131,6 +139,8 @@ process.on("SIGINT", () => {
     webhookRetryScheduler.stop();
     firmaPassValidationScheduler.stop();
     recurringExpenseScheduler.stop();
+    fixedAssetDepreciationScheduler.stop();
+    recurringJournalScheduler.stop();
     receiptTacitaScheduler.stop();
     itcycleKeepAliveScheduler.stop();
     discoveryScheduler.stop();
