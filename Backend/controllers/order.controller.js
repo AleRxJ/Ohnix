@@ -39,6 +39,15 @@ const mapOrder = (order) => ({
         : null,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
+    electronic_invoice: order.electronicInvoice
+        ? {
+              status: order.electronicInvoice.status,
+              invoice_number: order.electronicInvoice.invoiceNumber,
+              cufe: order.electronicInvoice.cufe,
+              error_message: order.electronicInvoice.errorMessage,
+              issued_at: order.electronicInvoice.issuedAt,
+          }
+        : null,
 });
 
 const mapOrderDetail = (detail) => ({
@@ -227,6 +236,15 @@ const getAllOrders = asyncHandler(async (req, res, next) => {
                             id: true,
                             legacyMongoId: true,
                             username: true,
+                        },
+                    },
+                    electronicInvoice: {
+                        select: {
+                            status: true,
+                            invoiceNumber: true,
+                            cufe: true,
+                            errorMessage: true,
+                            issuedAt: true,
                         },
                     },
                 },
@@ -714,17 +732,52 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
             .fillColor(tealBright)
             .font("Helvetica-Bold")
             .text("FACTURA", 330, 46, { width: 215, align: "right", characterSpacing: 1.5 });
-        doc.fontSize(26)
-            .fillColor("#FFFFFF")
-            .font("Helvetica-Bold")
-            .text(`#${orderDetails.invoice_no}`, 330, 61, { width: 215, align: "right" });
+
+        // The invoice number can be arbitrarily long (e.g. demo/seed data),
+        // so the font size shrinks to fit a single line instead of letting
+        // PDFKit wrap it - a wrapped title would grow downward and collide
+        // with the fixed-position status pill/date below it.
+        const invoiceLabel = `#${orderDetails.invoice_no}`;
+        const invoiceBoxWidth = 215;
+        const MAX_INVOICE_FONT_SIZE = 26;
+        const MIN_INVOICE_FONT_SIZE = 11;
+        doc.font("Helvetica-Bold");
+        let invoiceFontSize = MAX_INVOICE_FONT_SIZE;
+        while (
+            invoiceFontSize > MIN_INVOICE_FONT_SIZE &&
+            doc.fontSize(invoiceFontSize).widthOfString(invoiceLabel) > invoiceBoxWidth
+        ) {
+            invoiceFontSize -= 1;
+        }
+        doc.fontSize(invoiceFontSize);
+        // PDFKit's own `ellipsis`/`lineBreak: false` combo doesn't reliably
+        // suppress wrapping, so the label is truncated by hand once it no
+        // longer fits at the smallest font size.
+        let invoiceDisplayLabel = invoiceLabel;
+        if (doc.widthOfString(invoiceDisplayLabel) > invoiceBoxWidth) {
+            while (
+                invoiceDisplayLabel.length > 1 &&
+                doc.widthOfString(`${invoiceDisplayLabel}…`) > invoiceBoxWidth
+            ) {
+                invoiceDisplayLabel = invoiceDisplayLabel.slice(0, -1);
+            }
+            invoiceDisplayLabel += "…";
+        }
+        doc.fillColor("#FFFFFF");
+        const invoiceTextY = 61;
+        doc.text(invoiceDisplayLabel, 330, invoiceTextY, {
+            width: invoiceBoxWidth,
+            align: "right",
+            lineBreak: false,
+        });
 
         doc.font("Helvetica-Bold").fontSize(8);
         const pillTextWidth = doc.widthOfString(status.label);
         const pillWidth = pillTextWidth + 18;
         const pillX = PAGE_RIGHT - pillWidth;
-        doc.roundedRect(pillX, 94, pillWidth, 16, 8).fill(status.bg);
-        doc.fillColor(status.fg).text(status.label, pillX, 98, { width: pillWidth, align: "center" });
+        const pillY = invoiceTextY + invoiceFontSize + 6;
+        doc.roundedRect(pillX, pillY, pillWidth, 16, 8).fill(status.bg);
+        doc.fillColor(status.fg).text(status.label, pillX, pillY + 4, { width: pillWidth, align: "center" });
 
         doc.fontSize(9)
             .fillColor(mutedOnDark)
@@ -732,8 +785,8 @@ const generateInvoice = asyncHandler(async (req, res, next) => {
             .text(
                 `Emitida el ${new Date(orderDetails.order_date).toLocaleDateString("es-CO", { day: "2-digit", month: "long", year: "numeric" })}`,
                 330,
-                118,
-                { width: 215, align: "right" }
+                pillY + 24,
+                { width: invoiceBoxWidth, align: "right" }
             );
 
         // Bright gradient seam closing the band - the one line that's

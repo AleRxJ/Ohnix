@@ -35,6 +35,7 @@ import { electronicInvoiceService } from "../services/electronicInvoiceService";
 import { api } from "../api/api";
 import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
+import { StatusPill, ELECTRONIC_INVOICE_STATUS_COLORS as STATUS_COLORS } from "../components/common/StatusPill";
 import { useCurrency } from "../context/CurrencyContext";
 import { getCurrencyInputProps } from "../utils/currency";
 import useI18n from "../hooks/useI18n";
@@ -62,21 +63,6 @@ const CREDIT_NOTE_CODE_MESSAGES = {
     credit_note_amount_exceeds_remaining_base: "electronic_invoices.credit_note.amount_exceeds_remaining_base",
     credit_note_history_requires_reconciliation: "electronic_invoices.credit_note.history_requires_reconciliation",
     credit_note_already_processing: "electronic_invoices.credit_note.already_processing",
-};
-
-const STATUS_COLORS = {
-    accepted: "var(--ohnix-accent-2)",
-    submitted: "var(--ohnix-status-purple)",
-    issuing: "var(--ohnix-status-purple)",
-    rejected: "var(--ohnix-status-rose)",
-    error: "var(--ohnix-status-rose)",
-    cancelled: "var(--ohnix-text-dim)",
-    draft: "var(--ohnix-status-amber)",
-    // itcycle-only: DIAN was unreachable, but the document was already built,
-    // signed, and delivered to the customer - legally distinct from "error"
-    // (nothing to deliver) or "rejected" (DIAN said no). Amber/warning, not
-    // rose, on purpose - this isn't a failure state from the customer's side.
-    contingency: "var(--ohnix-status-amber)",
 };
 
 const STATUS_ALL = "all";
@@ -108,21 +94,6 @@ const MetricCard = ({ label, value, icon, color, hint }) => {
             description={hint}
             className="!border-[var(--ohnix-line-4)]"
         />
-    );
-};
-
-const StatusPill = ({ status }) => {
-    const { t } = useI18n();
-    const color = STATUS_COLORS[status] || "var(--ohnix-text-dim)";
-    const label = t(`electronic_invoices.status.${status}`, { defaultValue: status });
-    return (
-        <span
-            className="status-pill"
-            style={{ color, background: `${color}18`, border: `1px solid ${color}33` }}
-        >
-            <span className={`status-dot status-dot--${status}`} />
-            {label}
-        </span>
     );
 };
 
