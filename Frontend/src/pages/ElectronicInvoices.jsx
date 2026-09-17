@@ -35,6 +35,7 @@ import { electronicInvoiceService } from "../services/electronicInvoiceService";
 import { api } from "../api/api";
 import PageHeader from "../components/common/PageHeader";
 import StatCard from "../components/dashboard/StatCard";
+import { StatusPill, ELECTRONIC_INVOICE_STATUS_COLORS as STATUS_COLORS } from "../components/common/StatusPill";
 import { useCurrency } from "../context/CurrencyContext";
 import { getCurrencyInputProps } from "../utils/currency";
 import useI18n from "../hooks/useI18n";
@@ -48,21 +49,6 @@ import { resolveApiErrorMessage } from "../utils/apiError";
 // lapses or gets downgraded after invoices already exist can still hit this
 // gate here (retry/sync/credit-note), so it needs the same translation.
 const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
-
-const STATUS_COLORS = {
-    accepted: "var(--ohnix-accent-2)",
-    submitted: "var(--ohnix-status-purple)",
-    issuing: "var(--ohnix-status-purple)",
-    rejected: "var(--ohnix-status-rose)",
-    error: "var(--ohnix-status-rose)",
-    cancelled: "var(--ohnix-text-dim)",
-    draft: "var(--ohnix-status-amber)",
-    // itcycle-only: DIAN was unreachable, but the document was already built,
-    // signed, and delivered to the customer - legally distinct from "error"
-    // (nothing to deliver) or "rejected" (DIAN said no). Amber/warning, not
-    // rose, on purpose - this isn't a failure state from the customer's side.
-    contingency: "var(--ohnix-status-amber)",
-};
 
 const STATUS_ALL = "all";
 const STATUS_FILTERS = [STATUS_ALL, "draft", "issuing", "submitted", "accepted", "rejected", "error", "cancelled", "contingency"];
@@ -93,21 +79,6 @@ const MetricCard = ({ label, value, icon, color, hint }) => {
             description={hint}
             className="!border-[var(--ohnix-line-4)]"
         />
-    );
-};
-
-const StatusPill = ({ status }) => {
-    const { t } = useI18n();
-    const color = STATUS_COLORS[status] || "var(--ohnix-text-dim)";
-    const label = t(`electronic_invoices.status.${status}`, { defaultValue: status });
-    return (
-        <span
-            className="status-pill"
-            style={{ color, background: `${color}18`, border: `1px solid ${color}33` }}
-        >
-            <span className={`status-dot status-dot--${status}`} />
-            {label}
-        </span>
     );
 };
 

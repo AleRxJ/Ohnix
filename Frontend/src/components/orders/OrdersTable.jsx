@@ -12,6 +12,39 @@ import { getStatusIcon } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { useTeam } from "../../context/TeamContext";
+import { StatusPill } from "../common/StatusPill";
+
+const ElectronicInvoiceCell = ({ invoice, t }) => {
+    if (!invoice) {
+        return (
+            <Tooltip title={t("orders.electronic_invoice_not_applicable")}>
+                <span className="text-[var(--ohnix-text-dim)]">—</span>
+            </Tooltip>
+        );
+    }
+    const details = [];
+    if (invoice.invoice_number) details.push(`${t("orders.electronic_invoice_number")}: ${invoice.invoice_number}`);
+    if (invoice.issued_at) details.push(`${t("orders.electronic_invoice_issued_at")}: ${dayjs(invoice.issued_at).format("DD MMM YYYY, HH:mm")}`);
+    if (invoice.cufe) details.push(`CUFE: ${invoice.cufe.slice(0, 14)}…`);
+    if (invoice.error_message) details.push(invoice.error_message);
+    return (
+        <Tooltip
+            title={
+                details.length ? (
+                    <div className="text-xs space-y-0.5">
+                        {details.map((line, i) => (
+                            <div key={i}>{line}</div>
+                        ))}
+                    </div>
+                ) : null
+            }
+        >
+            <span>
+                <StatusPill status={invoice.status} />
+            </span>
+        </Tooltip>
+    );
+};
 
 const { Option } = Select;
 
@@ -74,6 +107,13 @@ const OrdersTable = ({
                     {t(`orders.${status}`) || status.toUpperCase()}
                 </Tag>
             ),
+        },
+        {
+            title: t("orders.electronic_invoice"),
+            dataIndex: "electronic_invoice",
+            key: "electronic_invoice",
+            width: 160,
+            render: (invoice) => <ElectronicInvoiceCell invoice={invoice} t={t} />,
         },
         {
             title: t("orders.items"),
@@ -198,7 +238,10 @@ const OrdersTable = ({
                             <p className="text-xs text-[var(--ohnix-text-muted)] mt-0.5">#{order.invoice_no}</p>
                         </div>
                     </div>
-                    <Tag icon={getStatusIcon(order.order_status)} color={getStatusColor(order.order_status)}>{t(`orders.${order.order_status}`) || order.order_status.toUpperCase()}</Tag>
+                    <div className="flex flex-col items-end gap-1.5">
+                        <Tag icon={getStatusIcon(order.order_status)} color={getStatusColor(order.order_status)}>{t(`orders.${order.order_status}`) || order.order_status.toUpperCase()}</Tag>
+                        <ElectronicInvoiceCell invoice={order.electronic_invoice} t={t} />
+                    </div>
                 </div>
 
                 <div className="flex items-center justify-between py-2.5 px-3 bg-[var(--ohnix-line-1)] rounded-lg mt-3 border border-[var(--ohnix-line-3)]">
@@ -308,7 +351,7 @@ const OrdersTable = ({
                             pageSizeOptions: ["10", "20", "50", "100"],
                         }}
                         onChange={onTableChange}
-                        scroll={{ x: 1150 }}
+                        scroll={{ x: 1310 }}
                         className="orders-table module-dark-table"
                     />
                 </Card>
