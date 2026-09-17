@@ -1,5 +1,6 @@
 import React from "react";
-import { Typography, Tag } from "antd";
+import { Typography, Tag, Button } from "antd";
+import { useNavigate } from "react-router-dom";
 import { ArrowUpOutlined, ArrowDownOutlined, WarningOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
@@ -28,6 +29,7 @@ const SOURCE_LABEL_KEYS = {
 // read as a real stock decrease it isn't.
 const MovementRow = ({ movement: m, currentLanguage }) => {
     const { t } = useI18n();
+    const navigate = useNavigate();
     const isDiscrepancy = m.source_type === "transfer_discrepancy";
 
     return (
@@ -57,6 +59,25 @@ const MovementRow = ({ movement: m, currentLanguage }) => {
                     </div>
                     {m.reason && (
                         <Text className="text-xs text-[var(--ohnix-text-muted)] block mt-1">{m.reason}</Text>
+                    )}
+                    {isDiscrepancy && (
+                        <Text className="text-xs text-amber-400/80 block mt-1">
+                            {t("products.transfer_discrepancy_accounting_hint")}
+                        </Text>
+                    )}
+                    {isDiscrepancy && m.source_id && (
+                        <Button
+                            type="link"
+                            size="small"
+                            className="!px-0 !h-auto text-xs"
+                            onClick={() =>
+                                navigate("/accounting", {
+                                    state: { tab: "journal", sourceType: "transfer_discrepancy", sourceId: m.source_id },
+                                })
+                            }
+                        >
+                            {t("products.transfer_view_in_accounting")}
+                        </Button>
                     )}
                     {m.created_by?.username && (
                         <Text className="text-xs text-[var(--ohnix-text-dim)] block mt-0.5">{m.created_by.username}</Text>

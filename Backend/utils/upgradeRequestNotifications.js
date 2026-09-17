@@ -17,7 +17,7 @@ export const notifyUserRenewalReminder = async ({ user, plan, endsAt, daysLeft, 
         ? `Hello <strong>${user.username || "there"}</strong>, your <strong>${planLabel}</strong> plan expired yesterday. You have a few days to renew before losing full access to your data and features.`
         : `Hola <strong>${user.username || ""}</strong>, tu plan <strong>${planLabel}</strong> venció ayer. Tienes unos días para renovar antes de perder el acceso completo a tus datos y funcionalidades.`;
     const cta = isEN ? "Renew my plan" : "Renovar mi plan";
-    const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
+    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
     try {
         await transporter.sendMail({
             from: `Ohnix <${process.env.SENDER_EMAIL}>`,
@@ -59,7 +59,7 @@ export const notifyUserTrialEndingSoon = async ({ user, trialEndsAt, daysLeft, l
         ? `Hello <strong>${user.username || "there"}</strong>, your 14-day free trial ends on <strong>${endsAtFormatted}</strong>. Subscribe to the Starter plan ($19/mo) or a higher tier to keep using Ohnix without interruptions.`
         : `Hola <strong>${user.username || ""}</strong>, tu prueba gratuita de 14 días termina el <strong>${endsAtFormatted}</strong>. Suscríbete al plan Emprendedor ($19/mes) o a uno superior para seguir usando Ohnix sin interrupciones.`;
     const cta = isEN ? "Subscribe now" : "Suscribirme ahora";
-    const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
+    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
     try {
         await transporter.sendMail({
             from: `Ohnix <${process.env.SENDER_EMAIL}>`,
@@ -176,7 +176,7 @@ export const notifyUserPaymentFailed = async ({ request, user, locale, reason })
     const copy = PAYMENT_FAILED_COPY[reason] || PAYMENT_FAILED_COPY.default;
     const body = copy[isEN ? "en" : "es"](planLabel, user.username);
     const cta = isEN ? "Try again" : "Intentar de nuevo";
-    const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
+    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
     try {
         await transporter.sendMail({
             from: `Ohnix <${process.env.SENDER_EMAIL}>`,

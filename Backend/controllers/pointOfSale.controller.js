@@ -48,19 +48,21 @@ export const createPointOfSale = asyncHandler(async (req, res) => {
     const pos = await posService.createPointOfSale({
         accountId: req.user.prismaId,
         name: req.body?.name,
+        locationType: req.body?.location_type,
     });
     return res.status(201).json(new ApiResponse(201, pos, "Point of sale created successfully"));
 });
 
 export const updatePointOfSale = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
-    const { name, isActive } = req.body || {};
+    const { name, isActive, location_type: locationType } = req.body || {};
 
     if (name !== undefined) {
         const updated = await posService.renamePointOfSale({
             accountId: req.user.prismaId,
             pointOfSaleId: id,
             name,
+            locationType,
         });
         return res.status(200).json(new ApiResponse(200, updated, "Point of sale updated successfully"));
     }

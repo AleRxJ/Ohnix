@@ -5,7 +5,17 @@ import { app } from "./app.js";
 import { initSocketServer } from "./live/socketServer.js";
 import lowStockScheduler from "./utils/lowStockScheduler.js";
 import renewalScheduler from "./utils/subscriptionRenewalScheduler.js";
+import webhookRetryScheduler from "./utils/webhookRetryScheduler.js";
+import firmaPassValidationScheduler from "./utils/firmaPassValidationScheduler.js";
+import recurringExpenseScheduler from "./utils/recurringExpenseScheduler.js";
+import fixedAssetDepreciationScheduler from "./utils/fixedAssetDepreciationScheduler.js";
+import recurringJournalScheduler from "./utils/recurringJournalScheduler.js";
+import receiptTacitaScheduler from "./utils/receiptTacitaScheduler.js";
+import itcycleKeepAliveScheduler from "./utils/itcycleKeepAliveScheduler.js";
+import discoveryScheduler from "./utils/discoveryScheduler.js";
 import { reconcileLegacyApprovedRequests, reconcileStuckPendingPayments } from "./utils/subscriptionReconcile.js";
+import { reconcileStuckCertificateOrderPayments } from "./utils/certificateOrderReconcile.js";
+import { reconcileOrphanedDianTestMatrixRuns } from "./services/dianTestMatrix.service.js";
 
 dotenv.config({
     path: "./.env",
@@ -37,9 +47,28 @@ connectDB()
             } catch (error) {
                 console.error("❎ Pending payment reconciliation failed", error);
             }
+
+            try {
+                const certOrderResult = await reconcileStuckCertificateOrderPayments();
+                if (certOrderResult.resolved > 0) {
+                    console.log(
+                        `📜 Reconciled stuck certificate orders: ${certOrderResult.resolved} resolved out of ${certOrderResult.checked} pending orders`
+                    );
+                }
+            } catch (error) {
+                console.error("❎ Certificate order reconciliation failed", error);
+            }
         };
 
         runSubscriptionReconciliation();
+
+        reconcileOrphanedDianTestMatrixRuns()
+            .then(({ recovered }) => {
+                if (recovered > 0) {
+                    console.log(`🧾 Recovered ${recovered} DIAN test-matrix run(s) orphaned by the previous process`);
+                }
+            })
+            .catch((error) => console.error("❎ DIAN test-matrix run reconciliation failed", error));
 
         const reconcileMinutes = Number(
             process.env.SUBSCRIPTION_RECONCILE_INTERVAL_MINUTES || 15
@@ -64,6 +93,22 @@ connectDB()
                 lowStockScheduler.start();
                 console.log("🔄 Starting subscription renewal scheduler...");
                 renewalScheduler.start();
+                console.log("🪝 Starting webhook retry scheduler...");
+                webhookRetryScheduler.start();
+                console.log("🔏 Starting FirmaPass validation check scheduler...");
+                firmaPassValidationScheduler.start();
+                console.log("🧾 Starting recurring expense scheduler...");
+                recurringExpenseScheduler.start();
+                console.log("🏢 Starting fixed asset depreciation scheduler...");
+                fixedAssetDepreciationScheduler.start();
+                console.log("🔁 Starting recurring journal scheduler...");
+                recurringJournalScheduler.start();
+                console.log("📜 Starting receipt tácita scheduler...");
+                receiptTacitaScheduler.start();
+                console.log("💤 Starting itcycle-api-dian keep-alive scheduler...");
+                itcycleKeepAliveScheduler.start();
+                console.log("🔎 Starting discovery engine scheduler...");
+                discoveryScheduler.start();
             }
         });
     })
@@ -76,6 +121,14 @@ process.on("SIGTERM", () => {
     console.log("🛑 SIGTERM received, stopping schedulers...");
     lowStockScheduler.stop();
     renewalScheduler.stop();
+    webhookRetryScheduler.stop();
+    firmaPassValidationScheduler.stop();
+    recurringExpenseScheduler.stop();
+    fixedAssetDepreciationScheduler.stop();
+    recurringJournalScheduler.stop();
+    receiptTacitaScheduler.stop();
+    itcycleKeepAliveScheduler.stop();
+    discoveryScheduler.stop();
     process.exit(0);
 });
 
@@ -83,5 +136,13 @@ process.on("SIGINT", () => {
     console.log("🛑 SIGINT received, stopping schedulers...");
     lowStockScheduler.stop();
     renewalScheduler.stop();
+    webhookRetryScheduler.stop();
+    firmaPassValidationScheduler.stop();
+    recurringExpenseScheduler.stop();
+    fixedAssetDepreciationScheduler.stop();
+    recurringJournalScheduler.stop();
+    receiptTacitaScheduler.stop();
+    itcycleKeepAliveScheduler.stop();
+    discoveryScheduler.stop();
     process.exit(0);
 });

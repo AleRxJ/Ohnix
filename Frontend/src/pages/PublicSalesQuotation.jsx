@@ -45,7 +45,7 @@ const PublicSalesQuotation = () => {
     };
 
     if (loading) return <div className="public-sales-quotation-loading"><Spin size="large" /></div>;
-    if (error || !quotation) return <div className="public-sales-quotation-loading p-6"><Alert message={t("sales_quotations.public_unavailable")} type="error" /></div>;
+    if (error || !quotation) return <div className="public-sales-quotation-loading p-6"><Alert className="dark-alert dark-alert-rose" message={t("sales_quotations.public_unavailable")} type="error" showIcon /></div>;
 
     const columns = [
         { title: t("sales_quotations.product"), key: "product", render: (_, detail) => detail.product_id?.product_name || t("common.na") },
@@ -59,7 +59,7 @@ const PublicSalesQuotation = () => {
             <article className="public-sales-quotation-document">
                 <header className="public-sales-quotation-hero">
                     <div>
-                        <div className="public-sales-quotation-brand"><img src="/Ohnix_Icon.svg" alt="Ohnix" /><span>OHNIX</span></div>
+                        <div className="public-sales-quotation-brand"><img src="/Ohnix_Icon_Transparent.png" alt="Ohnix" className="ohnix-logo-adaptive" /><span>OHNIX</span></div>
                         <p className="public-sales-quotation-eyebrow"><FileTextOutlined /> {t("sales_quotations.public_title")}</p>
                         <Title level={1}>{t("sales_quotations.public_title")}</Title>
                         <p className="public-sales-quotation-number">{t("sales_quotations.number")}: <strong>#{quotation.quotation_no}</strong></p>

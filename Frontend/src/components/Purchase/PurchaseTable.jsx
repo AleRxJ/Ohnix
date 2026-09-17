@@ -101,6 +101,14 @@ const PurchaseTable = ({ purchases = [], loading = false, searchText = "", onVie
             render: (date) => dayjs(date).format("DD/MM/YYYY"),
         },
         {
+            title: t("purchases.due_date"),
+            dataIndex: "due_date",
+            key: "due_date",
+            width: 130,
+            responsive: ["md"],
+            render: (value) => value ? <Tag color={dayjs(value).isBefore(dayjs(), "day") ? "error" : "cyan"}>{dayjs(value).format("DD/MM/YYYY")}</Tag> : "—",
+        },
+        {
             title: t("common.status"),
             dataIndex: "purchase_status",
             key: "status",

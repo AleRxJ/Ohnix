@@ -1,4 +1,5 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Card, Tabs, Badge, Alert } from "antd";
 import {
     FileTextOutlined,
@@ -19,14 +20,28 @@ import PlanGate from "../components/common/PlanGate";
 import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
 import useSubscription from "../hooks/useSubscription";
+import { getConnectivityState, subscribeConnectivity } from "../offline/connectivity";
 
 const Reports = () => {
-    const [activeTab, setActiveTab] = useState("stock");
+    // A caller elsewhere in the app (e.g. Accounting.jsx's "Reporte de IVA"
+    // overview card) can deep-link straight to a specific tab - and, for the
+    // "advanced" tab, straight to one of ITS OWN sub-tabs - via
+    // navigate("/reports", { state: { tab: "advanced", sub: "vat" } }),
+    // mirroring the identical state.tab pattern Accounting.jsx itself already
+    // reads. Without this, every such link landed on the unrelated default
+    // "stock" tab (or, once on "advanced", its own default "margin" sub-tab),
+    // which is indistinguishable from the feature not existing at all.
+    const location = useLocation();
+    const deepLink = location.state || {};
+    const [activeTab, setActiveTab] = useState(deepLink.tab || "stock");
+    const [isOffline, setIsOffline] = useState(!getConnectivityState());
     const { user } = useContext(AuthContext);
     const { t, currentLanguage } = useI18n();
     const { can, loading: subscriptionLoading } = useSubscription();
     const hasAutoEmailAlerts = can("autoEmailAlerts");
     const isMobile = window.innerWidth < 768;
+
+    useEffect(() => subscribeConnectivity((online) => setIsOffline(!online)), []);
 
     const tabLabelByKey = {
         stock: isMobile ? t("reports.stock") : t("reports.stock_report"),
@@ -107,7 +122,7 @@ const Reports = () => {
                     {tabLabelByKey.advanced}
                 </span>
             ),
-            children: can("advancedReports") ? <AdvancedReports /> : <PlanGate featureKey="advancedReports" />,
+            children: can("advancedReports") ? <AdvancedReports defaultSubTab={deepLink.sub} /> : <PlanGate featureKey="advancedReports" />,
         },
     ];
 
@@ -160,6 +175,21 @@ const Reports = () => {
                     {t("reports.print_generated_on")}: {new Date().toLocaleString(currentLanguage)}
                 </p>
             </div>
+
+            {/* Offline notice - only "Stock" is computed from locally synced
+                data (see StockReport.jsx); every other report is a
+                server-side aggregation over the account's full history and
+                simply isn't reproducible from a partial local dataset (see
+                the offline-first plan's report classification). */}
+            {isOffline && (
+                <Alert
+                    message={t("reports.offline_notice_title")}
+                    description={t("reports.offline_notice_description")}
+                    type="warning"
+                    showIcon
+                    className="no-print mb-4 sm:mb-6 dark-alert dark-alert-amber"
+                />
+            )}
 
             {/* Admin Notice */}
             {user?.role === "admin" && (

@@ -118,7 +118,7 @@ const BarcodeScannerModal = ({ open, onCancel, onDetected }) => {
             }}
         >
             {error ? (
-                <Alert type="error" showIcon message={error} />
+                <Alert className="dark-alert dark-alert-rose" type="error" showIcon message={error} />
             ) : (
                 <p className="text-sm text-[var(--ohnix-text-muted)] mb-3">
                     {t("products.barcode_scanner_hint")}

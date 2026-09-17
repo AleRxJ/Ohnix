@@ -39,6 +39,10 @@ export const MODULE_KEYS = [
     // accountingPosting.service.js), this module only gates who can look at
     // the ledger and who can close a period.
     "accounting",
+    // Employees, payroll periods/documents, and prestaciones sociales
+    // settlements - deny-by-default like finance/accounting, since salary
+    // and personal data are the most sensitive records in the account.
+    "payroll",
 ];
 
 // Modules the UI never shows as an independent toggle - their level always
@@ -73,6 +77,7 @@ export const DEFAULT_MEMBER_ROLE_PERMISSIONS = {
     pointsOfSale: "none",
     finance: "none",
     accounting: "none",
+    payroll: "none",
 };
 
 export const OWNER_ROLE_PERMISSIONS = MODULE_KEYS.reduce(

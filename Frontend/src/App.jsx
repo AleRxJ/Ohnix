@@ -1,16 +1,107 @@
-import React, { Suspense, lazy, useContext } from "react";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import React, { Suspense, lazy, useContext, useEffect, useRef, useState } from "react";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n/config.js";
-import { Toaster } from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast";
+import useI18n from "./hooks/useI18n";
 import { AuthProvider } from "./context/AuthContext";
 import AuthContext from "./context/AuthContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { TeamProvider, useTeam } from "./context/TeamContext";
+import { DiscoveryProvider } from "./context/DiscoveryContext";
 import { InventoryTourProvider } from "./context/InventoryTourContext";
 import ProtectedRoute, { GuestRoute } from "./components/ProtectedRoute";
+import OfflineGate from "./components/common/OfflineGate";
 import { ELECTRONIC_INVOICING_ENABLED } from "./config/features";
+import { isPublicMarketingPath } from "./utils/publicPaths.js";
+import { waitForStylesheets } from "./utils/waitForStylesheets.js";
+
+// main.jsx picks exactly one CSS bundle (marketingStyles.js, no antd, for
+// PUBLIC_PATHS - or the full appStyles.js otherwise) based on whichever URL
+// the tab first loaded, and never revisits that choice - there's no reason
+// to, for a fresh full page load. But react-router's client-side navigation
+// doesn't reload the page or re-run main.jsx, so a visitor who lands on "/"
+// (marketingStyles only) and then clicks through to e.g. "/login" or
+// "/dashboard" keeps running with zero antd CSS loaded - every antd
+// component on that route renders completely unstyled.
+//
+// Watching the route here and lazily loading whichever bundle wasn't picked
+// at boot, the first time the visitor actually crosses into that other
+// zone, fixes the missing styles - but the import (and the stylesheet
+// download behind it) still takes a beat. Rendering `children` immediately
+// during that beat means the new route paints once unstyled and again once
+// the CSS lands - the "ugly flash then it fixes itself" this component
+// exists to remove. Holding `children` back behind the same loading
+// fallback already used for lazy route chunks (below) until the stylesheet
+// has actually loaded avoids that second, wrong paint entirely.
+const loadedStyleBundles = new Set();
+const StyleBundleGate = ({ children }) => {
+    const { pathname } = useLocation();
+    const isFirstRun = useRef(true);
+    // Starts true: main.jsx's own boot sequence already awaited
+    // waitForStylesheets() for the initial bundle before React ever mounted,
+    // so the very first render has nothing to wait on here.
+    const [ready, setReady] = useState(true);
+
+    useEffect(() => {
+        const key = isPublicMarketingPath(pathname) ? "marketing" : "app";
+        if (isFirstRun.current) {
+            // main.jsx already loaded (and waited on) the right bundle for
+            // this exact pathname before React even mounted.
+            isFirstRun.current = false;
+            loadedStyleBundles.add(key);
+            return;
+        }
+        if (loadedStyleBundles.has(key)) return;
+        let cancelled = false;
+        setReady(false);
+        const stylesheetReady = key === "marketing" ? import("./marketingStyles.js") : import("./appStyles.js");
+        stylesheetReady.then(waitForStylesheets).then(() => {
+            if (cancelled) return;
+            loadedStyleBundles.add(key);
+            setReady(true);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [pathname]);
+
+    return ready ? children : <RouteLoadingFallback />;
+};
+
+// main.jsx flags window.__ohnixSwUpdated (and fires this event) once a new
+// Service Worker has taken control of the tab, instead of reloading on its
+// own - an unannounced window.location.reload() could wipe out whatever the
+// visitor is in the middle of (a half-filled order, an open modal). This
+// shows the same kind of "new version available" toast Slack/Notion/VS Code
+// web use, and only reloads when the visitor actually clicks it.
+const UpdateToast = () => {
+    const { t } = useI18n();
+    useEffect(() => {
+        const showToast = () => {
+            toast((tst) => (
+                <div className="flex items-center gap-3">
+                    <span>{t("common.new_version_available")}</span>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            toast.dismiss(tst.id);
+                            window.location.reload();
+                        }}
+                        className="rounded-full bg-[var(--ohnix-accent,#29D8D5)] px-3 py-1 text-xs font-semibold text-black"
+                    >
+                        {t("common.reload")}
+                    </button>
+                </div>
+            ), { duration: Infinity, id: "ohnix-sw-update" });
+        };
+        if (window.__ohnixSwUpdated) showToast();
+        window.addEventListener("ohnix:sw-updated", showToast);
+        return () => window.removeEventListener("ohnix:sw-updated", showToast);
+    }, [t]);
+    return null;
+};
 
 // Lazy: ErrorPage uses antd (Result/Button) - same reasoning as
 // AntdConfigProvider below, a static import here would defeat the
@@ -36,12 +127,17 @@ const BlogPost = lazy(() => import("./pages/BlogPost"));
 const Precios = lazy(() => import("./pages/Precios"));
 const SoftwareInventarioPymes = lazy(() => import("./pages/SoftwareInventarioPymes"));
 const FacturacionElectronica = lazy(() => import("./pages/FacturacionElectronica"));
+const FacturacionSinInventario = lazy(() => import("./pages/FacturacionSinInventario"));
+const CertificadosDigitales = lazy(() => import("./pages/CertificadosDigitales"));
 const OhnixVsAlegra = lazy(() => import("./pages/OhnixVsAlegra"));
 const ColaboracionEquipo = lazy(() => import("./pages/ColaboracionEquipo"));
+const Integraciones = lazy(() => import("./pages/Integraciones"));
 const ProfilePage = lazy(() => import("./components/ProfilePage"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DashboardLayout = lazy(() => import("./components/layout/DashboardLayout"));
 const Products = lazy(() => import("./pages/Products"));
+const ProductionOrders = lazy(() => import("./pages/ProductionOrders"));
+const Payroll = lazy(() => import("./pages/Payroll"));
 const Orders = lazy(() => import("./pages/Orders"));
 const Purchase = lazy(() => import("./pages/Purchase"));
 const Quotations = lazy(() => import("./pages/Quotations"));
@@ -51,17 +147,25 @@ const Customers = lazy(() => import("./pages/Customers"));
 const Suppliers = lazy(() => import("./pages/Suppliers"));
 const Category = lazy(() => import("./pages/Category"));
 const Reports = lazy(() => import("./pages/Reports"));
+const Discoveries = lazy(() => import("./pages/Discoveries"));
 const Billing = lazy(() => import("./pages/Billing"));
+const Integrations = lazy(() => import("./pages/Integrations"));
 const Finance = lazy(() => import("./pages/Finance"));
 const Accounting = lazy(() => import("./pages/Accounting"));
 const AdminManagement = lazy(() => import("./pages/AdminManagement"));
 const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
+const AdminFirmaPassValidations = lazy(() => import("./pages/AdminFirmaPassValidations"));
+const AdminCertificateOrders = lazy(() => import("./pages/AdminCertificateOrders"));
+const AdminApiClients = lazy(() => import("./pages/AdminApiClients"));
+const AdminDianTestMatrix = lazy(() => import("./pages/AdminDianTestMatrix"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
 const EpaycoResponseRedirect = lazy(() => import("./pages/EpaycoResponseRedirect"));
 const ElectronicInvoices = lazy(() => import("./pages/ElectronicInvoices"));
 const PurchaseSupportDocuments = lazy(() => import("./pages/PurchaseSupportDocuments"));
 const FiscalSetup = lazy(() => import("./pages/FiscalSetup"));
+const CertificateOrderCheckout = lazy(() => import("./pages/CertificateOrderCheckout"));
+const CertificateOrderPaymentResponse = lazy(() => import("./pages/CertificateOrderPaymentResponse"));
 const Team = lazy(() => import("./pages/Team"));
 const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
 
@@ -149,6 +253,10 @@ const requireModuleAccess = (moduleKey) => ({ children }) => {
         : <Navigate to="/dashboard" replace />;
 };
 const RequireReportsAccess = requireModuleAccess("reports");
+// Discoveries piggybacks on the "reports" module permission, same as its
+// backend route (see Backend/routes/discovery.routes.js's own comment) -
+// not an independently grantable module.
+const RequireDiscoveriesAccess = requireModuleAccess("reports");
 const RequireProductsAccess = requireModuleAccess("products");
 const RequireOrdersAccess = requireModuleAccess("orders");
 const RequirePurchasesAccess = requireModuleAccess("purchases");
@@ -157,6 +265,7 @@ const RequireSuppliersAccess = requireModuleAccess("suppliers");
 const RequireCategoriesAccess = requireModuleAccess("categories");
 const RequireFinanceAccess = requireModuleAccess("finance");
 const RequireAccountingAccess = requireModuleAccess("accounting");
+const RequirePayrollAccess = requireModuleAccess("payroll");
 
 // AntdConfigProvider pulls in the whole "vendor-antd" chunk (see
 // vite.config.js) - the marketing pages below (LandingPage, Precios, Demo,
@@ -179,6 +288,8 @@ function App() {
                     <InventoryTourProvider>
                     <BrowserRouter>
                         <TeamProvider>
+                        <DiscoveryProvider>
+                        <UpdateToast />
                         <Toaster
                             position="top-right"
                             toastOptions={{
@@ -206,6 +317,7 @@ function App() {
                             }}
                         />
                         <Suspense fallback={<RouteLoadingFallback />}>
+                        <StyleBundleGate>
                         <div>
                             <Routes>
                             {/* Public marketing routes - no antd usage, kept outside AntdRoutesLayout */}
@@ -217,8 +329,15 @@ function App() {
                             {ELECTRONIC_INVOICING_ENABLED && (
                                 <Route path="/facturacion-electronica-dian" element={<FacturacionElectronica />} />
                             )}
+                            {ELECTRONIC_INVOICING_ENABLED && (
+                                <Route path="/facturacion-electronica-sin-inventario" element={<FacturacionSinInventario />} />
+                            )}
+                            {ELECTRONIC_INVOICING_ENABLED && (
+                                <Route path="/certificado-digital-dian" element={<CertificadosDigitales />} />
+                            )}
                             <Route path="/comparativa/ohnix-vs-alegra" element={<OhnixVsAlegra />} />
                             <Route path="/colaboracion-en-equipo" element={<ColaboracionEquipo />} />
+                            <Route path="/integraciones" element={<Integraciones />} />
                             <Route path="/demo" element={<Demo />} />
 
                             {/* Everything below uses antd components (Form, Table, etc.) */}
@@ -265,6 +384,8 @@ function App() {
                             >
                                 <Route path="dashboard" element={<Dashboard />} />
                                 <Route path="products" element={<RequireProductsAccess><Products /></RequireProductsAccess>} />
+                                <Route path="production-orders" element={<RequireProductsAccess><ProductionOrders /></RequireProductsAccess>} />
+                                <Route path="payroll" element={<RequirePayrollAccess><Payroll /></RequirePayrollAccess>} />
                                 <Route path="orders" element={<RequireOrdersAccess><Orders /></RequireOrdersAccess>} />
                                 <Route path="electronic-invoices" element={<ColombiaInvoiceRoute><ElectronicInvoices /></ColombiaInvoiceRoute>} />
                                 <Route path="purchase-support-documents" element={<SupportDocumentRoute><PurchaseSupportDocuments /></SupportDocumentRoute>} />
@@ -275,16 +396,46 @@ function App() {
                                 <Route path="suppliers" element={<RequireSuppliersAccess><Suppliers /></RequireSuppliersAccess>} />
                                 <Route path="categories" element={<RequireCategoriesAccess><Category /></RequireCategoriesAccess>} />
                                 <Route path="reports/*" element={<RequireReportsAccess><Reports /></RequireReportsAccess>} />
+                                <Route path="discoveries" element={<RequireDiscoveriesAccess><Discoveries /></RequireDiscoveriesAccess>} />
                                 <Route path="finance" element={<RequireFinanceAccess><Finance /></RequireFinanceAccess>} />
-                                <Route path="accounting" element={<RequireAccountingAccess><Accounting /></RequireAccountingAccess>} />
-                                <Route path="fiscal-setup" element={<RequireFiscalSetupAccess><FiscalSetup /></RequireFiscalSetupAccess>} />
-                                <Route path="team" element={<Team />} />
-                                <Route path="billing" element={<RequireBillingAccess><Billing /></RequireBillingAccess>} />
+                                <Route path="accounting" element={<RequireAccountingAccess><OfflineGate><Accounting /></OfflineGate></RequireAccountingAccess>} />
+                                <Route path="team" element={<OfflineGate><Team /></OfflineGate>} />
+                                <Route path="billing" element={<RequireBillingAccess><OfflineGate><Billing /></OfflineGate></RequireBillingAccess>} />
+                                {/* Same owner-only gate as Billing (see RequireBillingAccess's comment) -
+                                    API keys/integrations/webhooks are account-wide credentials/config,
+                                    blocked for team members at the backend too (blockTeamMembers). */}
+                                <Route path="integrations" element={<RequireBillingAccess><OfflineGate><Integrations /></OfflineGate></RequireBillingAccess>} />
                                 <Route path="billing/payment-success" element={<RequireBillingAccess><PaymentSuccess /></RequireBillingAccess>} />
                                 <Route path="billing/epayco-checkout" element={<RequireBillingAccess><EpaycoCheckout /></RequireBillingAccess>} />
                                 <Route path="billing/epayco-response" element={<RequireBillingAccess><EpaycoResponseRedirect /></RequireBillingAccess>} />
                                 <Route path="admin/management" element={<AdminManagement />} />
                                 <Route path="admin/subscriptions" element={<AdminSubscriptions />} />
+                                <Route path="admin/firmapass-validations" element={<AdminFirmaPassValidations />} />
+                                <Route path="admin/certificate-orders" element={<AdminCertificateOrders />} />
+                                <Route path="admin/api-clients" element={<AdminApiClients />} />
+                                <Route path="admin/dian-test-matrix" element={<AdminDianTestMatrix />} />
+                            </Route>
+
+                            {/* Fiscal setup (including the certificate checkout) deliberately does NOT
+                                require email verification: the certificate's own identity check
+                                (FirmaPass/Viafirma, a real ID document) is already a stronger identity
+                                proof than an email click, so gating it behind requireVerified too just
+                                adds friction without adding safety. This also lets the guest-checkout
+                                flow (CertificadosDigitales.jsx) land a freshly auto-logged-in,
+                                not-yet-email-verified account straight on this page. Sibling route
+                                group (not nested in the requireVerified block above) so every other
+                                dashboard route keeps its exact existing gating. */}
+                            <Route
+                                path="/"
+                                element={
+                                    <ProtectedRoute>
+                                        <DashboardLayout />
+                                    </ProtectedRoute>
+                                }
+                            >
+                                <Route path="fiscal-setup" element={<RequireFiscalSetupAccess><FiscalSetup /></RequireFiscalSetupAccess>} />
+                                <Route path="fiscal-setup/certificate-checkout" element={<RequireFiscalSetupAccess><CertificateOrderCheckout /></RequireFiscalSetupAccess>} />
+                                <Route path="fiscal-setup/certificate-payment-response" element={<RequireFiscalSetupAccess><CertificateOrderPaymentResponse /></RequireFiscalSetupAccess>} />
                             </Route>
 
                             {/* catch all - uses antd (Result/Button), stays inside AntdRoutesLayout */}
@@ -292,7 +443,9 @@ function App() {
                             </Route>
                             </Routes>
                         </div>
+                        </StyleBundleGate>
                         </Suspense>
+                        </DiscoveryProvider>
                         </TeamProvider>
                     </BrowserRouter>
                     </InventoryTourProvider>

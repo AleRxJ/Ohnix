@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { Button, Modal, Form, Input, List, Tag, Tooltip, Popconfirm, Typography } from "antd";
-import { KeyOutlined, PlusOutlined, CopyOutlined, DeleteOutlined, LockOutlined } from "@ant-design/icons";
+import { useEffect, useState } from "react";
+import { Button, Modal, Form, Input, List, Tag, Tooltip, Popconfirm, Typography, Checkbox } from "antd";
+import { KeyOutlined, PlusOutlined, CopyOutlined, DeleteOutlined, LockOutlined, SafetyOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import useSubscription from "../../hooks/useSubscription";
 import useI18n from "../../hooks/useI18n";
@@ -9,6 +9,12 @@ import { apiKeyService } from "../../services/apiKeyService";
 const { Text, Paragraph } = Typography;
 
 const MAX_ACTIVE_KEYS = 5;
+
+// antd's Tag color="default" is a fixed light-gray/near-black-text preset
+// that doesn't adapt to Ohnix's own theme toggle (no ConfigProvider dark
+// algorithm is configured), so any "neutral" tag needs explicit --ohnix-*
+// styling instead - same fix applied in IntegrationsPanel/WebhooksPanel.
+const NEUTRAL_TAG_STYLE = { background: "var(--ohnix-line-3)", color: "var(--ohnix-text-muted)", border: "1px solid var(--ohnix-line-4)" };
 
 const darkModalStyles = {
     mask: { backgroundColor: "rgba(0,0,0,0.55)" },
@@ -35,9 +41,18 @@ const ApiKeysPanel = () => {
     const [creating, setCreating] = useState(false);
     const [form] = Form.useForm();
     const [newKey, setNewKey] = useState(null);
+    const [availableScopes, setAvailableScopes] = useState([]);
+    const [scopesTarget, setScopesTarget] = useState(null);
+    const [scopesForm] = Form.useForm();
+    const [savingScopes, setSavingScopes] = useState(false);
 
     const canUseApi = can("apiAccess");
     const activeKeyCount = keys.filter((key) => !key.revoked_at).length;
+
+    const scopeOptions = availableScopes.map((scope) => ({
+        label: t(`billing.api_keys.scope_${scope.replace(":", "_")}`),
+        value: scope,
+    }));
 
     const fetchKeys = async () => {
         try {
@@ -52,13 +67,19 @@ const ApiKeysPanel = () => {
     };
 
     useEffect(() => {
-        if (canUseApi) fetchKeys();
+        if (canUseApi) {
+            fetchKeys();
+            apiKeyService
+                .getAvailableScopes()
+                .then((response) => setAvailableScopes(response?.data?.scopes || []))
+                .catch(() => {});
+        }
     }, [canUseApi]);
 
-    const handleCreate = async ({ name }) => {
+    const handleCreate = async ({ name, scopes }) => {
         try {
             setCreating(true);
-            const response = await apiKeyService.createApiKey(name);
+            const response = await apiKeyService.createApiKey(name, scopes?.length ? scopes : undefined);
             setNewKey({ key: response?.data?.key, name });
             form.resetFields();
             setCreateOpen(false);
@@ -67,6 +88,25 @@ const ApiKeysPanel = () => {
             toast.error(error.response?.data?.message || t("common.error"));
         } finally {
             setCreating(false);
+        }
+    };
+
+    const openScopesEditor = (item) => {
+        setScopesTarget(item);
+        scopesForm.setFieldsValue({ scopes: item.scopes || [] });
+    };
+
+    const handleSaveScopes = async ({ scopes }) => {
+        try {
+            setSavingScopes(true);
+            await apiKeyService.updateApiKeyScopes(scopesTarget.id, scopes || []);
+            toast.success(t("billing.api_keys.scopes_updated"));
+            setScopesTarget(null);
+            await fetchKeys();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setSavingScopes(false);
         }
     };
 
@@ -93,7 +133,7 @@ const ApiKeysPanel = () => {
     if (subscriptionLoading) return null;
 
     return (
-        <div className="mt-6 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 sm:p-5">
+        <div data-tour="integrations-api-keys" className="mt-6 rounded-2xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 sm:p-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                     <div className="flex items-center gap-2 text-sm font-bold text-[var(--ohnix-text-primary)]">
@@ -142,8 +182,19 @@ const ApiKeysPanel = () => {
                         <List.Item
                             className="!border-[var(--ohnix-line-4)]"
                             actions={[
+                                !item.revoked_at && (
+                                    <Button
+                                        key="scopes"
+                                        type="text"
+                                        size="small"
+                                        icon={<SafetyOutlined />}
+                                        onClick={() => openScopesEditor(item)}
+                                    >
+                                        {t("billing.api_keys.edit_scopes")}
+                                    </Button>
+                                ),
                                 item.revoked_at ? (
-                                    <Tag key="revoked" color="default">
+                                    <Tag key="revoked" style={NEUTRAL_TAG_STYLE}>
                                         {t("billing.api_keys.revoked_tag")}
                                     </Tag>
                                 ) : (
@@ -163,7 +214,19 @@ const ApiKeysPanel = () => {
                             ]}
                         >
                             <List.Item.Meta
-                                title={<span className="text-[var(--ohnix-text-primary)]">{item.name}</span>}
+                                title={
+                                    <span className="flex items-center gap-2 text-[var(--ohnix-text-primary)]">
+                                        {item.name}
+                                        <Tag
+                                            color={item.scopes?.length === scopeOptions.length ? "cyan" : undefined}
+                                            style={item.scopes?.length === scopeOptions.length ? undefined : NEUTRAL_TAG_STYLE}
+                                        >
+                                            {item.scopes?.length === scopeOptions.length || !scopeOptions.length
+                                                ? t("billing.api_keys.scopes_all_tag")
+                                                : t("billing.api_keys.scopes_tag", { count: item.scopes?.length || 0 })}
+                                        </Tag>
+                                    </span>
+                                }
                                 description={
                                     <span className="text-xs text-[var(--ohnix-text-muted)]">
                                         {item.key_prefix}••••••••
@@ -211,6 +274,36 @@ const ApiKeysPanel = () => {
                         rules={[{ required: true, message: t("validation.required_field") }]}
                     >
                         <Input className="auth-ohnix-input" placeholder={t("billing.api_keys.name_placeholder")} maxLength={60} />
+                    </Form.Item>
+                    <Form.Item name="scopes" label={t("billing.api_keys.scopes_label")} extra={t("billing.api_keys.scopes_hint")}>
+                        <Checkbox.Group options={scopeOptions} className="flex flex-col gap-2" />
+                    </Form.Item>
+                </Form>
+            </Modal>
+
+            <Modal
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                            <SafetyOutlined className="text-[#44F3F0]" />
+                        </div>
+                        <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                            {t("billing.api_keys.edit_scopes_modal_title")}
+                        </span>
+                    </div>
+                }
+                open={!!scopesTarget}
+                onCancel={() => setScopesTarget(null)}
+                onOk={() => scopesForm.submit()}
+                confirmLoading={savingScopes}
+                okText={t("common.save")}
+                cancelText={t("common.cancel")}
+                destroyOnClose
+                styles={darkModalStyles}
+            >
+                <Form form={scopesForm} layout="vertical" onFinish={handleSaveScopes}>
+                    <Form.Item name="scopes" label={t("billing.api_keys.scopes_label")} extra={t("billing.api_keys.scopes_hint")}>
+                        <Checkbox.Group options={scopeOptions} className="flex flex-col gap-2" />
                     </Form.Item>
                 </Form>
             </Modal>

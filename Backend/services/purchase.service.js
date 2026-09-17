@@ -1,11 +1,14 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { recordStockMovement } from "./stockMovement.service.js";
-import { claimLocationStock, creditLocationStock } from "./productLocationStock.service.js";
+import { claimLocationStockWithCost, creditLocationStockWithCost } from "./productLocationStock.service.js";
+import { creditBatch, claimNamedBatch } from "./productBatch.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
 import { assertPosAccess } from "../middleware/pos.permissions.js";
-import { postPurchaseJournalEntry, postPurchaseReturnJournalEntry } from "./accountingPosting.service.js";
+import { buildAccountingThirdParty, postPurchaseJournalEntry, postPurchaseReturnJournalEntry } from "./accountingPosting.service.js";
 import { issueSupportDocumentForPurchase } from "./purchaseSupportDocument.service.js";
+import { triggerAcuseDeReciboForPurchase } from "./receiptAcknowledgment.service.js";
+import { buildPurchaseRetentionSnapshots, calculateRetentionReturn } from "./withholdingConcept.service.js";
 
 const toExternalId = (entity) => entity.legacyMongoId || entity.id;
 
@@ -20,6 +23,27 @@ const triggerSupportDocumentIfCompleted = ({ purchaseId, userId, userRole, trigg
         trigger,
     }).catch((error) => {
         console.warn("[support-document] async issuance skipped/failed", {
+            purchaseId,
+            trigger,
+            message: error?.message || error,
+        });
+    });
+};
+
+// Same fire-and-forget pattern as triggerSupportDocumentIfCompleted above,
+// for the opposite supplier precondition (issuesElectronicInvoice, not
+// notObligatedToInvoice) - see receiptAcknowledgment.service.js. Internally
+// no-ops (via its own 409 checks) for a purchase whose supplier doesn't
+// need this, exactly like the support-document trigger does for its own
+// precondition - so it's safe to fire unconditionally alongside it.
+const triggerReceiptAcknowledgmentIfCompleted = ({ purchaseId, userId, userRole, trigger }) => {
+    triggerAcuseDeReciboForPurchase({
+        purchaseId,
+        requesterUserId: userId,
+        requesterRole: userRole,
+        trigger,
+    }).catch((error) => {
+        console.warn("[receipt-acknowledgment] async acuse skipped/failed", {
             purchaseId,
             trigger,
             message: error?.message || error,
@@ -49,7 +73,45 @@ const findProductByAnyId = async (id) =>
             stock: true,
             taxTreatment: true,
             taxRate: true,
+            purchaseUnitId: true,
+            purchaseUnitConversionFactor: true,
+            tracksBatches: true,
         },
+    });
+
+// A purchase line may arrive in the product's configured purchase unit
+// (purchase_unit_quantity/purchase_unit_cost, e.g. "3 cajas de 12") instead
+// of its base stock unit (quantity/unitcost, e.g. "36 unidades") - see
+// Product.purchaseUnitId's schema comment. Converted once, here, before
+// anything downstream (stock claim/credit, weighted-average costing,
+// accounting posting, retentions) ever reads `details` - every one of
+// those already assumes quantity/unitcost are in base units, exactly as
+// they were before this feature existed, so nothing past this point needs
+// to know a conversion happened.
+const resolvePurchaseUnitDetails = (details, productsById) =>
+    details.map((detail) => {
+        if (detail.purchase_unit_quantity === undefined || detail.purchase_unit_quantity === null) return detail;
+
+        const product = productsById.get(detail.product_id?.toString());
+        const factor = product ? Number(product.purchaseUnitConversionFactor) : NaN;
+        if (!product?.purchaseUnitId || !Number.isFinite(factor) || factor <= 0) {
+            throw new ApiError(400, `${product?.productName || detail.product_id} does not have a purchase unit configured.`, [], "", "product_purchase_unit_not_configured");
+        }
+
+        const purchaseQuantity = Number(detail.purchase_unit_quantity);
+        const purchaseUnitCost = Number(detail.purchase_unit_cost);
+        if (!Number.isFinite(purchaseQuantity) || purchaseQuantity <= 0) {
+            throw new ApiError(400, "Purchase unit quantity must be greater than 0.", [], "", "product_purchase_unit_quantity_invalid");
+        }
+        if (!Number.isFinite(purchaseUnitCost) || purchaseUnitCost < 0) {
+            throw new ApiError(400, "Purchase unit cost must be non-negative.", [], "", "product_purchase_unit_cost_invalid");
+        }
+
+        return {
+            ...detail,
+            quantity: Math.round(purchaseQuantity * factor),
+            unitcost: Number((purchaseUnitCost / factor).toFixed(2)),
+        };
     });
 
 // IVA descontable (input VAT credit, ET art. 485-490) - same shape as
@@ -78,12 +140,14 @@ const findPurchaseByAnyId = async (id) =>
             purchaseStatus: true,
             createdById: true,
             pointOfSaleId: true,
+            supplier: { select: { id: true, name: true, identification: true } },
         },
     });
 
 class PurchaseService {
     async createPurchase(purchaseData, userId, userRole, pointOfSaleId) {
-        const { supplier_id, purchase_no, purchase_status, details, is_tutorial_data, source_quotation_id } = purchaseData;
+        const { supplier_id, purchase_no, purchase_status, due_date, is_tutorial_data, source_quotation_id, withholding_concept_ids } = purchaseData;
+        let { details } = purchaseData;
 
         if (
             !supplier_id ||
@@ -96,7 +160,7 @@ class PurchaseService {
 
         const supplier = await findSupplierByAnyId(supplier_id);
         if (!supplier) {
-            throw new ApiError(404, "Supplier not found");
+            throw new ApiError(404, "Supplier not found", [], "", "supplier_not_found");
         }
 
         if (userRole !== "admin" && supplier.createdById !== userId) {
@@ -122,7 +186,7 @@ class PurchaseService {
 
         const products = await Promise.all(uniqueProductIds.map((id) => findProductByAnyId(id)));
         if (products.some((p) => !p)) {
-            throw new ApiError(400, "One or more products not found");
+            throw new ApiError(400, "One or more products not found", [], "", "products_not_found");
         }
 
         for (const product of products) {
@@ -131,12 +195,28 @@ class PurchaseService {
             }
         }
 
+        // Keyed by both id and legacyMongoId, same dual lookup
+        // findProductByAnyId itself does - detail.product_id may arrive as
+        // either, exactly like it does for every other product reference
+        // in this payload.
+        const productsById = new Map(products.flatMap((p) => [[p.id, p], ...(p.legacyMongoId ? [[p.legacyMongoId, p]] : [])]));
+        details = resolvePurchaseUnitDetails(details, productsById);
+
         for (const d of details) {
             if (!d.quantity || Number(d.quantity) < 1) {
                 throw new ApiError(400, "Quantity must be at least 1 for all items");
             }
             if (d.unitcost === undefined || Number(d.unitcost) < 0) {
                 throw new ApiError(400, "Unit cost must be non-negative for all items");
+            }
+            // Captured at creation time even for a "pending" purchase - the
+            // lot number is information the receiver states once, at
+            // intake, not something to ask for again at the "pending" ->
+            // "completed" transition that actually credits it (see
+            // updatePurchaseStatus below).
+            const product = productsById.get(d.product_id?.toString());
+            if (product?.tracksBatches && !String(d.batch_number || "").trim()) {
+                throw new ApiError(400, `${product.productName} requires a lot/batch number for every purchase line.`, [], "", "product_batch_number_required");
             }
         }
 
@@ -145,7 +225,7 @@ class PurchaseService {
             select: { id: true },
         });
         if (existing) {
-            throw new ApiError(409, "Purchase number already exists");
+            throw new ApiError(409, "Purchase number already exists", [], "", "purchase_number_already_exists");
         }
 
         const initialStatus = purchase_status || "pending";
@@ -154,13 +234,15 @@ class PurchaseService {
         }
 
         const shouldAddStock = initialStatus === "completed";
+        const dueDate = due_date ? new Date(due_date) : null;
+        if (dueDate && Number.isNaN(dueDate.getTime())) throw new ApiError(400, "Fecha de vencimiento inválida.");
 
         // Same lookup order.service.js#createOrder does for the sales side -
         // whether this purchase's IVA can be credited depends on the
         // company's VAT responsibility, not on anything about the supplier.
         const owner = await prisma.user.findUnique({
             where: { id: userId },
-            select: { company: { select: { vatResponsible: true } } },
+            select: { company: { select: { vatResponsible: true, isWithholdingAgent: true, withholdingAgentEffectiveFrom: true } } },
         });
         const companyCollectsVat = owner?.company?.vatResponsible !== "not_responsible";
 
@@ -172,6 +254,7 @@ class PurchaseService {
                         pointOfSaleId,
                         purchaseNo: String(purchase_no).trim(),
                         purchaseStatus: initialStatus,
+                        dueDate,
                         isTutorialData: is_tutorial_data === true,
                         createdById: userId,
                         updatedById: userId,
@@ -207,7 +290,7 @@ class PurchaseService {
                 for (const detail of details) {
                     const mappedProduct = await findProductByAnyId(detail.product_id);
                     if (!mappedProduct) {
-                        throw new ApiError(400, "One or more products not found");
+                        throw new ApiError(400, "One or more products not found", [], "", "products_not_found");
                     }
 
                     const itemTax = computePurchaseItemTax(
@@ -227,22 +310,41 @@ class PurchaseService {
                             taxTreatmentApplied: itemTax.treatment,
                             taxRateApplied: itemTax.rate,
                             taxAmount: itemTax.amount,
+                            ...(mappedProduct.tracksBatches && {
+                                batchNumber: String(detail.batch_number).trim(),
+                                batchExpirationDate: detail.batch_expiration_date ? new Date(detail.batch_expiration_date) : null,
+                            }),
                         },
                     });
 
                     if (shouldAddStock) {
-                        const locationBalance = await creditLocationStock(tx, {
+                        const costing = await creditLocationStockWithCost(tx, {
                             productId: mappedProduct.id,
                             pointOfSaleId,
                             quantity: Number(detail.quantity),
+                            incomingUnitCost: Number(detail.unitcost),
                         });
+
+                        if (mappedProduct.tracksBatches) {
+                            await creditBatch(tx, {
+                                productId: mappedProduct.id,
+                                pointOfSaleId,
+                                batchNumber: detail.batch_number,
+                                expirationDate: detail.batch_expiration_date || null,
+                                quantity: Number(detail.quantity),
+                                createdById: userId,
+                            });
+                        }
 
                         await recordStockMovement(tx, {
                             productId: mappedProduct.id,
                             accountId: mappedProduct.createdById,
                             pointOfSaleId,
                             delta: Number(detail.quantity),
-                            balanceAfter: locationBalance,
+                            balanceAfter: costing.balanceAfter,
+                            unitCostApplied: costing.unitCostApplied,
+                            valueDelta: costing.valueDelta,
+                            valueBalanceAfter: costing.valueBalanceAfter,
                             sourceType: "purchase",
                             sourceId: createdPurchase.id,
                             createdById: userId,
@@ -253,12 +355,32 @@ class PurchaseService {
                     purchaseTaxAmount += itemTax.amount;
                 }
 
+                const retentionSnapshots = await buildPurchaseRetentionSnapshots(tx, {
+                    accountId: userId,
+                    conceptIds: withholding_concept_ids,
+                    transactionDate: createdPurchase.purchaseDate,
+                    totals: { subtotal: purchaseTotal, vat: purchaseTaxAmount },
+                });
+                const hasIncomeWithholding = retentionSnapshots.some((retention) => retention.taxType === "income" && Number(retention.withheldAmount) > 0);
+                const incomeAgentEffective = owner?.company?.isWithholdingAgent === true &&
+                    (!owner.company.withholdingAgentEffectiveFrom || owner.company.withholdingAgentEffectiveFrom <= createdPurchase.purchaseDate);
+                if (hasIncomeWithholding && !incomeAgentEffective) {
+                    throw new ApiError(400, "La empresa no figura como agente retenedor vigente para aplicar retención en la fuente a esta compra.");
+                }
+                if (retentionSnapshots.length > 0) {
+                    await tx.purchaseRetention.createMany({
+                        data: retentionSnapshots.map((snapshot) => ({ purchaseId: createdPurchase.id, ...snapshot })),
+                    });
+                }
+
                 if (shouldAddStock) {
                     await postPurchaseJournalEntry(tx, {
                         accountId: userId,
                         createdById: userId,
                         purchase: createdPurchase,
                         totals: { total: purchaseTotal, taxAmount: purchaseTaxAmount },
+                        retentions: retentionSnapshots,
+                        thirdParty: buildAccountingThirdParty("supplier", supplier),
                     });
                 }
 
@@ -272,6 +394,7 @@ class PurchaseService {
                 _id: toExternalId(purchase),
                 purchase_no: purchase.purchaseNo,
                 purchase_date: purchase.purchaseDate,
+                due_date: purchase.dueDate,
                 purchase_status: purchase.purchaseStatus,
                 supplier_id,
                 created_by: userId,
@@ -280,7 +403,7 @@ class PurchaseService {
             };
         } catch (err) {
             if (err.code === "P2002") {
-                throw new ApiError(409, "Purchase number already exists");
+                throw new ApiError(409, "Purchase number already exists", [], "", "purchase_number_already_exists");
             }
             throw err;
         }
@@ -346,25 +469,43 @@ class PurchaseService {
                     select: {
                         productId: true,
                         quantity: true,
+                        unitcost: true,
                         total: true,
                         taxAmount: true,
-                        product: { select: { createdById: true } },
+                        batchNumber: true,
+                        batchExpirationDate: true,
+                        product: { select: { createdById: true, tracksBatches: true } },
                     },
                 });
 
                 for (const detail of purchaseDetails) {
-                    const locationBalance = await creditLocationStock(tx, {
+                    const costing = await creditLocationStockWithCost(tx, {
                         productId: detail.productId,
                         pointOfSaleId: purchase.pointOfSaleId,
                         quantity: detail.quantity,
+                        incomingUnitCost: Number(detail.unitcost),
                     });
+
+                    if (detail.product.tracksBatches) {
+                        await creditBatch(tx, {
+                            productId: detail.productId,
+                            pointOfSaleId: purchase.pointOfSaleId,
+                            batchNumber: detail.batchNumber,
+                            expirationDate: detail.batchExpirationDate,
+                            quantity: detail.quantity,
+                            createdById: userId,
+                        });
+                    }
 
                     await recordStockMovement(tx, {
                         productId: detail.productId,
                         accountId: detail.product.createdById,
                         pointOfSaleId: purchase.pointOfSaleId,
                         delta: detail.quantity,
-                        balanceAfter: locationBalance,
+                        balanceAfter: costing.balanceAfter,
+                        unitCostApplied: costing.unitCostApplied,
+                        valueDelta: costing.valueDelta,
+                        valueBalanceAfter: costing.valueBalanceAfter,
                         sourceType: "purchase",
                         sourceId: purchase.id,
                         createdById: userId,
@@ -374,11 +515,14 @@ class PurchaseService {
                 const purchaseTotal = purchaseDetails.reduce((sum, d) => sum + Number(d.total), 0);
                 const purchaseTaxAmount = purchaseDetails.reduce((sum, d) => sum + Number(d.taxAmount), 0);
                 const updatedPurchaseRow = await tx.purchase.findUniqueOrThrow({ where: { id: purchase.id } });
+                const retentions = await tx.purchaseRetention.findMany({ where: { purchaseId: purchase.id } });
                 await postPurchaseJournalEntry(tx, {
                     accountId: purchase.createdById,
                     createdById: userId,
                     purchase: updatedPurchaseRow,
                     totals: { total: purchaseTotal, taxAmount: purchaseTaxAmount },
+                    retentions,
+                    thirdParty: buildAccountingThirdParty("supplier", purchase.supplier),
                 });
                 return updatedPurchaseRow;
             }
@@ -393,6 +537,12 @@ class PurchaseService {
 
         if (newStatus === "completed" && !updatedPurchase.isTutorialData) {
             triggerSupportDocumentIfCompleted({
+                purchaseId: updatedPurchase.id,
+                userId,
+                userRole,
+                trigger: "purchase_status_completed",
+            });
+            triggerReceiptAcknowledgmentIfCompleted({
                 purchaseId: updatedPurchase.id,
                 userId,
                 userRole,
@@ -477,6 +627,7 @@ class PurchaseService {
                         productName: true,
                         stock: true,
                         createdById: true,
+                        tracksBatches: true,
                     },
                 },
             },
@@ -530,6 +681,9 @@ class PurchaseService {
         const { results, purchaseFullyReturned } = await prisma.$transaction(async (tx) => {
             const results = [];
             const journalLines = [];
+            let returnedSubtotalNow = 0;
+            let returnedVatNow = 0;
+            const purchaseRetentions = await tx.purchaseRetention.findMany({ where: { purchaseId: purchase.id } });
 
             for (const line of lines) {
                 const detail = detailById.get(line.purchase_detail_id);
@@ -542,17 +696,36 @@ class PurchaseService {
                 // this transaction, so it can't by itself stop a concurrent
                 // sale/adjustment from taking the same location's stock in
                 // between.
-                const locationBalance = await claimLocationStock(tx, {
+                const costing = await claimLocationStockWithCost(tx, {
                     productId: detail.product.id,
                     pointOfSaleId: purchase.pointOfSaleId,
                     quantity,
                 });
 
-                if (locationBalance === null) {
+                if (costing === null) {
                     throw new ApiError(
                         409,
                         `Not enough stock left to return "${detail.product.productName}". Please refresh and try again.`
                     );
+                }
+
+                // Gives back the exact lot this line received, not
+                // whatever FEFO would pick - this line's own batchNumber
+                // already identifies it precisely, more precise than the
+                // generic FEFO claim a sale has to use.
+                if (detail.product.tracksBatches) {
+                    const batchClaim = await claimNamedBatch(tx, {
+                        productId: detail.product.id,
+                        pointOfSaleId: purchase.pointOfSaleId,
+                        batchNumber: detail.batchNumber,
+                        quantity,
+                    });
+                    if (batchClaim === null) {
+                        throw new ApiError(
+                            409,
+                            `Lot "${detail.batchNumber}" doesn't have enough left to return this quantity of "${detail.product.productName}".`
+                        );
+                    }
                 }
 
                 await recordStockMovement(tx, {
@@ -560,13 +733,20 @@ class PurchaseService {
                     accountId: detail.product.createdById,
                     pointOfSaleId: purchase.pointOfSaleId,
                     delta: -quantity,
-                    balanceAfter: locationBalance,
+                    balanceAfter: costing.balanceAfter,
+                    unitCostApplied: costing.unitCostApplied,
+                    valueDelta: costing.valueDelta,
+                    valueBalanceAfter: costing.valueBalanceAfter,
                     sourceType: "purchase_return",
                     sourceId: purchase.id,
                     createdById: userId,
                 });
 
                 const refundNow = quantity * Number(detail.unitcost);
+                const taxRemaining = Math.max(Number(detail.taxAmount) - Number(detail.returnedTaxAmount), 0);
+                const returnedTaxNow = detail.returnedQuantity + quantity === detail.quantity
+                    ? Number(taxRemaining.toFixed(2))
+                    : Math.min(Number(((refundNow * Number(detail.taxRateApplied)) / 100).toFixed(2)), Number(taxRemaining.toFixed(2)));
 
                 // Same claim idiom as the product stock update just above:
                 // the returnedQuantity read that fed the insufficientItems
@@ -581,6 +761,7 @@ class PurchaseService {
                         returnDate: new Date(),
                         returnedQuantity: { increment: quantity },
                         refundAmount: { increment: refundNow },
+                        returnedTaxAmount: { increment: returnedTaxNow },
                     },
                 });
 
@@ -613,7 +794,34 @@ class PurchaseService {
                     quantity,
                     unitcost: detail.unitcost,
                     taxRateApplied: detail.taxRateApplied,
+                    inventoryCostApplied: -costing.valueDelta,
                 });
+                returnedSubtotalNow += refundNow;
+                returnedVatNow += returnedTaxNow;
+            }
+
+            const returnBases = {
+                subtotal: Number(returnedSubtotalNow.toFixed(2)),
+                vat: Number(returnedVatNow.toFixed(2)),
+                total: Number((returnedSubtotalNow + returnedVatNow).toFixed(2)),
+            };
+            const retentionReturns = [];
+            for (const retention of purchaseRetentions) {
+                const calculated = calculateRetentionReturn(retention, returnBases[retention.baseType]);
+                if (calculated.baseNow <= 0) continue;
+                const claim = await tx.purchaseRetention.updateMany({
+                    where: {
+                        id: retention.id,
+                        returnedBaseAmount: retention.returnedBaseAmount,
+                        returnedWithheldAmount: retention.returnedWithheldAmount,
+                    },
+                    data: {
+                        returnedBaseAmount: { increment: calculated.baseNow },
+                        returnedWithheldAmount: { increment: calculated.withheldNow },
+                    },
+                });
+                if (claim.count === 0) throw new ApiError(409, "Las retenciones de esta compra fueron actualizadas por otra devolución. Actualiza e intenta de nuevo.");
+                retentionReturns.push({ ...retention, ...calculated });
             }
 
             const allDetails = await tx.purchaseDetail.findMany({
@@ -638,6 +846,9 @@ class PurchaseService {
                 entryDate: new Date(),
                 description: "Devolución de compra",
                 lines: journalLines,
+                retentionReturns,
+                thirdParty: buildAccountingThirdParty("supplier", purchase.supplier),
+                pointOfSaleId: purchase.pointOfSaleId,
             });
 
             return { results, purchaseFullyReturned };

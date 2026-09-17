@@ -1,4 +1,5 @@
 import { api } from "../api/api";
+import { idempotencyHeaders } from "../utils/idempotency";
 
 // Mirrors Backend/routes/finance.routes.js one to one. Shared across three
 // screens (Finance page, OrderDetailsDrawer, PurchaseDetails) - unlike
@@ -58,6 +59,26 @@ export const financeService = {
         return response.data;
     },
 
+    async getAccountsPayablePlan() {
+        const response = await api.get("/finance/accounts-payable");
+        return response.data;
+    },
+
+    async updatePurchaseDueDate(purchaseId, dueDate) {
+        const response = await api.patch(`/finance/purchases/${purchaseId}/due-date`, { due_date: dueDate });
+        return response.data;
+    },
+
+    async getAccountsReceivablePlan() {
+        const response = await api.get("/finance/accounts-receivable");
+        return response.data;
+    },
+
+    async updateOrderDueDate(orderId, dueDate) {
+        const response = await api.patch(`/finance/orders/${orderId}/due-date`, { due_date: dueDate });
+        return response.data;
+    },
+
     async createStatementEntries(cashAccountId, entries) {
         const response = await api.post("/finance/reconciliation/statement-entries", {
             cash_account_id: cashAccountId,
@@ -88,6 +109,46 @@ export const financeService = {
         });
         return response.data;
     },
+    async listCashAccountConfigurationHistory(id) {
+        const response = await api.get(`/finance/cash-accounts/${id}/configuration-history`);
+        return response.data;
+    },
+
+    async registerManualIncome(payload) {
+        const response = await api.post("/finance/income", payload);
+        return response.data;
+    },
+    async transferCash(payload) {
+        const response = await api.post("/finance/transfers", payload, idempotencyHeaders());
+        return response.data;
+    },
+    async adjustCash(payload) {
+        const response = await api.post("/finance/adjustments", payload, idempotencyHeaders());
+        return response.data;
+    },
+    async getCashIntegrity() {
+        const response = await api.get("/finance/integrity");
+        return response.data;
+    },
+    async getReconciliationSuggestions(cashAccountId) {
+        const response = await api.get("/finance/reconciliation/suggestions", { params: { cash_account_id: cashAccountId } });
+        return response.data;
+    },
+    async getReconciliationSummary(cashAccountId) {
+        const response = await api.get("/finance/reconciliation/summary", { params: { cash_account_id: cashAccountId } });
+        return response.data;
+    },
+    async getReconciliationReport(cashAccountId, params = {}) {
+        const response = await api.get("/finance/reconciliation/report", { params: { cash_account_id: cashAccountId, ...params } });
+        return response.data;
+    },
+    async allocateOrderPayment(orderId, paymentId, amount) { const response = await api.post(`/finance/orders/${orderId}/payments/${paymentId}/allocate`, { amount }); return response.data; },
+    async listOrderPaymentAllocations(orderId, paymentId) { const response = await api.get(`/finance/orders/${orderId}/payments/${paymentId}/allocations`); return response.data; },
+    async allocatePurchasePayment(purchaseId, paymentId, amount) { const response = await api.post(`/finance/purchases/${purchaseId}/payments/${paymentId}/allocate`, { amount }); return response.data; },
+    async listPurchasePaymentAllocations(purchaseId, paymentId) { const response = await api.get(`/finance/purchases/${purchaseId}/payments/${paymentId}/allocations`); return response.data; },
+    async listUnallocatedPayments(type) { const response = await api.get("/finance/payments/unallocated", { params: { type } }); return response.data; },
+    async listPaymentCredits(params = {}) { const response = await api.get("/finance/payment-credits", { params }); return response.data; },
+    async applyPaymentCredit(creditId, payload) { const response = await api.post(`/finance/payment-credits/${creditId}/apply`, payload); return response.data; },
 
     async getCarteraReport(params) {
         const response = await api.get("/reports/cartera", { params });

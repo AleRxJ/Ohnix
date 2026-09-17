@@ -5,6 +5,8 @@ import { ShopOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 import useSubscription from "../../hooks/useSubscription";
 import { pointOfSaleService } from "../../services/pointOfSaleService";
+import { getConnectivityState } from "../../offline/connectivity";
+import { readMirrorAll } from "../../offline/entityQueue";
 
 // Drops into any create form that goes through
 // Backend/middleware/pos.permissions.js#resolveOrAssertPointOfSaleId
@@ -23,8 +25,28 @@ import { pointOfSaleService } from "../../services/pointOfSaleService";
 // possible answer. Options are the actor's own scope only (inOwnScope) -
 // creating a customer/order/etc. at a location outside your own access
 // isn't something this field needs to support.
-const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false }) => {
-    const { t } = useI18n();
+// Shared visibility decision, exported so a parent laid out in a fixed grid
+// (antd Row/Col) can skip rendering the wrapping Col entirely instead of
+// leaving it empty - an empty Col still reserves its 50% track, which reads
+// as a blank gap next to the sibling field rather than a normal one-field
+// row. Plain flex/grid layouts (a bare <PointOfSaleField /> among CSS grid
+// children, or standalone outside any Row) don't need this: when this
+// component returns null there, no DOM node is created and the layout
+// reflows on its own.
+//
+// `visible` defaults to true while anything is still loading, matching the
+// select's own loading-spinner state below - only flips to false once both
+// the plan and the point-of-sale list are resolved and confirm there's
+// nothing to choose from.
+// `salesOnly` drops warehouse/distribution_center locations from the
+// options - a bodega doesn't serve walk-in customers (per PointOfSale's own
+// schema comment: "selling FROM a warehouse isn't blocked at this layer -
+// that's a product/business decision"). This is that decision, applied only
+// where it belongs: sales/quotation forms pass salesOnly, purchases/
+// customers/suppliers don't, since receiving a purchase at a warehouse (or
+// naming one as a customer/supplier's home location) is exactly what a
+// warehouse is for.
+export const usePointOfSaleFieldVisible = ({ salesOnly = false } = {}) => {
     const { can, loading: subscriptionLoading } = useSubscription();
     const canUseMultiLocation = can("multiLocation");
     const [options, setOptions] = useState(null); // null = still loading
@@ -34,16 +56,43 @@ const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false }) => {
             if (!subscriptionLoading) setOptions([]);
             return;
         }
+        const filterOwn = (rows) => (rows || []).filter((pos) => pos.isActive && pos.inOwnScope && (!salesOnly || pos.locationType === "point_of_sale" || !pos.locationType));
+        if (!getConnectivityState()) {
+            // pointsOfSale is a full-mirror entity (entitySync.js) - same
+            // shape as the live GET /points-of-sale response, so it filters
+            // identically. Without this, a genuinely multi-location account
+            // silently lost the ability to say *which* location a purchase/
+            // order/customer/supplier belongs to while offline (the field
+            // just disappeared, per the `options.length <= 1` check below).
+            readMirrorAll("pointsOfSale").then((rows) => setOptions(filterOwn(rows)));
+            return;
+        }
         pointOfSaleService
             .list()
-            .then((res) => {
-                const own = (res?.data || []).filter((pos) => pos.isActive && pos.inOwnScope);
-                setOptions(own);
-            })
-            .catch(() => setOptions([]));
-    }, [canUseMultiLocation, subscriptionLoading]);
+            .then((res) => setOptions(filterOwn(res?.data)))
+            .catch((error) => {
+                if (!error.response) {
+                    // Real network failure, not a server rejection - most
+                    // likely we were actually offline this whole time (see
+                    // connectivity.js's reportNetworkFailure). Fall back to
+                    // the mirror instead of silently hiding the field.
+                    readMirrorAll("pointsOfSale").then((rows) => setOptions(filterOwn(rows)));
+                    return;
+                }
+                setOptions([]);
+            });
+    }, [canUseMultiLocation, subscriptionLoading, salesOnly]);
 
-    if (!subscriptionLoading && (!canUseMultiLocation || (options && options.length <= 1))) return null;
+    const resolved = !subscriptionLoading && options !== null;
+    const visible = !resolved || (canUseMultiLocation && options.length > 1);
+    return { visible, options, subscriptionLoading, canUseMultiLocation };
+};
+
+const PointOfSaleField = ({ name = "pointOfSaleId", disabled = false, salesOnly = false }) => {
+    const { t } = useI18n();
+    const { visible, options, subscriptionLoading } = usePointOfSaleFieldVisible({ salesOnly });
+
+    if (!visible) return null;
 
     return (
         <Form.Item
@@ -71,4 +120,5 @@ export default PointOfSaleField;
 PointOfSaleField.propTypes = {
     name: PropTypes.string,
     disabled: PropTypes.bool,
+    salesOnly: PropTypes.bool,
 };

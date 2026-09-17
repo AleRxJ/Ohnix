@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Form, Divider, Select } from "antd";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -14,6 +14,7 @@ import AuthButton from "../../components/auth/AuthButton";
 import AvatarUpload from "../../components/common/AvatarUpload";
 import { api } from "../../api/api";
 import useI18n from "../../hooks/useI18n";
+import AuthContext from "../../context/AuthContext";
 
 const Signup = () => {
     const [form] = Form.useForm();
@@ -22,6 +23,7 @@ const Signup = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { t, currentLanguage } = useI18n();
+    const { login } = useContext(AuthContext);
 
     const initialDesiredPlan = ["starter", "growth", "scale", "enterprise"].includes(
         searchParams.get("plan")
@@ -58,12 +60,42 @@ const Signup = () => {
 
             if (response.data.success) {
                 const requestedPlan = values.desiredPlan || "starter";
-                if (["growth", "scale", "enterprise"].includes(requestedPlan)) {
+                const requestStatusPath = `/signup/request-status?plan=${requestedPlan}`;
+                // Negocio/Escala need an authenticated session right after
+                // signup - the next page offers checkout (or the free
+                // Emprendedor trial fallback) and both call authenticated
+                // endpoints. Enterprise/Starter don't act on this page, so
+                // they keep the existing "go log in separately" flow.
+                if (["growth", "scale"].includes(requestedPlan)) {
                     toast.success(t("auth.account_created_plan_request"));
+                    // Silent: "account created" above already covers the
+                    // success feedback, a second "logged in" toast would
+                    // just be noise.
+                    const loginResult = await login(
+                        { username: values.username, password: values.password },
+                        { silent: true }
+                    );
+                    if (loginResult?.success) {
+                        navigate(requestStatusPath);
+                    } else {
+                        // Rare: the just-created credentials somehow failed
+                        // to auto-login. Send them through a normal manual
+                        // login, reusing ProtectedRoute's own `state.from`
+                        // redirect convention (see Login.jsx) so they still
+                        // land back on the checkout/trial-fallback page
+                        // afterwards instead of the generic dashboard.
+                        navigate(`/login?email=${encodeURIComponent(values.email)}`, {
+                            state: { from: { pathname: "/signup/request-status", search: `?plan=${requestedPlan}` } },
+                        });
+                    }
                 } else {
-                    toast.success(t("auth.account_created"));
+                    if (requestedPlan === "enterprise") {
+                        toast.success(t("auth.account_created_plan_request"));
+                    } else {
+                        toast.success(t("auth.account_created"));
+                    }
+                    navigate(requestStatusPath);
                 }
-                navigate(`/signup/request-status?plan=${requestedPlan}`);
             }
         } catch (error) {
             const errorMessage =

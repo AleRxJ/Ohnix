@@ -1,0 +1,14 @@
+{
+  "name": "ohnix-desktop-tooling",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Root-level tooling only (Tauri CLI). The actual app code stays in Frontend/, Backend/ - see src-tauri/ for the Desktop shell and docs/architecture/ohnix-multiplatform-strategy.md for why.",
+  "scripts": {
+    "tauri": "tauri",
+    "dev:desktop": "tauri dev",
+    "build:desktop": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

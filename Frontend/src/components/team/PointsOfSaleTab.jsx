@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Button, Modal, Form, Input, Popconfirm, Spin, Tooltip } from "antd";
+import { Button, Modal, Form, Input, Select, Popconfirm, Spin, Tooltip } from "antd";
 import {
     PlusOutlined,
     ShopOutlined,
@@ -20,6 +20,12 @@ const LOCATION_TYPE_ICON = {
     point_of_sale: ShopOutlined,
     warehouse: HomeOutlined,
     distribution_center: ClusterOutlined,
+};
+
+const LOCATION_TYPE_LABEL_KEYS = {
+    point_of_sale: "pointOfSale.location_type_point_of_sale",
+    warehouse: "pointOfSale.location_type_warehouse",
+    distribution_center: "pointOfSale.location_type_distribution_center",
 };
 
 const darkModalStyles = {
@@ -113,11 +119,12 @@ const PointsOfSaleTab = () => {
 
     const openCreate = () => {
         form.resetFields();
+        form.setFieldsValue({ location_type: "point_of_sale" });
         setModal({ mode: "create" });
     };
 
     const openRename = (record) => {
-        form.setFieldsValue({ name: record.name });
+        form.setFieldsValue({ name: record.name, location_type: record.locationType || "point_of_sale" });
         setModal({ mode: "rename", record });
     };
 
@@ -130,10 +137,10 @@ const PointsOfSaleTab = () => {
         setSubmitting(true);
         try {
             if (modal.mode === "create") {
-                await pointOfSaleService.create(values.name.trim());
+                await pointOfSaleService.create(values.name.trim(), values.location_type);
                 toast.success(t("pointOfSale.created"));
             } else {
-                await pointOfSaleService.rename(modal.record.id, values.name.trim());
+                await pointOfSaleService.rename(modal.record.id, values.name.trim(), values.location_type);
                 toast.success(t("pointOfSale.renamed"));
             }
             closeModal();
@@ -193,11 +200,18 @@ const PointsOfSaleTab = () => {
                                         </div>
                                         <div className="min-w-0">
                                             <p className="m-0 font-semibold text-[var(--ohnix-text-primary)] truncate">{record.name}</p>
-                                            {record.isDefault && (
-                                                <span className="text-[10px] font-semibold uppercase tracking-wide text-[#44F3F0]">
-                                                    {t("pointOfSale.default_badge")}
-                                                </span>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                                {record.locationType && record.locationType !== "point_of_sale" && (
+                                                    <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--ohnix-text-dim)]">
+                                                        {t(LOCATION_TYPE_LABEL_KEYS[record.locationType])}
+                                                    </span>
+                                                )}
+                                                {record.isDefault && (
+                                                    <span className="text-[10px] font-semibold uppercase tracking-wide text-[#44F3F0]">
+                                                        {t("pointOfSale.default_badge")}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                     {record.isActive ? (
@@ -279,6 +293,18 @@ const PointsOfSaleTab = () => {
                         rules={[{ required: true, message: t("validation.required_field") }]}
                     >
                         <Input size="large" className="auth-ohnix-input" placeholder={t("pointOfSale.name_placeholder")} maxLength={80} />
+                    </Form.Item>
+                    <Form.Item
+                        name="location_type"
+                        label={<span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ohnix-text-muted)]">{t("pointOfSale.location_type_label")}</span>}
+                        extra={<span className="text-xs text-[var(--ohnix-text-dim)]">{t("pointOfSale.location_type_help")}</span>}
+                        rules={[{ required: true, message: t("validation.required_field") }]}
+                    >
+                        <Select
+                            size="large"
+                            className="auth-ohnix-input"
+                            options={Object.entries(LOCATION_TYPE_LABEL_KEYS).map(([value, key]) => ({ value, label: t(key) }))}
+                        />
                     </Form.Item>
                 </Form>
             </Modal>

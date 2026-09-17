@@ -1,0 +1,253 @@
+import { prisma } from "../db/prisma.js";
+import { ApiError } from "../utils/ApiError.js";
+import { claimCashAccount, recordCashMovement } from "./cashMovement.service.js";
+import { getChartAccountMap, resolveCashAccountChartAccount } from "./chartOfAccounts.service.js";
+import { recordJournalEntry } from "./journalEntry.service.js";
+import { applyLocationCostCenter, decomposeInclusiveTax } from "./accountingPosting.service.js";
+
+const MIN_DAY_OF_MONTH = 1;
+const MAX_DAY_OF_MONTH = 28;
+const TAX_TREATMENTS = new Set(["taxed", "excluded", "exempt"]);
+
+const templateInclude = {
+    expenseAccount: { select: { id: true, code: true, name: true } },
+    cashAccount: { select: { id: true, name: true, pointOfSaleId: true } },
+};
+
+const mapTemplate = (template) => ({
+    _id: template.id,
+    description: template.description,
+    amount: Number(template.amount),
+    tax_treatment: template.taxTreatment,
+    tax_rate: Number(template.taxRate),
+    day_of_month: template.dayOfMonth,
+    is_active: template.isActive,
+    last_generated_period: template.lastGeneratedPeriod,
+    last_run_status: template.lastRunStatus,
+    last_run_error: template.lastRunError,
+    expense_account: template.expenseAccount
+        ? { _id: template.expenseAccount.id, code: template.expenseAccount.code, name: template.expenseAccount.name }
+        : undefined,
+    cash_account: template.cashAccount ? { _id: template.cashAccount.id, name: template.cashAccount.name } : undefined,
+    created_at: template.createdAt,
+    updated_at: template.updatedAt,
+});
+
+// "America/Bogota" by default, same override subscriptionRenewalScheduler.js
+// uses - a template's dayOfMonth is a local calendar day, not a UTC one, so
+// the cron's "is it due yet" check has to read today's date in the same zone
+// the user who configured it is thinking in.
+const currentLocalParts = (tz) => {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+    const get = (type) => parts.find((p) => p.type === type).value;
+    return { year: get("year"), month: get("month"), day: Number(get("day")) };
+};
+
+const resolveTimezone = () => {
+    const tz = process.env.TIMEZONE || "America/Bogota";
+    try {
+        Intl.DateTimeFormat("en-US", { timeZone: tz });
+        return tz;
+    } catch {
+        return "UTC";
+    }
+};
+
+export const listRecurringExpenseTemplates = (accountId, { includeInactive = false } = {}) =>
+    prisma.recurringExpenseTemplate
+        .findMany({
+            where: { createdById: accountId, ...(includeInactive ? {} : { isActive: true }) },
+            include: templateInclude,
+            orderBy: [{ description: "asc" }],
+        })
+        .then((rows) => rows.map(mapTemplate));
+
+const validateTemplateInputs = async (accountId, payload) => {
+    const description = String(payload.description || "").trim();
+    // The TOTAL paid each period, not a pre-tax base - see the schema
+    // comment on RecurringExpenseTemplate.amount and
+    // accountingPosting.service.js#decomposeInclusiveTax.
+    const amount = Number(Number(payload.amount).toFixed(2));
+    const dayOfMonth = Number(payload.day_of_month);
+    const taxTreatment = payload.tax_treatment || "excluded";
+    const taxRate = Number(payload.tax_rate || 0);
+    if (!description) throw new ApiError(400, "Recurring expense description is required.", [], "", "recurring_expense_description_required");
+    if (description.length > 160) throw new ApiError(400, "Recurring expense description is too long.", [], "", "recurring_expense_description_too_long");
+    if (!Number.isFinite(amount) || amount <= 0) throw new ApiError(400, "The recurring expense amount must be greater than zero.", [], "", "recurring_expense_amount_invalid");
+    if (!Number.isInteger(dayOfMonth) || dayOfMonth < MIN_DAY_OF_MONTH || dayOfMonth > MAX_DAY_OF_MONTH) {
+        throw new ApiError(400, `The day of month must be between ${MIN_DAY_OF_MONTH} and ${MAX_DAY_OF_MONTH}.`, [], "", "recurring_expense_day_invalid");
+    }
+    if (!TAX_TREATMENTS.has(taxTreatment)) throw new ApiError(400, "The VAT treatment is invalid.", [], "", "recurring_expense_tax_treatment_invalid");
+    if (taxTreatment === "taxed" && (!Number.isFinite(taxRate) || taxRate <= 0 || taxRate > 100)) {
+        throw new ApiError(400, "The VAT rate must be greater than zero and at most 100.", [], "", "recurring_expense_tax_rate_invalid");
+    }
+
+    const [expenseAccount, cashAccount] = await Promise.all([
+        prisma.chartAccount.findFirst({ where: { id: payload.expense_account_id, createdById: accountId, accountType: "expense", isActive: true } }),
+        prisma.cashAccount.findFirst({ where: { id: payload.cash_account_id, createdById: accountId, isActive: true } }),
+    ]);
+    if (!expenseAccount) throw new ApiError(404, "The expense account was not found or is inactive.", [], "", "recurring_expense_expense_account_unavailable");
+    if (!cashAccount) throw new ApiError(404, "The cash account was not found or is inactive.", [], "", "recurring_expense_cash_account_unavailable");
+
+    return {
+        description, amount, dayOfMonth,
+        taxTreatment, taxRate: taxTreatment === "taxed" ? taxRate : 0,
+        expenseAccountId: expenseAccount.id, cashAccountId: cashAccount.id,
+    };
+};
+
+export const createRecurringExpenseTemplate = async (accountId, actorId, payload) => {
+    const data = await validateTemplateInputs(accountId, payload);
+    return prisma.recurringExpenseTemplate
+        .create({ data: { createdById: accountId, ...data }, include: templateInclude })
+        .then(mapTemplate);
+};
+
+export const updateRecurringExpenseTemplate = async (accountId, actorId, id, payload) => {
+    const current = await prisma.recurringExpenseTemplate.findFirst({ where: { id, createdById: accountId } });
+    if (!current) throw new ApiError(404, "Recurring expense not found.", [], "", "recurring_expense_not_found");
+
+    const merged = {
+        description: payload.description ?? current.description,
+        amount: payload.amount ?? Number(current.amount),
+        day_of_month: payload.day_of_month ?? current.dayOfMonth,
+        tax_treatment: payload.tax_treatment ?? current.taxTreatment,
+        tax_rate: payload.tax_rate ?? Number(current.taxRate),
+        expense_account_id: payload.expense_account_id ?? current.expenseAccountId,
+        cash_account_id: payload.cash_account_id ?? current.cashAccountId,
+    };
+    const data = await validateTemplateInputs(accountId, merged);
+    const isActive = typeof payload.is_active === "boolean" ? payload.is_active : current.isActive;
+
+    return prisma.recurringExpenseTemplate
+        .update({ where: { id }, data: { ...data, isActive }, include: templateInclude })
+        .then(mapTemplate);
+};
+
+// The actual posting, shared by the cron and the "generar ahora" manual
+// trigger below - identical shape to manualExpense.service.js's
+// registerManualExpense (claim cash, post the journal entry, record the cash
+// movement) so a recurring expense reads in every report exactly like one
+// entered by hand, just tagged with a different sourceType for traceability.
+const postTemplateExpense = async (tx, accountId, actorId, template, entryDate, period) => {
+    const [expenseAccount, cashAccount, owner] = await Promise.all([
+        tx.chartAccount.findFirst({ where: { id: template.expenseAccountId, createdById: accountId, accountType: "expense", isActive: true } }),
+        tx.cashAccount.findFirst({ where: { id: template.cashAccountId, createdById: accountId, isActive: true } }),
+        tx.user.findUnique({ where: { id: accountId }, select: { company: { select: { vatResponsible: true } } } }),
+    ]);
+    if (!expenseAccount) throw new ApiError(422, "The expense account no longer exists or is inactive.", [], "", "recurring_expense_expense_account_unavailable");
+    if (!cashAccount) throw new ApiError(422, "The cash account no longer exists or is inactive.", [], "", "recurring_expense_cash_account_unavailable");
+
+    // Re-checked at generation time (not frozen at template-creation time) so
+    // a company that stops being VAT-responsible after a template was
+    // created doesn't keep generating input VAT it can no longer credit -
+    // same live gate manualExpense.service.js applies per submission.
+    const companyCollectsVat = owner?.company?.vatResponsible !== "not_responsible";
+    const effectiveTreatment = companyCollectsVat ? template.taxTreatment : "excluded";
+    const amount = Number(template.amount);
+    const { base, taxAmount } = decomposeInclusiveTax(amount, effectiveTreatment, Number(template.taxRate));
+
+    const balanceAfter = await claimCashAccount(tx, { cashAccountId: cashAccount.id, amount });
+    if (balanceAfter === null) throw new ApiError(422, "The cash account has insufficient funds.", [], "", "recurring_expense_insufficient_funds");
+
+    const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
+    const vatDeductibleAccountId = taxAmount > 0 ? (await getChartAccountMap(tx, accountId)).get("240810").id : null;
+    const description = `${template.description} (${period})`;
+    const entry = await recordJournalEntry(tx, {
+        accountId,
+        createdById: actorId,
+        entryDate,
+        description,
+        sourceType: "recurring_expense",
+        sourceId: template.id,
+        lines: await applyLocationCostCenter(tx, accountId, cashAccount.pointOfSaleId, [
+            { chartAccountId: expenseAccount.id, debit: base, credit: 0 },
+            ...(taxAmount > 0 ? [{ chartAccountId: vatDeductibleAccountId, debit: taxAmount, credit: 0 }] : []),
+            { chartAccountId: cashChartAccountId, debit: 0, credit: amount },
+        ]),
+    });
+
+    await recordCashMovement(tx, {
+        cashAccountId: cashAccount.id,
+        delta: -amount,
+        balanceAfter,
+        sourceType: "manual_withdrawal",
+        sourceId: entry.id,
+        reason: description,
+        createdById: actorId,
+    });
+
+    return entry;
+};
+
+// Manual "generar ahora" trigger for one template - same dedupe as the cron
+// (won't double-post within the same calendar month) so an admin testing or
+// front-running the cron can't accidentally create two entries for the same
+// period.
+export const runRecurringExpenseTemplateNow = async (accountId, actorId, id) => {
+    const template = await prisma.recurringExpenseTemplate.findFirst({ where: { id, createdById: accountId } });
+    if (!template) throw new ApiError(404, "Recurring expense not found.", [], "", "recurring_expense_not_found");
+    if (!template.isActive) throw new ApiError(400, "The recurring expense is inactive.", [], "", "recurring_expense_inactive");
+
+    const { year, month } = currentLocalParts(resolveTimezone());
+    const period = `${year}-${month}`;
+    if (template.lastGeneratedPeriod === period) {
+        throw new ApiError(409, "This recurring expense was already generated for the current period.", [], "", "recurring_expense_already_generated");
+    }
+
+    try {
+        const entry = await prisma.$transaction(
+            (tx) => postTemplateExpense(tx, accountId, actorId, template, new Date(), period),
+            { isolationLevel: "Serializable" }
+        );
+        await prisma.recurringExpenseTemplate.update({
+            where: { id },
+            data: { lastGeneratedPeriod: period, lastRunStatus: "success", lastRunError: null },
+        });
+        return entry;
+    } catch (err) {
+        await prisma.recurringExpenseTemplate.update({
+            where: { id },
+            data: { lastRunStatus: "failed", lastRunError: err?.code || "recurring_expense_generation_failed" },
+        });
+        throw err instanceof ApiError ? err : new ApiError(422, "The recurring expense could not be generated.", [], "", "recurring_expense_generation_failed");
+    }
+};
+
+// Called daily by recurringExpenseScheduler.js across every tenant - not
+// scoped to one accountId, same shape as subscriptionRenewalScheduler.js's
+// checks. A template is "due" once today's local day-of-month has reached
+// its configured day AND it hasn't already posted for this calendar month;
+// a failure (e.g. insufficient funds) is recorded on the row instead of
+// thrown, so one tenant's problem template never blocks another tenant's run.
+export const generateDueRecurringExpenses = async () => {
+    const { year, month, day } = currentLocalParts(resolveTimezone());
+    const period = `${year}-${month}`;
+
+    const dueTemplates = await prisma.recurringExpenseTemplate.findMany({
+        where: { isActive: true, dayOfMonth: { lte: day }, lastGeneratedPeriod: { not: period } },
+    });
+
+    let posted = 0;
+    let failed = 0;
+    for (const template of dueTemplates) {
+        try {
+            await prisma.$transaction(
+                (tx) => postTemplateExpense(tx, template.createdById, template.createdById, template, new Date(), period),
+                { isolationLevel: "Serializable" }
+            );
+            await prisma.recurringExpenseTemplate.update({
+                where: { id: template.id },
+                data: { lastGeneratedPeriod: period, lastRunStatus: "success", lastRunError: null },
+            });
+            posted++;
+        } catch (err) {
+            await prisma.recurringExpenseTemplate.update({
+                where: { id: template.id },
+                data: { lastRunStatus: "failed", lastRunError: err?.code || "recurring_expense_generation_failed" },
+            });
+            failed++;
+        }
+    }
+    return { checked: dueTemplates.length, posted, failed };
+};

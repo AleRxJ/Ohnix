@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { issueAuthTokens } from "../utils/authTokens.js";
-import { clearActiveSession } from "../utils/sessionStore.js";
+import { listSessions, revokeAllSessions, revokeSession } from "../utils/sessionStore.js";
 import { publishPosScopeChange } from "../utils/posScopeStore.js";
 import {
     ensureUserSubscription,
@@ -621,7 +621,15 @@ export const previewInvitation = async (token) => {
 // Public flow (no auth yet - the token IS the credential). Creates the
 // invitee's own login (email/username/password) and immediately logs them
 // in, same as a normal registration would.
-export const acceptInvitation = async ({ token, username, password, preferredLanguage, deviceInfo }) => {
+export const acceptInvitation = async ({
+    token,
+    username,
+    password,
+    preferredLanguage,
+    deviceId,
+    deviceClass,
+    deviceInfo,
+}) => {
     if (!`${token || ""}`.trim()) {
         throw new ApiError(400, "El token de invitación es obligatorio");
     }
@@ -715,7 +723,7 @@ export const acceptInvitation = async ({ token, username, password, preferredLan
         return createdUser;
     });
 
-    const tokens = await issueAuthTokens(newUser.id, { deviceInfo });
+    const tokens = await issueAuthTokens(newUser.id, { deviceId, deviceClass, deviceInfo });
 
     return { user: newUser, team: invitation.team, role: invitation.role, tokens };
 };
@@ -929,7 +937,7 @@ export const removeMember = async ({ team, actorId, userId }) => {
     // expire naturally - resources they touched stay with the owner's
     // account automatically (see the Team model comment), nothing to
     // reassign.
-    await clearActiveSession(userId);
+    await revokeAllSessions(userId);
 
     await logActivity(
         team.id,
@@ -944,6 +952,61 @@ export const removeMember = async ({ team, actorId, userId }) => {
     );
 
     return { removed: true };
+};
+
+// ─── Sessions (owner managing a member's devices) ──────────────────────────
+// Lets a team owner see/end a member's active sessions without removing them
+// from the team entirely (removeMember above already force-ends every
+// session, but that's a much bigger, harder-to-undo action). Scoped to
+// "active member of THIS team" the same way removeMember is - an owner can
+// only reach sessions for people actually on their own team, never an
+// arbitrary userId. The owner's own sessions aren't reachable here (they're
+// not a TeamMember row) - that's what the self-service /users/sessions panel
+// is for.
+
+const requireActiveMember = async (team, userId) => {
+    const member = await prisma.teamMember.findFirst({ where: { teamId: team.id, userId, status: "active" } });
+    if (!member) {
+        throw new ApiError(404, "Miembro activo no encontrado");
+    }
+};
+
+export const getMemberSessions = async ({ team, userId }) => {
+    await requireActiveMember(team, userId);
+    return listSessions(userId);
+};
+
+// Every device logged in across every active member of this team at once,
+// PLUS the owner's own devices - the owner isn't a TeamMember row, so it
+// needs its own OR branch here (unlike requireActiveMember/getMemberSessions
+// above, which are about the owner managing a *member's* sessions and
+// correctly never take the owner's own userId).
+export const listTeamSessions = async (team) => {
+    const sessions = await prisma.userSession.findMany({
+        where: {
+            OR: [
+                { userId: team.ownerId },
+                { user: { teamMemberships: { some: { teamId: team.id, status: "active" } } } },
+            ],
+        },
+        orderBy: { lastSeenAt: "desc" },
+        include: { user: { select: { id: true, username: true, email: true } } },
+    });
+    return sessions;
+};
+
+export const revokeMemberSession = async ({ team, userId, sessionId }) => {
+    // The owner's own row is now part of listTeamSessions above, so its
+    // revoke button reaches here too - requireActiveMember would 404 on it
+    // (the owner has no TeamMember row), so it needs the same explicit
+    // exception.
+    if (userId !== team.ownerId) {
+        await requireActiveMember(team, userId);
+    }
+    const revoked = await revokeSession(userId, sessionId);
+    if (!revoked) {
+        throw new ApiError(404, "Sesión no encontrada");
+    }
 };
 
 // ─── Activity log ───────────────────────────────────────────────────────

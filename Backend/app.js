@@ -6,6 +6,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 import errorHandler from "./middleware/error.middleware.js";
 import { handlePaymentWebhook, handleEpaycoConfirmation, handleEpaycoResponse } from "./controllers/subscription.controller.js";
+import { handleCertificateOrderEpaycoConfirmation, handleCertificateOrderEpaycoResponse } from "./controllers/certificateOrderPayment.controller.js";
+import { receiveConnectorWebhook } from "./controllers/connectorWebhook.controller.js";
 import { isOriginAllowed } from "./utils/allowedOrigins.js";
 import { getRedisHealth } from "./utils/redisClient.js";
 
@@ -91,6 +93,31 @@ app.post(
     handleEpaycoResponse
 );
 
+// Same public ePayco pattern as above, scoped to CertificateOrder (Viafirma
+// digital-certificate purchases) instead of PlanUpgradeRequest.
+app.post(
+    "/api/v1/certificate-orders/payments/epayco/confirmation",
+    express.json({ limit: "16kb" }),
+    express.urlencoded({ extended: true, limit: "16kb" }),
+    handleCertificateOrderEpaycoConfirmation
+);
+app.get("/api/v1/certificate-orders/payments/epayco/response", handleCertificateOrderEpaycoResponse);
+app.post(
+    "/api/v1/certificate-orders/payments/epayco/response",
+    express.json({ limit: "16kb" }),
+    express.urlencoded({ extended: true, limit: "16kb" }),
+    handleCertificateOrderEpaycoResponse
+);
+
+// Inbound webhooks FROM a connected e-commerce channel (Shopify order
+// events today) - raw body needed for HMAC verification, same reasoning as
+// the Stripe/ePayco routes above. See connectors/shopify.connector.js#verifyWebhookSignature.
+app.post(
+    "/api/v1/integrations/:provider/webhook/:connectionId",
+    express.raw({ type: "application/json", limit: "2mb" }),
+    receiveConnectorWebhook
+);
+
 // NOTE: There is no Factus webhook endpoint here (there used to be one).
 // The official Factus V2 Postman collection (source of truth for this
 // integration) has zero webhook/event-push endpoints, and every document
@@ -121,23 +148,37 @@ import salesQuotationRouter from "./routes/salesQuotation.routes.js";
 import publicSalesQuotationRouter from "./routes/publicSalesQuotation.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import reportRouter from "./routes/report.routes.js";
+import discoveryRouter from "./routes/discovery.routes.js";
+import discoveryDimensionConfigRouter from "./routes/discoveryDimensionConfig.routes.js";
+import discoveryPatternStatsRouter from "./routes/discoveryPatternStats.routes.js";
 import schedulerRouter from "./routes/scheduler.routes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import pricingRouter from "./routes/pricing.routes.js";
 import companyRouter from "./routes/company.routes.js";
+import dianTestMatrixRouter from "./routes/dianTestMatrix.routes.js";
+import dianTestMatrixSelfRouter from "./routes/dianTestMatrixSelf.routes.js";
 import companySelfRouter from "./routes/companySelf.routes.js";
 import electronicInvoiceRouter from "./routes/electronicInvoice.routes.js";
 import purchaseSupportDocumentRouter from "./routes/purchaseSupportDocument.routes.js";
+import receivedInvoiceReceiptRouter from "./routes/receivedInvoiceReceipt.routes.js";
 import apiKeyRouter from "./routes/apiKey.routes.js";
 import publicApiRouter from "./routes/publicApi.routes.js";
 import teamRouter from "./routes/team.routes.js";
 import pointOfSaleRouter from "./routes/pointOfSale.routes.js";
 import stockTransferRouter from "./routes/stockTransfer.routes.js";
+import productionOrderRouter from "./routes/productionOrder.routes.js";
+import employeeRouter from "./routes/employee.routes.js";
+import payrollRouter from "./routes/payroll.routes.js";
 import tutorialDataRouter from "./routes/tutorialData.routes.js";
 import systemSettingsRouter from "./routes/systemSettings.routes.js";
 import financeRouter from "./routes/finance.routes.js";
 import accountingRouter from "./routes/accounting.routes.js";
 import contactRouter from "./routes/contact.routes.js";
+import integrationRouter from "./routes/integration.routes.js";
+import webhookEndpointRouter from "./routes/webhookEndpoint.routes.js";
+import apiDocsRouter from "./routes/apiDocs.routes.js";
+import assistantRouter from "./routes/assistant.routes.js";
+import guestCertificateCheckoutRouter from "./routes/guestCertificateCheckout.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -156,11 +197,24 @@ app.use("/api/v1/scheduler", schedulerRouter);
 app.use("/api/v1/subscriptions", subscriptionRouter);
 app.use("/api/v1/pricing", pricingRouter);
 app.use("/api/v1/companies", companyRouter);
+// Public guest-checkout entry point for the certificado-digital-dian
+// landing page (CertificadosDigitales.jsx) - see its own router file for why
+// it carries no auth middleware.
+app.use("/api/v1/certificate-checkout", guestCertificateCheckoutRouter);
+app.use("/api/v1/admin/dian-test-matrix", dianTestMatrixRouter);
+app.use("/api/v1/company/dian-test-matrix", dianTestMatrixSelfRouter);
 app.use("/api/v1/company", companySelfRouter);
 app.use("/api/v1/electronic-invoices", electronicInvoiceRouter);
 app.use("/api/v1/purchase-support-documents", purchaseSupportDocumentRouter);
+app.use("/api/v1/received-invoice-receipts", receivedInvoiceReceiptRouter);
 app.use("/api/v1/api-keys", apiKeyRouter);
 app.use("/api/v1/public", publicApiRouter);
+app.use("/api/v1/integrations", integrationRouter);
+app.use("/api/v1/webhooks", webhookEndpointRouter);
+// apiDocsRouter is intentionally unauthenticated (see its own comment) -
+// it MUST stay ahead of teamRouter/pointOfSaleRouter below for the same
+// reason contactRouter does.
+app.use("/api/v1/docs", apiDocsRouter);
 // Mounted before teamRouter/pointOfSaleRouter: both apply router.use(verifyJWT)
 // with no path restriction while mounted at the bare "/api/v1" prefix, so any
 // router registered after them under that same prefix inherits their auth
@@ -169,10 +223,17 @@ app.use("/api/v1", contactRouter);
 app.use("/api/v1", teamRouter);
 app.use("/api/v1", pointOfSaleRouter);
 app.use("/api/v1/stock-transfers", stockTransferRouter);
+app.use("/api/v1/production-orders", productionOrderRouter);
+app.use("/api/v1/employees", employeeRouter);
+app.use("/api/v1/payroll", payrollRouter);
 app.use("/api/v1/tutorial-data", tutorialDataRouter);
 app.use("/api/v1/system-settings", systemSettingsRouter);
 app.use("/api/v1/finance", financeRouter);
 app.use("/api/v1/accounting", accountingRouter);
+app.use("/api/v1/assistant", assistantRouter);
+app.use("/api/v1/discoveries", discoveryRouter);
+app.use("/api/v1/discovery-dimension-config", discoveryDimensionConfigRouter);
+app.use("/api/v1/discovery-pattern-stats", discoveryPatternStatsRouter);
 
 /**
    ___________________________ :: API Documentation :: ___________________________

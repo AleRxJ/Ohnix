@@ -2,6 +2,10 @@
 # configured - see utils/storage.js's local fallback)
 public/temp
 
+# Throwaway scratch scripts (ad-hoc DB checks/seeds during manual testing) -
+# never meant to be committed; this is a safety net after one leaked in once.
+.tmp-*
+
 # Logs
 logs
 *.log

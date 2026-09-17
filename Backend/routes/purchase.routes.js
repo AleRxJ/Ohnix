@@ -12,11 +12,20 @@ import {
     issuePurchaseSupportDocument,
     syncPurchaseSupportDocument,
 } from "../controllers/purchaseSupportDocument.controller.js";
+import {
+    getPurchaseReceiptAcknowledgment,
+    recordPurchaseSupplierInvoiceReference,
+    triggerPurchaseAcuseDeRecibo,
+    triggerPurchaseAceptacionExpresa,
+    triggerPurchaseReclamo,
+    syncPurchaseReceiptAcknowledgment,
+} from "../controllers/receiptAcknowledgment.controller.js";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import {
     enforceEntityLimit,
     enforceMonthlyLimit,
+    requireActiveSubscription,
 } from "../middleware/pricing.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
@@ -28,7 +37,7 @@ router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
 // Regular user routes
 router
     .route("/")
-    .post(requireModulePermission("purchases", "edit"), enforceEntityLimit("purchases"), enforceMonthlyLimit("purchases"), createPurchase)
+    .post(requireModulePermission("purchases", "edit"), enforceEntityLimit("purchases"), enforceMonthlyLimit("purchases"), idempotent("purchase.create"), createPurchase)
     .get(requireModulePermission("purchases", "view"), getAllPurchases);
 
 // Admin routes - if you want specific endpoints just for admins
@@ -51,8 +60,25 @@ router.route("/:id/returns").post(requireModulePermission("purchases", "edit"), 
 // Documento Soporte (DIAN type "05", itcycle-api-dian only) - see
 // purchaseSupportDocument.service.js. Auto-issued on purchase completion;
 // these endpoints are for viewing status and manually retrying/syncing.
+// GET is never gated by requireActiveSubscription - same reasoning as
+// order.routes.js's electronic-invoice GET routes: this is the customer's
+// own tax record and must stay viewable even while the account is paused.
 router.route("/:id/support-document").get(requireModulePermission("purchases", "view"), getPurchaseSupportDocument);
-router.route("/:id/support-document/issue").post(requireModulePermission("purchases", "edit"), issuePurchaseSupportDocument);
-router.route("/:id/support-document/sync").post(requireModulePermission("purchases", "edit"), syncPurchaseSupportDocument);
+router.route("/:id/support-document/issue").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, issuePurchaseSupportDocument);
+router.route("/:id/support-document/sync").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, syncPurchaseSupportDocument);
+
+// Receipt acknowledgment (RADIAN buyer-side events - acuse de recibo /
+// recibo del bien / aceptación expresa / reclamo) for a purchase from a
+// supplier that issues its OWN real invoice - see
+// receiptAcknowledgment.service.js. Opposite precondition from Documento
+// Soporte above. Acuse+recepción auto-fire on purchase completion (chained
+// server-side, see purchase.service.js); recepción has no manual endpoint by
+// design. GET ungated by subscription status, same reasoning as support-document.
+router.route("/:id/receipt-acknowledgment").get(requireModulePermission("purchases", "view"), getPurchaseReceiptAcknowledgment);
+router.route("/:id/receipt-acknowledgment/reference").post(requireModulePermission("purchases", "edit"), idempotent("purchase.receipt_reference"), recordPurchaseSupplierInvoiceReference);
+router.route("/:id/receipt-acknowledgment/acuse").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, triggerPurchaseAcuseDeRecibo);
+router.route("/:id/receipt-acknowledgment/aceptacion-expresa").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, triggerPurchaseAceptacionExpresa);
+router.route("/:id/receipt-acknowledgment/reclamo").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, triggerPurchaseReclamo);
+router.route("/:id/receipt-acknowledgment/sync").post(requireModulePermission("purchases", "edit"), requireActiveSubscription, syncPurchaseReceiptAcknowledgment);
 
 export default router;

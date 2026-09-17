@@ -1,8 +1,10 @@
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { recordStockMovement } from "./stockMovement.service.js";
-import { claimLocationStock, creditLocationStock } from "./productLocationStock.service.js";
+import { claimLocationStockWithCost, creditLocationStockWithCost } from "./productLocationStock.service.js";
+import { claimBatchesFEFO, creditBatch } from "./productBatch.service.js";
 import { emitPosEvent } from "../live/dataEvents.js";
+import { postTransferDiscrepancyJournalEntry } from "./accountingPosting.service.js";
 
 // Full request -> approve -> ship -> receive -> cancel lifecycle for moving
 // stock between two of an account's locations (2026-08-21 multi-location
@@ -35,12 +37,13 @@ const resolveLocations = async ({ accountId, productId, fromPointOfSaleId, toPoi
         throw new ApiError(400, "El punto de origen y destino no pueden ser el mismo.");
     }
     const [product, fromPos, toPos] = await Promise.all([
-        prisma.product.findFirst({ where: { id: productId, createdById: accountId }, select: { id: true } }),
+        prisma.product.findFirst({ where: { id: productId, createdById: accountId }, select: { id: true, tracksBatches: true } }),
         prisma.pointOfSale.findFirst({ where: { id: fromPointOfSaleId, accountId, isActive: true }, select: { id: true } }),
         prisma.pointOfSale.findFirst({ where: { id: toPointOfSaleId, accountId, isActive: true }, select: { id: true } }),
     ]);
     if (!product) throw new ApiError(404, "Producto no encontrado.");
     if (!fromPos || !toPos) throw new ApiError(404, "Punto de venta no encontrado.");
+    return product;
 };
 
 export const requestTransfer = async ({ accountId, actorId, productId, fromPointOfSaleId, toPointOfSaleId, quantity, notes }) => {
@@ -70,10 +73,20 @@ export const requestTransfer = async ({ accountId, actorId, productId, fromPoint
 export const approveTransfer = async ({ transfer, actorId }) => {
     assertTransition(transfer, "approved");
 
-    const updated = await prisma.stockTransfer.update({
-        where: { id: transfer.id },
+    // Claims the transition atomically against the status this caller
+    // actually saw (not just the in-memory assertTransition check above) -
+    // the same `updateMany({where:{id, status:<expected>}})` idiom
+    // order.service.js/purchase.service.js already use for their status
+    // transitions, so two concurrent actions on the same transfer (e.g. one
+    // approving while another cancels) can't both silently win.
+    const claim = await prisma.stockTransfer.updateMany({
+        where: { id: transfer.id, status: transfer.status },
         data: { status: "approved", approvedById: actorId, approvedAt: new Date() },
     });
+    if (claim.count === 0) {
+        throw new ApiError(409, "Este traslado ya cambió de estado - actualiza para ver el estado actual.");
+    }
+    const updated = await prisma.stockTransfer.findUniqueOrThrow({ where: { id: transfer.id } });
 
     emitPosEvent(transfer.accountId, transfer.fromPointOfSaleId, "stockTransfer", "approved");
     emitPosEvent(transfer.accountId, transfer.toPointOfSaleId, "stockTransfer", "approved");
@@ -87,12 +100,12 @@ export const shipTransfer = async ({ transfer, actorId }) => {
     assertTransition(transfer, "in_transit");
 
     const updated = await prisma.$transaction(async (tx) => {
-        const locationBalance = await claimLocationStock(tx, {
+        const costing = await claimLocationStockWithCost(tx, {
             productId: transfer.productId,
             pointOfSaleId: transfer.fromPointOfSaleId,
             quantity: transfer.quantitySent,
         });
-        if (locationBalance === null) {
+        if (costing === null) {
             throw new ApiError(
                 422,
                 `Stock insuficiente en el punto de origen para enviar ${transfer.quantitySent} unidades.`
@@ -104,17 +117,48 @@ export const shipTransfer = async ({ transfer, actorId }) => {
             accountId: transfer.accountId,
             pointOfSaleId: transfer.fromPointOfSaleId,
             delta: -transfer.quantitySent,
-            balanceAfter: locationBalance,
+            balanceAfter: costing.balanceAfter,
+            unitCostApplied: costing.unitCostApplied,
+            valueDelta: costing.valueDelta,
+            valueBalanceAfter: costing.valueBalanceAfter,
             sourceType: "transfer_out",
             sourceId: transfer.id,
             reason: transfer.notes,
             createdById: actorId,
         });
 
-        return tx.stockTransfer.update({
-            where: { id: transfer.id },
-            data: { status: "in_transit", sentById: actorId, sentAt: new Date() },
+        // Frozen here, exactly like unitCostApplied above, so receiveTransfer
+        // credits the destination with these SAME lots (not a fresh FEFO
+        // guess against whatever the source looks like by then) and
+        // cancelTransfer can put them straight back - see
+        // StockTransfer.batchAllocations's schema comment.
+        let batchAllocations;
+        if (transfer.product?.tracksBatches) {
+            const consumed = await claimBatchesFEFO(tx, {
+                productId: transfer.productId,
+                pointOfSaleId: transfer.fromPointOfSaleId,
+                quantity: transfer.quantitySent,
+            });
+            if (consumed === null) {
+                throw new ApiError(422, `Stock de lote insuficiente en el punto de origen para enviar ${transfer.quantitySent} unidades.`);
+            }
+            batchAllocations = consumed;
+        }
+
+        const claim = await tx.stockTransfer.updateMany({
+            where: { id: transfer.id, status: transfer.status },
+            data: {
+                status: "in_transit",
+                unitCostApplied: costing.unitCostApplied,
+                ...(batchAllocations !== undefined && { batchAllocations }),
+                sentById: actorId,
+                sentAt: new Date(),
+            },
         });
+        if (claim.count === 0) {
+            throw new ApiError(409, "Este traslado ya cambió de estado - actualiza para ver el estado actual.");
+        }
+        return tx.stockTransfer.findUniqueOrThrow({ where: { id: transfer.id } });
     });
 
     emitPosEvent(transfer.accountId, transfer.fromPointOfSaleId, "stockTransfer", "in_transit");
@@ -140,10 +184,51 @@ export const receiveTransfer = async ({ transfer, actorId, quantityReceived, not
 
     const updated = await prisma.$transaction(async (tx) => {
         if (quantityReceived > 0) {
-            await creditLocationStock(tx, {
+            const costing = await creditLocationStockWithCost(tx, {
                 productId: transfer.productId,
                 pointOfSaleId: transfer.toPointOfSaleId,
                 quantity: quantityReceived,
+                incomingUnitCost: transfer.unitCostApplied,
+            });
+
+            // Replays the exact lots ship-time claimed (see
+            // StockTransfer.batchAllocations's schema comment) instead of
+            // asking the receiver to name one - consumed front-to-back
+            // (soonest-expiring first, same order they were claimed in)
+            // up to whatever actually arrived, so a partial receipt still
+            // credits the destination with real lot identities rather than
+            // a synthetic one.
+            if (transfer.product?.tracksBatches && Array.isArray(transfer.batchAllocations)) {
+                let remaining = quantityReceived;
+                for (const allocation of transfer.batchAllocations) {
+                    if (remaining <= 0) break;
+                    const take = Math.min(remaining, Number(allocation.quantity));
+                    if (take <= 0) continue;
+                    await creditBatch(tx, {
+                        productId: transfer.productId,
+                        pointOfSaleId: transfer.toPointOfSaleId,
+                        batchNumber: allocation.batchNumber,
+                        expirationDate: allocation.expirationDate,
+                        quantity: take,
+                        createdById: actorId,
+                    });
+                    remaining -= take;
+                }
+            }
+
+            await recordStockMovement(tx, {
+                productId: transfer.productId,
+                accountId: transfer.accountId,
+                pointOfSaleId: transfer.toPointOfSaleId,
+                delta: quantityReceived,
+                balanceAfter: costing.balanceAfter,
+                unitCostApplied: costing.unitCostApplied,
+                valueDelta: costing.valueDelta,
+                valueBalanceAfter: costing.valueBalanceAfter,
+                sourceType: "transfer_in",
+                sourceId: transfer.id,
+                reason: notes || transfer.notes,
+                createdById: actorId,
             });
         }
 
@@ -151,22 +236,8 @@ export const receiveTransfer = async ({ transfer, actorId, quantityReceived, not
             where: {
                 productId_pointOfSaleId: { productId: transfer.productId, pointOfSaleId: transfer.toPointOfSaleId },
             },
-            select: { stock: true },
+            select: { stock: true, inventoryValue: true },
         });
-
-        if (quantityReceived > 0) {
-            await recordStockMovement(tx, {
-                productId: transfer.productId,
-                accountId: transfer.accountId,
-                pointOfSaleId: transfer.toPointOfSaleId,
-                delta: quantityReceived,
-                balanceAfter: row?.stock ?? quantityReceived,
-                sourceType: "transfer_in",
-                sourceId: transfer.id,
-                reason: notes || transfer.notes,
-                createdById: actorId,
-            });
-        }
 
         // The shortfall itself, as its own zero-delta ledger entry - the
         // transfer_out/transfer_in pair above already IS the complete
@@ -182,15 +253,26 @@ export const receiveTransfer = async ({ transfer, actorId, quantityReceived, not
                 pointOfSaleId: transfer.toPointOfSaleId,
                 delta: 0,
                 balanceAfter: row?.stock ?? 0,
+                unitCostApplied: transfer.unitCostApplied,
+                valueDelta: 0,
+                valueBalanceAfter: row?.inventoryValue ?? 0,
                 sourceType: "transfer_discrepancy",
                 sourceId: transfer.id,
                 reason: `Diferencia en traslado: se enviaron ${transfer.quantitySent}, llegaron ${quantityReceived} (faltante: ${transfer.quantitySent - quantityReceived}).`,
                 createdById: actorId,
             });
+            await postTransferDiscrepancyJournalEntry(tx, {
+                accountId: transfer.accountId,
+                createdById: actorId,
+                transferId: transfer.id,
+                amount:
+                    (transfer.quantitySent - quantityReceived) *
+                    Number(transfer.unitCostApplied || 0),
+            });
         }
 
-        return tx.stockTransfer.update({
-            where: { id: transfer.id },
+        const claim = await tx.stockTransfer.updateMany({
+            where: { id: transfer.id, status: transfer.status },
             data: {
                 status: "received",
                 quantityReceived,
@@ -199,6 +281,10 @@ export const receiveTransfer = async ({ transfer, actorId, quantityReceived, not
                 notes: notes ? `${transfer.notes ? `${transfer.notes}\n` : ""}${notes}` : transfer.notes,
             },
         });
+        if (claim.count === 0) {
+            throw new ApiError(409, "Este traslado ya cambió de estado - actualiza para ver el estado actual.");
+        }
+        return tx.stockTransfer.findUniqueOrThrow({ where: { id: transfer.id } });
     });
 
     emitPosEvent(transfer.accountId, transfer.fromPointOfSaleId, "stockTransfer", "received");
@@ -217,18 +303,40 @@ export const cancelTransfer = async ({ transfer, actorId, reason }) => {
 
     const updated = await prisma.$transaction(async (tx) => {
         if (transfer.status === "in_transit") {
-            const locationBalance = await creditLocationStock(tx, {
+            const costing = await creditLocationStockWithCost(tx, {
                 productId: transfer.productId,
                 pointOfSaleId: transfer.fromPointOfSaleId,
                 quantity: transfer.quantitySent,
+                incomingUnitCost: transfer.unitCostApplied,
             });
+
+            // A cancelled in-transit transfer restores exactly the lots it
+            // claimed at ship time (nothing else could have touched them -
+            // they were never part of any location's available stock while
+            // in transit), unlike a sale reversal's soonest-expiring
+            // best-effort credit.
+            if (transfer.product?.tracksBatches && Array.isArray(transfer.batchAllocations)) {
+                for (const allocation of transfer.batchAllocations) {
+                    await creditBatch(tx, {
+                        productId: transfer.productId,
+                        pointOfSaleId: transfer.fromPointOfSaleId,
+                        batchNumber: allocation.batchNumber,
+                        expirationDate: allocation.expirationDate,
+                        quantity: allocation.quantity,
+                        createdById: actorId,
+                    });
+                }
+            }
 
             await recordStockMovement(tx, {
                 productId: transfer.productId,
                 accountId: transfer.accountId,
                 pointOfSaleId: transfer.fromPointOfSaleId,
                 delta: transfer.quantitySent,
-                balanceAfter: locationBalance,
+                balanceAfter: costing.balanceAfter,
+                unitCostApplied: costing.unitCostApplied,
+                valueDelta: costing.valueDelta,
+                valueBalanceAfter: costing.valueBalanceAfter,
                 sourceType: "transfer_in",
                 sourceId: transfer.id,
                 reason: `Traslado cancelado: ${reason || "sin motivo especificado"}`,
@@ -236,8 +344,8 @@ export const cancelTransfer = async ({ transfer, actorId, reason }) => {
             });
         }
 
-        return tx.stockTransfer.update({
-            where: { id: transfer.id },
+        const claim = await tx.stockTransfer.updateMany({
+            where: { id: transfer.id, status: transfer.status },
             data: {
                 status: "cancelled",
                 cancelledById: actorId,
@@ -245,6 +353,10 @@ export const cancelTransfer = async ({ transfer, actorId, reason }) => {
                 cancelReason: reason || null,
             },
         });
+        if (claim.count === 0) {
+            throw new ApiError(409, "Este traslado ya cambió de estado - actualiza para ver el estado actual.");
+        }
+        return tx.stockTransfer.findUniqueOrThrow({ where: { id: transfer.id } });
     });
 
     emitPosEvent(transfer.accountId, transfer.fromPointOfSaleId, "stockTransfer", "cancelled");
@@ -266,17 +378,46 @@ export const quickTransfer = async ({ accountId, actorId, productId, fromPointOf
     if (!Number.isInteger(quantity) || quantity <= 0) {
         throw new ApiError(400, "La cantidad debe ser un entero positivo.");
     }
-    await resolveLocations({ accountId, productId, fromPointOfSaleId, toPointOfSaleId });
+    const product = await resolveLocations({ accountId, productId, fromPointOfSaleId, toPointOfSaleId });
 
     const transferId = await prisma.$transaction(async (tx) => {
-        const fromBalance = await claimLocationStock(tx, { productId, pointOfSaleId: fromPointOfSaleId, quantity });
-        if (fromBalance === null) {
+        const sourceCosting = await claimLocationStockWithCost(tx, { productId, pointOfSaleId: fromPointOfSaleId, quantity });
+        if (sourceCosting === null) {
             throw new ApiError(
                 422,
                 `Stock insuficiente en el punto de origen (solicitado: ${quantity}).`
             );
         }
-        const toBalance = await creditLocationStock(tx, { productId, pointOfSaleId: toPointOfSaleId, quantity });
+        const destinationCosting = await creditLocationStockWithCost(tx, {
+            productId,
+            pointOfSaleId: toPointOfSaleId,
+            quantity,
+            incomingUnitCost: sourceCosting.unitCostApplied,
+        });
+
+        // Same-transaction claim-then-credit means the exact lots claimed
+        // from the source can be credited straight to the destination
+        // under their own identity, no snapshot needed (unlike the
+        // workflowed ship/receive pair, which has to survive an in-transit
+        // period between the two steps).
+        let batchAllocations;
+        if (product.tracksBatches) {
+            const consumed = await claimBatchesFEFO(tx, { productId, pointOfSaleId: fromPointOfSaleId, quantity });
+            if (consumed === null) {
+                throw new ApiError(422, `Stock de lote insuficiente en el punto de origen (solicitado: ${quantity}).`);
+            }
+            for (const allocation of consumed) {
+                await creditBatch(tx, {
+                    productId,
+                    pointOfSaleId: toPointOfSaleId,
+                    batchNumber: allocation.batchNumber,
+                    expirationDate: allocation.expirationDate,
+                    quantity: allocation.quantity,
+                    createdById: actorId,
+                });
+            }
+            batchAllocations = consumed;
+        }
 
         const now = new Date();
         const transfer = await tx.stockTransfer.create({
@@ -287,6 +428,8 @@ export const quickTransfer = async ({ accountId, actorId, productId, fromPointOf
                 toPointOfSaleId,
                 quantitySent: quantity,
                 quantityReceived: quantity,
+                unitCostApplied: sourceCosting.unitCostApplied,
+                ...(batchAllocations !== undefined && { batchAllocations }),
                 status: "received",
                 isQuickTransfer: true,
                 notes: notes || null,
@@ -306,7 +449,10 @@ export const quickTransfer = async ({ accountId, actorId, productId, fromPointOf
             accountId,
             pointOfSaleId: fromPointOfSaleId,
             delta: -quantity,
-            balanceAfter: fromBalance,
+            balanceAfter: sourceCosting.balanceAfter,
+            unitCostApplied: sourceCosting.unitCostApplied,
+            valueDelta: sourceCosting.valueDelta,
+            valueBalanceAfter: sourceCosting.valueBalanceAfter,
             sourceType: "transfer_out",
             sourceId: transfer.id,
             reason: notes || null,
@@ -317,7 +463,10 @@ export const quickTransfer = async ({ accountId, actorId, productId, fromPointOf
             accountId,
             pointOfSaleId: toPointOfSaleId,
             delta: quantity,
-            balanceAfter: toBalance,
+            balanceAfter: destinationCosting.balanceAfter,
+            unitCostApplied: destinationCosting.unitCostApplied,
+            valueDelta: destinationCosting.valueDelta,
+            valueBalanceAfter: destinationCosting.valueBalanceAfter,
             sourceType: "transfer_in",
             sourceId: transfer.id,
             reason: notes || null,
@@ -370,7 +519,10 @@ const attachActorUsers = async (transfers) => {
 };
 
 export const getTransferById = async (accountId, id) => {
-    const transfer = await prisma.stockTransfer.findFirst({ where: { id, accountId } });
+    const transfer = await prisma.stockTransfer.findFirst({
+        where: { id, accountId },
+        include: { product: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, tracksBatches: true } } },
+    });
     if (!transfer) throw new ApiError(404, "Traslado no encontrado.");
     const [withActors] = await attachActorUsers([transfer]);
     return withActors;

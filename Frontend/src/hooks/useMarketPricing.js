@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { detectCountryCode } from "../i18n/geoLanguage";
+import { detectCountryCode, isBuildTimePrerender } from "../i18n/geoLanguage";
 import { pricingService } from "../services/pricingService";
 import { formatCurrency } from "../utils/currency";
 
@@ -15,7 +15,24 @@ const DETECTED_COUNTRY_SESSION_KEY = "ohnix_pricing_detected_country";
 // + fetch pipeline from scratch, so a single slow/blocked request anywhere
 // in that chain would flash the (now COP) static fallback again even after
 // the real market price had already been resolved once this session.
-const MARKET_PRICING_SESSION_KEY = "ohnix_market_pricing";
+//
+// Versioned ("_v2") because the response shape changed when monthly/annual
+// billing shipped (plain `amount` -> `monthlyAmount`/`annualAmount`). A tab
+// that cached the old shape earlier in its session would otherwise keep
+// serving it for the rest of that session - the annual toggle would look
+// permanently stuck on the monthly price with no way to recover short of a
+// hard refresh, since isValidMarketPricing below never got a chance to run
+// against it. Bump this suffix again the next time the shape changes.
+const MARKET_PRICING_SESSION_KEY = "ohnix_market_pricing_v2";
+
+// Guards against exactly that scenario for any *future* shape change too:
+// a cached blob is only trusted if every plan that has a monthly amount also
+// has an annual one - a partial/stale cache is treated as a miss and
+// re-fetched, rather than silently breaking the toggle for the rest of the
+// browser session.
+const isValidMarketPricing = (data) =>
+    Array.isArray(data?.plans) &&
+    data.plans.every((plan) => plan.monthlyAmount == null || plan.annualAmount !== undefined);
 
 const getSessionDetectedCountry = () => {
     if (typeof window === "undefined") return null;
@@ -39,7 +56,9 @@ const getSessionMarketPricing = () => {
     if (typeof window === "undefined") return null;
     try {
         const raw = window.sessionStorage.getItem(MARKET_PRICING_SESSION_KEY);
-        return raw ? JSON.parse(raw) : null;
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return isValidMarketPricing(parsed) ? parsed : null;
     } catch {
         return null;
     }
@@ -65,6 +84,15 @@ const formatPlanPrice = (amount, currency) => {
     return { label: formatCurrency(amount, currency), currency };
 };
 
+// Annual is charged as one lump sum (monthly x10, "paga 10, lleva 12") but
+// shown per-month-equivalent for easy comparison against the monthly price -
+// same treatment Siigo/Alegra use, and matches how the FirmaPass certificate
+// discount is already presented elsewhere in the app.
+const formatAnnualEquivalentMonthly = (annualAmount, currency) => {
+    if (annualAmount === null || annualAmount === undefined) return null;
+    return formatCurrency(Math.round(annualAmount / 12), currency);
+};
+
 // Returns { marketPricing, priceByPlanKey }. `marketPricing` is null until
 // resolved (network/geo lookup in flight or failed) - callers should fall
 // back to their existing static locale price strings in that case, same as
@@ -79,6 +107,13 @@ export const useMarketPricing = () => {
     useEffect(() => {
         // Already resolved earlier this session - nothing to (re-)fetch.
         if (marketPricing) return undefined;
+        // scripts/prerender.js waits for the page's network to go idle
+        // before saving its HTML as the static snapshot served to every
+        // real visitor until the next deploy. Resolving this fetch during
+        // that pass would bake whatever country the Vercel build happened
+        // to run from into that snapshot (e.g. showing USD pricing to
+        // Colombian visitors) instead of the site's actual COP default.
+        if (isBuildTimePrerender()) return undefined;
 
         let active = true;
 
@@ -94,7 +129,7 @@ export const useMarketPricing = () => {
 
             try {
                 const response = await pricingService.getPublicPricing(countryCode);
-                if (active && response?.data) {
+                if (active && isValidMarketPricing(response?.data)) {
                     setMarketPricing(response.data);
                     setSessionMarketPricing(response.data);
                 }
@@ -118,7 +153,20 @@ export const useMarketPricing = () => {
         // formatCurrency/schema.org both expect uppercase ISO 4217 ("COP").
         const currency = marketPricing.currency?.toUpperCase();
         return marketPricing.plans.reduce((acc, plan) => {
-            acc[plan.key] = formatPlanPrice(plan.amount, currency);
+            // `label`/`currency` kept as top-level fields (not nested under
+            // `monthly`) for back-compat with every caller that predates the
+            // monthly/annual toggle - they're identical to monthlyLabel.
+            const monthly = formatPlanPrice(plan.monthlyAmount ?? plan.amount, currency);
+            acc[plan.key] = monthly && {
+                ...monthly,
+                monthlyLabel: monthly.label,
+                annualLabel: formatPlanPrice(plan.annualAmount, currency)?.label ?? null,
+                annualEquivalentMonthlyLabel: formatAnnualEquivalentMonthly(plan.annualAmount, currency),
+                annualSavingsLabel:
+                    plan.monthlyAmount != null && plan.annualAmount != null
+                        ? formatCurrency(plan.monthlyAmount * 12 - plan.annualAmount, currency)
+                        : null,
+            };
             return acc;
         }, {});
     }, [marketPricing]);

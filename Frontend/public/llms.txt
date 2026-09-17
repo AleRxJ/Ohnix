@@ -1,0 +1,28 @@
+# Ohnix
+
+> Ohnix es un software web de inventario y operaciones para pymes, creado por iTcycle.
+
+## Contenido principal
+
+- [Inicio](https://ohnix.co/): descripción general de la plataforma.
+- [Software de inventario para pymes](https://ohnix.co/software-inventario-pymes): funciones de inventario, compras y ventas.
+- [Facturación electrónica DIAN](https://ohnix.co/facturacion-electronica-dian): facturación electrónica propia (software propio ante la DIAN), conectada al inventario.
+- [Planes y precios](https://ohnix.co/precios): planes disponibles y sus características.
+- [Demo](https://ohnix.co/demo): recorrido guiado de la plataforma.
+- [Colaboración en equipo](https://ohnix.co/colaboracion-en-equipo): permisos, equipos y puntos de venta.
+- [Integraciones](https://ohnix.co/integraciones): conexiones disponibles con otras herramientas.
+- [Comparativa Ohnix vs. Alegra](https://ohnix.co/comparativa/ohnix-vs-alegra): comparación de enfoques y funciones.
+- [Blog](https://ohnix.co/blog): guías sobre inventario y operación de pymes.
+  - [Cómo pasar de Excel a software de inventario](https://ohnix.co/blog/como-pasar-de-excel-a-software-inventario)
+  - [KPIs de inventario para pymes](https://ohnix.co/blog/kpis-inventario-para-pymes)
+  - [Cómo evitar quiebres de stock](https://ohnix.co/blog/como-evitar-quiebres-de-stock)
+  - [Inventario y ventas sincronizados](https://ohnix.co/blog/inventario-y-ventas-sincronizados)
+  - [Errores comunes al implementar software de inventario](https://ohnix.co/blog/errores-comunes-implementar-software-inventario)
+  - [Checklist para elegir software de inventario](https://ohnix.co/blog/checklist-elegir-software-inventario)
+
+## Información
+
+- Idiomas: español e inglés.
+- Contacto: info@itcycle.co
+- Sitio canónico: https://ohnix.co/
+- Sitemap: https://ohnix.co/sitemap.xml

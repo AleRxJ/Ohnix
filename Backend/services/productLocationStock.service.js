@@ -20,41 +20,91 @@ import { recordStockMovement } from "./stockMovement.service.js";
 // instead of a generic one here. A missing row claims as "0 available",
 // which is correct: a location that's never received this product has
 // nothing to sell/adjust away.
-export const claimLocationStock = async (tx, { productId, pointOfSaleId, quantity }) => {
-    const claim = await tx.productLocationStock.updateMany({
-        where: { productId, pointOfSaleId, stock: { gte: quantity } },
-        data: { stock: { decrement: quantity } },
-    });
-    if (claim.count === 0) return null;
+const money = (value) => Number(Number(value).toFixed(2));
+const unitCost = (value) => Number(Number(value).toFixed(4));
 
-    await tx.product.update({
-        where: { id: productId },
-        data: { stock: { decrement: quantity } },
-    });
+export const calculateWeightedAverageCost = ({ currentQuantity, currentValue, incomingQuantity, incomingUnitCost }) => {
+    const quantity = Number(currentQuantity) + Number(incomingQuantity);
+    const value = money(Number(currentValue) + Number(incomingQuantity) * Number(incomingUnitCost));
+    return { quantity, value, averageUnitCost: quantity > 0 ? unitCost(value / quantity) : 0 };
+};
 
-    const row = await tx.productLocationStock.findUniqueOrThrow({
+const lockLocationRow = async (tx, productId, pointOfSaleId) => {
+    await tx.productLocationStock.upsert({
         where: { productId_pointOfSaleId: { productId, pointOfSaleId } },
-        select: { stock: true },
+        create: { productId, pointOfSaleId, stock: 0, averageUnitCost: 0, inventoryValue: 0 },
+        update: {},
     });
-    return row.stock;
+    const rows = await tx.$queryRaw`
+        SELECT id, stock, average_unit_cost, inventory_value
+        FROM product_location_stock
+        WHERE product_id = ${productId} AND point_of_sale_id = ${pointOfSaleId}
+        FOR UPDATE
+    `;
+    return rows[0];
+};
+
+export const claimLocationStockWithCost = async (tx, { productId, pointOfSaleId, quantity }) => {
+    const qty = Number(quantity);
+    const row = await lockLocationRow(tx, productId, pointOfSaleId);
+    if (!Number.isInteger(qty) || qty <= 0 || Number(row.stock) < qty) return null;
+
+    const oldStock = Number(row.stock);
+    const oldValue = Number(row.inventory_value);
+    const appliedUnitCost = unitCost(row.average_unit_cost);
+    const costAmount = qty === oldStock ? money(oldValue) : money(qty * appliedUnitCost);
+    const balanceAfter = oldStock - qty;
+    const valueBalanceAfter = balanceAfter === 0 ? 0 : money(Math.max(oldValue - costAmount, 0));
+    const averageUnitCost = balanceAfter === 0 ? 0 : unitCost(valueBalanceAfter / balanceAfter);
+
+    await tx.productLocationStock.update({
+        where: { id: row.id },
+        data: { stock: balanceAfter, inventoryValue: valueBalanceAfter, averageUnitCost },
+    });
+    await tx.product.update({ where: { id: productId }, data: { stock: { decrement: qty } } });
+
+    return { balanceAfter, unitCostApplied: appliedUnitCost, valueDelta: -costAmount, valueBalanceAfter };
+};
+
+export const claimLocationStock = async (tx, args) => {
+    const result = await claimLocationStockWithCost(tx, args);
+    return result?.balanceAfter ?? null;
 };
 
 // Adds `quantity` units at one location (purchases, returns, credit-note
 // restocks, positive adjustments) - never fails, upserts the location's
 // row on first use.
-export const creditLocationStock = async (tx, { productId, pointOfSaleId, quantity }) => {
-    const row = await tx.productLocationStock.upsert({
-        where: { productId_pointOfSaleId: { productId, pointOfSaleId } },
-        create: { productId, pointOfSaleId, stock: quantity },
-        update: { stock: { increment: quantity } },
-    });
+export const creditLocationStockWithCost = async (tx, { productId, pointOfSaleId, quantity, incomingUnitCost }) => {
+    const qty = Number(quantity);
+    if (!Number.isInteger(qty) || qty <= 0) throw new ApiError(400, "Inventory credit quantity must be a positive integer");
 
-    await tx.product.update({
-        where: { id: productId },
-        data: { stock: { increment: quantity } },
-    });
+    let appliedCost = incomingUnitCost;
+    if (appliedCost === undefined || appliedCost === null) {
+        const product = await tx.product.findUniqueOrThrow({ where: { id: productId }, select: { buyingPrice: true } });
+        appliedCost = Number(product.buyingPrice);
+    }
+    appliedCost = unitCost(appliedCost);
+    if (!Number.isFinite(appliedCost) || appliedCost < 0) throw new ApiError(400, "Inventory unit cost must be non-negative");
 
-    return row.stock;
+    const row = await lockLocationRow(tx, productId, pointOfSaleId);
+    const next = calculateWeightedAverageCost({
+        currentQuantity: Number(row.stock),
+        currentValue: Number(row.inventory_value),
+        incomingQuantity: qty,
+        incomingUnitCost: appliedCost,
+    });
+    await tx.productLocationStock.update({
+        where: { id: row.id },
+        data: { stock: next.quantity, inventoryValue: next.value, averageUnitCost: next.averageUnitCost },
+    });
+    await tx.product.update({ where: { id: productId }, data: { stock: { increment: qty } } });
+
+    return { balanceAfter: next.quantity, unitCostApplied: appliedCost, valueDelta: money(qty * appliedCost), valueBalanceAfter: next.value, averageUnitCost: next.averageUnitCost };
+};
+
+export const creditLocationStock = async (tx, args) => {
+    const result = await creditLocationStockWithCost(tx, args);
+    return result.balanceAfter;
 };
 
 export const getLocationStock = async (productId, pointOfSaleId) => {

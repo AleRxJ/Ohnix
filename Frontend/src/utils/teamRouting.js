@@ -2,14 +2,16 @@
 // "first accessible module" and "first visible nav item" always agree.
 const MODULE_ROUTES = [
     { moduleKey: "dashboard", path: "/dashboard" },
-    { moduleKey: "products", path: "/products" },
     { moduleKey: "orders", path: "/orders" },
-    { moduleKey: "purchases", path: "/purchases" },
+    { moduleKey: "purchases", path: "/quotations" },
     { moduleKey: "customers", path: "/customers" },
-    { moduleKey: "suppliers", path: "/suppliers" },
+    { moduleKey: "products", path: "/products" },
     { moduleKey: "categories", path: "/categories" },
+    { moduleKey: "suppliers", path: "/suppliers" },
+    { moduleKey: "finance", path: "/finance" },
+    { moduleKey: "accounting", path: "/accounting" },
     { moduleKey: "reports", path: "/reports" },
-    { moduleKey: "billing", path: "/billing" },
+    { moduleKey: "billing", path: "/integrations" },
 ];
 
 // hasPermission (from useTeam()) already returns true unconditionally for

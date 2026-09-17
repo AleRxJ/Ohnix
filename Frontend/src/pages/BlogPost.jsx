@@ -36,10 +36,10 @@ const BlogPost = () => {
             name: "Ohnix",
             logo: {
                 "@type": "ImageObject",
-                url: "https://ohnix.co/Ohnix_FullLogo.png",
+                url: "https://ohnix.co/Ohnix_FullLogo_Transparent.png",
             },
         },
-        mainEntityOfPage: `https://www.ohnix.co${canonicalPath}`,
+        mainEntityOfPage: `https://ohnix.co${canonicalPath}`,
     };
 
     const faqStructuredData = post.faqs?.length
@@ -71,7 +71,7 @@ const BlogPost = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <main className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-24">
                 <ContentSection id={`blog-${post.slug}`} shell={false}>
                     <BreadcrumbNav
                         items={[

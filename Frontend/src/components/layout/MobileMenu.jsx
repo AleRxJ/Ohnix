@@ -6,6 +6,7 @@ import { getMenuItems } from "../../data";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
+import { useDiscoveries } from "../../context/DiscoveryContext";
 import useSubscription from "../../hooks/useSubscription";
 import { useTheme } from "../../context/ThemeContext";
 import ThemeToggle from "../common/ThemeToggle";
@@ -17,6 +18,7 @@ const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
     const { user } = React.useContext(AuthContext);
     const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
+    const { openCount: openDiscoveriesCount } = useDiscoveries();
     const { plan } = useSubscription();
     const { t } = useI18n();
     const { isLite } = useTheme();
@@ -83,12 +85,14 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
                 <div className="px-4 py-3 h-full flex flex-col gap-3">
                     <div className="flex items-center justify-between px-1">
                         <div className="flex items-center gap-2.5">
-                            <img
-                                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon.svg"}
-                                alt=""
-                                aria-hidden="true"
-                                className="h-11 w-11 object-contain"
-                            />
+                            <div className="flex items-center justify-center rounded-lg p-1">
+                                <img
+                                    src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="h-9 w-9 object-contain"
+                                />
+                            </div>
                             <span className="text-sm font-semibold tracking-wide text-[var(--ohnix-text-primary)]">
                                 Menú
                             </span>
@@ -121,12 +125,16 @@ const MobileMenu = ({ collapsed, currentPage, onClose, isMobile }) => {
                                 items={getMenuItems(
                                     t,
                                     user?.role,
-                                    ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO",
+                                    // Same gate as DashboardSidebar.jsx - only once
+                                    // the company actually activated invoicing, not
+                                    // just for being Colombian.
+                                    ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && Boolean(user?.company?.electronicInvoicingEnabled),
                                     showTeam,
                                     hasPermission,
                                     ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
                                     showFiscalSetup,
-                                    needsFiscalSetup
+                                    needsFiscalSetup,
+                                    openDiscoveriesCount
                                 )}
                                 onClick={onClose}
                                 className="border-r-0"

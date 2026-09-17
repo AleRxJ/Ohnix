@@ -10,6 +10,7 @@ import {
     Progress,
     Tag,
     Divider,
+    Collapse,
     message,
 } from "antd";
 import {
@@ -24,6 +25,41 @@ import { api } from "../../api/api";
 import useI18n from "../../hooks/useI18n";
 
 const { Text } = Typography;
+
+// Must mirror REQUIRED_COLUMNS / the optional-column handling in
+// Backend/controllers/product.bulk.controller.js.
+const REQUIRED_COLUMNS = [
+    "product_name",
+    "product_code",
+    "category_name",
+    "unit_name",
+    "buying_price",
+    "selling_price",
+];
+
+const OPTIONAL_COLUMNS = [
+    "sku",
+    "barcode",
+    "brand",
+    "status",
+    "stock",
+    "low_stock_threshold",
+    "image_filename",
+    "image_url",
+    "tax_code",
+    "tax_rate",
+    "tax_treatment",
+    "is_physical",
+    "weight_value",
+    "weight_unit",
+    "height_value",
+    "width_value",
+    "length_value",
+    "dimension_unit",
+    "units_per_package",
+    "packaging_type",
+    "is_fragile",
+];
 
 const BulkUploadModal = ({
     visible,
@@ -49,12 +85,17 @@ const BulkUploadModal = ({
                 : null;
 
     const handleFileSelect = (selectedFile) => {
-        const isCSV =
+        // Zip mimetypes are reported inconsistently across browsers/OSes
+        // (application/zip, application/x-zip-compressed, or even a generic
+        // application/octet-stream) - the extension is the reliable check.
+        const name = selectedFile.name.toLowerCase();
+        const isAccepted =
             selectedFile.type === "text/csv" ||
             selectedFile.type === "application/vnd.ms-excel" ||
-            selectedFile.name.toLowerCase().endsWith(".csv");
+            name.endsWith(".csv") ||
+            name.endsWith(".zip");
 
-        if (!isCSV) {
+        if (!isAccepted) {
             message.error(t("products.csv_only_accepted"));
             setFile(null);
             return false;
@@ -129,9 +170,22 @@ const BulkUploadModal = ({
         const exampleCategory = categories[0]?.category_name || "TU_CATEGORIA";
         const exampleUnit = units[0]?.unit_name || "TU_UNIDAD";
 
+        const columns = [...REQUIRED_COLUMNS, ...OPTIONAL_COLUMNS];
+        const exampleValues = {
+            product_name: "Example Product",
+            product_code: "EX001",
+            category_name: exampleCategory,
+            unit_name: exampleUnit,
+            buying_price: "100.00",
+            selling_price: "150.00",
+            sku: "SKU-EX001",
+            stock: "10",
+            image_filename: "EX001",
+        };
+
         const csvContent = [
-            "product_name,product_code,category_name,unit_name,buying_price,selling_price",
-            `"Example Product",EX001,"${exampleCategory}","${exampleUnit}",100.00,150.00`,
+            columns.join(","),
+            columns.map((col) => `"${exampleValues[col] || ""}"`).join(","),
         ].join("\n");
 
         const blob = new Blob(["﻿" + csvContent], {
@@ -260,14 +314,7 @@ const BulkUploadModal = ({
                                 {t("products.template_csv_instruction")}
                             </Text>
                             <div className="flex flex-wrap gap-1.5">
-                                {[
-                                    "product_name",
-                                    "product_code",
-                                    "category_name",
-                                    "unit_name",
-                                    "buying_price",
-                                    "selling_price",
-                                ].map((col) => (
+                                {REQUIRED_COLUMNS.map((col) => (
                                     <span
                                         key={col}
                                         className="rounded-md border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-2)] px-2 py-0.5 font-mono text-[11px] text-[#44F3F0]"
@@ -279,6 +326,44 @@ const BulkUploadModal = ({
                             <Text className="text-xs !text-[var(--ohnix-text-dim)] block mt-2.5">
                                 {t("products.bulk_taxonomy_match_hint")}
                             </Text>
+                            <div className="mt-3 flex items-start gap-2 rounded-lg border border-[#29D8D5]/25 bg-[#29D8D5]/[0.06] px-3 py-2.5">
+                                <span className="text-sm leading-none mt-0.5">🖼️</span>
+                                <Text className="text-xs !text-[var(--ohnix-text-muted)]">
+                                    {t("products.bulk_image_instruction")}
+                                </Text>
+                            </div>
+                            <Collapse
+                                ghost
+                                size="small"
+                                className="bulk-optional-fields-collapse mt-2.5 -mx-1"
+                                items={[
+                                    {
+                                        key: "optional",
+                                        label: (
+                                            <Text className="text-xs font-medium !text-[var(--ohnix-text-muted)]">
+                                                {t("products.bulk_optional_fields_toggle")}
+                                            </Text>
+                                        ),
+                                        children: (
+                                            <div>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {OPTIONAL_COLUMNS.map((col) => (
+                                                        <span
+                                                            key={col}
+                                                            className="rounded-md border border-[var(--ohnix-line-4)] bg-[var(--ohnix-surface-4)] px-2 py-0.5 font-mono text-[11px] text-[var(--ohnix-text-muted)]"
+                                                        >
+                                                            {col}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <Text className="text-xs !text-[var(--ohnix-text-dim)] block mt-2">
+                                                    {t("products.bulk_optional_fields_hint")}
+                                                </Text>
+                                            </div>
+                                        ),
+                                    },
+                                ]}
+                            />
                         </div>
                     </div>
                 </div>
@@ -320,7 +405,7 @@ const BulkUploadModal = ({
                                 </div>
                             ) : (
                                 <Upload.Dragger
-                                    accept=".csv"
+                                    accept=".csv,.zip"
                                     beforeUpload={handleFileSelect}
                                     maxCount={1}
                                     showUploadList={false}
@@ -426,6 +511,35 @@ const BulkUploadModal = ({
                                     size="small"
                                     pagination={
                                         result.errors.length > 10
+                                            ? { pageSize: 10, size: "small" }
+                                            : false
+                                    }
+                                    scroll={{ x: 400 }}
+                                    className="module-dark-table border border-[var(--ohnix-line-4)] rounded-lg overflow-hidden"
+                                />
+                            </div>
+                        )}
+
+                        {result.imagesFailed > 0 && (
+                            <div>
+                                <Alert
+                                    type="warning"
+                                    showIcon
+                                    className="dark-alert dark-alert-amber mb-2"
+                                    message={t("products.images_failed_alert", { count: result.imagesFailed })}
+                                />
+                                <Text className="font-semibold !text-amber-400 block mb-2">
+                                    {t("products.image_errors_title", { count: result.imagesFailed })}
+                                </Text>
+                                <Table
+                                    dataSource={result.imageErrors.map((e, i) => ({
+                                        ...e,
+                                        key: i,
+                                    }))}
+                                    columns={errorColumns}
+                                    size="small"
+                                    pagination={
+                                        result.imageErrors.length > 10
                                             ? { pageSize: 10, size: "small" }
                                             : false
                                     }

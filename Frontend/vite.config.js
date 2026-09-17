@@ -1,5 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
+
+// The service worker's navigation-fallback denylist (which routes must never
+// get the SPA shell as a fallback) now lives in src/sw.js, since that's a
+// real hand-written SW source file (injectManifest mode) rather than
+// generated from this config - see NON_APP_NAVIGATION_PATTERNS there.
 
 // Packages that MUST stay in the single vendor chunk.
 // rc-util reads React.version at module init time (top-level code), so any
@@ -75,7 +81,56 @@ function chunkSafetyGuard() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), chunkSafetyGuard()],
+  plugins: [
+    react(),
+    chunkSafetyGuard(),
+    VitePWA({
+      // The app registers the SW itself (see DashboardLayout.jsx) via the
+      // virtual:pwa-register module, instead of an auto-injected <script>
+      // tag - keeps registration confined to the authenticated app shell,
+      // the only surface that needs offline support.
+      injectRegister: false,
+      registerType: 'autoUpdate',
+      // Icons/name/theme already come from public/site-v2.webmanifest,
+      // linked in index.html - don't generate or inject a second manifest.
+      manifest: false,
+      // injectManifest (not the default generateSW) so src/sw.js can add a
+      // custom cacheWillUpdate plugin that rejects a precache entry whose
+      // response Content-Type doesn't match its file extension. Without
+      // that, workbox's default precache check only looks at HTTP status -
+      // a 200 response with the wrong body (e.g. the SPA's HTML served for
+      // a missing hashed asset, which is exactly what the vercel.json
+      // catch-all rewrite used to do before it excluded /assets/*) gets
+      // cached as if it were real CSS/JS and is served to every future
+      // visitor forever, with no error and no way to self-heal. See
+      // src/sw.js for the actual guard (the previous generateSW mode's
+      // navigateFallback/denylist for offline navigation was dropped there,
+      // not reproduced - see the comment in src/sw.js for why).
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
+      injectManifest: {
+        // Vendor chunks (antd/antv/recharts) can be a few MB - the default
+        // 2MB precache cap would silently skip them, breaking offline app
+        // boot.
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        // Never precache the prerendered marketing HTML (dist/index.html,
+        // dist/precios/index.html, etc.) - it's rebuilt on every deploy, and
+        // this app deploys many times a day. A stale cached copy of "/" left
+        // over from an earlier deploy gets hydrated against the CURRENT JS
+        // bundle and mismatches (React errors #418/#423), which throws away
+        // the whole tree and forces a client-side re-render - and since
+        // navigating on from there (e.g. to /login) stays inside that same
+        // already-broken page instance, the visible breakage outlives the
+        // homepage visit. Precaching it was also pointless: the SW only
+        // registers once a visitor reaches the authenticated dashboard (see
+        // DashboardLayout.jsx), so a marketing-only visitor never has it
+        // installed anyway. app.html (the actual authenticated app shell)
+        // isn't named index.html, so it's unaffected by this exclusion.
+        globIgnores: ['**/node_modules/**/*', '**/index.html'],
+      },
+    }),
+  ],
   resolve: {
     dedupe: ['react', 'react-dom'],
   },
@@ -92,6 +147,18 @@ export default defineConfig({
     // initialise together in the correct order. Page chunks (from React.lazy)
     // remain split — only node_modules are consolidated.
     rollupOptions: {
+      // Two HTML entries sharing the same /src/main.jsx module graph -
+      // index.html (marketing, prerendered per-route) and app.html (the
+      // private authenticated shell, never prerendered/hydrated - see its
+      // own comment). Both need to exist as real emitted files by the time
+      // this `vite build` step finishes, so app.html is actually present in
+      // dist/ when vite-plugin-pwa's injectManifest scans it afterwards -
+      // a post-build copy (the previous approach) runs too late to be
+      // precached, which is exactly why offline reload didn't work before.
+      input: {
+        main: 'index.html',
+        app: 'app.html',
+      },
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return

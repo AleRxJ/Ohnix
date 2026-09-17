@@ -1,6 +1,8 @@
-import { Modal, Form, Row, Col, Select, Button, Divider, Card } from "antd";
+import React from "react";
+import { Modal, Form, Row, Col, Select, Button, Divider, Card, DatePicker } from "antd";
 import { PlusOutlined, ShoppingCartOutlined, FileTextOutlined } from "@ant-design/icons";
 import OrderFormItems from "./OrderFormItems";
+import PointOfSaleField, { usePointOfSaleFieldVisible } from "../common/PointOfSaleField";
 import useI18n from "../../hooks/useI18n";
 
 const { Option } = Select;
@@ -25,6 +27,28 @@ const CreateOrderModal = ({
     submitting,
 }) => {
     const { t } = useI18n();
+    const { visible: showPointOfSale } = usePointOfSaleFieldVisible({ salesOnly: true });
+    const selectedPointOfSaleId = Form.useWatch("pointOfSaleId", form);
+
+    // Customers are assigned to a single point of sale at creation (see
+    // Backend/services/order.service.js's "pertenece a otro punto de venta"
+    // check) - only offer the ones that match whatever location this order
+    // is being placed for, same fix as PurchaseForm does for suppliers.
+    const availableCustomers = React.useMemo(() => {
+        if (!selectedPointOfSaleId) return customers;
+        return customers.filter(
+            (customer) => !customer.point_of_sale?._id || String(customer.point_of_sale._id) === String(selectedPointOfSaleId)
+        );
+    }, [customers, selectedPointOfSaleId]);
+
+    React.useEffect(() => {
+        if (isTourCreateStep || !selectedPointOfSaleId) return;
+        const currentCustomerId = form.getFieldValue("customer_id");
+        if (!currentCustomerId) return;
+        const stillAvailable = availableCustomers.some((customer) => customer._id === currentCustomerId);
+        if (!stillAvailable) form.setFieldsValue({ customer_id: undefined });
+    }, [selectedPointOfSaleId, availableCustomers, isTourCreateStep, form]);
+
     return (
         <Modal
             title={
@@ -84,7 +108,12 @@ const CreateOrderModal = ({
                     }
                 >
                     <Row gutter={16}>
-                        <Col xs={24} sm={12}>
+                        {showPointOfSale && (
+                            <Col xs={24} sm={12}>
+                                <PointOfSaleField disabled={isTourCreateStep} salesOnly />
+                            </Col>
+                        )}
+                        <Col xs={24} sm={showPointOfSale ? 12 : 24}>
                             <Form.Item
                                 name="customer_id"
                                 label={
@@ -108,7 +137,7 @@ const CreateOrderModal = ({
                                     size="large"
                                     disabled={isTourCreateStep}
                                 >
-                                    {customers.map((customer) => (
+                                    {availableCustomers.map((customer) => (
                                         <Option
                                             key={customer._id}
                                             value={customer._id}
@@ -117,6 +146,11 @@ const CreateOrderModal = ({
                                         </Option>
                                     ))}
                                 </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="due_date" label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("orders.due_date")}</span>} extra={t("orders.due_date_hint")}>
+                                <DatePicker className="w-full" size="large" placeholder={t("orders.due_date_placeholder")} />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>

@@ -12,8 +12,9 @@ import {
     CheckOutlined,
     ArrowRightOutlined,
     CopyOutlined,
+    ApiOutlined,
 } from "@ant-design/icons";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
 import { useTeam } from "../context/TeamContext";
@@ -25,7 +26,7 @@ import { FEATURE_LABELS } from "../hooks/useSubscription";
 import { useMarketPricing } from "../hooks/useMarketPricing";
 import SubscriptionPlanCard, { PLAN_COLORS } from "../components/profile/SubscriptionPlanCard";
 import PlanComparisonCard, { LIMIT_ROWS, formatLimit, getPlanPriceLabel } from "../components/profile/PlanComparisonCard";
-import ApiKeysPanel from "../components/billing/ApiKeysPanel";
+import BillingCycleToggle from "../components/common/BillingCycleToggle";
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -246,7 +247,7 @@ const Billing = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, refreshUser } = useContext(AuthContext);
-    const { isOwner, hasPermission } = useTeam();
+    const { isOwner, hasPermission, team } = useTeam();
     const canViewBilling = isOwner || hasPermission("billing", "view");
     const { t, currentLanguage } = useI18n();
     const lang = currentLanguage === "en" ? "en" : "es";
@@ -274,6 +275,7 @@ const Billing = () => {
     const [adminModalOpen, setAdminModalOpen] = useState(false);
     const [adminSubmitting, setAdminSubmitting] = useState(false);
     const [checkoutLoadingRequestId, setCheckoutLoadingRequestId] = useState("");
+    const [startingTrial, setStartingTrial] = useState(false);
     const [cancelTargetRequest, setCancelTargetRequest] = useState(null);
     const [cancellingRequestId, setCancellingRequestId] = useState("");
     const [checkoutMethodsByCountry, setCheckoutMethodsByCountry] = useState({});
@@ -289,6 +291,11 @@ const Billing = () => {
     // modal's card grid, so the "what changes" panel below it updates live
     // instead of only showing a fixed "current -> next tier" comparison.
     const selectedTargetPlan = Form.useWatch("targetPlan", upgradeForm);
+    // "MONTHLY" default matches PlanUpgradeRequest.billingCycle's own default
+    // on the backend, so a form the user never touches (submits before this
+    // field mounts, or JS strips it) still sends the same value the backend
+    // would have assumed anyway.
+    const selectedBillingCycle = Form.useWatch("billingCycle", upgradeForm) || "MONTHLY";
     // Enterprise can't rely on the automated checkout (no fixed price), so
     // approving one has to carry a manual payment link the admin negotiated
     // - required only for this plan, only once the admin picks "approved".
@@ -636,6 +643,27 @@ const Billing = () => {
         }
     };
 
+    // Fallback for a Negocio/Escala signup whose payment never completed
+    // (see registerUser in Backend/controllers/user.controller.js) - lets
+    // them start the Starter trial instead, without repeating signup. Only
+    // eligible for an account that never had a trial and never paid for
+    // anything (mirrors startMyStarterTrial's own guard on the backend).
+    const eligibleForTrialFallback =
+        currentPlan === "starter" && !subscription?.trialEndsAt && !subscription?.endsAt;
+
+    const handleStartFreeTrial = async () => {
+        try {
+            setStartingTrial(true);
+            await subscriptionService.startTrial();
+            toast.success(t("auth.request_status.trial_started_toast"));
+            await handleRefreshSubscription();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setStartingTrial(false);
+        }
+    };
+
     const handlePause = async () => {
         try {
             await subscriptionService.pauseMySubscription();
@@ -689,6 +717,7 @@ const Billing = () => {
 
         upgradeForm.setFieldsValue({
             targetPlan: availableUpgradeOptions[0],
+            billingCycle: "MONTHLY",
             notes: "",
             requiresManualReview: false,
         });
@@ -911,6 +940,13 @@ const Billing = () => {
                     </div>
                     <h2 className="mb-2 text-xl font-bold text-[var(--ohnix-text-primary)]">{t("team.billing_locked_title")}</h2>
                     <p className="mb-0 text-sm text-[var(--ohnix-text-muted)]">{t("team.billing_locked_description")}</p>
+                    {team?.ownerName && (
+                        <p className="mt-3 mb-0 text-sm font-medium text-[var(--ohnix-text-primary)]">
+                            {team?.ownerEmail
+                                ? t("team.billing_locked_contact", { name: team.ownerName, email: team.ownerEmail })
+                                : t("team.billing_locked_contact_no_email", { name: team.ownerName })}
+                        </p>
+                    )}
                 </div>
             </div>
         );
@@ -999,6 +1035,28 @@ const Billing = () => {
                         isAdmin={isAdmin}
                     />
 
+                    {eligibleForTrialFallback && !pageBusy ? (
+                        <div className="mt-4 rounded-2xl border border-[#44F3F0]/20 bg-[#44F3F0]/8 p-4 sm:p-5">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex-1 min-w-0">
+                                    <Text className="block text-sm font-semibold text-[var(--ohnix-text-primary)]">
+                                        {t("auth.request_status.start_trial_cta")}
+                                    </Text>
+                                    <Text className="block text-xs text-[var(--ohnix-text-muted)]">
+                                        {t("auth.request_status.start_trial_helper")}
+                                    </Text>
+                                </div>
+                                <Button
+                                    loading={startingTrial}
+                                    onClick={handleStartFreeTrial}
+                                    className="!bg-[#29D8D5] !text-[#021314] !font-semibold !border-0 hover:!bg-[#44F3F0] sm:!w-auto"
+                                >
+                                    {t("auth.request_status.start_trial_cta")}
+                                </Button>
+                            </div>
+                        </div>
+                    ) : null}
+
                     <PlanComparisonCard
                         currentPlan={
                             (subscription || user?.subscription)?.effectivePlan ||
@@ -1009,7 +1067,41 @@ const Billing = () => {
                         disabled={pageBusy}
                     />
 
-                    <ApiKeysPanel />
+                    <div className="mt-6 rounded-2xl border border-[#29D8D5]/25 bg-[linear-gradient(135deg,rgba(41,216,213,0.08),transparent)] p-4 sm:p-5">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-[var(--ohnix-text-primary)]">
+                                    <ApiOutlined className="text-[#44F3F0]" />
+                                    {t("integrations_page.page_title")}
+                                    <Tag color="cyan" className="!m-0">
+                                        {t("billing.new_tag")}
+                                    </Tag>
+                                </div>
+                                <p className="mt-1.5 text-xs leading-relaxed text-[var(--ohnix-text-muted)] sm:text-sm">
+                                    {t("billing.integrations_promo_desc")}
+                                </p>
+                                <ul className="mt-3 grid grid-cols-1 gap-1.5 text-xs text-[var(--ohnix-text-muted)] sm:grid-cols-3">
+                                    <li className="flex items-center gap-1.5">
+                                        <CheckOutlined className="text-[#44F3F0]" />
+                                        {t("billing.integrations_promo_bullet_channels")}
+                                    </li>
+                                    <li className="flex items-center gap-1.5">
+                                        <CheckOutlined className="text-[#44F3F0]" />
+                                        {t("billing.integrations_promo_bullet_api")}
+                                    </li>
+                                    <li className="flex items-center gap-1.5">
+                                        <CheckOutlined className="text-[#44F3F0]" />
+                                        {t("billing.integrations_promo_bullet_webhooks")}
+                                    </li>
+                                </ul>
+                            </div>
+                            <Link to="/integrations" className="flex-shrink-0">
+                                <Button className="w-full bg-[#29D8D5] text-[#021314] hover:bg-[#44F3F0] border-0 sm:w-auto">
+                                    {t("billing.go_to_integrations")}
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
 
                     {latestActiveRequest ? (
                         <div className="mt-6 rounded-2xl border border-[#29D8D5]/20 bg-[#29D8D5]/8 p-4 sm:p-5">
@@ -1661,6 +1753,27 @@ const Billing = () => {
                             t={t}
                         />
                     </Form.Item>
+
+                    <Form.Item
+                        name="billingCycle"
+                        label={t("landing.pricing.billing_toggle.label")}
+                        className="!mb-4"
+                    >
+                        <BillingCycleToggle
+                            savingsLabel={priceByPlanKey?.[selectedTargetPlan]?.annualSavingsLabel ? "-17%" : null}
+                        />
+                    </Form.Item>
+
+                    {selectedTargetPlan && priceByPlanKey?.[selectedTargetPlan] && (
+                        <p className="-mt-2 mb-4 text-xs text-[var(--ohnix-text-muted)]">
+                            {selectedBillingCycle === "ANNUAL"
+                                ? `${priceByPlanKey[selectedTargetPlan].annualLabel} ${t("landing.pricing.annual_charge_suffix")} · ${t(
+                                      "landing.pricing.annual_savings",
+                                      { amount: priceByPlanKey[selectedTargetPlan].annualSavingsLabel }
+                                  )}`
+                                : `${priceByPlanKey[selectedTargetPlan].monthlyLabel} ${t("landing.pricing.monthly_suffix")}`}
+                        </p>
+                    )}
 
                     {targetPlanCatalogEntry && (
                         <div className="mb-5 rounded-2xl border border-[#29D8D5]/20 bg-gradient-to-br from-[#29D8D5]/[0.06] to-transparent p-4">

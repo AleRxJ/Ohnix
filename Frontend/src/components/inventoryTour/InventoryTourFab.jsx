@@ -1,18 +1,55 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Modal } from "antd";
 import { CompassOutlined, CloseOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
+import useIsMobile from "../../hooks/useIsMobile";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { useTeam } from "../../context/TeamContext";
 import { tutorialDataService } from "../../services/tutorialDataService";
+
+const EDGE_MARGIN = 8;
+const DRAG_THRESHOLD = 6;
+const POSITION_STORAGE_KEY = "ohnix.inventoryTour.fabPosition";
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const loadStoredPosition = () => {
+    try {
+        const raw = JSON.parse(window.localStorage.getItem(POSITION_STORAGE_KEY) || "null");
+        if (!raw || typeof raw.left !== "number" || typeof raw.top !== "number") return null;
+        return raw;
+    } catch {
+        return null;
+    }
+};
+
+const savePosition = (pos) => {
+    try {
+        window.localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(pos));
+    } catch {
+        // localStorage unavailable - the drag just doesn't persist across
+        // reloads, not a functional failure.
+    }
+};
 
 // App-wide, not scoped to any one module - the tour walks through the whole
 // first-time flow (categories, products, purchases, sales, customers, plus
 // a look at Billing and Reports), so the entry point has to be reachable
 // from anywhere in the dashboard, not just Products.
+//
+// Draggable + idle-fade on desktop only - same pattern (and same reasoning)
+// as DiscoveryWidget.jsx/AssistantWidget.jsx: a fixed pill parked in the
+// bottom-right corner for an entire session WILL eventually sit on top of
+// real content some admin actually needs to click (this is exactly what
+// happened over the Discovery Engine admin tab's dimension toggles) - so it
+// can be dragged out of the way and rests at reduced opacity until the
+// mouse is actually on it. Unlike DiscoveryWidget's fixed-size circle, this
+// is a variable-width pill (icon-only below `sm`, icon+label above it), so
+// its own measured rect - not a hardcoded constant - drives the drag clamp.
 const InventoryTourFab = () => {
     const { t } = useI18n();
+    const isMobile = useIsMobile();
     const {
         isOpen,
         completed,
@@ -32,11 +69,91 @@ const InventoryTourFab = () => {
     const { isTeamMember, loading: teamLoading } = useTeam();
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [purging, setPurging] = useState(false);
+    const [pos, setPos] = useState(() => loadStoredPosition());
+    const [dragging, setDragging] = useState(false);
+    const wrapRef = useRef(null);
+    const dragInfo = useRef(null);
+    const posRef = useRef(pos);
+    const suppressClickRef = useRef(false);
+
+    // A dragged position is only meaningful for the viewport it was dragged
+    // in - re-clamp on resize so shrinking the window (or rotating a
+    // tablet) can't leave the FAB stuck partly or fully off-screen.
+    useEffect(() => {
+        if (!pos) return;
+        const handleResize = () => {
+            const rect = wrapRef.current?.getBoundingClientRect();
+            const width = rect?.width || 48;
+            const height = rect?.height || 48;
+            setPos((prev) => {
+                if (!prev) return prev;
+                const next = {
+                    left: clamp(prev.left, EDGE_MARGIN, window.innerWidth - width - EDGE_MARGIN),
+                    top: clamp(prev.top, EDGE_MARGIN, window.innerHeight - height - EDGE_MARGIN),
+                };
+                return next.left === prev.left && next.top === prev.top ? prev : next;
+            });
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, [pos]);
 
     // Also gated on teamLoading - rendering the FAB before the team fetch
     // resolves and then yanking it away once isTeamMember comes back true
     // would flash it at exactly the members it shouldn't appear for.
     if (isOpen || completed || fabDismissed || isTeamMember || teamLoading) return null;
+
+    // Draggable (and idle-faded via the is-draggable class) on touch too,
+    // not just mouse - see AssistantWidget.jsx for the same change and why.
+    const draggable = true;
+
+    const handlePointerDown = (e) => {
+        if (!draggable || (e.button !== undefined && e.button !== 0)) return;
+        const rect = wrapRef.current.getBoundingClientRect();
+        dragInfo.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            startLeft: rect.left,
+            startTop: rect.top,
+            width: rect.width,
+            height: rect.height,
+            moved: false,
+        };
+        e.currentTarget.setPointerCapture(e.pointerId);
+    };
+
+    const handlePointerMove = (e) => {
+        if (!dragInfo.current) return;
+        const dx = e.clientX - dragInfo.current.startX;
+        const dy = e.clientY - dragInfo.current.startY;
+        if (!dragInfo.current.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        dragInfo.current.moved = true;
+        if (!dragging) setDragging(true);
+        const next = {
+            left: clamp(dragInfo.current.startLeft + dx, EDGE_MARGIN, window.innerWidth - dragInfo.current.width - EDGE_MARGIN),
+            top: clamp(dragInfo.current.startTop + dy, EDGE_MARGIN, window.innerHeight - dragInfo.current.height - EDGE_MARGIN),
+        };
+        posRef.current = next;
+        setPos(next);
+    };
+
+    const handlePointerUp = () => {
+        const wasDrag = Boolean(dragInfo.current?.moved);
+        dragInfo.current = null;
+        setDragging(false);
+        if (wasDrag) {
+            suppressClickRef.current = true;
+            if (posRef.current) savePosition(posRef.current);
+        }
+    };
+
+    const handleStartClick = () => {
+        if (suppressClickRef.current) {
+            suppressClickRef.current = false;
+            return;
+        }
+        start();
+    };
 
     // Dismissing while practice data already exists needs a decision first
     // - silently hiding the button would leave that data stranded, and if
@@ -76,16 +193,27 @@ const InventoryTourFab = () => {
     };
 
     return (
-        <div className="no-print fixed bottom-6 right-6 z-[1050] group">
+        <div
+            ref={wrapRef}
+            style={pos ? { left: pos.left, top: pos.top } : undefined}
+            className={
+                `no-print fixed z-[1050] group inventory-tour-fab-wrap${dragging ? " is-dragging" : ""}${draggable ? " is-draggable" : ""}` +
+                (pos ? "" : " bottom-6 right-6")
+            }
+        >
             <button
                 type="button"
-                onClick={start}
+                onClick={handleStartClick}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
                 aria-label={t("inventory_tour.trigger_button")}
                 className="inventory-tour-fab flex items-center gap-2 h-12 pl-4 pr-5 rounded-full border-0 cursor-pointer"
                 style={{
                     background: "linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%)",
                     color: "#021314",
                     boxShadow: "0 8px 28px rgba(41,216,213,0.4)",
+                    touchAction: "none",
                 }}
             >
                 <CompassOutlined className="text-lg" />
@@ -177,8 +305,19 @@ const InventoryTourFab = () => {
                     0%, 100% { box-shadow: 0 8px 28px rgba(41,216,213,0.4), 0 0 0 0 rgba(41,216,213,0.35); }
                     50% { box-shadow: 0 8px 28px rgba(41,216,213,0.4), 0 0 0 8px rgba(41,216,213,0); }
                 }
+                .inventory-tour-fab-wrap.is-draggable .inventory-tour-fab { cursor: grab; }
+                .inventory-tour-fab-wrap.is-draggable.is-dragging .inventory-tour-fab { cursor: grabbing; }
+                .inventory-tour-fab-wrap.is-draggable {
+                    opacity: 0.55;
+                    transition: opacity 220ms ease;
+                }
+                .inventory-tour-fab-wrap.is-draggable:hover,
+                .inventory-tour-fab-wrap.is-draggable.is-dragging {
+                    opacity: 1;
+                }
                 @media (prefers-reduced-motion: reduce) {
                     .inventory-tour-fab { animation: none; }
+                    .inventory-tour-fab-wrap.is-draggable { transition: none; }
                 }
             `}</style>
         </div>

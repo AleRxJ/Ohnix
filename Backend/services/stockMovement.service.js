@@ -5,15 +5,19 @@
 // can never drift apart.
 export const recordStockMovement = (
     tx,
-    { productId, accountId, pointOfSaleId, delta, balanceAfter, sourceType, sourceId, reason, createdById }
+    { productId, accountId, pointOfSaleId, variantId, delta, balanceAfter, unitCostApplied, valueDelta, valueBalanceAfter, sourceType, sourceId, reason, createdById }
 ) =>
     tx.stockMovement.create({
         data: {
             productId,
             accountId,
             pointOfSaleId,
+            variantId: variantId ?? null,
             delta,
             balanceAfter,
+            unitCostApplied: unitCostApplied ?? null,
+            valueDelta: valueDelta ?? null,
+            valueBalanceAfter: valueBalanceAfter ?? null,
             sourceType,
             sourceId: sourceId ?? null,
             reason: reason ?? null,

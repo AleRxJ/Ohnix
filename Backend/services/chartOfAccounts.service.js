@@ -11,12 +11,44 @@ const DEFAULT_ACCOUNTS = [
     { code: "1105", name: "Caja", accountType: "asset" },
     { code: "1110", name: "Bancos", accountType: "asset" },
     { code: "1305", name: "Clientes", accountType: "asset" },
+    { code: "1330", name: "Anticipos a proveedores", accountType: "asset" },
     { code: "1435", name: "Inventarios", accountType: "asset" },
     { code: "2205", name: "Proveedores", accountType: "liability" },
+    { code: "2805", name: "Anticipos recibidos de clientes", accountType: "liability" },
     { code: "240805", name: "IVA generado", accountType: "liability" },
     { code: "240810", name: "IVA descontable", accountType: "liability" },
     { code: "4135", name: "Ingresos por ventas", accountType: "revenue" },
     { code: "6135", name: "Costo de ventas", accountType: "cost" },
+    { code: "4295", name: "Ingresos por ajustes de inventario", accountType: "revenue" },
+    { code: "5195", name: "Pérdidas y ajustes de inventario", accountType: "expense" },
+    // Fase 9 - manufacturing (see accountingPosting.service.js#
+    // postProductionJournalEntry). Labor/overhead entered on a production
+    // order gets capitalized into 1435 Inventarios (debit) against this one
+    // accrued-liability account (credit) - the standard PUC code for a
+    // recognized cost not yet paid out through cash/bank, since this
+    // system has no payroll module a production order could otherwise
+    // debit directly. Settling it later (recording the actual wage/
+    // utility payment against it) is a manual journal entry, same as any
+    // other accrued liability - out of scope for this phase.
+    { code: "2335", name: "Costos y gastos por pagar", accountType: "liability" },
+    // Fase 4 - nómina (see accountingPosting.service.js#postPayrollJournalEntry).
+    // Net pay and every provisioned social benefit each get their own
+    // payable account (rather than one lump "nómina por pagar") so the
+    // balance sheet shows what's actually owed and when: 2505 is due almost
+    // immediately, 2510/2515/2520/2525 are due on their own legal calendar
+    // (cesantías by Feb 14, prima in June/December), and settling one of
+    // them later never touches the others.
+    { code: "5105", name: "Gastos de personal - Salarios", accountType: "expense" },
+    { code: "5115", name: "Gastos de personal - Prestaciones sociales", accountType: "expense" },
+    { code: "5120", name: "Gastos de personal - Aportes sobre la nómina", accountType: "expense" },
+    { code: "2505", name: "Salarios por pagar", accountType: "liability" },
+    { code: "2510", name: "Cesantías consolidadas", accountType: "liability" },
+    { code: "2515", name: "Intereses sobre cesantías", accountType: "liability" },
+    { code: "2520", name: "Prima de servicios por pagar", accountType: "liability" },
+    { code: "2525", name: "Vacaciones consolidadas", accountType: "liability" },
+    { code: "2530", name: "Aportes de seguridad social por pagar", accountType: "liability" },
+    { code: "2531", name: "Aportes parafiscales por pagar", accountType: "liability" },
+    { code: "2370", name: "Retención en la fuente por pagar (nómina)", accountType: "liability" },
 ];
 
 // Lazily seeds the default chart the first time a tenant needs one - same
@@ -37,6 +69,11 @@ export const ensureDefaultChartOfAccounts = async (db, accountId) => {
 
 export const getChartAccountMap = async (db, accountId) => {
     const accounts = await ensureDefaultChartOfAccounts(db, accountId);
+    for (const account of DEFAULT_ACCOUNTS) {
+        if (!accounts.some((existing) => existing.code === account.code)) {
+            accounts.push(await db.chartAccount.create({ data: { ...account, createdById: accountId } }));
+        }
+    }
     return new Map(accounts.map((a) => [a.code, a]));
 };
 
@@ -61,13 +98,75 @@ const RETAINED_EARNINGS_ACCOUNT = { code: "3605", name: "Utilidades acumuladas",
 // Lazily adds the retained-earnings account for tenants whose chart was
 // seeded before period-close existed (their 9 DEFAULT_ACCOUNTS won't include
 // it) - same "created on first use" idiom as ensureDefaultChartOfAccounts,
-// called only from accountingPeriod.service.js#closeAccountingPeriod right
-// before it needs somewhere to post that period's net result.
+// called from fiscalYear.service.js#closeFiscalYear right before it needs
+// somewhere to post a closed year's net result.
 export const ensureRetainedEarningsAccount = async (tx, accountId) => {
     await ensureDefaultChartOfAccounts(tx, accountId);
     const existing = await tx.chartAccount.findFirst({ where: { createdById: accountId, code: RETAINED_EARNINGS_ACCOUNT.code } });
     if (existing) return existing;
     return tx.chartAccount.create({ data: { ...RETAINED_EARNINGS_ACCOUNT, createdById: accountId } });
+};
+
+const CURRENT_YEAR_EARNINGS_ACCOUNT = { code: "3610", name: "Utilidad del ejercicio", accountType: "equity" };
+
+// Fase 6 - where a MONTHLY period close now posts that month's net result,
+// instead of RETAINED_EARNINGS_ACCOUNT directly (see
+// accountingPeriod.service.js#closeAccountingPeriod). This account
+// accumulates the current fiscal year's result month by month; closing the
+// FISCAL YEAR (fiscalYear.service.js#closeFiscalYear) sweeps its balance into
+// 3605 and leaves it at zero for the next year. Keeping the two separate is
+// what lets the balance sheet show "this year's result" and "accumulated
+// from prior years" as distinct equity lines instead of one indistinguishable
+// bucket - the gap a plain 3605-only close left unaddressed.
+export const ensureCurrentYearEarningsAccount = async (tx, accountId) => {
+    await ensureDefaultChartOfAccounts(tx, accountId);
+    const existing = await tx.chartAccount.findFirst({ where: { createdById: accountId, code: CURRENT_YEAR_EARNINGS_ACCOUNT.code } });
+    if (existing) return existing;
+    return tx.chartAccount.create({ data: { ...CURRENT_YEAR_EARNINGS_ACCOUNT, createdById: accountId } });
+};
+
+// Fase 7 - a starting point for fixedAsset.service.js#createFixedAsset, not
+// a hard requirement: registering an asset can point at any active asset/
+// expense account instead (e.g. a company that wants "Flota y equipo de
+// transporte" split from "Equipo de oficina"). Seeded together, one call,
+// since a fixed asset always needs all three at once.
+const FIXED_ASSET_DEFAULT_ACCOUNTS = {
+    asset: { code: "1524", name: "Equipo de oficina", accountType: "asset" },
+    depreciation: { code: "1592", name: "Depreciación acumulada", accountType: "asset" },
+    expense: { code: "5160", name: "Depreciación", accountType: "expense" },
+};
+
+export const ensureDefaultFixedAssetAccounts = async (tx, accountId) => {
+    await ensureDefaultChartOfAccounts(tx, accountId);
+    const codes = Object.values(FIXED_ASSET_DEFAULT_ACCOUNTS).map((a) => a.code);
+    const existing = await tx.chartAccount.findMany({ where: { createdById: accountId, code: { in: codes } } });
+    const byCode = new Map(existing.map((a) => [a.code, a]));
+    const result = {};
+    for (const [key, definition] of Object.entries(FIXED_ASSET_DEFAULT_ACCOUNTS)) {
+        result[key] = byCode.get(definition.code) || await tx.chartAccount.create({ data: { ...definition, createdById: accountId } });
+    }
+    return result;
+};
+
+// Fase 7 - gain/loss vs. net book value when a fixed asset is disposed (see
+// fixedAsset.service.js#disposeFixedAsset). Two separate accounts (not one)
+// because a single ChartAccount can't be both revenue and expense typed -
+// only whichever side actually applies to a given disposal gets posted to.
+const FIXED_ASSET_DISPOSAL_ACCOUNTS = {
+    gain: { code: "4245", name: "Utilidad en venta de activos fijos", accountType: "revenue" },
+    loss: { code: "530595", name: "Pérdida en venta de activos fijos", accountType: "expense" },
+};
+
+export const ensureFixedAssetDisposalAccounts = async (tx, accountId) => {
+    await ensureDefaultChartOfAccounts(tx, accountId);
+    const codes = Object.values(FIXED_ASSET_DISPOSAL_ACCOUNTS).map((a) => a.code);
+    const existing = await tx.chartAccount.findMany({ where: { createdById: accountId, code: { in: codes } } });
+    const byCode = new Map(existing.map((a) => [a.code, a]));
+    const result = {};
+    for (const [key, definition] of Object.entries(FIXED_ASSET_DISPOSAL_ACCOUNTS)) {
+        result[key] = byCode.get(definition.code) || await tx.chartAccount.create({ data: { ...definition, createdById: accountId } });
+    }
+    return result;
 };
 
 // Manual additions to the default 9-account seed - e.g. a company that wants
@@ -76,24 +175,31 @@ export const ensureRetainedEarningsAccount = async (tx, accountId) => {
 // parentId is the hierarchy the schema always supported but the default
 // seed never used (ChartAccount.parentId's own comment) - optional here too,
 // a flat chart is still perfectly valid.
-export const createChartAccount = async (accountId, { code, name, accountType, parentId }) => {
-    if (!code?.trim()) throw new ApiError(400, "El código de la cuenta es obligatorio.");
-    if (!name?.trim()) throw new ApiError(400, "El nombre de la cuenta es obligatorio.");
+export const createChartAccount = async (accountId, actorId, { code, name, accountType, parentId }) => {
+    if (!code?.trim()) throw new ApiError(400, "Account code is required.", [], "", "chart_account_code_required");
+    if (!name?.trim()) throw new ApiError(400, "Account name is required.", [], "", "chart_account_name_required");
     if (!ACCOUNT_TYPES.includes(accountType)) {
-        throw new ApiError(400, `accountType debe ser uno de: ${ACCOUNT_TYPES.join(", ")}.`);
+        throw new ApiError(400, `accountType must be one of: ${ACCOUNT_TYPES.join(", ")}.`, [], "", "chart_account_type_invalid");
     }
 
     const trimmedCode = code.trim();
     const existing = await prisma.chartAccount.findFirst({ where: { createdById: accountId, code: trimmedCode } });
-    if (existing) throw new ApiError(409, `Ya existe una cuenta con el código ${trimmedCode}.`);
+    if (existing) throw new ApiError(409, `An account with code ${trimmedCode} already exists.`, [], "", "chart_account_code_duplicate");
 
     if (parentId) {
         const parent = await prisma.chartAccount.findFirst({ where: { id: parentId, createdById: accountId } });
-        if (!parent) throw new ApiError(400, "La cuenta padre indicada no existe.");
+        if (!parent) throw new ApiError(400, "The selected parent account does not exist.", [], "", "chart_account_parent_not_found");
     }
 
-    return prisma.chartAccount.create({
-        data: { code: trimmedCode, name: name.trim(), accountType, parentId: parentId || null, createdById: accountId },
+    const trimmedName = name.trim();
+    return prisma.$transaction(async (tx) => {
+        const account = await tx.chartAccount.create({
+            data: { code: trimmedCode, name: trimmedName, accountType, parentId: parentId || null, createdById: accountId },
+        });
+        await tx.accountingConfigAudit.create({
+            data: { accountId, actorId, entityType: "chart_account", entityId: account.id, action: "created", after: { code: trimmedCode, name: trimmedName, account_type: accountType, parent_id: parentId || null, is_active: true } },
+        });
+        return account;
     });
 };
 
@@ -101,8 +207,14 @@ export const createChartAccount = async (accountId, { code, name, accountType, p
 // points at this account intact - same "never delete, only isActive" idiom
 // used for products/cash accounts elsewhere. Reactivating is the same call
 // with isActive: true.
-export const setChartAccountActive = async (accountId, chartAccountId, isActive) => {
+export const setChartAccountActive = async (accountId, actorId, chartAccountId, isActive) => {
     const account = await prisma.chartAccount.findFirst({ where: { id: chartAccountId, createdById: accountId } });
-    if (!account) throw new ApiError(404, "Cuenta contable no encontrada.");
-    return prisma.chartAccount.update({ where: { id: chartAccountId }, data: { isActive } });
+    if (!account) throw new ApiError(404, "Chart account not found.", [], "", "chart_account_not_found");
+    return prisma.$transaction(async (tx) => {
+        const updated = await tx.chartAccount.update({ where: { id: chartAccountId }, data: { isActive } });
+        await tx.accountingConfigAudit.create({
+            data: { accountId, actorId, entityType: "chart_account", entityId: chartAccountId, action: isActive ? "activated" : "deactivated", before: { is_active: account.isActive }, after: { is_active: isActive } },
+        });
+        return updated;
+    });
 };

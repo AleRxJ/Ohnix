@@ -1,5 +1,6 @@
 import React, { useContext } from "react";
 import { Modal, Typography, Button } from "antd";
+import { useNavigate } from "react-router-dom";
 import {
     ArrowRightOutlined,
     SendOutlined,
@@ -10,6 +11,7 @@ import {
     ThunderboltOutlined,
     ExclamationCircleOutlined,
     PrinterOutlined,
+    BookOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
@@ -36,6 +38,7 @@ const TIMELINE_STEPS = [
 const TransferDetailModal = ({ visible, transfer, product, onCancel }) => {
     const { t, currentLanguage } = useI18n();
     const { user } = useContext(AuthContext);
+    const navigate = useNavigate();
 
     if (!transfer) return null;
 
@@ -137,6 +140,24 @@ const TransferDetailModal = ({ visible, transfer, product, onCancel }) => {
                         </div>
                     )}
                 </div>
+                {transfer.discrepancy > 0 && (
+                    <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+                        <Text className="text-xs text-[var(--ohnix-text-dim)]">
+                            {t("products.transfer_discrepancy_accounting_hint")}
+                        </Text>
+                        <Button
+                            size="small"
+                            icon={<BookOutlined />}
+                            onClick={() =>
+                                navigate("/accounting", {
+                                    state: { tab: "journal", sourceType: "transfer_discrepancy", sourceId: transfer.id },
+                                })
+                            }
+                        >
+                            {t("products.transfer_view_in_accounting")}
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {transfer.notes && (

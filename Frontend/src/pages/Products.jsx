@@ -147,6 +147,19 @@ const Products = () => {
             product_code: product.product_code,
             category_id: product.category_id._id,
             unit_id: product.unit_id._id,
+            purchase_unit_id: product.purchase_unit_id?._id,
+            purchase_unit_conversion_factor: product.purchase_unit_conversion_factor,
+            is_kit: product.is_kit,
+            components: (product.components || []).map((c) => ({
+                product_id: c.product_id,
+                quantity: c.quantity,
+            })),
+            tracks_batches: product.tracks_batches,
+            is_manufactured: product.is_manufactured,
+            recipe_components: (product.recipe_components || []).map((c) => ({
+                product_id: c.product_id,
+                quantity: c.quantity,
+            })),
             buying_price: product.buying_price,
             selling_price: product.selling_price,
             unit_measure_code: product.unit_measure_code,
@@ -451,6 +464,7 @@ const Products = () => {
                         loading={modalLoading}
                         categories={categories}
                         units={units}
+                        allProducts={products}
                         editingProduct={editingProduct}
                         imageUrl={imageUrl}
                         onSave={handleSaveProduct}

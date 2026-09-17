@@ -23,13 +23,13 @@ router.use(verifyJWT);
 // - a quotation isn't a purchase until it's actually converted into one.
 router
     .route("/")
-    .post(requireModulePermission("purchases", "edit"), createQuotation)
+    .post(requireModulePermission("purchases", "edit"), idempotent("purchase-quotation.create"), createQuotation)
     .get(requireModulePermission("purchases", "view"), getAllQuotations);
 
 router
     .route("/:id")
     .get(requireModulePermission("purchases", "view"), getQuotationDetails)
-    .patch(requireModulePermission("purchases", "edit"), updateQuotation);
+    .patch(requireModulePermission("purchases", "edit"), idempotent("purchase-quotation.update"), updateQuotation);
 
 router.route("/:id/received").post(requireModulePermission("purchases", "edit"), idempotent("quotation.received"), markQuotationReceived);
 router.route("/:id/reject").post(requireModulePermission("purchases", "edit"), idempotent("quotation.reject"), rejectQuotation);

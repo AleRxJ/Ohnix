@@ -11,12 +11,17 @@ const mapPurchase = (purchase) => ({
     _id: toExternalId(purchase),
     purchase_no: purchase.purchaseNo,
     purchase_date: purchase.purchaseDate,
+    due_date: purchase.dueDate,
     purchase_status: purchase.purchaseStatus,
     supplier_id: purchase.supplier
         ? {
               _id: toExternalId(purchase.supplier),
               name: purchase.supplier.name,
               shopname: purchase.supplier.shopname,
+              // Drives whether PurchaseDetails.jsx shows the receipt-acknowledgment
+              // panel (RADIAN acuse de recibo/recepción) - see
+              // receiptAcknowledgment.service.js.
+              issues_electronic_invoice: purchase.supplier.issuesElectronicInvoice,
           }
         : null,
     created_by: purchase.createdBy
@@ -31,6 +36,25 @@ const mapPurchase = (purchase) => ({
               username: purchase.updatedBy.username,
           }
         : null,
+    retentions: (purchase.retentions || []).map((retention) => ({
+        _id: retention.id,
+        concept_code: retention.conceptCode,
+        concept_name: retention.conceptName,
+        tax_type: retention.taxType,
+        base_type: retention.baseType,
+        rate_percent: Number(retention.ratePercent),
+        minimum_base_amount: Number(retention.minimumBaseAmount),
+        base_amount: Number(retention.baseAmount),
+        withheld_amount: Number(retention.withheldAmount),
+        returned_base_amount: Number(retention.returnedBaseAmount),
+        returned_withheld_amount: Number(retention.returnedWithheldAmount),
+        municipality_code: retention.municipalityCode,
+        chart_account: retention.chartAccount ? {
+            _id: retention.chartAccount.id,
+            code: retention.chartAccount.code,
+            name: retention.chartAccount.name,
+        } : null,
+    })),
     createdAt: purchase.createdAt,
     updatedAt: purchase.updatedAt,
 });
@@ -61,6 +85,7 @@ const mapPurchaseDetail = (detail) => ({
     returned_quantity: detail.returnedQuantity,
     pending_quantity: detail.quantity - detail.returnedQuantity,
     refund_amount: Number(detail.refundAmount),
+    returned_tax_amount: Number(detail.returnedTaxAmount),
     fully_returned: detail.returnedQuantity === detail.quantity,
     createdAt: detail.createdAt,
     updatedAt: detail.updatedAt,
@@ -78,6 +103,7 @@ const findPurchaseByAnyId = async (id) =>
                     legacyMongoId: true,
                     name: true,
                     shopname: true,
+                    issuesElectronicInvoice: true,
                 },
             },
             createdBy: {
@@ -94,6 +120,7 @@ const findPurchaseByAnyId = async (id) =>
                     username: true,
                 },
             },
+            retentions: { include: { chartAccount: { select: { id: true, code: true, name: true } } } },
         },
     });
 
@@ -143,6 +170,7 @@ const getAllPurchases = asyncHandler(async (req, res, next) => {
                         legacyMongoId: true,
                         name: true,
                         shopname: true,
+                        issuesElectronicInvoice: true,
                     },
                 },
                 createdBy: {
@@ -159,6 +187,7 @@ const getAllPurchases = asyncHandler(async (req, res, next) => {
                         username: true,
                     },
                 },
+                retentions: { include: { chartAccount: { select: { id: true, code: true, name: true } } } },
             },
         });
 

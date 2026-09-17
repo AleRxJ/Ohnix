@@ -11,10 +11,16 @@ export const PLAN_DISPLAY_NAMES = {
     enterprise: { es: "Enterprise",  en: "Enterprise" },
 };
 
+// Display-only reference/fallback (PlanComparisonCard.jsx falls back to this
+// when GET /pricing/public fails or returns no market price). Must stay in
+// sync by hand with STRIPE_AMOUNT_*_USD in payment.service.js - those env
+// vars are the real checkout amount, this is just what's shown if that
+// endpoint is unreachable. Values ago-2026 repricing: ~15% margin over spot
+// COP/USD conversion of the COP prices below, rounded.
 export const PLAN_PRICES_USD = {
-    starter:    19,
-    growth:     49,
-    scale:      99,
+    starter:    17,
+    growth:     48,
+    scale:      96,
     enterprise: null, // custom — set per negotiation
 };
 
@@ -247,6 +253,7 @@ export const ensureUserSubscription = async (userId) =>
             cancelAtPeriodEnd: true,
             scheduledPlan: true,
             lowStockThreshold: true,
+            billingCycle: true,
         },
     });
 
@@ -268,10 +275,33 @@ export const ensureActiveSubscription = (subscription) => {
     if (!subscription || subscription.status !== "active") {
         throw new ApiError(
             403,
-            "Your subscription is not active. Please contact support to reactivate your plan."
+            "Your subscription is not active. Please contact support to reactivate your plan.",
+            [],
+            "",
+            "subscription_inactive"
         );
     }
 };
+
+// Express middleware form of ensureActiveSubscription, for routes that don't
+// otherwise go through enforceEntityLimit/enforceMonthlyLimit/
+// enforcePlanFeature but still need to block a specific write action for a
+// paused subscription - e.g. issuing/syncing a DIAN electronic invoice or
+// support document. Read-only routes (list/view/download an already-issued
+// invoice or support document) deliberately never use this: those documents
+// are the customer's own tax records (Estatuto Tributario retention
+// requirements), and viewing/downloading them must keep working even while
+// the account is blocked for non-payment - only creating new billable
+// documents is gated.
+export const requireActiveSubscription = asyncHandler(async (req, _, next) => {
+    if (req.user?.role === "admin") {
+        return next();
+    }
+
+    const subscription = await ensureUserSubscription(req.user.prismaId);
+    ensureActiveSubscription(subscription);
+    return next();
+});
 
 export const getMonthBounds = () => {
     const now = new Date();

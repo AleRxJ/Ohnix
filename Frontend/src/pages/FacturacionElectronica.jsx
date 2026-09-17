@@ -38,7 +38,7 @@ const FacturacionElectronica = () => {
         },
         {
             q: "En que plan esta incluida la facturacion electronica?",
-            a: "Esta disponible desde el plan Negocio ($49/mes) en adelante. No esta incluida en el plan Emprendedor ni durante el periodo de prueba gratuita.",
+            a: "Esta disponible desde el plan Negocio ($129.000/mes) en adelante. No esta incluida en el plan Emprendedor ni durante el periodo de prueba gratuita.",
         },
         {
             q: "Que pasa si la DIAN rechaza una factura?",
@@ -93,7 +93,7 @@ const FacturacionElectronica = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <main className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-24">
                 <ContentSection id="facturacion-electronica-dian" shell={false}>
                     <SectionHeading
                         as="h1"
@@ -118,7 +118,7 @@ const FacturacionElectronica = () => {
                     <div className="mt-12 rounded-[28px] border border-[#29D8D5]/25 bg-[#29D8D5]/8 p-7">
                         <h2 className="text-2xl font-semibold text-white">Disponible desde el plan Negocio</h2>
                         <p className="mt-3 text-sm leading-7 text-[#CFE8E8]">
-                            La facturacion electronica DIAN esta incluida a partir del plan Negocio ($49/mes), junto con reportes completos y alertas automaticas. El plan Emprendedor y el periodo de prueba gratuita no la incluyen.
+                            La facturacion electronica DIAN esta incluida a partir del plan Negocio ($129.000/mes), junto con reportes completos y alertas automaticas. El plan Emprendedor y el periodo de prueba gratuita no la incluyen.
                         </p>
                         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                             <button
@@ -143,6 +143,24 @@ const FacturacionElectronica = () => {
                             </Link>
                         </div>
                     </div>
+
+                    <p className="mt-8 text-sm text-[#6B7880]">
+                        Necesitas un certificado digital para firmar tus documentos electronicos?{" "}
+                        <Link
+                            to="/certificado-digital-dian"
+                            className="text-[#44F3F0] underline underline-offset-2 hover:text-white"
+                        >
+                            Compra y activa tu certificado
+                        </Link>
+                        . Tienes tu propio software (POS, ERP o SaaS) y solo necesitas el motor de facturacion?{" "}
+                        <Link
+                            to="/facturacion-electronica-sin-inventario"
+                            className="text-[#44F3F0] underline underline-offset-2 hover:text-white"
+                        >
+                            Conoce nuestra API de facturacion electronica
+                        </Link>
+                        .
+                    </p>
 
                     <div className="mt-12">
                         <h2 className="text-2xl font-semibold text-white">Preguntas frecuentes</h2>

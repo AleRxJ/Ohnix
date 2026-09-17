@@ -30,7 +30,7 @@ const buildDetails = async (details, userId, userRole, companyVatResponsible) =>
 
     const products = await Promise.all(productIds.map(findProductByAnyId));
     if (products.some((product) => !product)) {
-        throw new ApiError(400, "One or more products were not found");
+        throw new ApiError(400, "One or more products were not found", [], "", "products_not_found");
     }
 
     const productById = new Map(products.map((product) => [product.id, product]));
@@ -77,7 +77,7 @@ class SalesQuotationService {
         if (!customer_id || !quotation_no) throw new ApiError(400, "Customer and quotation number are required");
 
         const customer = await findCustomerByAnyId(customer_id);
-        if (!customer) throw new ApiError(404, "Customer not found");
+        if (!customer) throw new ApiError(404, "Customer not found", [], "", "customer_not_found");
         if (userRole !== "admin" && customer.createdById !== userId) {
             throw new ApiError(403, "You do not have permission to use this customer");
         }
@@ -97,7 +97,7 @@ class SalesQuotationService {
         const total = roundMoney(subtotalAfterDiscount + calculated.tax);
         const quotationNo = String(quotation_no).trim();
         const existing = await prisma.salesQuotation.findUnique({ where: { quotationNo }, select: { id: true } });
-        if (existing) throw new ApiError(409, "Quotation number already exists");
+        if (existing) throw new ApiError(409, "Quotation number already exists", [], "", "quotation_number_already_exists");
 
         try {
             return await prisma.$transaction(async (tx) => {
@@ -124,7 +124,7 @@ class SalesQuotationService {
                 return quotation;
             });
         } catch (error) {
-            if (error.code === "P2002") throw new ApiError(409, "Quotation number already exists");
+            if (error.code === "P2002") throw new ApiError(409, "Quotation number already exists", [], "", "quotation_number_already_exists");
             throw error;
         }
     }

@@ -11,6 +11,7 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit } from "../middleware/pricing.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
+import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = Router();
 
@@ -18,11 +19,11 @@ router.use(verifyJWT);
 
 router.route("/available").get(requireModulePermission("categories", "view"), getAvailableCategories);
 
-router.route("/").post(requireModulePermission("categories", "edit"), enforceEntityLimit("categories"), createCategory);
+router.route("/").post(requireModulePermission("categories", "edit"), enforceEntityLimit("categories"), idempotent("category.create"), createCategory);
 router.route("/user").get(requireModulePermission("categories", "view"), getUserCategories);
 router.route("/user/:id")
-    .patch(requireModulePermission("categories", "edit"), updateCategory)
-    .delete(requireModulePermission("categories", "edit"), deleteCategory);
+    .patch(requireModulePermission("categories", "edit"), idempotent("category.update"), updateCategory)
+    .delete(requireModulePermission("categories", "edit"), idempotent("category.delete"), deleteCategory);
 
 // Admin-only routes
 router.use(isAdmin);

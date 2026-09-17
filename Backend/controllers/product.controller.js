@@ -6,17 +6,20 @@ import { prisma } from "../db/prisma.js";
 import { normalizeCountryCode } from "../services/companyCountry.service.js";
 import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../middleware/pricing.middleware.js";
 import { recordStockMovement } from "../services/stockMovement.service.js";
+import { postInventoryAdjustmentJournalEntry } from "../services/accountingPosting.service.js";
 import {
-    claimLocationStock,
-    creditLocationStock,
+    claimLocationStockWithCost,
+    creditLocationStockWithCost,
     getLocationStockSummary,
     scopedStockForProducts,
 } from "../services/productLocationStock.service.js";
 import { quickTransfer } from "../services/stockTransfer.service.js";
+import { creditBatch, claimBatchesFEFO, listBatches } from "../services/productBatch.service.js";
 import { mapStockTransfer } from "./stockTransfer.controller.js";
 import { isForeignKeyRestrictError } from "../utils/prismaErrors.js";
 import { getColombiaTaxSettings } from "../utils/systemSettings.js";
 import { emitAccountEvent, emitPosEvent } from "../live/dataEvents.js";
+import { enqueueWebhookEvent } from "../services/webhookDispatch.service.js";
 import { updateWithConflictCheck, parseExpectedUpdatedAt } from "../utils/optimisticConcurrency.js";
 import { resolveOrAssertPointOfSaleId, assertPosAccess } from "../middleware/pos.permissions.js";
 import { normalizeProductImage } from "../utils/productImage.js";
@@ -298,9 +301,37 @@ const mapProduct = (product, scopedStock) => ({
               unit_name: product.unit.unitName,
           }
         : null,
+    purchase_unit_id: product.purchaseUnit
+        ? {
+              _id: toExternalId(product.purchaseUnit),
+              unit_name: product.purchaseUnit.unitName,
+          }
+        : null,
+    purchase_unit_conversion_factor: product.purchaseUnitConversionFactor === null || product.purchaseUnitConversionFactor === undefined ? null : Number(product.purchaseUnitConversionFactor),
+    is_kit: product.isKit === true,
+    tracks_batches: product.tracksBatches === true,
+    components: (product.kitComponents || []).map((c) => ({
+        product_id: toExternalId(c.componentProduct),
+        product_name: c.componentProduct.productName,
+        product_code: c.componentProduct.productCode,
+        stock: c.componentProduct.stock,
+        quantity: Number(c.quantity),
+    })),
+    is_manufactured: product.isManufactured === true,
+    recipe_components: (product.recipeComponents || []).map((c) => ({
+        product_id: toExternalId(c.componentProduct),
+        product_name: c.componentProduct.productName,
+        product_code: c.componentProduct.productCode,
+        stock: c.componentProduct.stock,
+        quantity: Number(c.quantity),
+    })),
     buying_price: Number(product.buyingPrice),
     selling_price: Number(product.sellingPrice),
     stock: scopedStock !== undefined ? scopedStock : product.stock,
+    sku: product.sku,
+    barcode: product.barcode,
+    brand: product.brand,
+    status: product.status,
     product_image: normalizeProductImage(product.productImage),
     unit_measure_code: product.unitMeasureCode,
     standard_code: product.standardCode,
@@ -367,6 +398,17 @@ const findProductByAnyId = async (id) =>
             unit: {
                 select: { id: true, legacyMongoId: true, unitName: true },
             },
+            purchaseUnit: {
+                select: { id: true, legacyMongoId: true, unitName: true },
+            },
+            kitComponents: {
+                orderBy: { position: "asc" },
+                include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+            },
+            recipeComponents: {
+                orderBy: { position: "asc" },
+                include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+            },
             createdBy: {
                 select: { id: true, legacyMongoId: true, username: true },
             },
@@ -423,12 +465,149 @@ const resolveUnitForUser = async (unitId, user) => {
     return null;
 };
 
+// Both purchase_unit_id and purchase_unit_conversion_factor must be present
+// together, or neither - a factor with no unit (or vice versa) means
+// nothing, and purchase.service.js's conversion assumes both are set or
+// both are null. `baseUnitId` guards against setting the purchase unit to
+// the same unit the product is already stocked/sold in, which would make
+// the "conversion" a no-op that just confuses the purchase form.
+const resolvePurchaseUnit = async (purchaseUnitId, purchaseUnitConversionFactor, baseUnitId, user) => {
+    const hasUnit = purchaseUnitId !== undefined && purchaseUnitId !== null && purchaseUnitId !== "";
+    const hasFactor = purchaseUnitConversionFactor !== undefined && purchaseUnitConversionFactor !== null && purchaseUnitConversionFactor !== "";
+    if (!hasUnit && !hasFactor) return { purchaseUnitId: null, purchaseUnitConversionFactor: null };
+    if (hasUnit !== hasFactor) {
+        throw new ApiError(400, "Provide both a purchase unit and a conversion factor, or neither.", [], "", "product_purchase_unit_incomplete");
+    }
+
+    const factor = Number(purchaseUnitConversionFactor);
+    if (!Number.isFinite(factor) || factor <= 0) {
+        throw new ApiError(400, "The purchase unit conversion factor must be greater than 0.", [], "", "product_purchase_unit_factor_invalid");
+    }
+
+    const purchaseUnit = await resolveUnitForUser(purchaseUnitId, user);
+    if (!purchaseUnit) {
+        throw new ApiError(400, "Invalid purchase unit selected.", [], "", "product_purchase_unit_invalid");
+    }
+    if (baseUnitId && purchaseUnit.id === baseUnitId) {
+        throw new ApiError(400, "The purchase unit must be different from the product's stock unit.", [], "", "product_purchase_unit_same_as_base");
+    }
+
+    return { purchaseUnitId: purchaseUnit.id, purchaseUnitConversionFactor: factor };
+};
+
+// Validates a kit's recipe before it's written - order.service.js#createOrder
+// trusts this shape completely at sale time (no re-validation there), so
+// every guarantee a kit sale needs (no nested kits, no duplicate/self
+// components, positive quantities, components the caller actually owns)
+// has to be enforced here, once, at save time.
+const resolveKitComponents = async (components, ownProductId, user) => {
+    if (!Array.isArray(components) || components.length === 0) {
+        throw new ApiError(400, "A kit must have at least one component.", [], "", "product_kit_components_required");
+    }
+    if (components.length > 50) {
+        throw new ApiError(400, "A kit can have at most 50 components.", [], "", "product_kit_too_many_components");
+    }
+
+    const normalized = components.map((c, index) => {
+        const quantity = Number(c.quantity);
+        if (!c.product_id || !Number.isFinite(quantity) || quantity <= 0) {
+            throw new ApiError(400, `Kit component ${index + 1} is invalid.`, [], "", "product_kit_component_invalid");
+        }
+        return { productId: String(c.product_id), quantity };
+    });
+
+    const productIds = normalized.map((c) => c.productId);
+    if (new Set(productIds).size !== productIds.length) {
+        throw new ApiError(400, "A kit cannot list the same component twice.", [], "", "product_kit_duplicate_component");
+    }
+    if (ownProductId && productIds.includes(ownProductId)) {
+        throw new ApiError(400, "A kit cannot contain itself as a component.", [], "", "product_kit_self_reference");
+    }
+
+    const components_ = await prisma.product.findMany({
+        where: { OR: [{ id: { in: productIds } }, { legacyMongoId: { in: productIds } }] },
+        select: { id: true, legacyMongoId: true, createdById: true, isKit: true },
+    });
+    const byAnyId = new Map(components_.flatMap((p) => [[p.id, p], ...(p.legacyMongoId ? [[p.legacyMongoId, p]] : [])]));
+
+    return normalized.map((c, index) => {
+        const product = byAnyId.get(c.productId);
+        if (!product) throw new ApiError(400, `Kit component ${index + 1} was not found.`, [], "", "product_kit_component_not_found");
+        if (user.role !== "admin" && product.createdById !== user.prismaId) {
+            throw new ApiError(403, "You don't have permission to use one or more kit components");
+        }
+        if (product.isKit) {
+            throw new ApiError(400, "A kit's components cannot themselves be kits.", [], "", "product_kit_nested_not_allowed");
+        }
+        return { componentProductId: product.id, quantity: c.quantity, position: index };
+    });
+};
+
+// Same validation shape as resolveKitComponents, for a manufactured
+// product's recipe - production.service.js#createProductionOrder trusts
+// this completely (no re-validation there) the same way createOrder trusts
+// a kit's resolved components. The one deliberate difference: no "nested
+// not allowed" check - a recipe component IS allowed to itself be
+// isManufactured (a multi-level BOM), since there's no recursive
+// derivation here to protect against (see ProductionRecipeComponent's
+// schema comment). Still blocks a kit as a component, same reasoning as
+// isKit/isManufactured being mutually exclusive on the product itself - a
+// kit has no real stock to consume.
+const resolveRecipeComponents = async (components, ownProductId, user) => {
+    if (!Array.isArray(components) || components.length === 0) {
+        throw new ApiError(400, "A recipe must have at least one raw material.", [], "", "product_recipe_components_required");
+    }
+    if (components.length > 50) {
+        throw new ApiError(400, "A recipe can have at most 50 raw materials.", [], "", "product_recipe_too_many_components");
+    }
+
+    const normalized = components.map((c, index) => {
+        const quantity = Number(c.quantity);
+        if (!c.product_id || !Number.isFinite(quantity) || quantity <= 0) {
+            throw new ApiError(400, `Recipe material ${index + 1} is invalid.`, [], "", "product_recipe_component_invalid");
+        }
+        return { productId: String(c.product_id), quantity };
+    });
+
+    const productIds = normalized.map((c) => c.productId);
+    if (new Set(productIds).size !== productIds.length) {
+        throw new ApiError(400, "A recipe cannot list the same raw material twice.", [], "", "product_recipe_duplicate_component");
+    }
+    if (ownProductId && productIds.includes(ownProductId)) {
+        throw new ApiError(400, "A recipe cannot contain itself as a raw material.", [], "", "product_recipe_self_reference");
+    }
+
+    const components_ = await prisma.product.findMany({
+        where: { OR: [{ id: { in: productIds } }, { legacyMongoId: { in: productIds } }] },
+        select: { id: true, legacyMongoId: true, createdById: true, isKit: true },
+    });
+    const byAnyId = new Map(components_.flatMap((p) => [[p.id, p], ...(p.legacyMongoId ? [[p.legacyMongoId, p]] : [])]));
+
+    return normalized.map((c, index) => {
+        const product = byAnyId.get(c.productId);
+        if (!product) throw new ApiError(400, `Recipe material ${index + 1} was not found.`, [], "", "product_recipe_component_not_found");
+        if (user.role !== "admin" && product.createdById !== user.prismaId) {
+            throw new ApiError(403, "You don't have permission to use one or more raw materials");
+        }
+        if (product.isKit) {
+            throw new ApiError(400, "A recipe's raw materials cannot be kits.", [], "", "product_recipe_kit_not_allowed");
+        }
+        return { componentProductId: product.id, quantity: c.quantity, position: index };
+    });
+};
+
 const createProduct = asyncHandler(async (req, res, next) => {
     const {
         product_name,
         product_code,
+        sku,
+        barcode,
+        brand,
+        status,
         category_id,
         unit_id,
+        purchase_unit_id,
+        purchase_unit_conversion_factor,
         buying_price,
         selling_price,
         unit_measure_code,
@@ -438,7 +617,17 @@ const createProduct = asyncHandler(async (req, res, next) => {
         tax_treatment,
         low_stock_threshold,
         is_tutorial_data,
+        is_kit,
+        components,
+        tracks_batches,
+        is_manufactured,
+        recipe_components,
     } = req.body;
+
+    const PRODUCT_STATUSES = ["draft", "active", "archived"];
+    if (status !== undefined && !PRODUCT_STATUSES.includes(status)) {
+        return next(new ApiError(400, `status must be one of: ${PRODUCT_STATUSES.join(", ")}`));
+    }
 
     if (tax_treatment !== undefined && !TAX_TREATMENTS.includes(tax_treatment)) {
         return next(new ApiError(400, `tax_treatment must be one of: ${TAX_TREATMENTS.join(", ")}`));
@@ -500,6 +689,40 @@ const createProduct = asyncHandler(async (req, res, next) => {
             return next(new ApiError(400, "Invalid unit selected"));
         }
 
+        const resolvedPurchaseUnit = await resolvePurchaseUnit(purchase_unit_id, purchase_unit_conversion_factor, unit.id, req.user);
+
+        const isKit = is_kit === true || is_kit === "true";
+        let resolvedComponents = [];
+        if (isKit) {
+            let parsedComponents;
+            try {
+                parsedComponents = typeof components === "string" ? JSON.parse(components) : components;
+            } catch {
+                return next(new ApiError(400, "Kit components must be a valid list.", [], "", "product_kit_component_invalid"));
+            }
+            resolvedComponents = await resolveKitComponents(parsedComponents, null, req.user);
+        }
+
+        const tracksBatches = tracks_batches === true || tracks_batches === "true";
+        if (isKit && tracksBatches) {
+            return next(new ApiError(400, "A kit's stock is virtual - it can't also track lots/expiration.", [], "", "product_kit_cannot_track_batches"));
+        }
+
+        const isManufactured = is_manufactured === true || is_manufactured === "true";
+        if (isKit && isManufactured) {
+            return next(new ApiError(400, "A kit's stock is virtual - it can't also be manufactured.", [], "", "product_kit_cannot_be_manufactured"));
+        }
+        let resolvedRecipeComponents = [];
+        if (isManufactured) {
+            let parsedRecipeComponents;
+            try {
+                parsedRecipeComponents = typeof recipe_components === "string" ? JSON.parse(recipe_components) : recipe_components;
+            } catch {
+                return next(new ApiError(400, "Recipe components must be a valid list.", [], "", "product_recipe_component_invalid"));
+            }
+            resolvedRecipeComponents = await resolveRecipeComponents(parsedRecipeComponents, null, req.user);
+        }
+
         let productImageUrl = "default-product.png";
         if (req.file) {
             const image = await uploadFile(req.file, {
@@ -518,12 +741,23 @@ const createProduct = asyncHandler(async (req, res, next) => {
             data: {
                 productName: String(product_name).trim(),
                 productCode: String(product_code).trim().toUpperCase(),
+                ...(sku !== undefined && { sku: String(sku).trim() || null }),
+                ...(barcode !== undefined && { barcode: String(barcode).trim() || null }),
+                ...(brand !== undefined && { brand: String(brand).trim() || null }),
+                ...(status !== undefined && { status }),
                 categoryId: category.id,
                 unitId: unit.id,
+                purchaseUnitId: resolvedPurchaseUnit.purchaseUnitId,
+                purchaseUnitConversionFactor: resolvedPurchaseUnit.purchaseUnitConversionFactor,
                 buyingPrice,
                 sellingPrice,
                 productImage: productImageUrl,
                 stock: 0,
+                isKit,
+                ...(isKit && { kitComponents: { create: resolvedComponents } }),
+                tracksBatches,
+                isManufactured,
+                ...(isManufactured && { recipeComponents: { create: resolvedRecipeComponents } }),
                 isTutorialData: is_tutorial_data === true || is_tutorial_data === "true",
                 createdById: req.user.prismaId,
                 ...(unit_measure_code !== undefined && { unitMeasureCode: String(unit_measure_code).trim() }),
@@ -541,6 +775,17 @@ const createProduct = asyncHandler(async (req, res, next) => {
                 unit: {
                     select: { id: true, legacyMongoId: true, unitName: true },
                 },
+                purchaseUnit: {
+                    select: { id: true, legacyMongoId: true, unitName: true },
+                },
+                kitComponents: {
+                    orderBy: { position: "asc" },
+                    include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+                },
+                recipeComponents: {
+                    orderBy: { position: "asc" },
+                    include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+                },
                 createdBy: {
                     select: { id: true, legacyMongoId: true, username: true },
                 },
@@ -557,13 +802,17 @@ const createProduct = asyncHandler(async (req, res, next) => {
         product.images = req.file ? [await attachImage(prisma, product.id, productImageUrl)] : [];
 
         emitAccountEvent(req.user.prismaId, "product", "created");
+        enqueueWebhookEvent(req.user.prismaId, "product.created", { product_id: toExternalId(product) }).catch(() => {});
         return res
             .status(201)
             .json(new ApiResponse(201, mapProduct(product), "Product created successfully"));
     } catch (error) {
         if (error instanceof ApiError) return next(error);
         if (error.code === "P2002") {
-            return next(new ApiError(409, "Product with this code already exists"));
+            const target = error.meta?.target?.join?.(",") || "";
+            return next(
+                new ApiError(409, target.includes("sku") ? "Product with this SKU already exists" : "Product with this code already exists")
+            );
         }
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
@@ -628,6 +877,17 @@ const getAllProducts = asyncHandler(async (req, res, next) => {
                 unit: {
                     select: { id: true, legacyMongoId: true, unitName: true },
                 },
+                purchaseUnit: {
+                    select: { id: true, legacyMongoId: true, unitName: true },
+                },
+                kitComponents: {
+                    orderBy: { position: "asc" },
+                    include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+                },
+                recipeComponents: {
+                    orderBy: { position: "asc" },
+                    include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+                },
                 createdBy: {
                     select: { id: true, legacyMongoId: true, username: true },
                 },
@@ -672,6 +932,10 @@ const updateProduct = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, `tax_treatment must be one of: ${TAX_TREATMENTS.join(", ")}`));
     }
 
+    if (updateData.status !== undefined && !["draft", "active", "archived"].includes(updateData.status)) {
+        return next(new ApiError(400, "status must be one of: draft, active, archived"));
+    }
+
     try {
         const existingProduct = await findProductByAnyId(id);
 
@@ -714,6 +978,98 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             resolvedUnitId = unit.id;
         }
 
+        // Only touched when the request actually sent one of these two keys
+        // - same "undefined means leave it alone" convention as every other
+        // optional field on this endpoint (e.g. resolvedUnitId above).
+        // Passing both as null/"" clears the purchase unit; passing neither
+        // key at all leaves whatever was already configured untouched.
+        let resolvedPurchaseUnit;
+        if (updateData.purchase_unit_id !== undefined || updateData.purchase_unit_conversion_factor !== undefined) {
+            resolvedPurchaseUnit = await resolvePurchaseUnit(
+                updateData.purchase_unit_id,
+                updateData.purchase_unit_conversion_factor,
+                resolvedUnitId || existingProduct.unitId,
+                req.user
+            );
+        }
+
+        // Only touched when the request sent `is_kit` - same "undefined
+        // leaves it alone" convention as above. Turning a stocked physical
+        // product into a kit would leave its existing stock/location rows
+        // meaningless (a kit's stock always comes from its components going
+        // forward, see Product.isKit's schema comment), so that direction is
+        // blocked outright rather than silently orphaning real inventory;
+        // the merchant creates a new kit product instead. Turning a kit
+        // back into a plain product is always safe (it just starts a normal
+        // product with 0 stock) and clears its recipe.
+        let nextIsKit;
+        let resolvedComponents;
+        if (updateData.is_kit !== undefined) {
+            nextIsKit = updateData.is_kit === true || updateData.is_kit === "true";
+            if (nextIsKit && !existingProduct.isKit && existingProduct.stock !== 0) {
+                return next(new ApiError(409, "This product already has stock recorded and cannot be converted into a kit.", [], "", "product_kit_conversion_has_stock"));
+            }
+            if (nextIsKit) {
+                let parsedComponents;
+                try {
+                    parsedComponents = typeof updateData.components === "string" ? JSON.parse(updateData.components) : updateData.components;
+                } catch {
+                    return next(new ApiError(400, "Kit components must be a valid list.", [], "", "product_kit_component_invalid"));
+                }
+                resolvedComponents = await resolveKitComponents(parsedComponents, existingProduct.id, req.user);
+            } else {
+                resolvedComponents = [];
+            }
+        }
+
+        // Same "undefined leaves it alone" convention, same stock-guard
+        // rationale as is_kit above (a lot can't be retroactively assigned
+        // to stock that arrived before tracking was turned on) - see
+        // Product.tracksBatches's schema comment. Turning it off is always
+        // safe; any lots already recorded simply stop being touched by
+        // future sales/purchases (they're never deleted, just orphaned from
+        // new activity, same as a kit's cleared recipe above).
+        let nextTracksBatches;
+        if (updateData.tracks_batches !== undefined) {
+            nextTracksBatches = updateData.tracks_batches === true || updateData.tracks_batches === "true";
+            if (nextTracksBatches && !existingProduct.tracksBatches && existingProduct.stock !== 0) {
+                return next(new ApiError(409, "This product already has stock recorded and cannot start tracking lots/expiration.", [], "", "product_batch_conversion_has_stock"));
+            }
+        }
+        // Same "undefined leaves it alone" convention and stock-guard as
+        // is_kit above - see Product.isManufactured's schema comment.
+        // Turning it off is always safe; the recipe is simply cleared, same
+        // as a kit's own.
+        let nextIsManufactured;
+        let resolvedRecipeComponents;
+        if (updateData.is_manufactured !== undefined) {
+            nextIsManufactured = updateData.is_manufactured === true || updateData.is_manufactured === "true";
+            if (nextIsManufactured && !existingProduct.isManufactured && existingProduct.stock !== 0) {
+                return next(new ApiError(409, "This product already has stock recorded and cannot be converted into a manufactured product.", [], "", "product_manufactured_conversion_has_stock"));
+            }
+            if (nextIsManufactured) {
+                let parsedRecipeComponents;
+                try {
+                    parsedRecipeComponents = typeof updateData.recipe_components === "string" ? JSON.parse(updateData.recipe_components) : updateData.recipe_components;
+                } catch {
+                    return next(new ApiError(400, "Recipe components must be a valid list.", [], "", "product_recipe_component_invalid"));
+                }
+                resolvedRecipeComponents = await resolveRecipeComponents(parsedRecipeComponents, existingProduct.id, req.user);
+            } else {
+                resolvedRecipeComponents = [];
+            }
+        }
+
+        const effectiveIsKit = nextIsKit !== undefined ? nextIsKit : existingProduct.isKit;
+        const effectiveTracksBatches = nextTracksBatches !== undefined ? nextTracksBatches : existingProduct.tracksBatches;
+        const effectiveIsManufactured = nextIsManufactured !== undefined ? nextIsManufactured : existingProduct.isManufactured;
+        if (effectiveIsKit && effectiveTracksBatches) {
+            return next(new ApiError(400, "A kit's stock is virtual - it can't also track lots/expiration.", [], "", "product_kit_cannot_track_batches"));
+        }
+        if (effectiveIsKit && effectiveIsManufactured) {
+            return next(new ApiError(400, "A kit's stock is virtual - it can't also be manufactured.", [], "", "product_kit_cannot_be_manufactured"));
+        }
+
         // Handled after the product row itself is updated below (see
         // replacePrimaryImage) rather than as a plain field on `payload`, so
         // the ProductImage gallery row and the productImage scalar can't
@@ -742,8 +1098,19 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             ...(updateData.product_code !== undefined && {
                 productCode: String(updateData.product_code).trim().toUpperCase(),
             }),
+            ...(updateData.sku !== undefined && { sku: updateData.sku ? String(updateData.sku).trim() : null }),
+            ...(updateData.barcode !== undefined && { barcode: updateData.barcode ? String(updateData.barcode).trim() : null }),
+            ...(updateData.brand !== undefined && { brand: updateData.brand ? String(updateData.brand).trim() : null }),
+            ...(updateData.status !== undefined && { status: updateData.status }),
             ...(resolvedCategoryId && { categoryId: resolvedCategoryId }),
             ...(resolvedUnitId && { unitId: resolvedUnitId }),
+            ...(resolvedPurchaseUnit !== undefined && {
+                purchaseUnitId: resolvedPurchaseUnit.purchaseUnitId,
+                purchaseUnitConversionFactor: resolvedPurchaseUnit.purchaseUnitConversionFactor,
+            }),
+            ...(nextIsKit !== undefined && { isKit: nextIsKit }),
+            ...(nextTracksBatches !== undefined && { tracksBatches: nextTracksBatches }),
+            ...(nextIsManufactured !== undefined && { isManufactured: nextIsManufactured }),
             ...(updateData.buying_price !== undefined && {
                 buyingPrice: Number(updateData.buying_price),
             }),
@@ -822,6 +1189,17 @@ const updateProduct = asyncHandler(async (req, res, next) => {
                 unit: {
                     select: { id: true, legacyMongoId: true, unitName: true },
                 },
+                purchaseUnit: {
+                    select: { id: true, legacyMongoId: true, unitName: true },
+                },
+                kitComponents: {
+                    orderBy: { position: "asc" },
+                    include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+                },
+                recipeComponents: {
+                    orderBy: { position: "asc" },
+                    include: { componentProduct: { select: { id: true, legacyMongoId: true, productName: true, productCode: true, stock: true } } },
+                },
                 createdBy: {
                     select: { id: true, legacyMongoId: true, username: true },
                 },
@@ -833,6 +1211,36 @@ const updateProduct = asyncHandler(async (req, res, next) => {
             conflictMessage: "This product was changed by someone else. Reload to see the latest version.",
         });
 
+        // updateWithConflictCheck's `data` can't carry a nested relation
+        // write (its expectedUpdatedAt branch goes through updateMany,
+        // which Prisma doesn't allow relation writes on at all) - so the
+        // kit recipe is replaced as its own step once the scalar update
+        // above has already succeeded, same "separate step after the main
+        // update" idiom the image handling right below already uses.
+        if (resolvedComponents !== undefined) {
+            await prisma.productKitComponent.deleteMany({ where: { kitProductId: existingProduct.id } });
+            if (resolvedComponents.length > 0) {
+                await prisma.productKitComponent.createMany({
+                    data: resolvedComponents.map((c) => ({ ...c, kitProductId: existingProduct.id })),
+                });
+            }
+            product = await findProductByAnyId(existingProduct.id);
+        }
+
+        // Same "separate step after the conflict-checked update" workaround
+        // as resolvedComponents above - updateWithConflictCheck's
+        // expectedUpdatedAt branch goes through updateMany, which can't
+        // carry a nested relation write.
+        if (resolvedRecipeComponents !== undefined) {
+            await prisma.productionRecipeComponent.deleteMany({ where: { productId: existingProduct.id } });
+            if (resolvedRecipeComponents.length > 0) {
+                await prisma.productionRecipeComponent.createMany({
+                    data: resolvedRecipeComponents.map((c) => ({ ...c, productId: existingProduct.id })),
+                });
+            }
+            product = await findProductByAnyId(existingProduct.id);
+        }
+
         // The DB row is only safely pointed at the new image once this
         // succeeds - replacePrimaryImage deletes the old primary's file
         // itself (mirrors the old fire-and-forget deleteFile behavior here)
@@ -843,6 +1251,7 @@ const updateProduct = asyncHandler(async (req, res, next) => {
         }
 
         emitAccountEvent(existingProduct.createdById, "product", "updated");
+        enqueueWebhookEvent(existingProduct.createdById, "product.updated", { product_id: toExternalId(product) }).catch(() => {});
         const scopedStock = await scopedStockForProducts(req.user, [product.id]);
         return res
             .status(200)
@@ -850,7 +1259,10 @@ const updateProduct = asyncHandler(async (req, res, next) => {
     } catch (error) {
         if (error instanceof ApiError) return next(error);
         if (error.code === "P2002") {
-            return next(new ApiError(409, "Product with this code already exists"));
+            const target = error.meta?.target?.join?.(",") || "";
+            return next(
+                new ApiError(409, target.includes("sku") ? "Product with this SKU already exists" : "Product with this code already exists")
+            );
         }
         console.error(error);
         return next(new ApiError(500, "Something went wrong. Please try again."));
@@ -963,7 +1375,7 @@ const bulkUpdateLowStockThreshold = asyncHandler(async (req, res, next) => {
 // `stock` field on the general product edit endpoint above.
 const adjustProductStock = asyncHandler(async (req, res, next) => {
     const { id } = req.params;
-    const { delta, reason } = req.body;
+    const { delta, reason, batch_number, batch_expiration_date } = req.body;
 
     const parsedDelta = Number(delta);
 
@@ -982,6 +1394,14 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
             return next(new ApiError(404, "Product not found"));
         }
 
+        // A positive adjustment on a tracksBatches product restocks a named
+        // lot (same information a purchase receipt would ask for); a
+        // negative one draws down whichever lot(s) FEFO order picks, same
+        // as a sale - see productBatch.service.js.
+        if (existingProduct.tracksBatches && parsedDelta > 0 && !String(batch_number || "").trim()) {
+            return next(new ApiError(400, "A lot/batch number is required to add stock for this product.", [], "", "product_batch_number_required"));
+        }
+
         if (
             req.user.role !== "admin" &&
             existingProduct.createdById !== req.user.prismaId
@@ -998,24 +1418,47 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
             // a decrease, credit (unconditional) for an increase - both
             // against this location's stock, not the product's account-wide
             // total.
-            const locationBalance =
+            const costing =
                 parsedDelta < 0
-                    ? await claimLocationStock(tx, {
+                    ? await claimLocationStockWithCost(tx, {
                           productId: existingProduct.id,
                           pointOfSaleId,
                           quantity: -parsedDelta,
                       })
-                    : await creditLocationStock(tx, {
+                    : await creditLocationStockWithCost(tx, {
                           productId: existingProduct.id,
                           pointOfSaleId,
                           quantity: parsedDelta,
+                          incomingUnitCost: existingProduct.buyingPrice,
                       });
 
-            if (locationBalance === null) {
+            if (costing === null) {
                 throw new ApiError(
                     409,
                     "Not enough stock to apply this adjustment"
                 );
+            }
+
+            if (existingProduct.tracksBatches) {
+                if (parsedDelta > 0) {
+                    await creditBatch(tx, {
+                        productId: existingProduct.id,
+                        pointOfSaleId,
+                        batchNumber: batch_number,
+                        expirationDate: batch_expiration_date || null,
+                        quantity: parsedDelta,
+                        createdById: req.user.prismaId,
+                    });
+                } else {
+                    const batchClaim = await claimBatchesFEFO(tx, {
+                        productId: existingProduct.id,
+                        pointOfSaleId,
+                        quantity: -parsedDelta,
+                    });
+                    if (batchClaim === null) {
+                        throw new ApiError(409, "Not enough lot/batch stock to apply this adjustment", [], "", "product_batch_stock_mismatch");
+                    }
+                }
             }
 
             await tx.product.update({
@@ -1034,22 +1477,35 @@ const adjustProductStock = asyncHandler(async (req, res, next) => {
                 },
             });
 
-            await recordStockMovement(tx, {
+            const movement = await recordStockMovement(tx, {
                 productId: existingProduct.id,
                 accountId: existingProduct.createdById,
                 pointOfSaleId,
                 delta: parsedDelta,
-                balanceAfter: locationBalance,
+                balanceAfter: costing.balanceAfter,
+                unitCostApplied: costing.unitCostApplied,
+                valueDelta: costing.valueDelta,
+                valueBalanceAfter: costing.valueBalanceAfter,
                 sourceType: "adjustment",
                 sourceId: null,
                 reason: String(reason).trim(),
                 createdById: req.user.prismaId,
             });
 
+            await postInventoryAdjustmentJournalEntry(tx, {
+                accountId: existingProduct.createdById,
+                createdById: req.user.prismaId,
+                movementId: movement.id,
+                valueDelta: costing.valueDelta,
+                reason: String(reason).trim(),
+                entryDate: movement.createdAt,
+            });
+
             return updated;
         });
 
         emitPosEvent(existingProduct.createdById, pointOfSaleId, "product", "stock-changed");
+        enqueueWebhookEvent(existingProduct.createdById, "inventory.updated", { product_id: toExternalId(result) }).catch(() => {});
         const scopedStock = await scopedStockForProducts(req.user, [result.id]);
         return res
             .status(200)
@@ -1176,6 +1632,76 @@ const getProductLocationStock = asyncHandler(async (req, res, next) => {
     }
 });
 
+// Every open lot for one tracksBatches product, soonest-expiring first -
+// powers the "Lotes" drawer on the product detail view.
+const getProductBatchesList = asyncHandler(async (req, res, next) => {
+    const { id } = req.params;
+
+    try {
+        const existingProduct = await findProductByAnyId(id);
+        if (!existingProduct) {
+            return next(new ApiError(404, "Product not found"));
+        }
+        if (req.user.role !== "admin" && existingProduct.createdById !== req.user.prismaId) {
+            return next(new ApiError(403, "You don't have permission to view this product's lots"));
+        }
+
+        const batches = await listBatches({ accountId: existingProduct.createdById, productId: existingProduct.id });
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                batches.map((b) => ({
+                    _id: b.id,
+                    batch_number: b.batchNumber,
+                    expiration_date: b.expirationDate,
+                    quantity: b.quantity,
+                    point_of_sale_id: b.pointOfSale.id,
+                    point_of_sale_name: b.pointOfSale.name,
+                })),
+                "Batches fetched successfully"
+            )
+        );
+    } catch (error) {
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
+});
+
+// Account-wide "vencimientos próximos" alert - every open lot across every
+// tracksBatches product expiring within `days` (default 30), soonest first.
+// Feeds a dashboard/report widget rather than any one product's page.
+const getExpiringProductBatches = asyncHandler(async (req, res, next) => {
+    try {
+        const days = Number(req.query.days);
+        const accountId = req.user.role === "admin" && req.query.account_id ? req.query.account_id : req.user.prismaId;
+        const batches = await listBatches({
+            accountId,
+            expiresWithinDays: Number.isFinite(days) && days > 0 ? days : 30,
+        });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                batches.map((b) => ({
+                    _id: b.id,
+                    batch_number: b.batchNumber,
+                    expiration_date: b.expirationDate,
+                    quantity: b.quantity,
+                    product_id: toExternalId(b.product),
+                    product_name: b.product.productName,
+                    product_code: b.product.productCode,
+                    point_of_sale_id: b.pointOfSale.id,
+                    point_of_sale_name: b.pointOfSale.name,
+                })),
+                "Expiring batches fetched successfully"
+            )
+        );
+    } catch (error) {
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
+});
+
 // "Traslado rápido" - a move that already happened physically, executed
 // and fully received in one step. See stockTransfer.service.js#quickTransfer
 // for why this still produces a full, traceable StockTransfer row instead
@@ -1265,6 +1791,8 @@ export {
     adjustProductStock,
     getProductStockMovements,
     getProductLocationStock,
+    getProductBatchesList,
+    getExpiringProductBatches,
     transferProductStock,
     mapProduct,
     findProductByAnyId,

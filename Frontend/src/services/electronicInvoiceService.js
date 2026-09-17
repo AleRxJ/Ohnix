@@ -40,4 +40,34 @@ export const electronicInvoiceService = {
         });
         return response.data;
     },
+
+    async retryCreditNoteLocalEffect(orderId, creditNoteId) {
+        const response = await api.post(
+            `/orders/${orderId}/electronic-invoice/credit-notes/${creditNoteId}/retry-local-effect`,
+            undefined,
+            { headers: { "Idempotency-Key": `credit-note-local-effect-${creditNoteId}` } }
+        );
+        return response.data;
+    },
+
+    // itcycle-provider invoices never get a stored pdfUrl (itcycle-api-dian
+    // keeps the signed XML internally, no public URLs - see
+    // mapItcycleResponse in electronicInvoicing.service.js) - this generates
+    // the DIAN "representación gráfica" on demand instead. Same
+    // blob-download pattern as useOrderOperations.js's generateInvoice
+    // (cookie auth via axios, not a plain <a href>, since the backend route
+    // requires the session cookie a bare anchor navigation wouldn't send
+    // cross-origin the same way).
+    async downloadPdf(orderId, invoiceNumber) {
+        const response = await api.get(`/orders/${orderId}/electronic-invoice/pdf`, { responseType: "blob" });
+        const blob = new Blob([response.data], { type: "application/pdf" });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `factura-electronica-${invoiceNumber}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    },
 };

@@ -357,7 +357,7 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
                                 Este usuario todavía no tiene intentos de pago registrados.
                             </p>
                         ) : (
-                            <div className="max-h-64 space-y-2 overflow-y-auto">
+                            <div className="max-h-64 space-y-2 overflow-y-auto ohnix-scrollbar-thin">
                                 {payments.map((payment) => {
                                     const canReverify = payment.status === "approved" && payment.paymentStatus === "pending";
                                     const modeKey =
@@ -427,7 +427,7 @@ const ManageSubscriptionModal = ({ target, onClose, onChanged }) => {
                                 Sin acciones de administrador registradas para este usuario.
                             </p>
                         ) : (
-                            <div className="max-h-52 space-y-2 overflow-y-auto">
+                            <div className="max-h-52 space-y-2 overflow-y-auto ohnix-scrollbar-thin">
                                 {auditLog.map((entry) => (
                                     <div
                                         key={entry.id}

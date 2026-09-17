@@ -21,7 +21,7 @@ const RegisterPaymentModal = ({ visible, onCancel, onSubmit, submitting, form, p
             title={
                 <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
-                        <WalletOutlined className="text-[#44F3F0]" />
+                        <WalletOutlined className="text-[var(--ohnix-accent-2)]" />
                     </div>
                     <span className="text-lg font-bold text-[var(--ohnix-text-primary)]">
                         {t("finance.register_payment_modal_title")}

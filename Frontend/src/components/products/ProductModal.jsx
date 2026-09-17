@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Modal, Form, Input, Select, InputNumber, Row, Col, Button, Tooltip, Switch, Collapse } from "antd";
-import { AppstoreOutlined, ScanOutlined, LockOutlined, InboxOutlined } from "@ant-design/icons";
+import { AppstoreOutlined, ScanOutlined, LockOutlined, InboxOutlined, PlusOutlined, DeleteOutlined, GiftOutlined, BuildOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import ProductImagesUpload from "./ProductImagesUpload";
 import BarcodeScannerModal from "./BarcodeScannerModal";
@@ -25,6 +25,7 @@ const ProductModal = ({
     categories,
     units,
     editingProduct,
+    allProducts,
     imageUrl,
     onSave,
     onCancel,
@@ -48,6 +49,34 @@ const ProductModal = ({
     const usesColombianEInvoicing =
         ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingEnabled;
     const taxTreatment = Form.useWatch("tax_treatment", form) || "taxed";
+    const baseUnitId = Form.useWatch("unit_id", form);
+    const isKit = Form.useWatch("is_kit", form);
+    // A kit's own stock is derived from its components at sale time (see
+    // order.service.js), so converting an existing product that already
+    // carries real stock would silently orphan that quantity - the backend
+    // rejects it outright (product_kit_conversion_has_stock); mirrored here
+    // only to explain the block before the round trip.
+    const kitConversionBlocked = Boolean(isKit) && !editingProduct?.is_kit && Number(editingProduct?.stock) > 0;
+    const kitComponentOptions = (allProducts || []).filter(
+        (p) => !p.is_kit && p._id !== editingProduct?._id
+    );
+    const tracksBatches = Form.useWatch("tracks_batches", form);
+    // Same stock-guard rationale as kitConversionBlocked above, mirrored
+    // from product.controller.js#updateProduct's product_batch_conversion_
+    // has_stock check.
+    const batchConversionBlocked = Boolean(tracksBatches) && !editingProduct?.tracks_batches && Number(editingProduct?.stock) > 0;
+    const isManufactured = Form.useWatch("is_manufactured", form);
+    // Same stock-guard rationale as kitConversionBlocked above, mirrored
+    // from product.controller.js#updateProduct's product_manufactured_
+    // conversion_has_stock check.
+    const manufacturedConversionBlocked = Boolean(isManufactured) && !editingProduct?.is_manufactured && Number(editingProduct?.stock) > 0;
+    // A recipe's raw materials can be any non-kit product - unlike a kit's
+    // own component picker, a manufactured product IS allowed to appear
+    // here (multi-level BOM, see ProductionRecipeComponent's schema
+    // comment), so this only excludes kits and self.
+    const recipeComponentOptions = (allProducts || []).filter(
+        (p) => !p.is_kit && p._id !== editingProduct?._id
+    );
     const isPhysical = Form.useWatch("is_physical", form);
     const weightUnit = Form.useWatch("weight_unit", form) || "g";
     const dimensionUnit = Form.useWatch("dimension_unit", form) || "cm";
@@ -313,6 +342,266 @@ const ProductModal = ({
                                         </Form.Item>
                                     </Col>
                                 </Row>
+                                <Collapse
+                                    ghost
+                                    size="small"
+                                    className="physical-package-collapse"
+                                    items={[
+                                        {
+                                            key: "purchase-unit",
+                                            label: (
+                                                <span className="text-xs font-medium text-[var(--ohnix-text-muted)] inline-flex items-center gap-1.5">
+                                                    <AppstoreOutlined />
+                                                    {t("products.purchase_unit_section")}
+                                                </span>
+                                            ),
+                                            children: (
+                                                <>
+                                                    <p className="text-xs text-[var(--ohnix-text-dim)] mb-3">
+                                                        {t("products.purchase_unit_hint")}
+                                                    </p>
+                                                    <Row gutter={12}>
+                                                        <Col xs={24} sm={12}>
+                                                            <Form.Item name="purchase_unit_id" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.purchase_unit")}</span>} className="mb-3">
+                                                                <Select allowClear placeholder={t("products.purchase_unit_placeholder")} size="large" className="rounded-md auth-ohnix-input">
+                                                                    {units.filter((unit) => unit._id !== baseUnitId).map((unit) => (
+                                                                        <Option key={unit._id} value={unit._id}>{unit.unit_name}</Option>
+                                                                    ))}
+                                                                </Select>
+                                                            </Form.Item>
+                                                        </Col>
+                                                        <Col xs={24} sm={12}>
+                                                            <Form.Item name="purchase_unit_conversion_factor" label={<span className="text-xs text-[var(--ohnix-text-muted)]">{t("products.purchase_unit_factor")}</span>} className="mb-3">
+                                                                <InputNumber min={0.01} precision={2} size="large" className="w-full auth-ohnix-input" placeholder="12" />
+                                                            </Form.Item>
+                                                        </Col>
+                                                    </Row>
+                                                </>
+                                            ),
+                                        },
+                                    ]}
+                                />
+                            </div>
+
+                            <div className="module-shell p-4 reveal-card">
+                                <div className="flex items-center justify-between gap-3 mb-3 pb-2 border-b border-[var(--ohnix-line-3)]">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
+                                        <h3 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide inline-flex items-center gap-1.5">
+                                            <GiftOutlined />
+                                            {t("products.kit_section")}
+                                        </h3>
+                                    </div>
+                                    <Form.Item name="is_kit" valuePropName="checked" noStyle initialValue={false}>
+                                        <Switch
+                                            checkedChildren={t("products.kit_yes")}
+                                            unCheckedChildren={t("products.kit_no")}
+                                            disabled={Boolean(tracksBatches) || Boolean(isManufactured)}
+                                            onChange={(checked) => checked && form.setFieldsValue({ tracks_batches: false, is_manufactured: false })}
+                                        />
+                                    </Form.Item>
+                                </div>
+                                {isKit ? (
+                                    <>
+                                        <p className="text-xs text-[var(--ohnix-text-dim)] mb-3">
+                                            {t("products.kit_hint")}
+                                        </p>
+                                        {kitConversionBlocked && (
+                                            <p className="text-xs text-[#ff7875] mb-3">
+                                                {t("products.kit_conversion_has_stock")}
+                                            </p>
+                                        )}
+                                        <Form.List name="components">
+                                            {(fields, { add, remove }) => (
+                                                <div className="space-y-2">
+                                                    {fields.map(({ key, name, ...restField }) => (
+                                                        <Row gutter={8} key={key} align="middle">
+                                                            <Col flex="auto">
+                                                                <Form.Item
+                                                                    {...restField}
+                                                                    name={[name, "product_id"]}
+                                                                    className="mb-2"
+                                                                    rules={[{ required: true, message: t("products.kit_component_required") }]}
+                                                                >
+                                                                    <Select
+                                                                        showSearch
+                                                                        placeholder={t("products.kit_component_placeholder")}
+                                                                        optionFilterProp="children"
+                                                                        className="rounded-md auth-ohnix-input"
+                                                                    >
+                                                                        {kitComponentOptions.map((p) => (
+                                                                            <Option key={p._id} value={p._id}>
+                                                                                {p.product_name} ({p.product_code})
+                                                                            </Option>
+                                                                        ))}
+                                                                    </Select>
+                                                                </Form.Item>
+                                                            </Col>
+                                                            <Col flex="120px">
+                                                                <Form.Item
+                                                                    {...restField}
+                                                                    name={[name, "quantity"]}
+                                                                    className="mb-2"
+                                                                    rules={[{ required: true, message: t("products.kit_component_quantity_required") }]}
+                                                                >
+                                                                    <InputNumber
+                                                                        min={0.01}
+                                                                        precision={2}
+                                                                        className="w-full auth-ohnix-input"
+                                                                        placeholder={t("products.kit_component_quantity")}
+                                                                    />
+                                                                </Form.Item>
+                                                            </Col>
+                                                            <Col flex="32px">
+                                                                <Button
+                                                                    type="text"
+                                                                    danger
+                                                                    icon={<DeleteOutlined />}
+                                                                    onClick={() => remove(name)}
+                                                                />
+                                                            </Col>
+                                                        </Row>
+                                                    ))}
+                                                    <Button
+                                                        type="dashed"
+                                                        onClick={() => add()}
+                                                        icon={<PlusOutlined />}
+                                                        block
+                                                        disabled={fields.length >= 50}
+                                                    >
+                                                        {t("products.kit_add_component")}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </Form.List>
+                                    </>
+                                ) : (
+                                    <p className="text-xs text-[var(--ohnix-text-dim)] mb-0">{t("products.kit_off_hint")}</p>
+                                )}
+                            </div>
+
+                            <div className="module-shell p-4 reveal-card">
+                                <div className="flex items-center justify-between gap-3 mb-3 pb-2 border-b border-[var(--ohnix-line-3)]">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
+                                        <h3 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide">
+                                            {t("products.batch_section")}
+                                        </h3>
+                                    </div>
+                                    <Form.Item name="tracks_batches" valuePropName="checked" noStyle initialValue={false}>
+                                        <Switch
+                                            checkedChildren={t("products.batch_yes")}
+                                            unCheckedChildren={t("products.batch_no")}
+                                            disabled={Boolean(isKit)}
+                                            onChange={(checked) => checked && form.setFieldsValue({ is_kit: false })}
+                                        />
+                                    </Form.Item>
+                                </div>
+                                <p className="text-xs text-[var(--ohnix-text-dim)] mb-0">
+                                    {tracksBatches ? t("products.batch_hint") : t("products.batch_off_hint")}
+                                </p>
+                                {batchConversionBlocked && (
+                                    <p className="text-xs text-[#ff7875] mt-2 mb-0">
+                                        {t("products.batch_conversion_has_stock")}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="module-shell p-4 reveal-card">
+                                <div className="flex items-center justify-between gap-3 mb-3 pb-2 border-b border-[var(--ohnix-line-3)]">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1 h-4 bg-[#29D8D5] rounded-full"></div>
+                                        <h3 className="text-sm font-semibold text-[var(--ohnix-text-soft)] uppercase tracking-wide inline-flex items-center gap-1.5">
+                                            <BuildOutlined />
+                                            {t("products.manufactured_section")}
+                                        </h3>
+                                    </div>
+                                    <Form.Item name="is_manufactured" valuePropName="checked" noStyle initialValue={false}>
+                                        <Switch
+                                            checkedChildren={t("products.manufactured_yes")}
+                                            unCheckedChildren={t("products.manufactured_no")}
+                                            disabled={Boolean(isKit)}
+                                            onChange={(checked) => checked && form.setFieldsValue({ is_kit: false })}
+                                        />
+                                    </Form.Item>
+                                </div>
+                                {isManufactured ? (
+                                    <>
+                                        <p className="text-xs text-[var(--ohnix-text-dim)] mb-3">
+                                            {t("products.manufactured_hint")}
+                                        </p>
+                                        {manufacturedConversionBlocked && (
+                                            <p className="text-xs text-[#ff7875] mb-3">
+                                                {t("products.manufactured_conversion_has_stock")}
+                                            </p>
+                                        )}
+                                        <Form.List name="recipe_components">
+                                            {(fields, { add, remove }) => (
+                                                <div className="space-y-2">
+                                                    {fields.map(({ key, name, ...restField }) => (
+                                                        <Row gutter={8} key={key} align="middle">
+                                                            <Col flex="auto">
+                                                                <Form.Item
+                                                                    {...restField}
+                                                                    name={[name, "product_id"]}
+                                                                    className="mb-2"
+                                                                    rules={[{ required: true, message: t("products.recipe_component_required") }]}
+                                                                >
+                                                                    <Select
+                                                                        showSearch
+                                                                        placeholder={t("products.recipe_component_placeholder")}
+                                                                        optionFilterProp="children"
+                                                                        className="rounded-md auth-ohnix-input"
+                                                                    >
+                                                                        {recipeComponentOptions.map((p) => (
+                                                                            <Option key={p._id} value={p._id}>
+                                                                                {p.product_name} ({p.product_code})
+                                                                            </Option>
+                                                                        ))}
+                                                                    </Select>
+                                                                </Form.Item>
+                                                            </Col>
+                                                            <Col flex="120px">
+                                                                <Form.Item
+                                                                    {...restField}
+                                                                    name={[name, "quantity"]}
+                                                                    className="mb-2"
+                                                                    rules={[{ required: true, message: t("products.recipe_component_quantity_required") }]}
+                                                                >
+                                                                    <InputNumber
+                                                                        min={0.01}
+                                                                        precision={2}
+                                                                        className="w-full auth-ohnix-input"
+                                                                        placeholder={t("products.recipe_component_quantity")}
+                                                                    />
+                                                                </Form.Item>
+                                                            </Col>
+                                                            <Col flex="32px">
+                                                                <Button
+                                                                    type="text"
+                                                                    danger
+                                                                    icon={<DeleteOutlined />}
+                                                                    onClick={() => remove(name)}
+                                                                />
+                                                            </Col>
+                                                        </Row>
+                                                    ))}
+                                                    <Button
+                                                        type="dashed"
+                                                        onClick={() => add()}
+                                                        icon={<PlusOutlined />}
+                                                        block
+                                                        disabled={fields.length >= 50}
+                                                    >
+                                                        {t("products.recipe_add_component")}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </Form.List>
+                                    </>
+                                ) : (
+                                    <p className="text-xs text-[var(--ohnix-text-dim)] mb-0">{t("products.manufactured_off_hint")}</p>
+                                )}
                             </div>
 
                             <div className="module-shell p-4 reveal-card">

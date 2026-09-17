@@ -21,7 +21,7 @@ import PurchaseForm from "./PurchaseForm";
 import PurchaseDetails from "./PurchaseDetails";
 import ReturnPreview from "./ReturnPreview";
 import RegisterPaymentModal from "../finance/RegisterPaymentModal";
-import { generatePurchaseNo } from "../../utils/purchaseUtils";
+import { calculatePurchaseFinancials, generatePurchaseNo } from "../../utils/purchaseUtils";
 import { Form } from "antd";
 import useI18n from "../../hooks/useI18n";
 import { useTeam } from "../../context/TeamContext";
@@ -260,8 +260,7 @@ const PurchaseList = ({
                     form={paymentForm}
                     pendingBalance={Math.max(
                         0,
-                        purchaseDetails.reduce((sum, d) => sum + (d.total || 0) + (d.tax_amount || 0), 0) -
-                            purchasePayments.reduce((sum, p) => sum + p.amount, 0)
+                        calculatePurchaseFinancials(purchaseDetails, selectedPurchase.retentions || [], purchasePayments).pendingBalance
                     )}
                     cashAccounts={cashAccounts}
                 />

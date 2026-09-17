@@ -5,6 +5,9 @@ import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { useDataInvalidation } from "../useDataInvalidation";
+import { getConnectivityState } from "../../offline/connectivity";
+import { subscribeSyncCompleted } from "../../offline/syncEngine";
+import { queueCreate, queueUpdate, queueDelete, readMirrorAll, mirrorReplaceAll } from "../../offline/entityQueue";
 
 const DELETE_SUPPLIER_ERROR_CODES = {
     supplier_has_purchases: "suppliers.delete_conflict_purchases",
@@ -48,6 +51,17 @@ export const useSuppliers = (isAdmin = false) => {
 
     const fetchSuppliers = async () => {
         const requestId = ++latestRequestId.current;
+        if (!getConnectivityState()) {
+            // Admin's "every account's suppliers" view has no offline
+            // equivalent - the mirror only ever holds the signed-in
+            // account's own suppliers (same rows the offline user endpoint
+            // would return).
+            const local = isAdmin ? [] : await readMirrorAll("suppliers");
+            if (requestId !== latestRequestId.current) return;
+            setSuppliers(local);
+            calculateStats(local);
+            return;
+        }
         setLoading(true);
         try {
             // Use admin route if user is admin, otherwise use regular route
@@ -56,8 +70,20 @@ export const useSuppliers = (isAdmin = false) => {
             if (requestId !== latestRequestId.current) return;
             setSuppliers(response.data.data);
             calculateStats(response.data.data);
+            if (!isAdmin) mirrorReplaceAll("suppliers", response.data.data);
         } catch (error) {
             if (requestId !== latestRequestId.current) return;
+            if (!error.response) {
+                // Real network failure, not a server rejection - most likely
+                // we were actually offline and just didn't know it yet (see
+                // connectivity.js's reportNetworkFailure). Fall back to the
+                // mirror instead of a scary "failed to load" toast.
+                const local = isAdmin ? [] : await readMirrorAll("suppliers");
+                if (requestId !== latestRequestId.current) return;
+                setSuppliers(local);
+                calculateStats(local);
+                return;
+            }
             toast.error(t("suppliers.failed_fetch_suppliers"));
             console.error("Error fetching suppliers:", error);
         } finally {
@@ -66,10 +92,16 @@ export const useSuppliers = (isAdmin = false) => {
     };
 
     const createSupplier = async (formData) => {
+        if (isTutorialActive) {
+            formData.append("is_tutorial_data", "true");
+        }
+        if (!getConnectivityState()) {
+            await queueCreate({ entity: "suppliers", url: "/suppliers", fields: formData });
+            toast.success(t("common.offline_saved_locally"));
+            await fetchSuppliers();
+            return true;
+        }
         try {
-            if (isTutorialActive) {
-                formData.append("is_tutorial_data", "true");
-            }
             const response = await api.post("/suppliers", formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
@@ -87,6 +119,12 @@ export const useSuppliers = (isAdmin = false) => {
     };
 
     const updateSupplier = async (id, formData) => {
+        if (!getConnectivityState()) {
+            await queueUpdate({ entity: "suppliers", url: `/suppliers/${id}`, id, fields: formData });
+            toast.success(t("common.offline_saved_locally"));
+            await fetchSuppliers();
+            return true;
+        }
         try {
             await api.patch(`/suppliers/${id}`, formData, {
                 headers: { "Content-Type": "multipart/form-data" },
@@ -120,6 +158,12 @@ export const useSuppliers = (isAdmin = false) => {
     };
 
     const deleteSupplier = async (id) => {
+        if (!getConnectivityState()) {
+            await queueDelete({ entity: "suppliers", url: `/suppliers/${id}`, id });
+            toast.success(t("common.offline_deleted_locally"));
+            await fetchSuppliers();
+            return;
+        }
         try {
             await api.delete(`/suppliers/${id}`);
             toast.success(t("suppliers.supplier_deleted"));
@@ -143,6 +187,11 @@ export const useSuppliers = (isAdmin = false) => {
     // Another connected user (or this same one, another tab) creating,
     // editing, or deleting a supplier.
     useDataInvalidation("supplier", fetchSuppliers);
+
+    // Coming back online: refetch for real (replaces any offline-queued
+    // optimistic rows with the server's canonical view once the outbox has
+    // had a chance to drain).
+    useEffect(() => subscribeSyncCompleted(fetchSuppliers), []);
 
     return {
         suppliers,

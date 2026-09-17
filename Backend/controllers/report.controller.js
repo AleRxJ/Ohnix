@@ -154,25 +154,29 @@ const getDashboardMetrics = asyncHandler(async (req, res, next) => {
             .filter((p) => p.stock < (p.lowStockThreshold ?? defaultThreshold))
             .slice(0, 10);
 
-        const productsForValue = await prisma.product.findMany({
-            where: productWhere,
-            select: {
-                stock: true,
-                buyingPrice: true,
-            },
-        });
-
-        const inventoryValue = productsForValue.reduce(
-            (sum, p) => sum + p.stock * Number(p.buyingPrice),
+        const [inventoryValueAgg, inTransitRows] = await Promise.all([
+            prisma.productLocationStock.aggregate({
+                where: { product: productWhere },
+                _sum: { inventoryValue: true },
+            }),
+            prisma.stockTransfer.findMany({
+                where: { status: "in_transit", ...(isAdmin ? {} : { accountId: userId }) },
+                select: { quantitySent: true, unitCostApplied: true },
+            }),
+        ]);
+        const inTransitValue = inTransitRows.reduce(
+            (sum, transfer) => sum + transfer.quantitySent * Number(transfer.unitCostApplied || 0),
             0
         );
+        const inTransitUnits = inTransitRows.reduce((sum, transfer) => sum + transfer.quantitySent, 0);
+        const inventoryValue = Number(inventoryValueAgg._sum.inventoryValue || 0) + inTransitValue;
 
         const metrics = {
             totalSales: Number(totalSalesAgg._sum.total || 0),
             totalPurchase: Number(totalPurchaseAgg._sum.total || 0),
             inventoryValue,
             totalProducts: inventoryAgg._count.id || 0,
-            totalStock: inventoryAgg._sum.stock || 0,
+            totalStock: (inventoryAgg._sum.stock || 0) + inTransitUnits,
             outOfStockCount,
             lowStockProducts: lowStockProducts.map((p) => ({
                 _id: toExternalId(p),
@@ -230,6 +234,11 @@ const getStockReport = asyncHandler(async (req, res, next) => {
                         unitName: true,
                     },
                 },
+                locationStock: { select: { inventoryValue: true } },
+                transfers: {
+                    where: { status: "in_transit" },
+                    select: { quantitySent: true, unitCostApplied: true },
+                },
             },
             orderBy: { stock: "asc" },
         });
@@ -250,8 +259,14 @@ const getStockReport = asyncHandler(async (req, res, next) => {
                 unit_name: p.unit?.unitName || "N/A",
                 buying_price: Number(p.buyingPrice),
                 selling_price: Number(p.sellingPrice),
-                stock: p.stock,
-                inventory_value: p.stock * Number(p.buyingPrice),
+                stock: p.stock + p.transfers.reduce((sum, transfer) => sum + transfer.quantitySent, 0),
+                inventory_value: p.locationStock.reduce(
+                    (sum, location) => sum + Number(location.inventoryValue),
+                    0
+                ) + p.transfers.reduce(
+                    (sum, transfer) => sum + transfer.quantitySent * Number(transfer.unitCostApplied || 0),
+                    0
+                ),
                 status,
             };
         });
@@ -287,7 +302,7 @@ const getSalesReport = asyncHandler(async (req, res, next) => {
         const orders = await prisma.order.findMany({
             where: {
                 ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
-                orderStatus: { not: "cancelled" },
+                orderStatus: { in: ["completed", "returned"] },
                 ...(Object.keys(dateFilter).length
                     ? { orderDate: dateFilter }
                     : {}),
@@ -314,11 +329,16 @@ const getSalesReport = asyncHandler(async (req, res, next) => {
         for (const order of orders) {
             const dateKey = order.orderDate.toISOString().slice(0, 10);
             const currentDate = byDateMap.get(dateKey) || { _id: dateKey, total: 0, orders: 0 };
-            currentDate.total += Number(order.total);
+            currentDate.total += order.orderDetails.reduce((sum, detail) => {
+                const net = netFiscalDetail(detail);
+                return sum + net.base + net.tax;
+            }, 0);
             currentDate.orders += 1;
             byDateMap.set(dateKey, currentDate);
 
             for (const detail of order.orderDetails) {
+                const netQuantity = Math.max(detail.quantity - Number(detail.returnedQuantity || 0), 0);
+                if (netQuantity === 0) continue;
                 const productId = detail.productId;
                 const currentProduct = byProductMap.get(productId) || {
                     _id: toExternalId(detail.product),
@@ -326,8 +346,8 @@ const getSalesReport = asyncHandler(async (req, res, next) => {
                     quantity: 0,
                     total: 0,
                 };
-                currentProduct.quantity += detail.quantity;
-                currentProduct.total += Number(detail.total);
+                currentProduct.quantity += netQuantity;
+                currentProduct.total += Number(detail.unitcost) * netQuantity;
                 byProductMap.set(productId, currentProduct);
             }
         }
@@ -374,7 +394,7 @@ const getTopProducts = asyncHandler(async (req, res, next) => {
         const orders = await prisma.order.findMany({
             where: {
                 ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
-                orderStatus: { not: "cancelled" },
+                orderStatus: { in: ["completed", "returned"] },
             },
             include: {
                 orderDetails: {
@@ -397,6 +417,8 @@ const getTopProducts = asyncHandler(async (req, res, next) => {
 
         for (const order of orders) {
             for (const detail of order.orderDetails) {
+                const netQuantity = Math.max(detail.quantity - Number(detail.returnedQuantity || 0), 0);
+                if (netQuantity === 0) continue;
                 const productId = detail.productId;
                 const current = byProductMap.get(productId) || {
                     _id: toExternalId(detail.product),
@@ -407,8 +429,8 @@ const getTopProducts = asyncHandler(async (req, res, next) => {
                     total_sales: 0,
                 };
 
-                current.quantity_sold += detail.quantity;
-                current.total_sales += Number(detail.total);
+                current.quantity_sold += netQuantity;
+                current.total_sales += Number(detail.unitcost) * netQuantity;
                 byProductMap.set(productId, current);
             }
         }
@@ -627,8 +649,8 @@ const buildDateFilter = (start_date, end_date) => {
     return filter;
 };
 
-// Profit margin per product: revenue (order line total) minus cost
-// (product.buyingPrice * quantity sold), for the selected period.
+// Profit margin per product: net revenue after returns minus the cost basis
+// frozen when the sale consumed inventory.
 const getProfitMarginReport = asyncHandler(async (req, res, next) => {
     const { start_date, end_date } = req.query;
     const userId = req.user.prismaId;
@@ -639,7 +661,7 @@ const getProfitMarginReport = asyncHandler(async (req, res, next) => {
         const orders = await prisma.order.findMany({
             where: {
                 ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
-                orderStatus: { not: "cancelled" },
+                orderStatus: { in: ["completed", "returned"] },
                 ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
             },
             include: {
@@ -658,6 +680,8 @@ const getProfitMarginReport = asyncHandler(async (req, res, next) => {
         for (const order of orders) {
             for (const detail of order.orderDetails) {
                 if (!detail.product) continue;
+                const netQuantity = Math.max(detail.quantity - Number(detail.returnedQuantity || 0), 0);
+                if (netQuantity === 0) continue;
                 const productId = detail.productId;
                 const current = byProductMap.get(productId) || {
                     _id: toExternalId(detail.product),
@@ -666,9 +690,9 @@ const getProfitMarginReport = asyncHandler(async (req, res, next) => {
                     revenue: 0,
                     cost: 0,
                 };
-                const revenue = Number(detail.total);
-                const cost = Number(detail.product.buyingPrice) * detail.quantity;
-                current.quantity += detail.quantity;
+                const revenue = Number(detail.unitcost) * netQuantity;
+                const cost = Number(detail.costBasisApplied ?? detail.product.buyingPrice) * netQuantity;
+                current.quantity += netQuantity;
                 current.revenue += revenue;
                 current.cost += cost;
                 byProductMap.set(productId, current);
@@ -872,6 +896,241 @@ const getPeriodComparisonReport = asyncHandler(async (req, res, next) => {
 // behalf).
 const round2 = (value) => Number((Number(value) || 0).toFixed(2));
 
+// Returns the still-effective base/tax portion of a commercial line after
+// granular returns. OrderDetail/PurchaseDetail keep the original fiscal
+// snapshot plus a cumulative returnedQuantity; reports must combine both
+// instead of continuing to report the original document as if no return had
+// happened. Multiplying the frozen amounts by the remaining-quantity ratio
+// also preserves the exact historical tax rate/treatment.
+export const netFiscalDetail = (detail) => {
+    const quantity = Number(detail?.quantity || 0);
+    const returnedQuantity = Math.min(Math.max(Number(detail?.returnedQuantity || 0), 0), quantity);
+    const remainingQuantity = Math.max(quantity - returnedQuantity, 0);
+    const ratio = quantity > 0 ? remainingQuantity / quantity : 0;
+
+    return {
+        remainingQuantity,
+        base: round2(Number(detail?.total || 0) * ratio),
+        taxAmount: round2(Number(detail?.taxAmount || 0) * ratio),
+    };
+};
+
+// A financial-only credit note has no OrderDetail quantities to inspect. Its
+// journal entry is the canonical local effect, so reports read the exact
+// reductions posted to revenue, output VAT and receivables instead of trying
+// to reverse-engineer provider-specific rawRequest payloads.
+export const summarizeFinancialCreditNoteEntry = (entry) => {
+    const amountForCode = (code, side) =>
+        (entry?.lines || [])
+            .filter((line) => line.chartAccount?.code === code)
+            .reduce((sum, line) => sum + Number(line[side] || 0), 0);
+
+    const base = round2(amountForCode("4135", "debit"));
+    const taxAmount = round2(amountForCode("240805", "debit"));
+    const receivableReduction = round2(amountForCode("1305", "credit"));
+
+    return {
+        sourceId: entry?.sourceId || null,
+        entryDate: entry?.entryDate || null,
+        base,
+        taxAmount,
+        receivableReduction,
+        rate: base > 0 ? round2((taxAmount / base) * 100) : 0,
+    };
+};
+
+const loadFinancialCreditNoteAdjustments = async ({ userId, isAdmin, req, entryDateFilter, orderIds }) => {
+    const notes = await prisma.electronicCreditNote.findMany({
+        where: {
+            ...(orderIds?.length ? { invoice: { orderId: { in: orderIds } } } : {
+                invoice: {
+                    order: {
+                        ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
+                    },
+                },
+            }),
+        },
+        select: { id: true, invoice: { select: { orderId: true } } },
+    });
+    if (notes.length === 0) return [];
+
+    const orderIdByNoteId = new Map(notes.map((note) => [note.id, note.invoice.orderId]));
+    const entries = await prisma.journalEntry.findMany({
+        where: {
+            sourceType: "credit_note_financial",
+            sourceId: { in: notes.map((note) => note.id) },
+            ...(isAdmin ? {} : { period: { createdById: userId } }),
+            ...(entryDateFilter && Object.keys(entryDateFilter).length ? { entryDate: entryDateFilter } : {}),
+        },
+        select: {
+            sourceId: true,
+            entryDate: true,
+            lines: {
+                select: {
+                    debit: true,
+                    credit: true,
+                    chartAccount: { select: { code: true } },
+                },
+            },
+        },
+    });
+
+    return entries.map((entry) => ({
+        ...summarizeFinancialCreditNoteEntry(entry),
+        orderId: orderIdByNoteId.get(entry.sourceId),
+    }));
+};
+
+export const summarizeVatReversalEntry = (entry) => {
+    const amountForCode = (code, side) =>
+        (entry?.lines || [])
+            .filter((line) => line.chartAccount?.code === code)
+            .reduce((sum, line) => sum + Number(line[side] || 0), 0);
+    const purchaseSide = entry?.sourceType === "purchase_return";
+    return {
+        sourceType: entry?.sourceType,
+        sourceId: entry?.sourceId,
+        entryDate: entry?.entryDate,
+        kind: purchaseSide ? "purchase" : "sale",
+        base: round2(purchaseSide ? amountForCode("1435", "credit") : amountForCode("4135", "debit")),
+        taxAmount: round2(purchaseSide ? amountForCode("240810", "credit") : amountForCode("240805", "debit")),
+    };
+};
+
+const loadVatReversalAdjustments = async ({ userId, isAdmin, req, entryDateFilter }) => {
+    const entries = await prisma.journalEntry.findMany({
+        where: {
+            sourceType: { in: ["order_cancellation", "order_return", "purchase_return", "credit_note_restock"] },
+            ...(isAdmin ? {} : { period: { createdById: userId } }),
+            ...(Object.keys(entryDateFilter).length ? { entryDate: entryDateFilter } : {}),
+        },
+        select: {
+            sourceType: true,
+            sourceId: true,
+            entryDate: true,
+            lines: { select: { debit: true, credit: true, chartAccount: { select: { code: true } } } },
+        },
+    });
+    if (entries.length === 0 || isAdmin || req.user.posScopeAll) {
+        return entries.map(summarizeVatReversalEntry);
+    }
+
+    // JournalEntry has no POS dimension yet. For a restricted team member,
+    // resolve each source back to its operational document before exposing
+    // the reversal in the report.
+    const orderSourceIds = entries
+        .filter((entry) => ["order_cancellation", "order_return"].includes(entry.sourceType))
+        .map((entry) => entry.sourceId)
+        .filter(Boolean);
+    const purchaseSourceIds = entries
+        .filter((entry) => entry.sourceType === "purchase_return")
+        .map((entry) => entry.sourceId)
+        .filter(Boolean);
+    const creditNoteIds = entries
+        .filter((entry) => entry.sourceType === "credit_note_restock")
+        .map((entry) => entry.sourceId)
+        .filter(Boolean);
+    const allowedPosIds = req.user.posScopeIds || [];
+
+    const [orders, purchases, creditNotes] = await Promise.all([
+        prisma.order.findMany({ where: { id: { in: orderSourceIds }, pointOfSaleId: { in: allowedPosIds } }, select: { id: true } }),
+        prisma.purchase.findMany({ where: { id: { in: purchaseSourceIds }, pointOfSaleId: { in: allowedPosIds } }, select: { id: true } }),
+        prisma.electronicCreditNote.findMany({
+            where: { id: { in: creditNoteIds }, invoice: { order: { pointOfSaleId: { in: allowedPosIds } } } },
+            select: { id: true },
+        }),
+    ]);
+    const allowed = new Set([...orders.map((row) => row.id), ...purchases.map((row) => row.id), ...creditNotes.map((row) => row.id)]);
+    return entries.filter((entry) => allowed.has(entry.sourceId)).map(summarizeVatReversalEntry);
+};
+
+// manualExpense/manualIncome/recurringExpense.service.js can now post a
+// taxed line (see accountingPosting.service.js#decomposeInclusiveTax) - the
+// base is whatever landed on the expense/revenue account in that same
+// entry, the rate is derived from base vs. the VAT-account line, same as
+// summarizeFinancialCreditNoteEntry above. Untaxed (excluded/exempt) manual
+// entries are NOT returned here: unlike OrderDetail/PurchaseDetail, there's
+// no persisted "detail" row for these, so once posted without a VAT line
+// there's nothing left in the ledger to tell excluded and exempt apart -
+// only the taxed subset survives distinguishably, which is also the only
+// part a bimestral filing's by-rate breakdown actually needs.
+const loadOperationalVatEntries = async ({ userId, isAdmin, entryDateFilter }) => {
+    const entries = await prisma.journalEntry.findMany({
+        where: {
+            sourceType: { in: ["manual_expense", "recurring_expense", "manual_income"] },
+            ...(isAdmin ? {} : { period: { createdById: userId } }),
+            ...(Object.keys(entryDateFilter).length ? { entryDate: entryDateFilter } : {}),
+            lines: { some: { chartAccount: { code: { in: ["240805", "240810"] } } } },
+        },
+        select: {
+            id: true,
+            sourceType: true,
+            entryDate: true,
+            lines: { select: { debit: true, credit: true, chartAccount: { select: { code: true, accountType: true } } } },
+        },
+    });
+
+    return entries.map((entry) => {
+        const isIncome = entry.sourceType === "manual_income";
+        const vatLine = entry.lines.find((line) => line.chartAccount?.code === (isIncome ? "240805" : "240810"));
+        const baseLine = entry.lines.find((line) => line.chartAccount?.accountType === (isIncome ? "revenue" : "expense"));
+        const taxAmount = round2(Number(isIncome ? vatLine?.credit : vatLine?.debit) || 0);
+        const base = round2(Number(isIncome ? baseLine?.credit : baseLine?.debit) || 0);
+        return {
+            kind: isIncome ? "sale" : "purchase",
+            entryDate: entry.entryDate,
+            base,
+            taxAmount,
+            rate: base > 0 ? round2((taxAmount / base) * 100) : 0,
+        };
+    });
+};
+
+// manualJournalVoucher.service.js can target ANY active chart account,
+// including the VAT liability accounts (240805/240810) - unlike
+// order_sale/purchase and their returns/credit-notes above, a manual line
+// carries no taxRateApplied/base, only a raw debit/credit against whichever
+// account was picked. Without this, a manual correction to those accounts
+// moved the balance sheet's IVA neto (Accounting overview) but stayed
+// invisible in this by-rate/by-period report, which is exactly the kind of
+// silent mismatch a bimestral filing can't afford.
+const loadManualVatAdjustments = async ({ userId, isAdmin, entryDateFilter }) => {
+    const entries = await prisma.journalEntry.findMany({
+        where: {
+            sourceType: { in: ["manual_journal", "manual_journal_reversal"] },
+            ...(isAdmin ? {} : { period: { createdById: userId } }),
+            ...(Object.keys(entryDateFilter).length ? { entryDate: entryDateFilter } : {}),
+            lines: { some: { chartAccount: { code: { in: ["240805", "240810"] } } } },
+        },
+        select: {
+            id: true,
+            entryDate: true,
+            description: true,
+            sourceType: true,
+            lines: { select: { debit: true, credit: true, chartAccount: { select: { code: true } } } },
+        },
+    });
+
+    return entries.map((entry) => {
+        const amountForCode = (code, side) =>
+            (entry.lines || [])
+                .filter((line) => line.chartAccount?.code === code)
+                .reduce((sum, line) => sum + Number(line[side] || 0), 0);
+        // 240805 (IVA generado) is credit-normal, same polarity a sale posts
+        // it with - a credit raises it, a debit lowers it. 240810 (IVA
+        // descontable) is the opposite, same polarity a purchase posts it
+        // with - a debit raises it, a credit lowers it.
+        return {
+            id: entry.id,
+            entryDate: entry.entryDate,
+            description: entry.description,
+            sourceType: entry.sourceType,
+            generatedDelta: round2(amountForCode("240805", "credit") - amountForCode("240805", "debit")),
+            deductibleDelta: round2(amountForCode("240810", "debit") - amountForCode("240810", "credit")),
+        };
+    });
+};
+
 const getVatReport = asyncHandler(async (req, res, next) => {
     const { start_date, end_date } = req.query;
     const userId = req.user.prismaId;
@@ -879,24 +1138,49 @@ const getVatReport = asyncHandler(async (req, res, next) => {
     const dateFilter = buildDateFilter(start_date, end_date);
 
     try {
+        // Source IDs come from the ledger, not the document's current status:
+        // a completed sale later marked cancelled still owns its original
+        // order_sale entry plus a separately dated reversal.
+        const [recognizedSales, recognizedPurchases] = await Promise.all([
+            prisma.journalEntry.findMany({
+                where: {
+                    sourceType: "order_sale",
+                    ...(isAdmin ? {} : { period: { createdById: userId } }),
+                    ...(Object.keys(dateFilter).length ? { entryDate: dateFilter } : {}),
+                },
+                select: { sourceId: true },
+            }),
+            prisma.journalEntry.findMany({
+                where: {
+                    sourceType: "purchase",
+                    ...(isAdmin ? {} : { period: { createdById: userId } }),
+                    ...(Object.keys(dateFilter).length ? { entryDate: dateFilter } : {}),
+                },
+                select: { sourceId: true },
+            }),
+        ]);
+        const recognizedOrderIds = recognizedSales.map((entry) => entry.sourceId).filter(Boolean);
+        const recognizedPurchaseIds = recognizedPurchases.map((entry) => entry.sourceId).filter(Boolean);
+
         // IVA descontable (purchases, ET art. 485-490) alongside IVA generado
         // (sales) below - same frozen-at-creation columns, populated by
-        // purchase.service.js#computePurchaseItemTax. Not filtered by
-        // purchaseStatus: a partial return already reverses its own stock via
-        // a separate flow, and this report intentionally reports what was
-        // actually paid to the supplier per line, same as the sales side
-        // only excluding fully "cancelled" orders and nothing else.
-        const [orderDetails, purchaseDetails] = await Promise.all([
+        // purchase.service.js#computePurchaseItemTax. Only completed/returned
+        // documents are recognized by the accounting engine. Pending/
+        // processing documents have fiscal snapshots already, but no journal
+        // entry yet. Reversals are recognized separately by their own journal
+        // date below, so a later return never rewrites a closed sales period.
+        const [orderDetails, purchaseDetails, financialCreditNotes, vatReversals, manualVatAdjustments, operationalVatEntries] = await Promise.all([
             prisma.orderDetail.findMany({
                 where: {
                     order: {
                         ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
-                        orderStatus: { not: "cancelled" },
-                        ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
+                        id: { in: recognizedOrderIds },
                     },
                 },
                 select: {
                     total: true,
+                    quantity: true,
+                    returnedQuantity: true,
                     taxTreatmentApplied: true,
                     taxRateApplied: true,
                     taxAmount: true,
@@ -907,17 +1191,23 @@ const getVatReport = asyncHandler(async (req, res, next) => {
                 where: {
                     purchase: {
                         ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
-                        ...(Object.keys(dateFilter).length ? { purchaseDate: dateFilter } : {}),
+                        id: { in: recognizedPurchaseIds },
                     },
                 },
                 select: {
                     total: true,
+                    quantity: true,
+                    returnedQuantity: true,
                     taxTreatmentApplied: true,
                     taxRateApplied: true,
                     taxAmount: true,
                     purchase: { select: { purchaseDate: true } },
                 },
             }),
+            loadFinancialCreditNoteAdjustments({ userId, isAdmin, req, entryDateFilter: dateFilter }),
+            loadVatReversalAdjustments({ userId, isAdmin, req, entryDateFilter: dateFilter }),
+            loadManualVatAdjustments({ userId, isAdmin, entryDateFilter: dateFilter }),
+            loadOperationalVatEntries({ userId, isAdmin, entryDateFilter: dateFilter }),
         ]);
 
         const byTreatmentMap = new Map();
@@ -930,13 +1220,31 @@ const getVatReport = asyncHandler(async (req, res, next) => {
             taxedBase: 0,
             excludedBase: 0,
             exemptBase: 0,
+            // Purchase-side equivalents of the three above - always computed
+            // (byTreatmentPurchasesMap already had this per-treatment, just
+            // never rolled up), so a declaración needs both sides of the same
+            // excluida/exenta/gravada split, not only the sales half.
+            taxedBasePurchases: 0,
+            excludedBasePurchases: 0,
+            exemptBasePurchases: 0,
             taxCollected: 0,
             taxCredited: 0,
             lineCount: orderDetails.length,
             purchaseLineCount: purchaseDetails.length,
+            financialCreditNoteCount: financialCreditNotes.length,
+            financialCreditNoteBase: 0,
+            salesReversalBase: 0,
+            purchaseReversalBase: 0,
+            manualAdjustmentCount: manualVatAdjustments.length,
+            manualAdjustmentGenerated: 0,
+            manualAdjustmentDeductible: 0,
         };
 
         for (const detail of orderDetails) {
+            // The original fiscal event belongs to orderDate. Do not use the
+            // cumulative returnedQuantity here: a return next month must be
+            // recognized next month from its own reversal journal entry, not
+            // rewrite the already-reported month of the sale.
             const base = Number(detail.total);
             const taxAmount = Number(detail.taxAmount);
             const rate = Number(detail.taxRateApplied);
@@ -975,6 +1283,9 @@ const getVatReport = asyncHandler(async (req, res, next) => {
             const treatment = detail.taxTreatmentApplied;
 
             summary.taxCredited += taxAmount;
+            if (treatment === "taxed") summary.taxedBasePurchases += base;
+            else if (treatment === "excluded") summary.excludedBasePurchases += base;
+            else if (treatment === "exempt") summary.exemptBasePurchases += base;
 
             const treatmentEntry = byTreatmentPurchasesMap.get(treatment) || { treatment, base: 0, taxAmount: 0, lineCount: 0 };
             treatmentEntry.base += base;
@@ -997,18 +1308,164 @@ const getVatReport = asyncHandler(async (req, res, next) => {
             byPeriodPurchasesMap.set(periodKey, periodEntry);
         }
 
+        // Manual expenses/income and recurring-expense generations that were
+        // posted with a taxed treatment - always "taxed" by construction (see
+        // loadOperationalVatEntries), so no treatment branch is needed the
+        // way orderDetails/purchaseDetails above have one.
+        for (const item of operationalVatEntries) {
+            const periodKey = item.entryDate ? new Date(item.entryDate).toISOString().slice(0, 7) : null;
+            if (item.kind === "sale") {
+                summary.taxCollected += item.taxAmount;
+                summary.taxedBase += item.base;
+
+                const treatmentEntry = byTreatmentMap.get("taxed") || { treatment: "taxed", base: 0, taxAmount: 0, lineCount: 0 };
+                treatmentEntry.base += item.base;
+                treatmentEntry.taxAmount += item.taxAmount;
+                treatmentEntry.lineCount += 1;
+                byTreatmentMap.set("taxed", treatmentEntry);
+
+                const rateEntry = byRateMap.get(item.rate) || { rate: item.rate, base: 0, taxAmount: 0, lineCount: 0 };
+                rateEntry.base += item.base;
+                rateEntry.taxAmount += item.taxAmount;
+                rateEntry.lineCount += 1;
+                byRateMap.set(item.rate, rateEntry);
+
+                if (periodKey) {
+                    const periodEntry = byPeriodMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+                    periodEntry.base += item.base;
+                    periodEntry.taxAmount += item.taxAmount;
+                    byPeriodMap.set(periodKey, periodEntry);
+                }
+            } else {
+                summary.taxCredited += item.taxAmount;
+                summary.taxedBasePurchases += item.base;
+
+                const treatmentEntry = byTreatmentPurchasesMap.get("taxed") || { treatment: "taxed", base: 0, taxAmount: 0, lineCount: 0 };
+                treatmentEntry.base += item.base;
+                treatmentEntry.taxAmount += item.taxAmount;
+                treatmentEntry.lineCount += 1;
+                byTreatmentPurchasesMap.set("taxed", treatmentEntry);
+
+                const rateEntry = byRatePurchasesMap.get(item.rate) || { rate: item.rate, base: 0, taxAmount: 0, lineCount: 0 };
+                rateEntry.base += item.base;
+                rateEntry.taxAmount += item.taxAmount;
+                rateEntry.lineCount += 1;
+                byRatePurchasesMap.set(item.rate, rateEntry);
+
+                if (periodKey) {
+                    const periodEntry = byPeriodPurchasesMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+                    periodEntry.base += item.base;
+                    periodEntry.taxAmount += item.taxAmount;
+                    byPeriodPurchasesMap.set(periodKey, periodEntry);
+                }
+            }
+        }
+
+        for (const adjustment of financialCreditNotes) {
+            summary.taxCollected -= adjustment.taxAmount;
+            summary.financialCreditNoteBase += adjustment.base;
+
+            // A positive tax amount identifies a taxed-base adjustment. For
+            // a zero-tax credit note the original line may have been exempt
+            // or excluded, which the journal deliberately does not encode;
+            // keep that base explicit in financialCreditNoteBase rather than
+            // silently assigning it to the wrong fiscal treatment.
+            if (adjustment.taxAmount > 0) {
+                summary.taxedBase -= adjustment.base;
+                const treatmentEntry = byTreatmentMap.get("taxed") || { treatment: "taxed", base: 0, taxAmount: 0, lineCount: 0 };
+                treatmentEntry.base -= adjustment.base;
+                treatmentEntry.taxAmount -= adjustment.taxAmount;
+                byTreatmentMap.set("taxed", treatmentEntry);
+
+                const rateEntry = byRateMap.get(adjustment.rate) || { rate: adjustment.rate, base: 0, taxAmount: 0, lineCount: 0 };
+                rateEntry.base -= adjustment.base;
+                rateEntry.taxAmount -= adjustment.taxAmount;
+                byRateMap.set(adjustment.rate, rateEntry);
+            }
+
+            if (adjustment.entryDate) {
+                const periodKey = new Date(adjustment.entryDate).toISOString().slice(0, 7);
+                const periodEntry = byPeriodMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+                periodEntry.base -= adjustment.base;
+                periodEntry.taxAmount -= adjustment.taxAmount;
+                byPeriodMap.set(periodKey, periodEntry);
+            }
+        }
+
+        for (const reversal of vatReversals) {
+            const periodKey = reversal.entryDate ? new Date(reversal.entryDate).toISOString().slice(0, 7) : null;
+            if (reversal.kind === "sale") {
+                summary.taxCollected -= reversal.taxAmount;
+                summary.salesReversalBase += reversal.base;
+                if (periodKey) {
+                    const periodEntry = byPeriodMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+                    periodEntry.base -= reversal.base;
+                    periodEntry.taxAmount -= reversal.taxAmount;
+                    byPeriodMap.set(periodKey, periodEntry);
+                }
+            } else {
+                summary.taxCredited -= reversal.taxAmount;
+                summary.purchaseReversalBase += reversal.base;
+                if (periodKey) {
+                    const periodEntry = byPeriodPurchasesMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+                    periodEntry.base -= reversal.base;
+                    periodEntry.taxAmount -= reversal.taxAmount;
+                    byPeriodPurchasesMap.set(periodKey, periodEntry);
+                }
+            }
+        }
+
+        // Folded into taxCollected/taxCredited (so netVat reconciles with the
+        // balance sheet even when a manual voucher touched these accounts),
+        // but also kept as their own summary/byPeriod figures and a raw list
+        // below - unlike every other adjustment above, these carry no rate,
+        // so they can't be attributed to byRate/byTreatment.
+        for (const adjustment of manualVatAdjustments) {
+            summary.taxCollected += adjustment.generatedDelta;
+            summary.manualAdjustmentGenerated += adjustment.generatedDelta;
+            summary.taxCredited += adjustment.deductibleDelta;
+            summary.manualAdjustmentDeductible += adjustment.deductibleDelta;
+
+            const periodKey = adjustment.entryDate ? new Date(adjustment.entryDate).toISOString().slice(0, 7) : null;
+            if (periodKey && adjustment.generatedDelta !== 0) {
+                const periodEntry = byPeriodMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+                periodEntry.taxAmount += adjustment.generatedDelta;
+                byPeriodMap.set(periodKey, periodEntry);
+            }
+            if (periodKey && adjustment.deductibleDelta !== 0) {
+                const periodEntry = byPeriodPurchasesMap.get(periodKey) || { period: periodKey, base: 0, taxAmount: 0 };
+                periodEntry.taxAmount += adjustment.deductibleDelta;
+                byPeriodPurchasesMap.set(periodKey, periodEntry);
+            }
+        }
+
         const report = {
             summary: {
                 ...summary,
                 taxedBase: round2(summary.taxedBase),
                 excludedBase: round2(summary.excludedBase),
                 exemptBase: round2(summary.exemptBase),
+                taxedBasePurchases: round2(summary.taxedBasePurchases),
+                excludedBasePurchases: round2(summary.excludedBasePurchases),
+                exemptBasePurchases: round2(summary.exemptBasePurchases),
                 taxCollected: round2(summary.taxCollected),
                 taxCredited: round2(summary.taxCredited),
+                financialCreditNoteBase: round2(summary.financialCreditNoteBase),
+                salesReversalBase: round2(summary.salesReversalBase),
+                purchaseReversalBase: round2(summary.purchaseReversalBase),
+                manualAdjustmentGenerated: round2(summary.manualAdjustmentGenerated),
+                manualAdjustmentDeductible: round2(summary.manualAdjustmentDeductible),
                 // Positive = owed to the DIAN this period; negative = credit
                 // balance carried forward (ET art. 815 - saldo a favor).
                 netVat: round2(summary.taxCollected - summary.taxCredited),
             },
+            manualAdjustments: manualVatAdjustments.map((a) => ({
+                id: a.id,
+                entryDate: a.entryDate,
+                description: a.description,
+                generatedDelta: round2(a.generatedDelta),
+                deductibleDelta: round2(a.deductibleDelta),
+            })),
             byTreatment: [...byTreatmentMap.values()].map((e) => ({ ...e, base: round2(e.base), taxAmount: round2(e.taxAmount) })),
             byRate: [...byRateMap.values()]
                 .sort((a, b) => a.rate - b.rate)
@@ -1034,11 +1491,11 @@ const getVatReport = asyncHandler(async (req, res, next) => {
 });
 
 // Cartera (accounts receivable/payable): per-document pending balance
-// (order.total / SUM(PurchaseDetail.total+taxAmount) minus payments already
+// (remaining non-returned detail base+tax minus payments already
 // registered - see orderPayment.service.js/purchasePayment.service.js for
 // the same derivation used at write time) plus a per-customer/per-supplier
-// rollup and days-overdue, counted from orderDate/purchaseDate since neither
-// model has a separate due-date field yet.
+// rollup and aging. Purchases use their negotiated due date; legacy rows
+// without one remain "unscheduled" instead of being falsely marked overdue.
 const getCarteraReport = asyncHandler(async (req, res, next) => {
     const { start_date, end_date } = req.query;
     const userId = req.user.prismaId;
@@ -1051,7 +1508,7 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
             prisma.order.findMany({
                 where: {
                     ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
-                    orderStatus: { not: "cancelled" },
+                    orderStatus: { in: ["completed", "returned"] },
                     ...(Object.keys(dateFilter).length ? { orderDate: dateFilter } : {}),
                 },
                 select: {
@@ -1059,13 +1516,15 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
                     legacyMongoId: true,
                     invoiceNo: true,
                     orderDate: true,
-                    total: true,
+                    dueDate: true,
+                    orderDetails: { select: { quantity: true, returnedQuantity: true, total: true, taxAmount: true } },
                     customer: { select: { id: true, legacyMongoId: true, name: true } },
                 },
             }),
             prisma.purchase.findMany({
                 where: {
                     ...(isAdmin ? {} : { createdById: userId, ...posScopeWhere(req) }),
+                    purchaseStatus: { in: ["completed", "returned"] },
                     ...(Object.keys(dateFilter).length ? { purchaseDate: dateFilter } : {}),
                 },
                 select: {
@@ -1073,8 +1532,10 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
                     legacyMongoId: true,
                     purchaseNo: true,
                     purchaseDate: true,
+                    dueDate: true,
                     supplier: { select: { id: true, legacyMongoId: true, name: true } },
-                    purchaseDetails: { select: { total: true, taxAmount: true } },
+                    purchaseDetails: { select: { quantity: true, returnedQuantity: true, total: true, taxAmount: true } },
+                    retentions: { select: { withheldAmount: true, returnedWithheldAmount: true } },
                 },
             }),
         ]);
@@ -1082,49 +1543,75 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
         const orderIds = orders.map((o) => o.id);
         const purchaseIds = purchases.map((p) => p.id);
 
-        const [orderPaidRows, purchasePaidRows] = await Promise.all([
+        const [orderPaidRows, purchasePaidRows, financialCreditNotes] = await Promise.all([
             orderIds.length
                 ? prisma.orderPayment.groupBy({ by: ["orderId"], where: { orderId: { in: orderIds } }, _sum: { amount: true } })
                 : [],
             purchaseIds.length
                 ? prisma.purchasePayment.groupBy({ by: ["purchaseId"], where: { purchaseId: { in: purchaseIds } }, _sum: { amount: true } })
                 : [],
+            orderIds.length
+                ? loadFinancialCreditNoteAdjustments({ userId, isAdmin, req, orderIds })
+                : [],
         ]);
 
         const orderPaidMap = new Map(orderPaidRows.map((r) => [r.orderId, Number(r._sum.amount || 0)]));
         const purchasePaidMap = new Map(purchasePaidRows.map((r) => [r.purchaseId, Number(r._sum.amount || 0)]));
-        const daysOverdue = (date) => Math.max(0, Math.floor((now - new Date(date)) / 86400000));
-
+        const financialCreditByOrder = new Map();
+        for (const adjustment of financialCreditNotes) {
+            financialCreditByOrder.set(
+                adjustment.orderId,
+                round2((financialCreditByOrder.get(adjustment.orderId) || 0) + adjustment.receivableReduction)
+            );
+        }
         const receivablesDocuments = orders
             .map((order) => {
                 const paid = orderPaidMap.get(order.id) || 0;
-                const total = Number(order.total);
+                const detailTotal = order.orderDetails.reduce((acc, detail) => {
+                    const net = netFiscalDetail(detail);
+                    return acc + net.base + net.taxAmount;
+                }, 0);
+                const creditNotes = financialCreditByOrder.get(order.id) || 0;
+                const total = Math.max(round2(detailTotal - creditNotes), 0);
+                const dueDate = order.dueDate ? new Date(order.dueDate) : null;
+                const rawDays = dueDate ? Math.floor((now - dueDate) / 86400000) : null;
                 return {
                     _id: toExternalId(order),
                     invoice_no: order.invoiceNo,
                     document_date: order.orderDate,
+                    due_date: order.dueDate,
                     customer: order.customer ? { _id: toExternalId(order.customer), name: order.customer.name } : null,
                     total: round2(total),
                     paid: round2(paid),
                     pending: round2(total - paid),
-                    days_overdue: daysOverdue(order.orderDate),
+                    days_overdue: rawDays === null ? null : Math.max(0, rawDays),
                 };
             })
             .filter((row) => row.pending > 0.001);
 
         const payablesDocuments = purchases
             .map((purchase) => {
-                const total = purchase.purchaseDetails.reduce((acc, d) => acc + Number(d.total) + Number(d.taxAmount), 0);
+                const grossAfterReturns = purchase.purchaseDetails.reduce((acc, detail) => {
+                    const net = netFiscalDetail(detail);
+                    return acc + net.base + net.taxAmount;
+                }, 0);
+                const withholding = purchase.retentions.reduce((sum, retention) => sum + Number(retention.withheldAmount) - Number(retention.returnedWithheldAmount), 0);
+                const total = Math.max(round2(grossAfterReturns - withholding), 0);
                 const paid = purchasePaidMap.get(purchase.id) || 0;
+                const dueDate = purchase.dueDate ? new Date(purchase.dueDate) : null;
+                const rawDays = dueDate ? Math.floor((now - dueDate) / 86400000) : null;
                 return {
                     _id: toExternalId(purchase),
                     purchase_no: purchase.purchaseNo,
                     document_date: purchase.purchaseDate,
+                    due_date: purchase.dueDate,
                     supplier: purchase.supplier ? { _id: toExternalId(purchase.supplier), name: purchase.supplier.name } : null,
                     total: round2(total),
                     paid: round2(paid),
                     pending: round2(total - paid),
-                    days_overdue: daysOverdue(purchase.purchaseDate),
+                    days_overdue: rawDays === null ? null : Math.max(0, rawDays),
+                    days_until_due: rawDays === null ? null : Math.max(0, -rawDays),
+                    aging_status: rawDays === null ? "unscheduled" : rawDays > 0 ? "overdue" : rawDays >= -7 ? "due_soon" : "current",
                 };
             })
             .filter((row) => row.pending > 0.001);
@@ -1157,7 +1644,15 @@ const getCarteraReport = asyncHandler(async (req, res, next) => {
             payables: {
                 summary: { totalPending: sumPending(payablesDocuments), documentCount: payablesDocuments.length },
                 bySupplier: groupByParty(payablesDocuments, "supplier"),
-                byDocument: [...payablesDocuments].sort((a, b) => b.days_overdue - a.days_overdue),
+                byDocument: [...payablesDocuments].sort((a, b) => (b.days_overdue ?? -1) - (a.days_overdue ?? -1)),
+                aging: {
+                    current: sumPending(payablesDocuments.filter((d) => d.aging_status === "current")),
+                    dueSoon: sumPending(payablesDocuments.filter((d) => d.aging_status === "due_soon")),
+                    overdue1To30: sumPending(payablesDocuments.filter((d) => d.days_overdue >= 1 && d.days_overdue <= 30)),
+                    overdue31To60: sumPending(payablesDocuments.filter((d) => d.days_overdue >= 31 && d.days_overdue <= 60)),
+                    overdue61Plus: sumPending(payablesDocuments.filter((d) => d.days_overdue >= 61)),
+                    unscheduled: sumPending(payablesDocuments.filter((d) => d.aging_status === "unscheduled")),
+                },
             },
         };
 

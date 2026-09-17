@@ -5,7 +5,7 @@ import { isSessionValid } from "../utils/sessionStore.js";
 import { resolveAccountScope } from "../utils/teamContext.js";
 
 // Mirrors verifyJWT (auth.middleware.js) for the WebSocket handshake: same
-// token sources, same tokenVersion + single-session checks, same account
+// token sources, same tokenVersion + per-device session checks, same account
 // scope resolution - a socket connection should never be authorized under
 // rules looser than the REST API.
 export const authenticateSocket = async (socket) => {
@@ -34,6 +34,7 @@ export const authenticateSocket = async (socket) => {
             username: true,
             avatar: true,
             tokenVersion: true,
+            role: true,
         },
     });
 
@@ -55,6 +56,7 @@ export const authenticateSocket = async (socket) => {
         id: user.id,
         username: user.username,
         avatar: user.avatar,
+        role: user.role,
         sid: decodedToken.sid,
         accountId: accountScope.accountId,
         actorId: accountScope.actorId,

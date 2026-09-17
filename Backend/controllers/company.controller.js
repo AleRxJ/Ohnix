@@ -3,14 +3,24 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFile, deleteFile } from "../utils/storage.js";
-import { registerCompanyWithAlanube, registerCompanyWithItcycle, addItcycleNumberingResolutionForCompany } from "../services/electronicInvoicing.service.js";
+import { registerCompanyWithItcycle, addItcycleNumberingResolutionForCompany } from "../services/electronicInvoicing.service.js";
 import {
-    setCompanyFirmaPassLoginKey,
+    listPendingFirmaPassValidations,
+    getNextPendingFirmaPassValidation,
+    getFirmaPassValidationDetail,
     uploadCompanyFirmaPassRut,
     uploadCompanyFirmaPassArchivo,
     confirmCompanyFirmaPassValidation,
     getCompanyFirmaPassStatus,
 } from "../services/firmaPassProvisioning.service.js";
+import { listCertificateOrdersAdmin as listCertificateOrdersAdminService } from "../services/certificateOrder.service.js";
+import {
+    createExternalApiClient,
+    listExternalApiClients,
+    issueApiKeyForExternalClient,
+    listLiveApiKeysForExternalClient,
+    getUsageForExternalClient,
+} from "../services/externalApiClient.service.js";
 
 // Deliberately distinct from companyCountry.service.js#normalizeCountryCode:
 // that one just normalizes an already-stored value for fiscal checks, while
@@ -62,58 +72,13 @@ const normalizeVatResponsible = (body, currentValue) => {
     return config;
 };
 
-const normalizeFactusConfig = (body) => {
+const normalizeElectronicInvoicingIdentity = (body) => {
     const config = {};
-    if (body.factusNumberingRangeId !== undefined) {
-        config.factusNumberingRangeId = `${body.factusNumberingRangeId || ""}`.trim() || null;
-    }
-    if (body.factusCreditNoteNumberingRangeId !== undefined) {
-        config.factusCreditNoteNumberingRangeId = `${body.factusCreditNoteNumberingRangeId || ""}`.trim() || null;
-    }
-    for (const [input, field] of [
-        ["factusDocumentType", "factusDocumentType"],
-        ["factusOperationType", "factusOperationType"],
-        ["factusPaymentForm", "factusPaymentForm"],
-        ["factusPaymentMethodCode", "factusPaymentMethodCode"],
-    ]) {
-        if (body[input] !== undefined && `${body[input]}`.trim()) {
-            config[field] = `${body[input]}`.trim();
-        }
-    }
-    // The issuing flag is intentionally not configurable from the Ohnix
-    // platform-admin company form. For itcycle-api-dian it is set only by
-    // the company owner's activation endpoint after an active certificate
-    // has been confirmed. Keeping it out of this generic updater prevents
-    // support staff from accidentally enabling a non-signable company.
-    return config;
-};
-
-const normalizeAlanubeConfig = (body) => {
-    const config = {};
-    if (body.electronicInvoicingProvider !== undefined) {
-        const provider = `${body.electronicInvoicingProvider || ""}`.trim().toLowerCase();
-        // ITCycle is self-service: a platform administrator may inspect its
-        // status but cannot assign it or move a customer away from it through
-        // the generic company editor. Legacy Factus/Alanube administration
-        // remains available for companies that already use those providers.
-        if (["factus", "alanube"].includes(provider)) {
-            config.electronicInvoicingProvider = provider;
-        }
-    }
     if (body.taxIdentification !== undefined) {
         config.taxIdentification = `${body.taxIdentification || ""}`.trim() || null;
     }
     if (body.taxIdentificationDv !== undefined) {
         config.taxIdentificationDv = `${body.taxIdentificationDv || ""}`.trim() || null;
-    }
-    if (body.alanubeTestSetId !== undefined) {
-        config.alanubeTestSetId = `${body.alanubeTestSetId || ""}`.trim() || null;
-    }
-    if (body.alanubeInvoiceResolution !== undefined) {
-        config.alanubeInvoiceResolution = body.alanubeInvoiceResolution || null;
-    }
-    if (body.alanubeCreditNoteResolution !== undefined) {
-        config.alanubeCreditNoteResolution = body.alanubeCreditNoteResolution || null;
     }
     return config;
 };
@@ -194,8 +159,8 @@ export const createCompanyAdmin = asyncHandler(async (req, res, next) => {
             contactEmail: normalizedContactEmail,
             phone: phone?.trim() || null,
             ...vatResponsibleConfig,
-            ...normalizeFactusConfig(req.body),
-            ...normalizeAlanubeConfig(req.body),
+            electronicInvoicingProvider: "itcycle",
+            ...normalizeElectronicInvoicingIdentity(req.body),
             isActive: true,
         },
         select: {
@@ -283,8 +248,7 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
             ...(pdfFooterText !== undefined ? { pdfFooterText: pdfFooterText?.trim() || null } : {}),
             ...(pdfAccentColor !== undefined ? { pdfAccentColor: trimmedAccentColor || null } : {}),
             ...vatResponsibleConfig,
-            ...normalizeFactusConfig(req.body),
-            ...normalizeAlanubeConfig(req.body),
+            ...normalizeElectronicInvoicingIdentity(req.body),
         },
         select: {
             id: true,
@@ -308,27 +272,14 @@ export const updateCompanyAdmin = asyncHandler(async (req, res, next) => {
         .json(new ApiResponse(200, company, "Company updated successfully"));
 });
 
-export const registerCompanyWithAlanubeAdmin = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-
-    const data = await registerCompanyWithAlanube({
-        companyId,
-        requesterRole: req.user.role,
-    });
-
-    return res
-        .status(200)
-        .json(new ApiResponse(200, data, "Company registered with Alanube successfully"));
-});
-
 export const registerCompanyWithItcycleAdmin = asyncHandler(async (req, res) => {
     const { companyId } = req.params;
-    const { dianConfiguration, numberingResolutions, certificate } = req.body || {};
+    const { supplierProfile, numberingResolutions, certificate } = req.body || {};
 
     const data = await registerCompanyWithItcycle({
         companyId,
         requesterRole: req.user.role,
-        dianConfiguration,
+        supplierProfile,
         numberingResolutions,
         certificate,
     });
@@ -359,11 +310,34 @@ export const addItcycleNumberingResolutionAdmin = asyncHandler(async (req, res) 
         .json(new ApiResponse(201, data, "Numbering resolution added successfully"));
 });
 
-export const setCompanyFirmaPassLoginKeyAdmin = asyncHandler(async (req, res) => {
-    const { companyId } = req.params;
-    const { loginKey } = req.body || {};
-    const data = await setCompanyFirmaPassLoginKey({ companyId, requesterRole: req.user.role, loginKey });
-    return res.status(200).json(new ApiResponse(200, data, "FirmaPass login key updated"));
+// Alliance-wide (not scoped to a companyId) - lets an Ohnix admin browse
+// validations auto-attached to iTCycle's own FirmaPass account (every
+// client who bought a certificate with the coupon) and match one to the
+// right Ohnix company by eye, since FirmaPass's response doesn't carry a
+// confirmed field for automatic matching. See
+// Backend/services/firmaPassProvisioning.service.js.
+export const listFirmaPassValidationsAdmin = asyncHandler(async (req, res) => {
+    const { perPage, orderNumber } = req.query || {};
+    const data = await listPendingFirmaPassValidations({
+        perPage: perPage ? Number(perPage) : undefined,
+        orderNumber: orderNumber || undefined,
+    });
+    return res.status(200).json(new ApiResponse(200, data, "FirmaPass validations retrieved"));
+});
+
+export const getNextFirmaPassValidationAdmin = asyncHandler(async (req, res) => {
+    // itcycle-api-dian returns 204 (no body) when the queue is empty -
+    // `data` comes back null here, not an error; the response envelope
+    // still resolves 200 so the frontend can distinguish "nothing pending"
+    // from a real request failure.
+    const data = await getNextPendingFirmaPassValidation();
+    return res.status(200).json(new ApiResponse(200, data, "Next pending FirmaPass validation retrieved"));
+});
+
+export const getFirmaPassValidationDetailAdmin = asyncHandler(async (req, res) => {
+    const { validationUuid } = req.params;
+    const data = await getFirmaPassValidationDetail({ validationUuid });
+    return res.status(200).json(new ApiResponse(200, data, "FirmaPass validation detail retrieved"));
 });
 
 export const uploadCompanyFirmaPassRutAdmin = asyncHandler(async (req, res) => {
@@ -396,6 +370,103 @@ export const getCompanyFirmaPassStatusAdmin = asyncHandler(async (req, res) => {
     const { companyId } = req.params;
     const data = await getCompanyFirmaPassStatus({ companyId, requesterRole: req.user.role });
     return res.status(200).json(new ApiResponse(200, data, "FirmaPass status retrieved"));
+});
+
+// Cross-company CertificateOrder visibility for Ohnix ops - see
+// Backend/services/certificateOrder.service.js#listCertificateOrdersAdmin.
+// Unlike listFirmaPassValidationsAdmin (FirmaPass's own alliance-wide queue),
+// this reads Ohnix's own CertificateOrder rows, so it naturally spans every
+// company already; no per-company scoping to add.
+export const listCertificateOrdersAdmin = asyncHandler(async (_req, res) => {
+    const data = await listCertificateOrdersAdminService();
+    return res.status(200).json(new ApiResponse(200, data, "Certificate orders retrieved"));
+});
+
+// Provisions a company with NO Ohnix account (their own POS/ERP/SaaS) on
+// itcycle-api-dian directly, so it can integrate against Ohnix's DIAN
+// e-invoicing engine via API without ever becoming an Ohnix tenant. See
+// Backend/services/externalApiClient.service.js.
+export const createExternalApiClientAdmin = asyncHandler(async (req, res, next) => {
+    const {
+        companyName,
+        taxIdentification,
+        taxIdentificationDv,
+        personType,
+        contactName,
+        contactEmail,
+        contactPhone,
+        notes,
+    } = req.body || {};
+
+    if (!companyName?.trim()) {
+        return next(new ApiError(400, "companyName is required"));
+    }
+    if (!taxIdentification?.trim()) {
+        return next(new ApiError(400, "taxIdentification is required"));
+    }
+    const normalizedDv = `${taxIdentificationDv ?? ""}`.trim();
+    if (!normalizedDv) {
+        return next(new ApiError(400, "taxIdentificationDv is required"));
+    }
+    if (!personType?.trim()) {
+        return next(new ApiError(400, "personType is required"));
+    }
+
+    const client = await createExternalApiClient({
+        companyName: companyName.trim(),
+        taxIdentification: taxIdentification.trim(),
+        taxIdentificationDv: normalizedDv,
+        personType: personType.trim(),
+        contactName: contactName?.trim() || null,
+        contactEmail: contactEmail?.trim().toLowerCase() || null,
+        contactPhone: contactPhone?.trim() || null,
+        notes: notes?.trim() || null,
+        createdByUserId: req.user.prismaId,
+    });
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, client, "External API client created successfully"));
+});
+
+export const listExternalApiClientsAdmin = asyncHandler(async (_req, res) => {
+    const data = await listExternalApiClients();
+    return res.status(200).json(new ApiResponse(200, data, "External API clients retrieved"));
+});
+
+// Returns the raw itcycle-api-dian API key in the response body EXACTLY
+// ONCE - see issueApiKeyForExternalClient's own comment for why it is never
+// persisted anywhere in Ohnix's DB.
+export const issueExternalApiClientApiKeyAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { label } = req.body || {};
+
+    const rawKey = await issueApiKeyForExternalClient({
+        externalApiClientId: id,
+        label: label?.trim() || null,
+        issuedByUserId: req.user.prismaId,
+    });
+
+    return res
+        .status(201)
+        .json(new ApiResponse(201, { apiKey: rawKey }, "API key issued successfully"));
+});
+
+// Live cross-check against itcycle-api-dian itself (metadata only, never a
+// usable key) - see listLiveApiKeysForExternalClient's own comment for why
+// this exists alongside the Ohnix-side issuance log above.
+export const listExternalApiClientLiveKeysAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const data = await listLiveApiKeysForExternalClient({ externalApiClientId: id });
+    return res.status(200).json(new ApiResponse(200, data, "Live API keys retrieved"));
+});
+
+// Read-only billable-usage lookup (current calendar month, ACCEPTED documents
+// only) - see getUsageForExternalClient's own comment for why this exists.
+export const getExternalApiClientUsageAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const data = await getUsageForExternalClient({ externalApiClientId: id });
+    return res.status(200).json(new ApiResponse(200, data, "Usage retrieved"));
 });
 
 export const updateCompanyLogoAdmin = asyncHandler(async (req, res, next) => {

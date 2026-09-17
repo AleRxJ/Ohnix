@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from "react";
 import AuthContext from "../context/AuthContext";
 import { subscriptionService } from "../services/subscriptionService";
 import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
+import { subscribeConnectivity } from "../offline/connectivity.js";
 
 // Mirror of Backend PLAN_FEATURES — keep in sync with pricing.middleware.js
 export const PLAN_FEATURES = {
@@ -116,7 +117,7 @@ export const FEATURE_LABELS = [
     { key: "bulkUpload",        es: "Carga masiva de productos",       en: "Bulk product upload"          },
     { key: "autoEmailAlerts",   es: "Alertas email automáticas",       en: "Automatic email alerts"       },
     { key: "configurableAlerts",es: "Alertas por umbral configurable", en: "Configurable stock thresholds" },
-    { key: "apiAccess",         es: "Acceso a API REST",               en: "REST API access"              },
+    { key: "apiAccess",         es: "API REST + integraciones Shopify/WooCommerce", en: "REST API + Shopify/WooCommerce integrations" },
     { key: "electronicInvoicing", es: "Facturación electrónica DIAN",  en: "DIAN electronic invoicing"    },
     { key: "advancedReports",   es: "Reportes avanzados (margen, clientes, equipo)", en: "Advanced reports (margin, customers, team)" },
     { key: "accounting",        es: "Contabilidad automática (asientos, PUC, cierres)", en: "Automated accounting (journal entries, chart of accounts, closes)" },
@@ -149,6 +150,31 @@ export const FEATURE_MINIMUM_PLAN = {
     salesQuotations:     "growth",
 };
 
+// Snapshot of the last confirmed plan, so a real network failure (offline,
+// or a transient 5xx) doesn't masquerade as a genuine Starter account -
+// every plan-gated feature (PlanGate, PointOfSaleField's multiLocation
+// check, etc.) would otherwise silently show its locked/upsell state, or
+// disappear entirely, for a paid account that's simply offline right now.
+// Same pattern as AuthContext's user snapshot. Keyed per user id since
+// impersonation/account-switching on the same device must never leak one
+// account's plan into another's offline fallback.
+const lastKnownPlanKey = (userId) => `ohnix:lastKnownPlan:${userId}`;
+const persistPlanSnapshot = (userId, plan) => {
+    try {
+        localStorage.setItem(lastKnownPlanKey(userId), plan);
+    } catch {
+        // Storage full/unavailable - offline just won't restore the real
+        // plan in that case, falls back to "starter" as before.
+    }
+};
+const readPlanSnapshot = (userId) => {
+    try {
+        return localStorage.getItem(lastKnownPlanKey(userId));
+    } catch {
+        return null;
+    }
+};
+
 const useSubscription = () => {
     const { user } = useContext(AuthContext);
     const [plan, setPlan] = useState(null);
@@ -165,25 +191,48 @@ const useSubscription = () => {
             setLoading(false);
             return;
         }
-        subscriptionService
-            .getMyUsage()
-            // effectivePlan (not plan) reflects an active trial's temporary
-            // Negocio-level access - using the raw stored plan here hid
-            // trial users' own trial features behind PlanGate even though
-            // the backend already granted them (pricing.middleware.js's
-            // getEffectivePlan), contradicting "full access during trial".
-            .then((res) => setPlan(res?.data?.effectivePlan ?? res?.data?.plan ?? "starter"))
-            .catch((error) => {
-                // This used to fail silently into "starter" - which looks
-                // identical in the UI to a real Starter account (every
-                // plan-gated feature shows its locked/upsell copy), so a
-                // transient network/5xx blip permanently hid paid-plan
-                // features for the rest of the session with zero trace of
-                // why. Logging it at least makes that failure diagnosable.
-                console.error("useSubscription: failed to load plan, falling back to starter", error);
-                setPlan("starter");
-            })
-            .finally(() => setLoading(false));
+
+        const fetchPlan = () => {
+            setLoading(true);
+            return subscriptionService
+                .getMyUsage()
+                // effectivePlan (not plan) reflects an active trial's temporary
+                // Negocio-level access - using the raw stored plan here hid
+                // trial users' own trial features behind PlanGate even though
+                // the backend already granted them (pricing.middleware.js's
+                // getEffectivePlan), contradicting "full access during trial".
+                .then((res) => {
+                    const resolvedPlan = res?.data?.effectivePlan ?? res?.data?.plan ?? "starter";
+                    setPlan(resolvedPlan);
+                    persistPlanSnapshot(user.id, resolvedPlan);
+                })
+                .catch((error) => {
+                    console.error("useSubscription: failed to load plan", error);
+                    if (!error.response) {
+                        // Real network failure (see connectivity.js's
+                        // reportNetworkFailure, triggered by this very
+                        // error) - not proof the account downgraded, only
+                        // that it couldn't be confirmed right now. Restore
+                        // the last confirmed plan instead of masquerading
+                        // as Starter; the effect below re-runs this for
+                        // real once connectivity is confirmed back.
+                        const snapshot = readPlanSnapshot(user.id);
+                        if (snapshot) {
+                            setPlan(snapshot);
+                            return;
+                        }
+                    }
+                    // A real error response, or no snapshot to fall back to
+                    // - only now is it safe to assume Starter-level access.
+                    setPlan("starter");
+                })
+                .finally(() => setLoading(false));
+        };
+
+        fetchPlan();
+        return subscribeConnectivity((online) => {
+            if (online) fetchPlan();
+        });
     }, [user?.id]);
 
     /**

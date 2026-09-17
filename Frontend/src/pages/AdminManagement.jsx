@@ -2,27 +2,36 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { Alert, Form, Tabs } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
 import { adminService } from "../services/adminService";
+import { useDataInvalidation } from "../hooks/useDataInvalidation";
 import PageHeader from "../components/common/PageHeader";
+import SessionsModal from "../components/common/SessionsModal";
+import SessionsTable from "../components/common/SessionsTable";
 import {
     AdminStats,
     CompaniesTab,
     UsersTab,
     ColombiaTaxSettingsTab,
+    DiscoveryEngineTab,
     CompanyFormModal,
     UserFormModal,
     AssignCompanyModal,
+    UserTeamModal,
+    SetUserPasswordModal,
 } from "../components/admin";
 
 const AdminManagement = () => {
-    const { user } = useContext(AuthContext);
+    const { user, applySession } = useContext(AuthContext);
     const { t } = useI18n();
+    const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
     const [companies, setCompanies] = useState([]);
     const [users, setUsers] = useState([]);
+    const [sessions, setSessions] = useState([]);
 
     const [companyModalOpen, setCompanyModalOpen] = useState(false);
     const [companySubmitting, setCompanySubmitting] = useState(false);
@@ -31,10 +40,15 @@ const AdminManagement = () => {
     const [userSubmitting, setUserSubmitting] = useState(false);
     const [assignmentUser, setAssignmentUser] = useState(null);
     const [assignmentSubmitting, setAssignmentSubmitting] = useState(false);
+    const [teamContextUser, setTeamContextUser] = useState(null);
+    const [passwordUser, setPasswordUser] = useState(null);
+    const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+    const [sessionsUser, setSessionsUser] = useState(null);
 
     const [companyForm] = Form.useForm();
     const [userForm] = Form.useForm();
     const [assignmentForm] = Form.useForm();
+    const [passwordForm] = Form.useForm();
 
     const isAdmin = user?.role === "admin";
 
@@ -44,13 +58,15 @@ const AdminManagement = () => {
     );
 
     const fetchData = async () => {
-        const [companiesResponse, usersResponse] = await Promise.all([
+        const [companiesResponse, usersResponse, sessionsResponse] = await Promise.all([
             adminService.listCompanies(),
             adminService.listUsers(),
+            adminService.listAllSessions(),
         ]);
 
         setCompanies(companiesResponse?.data || []);
         setUsers(usersResponse?.data || []);
+        setSessions(sessionsResponse?.data || []);
     };
 
     useEffect(() => {
@@ -72,6 +88,11 @@ const AdminManagement = () => {
 
         run();
     }, [isAdmin, t]);
+
+    // Any session change anywhere on the platform (login/logout/revoke, any
+    // account) refreshes the "Sesiones" tab live - see the admin-wide room
+    // in Backend/live/socketServer.js's platformAdminRoom.
+    useDataInvalidation("sessions", fetchData);
 
     const openCompanyModal = (company = null) => {
         setEditingCompany(company);
@@ -96,22 +117,6 @@ const AdminManagement = () => {
             await fetchData();
         } catch (error) {
             toast.error(error.response?.data?.message || t("common.error"));
-        }
-    };
-
-    const handleRegisterCompanyAlanube = async (companyId) => {
-        try {
-            setCompanySubmitting(true);
-            const response = await adminService.registerCompanyWithAlanube(companyId);
-            toast.success(t("admin.alanube_registered"));
-            setEditingCompany((prev) =>
-                prev && prev.id === companyId ? { ...prev, ...response?.data } : prev
-            );
-            await fetchData();
-        } catch (error) {
-            toast.error(error.response?.data?.message || t("common.error"));
-        } finally {
-            setCompanySubmitting(false);
         }
     };
 
@@ -201,10 +206,50 @@ const AdminManagement = () => {
         }
     };
 
+    const closePasswordModal = () => {
+        setPasswordUser(null);
+        passwordForm.resetFields();
+    };
+
+    const handleSetPassword = async ({ password }) => {
+        try {
+            setPasswordSubmitting(true);
+            await adminService.setUserPassword(passwordUser.id, password);
+            toast.success(t("admin.password_updated"));
+            closePasswordModal();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setPasswordSubmitting(false);
+        }
+    };
+
+    const handleRevokeAnySession = async (session) => {
+        try {
+            await adminService.revokeAnySession(session.id);
+            setSessions((prev) => prev.filter((s) => s.id !== session.id));
+            toast.success(t("profile.session_revoked_toast"));
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        }
+    };
+
+    // Swaps this browser's session to targetUser's - see Backend's
+    // impersonateUser and AuthContext's applySession/endImpersonation.
+    const handleImpersonate = async (targetUser) => {
+        try {
+            const response = await adminService.impersonateUser(targetUser.id);
+            applySession(response.data.user, response.data.accessToken);
+            navigate("/dashboard");
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        }
+    };
+
     if (!isAdmin) {
         return (
             <div className="p-6 sm:p-8">
-                <Alert type="warning" showIcon message={t("admin.only_admin")} />
+                <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("admin.only_admin")} />
             </div>
         );
     }
@@ -244,6 +289,21 @@ const AdminManagement = () => {
                                     onAdd={() => setUserModalOpen(true)}
                                     onAssignCompany={openCompanyAssignment}
                                     onToggleVerification={toggleUserVerification}
+                                    onViewTeam={setTeamContextUser}
+                                    onSetPassword={setPasswordUser}
+                                    onViewSessions={setSessionsUser}
+                                    onImpersonate={handleImpersonate}
+                                />
+                            ),
+                        },
+                        {
+                            key: "sessions",
+                            label: t("admin.sessions_tab"),
+                            children: (
+                                <SessionsTable
+                                    sessions={sessions}
+                                    loading={loading}
+                                    onRevoke={handleRevokeAnySession}
                                 />
                             ),
                         },
@@ -251,6 +311,11 @@ const AdminManagement = () => {
                             key: "colombia-tax",
                             label: t("admin.colombia_tax_tab"),
                             children: <ColombiaTaxSettingsTab />,
+                        },
+                        {
+                            key: "discovery-engine",
+                            label: t("admin.discovery_engine_tab"),
+                            children: <DiscoveryEngineTab />,
                         },
                     ]}
                 />
@@ -264,7 +329,6 @@ const AdminManagement = () => {
                 form={companyForm}
                 editingCompany={editingCompany}
                 onUploadLogo={handleUploadCompanyLogo}
-                onRegisterAlanube={handleRegisterCompanyAlanube}
             />
 
             <UserFormModal
@@ -283,6 +347,24 @@ const AdminManagement = () => {
                 submitting={assignmentSubmitting}
                 form={assignmentForm}
                 companyOptions={companyOptions}
+            />
+
+            <UserTeamModal user={teamContextUser} onCancel={() => setTeamContextUser(null)} />
+
+            <SetUserPasswordModal
+                user={passwordUser}
+                onCancel={closePasswordModal}
+                onSubmit={handleSetPassword}
+                submitting={passwordSubmitting}
+                form={passwordForm}
+            />
+
+            <SessionsModal
+                target={sessionsUser}
+                title={t("admin.view_sessions_title", { username: sessionsUser?.username || "" })}
+                onCancel={() => setSessionsUser(null)}
+                fetchSessions={(targetUser) => adminService.getUserSessionsAdmin(targetUser.id)}
+                revokeSession={(targetUser, sessionId) => adminService.revokeUserSessionAdmin(targetUser.id, sessionId)}
             />
         </div>
     );

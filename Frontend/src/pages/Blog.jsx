@@ -31,7 +31,7 @@ const Blog = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <main className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-24">
                 <ContentSection id="blog" shell={false}>
                     <BreadcrumbNav items={[{ label: "Inicio", to: "/" }, { label: "Blog" }]} />
                     <SectionHeading

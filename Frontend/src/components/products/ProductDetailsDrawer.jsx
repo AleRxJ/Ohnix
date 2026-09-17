@@ -19,6 +19,7 @@ import useIsMobile from "../../hooks/useIsMobile";
 import { DEFAULT_LOW_STOCK_THRESHOLD, PRODUCT_IMAGE_FALLBACK } from "../../utils/productUtils";
 import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 import LocationStockPanel from "./LocationStockPanel";
+import BatchesPanel from "./BatchesPanel";
 import MovementRow from "./MovementRow";
 import MovementHistoryModal from "./MovementHistoryModal";
 import EmptyState from "../common/EmptyState";
@@ -161,7 +162,7 @@ const ProductDetailsDrawer = ({
                     <div className="module-shell rounded-2xl sm:rounded-3xl p-4 sm:p-5 reveal-card">
                         <div className="flex gap-3 sm:gap-5">
                             <div className="flex-shrink-0">
-                                <div className="w-28 h-full rounded-lg overflow-hidden bg-white/[0.04] border border-[var(--ohnix-line-4)] flex items-center justify-center">
+                                <div className="w-28 h-full rounded-lg overflow-hidden bg-[var(--ohnix-line-1)] border border-[var(--ohnix-line-4)] flex items-center justify-center">
                                     <Image
                                         src={product.product_image}
                                         alt={product.product_name}
@@ -204,7 +205,7 @@ const ProductDetailsDrawer = ({
                                 .map((img) => (
                                     <div
                                         key={img._id}
-                                        className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-[var(--ohnix-line-4)] bg-white/[0.04]"
+                                        className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)]"
                                     >
                                         <Image
                                             src={img.url}
@@ -287,6 +288,7 @@ const ProductDetailsDrawer = ({
                 </div>
 
                 <LocationStockPanel product={product} />
+                <BatchesPanel product={product} />
 
                 <div className="module-shell rounded-3xl border border-[var(--ohnix-line-4)]">
                     <div className="px-5 py-4 border-b border-[var(--ohnix-line-4)]">

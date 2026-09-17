@@ -61,3 +61,8 @@ export const bulkUploadRateLimiter = makeLimiter(60, 10);
 // Landing page contact form: public and unauthenticated, so the abuse vector
 // is spamming the sales inbox / burning email-provider quota.
 export const contactFormRateLimiter = makeLimiter(60, 5);
+
+// Assistant chat: each message is a paid/rate-limited model call (Groq free
+// tier is shared across the whole app - see assistantModel.service.js), so
+// this protects that shared budget from a single account, not just abuse.
+export const assistantChatRateLimiter = makeLimiter(15, 20);

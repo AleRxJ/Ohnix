@@ -18,7 +18,7 @@
 // meant to be indexed, so it doesn't need prerendering.
 
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -73,12 +73,51 @@ const waitForServer = async (url, attempts = 60) => {
     throw new Error(`Preview server at ${url} never became ready`);
 };
 
+// main.jsx loads the app's CSS (appStyles.js -> index.css) via a dynamic
+// import() so marketing pages never pay for antd/app styles - see
+// PUBLIC_PATHS in main.jsx. But that also means app.html itself ships with
+// no <link rel="stylesheet">: the browser only discovers and fetches that
+// CSS after the main JS chunk has loaded and executed far enough to reach
+// the import() call. On a slow or uncached first load (no cookies, cold
+// CDN edge) there's a real window where /login, /dashboard etc. paint
+// before Tailwind's utility classes exist - e.g. AuthLayout's
+// `absolute top-4 right-4` language switcher falls back to static flow and
+// overlaps the form. Injecting a normal <link> here lets the browser's
+// preload scanner start fetching that CSS in parallel with the JS bundle,
+// straight from the raw HTML, instead of waiting on a JS round trip.
+const linkAppStylesheet = () => {
+    const assetsDir = join(distDir, "assets");
+    const appCssFile = readdirSync(assetsDir).find(
+        (name) => name.startsWith("appStyles-") && name.endsWith(".css")
+    );
+    if (!appCssFile) {
+        throw new Error("[prerender] Could not find built appStyles-*.css in dist/assets");
+    }
+    const appHtmlPath = join(distDir, "app.html");
+    const html = readFileSync(appHtmlPath, "utf8");
+    // Placed right after <head> (not before </head>) so it's the very first
+    // thing any parser - including quirkier mobile/in-app WebViews - discovers,
+    // rather than relying on every engine's preload scanner to treat link
+    // order as irrelevant the way modern desktop Chrome does.
+    const link = `\n    <link rel="stylesheet" crossorigin href="/assets/${appCssFile}" />`;
+    writeFileSync(appHtmlPath, html.replace("<head>", `<head>${link}`), "utf8");
+};
+
 const run = async () => {
+    // app.html is now a real Vite build entry (vite.config.js
+    // rollupOptions.input) - already in dist/ with its own correctly-hashed
+    // script tag, and already part of the service worker's precache
+    // manifest. Only the CSS <link> injection below (main.jsx loads that
+    // stylesheet via a dynamic import Vite can't discover at HTML-transform
+    // time) still needs doing by hand.
+    linkAppStylesheet();
+
     console.log("[prerender] Starting vite preview server...");
-    const server = spawn("npx", ["vite", "preview", "--port", String(PORT), "--strictPort"], {
+    const viteCli = join(rootDir, "node_modules", "vite", "bin", "vite.js");
+    const server = spawn(process.execPath, [viteCli, "preview", "--port", String(PORT), "--strictPort"], {
         cwd: rootDir,
         stdio: "inherit",
-        shell: true,
+        shell: false,
     });
 
     let browser;
@@ -86,18 +125,37 @@ const run = async () => {
         await waitForServer(HOST);
 
         browser = await launchBrowser();
+        const renderedPages = new Map();
 
         for (const route of ROUTES) {
             const page = await browser.newPage();
-            const url = `${HOST}${route}`;
+            const url = `${HOST}${route}?ohnix-prerender=1`;
             console.log(`[prerender] Rendering ${route}`);
-            await page.goto(url, { waitUntil: "networkidle0", timeout: 30000 });
-            // Give SeoHead's useEffect (title/meta/structured data) and any
-            // lazy-loaded route chunk a beat to settle after network idle.
-            await new Promise((resolve) => setTimeout(resolve, 300));
+            // Marketing pages can keep analytics, images, or animations active,
+            // so networkidle0 is not a reliable readiness signal in Vercel's
+            // cold build container. The document load plus the React root is
+            // enough for SeoHead and the route chunk to be rendered.
+            await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+            await page.waitForSelector("#root > *", { timeout: 30000 });
+            // Give SeoHead's useEffect (title/meta/structured data) a beat to settle.
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await page.evaluate(() => {
+                document.querySelector("#root").dataset.prerendered = "true";
+                // Vite adds these while the build-time browser hydrates. Keeping
+                // them in the saved HTML would make real visitors eagerly fetch
+                // the 800+ KiB authenticated-app vendor graph again.
+                document.querySelectorAll('link[rel="modulepreload"]').forEach((link) => link.remove());
+            });
             const html = await page.content();
             await page.close();
 
+            renderedPages.set(route, html);
+        }
+
+        // Keep dist/index.html unchanged while Chromium is still using it as
+        // Vite's history fallback. Writing only after every route succeeds
+        // prevents later routes from accidentally rendering the homepage.
+        for (const [route, html] of renderedPages) {
             const outDir = route === "/" ? distDir : join(distDir, route);
             mkdirSync(outDir, { recursive: true });
             writeFileSync(join(outDir, "index.html"), html, "utf8");

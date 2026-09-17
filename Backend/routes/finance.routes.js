@@ -1,14 +1,20 @@
 import { Router } from "express";
 import { verifyJWT } from "../middleware/auth.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
+import { idempotent } from "../middleware/idempotency.middleware.js";
 import {
     listCashAccounts,
     getCashAccount,
+    listCashAccountConfigurationHistory,
     createCashAccount,
     updateCashAccount,
     deactivateCashAccount,
     listCashAccountMovements,
     registerManualExpense,
+    registerManualIncome,
+    transferCash,
+    adjustCash,
+    getCashIntegrity,
     listOrderPayments,
     registerOrderPayment,
     listPurchasePayments,
@@ -17,6 +23,21 @@ import {
     listUnmatchedStatementEntries,
     listUnmatchedMovements,
     matchStatementEntry,
+    suggestStatementMatches,
+    getReconciliationSummary,
+    getReconciliationReport,
+    getAccountsPayablePlan,
+    updatePurchaseDueDate,
+    getAccountsReceivablePlan,
+    updateOrderDueDate,
+    allocateOrderPayment,
+    allocatePurchasePayment,
+    listOrderPaymentAllocations,
+    listPurchasePaymentAllocations,
+    listUnallocatedPayments,
+    listPaymentCredits,
+    registerPaymentAdvance,
+    applyPaymentCredit,
 } from "../controllers/finance.controller.js";
 
 const router = Router();
@@ -36,17 +57,44 @@ router.route("/cash-accounts/:id/deactivate")
 
 router.route("/cash-accounts/:id/movements")
     .get(requireModulePermission("finance", "view"), listCashAccountMovements);
+router.route("/cash-accounts/:id/configuration-history")
+    .get(requireModulePermission("finance", "view"), listCashAccountConfigurationHistory);
 
 router.route("/expenses")
-    .post(requireModulePermission("finance", "edit"), registerManualExpense);
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.expense"), registerManualExpense);
+
+router.route("/income")
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.income"), registerManualIncome);
+router.route("/transfers")
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.cash-transfer"), transferCash);
+router.route("/adjustments")
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.cash-adjustment"), adjustCash);
+router.route("/integrity")
+    .get(requireModulePermission("finance", "view"), getCashIntegrity);
 
 router.route("/orders/:orderId/payments")
     .get(requireModulePermission("finance", "view"), listOrderPayments)
-    .post(requireModulePermission("finance", "edit"), registerOrderPayment);
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.order-payment"), registerOrderPayment);
+router.post("/orders/:orderId/payments/:paymentId/allocate", requireModulePermission("finance", "edit"), allocateOrderPayment);
+router.get("/orders/:orderId/payments/:paymentId/allocations", requireModulePermission("finance", "view"), listOrderPaymentAllocations);
 
 router.route("/purchases/:purchaseId/payments")
     .get(requireModulePermission("finance", "view"), listPurchasePayments)
-    .post(requireModulePermission("finance", "edit"), registerPurchasePayment);
+    .post(requireModulePermission("finance", "edit"), idempotent("finance.purchase-payment"), registerPurchasePayment);
+router.post("/purchases/:purchaseId/payments/:paymentId/allocate", requireModulePermission("finance", "edit"), allocatePurchasePayment);
+router.get("/purchases/:purchaseId/payments/:paymentId/allocations", requireModulePermission("finance", "view"), listPurchasePaymentAllocations);
+router.get("/payments/unallocated", requireModulePermission("finance", "view"), listUnallocatedPayments);
+router.get("/payment-credits", requireModulePermission("finance", "view"), listPaymentCredits);
+router.post("/payment-credits", requireModulePermission("finance", "edit"), idempotent("finance.payment-credit"), registerPaymentAdvance);
+router.post("/payment-credits/:creditId/apply", requireModulePermission("finance", "edit"), applyPaymentCredit);
+router.route("/accounts-payable")
+    .get(requireModulePermission("finance", "view"), getAccountsPayablePlan);
+router.route("/purchases/:purchaseId/due-date")
+    .patch(requireModulePermission("finance", "edit"), updatePurchaseDueDate);
+router.route("/accounts-receivable")
+    .get(requireModulePermission("finance", "view"), getAccountsReceivablePlan);
+router.route("/orders/:orderId/due-date")
+    .patch(requireModulePermission("finance", "edit"), updateOrderDueDate);
 
 router.route("/reconciliation/statement-entries")
     .post(requireModulePermission("finance", "edit"), createStatementEntries);
@@ -59,5 +107,11 @@ router.route("/reconciliation/unmatched-movements")
 
 router.route("/reconciliation/match")
     .post(requireModulePermission("finance", "edit"), matchStatementEntry);
+router.route("/reconciliation/suggestions")
+    .get(requireModulePermission("finance", "view"), suggestStatementMatches);
+router.route("/reconciliation/summary")
+    .get(requireModulePermission("finance", "view"), getReconciliationSummary);
+router.route("/reconciliation/report")
+    .get(requireModulePermission("finance", "view"), getReconciliationReport);
 
 export default router;

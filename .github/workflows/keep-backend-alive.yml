@@ -1,0 +1,18 @@
+name: Keep backend alive
+
+# Render's free tier spins ohnix-backend down after ~15 min without traffic,
+# so the next real visitor's request (e.g. the login page's auth check)
+# eats a 30-50s cold-start delay and the UI looks stuck/broken. Pinging the
+# health check well inside that window keeps the dyno warm. This is a
+# stopgap, not a fix for that inherent free-tier limit - see render.yaml.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health check
+        run: curl -sf --max-time 60 https://ohnix.onrender.com/api/v1/test || true

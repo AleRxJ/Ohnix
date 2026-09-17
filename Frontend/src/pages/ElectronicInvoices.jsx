@@ -42,13 +42,28 @@ import useI18n from "../hooks/useI18n";
 import useIsMobile from "../hooks/useIsMobile";
 import useCountUp from "../hooks/useCountUp";
 import { resolveApiErrorMessage } from "../utils/apiError";
+import { getElectronicInvoicingProviderLabel, getCertificateLabel } from "../utils/electronicInvoicingProvider";
 
 // ensureElectronicInvoicingPlan (Backend/services/electronicInvoicing.service.js)
 // throws an English dev-facing message by design - see the same constant in
 // ElectronicInvoicingSettings.jsx/FirmaPassSelfService.jsx. A plan that
 // lapses or gets downgraded after invoices already exist can still hit this
 // gate here (retry/sync/credit-note), so it needs the same translation.
-const PLAN_GATE_CODE_MESSAGES = { electronic_invoicing_plan_required: "fiscal_setup.plan_required" };
+const PLAN_GATE_CODE_MESSAGES = {
+    electronic_invoicing_plan_required: "fiscal_setup.plan_required",
+    // Account is paused (lapsed subscription) - viewing/downloading existing
+    // invoices always stays open (see DashboardLayout.jsx's
+    // COMPLIANCE_PAGES_EXEMPT_FROM_BLOCK), but issuing/retrying/syncing a new
+    // DIAN document is still a billable write action and requires an active
+    // plan (requireActiveSubscription, order.routes.js).
+    subscription_inactive: "electronic_invoices.subscription_inactive",
+};
+const CREDIT_NOTE_CODE_MESSAGES = {
+    ...PLAN_GATE_CODE_MESSAGES,
+    credit_note_amount_exceeds_remaining_base: "electronic_invoices.credit_note.amount_exceeds_remaining_base",
+    credit_note_history_requires_reconciliation: "electronic_invoices.credit_note.history_requires_reconciliation",
+    credit_note_already_processing: "electronic_invoices.credit_note.already_processing",
+};
 
 const STATUS_ALL = "all";
 const STATUS_FILTERS = [STATUS_ALL, "draft", "issuing", "submitted", "accepted", "rejected", "error", "cancelled", "contingency"];
@@ -147,9 +162,13 @@ const InfoCard = ({ label, value, mono = false }) => (
     </div>
 );
 
-const SupportButton = ({ url, kind, size = "large" }) => {
+// `onClick` (a downloader that fetches with credentials, e.g. itcycle's
+// on-demand representación gráfica) is an alternative to `url` (a plain,
+// already-hosted link, e.g. Factus/Alanube's own pdfUrl) - present whenever
+// either is given, never both at once for the same invoice.
+const SupportButton = ({ url, onClick, loading, kind, size = "large" }) => {
     const { t } = useI18n();
-    const present = Boolean(url);
+    const present = Boolean(url || onClick);
     const isPdf = kind === "pdf";
     const label = isPdf ? t("electronic_invoices.support.download_pdf") : t("electronic_invoices.support.view_xml");
     const icon = isPdf ? <DownloadOutlined /> : <FileTextOutlined />;
@@ -167,8 +186,10 @@ const SupportButton = ({ url, kind, size = "large" }) => {
     return (
         <Button
             icon={icon}
-            href={url}
-            target="_blank"
+            href={onClick ? undefined : url}
+            target={onClick ? undefined : "_blank"}
+            onClick={onClick}
+            loading={loading}
             size={size}
             className={`${baseClass} ${colorClass}`}
         >
@@ -363,7 +384,7 @@ const CreditNoteModal = ({ open, onCancel, onSubmit, submitting, orderId }) => {
                             description={t("electronic_invoices.credit_note.items_hint")}
                             type="info"
                             showIcon
-                            className="mb-3"
+                            className="mb-3 dark-alert dark-alert-purple"
                         />
                         <Table
                             columns={itemsColumns}
@@ -449,12 +470,31 @@ const InvoiceDetailDrawer = ({
     syncing,
     creditNotes,
     creditNotesLoading,
+    onRetryCreditNoteLocalEffect,
+    retryingCreditNoteId,
 }) => {
     const { t } = useI18n();
     const isMobile = useIsMobile();
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
     if (!invoice) return null;
     const issuedAt = invoice.issuedAt ? new Date(invoice.issuedAt) : null;
     const events = Array.isArray(invoice.events) ? invoice.events : [];
+
+    // itcycle never populates pdfUrl (see electronicInvoicePdf.service.js's
+    // module comment) - its "representación gráfica" is generated on demand
+    // instead, only once the invoice actually has a CUFE/number to show
+    // (draft/error/rejected-with-no-number states have nothing to render).
+    const canGenerateItcyclePdf = invoice.provider === "itcycle" && Boolean(invoice.cufe) && Boolean(invoice.invoiceNumber);
+    const handleDownloadItcyclePdf = async () => {
+        setDownloadingPdf(true);
+        try {
+            await electronicInvoiceService.downloadPdf(invoice.orderId, invoice.invoiceNumber);
+        } catch {
+            message.error(t("electronic_invoices.support.pdf_download_error"));
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
 
     return (
         <Drawer
@@ -484,7 +524,7 @@ const InvoiceDetailDrawer = ({
                 <div className="relative overflow-hidden rounded-3xl border border-[#29D8D5]/25 bg-[radial-gradient(circle_at_90%_0%,rgba(41,216,213,.22),transparent_45%),var(--ohnix-line-1)] p-5">
                     <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full border border-[#44F3F0]/20 animate-glow-pulse" />
                     <div className="mb-2 inline-flex items-center gap-2 text-[10px] font-bold tracking-[.22em] text-[#44F3F0]">
-                        <QrcodeOutlined /> FACTUS · DIAN
+                        <QrcodeOutlined /> {getElectronicInvoicingProviderLabel(invoice.provider)} · DIAN
                     </div>
                     <div className="text-2xl font-bold text-[var(--ohnix-text-primary)]">{invoice.invoiceNumber || invoice.referenceCode}</div>
                     <div className="mt-1 text-xs text-[var(--ohnix-text-muted)]">{t("electronic_invoices.table.order_prefix")} {invoice.order?.invoiceNo || "—"}</div>
@@ -543,8 +583,21 @@ const InvoiceDetailDrawer = ({
                     mono={false}
                 />
 
+                {invoice.certificateProvider && (
+                    <InfoCard
+                        label={t("electronic_invoices.drawer.signed_with")}
+                        value={getCertificateLabel(invoice.certificateProvider, invoice.certificateIdentifier)}
+                        mono={false}
+                    />
+                )}
+
                 <div className="grid grid-cols-2 gap-3">
-                    <SupportButton kind="pdf" url={invoice.pdfUrl} />
+                    <SupportButton
+                        kind="pdf"
+                        url={invoice.pdfUrl}
+                        onClick={!invoice.pdfUrl && canGenerateItcyclePdf ? handleDownloadItcyclePdf : undefined}
+                        loading={downloadingPdf}
+                    />
                     <SupportButton kind="xml" url={invoice.xmlUrl} />
                 </div>
 
@@ -602,8 +655,30 @@ const InvoiceDetailDrawer = ({
                                                 ? new Date(note.issuedAt).toLocaleString("es-CO")
                                                 : t("electronic_invoices.drawer.pending")}
                                         </div>
+                                        {note.status === "accepted" && note.localEffectStatus && note.localEffectStatus !== "not_applicable" && (
+                                            <div className={`mt-1 text-xs ${note.localEffectStatus === "applied" ? "text-emerald-400" : "text-amber-300"}`}>
+                                                {t(`electronic_invoices.credit_note.local_effect_${note.localEffectStatus}`)}
+                                            </div>
+                                        )}
+                                        {note.certificateProvider && (
+                                            <div className="mt-1 text-xs text-[var(--ohnix-text-dim)]">
+                                                {t("electronic_invoices.drawer.signed_with")}: {getCertificateLabel(note.certificateProvider, note.certificateIdentifier)}
+                                            </div>
+                                        )}
                                     </div>
-                                    <StatusPill status={note.status} />
+                                    <div className="flex shrink-0 flex-col items-end gap-2">
+                                        <StatusPill status={note.status} />
+                                        {note.status === "accepted" && ["pending", "failed"].includes(note.localEffectStatus) && (
+                                            <Button
+                                                size="small"
+                                                icon={<ReloadOutlined />}
+                                                loading={retryingCreditNoteId === note.id}
+                                                onClick={() => onRetryCreditNoteLocalEffect(invoice.orderId, note.id)}
+                                            >
+                                                {t("electronic_invoices.credit_note.retry_local_effect")}
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             ))
                         )}
@@ -645,6 +720,7 @@ const ElectronicInvoices = () => {
     const [creditNotesLoading, setCreditNotesLoading] = useState(false);
     const [creditNoteModalOpen, setCreditNoteModalOpen] = useState(false);
     const [creditNoteSubmitting, setCreditNoteSubmitting] = useState(false);
+    const [retryingCreditNoteId, setRetryingCreditNoteId] = useState(null);
     const { formatCurrency } = useCurrency();
     // `items` is the full, unpaginated list (the desktop table below pages
     // it client-side) - the mobile card list used to render every single
@@ -749,9 +825,22 @@ const ElectronicInvoices = () => {
             setCreditNoteModalOpen(false);
             await loadCreditNotes(selected.orderId);
         } catch (error) {
-            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "electronic_invoices.credit_note.error"));
+            message.error(resolveApiErrorMessage(error, t, CREDIT_NOTE_CODE_MESSAGES, "electronic_invoices.credit_note.error"));
         } finally {
             setCreditNoteSubmitting(false);
+        }
+    };
+
+    const handleRetryCreditNoteLocalEffect = async (orderId, creditNoteId) => {
+        setRetryingCreditNoteId(creditNoteId);
+        try {
+            await electronicInvoiceService.retryCreditNoteLocalEffect(orderId, creditNoteId);
+            message.success(t("electronic_invoices.credit_note.retry_local_effect_success"));
+            await loadCreditNotes(orderId);
+        } catch (error) {
+            message.error(resolveApiErrorMessage(error, t, PLAN_GATE_CODE_MESSAGES, "electronic_invoices.credit_note.retry_local_effect_error"));
+        } finally {
+            setRetryingCreditNoteId(null);
         }
     };
 
@@ -779,7 +868,9 @@ const ElectronicInvoices = () => {
                         </span>
                         <div className="min-w-0">
                             <div className="truncate font-semibold text-[var(--ohnix-text-primary)]">{row.invoiceNumber || row.referenceCode}</div>
-                            <div className="text-xs text-[var(--ohnix-text-dim)]">{t("electronic_invoices.table.order_prefix")} {row.order?.invoiceNo || "—"}</div>
+                            <div className="text-xs text-[var(--ohnix-text-dim)]">
+                                {t("electronic_invoices.table.order_prefix")} {row.order?.invoiceNo || "—"} · {getElectronicInvoicingProviderLabel(row.provider)}
+                            </div>
                         </div>
                     </div>
                 ),
@@ -1036,7 +1127,9 @@ const ElectronicInvoices = () => {
                                             </span>
                                             <div>
                                                 <div className="font-semibold text-[var(--ohnix-text-primary)]">{row.invoiceNumber || row.referenceCode}</div>
-                                                <div className="text-xs text-[var(--ohnix-text-muted)]">{row.order?.customerName || "—"}</div>
+                                                <div className="text-xs text-[var(--ohnix-text-muted)]">
+                                                    {row.order?.customerName || "—"} · {getElectronicInvoicingProviderLabel(row.provider)}
+                                                </div>
                                             </div>
                                         </div>
                                         <StatusPill status={row.status} />
@@ -1071,6 +1164,8 @@ const ElectronicInvoices = () => {
                 syncing={Boolean(selected && syncingId === selected.orderId)}
                 creditNotes={creditNotes}
                 creditNotesLoading={creditNotesLoading}
+                onRetryCreditNoteLocalEffect={handleRetryCreditNoteLocalEffect}
+                retryingCreditNoteId={retryingCreditNoteId}
             />
 
             <CreditNoteModal

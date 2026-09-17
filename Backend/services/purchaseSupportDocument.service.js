@@ -6,6 +6,7 @@ import { ensureUserSubscription, getEffectivePlan, getPlanFeatures } from "../mi
 import {
     buildItcycleCustomerParty,
     buildItcycleLines,
+    buildItcycleSendOptions,
     buildItcycleTotals,
     normalizeItcycleStatus,
 } from "./electronicInvoicing.service.js";
@@ -71,6 +72,7 @@ const serialize = (doc) => !doc ? null : ({
     provider: doc.provider, status: doc.status, referenceCode: doc.referenceCode,
     externalId: doc.externalId, documentNumber: doc.documentNumber, cufe: doc.cufe,
     pdfUrl: doc.pdfUrl, xmlUrl: doc.xmlUrl,
+    certificateId: doc.certificateId, certificateProvider: doc.certificateProvider, certificateIdentifier: doc.certificateIdentifier,
     errorMessage: doc.errorMessage, issuedAt: doc.issuedAt,
     createdAt: doc.createdAt, updatedAt: doc.updatedAt,
     events: Array.isArray(doc.events) ? doc.events.map(serializeEvent) : undefined,
@@ -138,6 +140,9 @@ const mapSupportDocumentResponse = (raw) => ({
     pdfUrl: null,
     xmlUrl: null,
     status: normalizeItcycleStatus(raw?.status),
+    certificateId: text(raw?.certificateId) || null,
+    certificateProvider: text(raw?.certificate?.provider) || null,
+    certificateIdentifier: text(raw?.certificate?.certificateIdentifier) || null,
     rawResponse: raw,
 });
 
@@ -234,7 +239,7 @@ export const issueSupportDocumentForPurchase = async ({ purchaseId, requesterUse
 
     if (!claim.claimed) return { reused: true, trigger, countryCode: "CO", supportDocument: serialize(claim.doc) };
     try {
-        const mapped = await createItcycleSupportDocument({ apiKey, internalReference: purchase.purchaseNo, document }).then(mapSupportDocumentResponse);
+        const mapped = await createItcycleSupportDocument({ apiKey, internalReference: purchase.purchaseNo, document, send: buildItcycleSendOptions(company) }).then(mapSupportDocumentResponse);
         const doc = await prisma.$transaction(async (tx) => {
             const updated = await tx.purchaseSupportDocument.update({ where: { id: claim.doc.id }, data: { ...mapped, errorMessage: null, issuedAt: mapped.status === "accepted" ? new Date() : null } });
             await tx.purchaseSupportDocumentEvent.create({ data: { purchaseSupportDocumentId: updated.id, eventType: "provider_response", status: updated.status, payload: mapped.rawResponse } });
@@ -272,7 +277,7 @@ export const syncSupportDocumentStatus = async ({ purchaseId, requesterUserId, r
         // Same two-meanings-of-sync split as syncElectronicInvoiceStatus:
         // CONTINGENCY means a real resend, anything else is a status poll.
         const mapped = doc.status === "contingency"
-            ? mapSupportDocumentResponse(await retryItcycleSupportDocumentSend({ apiKey, id: doc.externalId }))
+            ? mapSupportDocumentResponse(await retryItcycleSupportDocumentSend({ apiKey, id: doc.externalId, send: buildItcycleSendOptions(company) }))
             : mapSupportDocumentResponse(await getItcycleSupportDocumentStatus({ apiKey, id: doc.externalId }));
 
         const updated = await prisma.$transaction(async (tx) => {

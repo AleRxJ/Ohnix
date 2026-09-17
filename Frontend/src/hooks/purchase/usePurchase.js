@@ -11,6 +11,11 @@ import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { idempotencyHeaders } from "../../utils/idempotency";
 import { useDataInvalidation } from "../useDataInvalidation";
+import { getConnectivityState } from "../../offline/connectivity";
+import { subscribeSyncCompleted } from "../../offline/syncEngine";
+import { queueCreate, queueUpdate, readMirrorAll, mirrorReplaceAll } from "../../offline/entityQueue";
+import { enqueueOperation } from "../../offline/outbox";
+import { financeErrorMessage } from "../../utils/financeError";
 
 const UPDATE_STATUS_ERROR_CODES = {
     invalid_purchase_status_transition: "purchases.invalid_status_transition",
@@ -57,6 +62,13 @@ export const usePurchase = () => {
     // Fetch all purchases
     const fetchPurchases = async () => {
         const requestId = ++latestRequestId.current;
+        if (!getConnectivityState()) {
+            const cached = await readMirrorAll("purchases");
+            if (requestId !== latestRequestId.current) return;
+            setPurchases(cached);
+            setStats(calculateStats(cached));
+            return;
+        }
         setLoading(true);
         try {
             const response = await api.get("/purchases");
@@ -64,11 +76,19 @@ export const usePurchase = () => {
             if (response.data.success) {
                 setPurchases(response.data.data);
                 setStats(calculateStats(response.data.data));
+                mirrorReplaceAll("purchases", response.data.data);
             } else {
                 toast.error(t("purchases.failed_fetch_purchases"));
             }
         } catch (error) {
             if (requestId !== latestRequestId.current) return;
+            if (!error.response) {
+                const cached = await readMirrorAll("purchases");
+                if (requestId !== latestRequestId.current) return;
+                setPurchases(cached);
+                setStats(calculateStats(cached));
+                return;
+            }
             toast.error(t("purchases.error_fetching_purchases"));
             console.error("Error:", error);
         } finally {
@@ -76,8 +96,14 @@ export const usePurchase = () => {
         }
     };
 
-    // Fetch suppliers
+    // Fetch suppliers - reuses the same "suppliers"/"products" mirror
+    // tables Etapa 1 already keeps warm (useSuppliers.js, useProducts.js);
+    // nothing Purchase-specific to mirror here.
     const fetchSuppliers = async () => {
+        if (!getConnectivityState()) {
+            setSuppliers(await readMirrorAll("suppliers"));
+            return;
+        }
         let response;
         try {
             if (user.role === "admin") {
@@ -89,6 +115,10 @@ export const usePurchase = () => {
                 setSuppliers(response.data.data);
             }
         } catch (error) {
+            if (!error.response) {
+                setSuppliers(await readMirrorAll("suppliers"));
+                return;
+            }
             toast.error(t("purchases.error_fetching_suppliers"));
             console.error("Error:", error);
         }
@@ -96,12 +126,20 @@ export const usePurchase = () => {
 
     // Fetch products
     const fetchProducts = async () => {
+        if (!getConnectivityState()) {
+            setProducts(await readMirrorAll("products"));
+            return;
+        }
         try {
             const response = await api.get("/products");
             if (response.data.success) {
                 setProducts(response.data.data);
             }
         } catch (error) {
+            if (!error.response) {
+                setProducts(await readMirrorAll("products"));
+                return;
+            }
             toast.error(t("purchases.error_fetching_products"));
             console.error("Error:", error);
         }
@@ -136,13 +174,25 @@ export const usePurchase = () => {
 
     const registerPurchasePayment = async (purchaseId, values) => {
         setRegisteringPayment(true);
+        if (!getConnectivityState()) {
+            // Action-only, same reasoning as Orders' registerOrderPayment -
+            // no dedicated mirror/list for payments in this scope.
+            await enqueueOperation({
+                entity: "purchases",
+                opType: "custom",
+                request: { method: "post", url: `/finance/purchases/${purchaseId}/payments`, data: values },
+            });
+            toast.success(t("common.offline_saved_locally"));
+            setRegisteringPayment(false);
+            return true;
+        }
         try {
             await financeService.registerPurchasePayment(purchaseId, values);
             toast.success(t("finance.payment_registered"));
             await Promise.all([fetchPurchasePayments(purchaseId), fetchPurchases()]);
             return true;
         } catch (error) {
-            toast.error(error.response?.data?.message || t("finance.failed"));
+            toast.error(financeErrorMessage(error, t));
             console.error("Error:", error);
             return false;
         } finally {
@@ -175,6 +225,27 @@ export const usePurchase = () => {
 
     // Create purchase
     const createPurchase = async (values) => {
+        if (!getConnectivityState()) {
+            const supplier = suppliers.find((s) => s._id === values.supplier_id);
+            await queueCreate({
+                entity: "purchases",
+                url: "/purchases",
+                fields: { ...values, ...(isTutorialActive && { is_tutorial_data: true }) },
+                // Unlike Orders' invoice_no (server-generated), purchase_no
+                // is a field the user types in themselves - it's already in
+                // `values`/plainFields as-is, so it must NOT be overridden
+                // here the way Orders' placeholder overrides its own
+                // server-assigned invoice_no.
+                optimisticExtra: {
+                    supplier_id: supplier ? { _id: supplier._id, name: supplier.name } : values.supplier_id,
+                    purchase_date: new Date().toISOString(),
+                    purchase_status: values.purchase_status || "pending",
+                },
+            });
+            toast.success(t("common.offline_saved_locally"));
+            await fetchPurchases();
+            return { success: true };
+        }
         try {
             const response = await api.post("/purchases", {
                 ...values,
@@ -228,6 +299,19 @@ export const usePurchase = () => {
     // Update purchase status
     const updatePurchaseStatus = async (purchaseId, status) => {
         setUpdatingPurchaseId(purchaseId);
+        if (!getConnectivityState()) {
+            await queueUpdate({
+                entity: "purchases",
+                url: `/purchases/${purchaseId}`,
+                id: purchaseId,
+                fields: { purchase_status: status },
+                optimisticPatch: { purchase_status: status },
+            });
+            toast.success(t("common.offline_saved_locally"));
+            await fetchPurchases();
+            setUpdatingPurchaseId(null);
+            return { success: true };
+        }
         try {
             const response = await api.patch(
                 `/purchases/${purchaseId}`,
@@ -314,6 +398,19 @@ export const usePurchase = () => {
         fetchPurchases();
         fetchProducts();
     });
+
+    // Refetch once a full sync cycle completes (not merely "connectivity
+    // came back") - see useOrders.js for why the raw connectivity event
+    // alone races the outbox drain.
+    useEffect(
+        () =>
+            subscribeSyncCompleted(() => {
+                fetchPurchases();
+                fetchSuppliers();
+                fetchProducts();
+            }),
+        []
+    );
 
     return {
         // State

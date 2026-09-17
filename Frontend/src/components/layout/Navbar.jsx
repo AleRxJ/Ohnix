@@ -3,6 +3,7 @@ import { MenuOutlined, GlobalOutlined, CloseOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import useI18n from "../../hooks/useI18n";
 import useScrollLock from "../../hooks/useScrollLock";
+import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 // Plain HTML/Tailwind instead of antd (Layout/Button/Drawer/Dropdown) - this
 // is public-facing marketing chrome, rendered on every marketing page, and
@@ -24,6 +25,15 @@ const Navbar = () => {
         { label: t("landing.nav.features"), path: "features" },
         { label: t("landing.nav.process"), path: "timeline" },
         { label: t("pricing.eyebrow", { defaultValue: "Pricing" }), path: "pricing" },
+        // Same ELECTRONIC_INVOICING_ENABLED gate as the sections themselves
+        // (LandingPage.jsx) - without it, this link would scroll to nothing
+        // whenever the flag is off, since the section never renders at all.
+        ...(ELECTRONIC_INVOICING_ENABLED
+            ? [
+                  { label: t("landing.nav.api_invoicing"), path: "api-facturacion-electronica" },
+                  { label: t("landing.nav.certificate"), path: "certificado-digital" },
+              ]
+            : []),
         { label: t("landing.nav.faq"), path: "faq" },
         { label: t("landing.nav.contact"), path: "contact" },
     ];
@@ -108,22 +118,24 @@ const Navbar = () => {
 
     return (
         <header
-            className={`px-0 flex items-center justify-between h-20 fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
+            className={`px-0 flex items-center justify-between h-24 fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
                 scrolled
                     ? "bg-[#050505]/90 backdrop-blur-xl border-b border-white/8"
                     : "bg-transparent"
             }`}
         >
-            <div className="container mx-auto flex items-center justify-between px-6">
+            <div className="mx-auto flex w-full max-w-[1440px] items-center justify-between px-6">
                 <button
                     type="button"
                     onClick={() => handleNavigation("/")}
                     className="flex items-center gap-3 text-left"
                 >
                     <img
-                        src="/Ohnix_Icon.svg"
+                        src="/Ohnix_Icon_Transparent.png"
                         alt="Ohnix logo"
-                        className="h-10 w-auto md:h-11"
+                        width="44"
+                        height="44"
+                        className="h-[84px] w-auto"
                     />
                 </button>
 
@@ -216,7 +228,7 @@ const Navbar = () => {
                     </div>
                 </div>
 
-                <div className="md:hidden">
+                <div className="lg:hidden">
                     <button
                         type="button"
                         onClick={showDrawer}
@@ -246,8 +258,10 @@ const Navbar = () => {
                             style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
                         >
                             <img
-                                src="/Ohnix_FullLogo.svg"
+                                src="/Ohnix_FullLogo_Transparent.png"
                                 alt="Ohnix logo"
+                                width="144"
+                                height="36"
                                 className="h-9 w-auto"
                             />
                             <button

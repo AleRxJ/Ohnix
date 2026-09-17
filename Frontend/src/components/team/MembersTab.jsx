@@ -1,6 +1,6 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import { Button, Table, Avatar, Tag, Select, Popconfirm, Form, Empty } from "antd";
-import { PlusOutlined, UserOutlined, DeleteOutlined, MailOutlined, ReloadOutlined, SettingOutlined, SafetyCertificateOutlined, ShopOutlined } from "@ant-design/icons";
+import { PlusOutlined, UserOutlined, DeleteOutlined, MailOutlined, ReloadOutlined, SettingOutlined, SafetyCertificateOutlined, ShopOutlined, DesktopOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import AuthContext from "../../context/AuthContext";
@@ -12,6 +12,7 @@ import InviteMemberModal from "./InviteMemberModal";
 import RoleFormModal from "./RoleFormModal";
 import RolePermissionTags from "./RolePermissionTags";
 import MemberScopeModal from "./MemberScopeModal";
+import SessionsModal from "../common/SessionsModal";
 
 const avatarSrc = (person) =>
     person?.avatar?.trim() ||
@@ -37,6 +38,7 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
     const [pointsOfSale, setPointsOfSale] = useState([]);
     const [scopeModalFor, setScopeModalFor] = useState(null);
     const [scopeSubmitting, setScopeSubmitting] = useState(false);
+    const [sessionsModalFor, setSessionsModalFor] = useState(null);
 
     useEffect(() => {
         pointOfSaleService
@@ -302,17 +304,26 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                       key: "actions",
                       render: (_, record) =>
                           record.isOwner ? null : (
-                              <Popconfirm
-                                  title={t("team.remove_confirm_title")}
-                                  description={t("team.remove_confirm_content")}
-                                  okText={t("common.yes")}
-                                  cancelText={t("common.no")}
-                                  onConfirm={() => handleRemove(record.userId)}
-                              >
-                                  <Button danger size="small" icon={<DeleteOutlined />}>
-                                      {t("team.remove_member")}
-                                  </Button>
-                              </Popconfirm>
+                              <div className="flex items-center gap-1">
+                                  <Button
+                                      size="small"
+                                      type="text"
+                                      icon={<DesktopOutlined className="text-[var(--ohnix-text-muted)]" />}
+                                      title={t("team.view_sessions")}
+                                      onClick={() => setSessionsModalFor(record)}
+                                  />
+                                  <Popconfirm
+                                      title={t("team.remove_confirm_title")}
+                                      description={t("team.remove_confirm_content")}
+                                      okText={t("common.yes")}
+                                      cancelText={t("common.no")}
+                                      onConfirm={() => handleRemove(record.userId)}
+                                  >
+                                      <Button danger size="small" icon={<DeleteOutlined />}>
+                                          {t("team.remove_member")}
+                                      </Button>
+                                  </Popconfirm>
+                              </div>
                           ),
                   },
               ]
@@ -430,6 +441,14 @@ const MembersTab = ({ roles, onRolesChanged, onMembersChanged }) => {
                 submitting={scopeSubmitting}
                 member={scopeModalFor}
                 pointsOfSale={pointsOfSale}
+            />
+
+            <SessionsModal
+                target={sessionsModalFor}
+                title={t("team.view_sessions_title", { username: sessionsModalFor?.username || "" })}
+                onCancel={() => setSessionsModalFor(null)}
+                fetchSessions={(member) => teamService.getMemberSessions(team.id, member.userId)}
+                revokeSession={(member, sessionId) => teamService.revokeMemberSession(team.id, member.userId, sessionId)}
             />
         </div>
     );

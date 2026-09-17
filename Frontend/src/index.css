@@ -6,6 +6,568 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Keep below-the-fold marketing sections out of initial layout/paint work.
+   `auto` preserves each section's measured size after its first reveal, while
+   the intrinsic fallback prevents a zero-height jump before that happens. */
+.marketing-main > section:not(#home) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
+/* Accounting workspace -------------------------------------------------
+   A single visual system for every accounting surface. All paint comes
+   from theme tokens so Lite and Dark retain the same depth and hierarchy. */
+.accounting-page {
+  position: relative;
+  isolation: isolate;
+}
+.accounting-page::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -7rem;
+  right: -5rem;
+  width: min(38rem, 80vw);
+  height: 28rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(41, 216, 213, 0.12), rgba(124, 106, 247, 0.055) 38%, transparent 70%);
+  filter: blur(10px);
+  pointer-events: none;
+}
+.accounting-workspace.ant-card {
+  overflow: hidden;
+  border: 1px solid var(--ohnix-line-4) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(145deg, rgba(41, 216, 213, 0.035), transparent 26%),
+    var(--ohnix-surface-card) !important;
+  box-shadow: var(--ohnix-shadow-card);
+}
+.accounting-workspace > .ant-card-body { padding: 0 !important; }
+.accounting-tabs > .ant-tabs-nav {
+  margin: 0 !important;
+  padding: 14px 16px 0;
+  border-bottom: 1px solid var(--ohnix-line-3);
+  background: linear-gradient(180deg, var(--ohnix-line-2), transparent);
+}
+.accounting-tabs > .ant-tabs-nav::before { display: none; }
+.accounting-tabs .ant-tabs-nav-wrap { overflow-x: auto; scrollbar-width: none; }
+.accounting-tabs .ant-tabs-nav-wrap::-webkit-scrollbar { display: none; }
+.accounting-tabs .ant-tabs-tab {
+  margin: 0 5px 10px 0 !important;
+  min-height: 40px;
+  padding: 9px 13px !important;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--ohnix-text-muted) !important;
+  transition: color .2s ease, border-color .2s ease, background .2s ease, transform .2s ease;
+}
+.accounting-tabs .ant-tabs-tab:hover {
+  color: var(--ohnix-text-primary) !important;
+  background: var(--ohnix-hover-overlay);
+}
+.accounting-tabs .ant-tabs-tab-active {
+  border-color: rgba(41, 216, 213, 0.28);
+  background: linear-gradient(135deg, rgba(41, 216, 213, 0.14), rgba(124, 106, 247, 0.08));
+  box-shadow: inset 0 0 0 1px rgba(41, 216, 213, 0.04), 0 8px 24px rgba(41, 216, 213, 0.08);
+}
+.accounting-tabs .ant-tabs-tab-active .ant-tabs-tab-btn { color: var(--ohnix-text-primary) !important; }
+.accounting-tabs .ant-tabs-ink-bar { display: none; }
+.accounting-tabs > .ant-tabs-content-holder { padding: clamp(16px, 2.5vw, 28px); }
+.accounting-tab-label { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.accounting-tab-label .anticon { color: var(--ohnix-accent); opacity: .9; }
+.accounting-section-guide {
+  margin-bottom: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(41,216,213,.18);
+  border-radius: 15px;
+  background: linear-gradient(120deg, rgba(41,216,213,.07), rgba(124,106,247,.035) 58%, transparent);
+}
+.accounting-section-guide__summary { display: flex; align-items: flex-start; gap: 12px; padding: 15px 16px 11px; }
+.accounting-section-guide__icon { display: grid; place-items: center; flex: 0 0 34px; height: 34px; border: 1px solid rgba(41,216,213,.25); border-radius: 10px; background: rgba(41,216,213,.10); color: var(--ohnix-accent); }
+.accounting-section-guide__summary strong { display: block; margin-bottom: 2px; color: var(--ohnix-text-primary); font-size: 14px; }
+.accounting-section-guide__summary p { margin: 0; color: var(--ohnix-text-muted); font-size: 12px; line-height: 1.55; }
+.accounting-section-guide .ant-collapse { border-top: 1px solid var(--ohnix-line-3); }
+.accounting-section-guide .ant-collapse-header { min-height: 38px; padding: 9px 16px !important; color: var(--ohnix-text-muted) !important; }
+.accounting-section-guide .ant-collapse-content-box { padding: 2px 16px 16px !important; }
+.accounting-section-guide__toggle { display: inline-flex; align-items: center; gap: 7px; color: var(--ohnix-text-soft); font-size: 12px; font-weight: 600; }
+.accounting-section-guide__content { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.accounting-section-guide__content > div > span { display: block; margin-bottom: 7px; color: var(--ohnix-text-dim); font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.accounting-section-guide__content ol { display: grid; gap: 5px; margin: 0; padding-left: 18px; color: var(--ohnix-text-soft); font-size: 12px; }
+.accounting-section-guide__result { padding: 11px 13px; border: 1px solid var(--ohnix-line-3); border-radius: 11px; background: var(--ohnix-surface-card-soft); }
+.accounting-section-guide__result p { margin: 0; color: var(--ohnix-text-soft); font-size: 12px; line-height: 1.5; }
+.accounting-section-guide__concepts { grid-column: 1 / -1; }
+.accounting-section-guide__concepts .ant-tag { margin-bottom: 5px; cursor: help; }
+.accounting-quick-start.ant-card {
+  overflow: hidden;
+  border: 1px solid rgba(41,216,213,.23) !important;
+  border-radius: 18px !important;
+  background: radial-gradient(circle at 90% 0, rgba(41,216,213,.14), transparent 30%), linear-gradient(130deg, rgba(124,106,247,.07), transparent 52%), var(--ohnix-surface-card) !important;
+  box-shadow: var(--ohnix-shadow-card);
+}
+.accounting-quick-start__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.accounting-quick-start__heading span { color: var(--ohnix-accent); font-size: 10px; font-weight: 800; letter-spacing: .14em; }
+.accounting-quick-start__heading h3 { margin: 4px 0; color: var(--ohnix-text-primary); font-size: 20px; }
+.accounting-quick-start__heading p { max-width: 720px; margin: 0; color: var(--ohnix-text-muted); font-size: 12px; }
+.accounting-quick-start__steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+.accounting-quick-start__steps > * { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 13px; border: 1px solid var(--ohnix-line-4); border-radius: 13px; background: var(--ohnix-surface-4); color: inherit; text-align: left; cursor: pointer; transition: border-color .2s ease, transform .2s ease, background .2s ease; }
+.accounting-quick-start__steps > *:hover { border-color: rgba(41,216,213,.42); background: rgba(41,216,213,.065); transform: translateY(-2px); }
+.accounting-quick-start__steps b { display: grid; place-items: center; height: 30px; border-radius: 9px; background: rgba(41,216,213,.12); color: var(--ohnix-accent); }
+.accounting-quick-start__steps span { display: grid; gap: 2px; }
+.accounting-quick-start__steps strong { color: var(--ohnix-text-primary); font-size: 12px; }
+.accounting-quick-start__steps small { color: var(--ohnix-text-muted); font-size: 10px; line-height: 1.35; }
+.accounting-quick-start__steps .anticon { color: var(--ohnix-text-dim); }
+.accounting-page .module-shell.ant-card {
+  border-radius: 16px !important;
+  background: var(--ohnix-surface-card) !important;
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--ohnix-bg) 38%, transparent);
+}
+.accounting-page .module-shell.ant-card:hover { border-color: var(--ohnix-line-6) !important; }
+.accounting-page .module-dark-table .ant-table-container {
+  overflow: hidden;
+  border: 1px solid var(--ohnix-line-3);
+  border-radius: 14px;
+}
+.accounting-page .module-dark-table .ant-table-thead > tr > th {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .065em;
+  text-transform: uppercase;
+}
+.accounting-page .module-dark-table .ant-table-tbody > tr > td { transition: background .18s ease; }
+.accounting-page .module-dark-table .ant-table-tbody > tr:hover > td {
+  background: linear-gradient(90deg, rgba(41,216,213,.07), var(--ohnix-hover-overlay)) !important;
+}
+.accounting-page .ant-form-item-label > label,
+.accounting-modal .ant-form-item-label > label { color: var(--ohnix-text-soft) !important; font-weight: 600; }
+.accounting-page .ant-picker,
+.accounting-page .ant-select-selector,
+.accounting-page .ant-input,
+.accounting-page .ant-input-number,
+.accounting-modal .ant-picker,
+.accounting-modal .ant-select-selector,
+.accounting-modal .ant-input,
+.accounting-modal .ant-input-number {
+  border-color: var(--ohnix-line-5) !important;
+  background: var(--ohnix-surface-4) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+.accounting-page .ant-picker:focus-within,
+.accounting-page .ant-select-focused .ant-select-selector,
+.accounting-page .ant-input:focus,
+.accounting-modal .ant-picker:focus-within,
+.accounting-modal .ant-select-focused .ant-select-selector,
+.accounting-modal .ant-input:focus {
+  border-color: rgba(41,216,213,.72) !important;
+  box-shadow: 0 0 0 3px rgba(41,216,213,.10) !important;
+}
+.accounting-modal .ant-modal-content,
+.accounting-drawer .ant-drawer-content,
+.offline-conflicts-drawer .ant-drawer-content {
+  border: 1px solid var(--ohnix-line-5);
+  background:
+    radial-gradient(circle at 90% 0, rgba(41,216,213,.09), transparent 28%),
+    var(--ohnix-surface-card) !important;
+  box-shadow: var(--ohnix-shadow-elevated);
+}
+.accounting-modal .ant-modal-header,
+.accounting-drawer .ant-drawer-header,
+.offline-conflicts-drawer .ant-drawer-header {
+  border-bottom-color: var(--ohnix-line-3) !important;
+  background: transparent !important;
+}
+.accounting-modal .ant-modal-title,
+.accounting-drawer .ant-drawer-title,
+.offline-conflicts-drawer .ant-drawer-title { color: var(--ohnix-text-primary) !important; font-weight: 700; }
+.accounting-drawer .ant-drawer-body,
+.offline-conflicts-drawer .ant-drawer-body { background: transparent; }
+
+/* Discoveries: detail drawer, dismiss modal and page filters — same
+   themed-antd pattern as .accounting-drawer/.accounting-modal above, so the
+   feature's own dark surface, borders and inputs match the rest of the app
+   instead of falling back to stock (light) antd styling. Kept as its own
+   block rather than folded into .accounting-* since it has no relationship
+   to that module - only the underlying pattern is shared. */
+.discovery-modal .ant-input {
+  border-color: var(--ohnix-line-5) !important;
+  background: var(--ohnix-surface-4) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+.discovery-modal .ant-input::placeholder { color: var(--ohnix-text-dim); }
+.discovery-modal .ant-input:focus {
+  border-color: rgba(41,216,213,.72) !important;
+  box-shadow: 0 0 0 3px rgba(41,216,213,.10) !important;
+}
+.discovery-modal .ant-modal-content,
+.discovery-drawer .ant-drawer-content {
+  border: 1px solid var(--ohnix-line-5);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(41,216,213,.10), transparent 30%),
+    var(--ohnix-surface-card) !important;
+  box-shadow: var(--ohnix-shadow-elevated);
+}
+.discovery-modal .ant-modal-header,
+.discovery-drawer .ant-drawer-header {
+  border-bottom-color: var(--ohnix-line-3) !important;
+  background: transparent !important;
+}
+.discovery-modal .ant-modal-title,
+.discovery-modal .ant-modal-close,
+.discovery-drawer .ant-drawer-title { color: var(--ohnix-text-primary) !important; font-weight: 700; }
+.discovery-modal .ant-modal-body p { color: var(--ohnix-text-muted); }
+.discovery-drawer .ant-drawer-body { background: transparent; }
+
+/* Discoveries page filter bar - a custom pill-group (not antd Segmented,
+   see DiscoveryFilterTabs in pages/Discoveries.jsx) so each state reads as
+   its own deliberate choice with real breathing room instead of five
+   labels packed edge-to-edge, and carries a live count per bucket. Same
+   rounded-full track + gradient-filled active pill as ThemeToggle. */
+.discovery-filter-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  border: 1px solid var(--ohnix-line-5);
+  background: var(--ohnix-line-1);
+}
+.discovery-filter-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ohnix-text-muted);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+.discovery-filter-tab:hover:not(.is-active) { color: var(--ohnix-text-primary); background: var(--ohnix-hover-overlay); }
+.discovery-filter-tab.is-active {
+  color: var(--ohnix-accent-contrast);
+  background: linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%);
+  box-shadow: 0 6px 18px rgba(41,216,213,.28);
+}
+.discovery-filter-tab-count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: var(--ohnix-line-3);
+  color: var(--ohnix-text-dim);
+}
+.discovery-filter-tab.is-active .discovery-filter-tab-count { background: rgba(2,19,20,.16); color: var(--ohnix-accent-contrast); }
+@media (prefers-reduced-motion: reduce) { .discovery-filter-tab { transition: none; } }
+
+.discoveries-page .ant-empty-description { color: var(--ohnix-text-muted); }
+
+/* Sidebar/mobile-menu nav row for Descubrimientos - a live cyan count badge
+   instead of a plain menu label, same gradient as the FAB/action buttons,
+   so the entry itself signals "Ohnix found something" instead of reading
+   as one more item in the list. See data/index.jsx's getMenuItems. */
+.sidebar-discovery-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ohnix-accent-contrast);
+  background: linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%);
+  box-shadow: 0 0 10px rgba(41,216,213,.35);
+}
+
+/* Dashboard hero card for the top live Discovery - see
+   components/discoveries/DiscoveryDashboardHero.jsx. The single place on
+   the dashboard that gets a radial brand glow + pulsing signal dot, so
+   Ohnix's own flagship finding reads as the headline of the page, not one
+   more stat card in the grid below it. */
+.discovery-hero-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  padding: 22px 24px;
+  border-radius: 22px;
+  border: 1px solid rgba(41,216,213,.28);
+  background:
+    radial-gradient(circle at 4% 0%, rgba(41,216,213,.16), transparent 38%),
+    radial-gradient(circle at 100% 100%, rgba(124,106,247,.10), transparent 45%),
+    linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
+  box-shadow: var(--ohnix-shadow-elevated);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: transform 260ms cubic-bezier(.22,1,.36,1), border-color 260ms ease, box-shadow 260ms ease;
+}
+.discovery-hero-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(41,216,213,.5);
+  box-shadow: 0 26px 60px rgba(41,216,213,.14), var(--ohnix-shadow-elevated);
+}
+.discovery-hero-card__icon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.discovery-hero-card__body { flex: 1; min-width: 0; }
+.discovery-hero-card__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ohnix-alert-cyan-text);
+  margin-bottom: 8px;
+}
+.discovery-hero-card__pulse {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #44f3f0;
+  box-shadow: 0 0 10px rgba(68,243,240,.9);
+}
+.discovery-hero-card__pulse::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 999px;
+  border: 1px solid rgba(68,243,240,.5);
+  animation: ohnix-discovery-hero-pulse 2.4s cubic-bezier(.22,1,.36,1) infinite;
+}
+@keyframes ohnix-discovery-hero-pulse {
+  0% { transform: scale(.6); opacity: .9; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.discovery-hero-card__title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ohnix-text-primary);
+}
+.discovery-hero-card__summary {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ohnix-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.discovery-hero-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--ohnix-text-dim);
+  flex-wrap: wrap;
+}
+.discovery-hero-card__dot { width: 3px; height: 3px; border-radius: 999px; background: var(--ohnix-text-dim); }
+.discovery-hero-card__side {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+.discovery-hero-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ohnix-accent-contrast);
+  background: linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%);
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .discovery-hero-card { flex-direction: column; align-items: flex-start; }
+  .discovery-hero-card__side { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .discovery-hero-card { transition: none; }
+  .discovery-hero-card__pulse::before { animation: none; }
+}
+
+/* Detail drawer status actions (mark actioned/resolved, dismiss) - a
+   status-tinted chip, same color-mix idiom as every type/status badge in
+   this feature (--btn-color set per-button inline), instead of generic
+   antd Button chrome. */
+.discovery-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--btn-color);
+  background: color-mix(in srgb, var(--btn-color) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--btn-color) 30%, transparent);
+  cursor: pointer;
+  transition: transform 180ms cubic-bezier(.22,1,.36,1), background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+.discovery-action-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--btn-color) 18%, transparent);
+  border-color: color-mix(in srgb, var(--btn-color) 46%, transparent);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--btn-color) 22%, transparent);
+}
+.discovery-action-btn:active:not(:disabled) { transform: translateY(0); }
+.discovery-action-btn:disabled { opacity: .55; cursor: default; }
+
+/* Dismiss-confirmation modal footer - a plain ghost Cancel next to a solid
+   danger CTA, so the destructive action reads with clear weight instead of
+   antd's default OK/Cancel pair. */
+.discovery-ghost-btn {
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ohnix-text-muted);
+  background: transparent;
+  border: 1px solid var(--ohnix-line-4);
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+.discovery-ghost-btn:hover { color: var(--ohnix-text-primary); border-color: var(--ohnix-line-6); background: var(--ohnix-hover-overlay); }
+.discovery-danger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--ohnix-status-danger), #f43f5e);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--ohnix-status-danger) 35%, transparent);
+  transition: transform 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+}
+.discovery-danger-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.discovery-danger-btn:disabled { opacity: .6; cursor: default; }
+@media (prefers-reduced-motion: reduce) {
+  .discovery-action-btn, .discovery-danger-btn { transition: none; }
+}
+
+.withholding-concepts-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+  padding: clamp(18px, 3vw, 26px);
+  overflow: hidden;
+  border: 1px solid rgba(41,216,213,.22);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 88% 20%, rgba(68,243,240,.18), transparent 28%),
+    linear-gradient(125deg, rgba(41,216,213,.12), rgba(124,106,247,.075) 55%, var(--ohnix-surface-4));
+}
+.withholding-concepts-hero > div:first-child { max-width: 720px; }
+.withholding-concepts-hero > div:first-child > span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--ohnix-accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+}
+.withholding-concepts-hero > div:first-child > strong {
+  display: block;
+  color: var(--ohnix-text-primary);
+  font-size: clamp(19px, 3vw, 25px);
+}
+.withholding-concepts-hero p { margin: 7px 0 0; color: var(--ohnix-text-muted); line-height: 1.55; }
+.withholding-concepts-count {
+  display: grid;
+  place-items: center;
+  flex: 0 0 116px;
+  min-height: 104px;
+  padding: 14px;
+  border: 1px solid var(--ohnix-line-5);
+  border-radius: 16px;
+  background: var(--ohnix-surface-card-soft);
+  box-shadow: inset 0 0 30px rgba(41,216,213,.05);
+  text-align: center;
+}
+.withholding-concepts-count strong { color: var(--ohnix-accent); font-size: 34px; line-height: 1; }
+.withholding-concepts-count span { color: var(--ohnix-text-muted); font-size: 11px; line-height: 1.2; }
+.purchase-accounting-breakdown {
+  margin-top: 22px;
+  padding: clamp(18px, 3vw, 26px);
+  border: 1px solid rgba(41,216,213,.22);
+  border-radius: 19px;
+  background:
+    radial-gradient(circle at 95% 0, rgba(41,216,213,.13), transparent 28%),
+    linear-gradient(135deg, rgba(124,106,247,.055), transparent 45%),
+    var(--ohnix-surface-card);
+  box-shadow: var(--ohnix-shadow-soft);
+}
+.purchase-accounting-breakdown__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 20px; }
+.purchase-accounting-breakdown__heading span:first-child { color: var(--ohnix-accent); font-size: 10px; font-weight: 800; letter-spacing: .14em; }
+.purchase-accounting-breakdown__heading h3 { margin: 4px 0; color: var(--ohnix-text-primary); font-size: 19px; }
+.purchase-accounting-breakdown__heading p { max-width: 650px; margin: 0; color: var(--ohnix-text-muted); font-size: 12px; }
+.purchase-accounting-breakdown__totals { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; }
+.purchase-accounting-breakdown__totals > div { display: grid; gap: 5px; padding: 14px; border: 1px solid var(--ohnix-line-4); border-radius: 13px; background: var(--ohnix-surface-4); }
+.purchase-accounting-breakdown__totals span { color: var(--ohnix-text-muted); font-size: 11px; }
+.purchase-accounting-breakdown__totals strong { color: var(--ohnix-text-primary); font-size: clamp(15px,2vw,19px); overflow-wrap: anywhere; }
+.purchase-accounting-breakdown__totals .purchase-accounting-breakdown__net { border-color: rgba(41,216,213,.35); background: rgba(41,216,213,.075); }
+.purchase-accounting-breakdown__totals .purchase-accounting-breakdown__net strong { color: var(--ohnix-accent); }
+.purchase-retention-list { display: grid; gap: 8px; margin-top: 14px; }
+.purchase-retention-item { display: grid; grid-template-columns: minmax(180px,1.2fr) minmax(180px,1fr) auto; align-items: center; gap: 12px; padding: 11px 13px; border-bottom: 1px solid var(--ohnix-line-3); }
+.purchase-retention-item > div { display: flex; align-items: center; gap: 8px; color: var(--ohnix-text-soft); }
+.purchase-retention-item small { color: var(--ohnix-text-muted); }
+.purchase-retention-item > div:last-child { justify-content: flex-end; }
+.purchase-retention-item > div:last-child span { color: var(--ohnix-text-muted); font-size: 12px; }
+.purchase-retention-item > div:last-child strong { color: var(--ohnix-text-primary); }
+@media (max-width: 640px) {
+  .accounting-workspace.ant-card { border-radius: 17px !important; }
+  .accounting-tabs > .ant-tabs-nav { padding: 10px 10px 0; }
+  .accounting-tabs .ant-tabs-tab { padding: 8px 10px !important; font-size: 12px; }
+  .accounting-tabs > .ant-tabs-content-holder { padding: 14px 10px 18px; }
+  .accounting-section-guide__content { grid-template-columns: 1fr; }
+  .accounting-quick-start__heading { flex-direction: column; }
+  .accounting-quick-start__steps { grid-template-columns: 1fr; }
+  .withholding-concepts-card .ant-card-head { align-items: flex-start; gap: 10px; }
+  .withholding-concepts-card .ant-card-extra .ant-btn { padding-inline: 10px; }
+  .withholding-concepts-hero { align-items: stretch; flex-direction: column; }
+  .withholding-concepts-count { display: flex; justify-content: center; gap: 8px; flex-basis: auto; min-height: 64px; }
+  .purchase-accounting-breakdown__heading { flex-direction: column; }
+  .purchase-accounting-breakdown__totals { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .purchase-retention-item { grid-template-columns: 1fr; gap: 6px; }
+  .purchase-retention-item > div:last-child { justify-content: space-between; }
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -17,6 +579,18 @@ body {
   font-family: "Space Grotesk", "Manrope", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Mobile Chrome/WebView (e.g. Android/BlueStacks) draws a default gray/black
+   rounded-rect tap-highlight box behind any element with a click/pointer
+   handler, sized to its bounding box - on a small circular floating button
+   (assistant FAB, inventory tour FAB, discovery FAB) this reads as a large
+   square backdrop appearing "behind" what should be a plain floating
+   circle. Buttons already have their own hover/active styling, so the
+   default highlight and long-press callout are pure noise everywhere. */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
 
 /* ---------------------------------------------------------------------
@@ -37,9 +611,25 @@ body {
   --ohnix-text-dim: #8b98a0;
   --ohnix-accent: #29d8d5;
   --ohnix-accent-2: #44f3f0;
+  --ohnix-accent-soft: rgba(41, 216, 213, 0.10);
+  --ohnix-accent-soft-hover: rgba(41, 216, 213, 0.18);
+  --ohnix-accent-line: rgba(41, 216, 213, 0.30);
+  --ohnix-accent-line-strong: rgba(41, 216, 213, 0.42);
+  --ohnix-accent-glow: 0 0 18px rgba(41, 216, 213, 0.12);
+  --ohnix-accent-glow-hover: 0 0 26px rgba(41, 216, 213, 0.22);
+  --ohnix-modal-mask: rgba(0, 0, 0, 0.55);
   --ohnix-status-purple: #7c6af7;
   --ohnix-status-rose: #fb7185;
   --ohnix-status-amber: #f59e0b;
+  --ohnix-status-success: #34d399;
+  --ohnix-status-info: #60a5fa;
+  --ohnix-status-warning: #fb923c;
+  --ohnix-status-danger: #fb7185;
+  --ohnix-status-success-soft: rgba(52, 211, 153, 0.10);
+  --ohnix-status-success-line: rgba(52, 211, 153, 0.28);
+  --ohnix-status-danger-soft: rgba(251, 113, 133, 0.06);
+  --ohnix-status-danger-soft-hover: rgba(251, 113, 133, 0.14);
+  --ohnix-status-danger-line: rgba(251, 113, 133, 0.25);
 
   /* Text colors for content sitting on tinted alert/badge backgrounds
      (e.g. bg-amber-500/10) - these need to flip per theme since a pale
@@ -92,6 +682,7 @@ body {
 }
 
 [data-ohnix-theme="lite"] {
+  --ohnix-modal-mask: rgba(15, 23, 42, 0.38);
   --ohnix-bg: #eef1f4;
   --ohnix-surface: #ffffff;
   --ohnix-surface-2: #f7f9fa;
@@ -106,6 +697,15 @@ body {
   --ohnix-alert-amber-text: #92400e;
   --ohnix-alert-cyan-text: #0e7490;
   --ohnix-alert-rose-text: #9f1239;
+  --ohnix-status-success: #047857;
+  --ohnix-status-info: #2563eb;
+  --ohnix-status-warning: #c2410c;
+  --ohnix-status-danger: #be123c;
+  --ohnix-status-success-soft: rgba(4, 120, 87, 0.09);
+  --ohnix-status-success-line: rgba(4, 120, 87, 0.25);
+  --ohnix-status-danger-soft: rgba(190, 18, 60, 0.06);
+  --ohnix-status-danger-soft-hover: rgba(190, 18, 60, 0.12);
+  --ohnix-status-danger-line: rgba(190, 18, 60, 0.22);
 
   --ohnix-bg-alt: #eef1f4;
   --ohnix-surface-3: #eef2f4;
@@ -397,6 +997,39 @@ body {
   }
 }
 
+/* Discovery Engine "signal card" - a type-tinted glow bleeding from the
+   icon corner (set per-card via the --glow custom property), same lift-on-
+   hover language as .reveal-card. See components/discoveries/. */
+.discovery-signal-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), border-color 320ms ease;
+}
+
+.discovery-signal-card:hover {
+  transform: translateY(-3px);
+}
+
+.discovery-signal-card::before {
+  content: "";
+  position: absolute;
+  left: -30px;
+  top: -30px;
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  filter: blur(38px);
+  opacity: 0.35;
+  background: var(--glow);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discovery-signal-card {
+    transition: none;
+  }
+}
+
 .surface-shine {
   position: relative;
   overflow: hidden;
@@ -533,6 +1166,145 @@ body {
 
 .ant-select-dropdown .ant-empty-description {
   color: var(--ohnix-text-dim) !important;
+}
+
+/* DatePicker/RangePicker - unscoped fallback so every closed field is themed
+   even where the enclosing modal/drawer never got its own .ant-picker rule
+   (e.g. CreateOrderModal, PurchaseForm, Finance's transfer/adjustment
+   modals). A more specific scoped rule (.dashboard-app .ant-picker etc.)
+   still wins where one exists, same as .ant-select above. */
+.ant-picker {
+  background: var(--ohnix-surface-2) !important;
+  border-color: var(--ohnix-line-5) !important;
+}
+.ant-picker:not(.ant-picker-disabled):hover {
+  border-color: rgba(41, 216, 213, 0.45) !important;
+}
+.ant-picker-focused {
+  border-color: #29d8d5 !important;
+  box-shadow: 0 0 0 2px rgba(41, 216, 213, 0.18) !important;
+}
+.ant-picker .ant-picker-input > input {
+  color: var(--ohnix-text-primary) !important;
+}
+.ant-picker .ant-picker-input > input::placeholder {
+  color: var(--ohnix-text-dim) !important;
+}
+.ant-picker .ant-picker-suffix,
+.ant-picker .ant-picker-clear {
+  color: #7f8b92 !important;
+  background: var(--ohnix-surface-2) !important;
+}
+.ant-picker .ant-picker-separator {
+  color: var(--ohnix-text-dim) !important;
+}
+
+/* The calendar/time popup always portals to document.body, outside any
+   scoped wrapper class, so it needs its own unscoped rule - without this,
+   every DatePicker in the app (even ones with a themed closed field) opens
+   a plain white antd-default calendar. */
+.ant-picker-dropdown {
+  box-shadow: var(--ohnix-shadow-dropdown) !important;
+}
+.ant-picker-dropdown .ant-picker-panel-container {
+  background: var(--ohnix-surface-4) !important;
+  border: 1px solid var(--ohnix-line-5) !important;
+  box-shadow: none !important;
+}
+.ant-picker-dropdown .ant-picker-panel {
+  background: transparent !important;
+  border-color: var(--ohnix-line-4) !important;
+}
+.ant-picker-dropdown .ant-picker-header {
+  color: var(--ohnix-text-primary) !important;
+  border-bottom-color: var(--ohnix-line-4) !important;
+}
+.ant-picker-dropdown .ant-picker-header button {
+  color: var(--ohnix-text-muted) !important;
+}
+.ant-picker-dropdown .ant-picker-header button:hover {
+  color: var(--ohnix-text-primary) !important;
+}
+.ant-picker-dropdown .ant-picker-content th,
+.ant-picker-dropdown .ant-picker-cell {
+  color: var(--ohnix-text-dim) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-in-view {
+  color: var(--ohnix-text-soft) !important;
+}
+.ant-picker-dropdown .ant-picker-cell:hover:not(.ant-picker-cell-in-view) .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-in-view:hover .ant-picker-cell-inner {
+  background: var(--ohnix-hover-overlay-strong) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-color: rgba(41, 216, 213, 0.55) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-range-start .ant-picker-cell-inner,
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-range-end .ant-picker-cell-inner {
+  background: #29d8d5 !important;
+  color: var(--ohnix-accent-contrast) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-in-view.ant-picker-cell-in-range::before {
+  background: rgba(41, 216, 213, 0.14) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-disabled .ant-picker-cell-inner {
+  color: var(--ohnix-text-dim) !important;
+}
+.ant-picker-dropdown .ant-picker-cell-disabled::before {
+  background: var(--ohnix-hover-overlay) !important;
+}
+.ant-picker-dropdown .ant-picker-footer,
+.ant-picker-dropdown .ant-picker-ranges {
+  border-top-color: var(--ohnix-line-4) !important;
+}
+.ant-picker-dropdown .ant-picker-today-btn {
+  color: var(--ohnix-accent) !important;
+}
+.ant-picker-dropdown .ant-picker-time-panel-column {
+  border-left-color: var(--ohnix-line-4) !important;
+}
+.ant-picker-dropdown .ant-picker-time-panel-cell-inner {
+  color: var(--ohnix-text-soft) !important;
+}
+.ant-picker-dropdown .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner {
+  background: rgba(41, 216, 213, 0.2) !important;
+  color: var(--ohnix-text-primary) !important;
+}
+
+/* Generic dropdown menu portal (antd <Dropdown>, e.g. the header user menu
+   and per-row action menus) - same "portals to body, never themed" gap as
+   the picker popup above. */
+.ant-dropdown .ant-dropdown-menu {
+  background: var(--ohnix-surface-4) !important;
+  border: 1px solid var(--ohnix-line-5) !important;
+  box-shadow: var(--ohnix-shadow-dropdown) !important;
+}
+.ant-dropdown .ant-dropdown-menu-item {
+  color: var(--ohnix-text-soft) !important;
+}
+.ant-dropdown .ant-dropdown-menu-item:hover,
+.ant-dropdown .ant-dropdown-menu-item-active {
+  background: var(--ohnix-hover-overlay-strong) !important;
+}
+.ant-dropdown .ant-dropdown-menu-item-danger {
+  color: #ff6b6b !important;
+}
+.ant-dropdown .ant-dropdown-menu-item-disabled {
+  color: var(--ohnix-text-dim) !important;
+}
+.ant-dropdown .ant-dropdown-menu-item-divider {
+  background: var(--ohnix-line-4) !important;
+}
+
+.ant-color-picker-panel {
+  background: var(--ohnix-surface-4) !important;
+  border: 1px solid var(--ohnix-line-5) !important;
+  box-shadow: var(--ohnix-shadow-dropdown) !important;
+}
+.ant-color-picker-panel .ant-color-picker-input-container .ant-input {
+  background: var(--ohnix-surface-2) !important;
+  color: var(--ohnix-text-primary) !important;
 }
 
 /* Switch - first real usage of antd's <Switch> in the app was the physical-
@@ -692,6 +1464,21 @@ body {
   background: rgba(41, 216, 213, 0.08) !important;
 }
 
+/* Marks whichever history row's run is the one currently shown above the
+   table (DianHabilitacionPanel.jsx) - a stronger, sticky version of the
+   plain hover tint so it stays visible after the pointer moves away,
+   answering "which one am I looking at" without relying on scroll position
+   or memory of what was just clicked. The accent bar goes on :first-child
+   only - putting the inset shadow on every <td> (as the tint does, which is
+   meant to span the row) drew one broken segment per column instead of a
+   single clean line down the row's left edge. */
+.module-dark-table .dian-run-row-active > td {
+  background: rgba(41, 216, 213, 0.14) !important;
+}
+.module-dark-table .dian-run-row-active > td:first-child {
+  box-shadow: inset 3px 0 0 0 #29d8d5;
+}
+
 /* Table.Summary renders into a <tfoot>, which module-dark-table's
    .ant-table-tbody rules above don't reach - antd paints its own opaque
    white background directly on the <tfoot> itself (not just its cells), so
@@ -754,6 +1541,24 @@ body {
   color: var(--ohnix-text-soft) !important;
 }
 
+/* Form.Item's `tooltip` prop renders its help icon in antd's light-theme
+   default (near-black, ~45% opacity) - invisible against this app's dark
+   backgrounds since there's no global antd theme override anywhere. Tinted
+   with the Ohnix accent (matches the section-header icons alongside it)
+   rather than a flat gray, so it reads as part of the UI, not a leftover
+   default. */
+.dashboard-app .ant-form-item-tooltip {
+  color: var(--ohnix-accent) !important;
+  opacity: 0.85;
+}
+
+/* antd's Statistic only themes its title via the rule above by default -
+   the actual value keeps antd's near-black light-theme text color, unless
+   overridden here too. */
+.dashboard-app .ant-statistic-content {
+  color: var(--ohnix-text-primary) !important;
+}
+
 .dashboard-app .ant-input,
 .dashboard-app .ant-input-affix-wrapper,
 .dashboard-app .ant-input-number,
@@ -807,6 +1612,21 @@ body {
   border-color: transparent !important;
   color: #031416 !important;
   font-weight: 700;
+}
+
+/* type="text" buttons (icon-only actions like the UUID copy button) have no
+   border/background of their own to fall back on, so antd's near-black
+   light-theme default text color is what's actually invisible here - unlike
+   ant-btn-default/-primary above, which at least have a border to see. */
+.dashboard-app .ant-btn-text {
+  color: var(--ohnix-text-soft) !important;
+}
+.dashboard-app .ant-btn-text:hover:not(:disabled) {
+  color: #44f3f0 !important;
+  background: var(--ohnix-hover-overlay) !important;
+}
+.dashboard-app .ant-btn-text:disabled {
+  color: var(--ohnix-text-dim) !important;
 }
 
 .dashboard-app .ant-btn-primary:hover {
@@ -1256,13 +2076,20 @@ textarea.ant-input[disabled] {
   box-shadow: var(--ohnix-shadow-elevated);
 }
 
-/* Thin themed scrollbar for drawer bodies */
-.dian-drawer .ant-drawer-body::-webkit-scrollbar { width: 6px; }
-.dian-drawer .ant-drawer-body::-webkit-scrollbar-thumb {
+/* Thin themed scrollbar for every drawer's body - mirrors the .ant-modal-body
+   rule below so every Drawer in the app gets it automatically regardless of
+   which feature added it, instead of only the ones explicitly tagged
+   .dian-drawer (the previous scope, kept working via this same selector). */
+.ant-drawer-body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ohnix-scrollbar-thumb) transparent;
+}
+.ant-drawer-body::-webkit-scrollbar { width: 6px; }
+.ant-drawer-body::-webkit-scrollbar-thumb {
   background: var(--ohnix-scrollbar-thumb);
   border-radius: 999px;
 }
-.dian-drawer .ant-drawer-body::-webkit-scrollbar-track { background: transparent; }
+.ant-drawer-body::-webkit-scrollbar-track { background: transparent; }
 
 /* Thin themed scrollbar for every modal's scrollable body - antd applies
    .ant-modal-body to all of them regardless of the per-modal `styles.body`
@@ -1685,6 +2512,13 @@ textarea.ant-input[disabled] {
 
 .public-sales-quotation-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; color: var(--ohnix-text-primary); font-size: 20px; font-weight: 700; letter-spacing: .18em; }
 .public-sales-quotation-brand img { width: 76px; height: 76px; object-fit: contain; filter: drop-shadow(0 0 14px rgba(41,216,213,.42)); }
+/* .ohnix-logo-adaptive's own filter (index.css, Popconfirm section) would
+   otherwise lose to the rule above on specificity alone and never apply here
+   - chain both effects into one filter instead of letting them fight over
+   the property. */
+html[data-ohnix-theme="lite"] .public-sales-quotation-brand img.ohnix-logo-adaptive {
+  filter: contrast(1.8) brightness(0.55) drop-shadow(0 0 14px rgba(41, 216, 213, 0.42));
+}
 .public-sales-quotation-eyebrow { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; color: #29d8d5; font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
 .public-sales-quotation-hero h1 { margin: 0 0 8px; color: var(--ohnix-text-primary); font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1.05; }
 .public-sales-quotation-number { margin: 0; color: var(--ohnix-text-muted); font-size: 14px; }
@@ -1939,6 +2773,12 @@ textarea.ant-input[disabled] {
 .dark-alert .ant-alert-description {
   color: var(--ohnix-text-soft) !important;
 }
+.dark-alert .ant-alert-close-icon .anticon {
+  color: var(--ohnix-text-muted) !important;
+}
+.dark-alert .ant-alert-close-icon .anticon:hover {
+  color: var(--ohnix-text-primary) !important;
+}
 .dark-alert-teal.ant-alert {
   border: 1px solid rgba(41, 216, 213, 0.25) !important;
   background: rgba(41, 216, 213, 0.08) !important;
@@ -1972,6 +2812,242 @@ textarea.ant-input[disabled] {
 }
 .ant-message .ant-message-info .anticon {
   color: #29d8d5 !important;
+}
+
+/* antd's Popconfirm (used across ~26 files for "are you sure?" prompts, e.g.
+   deleting a row or starting a DIAN test-matrix run) renders into its own
+   portal on <body>, same as Modal/Drawer above, but with none of its own
+   classes shared with them - so it was falling back entirely to antd's
+   stock light theme (white card, default blue OK button, orange warning
+   icon) against Ohnix's dark dashboard. Scoped to .ant-popconfirm (not the
+   bare .ant-popover it's built on) so a plain Popover/Tooltip elsewhere is
+   untouched. Beyond just recoloring the stock parts, this gives it the same
+   "wow" signature as the rest of the app - the teal glow-badge icon treatment
+   from DianHabilitacionPanel's card headers (h-10 w-10 rounded-2xl, teal-on-
+   teal border+bg, external glow) and a top gradient accent bar, instead of
+   reading as a reskinned default popup. No call site passes Popconfirm its
+   own `icon` prop, so recoloring the default (ExclamationCircleFilled) is
+   safe everywhere; a destructive confirmation still reads as "danger" from
+   its dangerous OK button (red, below) - the icon itself stays brand-teal
+   rather than trying to guess intent per call site. */
+.ant-popover.ant-popconfirm {
+  --antd-arrow-background-color: var(--ohnix-surface-card) !important;
+}
+.ant-popconfirm .ant-popover-inner {
+  background: var(--ohnix-surface-card) !important;
+  border: 1px solid var(--ohnix-line-4) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--ohnix-shadow-elevated), 0 0 32px rgba(41, 216, 213, 0.12) !important;
+  overflow: hidden;
+  position: relative;
+  padding-top: 3px !important;
+  /* antd never caps a Popconfirm's width - left alone, its description
+     paragraph just expands sideways instead of wrapping, so a normal-length
+     confirmation reads as one very wide, thin strip instead of a compact
+     card. Capping it here forces the same wrap-into-a-block shape as any
+     other confirm dialog in the app. */
+  max-width: min(360px, calc(100vw - 32px));
+}
+.ant-popconfirm .ant-popover-inner::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, #29d8d5, #44f3f0, #7c6af7);
+}
+.ant-popconfirm .ant-popconfirm-message {
+  gap: 12px;
+}
+.ant-popconfirm .ant-popconfirm-message-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  margin-top: -2px;
+  border-radius: 10px;
+  background: rgba(41, 216, 213, 0.12);
+  border: 1px solid rgba(41, 216, 213, 0.3);
+  box-shadow: 0 0 14px rgba(41, 216, 213, 0.18);
+}
+.ant-popconfirm .ant-popconfirm-message-icon .anticon {
+  color: #44f3f0 !important;
+  font-size: 15px;
+}
+.ant-popconfirm .ant-popconfirm-title {
+  color: var(--ohnix-text-primary) !important;
+  font-weight: 600;
+}
+.ant-popconfirm .ant-popconfirm-description {
+  color: var(--ohnix-text-muted) !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-default {
+  background: var(--ohnix-line-1) !important;
+  border-color: var(--ohnix-line-6) !important;
+  color: var(--ohnix-text-table-cell) !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-default:hover {
+  border-color: rgba(41, 216, 213, 0.5) !important;
+  color: #44f3f0 !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary {
+  background: linear-gradient(135deg, #29d8d5, #44f3f0) !important;
+  border-color: transparent !important;
+  color: #031416 !important;
+  font-weight: 700;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary:hover {
+  filter: brightness(1.03);
+  box-shadow: 0 0 20px rgba(41, 216, 213, 0.28) !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary.ant-btn-dangerous {
+  background: var(--ohnix-status-rose) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+.ant-popconfirm .ant-popconfirm-buttons .ant-btn-primary.ant-btn-dangerous:hover {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 0 20px rgba(251, 113, 133, 0.28) !important;
+}
+
+/* SyncStatusIndicator's click-to-open "what works offline" explainer -
+   same reasoning as .ant-popconfirm above (a bare antd Popover falls back
+   entirely to stock light-theme styling against Ohnix's dark dashboard).
+   Scoped to this one overlayClassName so a plain Popover/Tooltip elsewhere
+   stays untouched. Mirrors the popconfirm's card/gradient-bar/glow
+   treatment for visual consistency, plus its own two-list layout (a
+   teal check-list for what still works, an amber lock-list for what
+   needs a connection) since this popover is informational, not a
+   confirm/cancel action. */
+.offline-capabilities-popover .ant-popover-inner {
+  background: var(--ohnix-surface-card) !important;
+  border: 1px solid var(--ohnix-line-4) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--ohnix-shadow-elevated), 0 0 32px rgba(41, 216, 213, 0.12) !important;
+  overflow: hidden;
+  position: relative;
+  padding-top: 3px !important;
+}
+.offline-capabilities-popover .ant-popover-inner::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, #29d8d5, #44f3f0, #7c6af7);
+}
+.offline-capabilities-popover .ant-popover-inner-content {
+  padding: 4px 2px;
+}
+.offline-capabilities-popover__body {
+  width: 260px;
+  font-size: 12px;
+}
+.offline-capabilities-popover__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.offline-capabilities-popover__icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.18);
+  color: #f59e0b;
+  font-size: 14px;
+}
+.offline-capabilities-popover__title {
+  margin: 0;
+  color: var(--ohnix-text-primary);
+  font-weight: 700;
+  font-size: 13px;
+}
+.offline-capabilities-popover__intro {
+  margin: 2px 0 0;
+  color: var(--ohnix-text-muted);
+  line-height: 1.4;
+}
+.offline-capabilities-popover__group-title {
+  margin: 0 0 6px;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.offline-capabilities-popover__group-title--ok {
+  color: #44f3f0;
+}
+.offline-capabilities-popover__group-title--blocked {
+  color: #f59e0b;
+}
+.offline-capabilities-popover__list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.offline-capabilities-popover__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--ohnix-text-table-cell);
+  line-height: 1.35;
+}
+.offline-capabilities-popover__list-icon {
+  margin-top: 2px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.offline-capabilities-popover__list-icon--ok {
+  color: #29d8d5;
+}
+.offline-capabilities-popover__list-icon--blocked {
+  color: #f59e0b;
+}
+.offline-capabilities-popover__footnote {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--ohnix-line-4);
+  color: var(--ohnix-text-dim);
+  line-height: 1.4;
+}
+.offline-capabilities-popover__footnote .anticon {
+  color: #44f3f0;
+  margin-right: 2px;
+}
+
+/* Ohnix_Icon_Transparent.png is thin gray line-art + a teal accent, drawn to
+   sit on a dark surface - fine as-is anywhere that's fixed-dark regardless of
+   app theme (the marketing site, AuthLayout), but on the Lite theme's white
+   surfaces (sidebar, header, mobile menu, the public quotation document) the
+   gray strokes wash out to near-invisible and the "OHNIX" wordmark baked
+   into the image becomes unreadable. Rather than maintaining a second
+   "-lite" logo asset (the previous approach, which looked inconsistent with
+   the Dark version and still needed its own fixes), every img using this
+   asset in a theme-aware spot gets this class - a contrast/brightness pull
+   that only engages when data-ohnix-theme=lite (set on <html> by
+   ThemeContext), so Dark and the always-dark marketing pages render the
+   original untouched. Values tuned by eye against a white background.
+   Deliberately doesn't set `filter` on the bare class (only inside the
+   [data-ohnix-theme="lite"] rule below) - this class is combined with
+   Tailwind's own drop-shadow-lg on some of these imgs, and thanks to
+   @tailwind utilities sitting above this rule in the cascade, an unscoped
+   `filter: none` here would win the specificity tie against drop-shadow-lg
+   and silently kill that hover glow on Dark too, not just override it on Lite. */
+.ohnix-logo-adaptive {
+  transition: filter 150ms ease;
+}
+html[data-ohnix-theme="lite"] .ohnix-logo-adaptive {
+  filter: contrast(1.8) brightness(0.55);
 }
 
 .dark-alert-purple.ant-alert {
@@ -2337,6 +3413,42 @@ textarea.ant-input[disabled] {
                     color: var(--ohnix-text-primary);
                 }
 
+.firmapass-detail-modal .ant-modal-content {
+    background: linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
+    border: 1px solid var(--ohnix-line-4);
+    border-radius: 24px;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+}
+.firmapass-detail-modal .ant-modal-header {
+    background: transparent;
+    border-bottom: 1px solid var(--ohnix-line-3);
+}
+.firmapass-detail-modal .ant-modal-title,
+.firmapass-detail-modal .ant-modal-close {
+    color: var(--ohnix-text-primary);
+}
+.firmapass-detail-modal .ant-modal-body {
+    padding: 24px;
+}
+
+.habilitacion-where-modal .ant-modal-content {
+    background: linear-gradient(180deg, var(--ohnix-surface-card), var(--ohnix-surface-card-soft));
+    border: 1px solid var(--ohnix-line-4);
+    border-radius: 24px;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+}
+.habilitacion-where-modal .ant-modal-header {
+    background: transparent;
+    border-bottom: 1px solid var(--ohnix-line-3);
+}
+.habilitacion-where-modal .ant-modal-title,
+.habilitacion-where-modal .ant-modal-close {
+    color: var(--ohnix-text-primary);
+}
+.habilitacion-where-modal .ant-modal-body {
+    padding: 24px;
+}
+
                 .return-preview-table .ant-table-tbody > tr:hover > td {
                     background-color: rgba(41, 216, 213, 0.08) !important;
                 }
@@ -2568,6 +3680,32 @@ textarea.ant-input[disabled] {
   color: #44f3f0;
 }
 
+/* Coupon display in FirmaPassSelfService.jsx - replaces antd's default
+   Text code/copyable chip, which ships fixed light-grey chrome that never
+   reads against this app's dark theme and looks out of place on light. */
+.ohnix-coupon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 10px;
+  border: 1px dashed rgba(41, 216, 213, 0.4);
+  background: rgba(41, 216, 213, 0.1);
+  padding: 6px 8px 6px 14px;
+}
+.ohnix-coupon-chip code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #29d8d5;
+}
+.ohnix-coupon-chip .ohnix-coupon-copy {
+  color: var(--ohnix-text-muted) !important;
+}
+.ohnix-coupon-chip .ohnix-coupon-copy:hover {
+  color: #29d8d5 !important;
+}
+
 /* antd's Upload.Dragger ships its own light-theme chrome (white background,
    solid grey border) on the outer .ant-upload-drag node - stripped here so
    the dashed/gradient styling lives entirely on .csv-dropzone-inner below,
@@ -2597,6 +3735,28 @@ textarea.ant-input[disabled] {
 .product-image-upload .ant-upload.ant-upload-select {
   display: block;
   width: 100%;
+}
+
+/* antd's Upload file-list row (shown once a file is attached, e.g. the
+   FirmaPass document steps) ships hardcoded light-theme text/icon colors
+   with no theme awareness - unlike Dragger/select above, there was no
+   existing override, so the filename/remove-icon read as near-invisible
+   dark-on-dark in Ohnix's Dark theme. */
+.ohnix-doc-upload .ant-upload-list-item-name {
+  color: var(--ohnix-text-primary) !important;
+}
+.ohnix-doc-upload .ant-upload-list-item .ant-upload-icon,
+.ohnix-doc-upload .ant-upload-list-item .ant-upload-icon .anticon {
+  color: var(--ohnix-text-muted) !important;
+}
+.ohnix-doc-upload .ant-upload-list-item:hover {
+  background: var(--ohnix-hover-overlay) !important;
+}
+.ohnix-doc-upload .ant-upload-list-item-action .anticon {
+  color: var(--ohnix-text-muted) !important;
+}
+.ohnix-doc-upload .ant-upload-list-item-action:hover .anticon {
+  color: var(--ohnix-text-primary) !important;
 }
 
 /* Field-level presence (see components/team/FieldPresenceHighlighter.jsx /
@@ -2706,5 +3866,42 @@ textarea.ant-input[disabled] {
 }
 .location-card--updated {
   animation: locationCardPing 1.1s ease-out;
+}
+
+.withholding-report-intro {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  padding: 22px; margin: -4px 0 18px; border: 1px solid var(--ohnix-line-4); border-radius: 18px;
+  background: radial-gradient(circle at 90% 20%, rgba(41,216,213,.16), transparent 35%), var(--ohnix-surface-2);
+}
+.withholding-report-intro span { color: var(--ohnix-accent); font-size: 11px; font-weight: 800; letter-spacing: .14em; }
+.withholding-report-intro h3 { margin: 4px 0; color: var(--ohnix-text-primary); font-size: 20px; }
+.withholding-report-intro p { margin: 0; max-width: 720px; color: var(--ohnix-text-muted); }
+.withholding-report-intro > svg { color: var(--ohnix-accent); font-size: 52px; opacity: .65; }
+.withholding-report-filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.withholding-report-filters .ant-picker { min-width: 260px; }
+.withholding-report-filters .ant-select { min-width: 210px; }
+.withholding-report-kpi { height: 100%; padding: 14px 16px; border: 1px solid var(--ohnix-line-4); border-radius: 14px; background: var(--ohnix-surface-2); }
+.withholding-report-kpi span { display: block; color: var(--ohnix-text-dim); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.withholding-report-kpi strong { display: block; margin-top: 5px; color: var(--ohnix-text-primary); font-size: 18px; }
+.withholding-report-kpi--net { border-color: rgba(41,216,213,.35); background: linear-gradient(135deg, rgba(41,216,213,.12), var(--ohnix-surface-2)); }
+.withholding-report-kpi--net strong { color: var(--ohnix-accent); }
+.withholding-certificate { color: var(--ohnix-text-primary); }
+.withholding-certificate__brand { display: flex; justify-content: space-between; align-items: end; padding-bottom: 16px; border-bottom: 1px solid var(--ohnix-line-4); }
+.withholding-certificate__brand span { color: var(--ohnix-accent); font-size: 22px; font-weight: 900; letter-spacing: .15em; }
+.withholding-certificate__brand small, .withholding-certificate__party small, .withholding-certificate__line small { display: block; color: var(--ohnix-text-dim); }
+.withholding-certificate h2 { margin: 28px 0 4px; font-size: 24px; }
+.withholding-certificate > p { color: var(--ohnix-text-muted); }
+.withholding-certificate__party { display: grid; gap: 3px; margin: 24px 0; padding: 16px; border-left: 3px solid var(--ohnix-accent); background: var(--ohnix-surface-2); }
+.withholding-certificate__party span, .withholding-certificate__line span, .withholding-certificate__total span { color: var(--ohnix-text-dim); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.withholding-certificate__line { display: flex; justify-content: space-between; align-items: center; padding: 15px; border: 1px solid var(--ohnix-line-4); border-radius: 12px; }
+.withholding-certificate__line > div:last-child { text-align: right; }
+.withholding-certificate__line > div:last-child strong { display: block; color: var(--ohnix-accent); }
+.withholding-certificate__total { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding: 18px; border-radius: 14px; background: linear-gradient(135deg, rgba(41,216,213,.16), rgba(41,216,213,.05)); }
+.withholding-certificate__total strong { color: var(--ohnix-accent); font-size: 24px; }
+@media (max-width: 640px) { .withholding-report-intro > svg { display: none; } .withholding-report-filters > * { width: 100%; } }
+@media print {
+  body * { visibility: hidden !important; }
+  #withholding-certificate-print, #withholding-certificate-print * { visibility: visible !important; }
+  #withholding-certificate-print { position: fixed; inset: 0; padding: 32px; background: white; color: #111; }
 }
 

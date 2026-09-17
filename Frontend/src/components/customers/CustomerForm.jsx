@@ -28,6 +28,20 @@ import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 const { Option } = Select;
 const { TextArea } = Input;
 
+// antd's built-in `{ type: "number" }` rule checks `typeof value === "number"`
+// via async-validator - a plain `<Input type="number">` (used below, not
+// InputNumber) always submits a string, so that built-in rule would flag
+// every valid entry as invalid. A custom validator that does the Number()
+// conversion itself (same pattern as ElectronicInvoicingSettings.jsx's
+// numbering-range rules) avoids that trap.
+const percentRule = (message) => ({
+    validator: (_, value) => {
+        if (value === undefined || value === null || value === "") return Promise.resolve();
+        const num = Number(value);
+        return Number.isFinite(num) && num >= 0 && num <= 100 ? Promise.resolve() : Promise.reject(new Error(message));
+    },
+});
+
 const sectionCardProps = {
     className: "shadow-sm border-0 module-shell h-full",
     headStyle: {
@@ -429,6 +443,44 @@ const CustomerForm = ({
                                 </Form.Item>
                             </Col>
                         </Row>
+
+                        <div className="mt-2 border-t border-[var(--ohnix-line-3)] pt-4">
+                            <p className="mb-1 text-sm font-semibold text-[var(--ohnix-text-primary)]">{t("customers.withholding_title")}</p>
+                            <p className="mb-4 text-xs text-[var(--ohnix-text-muted)]">{t("customers.withholding_hint")}</p>
+                            <Row gutter={[24, 16]}>
+                                <Col xs={24} sm={8}>
+                                    <Form.Item
+                                        name="withholding_income_percent"
+                                        label={t("customers.withholding_income_percent")}
+                                        extra={t("customers.withholding_income_percent_hint")}
+                                        rules={[percentRule(t("customers.withholding_percent_invalid"))]}
+                                    >
+                                        <Input type="number" min={0} max={100} step={0.001} size="large" className="auth-ohnix-input" />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={8}>
+                                    <Form.Item
+                                        name="withholding_ica_percent"
+                                        label={t("customers.withholding_ica_percent")}
+                                        extra={t("customers.withholding_ica_percent_hint")}
+                                        rules={[percentRule(t("customers.withholding_percent_invalid"))]}
+                                    >
+                                        <Input type="number" min={0} max={100} step={0.001} size="large" className="auth-ohnix-input" />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={8}>
+                                    <Form.Item
+                                        name="withholding_vat_percent"
+                                        label={t("customers.withholding_vat_percent")}
+                                        extra={t("customers.withholding_vat_percent_hint")}
+                                        rules={[percentRule(t("customers.withholding_percent_invalid"))]}
+                                        className="mb-0"
+                                    >
+                                        <Input type="number" min={0} max={100} step={0.001} size="large" className="auth-ohnix-input" />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+                        </div>
                     </Card>
                 )}
 

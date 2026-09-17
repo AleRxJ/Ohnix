@@ -16,11 +16,12 @@ const balanceForType = (accountType, debit, credit) =>
 // ChartAccount that actually has activity in range - mirrors
 // journalEntry.service.js#listJournalEntries's tenant filter
 // (period.createdById), the only place tenant scope lives for this ledger.
-const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate, excludeSourceTypes, periodIds }) => {
-    const rows = await prisma.journalEntryLine.groupBy({
+const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate, excludeSourceTypes, periodIds, costCenterId, db = prisma }) => {
+    const rows = await db.journalEntryLine.groupBy({
         by: ["chartAccountId"],
         where: {
             chartAccount: { accountType: { in: accountTypes }, createdById: accountId },
+            ...(costCenterId ? { costCenterId } : {}),
             journalEntry: {
                 period: { createdById: accountId },
                 ...(startDate || endDate
@@ -34,7 +35,7 @@ const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate,
     });
     if (rows.length === 0) return [];
 
-    const chartAccounts = await prisma.chartAccount.findMany({
+    const chartAccounts = await db.chartAccount.findMany({
         where: { id: { in: rows.map((r) => r.chartAccountId) } },
         select: { id: true, code: true, name: true, accountType: true },
     });
@@ -56,23 +57,26 @@ const aggregateByAccount = async ({ accountId, accountTypes, startDate, endDate,
         .sort((a, b) => a.code.localeCompare(b.code));
 };
 
-// This app never posts to "expense" (class 5 - rent, payroll, etc. aren't
-// automated anywhere) - so in practice this is a gross-margin report
-// (ingresos - costo de ventas), not a full net-income statement. `expenses`
-// is included anyway (always empty today) so the shape is ready the moment
-// something does post there, at zero extra cost.
+// No sales/purchase/cash flow ever posts to "expense" (class 5 - rent,
+// payroll, etc.) automatically - manualExpense.service.js is the only writer,
+// so `expenses`/`net_income` only reflect whatever operating expenses were
+// entered by hand for the range, not a complete accrual of them. Included
+// unconditionally (not just when non-empty) so a tenant that never uses
+// manual expenses still gets a real net_income (== gross_profit) instead of
+// a field that silently disappears.
 //
 // Excludes `period_close` lines: those exist only to zero a closed period's
 // nominal accounts into retained earnings (see accountingPeriod.service.js),
 // and would otherwise cancel out that same period's real revenue/costs when
 // this function is asked about a range that includes it.
-export const getIncomeStatement = async ({ accountId, startDate, endDate }) => {
+export const getIncomeStatement = async ({ accountId, startDate, endDate, costCenterId }) => {
     const rows = await aggregateByAccount({
         accountId,
         accountTypes: ["revenue", "cost", "expense"],
         startDate,
         endDate,
-        excludeSourceTypes: ["period_close"],
+        excludeSourceTypes: ["period_close", "period_reopen", "period_reclose"],
+        costCenterId,
     });
     const revenue = rows.filter((r) => r.account_type === "revenue");
     const costs = rows.filter((r) => r.account_type === "cost");
@@ -95,19 +99,119 @@ export const getIncomeStatement = async ({ accountId, startDate, endDate }) => {
     };
 };
 
+// One column per cost center (plus a "sin centro" column for lines never
+// assigned one) showing the same revenue/cost/expense breakdown as
+// getIncomeStatement, so a multi-sede business can see which centers are
+// actually profitable side by side. `totals` sums every column and must
+// equal what getIncomeStatement returns for the same range with no
+// costCenterId filter - every line lands in exactly one column, so nothing
+// is double-counted or dropped.
+export const getIncomeStatementComparison = async ({ accountId, startDate, endDate }) => {
+    const rows = await prisma.journalEntryLine.groupBy({
+        by: ["chartAccountId", "costCenterId"],
+        where: {
+            chartAccount: { accountType: { in: ["revenue", "cost", "expense"] }, createdById: accountId },
+            journalEntry: {
+                period: { createdById: accountId },
+                sourceType: { notIn: ["period_close", "period_reopen", "period_reclose"] },
+                ...(startDate || endDate
+                    ? { entryDate: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } }
+                    : {}),
+            },
+        },
+        _sum: { debit: true, credit: true },
+    });
+
+    const [chartAccounts, costCenters] = await Promise.all([
+        prisma.chartAccount.findMany({
+            where: { id: { in: [...new Set(rows.map((r) => r.chartAccountId))] } },
+            select: { id: true, accountType: true },
+        }),
+        prisma.costCenter.findMany({ where: { accountId }, orderBy: [{ code: "asc" }] }),
+    ]);
+    const accountTypeById = new Map(chartAccounts.map((a) => [a.id, a.accountType]));
+    const centerById = new Map(costCenters.map((c) => [c.id, c]));
+
+    const buckets = new Map();
+    const ensureBucket = (key) => {
+        if (!buckets.has(key)) buckets.set(key, { revenue: 0, costs: 0, expenses: 0 });
+        return buckets.get(key);
+    };
+    // Every active cost center gets a column even with zero activity in
+    // range, so the comparison makes an idle sede visible instead of just
+    // omitting it.
+    for (const center of costCenters) {
+        if (center.isActive) ensureBucket(center.id);
+    }
+
+    for (const row of rows) {
+        const accountType = accountTypeById.get(row.chartAccountId);
+        const amount = balanceForType(accountType, Number(row._sum.debit || 0), Number(row._sum.credit || 0));
+        const bucket = ensureBucket(row.costCenterId || "none");
+        if (accountType === "revenue") bucket.revenue += amount;
+        else if (accountType === "cost") bucket.costs += amount;
+        else bucket.expenses += amount;
+    }
+
+    const columns = [...buckets.entries()]
+        .map(([key, bucket]) => {
+            const center = key !== "none" ? centerById.get(key) : null;
+            const totalRevenue = round2(bucket.revenue);
+            const totalCosts = round2(bucket.costs);
+            const totalExpenses = round2(bucket.expenses);
+            const grossProfit = round2(totalRevenue - totalCosts);
+            return {
+                cost_center: center ? { id: center.id, code: center.code, name: center.name, is_active: center.isActive } : null,
+                total_revenue: totalRevenue,
+                total_costs: totalCosts,
+                gross_profit: grossProfit,
+                total_expenses: totalExpenses,
+                net_income: round2(grossProfit - totalExpenses),
+            };
+        })
+        .sort((a, b) => {
+            if (!a.cost_center) return 1;
+            if (!b.cost_center) return -1;
+            return a.cost_center.code.localeCompare(b.cost_center.code);
+        });
+
+    const totals = columns.reduce(
+        (acc, col) => ({
+            total_revenue: round2(acc.total_revenue + col.total_revenue),
+            total_costs: round2(acc.total_costs + col.total_costs),
+            gross_profit: round2(acc.gross_profit + col.gross_profit),
+            total_expenses: round2(acc.total_expenses + col.total_expenses),
+            net_income: round2(acc.net_income + col.net_income),
+        }),
+        { total_revenue: 0, total_costs: 0, gross_profit: 0, total_expenses: 0, net_income: 0 }
+    );
+
+    return { start_date: startDate ?? null, end_date: endDate ?? null, columns, totals };
+};
+
 // Periods that don't yet have a posted `period_close` entry - their net
 // result still only exists as the derived `currentEarnings` plug below.
 // Once a period IS closed (accountingPeriod.service.js), its result moves
 // into a real "Utilidades acumuladas" equity balance instead, so it must
 // drop out of this set or it would be counted twice.
-const getUnclosedPeriodIds = async (accountId) => {
+const getUnclosedPeriodIds = async (accountId, asOfDate) => {
     const periods = await prisma.accountingPeriod.findMany({ where: { createdById: accountId }, select: { id: true } });
     if (periods.length === 0) return [];
-    const closingEntries = await prisma.journalEntry.findMany({
-        where: { sourceType: "period_close", periodId: { in: periods.map((p) => p.id) } },
-        select: { periodId: true },
+    const lifecycleEntries = await prisma.journalEntry.findMany({
+        where: {
+            sourceType: { in: ["period_close", "period_reopen", "period_reclose"] },
+            periodId: { in: periods.map((p) => p.id) },
+            // Historical snapshots before a closing entry's effective date
+            // must still derive that period's earnings. Ignoring asOfDate
+            // here made earnings disappear from mid-period historical
+            // balance sheets after the period was later closed.
+            ...(asOfDate ? { entryDate: { lte: asOfDate } } : {}),
+        },
+        select: { periodId: true, sourceType: true },
+        orderBy: { createdAt: "asc" },
     });
-    const closedIds = new Set(closingEntries.map((e) => e.periodId));
+    const latestByPeriod = new Map(lifecycleEntries.map((entry) => [entry.periodId, entry.sourceType]));
+    const closedIds = new Set([...latestByPeriod.entries()].filter(([, sourceType]) => sourceType !== "period_reopen").map(([periodId]) => periodId));
     return periods.filter((p) => !closedIds.has(p.id)).map((p) => p.id);
 };
 
@@ -117,8 +221,19 @@ const getUnclosedPeriodIds = async (accountId) => {
 // that haven't been formally closed yet; a closed period's result is a real
 // posted equity balance instead (see getUnclosedPeriodIds above), which
 // `equity` below already picks up like any other account.
-export const getBalanceSheet = async ({ accountId, asOfDate }) => {
-    const rows = await aggregateByAccount({ accountId, accountTypes: ["asset", "liability", "equity"], endDate: asOfDate });
+//
+// costCenterId is accepted here for the same reason getTrialBalance takes
+// it: accountingPosting.service.js's withCostCenter() tags every line of a
+// posting with the same center, asset/liability lines included (e.g. a
+// sale's debit to Clientes carries the selling sede's center, not just its
+// revenue credit). `balanced` is still computed when filtered, but is NOT
+// guaranteed true the way the unfiltered sheet is - a cash transfer between
+// two sedes' cajas keeps each side's own center (see cashTransfer.service.js)
+// deliberately, so one center's half of that entry has no matching line in
+// this filtered set. The caller must not treat that as a real integrity
+// error the way an unfiltered imbalance would be.
+export const getBalanceSheet = async ({ accountId, asOfDate, costCenterId }) => {
+    const rows = await aggregateByAccount({ accountId, accountTypes: ["asset", "liability", "equity"], endDate: asOfDate, costCenterId });
     const assets = rows.filter((r) => r.account_type === "asset");
     const liabilities = rows.filter((r) => r.account_type === "liability");
     const equity = rows.filter((r) => r.account_type === "equity");
@@ -127,15 +242,16 @@ export const getBalanceSheet = async ({ accountId, asOfDate }) => {
     const totalLiabilities = round2(sumAmounts(liabilities));
     const totalEquityAccounts = round2(sumAmounts(equity));
 
-    const unclosedPeriodIds = await getUnclosedPeriodIds(accountId);
+    const unclosedPeriodIds = await getUnclosedPeriodIds(accountId, asOfDate);
     const currentEarnings = unclosedPeriodIds.length
         ? (await (async () => {
               const nominalRows = await aggregateByAccount({
                   accountId,
                   accountTypes: ["revenue", "cost", "expense"],
                   endDate: asOfDate,
-                  excludeSourceTypes: ["period_close"],
+                  excludeSourceTypes: ["period_close", "period_reopen", "period_reclose"],
                   periodIds: unclosedPeriodIds,
+                  costCenterId,
               });
               const revenue = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "revenue")));
               const costs = round2(sumAmounts(nominalRows.filter((r) => r.account_type === "cost")));
@@ -149,14 +265,16 @@ export const getBalanceSheet = async ({ accountId, asOfDate }) => {
 
     return {
         as_of_date: asOfDate,
+        cost_center_id: costCenterId ?? null,
         assets, total_assets: totalAssets,
         liabilities, total_liabilities: totalLiabilities,
         equity, current_earnings: currentEarnings,
         total_equity: totalEquity,
         total_liabilities_and_equity: totalLiabilitiesAndEquity,
-        // Must always be true by construction - every JournalEntry already
-        // balances (recordJournalEntry enforces it), so this is a live
-        // sanity check on the report itself, not just another figure.
+        // Must always be true by construction when unfiltered - every
+        // JournalEntry already balances (recordJournalEntry enforces it), so
+        // this is a live sanity check on the report itself. When costCenterId
+        // is set it's informational only, per the comment above.
         balanced: Math.abs(totalAssets - totalLiabilitiesAndEquity) < 0.01,
     };
 };
@@ -167,13 +285,14 @@ export const getBalanceSheet = async ({ accountId, asOfDate }) => {
 // the balancing amount that closeAccountingPeriod posts to retained
 // earnings. Returns amounts only (Number, not Decimal) - accountingPeriod.
 // service.js decides where they get posted; this function never writes.
-export const getPeriodClosingPlan = async ({ accountId, startDate, endDate }) => {
+export const getPeriodClosingPlan = async ({ accountId, startDate, endDate, db = prisma }) => {
     const rows = await aggregateByAccount({
         accountId,
         accountTypes: ["revenue", "cost", "expense"],
         startDate,
         endDate,
-        excludeSourceTypes: ["period_close"],
+        excludeSourceTypes: ["period_close", "period_reopen", "period_reclose"],
+        db,
     });
 
     // Revenue is credit-normal (amount = credit - debit): a positive balance
@@ -205,14 +324,14 @@ export const getPeriodClosingPlan = async ({ accountId, startDate, endDate }) =>
 // movement, and closing balance. Unlike the income statement/balance sheet
 // (which each show one slice of the chart), this is the classic "does
 // everything still tie out" report - useful right before closing a period.
-export const getTrialBalance = async ({ accountId, startDate, endDate }) => {
+export const getTrialBalance = async ({ accountId, startDate, endDate, costCenterId }) => {
     const accounts = await prisma.chartAccount.findMany({ where: { createdById: accountId }, orderBy: { code: "asc" } });
     if (accounts.length === 0) return [];
 
     const priorRows = startDate
         ? await prisma.journalEntryLine.groupBy({
               by: ["chartAccountId"],
-              where: { chartAccount: { createdById: accountId }, journalEntry: { period: { createdById: accountId }, entryDate: { lt: startDate } } },
+              where: { chartAccount: { createdById: accountId }, ...(costCenterId ? { costCenterId } : {}), journalEntry: { period: { createdById: accountId }, entryDate: { lt: startDate } } },
               _sum: { debit: true, credit: true },
           })
         : [];
@@ -222,6 +341,7 @@ export const getTrialBalance = async ({ accountId, startDate, endDate }) => {
         by: ["chartAccountId"],
         where: {
             chartAccount: { createdById: accountId },
+            ...(costCenterId ? { costCenterId } : {}),
             journalEntry: {
                 period: { createdById: accountId },
                 ...(startDate || endDate
@@ -252,4 +372,90 @@ export const getTrialBalance = async ({ accountId, startDate, endDate }) => {
             closing_balance: round2(openingBalance + balanceForType(account.accountType, debit, credit)),
         };
     });
+};
+
+// "Caja" (1105) and "Bancos" (1110) - chartOfAccounts.service.js's
+// DEFAULT_ACCOUNTS - are what count as "cash and cash equivalents" for this
+// report. Grouped together (not per-account) on purpose: a cash_transfer
+// between them is one leg debiting one and crediting the other for the same
+// amount, so summing both accounts together makes that transfer cancel out
+// to zero automatically, exactly like it should (moving cash from the caja
+// to the bank isn't an inflow or outflow of the business, just a relocation).
+const CASH_EQUIVALENT_CODES = ["1105", "1110"];
+
+// Direct method: every cash-touching line grouped by what caused it
+// (JournalEntry.sourceType), bucketed into the standard 3 activity
+// categories. `adjustments` is a 4th bucket for entries that aren't a real
+// business activity for the period (an opening balance being entered, a
+// reconciliation correction) - keeping them out of "operating" avoids
+// making a one-time correction look like recurring business cash flow.
+// Investing/financing are structurally ready but will read empty today:
+// nothing in chartOfAccounts/accountingPosting yet posts a fixed-asset
+// purchase or a loan/capital contribution to a dedicated account - the day
+// that exists, whatever its sourceType is falls into "operating" (the
+// default below) until this map is extended, same safety net as
+// getIncomeStatement's "expenses only reflect what's been entered" note.
+const CASH_FLOW_ADJUSTMENT_SOURCE_TYPES = new Set(["opening_balance", "cash_adjustment", "inventory_adjustment", "transfer_discrepancy"]);
+const cashFlowCategory = (sourceType) => (CASH_FLOW_ADJUSTMENT_SOURCE_TYPES.has(sourceType) ? "adjustments" : "operating");
+
+const emptyCashFlowCategories = () => ({
+    operating: { total: 0, lines: [] },
+    investing: { total: 0, lines: [] },
+    financing: { total: 0, lines: [] },
+    adjustments: { total: 0, lines: [] },
+});
+
+export const getCashFlowStatement = async ({ accountId, startDate, endDate }) => {
+    const cashAccounts = await prisma.chartAccount.findMany({ where: { createdById: accountId, code: { in: CASH_EQUIVALENT_CODES } }, select: { id: true } });
+    const cashAccountIds = cashAccounts.map((a) => a.id);
+    if (cashAccountIds.length === 0) {
+        return { start_date: startDate ?? null, end_date: endDate ?? null, beginning_balance: 0, ending_balance: 0, net_change: 0, categories: emptyCashFlowCategories() };
+    }
+
+    const priorAgg = startDate
+        ? await prisma.journalEntryLine.aggregate({
+              where: { chartAccountId: { in: cashAccountIds }, journalEntry: { period: { createdById: accountId }, entryDate: { lt: startDate } } },
+              _sum: { debit: true, credit: true },
+          })
+        : { _sum: { debit: 0, credit: 0 } };
+    const beginningBalance = round2(Number(priorAgg._sum.debit || 0) - Number(priorAgg._sum.credit || 0));
+
+    const rangeLines = await prisma.journalEntryLine.findMany({
+        where: {
+            chartAccountId: { in: cashAccountIds },
+            journalEntry: {
+                period: { createdById: accountId },
+                ...(startDate || endDate ? { entryDate: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } } : {}),
+            },
+        },
+        select: { debit: true, credit: true, journalEntry: { select: { sourceType: true } } },
+    });
+
+    const bySourceType = new Map();
+    for (const line of rangeLines) {
+        const sourceType = line.journalEntry.sourceType;
+        const amount = Number(line.debit) - Number(line.credit);
+        bySourceType.set(sourceType, (bySourceType.get(sourceType) || 0) + amount);
+    }
+
+    const categories = emptyCashFlowCategories();
+    for (const [sourceType, amount] of bySourceType) {
+        if (Math.round(amount * 100) === 0) continue;
+        const bucket = categories[cashFlowCategory(sourceType)];
+        bucket.lines.push({ source_type: sourceType, amount: round2(amount) });
+        bucket.total = round2(bucket.total + amount);
+    }
+    Object.values(categories).forEach((bucket) => bucket.lines.sort((a, b) => a.source_type.localeCompare(b.source_type)));
+
+    const netChange = round2(Object.values(categories).reduce((sum, bucket) => sum + bucket.total, 0));
+    const endingBalance = round2(beginningBalance + netChange);
+
+    return {
+        start_date: startDate ?? null,
+        end_date: endDate ?? null,
+        beginning_balance: beginningBalance,
+        ending_balance: endingBalance,
+        net_change: netChange,
+        categories,
+    };
 };

@@ -5,6 +5,43 @@ import { calculateStats } from "../../utils/orderHelpers";
 import AuthContext from "../../context/AuthContext";
 import useI18n from "../useI18n";
 import { useDataInvalidation } from "../useDataInvalidation";
+import { getConnectivityState } from "../../offline/connectivity";
+import { subscribeSyncCompleted } from "../../offline/syncEngine";
+import { readMirrorAll, mirrorUpsertMany } from "../../offline/entityQueue";
+
+// Best-effort local equivalent of the server-side filtering in
+// order.controller.js#getAllOrders, applied to whatever orders happen to be
+// cached (see db.js's comment on why "orders" isn't a full mirror). Offline
+// order browsing is "what's already been seen", not the full ledger.
+function filterOrdersLocally(orders, filters) {
+    let result = orders;
+    if (filters.search) {
+        const q = filters.search.toLowerCase();
+        result = result.filter(
+            (o) => o.invoice_no?.toLowerCase().includes(q) || o.customer_id?.name?.toLowerCase().includes(q)
+        );
+    }
+    if (filters.customer_id) {
+        result = result.filter((o) => o.customer_id?._id === filters.customer_id);
+    }
+    if (filters.order_status) {
+        result = result.filter((o) => o.order_status === filters.order_status);
+    }
+    if (filters.date_range) {
+        const [start, end] = filters.date_range;
+        result = result.filter((o) => {
+            const d = new Date(o.order_date || o.createdAt);
+            return d >= start.startOf("day").toDate() && d <= end.endOf("day").toDate();
+        });
+    }
+    if (filters.total_range?.min) {
+        result = result.filter((o) => o.total >= Number(filters.total_range.min));
+    }
+    if (filters.total_range?.max) {
+        result = result.filter((o) => o.total <= Number(filters.total_range.max));
+    }
+    return result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
 
 export const useOrders = () => {
     const { t } = useI18n();
@@ -45,6 +82,17 @@ export const useOrders = () => {
         currentFilters = filters
     ) => {
         const requestId = ++latestRequestId.current;
+        if (!getConnectivityState()) {
+            const cached = await readMirrorAll("orders");
+            const filtered = filterOrdersLocally(cached, currentFilters);
+            const start = (page - 1) * pageSize;
+            const pageSlice = filtered.slice(start, start + pageSize);
+            if (requestId !== latestRequestId.current) return;
+            setOrders(pageSlice);
+            setPagination({ current: page, pageSize, total: filtered.length });
+            setStats(calculateStats(filtered, { total: filtered.length }));
+            return;
+        }
         setLoading(true);
         try {
             const params = {
@@ -95,8 +143,22 @@ export const useOrders = () => {
             setStats(
                 statsData || calculateStats(ordersData, paginationData)
             );
+            // Write-through, not replace - this is one page of a much larger
+            // (server-paginated) set, not "everything" (see db.js).
+            mirrorUpsertMany("orders", ordersData);
         } catch (error) {
             if (requestId !== latestRequestId.current) return;
+            if (!error.response) {
+                const cached = await readMirrorAll("orders");
+                const filtered = filterOrdersLocally(cached, currentFilters);
+                const start = (page - 1) * pageSize;
+                const pageSlice = filtered.slice(start, start + pageSize);
+                if (requestId !== latestRequestId.current) return;
+                setOrders(pageSlice);
+                setPagination({ current: page, pageSize, total: filtered.length });
+                setStats(calculateStats(filtered, { total: filtered.length }));
+                return;
+            }
             toast.error(t("orders.failed_fetch_orders"));
             console.error("Error fetching orders:", error);
         } finally {
@@ -104,22 +166,42 @@ export const useOrders = () => {
         }
     };
 
+    // Reuses the same "customers"/"products" mirror tables Etapa 1 already
+    // keeps warm (Customers.jsx, useProducts.js) - the order form needs the
+    // exact same data those modules already cache, so there's nothing
+    // Orders-specific to mirror here.
     const fetchCustomers = async () => {
+        if (!getConnectivityState()) {
+            setCustomers(await readMirrorAll("customers"));
+            return;
+        }
         try {
             const isAdmin = user?.role === "admin";
             const endpoint = isAdmin ? "/customers/all" : "/customers";
             const response = await api.get(endpoint);
             setCustomers(response.data.data);
         } catch (error) {
+            if (!error.response) {
+                setCustomers(await readMirrorAll("customers"));
+                return;
+            }
             console.error("Error fetching customers:", error);
         }
     };
 
     const fetchProducts = async () => {
+        if (!getConnectivityState()) {
+            setProducts(await readMirrorAll("products"));
+            return;
+        }
         try {
             const response = await api.get("/products");
             setProducts(response.data.data.products || response.data.data);
         } catch (error) {
+            if (!error.response) {
+                setProducts(await readMirrorAll("products"));
+                return;
+            }
             console.error("Error fetching products:", error);
         }
     };
@@ -138,6 +220,21 @@ export const useOrders = () => {
         fetchOrders(pagination.current, pagination.pageSize, filters);
         fetchProducts();
     });
+
+    // Refetch once a full sync cycle completes (pull + outbox drain) rather
+    // than on the raw "connectivity is back" instant - otherwise this can
+    // race the drain, refetch the still-stale server list, and never look
+    // again even though the sync that would add this session's own
+    // offline-created orders finishes moments later.
+    useEffect(
+        () =>
+            subscribeSyncCompleted(() => {
+                fetchOrders(pagination.current, pagination.pageSize, filters);
+                fetchCustomers();
+                fetchProducts();
+            }),
+        [pagination.current, pagination.pageSize, filters]
+    );
 
     return {
         orders,

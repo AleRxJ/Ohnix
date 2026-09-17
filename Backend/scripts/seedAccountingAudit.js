@@ -15,8 +15,9 @@ import { registerPurchasePayment } from "../services/purchasePayment.service.js"
 // inserts) so accountingPosting.service.js's automatic journal entries fire
 // exactly as they would for a real user.
 
-const EMAIL = "alejandrovallejo10@outlook.com";
+const EMAIL = (process.argv[2] || "alejandrovallejo10@outlook.com").trim().toLowerCase();
 const PASSWORD = "OhnixAudit2026!";
+const COMPANY_NAME = `Auditoria Contabilidad ${EMAIL.split("@")[0]}`;
 
 const run = async () => {
     await prisma.$connect();
@@ -49,8 +50,8 @@ const run = async () => {
     if (!company) {
         company = await prisma.company.create({
             data: {
-                name: "Auditoria Contabilidad SAS",
-                legalName: "Auditoria Contabilidad SAS",
+                name: COMPANY_NAME,
+                legalName: COMPANY_NAME,
                 countryCode: "CO",
                 vatResponsible: "responsible",
                 vatResponsibleEffectiveFrom: new Date(),
@@ -193,7 +194,7 @@ const run = async () => {
         accountId: user.id,
         actorId: user.id,
         purchaseId: purchase._id,
-        amount: Math.round(purchaseTotal * 0.5 * 100) / 100,
+        amount: Math.round(purchaseTotal * 0.25 * 100) / 100,
         cashAccountId: cashAccount.id,
         method: "cash",
         reference: "Abono a proveedor auditoria",

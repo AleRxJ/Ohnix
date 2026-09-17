@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { Table, Button, Input, Select, Tag, Switch, Popconfirm, Card, Empty, Avatar } from "antd";
-import { PlusOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { PlusOutlined, SearchOutlined, UserOutlined, TeamOutlined, LockOutlined, LoginOutlined, DesktopOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
 const tableShellClass = "rounded-xl shadow-sm border border-[var(--ohnix-line-4)] overflow-hidden bg-[var(--ohnix-surface-card)]";
 
-const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, t }) => (
+const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, onViewTeam, onSetPassword, onViewSessions, onImpersonate, t }) => (
     <Card className="mb-4 module-shell overflow-hidden hover-lift" styles={{ body: { padding: 16 } }}>
         <div className="flex items-start gap-3">
             <Avatar size={44} icon={<UserOutlined />} className="flex-shrink-0" />
@@ -24,6 +24,9 @@ const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, t }) => (
                     <Tag color={user.role === "admin" ? "gold" : "blue"}>{user.role}</Tag>
                     <Tag>{t("admin.plan")} {user.subscription?.plan || "starter"}</Tag>
                     <Tag>{t("admin.company")} {user.company?.name || "-"}</Tag>
+                    {user.createdAt && (
+                        <Tag>{t("admin.created_at")}: {new Date(user.createdAt).toLocaleDateString()}</Tag>
+                    )}
                 </div>
 
                 <div className="mt-3 flex items-center justify-between">
@@ -40,12 +43,36 @@ const MobileUserCard = ({ user, onAssignCompany, onToggleVerification, t }) => (
                         <Switch checked={user.isVerified} />
                     </Popconfirm>
                 </div>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-[var(--ohnix-line-4)] pt-2">
+                    <Button type="text" size="small" className="!px-0 !text-[var(--ohnix-text-muted)]" icon={<TeamOutlined />} onClick={() => onViewTeam(user)}>
+                        {t("admin.view_team")}
+                    </Button>
+                    <Button type="text" size="small" className="!px-0 !text-[var(--ohnix-text-muted)]" icon={<LockOutlined />} onClick={() => onSetPassword(user)}>
+                        {t("admin.set_password")}
+                    </Button>
+                    <Button type="text" size="small" className="!px-0 !text-[var(--ohnix-text-muted)]" icon={<DesktopOutlined />} onClick={() => onViewSessions(user)}>
+                        {t("admin.view_sessions")}
+                    </Button>
+                    {user.role !== "admin" && (
+                        <Popconfirm
+                            title={t("admin.impersonate_confirm_title")}
+                            description={t("admin.impersonate_confirm_content")}
+                            onConfirm={() => onImpersonate(user)}
+                            okText={t("common.confirm")}
+                            cancelText={t("common.cancel")}
+                        >
+                            <Button type="text" size="small" className="!px-0 !text-[var(--ohnix-text-muted)]" icon={<LoginOutlined />}>
+                                {t("admin.impersonate")}
+                            </Button>
+                        </Popconfirm>
+                    )}
+                </div>
             </div>
         </div>
     </Card>
 );
 
-const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleVerification }) => {
+const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleVerification, onViewTeam, onSetPassword, onViewSessions, onImpersonate }) => {
     const { t } = useI18n();
     const [search, setSearch] = useState("");
     const [companyFilter, setCompanyFilter] = useState(null);
@@ -116,6 +143,20 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
             render: (_, record) => <Tag>{record.subscription?.plan || "starter"}</Tag>,
         },
         {
+            title: t("admin.created_at"),
+            key: "createdAt",
+            width: 130,
+            responsive: ["lg"],
+            render: (_, record) =>
+                record.createdAt ? (
+                    <span className="text-xs text-[var(--ohnix-text-muted)]">
+                        {new Date(record.createdAt).toLocaleDateString()}
+                    </span>
+                ) : (
+                    "-"
+                ),
+        },
+        {
             title: t("admin.verified"),
             key: "verified",
             width: 170,
@@ -139,12 +180,28 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
         {
             title: t("common.actions"),
             key: "actions",
-            width: 140,
+            width: 220,
             fixed: "right",
             render: (_, record) => (
-                <Button type="text" className="!text-[#44F3F0]" onClick={() => onAssignCompany(record)}>
-                    {t("admin.assign_company_button")}
-                </Button>
+                <div className="flex flex-wrap items-center gap-1">
+                    <Button type="text" size="small" className="!text-[#44F3F0]" onClick={() => onAssignCompany(record)}>
+                        {t("admin.assign_company_button")}
+                    </Button>
+                    <Button type="text" size="small" icon={<TeamOutlined />} title={t("admin.view_team")} onClick={() => onViewTeam(record)} />
+                    <Button type="text" size="small" icon={<LockOutlined />} title={t("admin.set_password")} onClick={() => onSetPassword(record)} />
+                    <Button type="text" size="small" icon={<DesktopOutlined />} title={t("admin.view_sessions")} onClick={() => onViewSessions(record)} />
+                    {record.role !== "admin" && (
+                        <Popconfirm
+                            title={t("admin.impersonate_confirm_title")}
+                            description={t("admin.impersonate_confirm_content")}
+                            onConfirm={() => onImpersonate(record)}
+                            okText={t("common.confirm")}
+                            cancelText={t("common.cancel")}
+                        >
+                            <Button type="text" size="small" icon={<LoginOutlined />} title={t("admin.impersonate")} />
+                        </Popconfirm>
+                    )}
+                </div>
             ),
         },
     ];
@@ -179,8 +236,11 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
                 </Button>
             </div>
 
-            {/* Mobile */}
-            <div className="block md:hidden">
+            {/* Mobile/tablet card list - the "Acciones" column now carries 3
+            actions (assign company, view team, set password), which no
+            longer fits legibly in the table at tablet widths, so the
+            card-list breakpoint moved from md (768px) to lg (1024px). */}
+            <div className="block lg:hidden">
                 {loading ? (
                     [1, 2, 3].map((i) => <Card key={i} loading className="mb-4 module-shell" />)
                 ) : filteredUsers.length === 0 ? (
@@ -192,6 +252,10 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
                             user={user}
                             onAssignCompany={onAssignCompany}
                             onToggleVerification={onToggleVerification}
+                            onViewTeam={onViewTeam}
+                            onSetPassword={onSetPassword}
+                            onViewSessions={onViewSessions}
+                            onImpersonate={onImpersonate}
                             t={t}
                         />
                     ))
@@ -199,14 +263,14 @@ const UsersTab = ({ users, companies, loading, onAdd, onAssignCompany, onToggleV
             </div>
 
             {/* Desktop */}
-            <div className={`hidden md:block ${tableShellClass}`}>
+            <div className={`hidden lg:block ${tableShellClass}`}>
                 <Table
                     columns={columns}
                     dataSource={filteredUsers}
                     rowKey="id"
                     loading={loading}
                     locale={{ emptyText: t("admin.no_users") }}
-                    scroll={{ x: 900 }}
+                    scroll={{ x: 1000 }}
                     className="custom-table module-dark-table"
                     pagination={{
                         pageSize: 10,

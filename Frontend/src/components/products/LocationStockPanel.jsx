@@ -27,6 +27,10 @@ import TransferStockModal from "./TransferStockModal";
 import RequestTransferModal from "./RequestTransferModal";
 import ReceiveTransferModal from "./ReceiveTransferModal";
 import TransferDetailModal from "./TransferDetailModal";
+import { getConnectivityState } from "../../offline/connectivity";
+import { subscribeSyncCompleted } from "../../offline/syncEngine";
+import { queueCreate, queueUpdate, readMirrorAll, mirrorUpsert, mirrorUpsertMany, mirrorReplaceAll } from "../../offline/entityQueue";
+import { enqueueOperation } from "../../offline/outbox";
 
 const { Text } = Typography;
 
@@ -54,6 +58,27 @@ const STATUS_KEY = {
 };
 
 const STEP_ORDER = ["requested", "approved", "in_transit", "received"];
+
+// Maps a transfer action to how it's queued offline - the URL/method/body
+// shape it replays with, and the optimistic status-only patch (never a
+// stock/costing guess - see LocationStockPanel's handleQuickTransfer
+// comment) shown until it actually syncs.
+const TRANSFER_ACTION_REQUEST = {
+    approve: (id) => ({ method: "patch", url: `/stock-transfers/${id}/approve`, data: {}, status: "approved" }),
+    ship: (id) => ({ method: "patch", url: `/stock-transfers/${id}/ship`, data: {}, status: "in_transit" }),
+    receive: (id, extra) => ({
+        method: "patch",
+        url: `/stock-transfers/${id}/receive`,
+        data: { quantity_received: extra.quantityReceived, notes: extra.notes },
+        status: "received",
+    }),
+    cancel: (id, extra) => ({
+        method: "patch",
+        url: `/stock-transfers/${id}/cancel`,
+        data: { reason: extra?.reason },
+        status: "cancelled",
+    }),
+};
 
 // Where the visual stepper's "current" pointer sits for a transfer. Reusing
 // the *At timestamps (set at each transition, see stockTransfer.service.js)
@@ -142,6 +167,19 @@ const LocationStockPanel = ({ product }) => {
 
     const loadAll = useCallback(async () => {
         if (!product?._id) return;
+        if (!getConnectivityState()) {
+            const [cachedPos, cachedSummary, cachedTransfers] = await Promise.all([
+                readMirrorAll("pointsOfSale"),
+                readMirrorAll("locationStockSummaries"),
+                readMirrorAll("stockTransfers"),
+            ]);
+            setPointsOfSale(cachedPos.filter((pos) => pos.isActive));
+            const summaryRow = cachedSummary.find((row) => row._id === product._id);
+            setSummary(summaryRow?.summary || null);
+            setTransfers(cachedTransfers.filter((tr) => tr.product_id?._id === product._id || tr.product_id === product._id));
+            setStatus("loaded");
+            return;
+        }
         setStatus((prev) => (prev === "loaded" ? prev : "loading"));
         try {
             const [posRes, stockRes, transfersRes] = await Promise.all([
@@ -154,6 +192,13 @@ const LocationStockPanel = ({ product }) => {
             setSummary(nextSummary);
             setTransfers(transfersRes?.data || []);
             setStatus("loaded");
+            // Write-through - pointsOfSale is the full account list (safe to
+            // replace wholesale); the summary is this one product's own row
+            // (upsert, keyed by product id); transfers merge into whatever's
+            // already cached from other products' visits (see db.js).
+            mirrorReplaceAll("pointsOfSale", posRes?.data || []);
+            mirrorUpsert("locationStockSummaries", { _id: product._id, summary: nextSummary });
+            mirrorUpsertMany("stockTransfers", transfersRes?.data || []);
 
             const prevTotals = prevTotalsRef.current;
             const nextTotals = new Map(
@@ -171,6 +216,19 @@ const LocationStockPanel = ({ product }) => {
             }
             prevTotalsRef.current = nextTotals;
         } catch (err) {
+            if (!err.response) {
+                const [cachedPos, cachedSummary, cachedTransfers] = await Promise.all([
+                    readMirrorAll("pointsOfSale"),
+                    readMirrorAll("locationStockSummaries"),
+                    readMirrorAll("stockTransfers"),
+                ]);
+                setPointsOfSale(cachedPos.filter((pos) => pos.isActive));
+                const summaryRow = cachedSummary.find((row) => row._id === product._id);
+                setSummary(summaryRow?.summary || null);
+                setTransfers(cachedTransfers.filter((tr) => tr.product_id?._id === product._id || tr.product_id === product._id));
+                setStatus("loaded");
+                return;
+            }
             toast.error(err?.response?.data?.message || t("common.error"));
             setStatus("error");
         }
@@ -186,11 +244,33 @@ const LocationStockPanel = ({ product }) => {
     // every transition, and productLocationStock changes via "product".
     useDataInvalidation(["stockTransfer", "product"], loadAll);
 
+    // Refetch once a full sync cycle completes (not merely "connectivity
+    // came back") - see useOrders.js for why the raw connectivity event
+    // alone races the outbox drain.
+    useEffect(() => subscribeSyncCompleted(loadAll), [loadAll]);
+
     // payload is already shaped for the API (from_point_of_sale_id,
     // to_point_of_sale_id, quantity, reason) - see TransferStockModal's
     // own onSubmit call.
     const handleQuickTransfer = async (productId, payload) => {
         setActionLoading(true);
+        if (!getConnectivityState()) {
+            // Action-only - a quick transfer claims AND credits stock in one
+            // step server-side (see stockTransfer.service.js#quickTransfer),
+            // so no optimistic effect is attempted here (same "never guess
+            // at inventory outcomes" reasoning as the rest of Etapa 4). The
+            // resulting transfer/stock figures only show up once this
+            // actually syncs.
+            await enqueueOperation({
+                entity: "stockTransfers",
+                opType: "custom",
+                request: { method: "post", url: `/products/${productId}/transfer-stock`, data: payload },
+            });
+            toast.success(t("common.offline_saved_locally"));
+            setQuickOpen(false);
+            setActionLoading(false);
+            return;
+        }
         try {
             await api.post(`/products/${productId}/transfer-stock`, payload);
             toast.success(t("products.transfer_success"));
@@ -205,6 +285,39 @@ const LocationStockPanel = ({ product }) => {
 
     const handleRequest = async (productId, payload) => {
         setActionLoading(true);
+        if (!getConnectivityState()) {
+            // Safe to create optimistically, unlike quick transfer/ship/
+            // receive - requesting a transfer doesn't touch stock at all
+            // (see stockTransfer.service.js#requestTransfer), it only
+            // exists once approved and shipped.
+            const fromPos = pointsOfSale.find((pos) => pos.id === payload.fromPointOfSaleId);
+            const toPos = pointsOfSale.find((pos) => pos.id === payload.toPointOfSaleId);
+            await queueCreate({
+                entity: "stockTransfers",
+                url: "/stock-transfers",
+                fields: {
+                    product_id: productId,
+                    from_point_of_sale_id: payload.fromPointOfSaleId,
+                    to_point_of_sale_id: payload.toPointOfSaleId,
+                    quantity: payload.quantity,
+                    notes: payload.notes,
+                },
+                optimisticExtra: {
+                    product_id: productId,
+                    from_point_of_sale: fromPos ? { _id: fromPos.id, name: fromPos.name } : { _id: payload.fromPointOfSaleId },
+                    to_point_of_sale: toPos ? { _id: toPos.id, name: toPos.name } : { _id: payload.toPointOfSaleId },
+                    quantity_sent: payload.quantity,
+                    quantity_received: null,
+                    status: "requested",
+                    requested_at: new Date().toISOString(),
+                },
+            });
+            toast.success(t("common.offline_saved_locally"));
+            setRequestOpen(false);
+            setActionLoading(false);
+            await loadAll();
+            return;
+        }
         try {
             await stockTransferService.request({ productId, ...payload });
             toast.success(t("products.transfer_requested"));
@@ -217,8 +330,23 @@ const LocationStockPanel = ({ product }) => {
         }
     };
 
-    const runTransferAction = async (action, transferId, successKey, extra) => {
+    const runTransferAction = async (kind, action, transferId, successKey, extra) => {
         setActionLoading(true);
+        if (!getConnectivityState()) {
+            const { status: optimisticStatus, ...request } = TRANSFER_ACTION_REQUEST[kind](transferId, extra);
+            await queueUpdate({
+                entity: "stockTransfers",
+                url: request.url,
+                id: transferId,
+                fields: request.data,
+                optimisticPatch: { status: optimisticStatus },
+                method: request.method,
+            });
+            toast.success(t("common.offline_saved_locally"));
+            setActionLoading(false);
+            await loadAll();
+            return;
+        }
         try {
             await action(transferId, extra);
             toast.success(t(successKey));
@@ -232,6 +360,7 @@ const LocationStockPanel = ({ product }) => {
 
     const handleReceive = async (transferId, payload) => {
         await runTransferAction(
+            "receive",
             (id, p) => stockTransferService.receive(id, p),
             transferId,
             "products.transfer_received",
@@ -502,6 +631,7 @@ const LocationStockPanel = ({ product }) => {
                                                             loading={actionLoading}
                                                             onClick={() =>
                                                                 runTransferAction(
+                                                                    "approve",
                                                                     stockTransferService.approve,
                                                                     tr._id,
                                                                     "products.transfer_approved"
@@ -519,6 +649,7 @@ const LocationStockPanel = ({ product }) => {
                                                             loading={actionLoading}
                                                             onClick={() =>
                                                                 runTransferAction(
+                                                                    "ship",
                                                                     stockTransferService.ship,
                                                                     tr._id,
                                                                     "products.transfer_shipped"
@@ -548,6 +679,7 @@ const LocationStockPanel = ({ product }) => {
                                                             cancelText={t("common.no")}
                                                             onConfirm={() =>
                                                                 runTransferAction(
+                                                                    "cancel",
                                                                     stockTransferService.cancel,
                                                                     tr._id,
                                                                     "products.transfer_cancelled"

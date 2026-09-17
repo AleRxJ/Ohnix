@@ -9,6 +9,7 @@ import {
     Divider,
     Button,
     Card,
+    DatePicker,
 } from "antd";
 import {
     PlusOutlined,
@@ -18,7 +19,8 @@ import {
 import PurchaseFormItem from "./PurchaseFormItem";
 import useI18n from "../../hooks/useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
-import PointOfSaleField from "../common/PointOfSaleField";
+import PointOfSaleField, { usePointOfSaleFieldVisible } from "../common/PointOfSaleField";
+import { accountingService } from "../../services/accountingService";
 
 const { Option } = Select;
 
@@ -52,6 +54,41 @@ const PurchaseForm = ({
     const isTourCreateStep = isTutorialActive && effectiveSteps[stepIndex]?.id === "create-purchase";
     const isConvertingQuotation = Boolean(initialQuotation);
     const fieldsLocked = isTourCreateStep || isConvertingQuotation;
+    const [withholdingConcepts, setWithholdingConcepts] = React.useState([]);
+    const { visible: showPointOfSale } = usePointOfSaleFieldVisible();
+    const selectedPointOfSaleId = Form.useWatch("pointOfSaleId", form);
+
+    // Suppliers are assigned to a single point of sale at creation (see
+    // Backend/services/purchase.service.js's "pertenece a otro punto de
+    // venta" check) - only offer the ones that match whatever location this
+    // purchase is being created for, so that check can never reject a
+    // selection made here. Suppliers without a resolved location (or when
+    // PointOfSaleField isn't rendered, ie. single-location accounts) are
+    // left unfiltered since there's nothing to disambiguate against yet.
+    const availableSuppliers = React.useMemo(() => {
+        if (!selectedPointOfSaleId) return suppliers;
+        return suppliers.filter(
+            (supplier) => !supplier.point_of_sale?._id || String(supplier.point_of_sale._id) === String(selectedPointOfSaleId)
+        );
+    }, [suppliers, selectedPointOfSaleId]);
+
+    React.useEffect(() => {
+        if (fieldsLocked || !selectedPointOfSaleId) return;
+        const currentSupplierId = form.getFieldValue("supplier_id");
+        if (!currentSupplierId) return;
+        const stillAvailable = availableSuppliers.some((supplier) => supplier._id === currentSupplierId);
+        if (!stillAvailable) form.setFieldsValue({ supplier_id: undefined });
+    }, [selectedPointOfSaleId, availableSuppliers, fieldsLocked, form]);
+
+    React.useEffect(() => {
+        if (!visible || isTourCreateStep) return;
+        accountingService.listWithholdingConcepts({ activeAt: new Date().toISOString() })
+            .then((response) => setWithholdingConcepts(response?.data || []))
+            // Purchases exist on plans without Accounting; in that case the
+            // accounting-gated endpoint correctly returns 403 and this
+            // optional field simply stays hidden.
+            .catch(() => setWithholdingConcepts([]));
+    }, [visible, isTourCreateStep]);
 
     const handleProductChange = (productId, fieldName) => {
         const product = products.find((p) => p._id === productId);
@@ -74,11 +111,18 @@ const PurchaseForm = ({
             pointOfSaleId: values.pointOfSaleId,
             purchase_no: values.purchase_no,
             purchase_status: values.purchase_status || "pending",
+            due_date: values.due_date ? values.due_date.endOf("day").toISOString() : null,
             details: values.details.map((detail) => ({
                 product_id: detail.product_id,
-                quantity: detail.quantity,
-                unitcost: detail.unitcost,
+                ...(detail.purchase_unit_quantity !== undefined
+                    ? { purchase_unit_quantity: detail.purchase_unit_quantity, purchase_unit_cost: detail.purchase_unit_cost }
+                    : { quantity: detail.quantity, unitcost: detail.unitcost }),
+                ...(detail.batch_number !== undefined && {
+                    batch_number: detail.batch_number,
+                    batch_expiration_date: detail.batch_expiration_date ? detail.batch_expiration_date.toISOString() : null,
+                }),
             })),
+            withholding_concept_ids: values.withholding_concept_ids || [],
             ...(isConvertingQuotation && { source_quotation_id: initialQuotation.id }),
         };
         onSubmit(purchaseData);
@@ -138,9 +182,11 @@ const PurchaseForm = ({
                     }
                 >
                     <Row gutter={16}>
-                        <Col xs={24} sm={12}>
-                            <PointOfSaleField disabled={fieldsLocked} />
-                        </Col>
+                        {showPointOfSale && (
+                            <Col xs={24} sm={12}>
+                                <PointOfSaleField disabled={fieldsLocked} />
+                            </Col>
+                        )}
                         <Col xs={24} sm={12}>
                             <Form.Item
                                 label={
@@ -186,12 +232,17 @@ const PurchaseForm = ({
                                     optionFilterProp="children"
                                     disabled={fieldsLocked}
                                 >
-                                    {suppliers.map((supplier) => (
+                                    {availableSuppliers.map((supplier) => (
                                         <Option key={supplier._id} value={supplier._id}>
                                             {supplier.shopname ? `${supplier.name} (${supplier.shopname})` : supplier.name}
                                         </Option>
                                     ))}
                                 </Select>
+                            </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                            <Form.Item name="due_date" label={<span className="font-medium text-[var(--ohnix-text-muted)]">{t("purchases.due_date")}</span>} extra={t("purchases.due_date_hint")}>
+                                <DatePicker className="w-full" size="large" placeholder={t("purchases.due_date_placeholder")} />
                             </Form.Item>
                         </Col>
                         <Col xs={24} sm={12}>
@@ -216,6 +267,23 @@ const PurchaseForm = ({
                             </Form.Item>
                         </Col>
                     </Row>
+                    {withholdingConcepts.length > 0 && (
+                        <Form.Item
+                            name="withholding_concept_ids"
+                            label={t("purchases.withholding_concepts")}
+                            extra={t("purchases.withholding_concepts_hint")}
+                        >
+                            <Select
+                                mode="multiple"
+                                allowClear
+                                optionFilterProp="label"
+                                options={withholdingConcepts.map((concept) => ({
+                                    value: concept.id,
+                                    label: `${concept.code} · ${concept.name} (${concept.rate_percent}%)`,
+                                }))}
+                            />
+                        </Form.Item>
+                    )}
                 </Card>
 
                 <Form.List name="details">

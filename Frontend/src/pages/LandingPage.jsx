@@ -6,6 +6,7 @@ import Footer from "../components/layout/Footer";
 import SeoHead from "../components/common/SeoHead";
 import { useMarketPricing } from "../hooks/useMarketPricing";
 import { ELECTRONIC_INVOICING_ENABLED } from "../config/features";
+import BillingCycleToggle from "../components/common/BillingCycleToggle";
 import {
     OrbitalHero,
     CardGrid,
@@ -13,29 +14,30 @@ import {
     CycleTimelineSection,
     ImpactMetricsSection,
     UseCasesSection,
+    ComparisonTeaserSection,
     FaqSection,
     ContactSection,
     MobileStickyCta,
     SectionHeading,
     ContentSection,
     brandIcons,
-    VideoModal,
     MarqueeStrip,
-    HeroDashboard,
+    OhnixCommandCanvas,
     PageOrbitalLayer,
     FeatureHubSection,
     WhatsAppSupportButton,
     ContactFormSection,
+    DemoTeaserSection,
 } from "../components/landing/LandingPageSections";
 
 const LandingPage = () => {
     const navigate = useNavigate();
     const { t, currentLanguage } = useI18n();
-    const [showDemo, setShowDemo] = useState(false);
     // Shared with Precios.jsx so the landing pricing teaser and the full
     // pricing page never disagree (previously this section always showed
     // the static USD-labeled locale strings regardless of visitor country).
     const { priceByPlanKey } = useMarketPricing();
+    const [billingCycle, setBillingCycle] = useState("MONTHLY");
 
     // "$" alone is ambiguous between USD and COP - PricingSection renders
     // planPrice() as a currencyBadge pill next to the amount when set.
@@ -43,8 +45,20 @@ const LandingPage = () => {
     // shown while market pricing resolves or if it fails, so it gets the same
     // "COP" badge as a resolved COP price - not `null`, which used to read as
     // an unqualified (and easily misread as USD) dollar amount.
+    // While ANNUAL is selected, shows the per-month equivalent of the lump
+    // annual charge ("paga 10, lleva 12") - same logic as Precios.jsx.
     const planPrice = (planKey, fallback) => {
         const priceInfo = priceByPlanKey[planKey];
+        if (billingCycle === "ANNUAL" && priceInfo?.annualEquivalentMonthlyLabel) {
+            return {
+                price: priceInfo.annualEquivalentMonthlyLabel,
+                currencyBadge: priceInfo.currency === "COP" ? "COP" : null,
+                billingSuffix: t("landing.pricing.annual_suffix"),
+                savings: priceInfo.annualSavingsLabel
+                    ? t("landing.pricing.annual_savings", { amount: priceInfo.annualSavingsLabel })
+                    : null,
+            };
+        }
         if (!priceInfo) return { price: fallback, currencyBadge: "COP" };
         return { price: priceInfo.label, currencyBadge: priceInfo.currency === "COP" ? "COP" : null };
     };
@@ -53,21 +67,21 @@ const LandingPage = () => {
         navigate("/signup");
     };
 
-    const handleWatchDemo = () => {
-        setShowDemo(true);
+    const scrollToSection = (id) => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     };
 
     const marqueeItems = [
         t("landing.hero.orbit.nodeOne"),
         t("landing.hero.orbit.nodeTwo"),
         t("landing.hero.orbit.nodeThree"),
-        t("landing.solutions.items.lifecycle.title"),
-        t("landing.solutions.items.assets.title"),
-        t("landing.solutions.items.sustainability.title"),
-        t("landing.solutions.items.circular.title"),
+        t("landing.solutions.items.products.title"),
+        t("landing.solutions.items.purchases.title"),
+        t("landing.solutions.items.sales.title"),
+        t("landing.solutions.items.reports.title"),
         t("landing.impact.metrics.uptime.label"),
-        t("landing.impact.metrics.recovery.label"),
-        t("landing.impact.metrics.optimization.label"),
+        t("landing.impact.metrics.unifiedOps.label"),
+        t("landing.impact.metrics.manualWork.label"),
     ];
 
     const handlePlanCta = (planKey) => {
@@ -75,21 +89,24 @@ const LandingPage = () => {
             ? planKey
             : "starter";
 
-        navigate(`/signup?plan=${normalizedPlan}&source=landing-pricing`);
+        navigate(`/signup?plan=${normalizedPlan}&billingCycle=${billingCycle}&source=landing-pricing`);
     };
 
     const heroStats = [
         {
             value: t("landing.hero.stats.cycles.value"),
             label: t("landing.hero.stats.cycles.label"),
+            icon: brandIcons.live,
         },
         {
             value: t("landing.hero.stats.assets.value"),
             label: t("landing.hero.stats.assets.label"),
+            icon: brandIcons.compliance,
         },
         {
             value: t("landing.hero.stats.sustainability.value"),
             label: t("landing.hero.stats.sustainability.label"),
+            icon: brandIcons.trace,
         },
     ];
 
@@ -106,42 +123,70 @@ const LandingPage = () => {
             description: t("landing.impact.metrics.uptime.description"),
         },
         {
-            value: t("landing.impact.metrics.recovery.value"),
-            label: t("landing.impact.metrics.recovery.label"),
-            description: t("landing.impact.metrics.recovery.description"),
+            value: t("landing.impact.metrics.unifiedOps.value"),
+            label: t("landing.impact.metrics.unifiedOps.label"),
+            description: t("landing.impact.metrics.unifiedOps.description"),
         },
         {
-            value: t("landing.impact.metrics.optimization.value"),
-            label: t("landing.impact.metrics.optimization.label"),
-            description: t("landing.impact.metrics.optimization.description"),
+            value: t("landing.impact.metrics.manualWork.value"),
+            label: t("landing.impact.metrics.manualWork.label"),
+            description: t("landing.impact.metrics.manualWork.description"),
         },
         {
-            value: t("landing.impact.metrics.adoption.value"),
-            label: t("landing.impact.metrics.adoption.label"),
-            description: t("landing.impact.metrics.adoption.description"),
+            value: t("landing.impact.metrics.accessControl.value"),
+            label: t("landing.impact.metrics.accessControl.label"),
+            description: t("landing.impact.metrics.accessControl.description"),
         },
     ];
 
     const featureCards = [
         {
-            title: t("landing.solutions.items.lifecycle.title"),
-            description: t("landing.solutions.items.lifecycle.description"),
+            title: t("landing.solutions.items.products.title"),
+            description: t("landing.solutions.items.products.description"),
             icon: brandIcons.assets,
         },
         {
-            title: t("landing.solutions.items.assets.title"),
-            description: t("landing.solutions.items.assets.description"),
+            title: t("landing.solutions.items.purchases.title"),
+            description: t("landing.solutions.items.purchases.description"),
             icon: brandIcons.connect,
         },
         {
-            title: t("landing.solutions.items.sustainability.title"),
-            description: t("landing.solutions.items.sustainability.description"),
+            title: t("landing.solutions.items.sales.title"),
+            description: t("landing.solutions.items.sales.description"),
             icon: brandIcons.lifecycle,
         },
         {
-            title: t("landing.solutions.items.circular.title"),
-            description: t("landing.solutions.items.circular.description"),
+            title: t("landing.solutions.items.reports.title"),
+            description: t("landing.solutions.items.reports.description"),
             icon: brandIcons.observability,
+        },
+        {
+            title: t("landing.solutions.items.finance.title"),
+            description: t("landing.solutions.items.finance.description"),
+            icon: brandIcons.accounting,
+        },
+        {
+            title: t("landing.solutions.items.compliance.title"),
+            description: t("landing.solutions.items.compliance.description"),
+            icon: brandIcons.compliance,
+        },
+    ];
+
+    const differentiatorCards = [
+        {
+            title: t("landing.differentiators.items.dian.title"),
+            description: t("landing.differentiators.items.dian.description"),
+            icon: brandIcons.trust,
+        },
+        {
+            title: t("landing.differentiators.items.assistant.title"),
+            description: t("landing.differentiators.items.assistant.description"),
+            icon: brandIcons.assistant,
+        },
+        {
+            title: t("landing.differentiators.items.integrations.title"),
+            description: t("landing.differentiators.items.integrations.description"),
+            icon: brandIcons.api,
         },
     ];
 
@@ -185,6 +230,14 @@ const LandingPage = () => {
             question: t("landing.faq.items.fourth.question"),
             answer: t("landing.faq.items.fourth.answer"),
         },
+        {
+            question: t("landing.faq.items.fifth.question"),
+            answer: t("landing.faq.items.fifth.answer"),
+        },
+        {
+            question: t("landing.faq.items.sixth.question"),
+            answer: t("landing.faq.items.sixth.answer"),
+        },
     ];
 
     const useCases = [
@@ -203,15 +256,42 @@ const LandingPage = () => {
             title: t("landing.useCases.items.third.title"),
             description: t("landing.useCases.items.third.description"),
         },
+        {
+            context: t("landing.useCases.items.fourth.context"),
+            title: t("landing.useCases.items.fourth.title"),
+            description: t("landing.useCases.items.fourth.description"),
+        },
     ];
+
+    const comparisonRows = [
+        {
+            criteria: t("landing.comparisonTeaser.rows.first.criteria"),
+            ohnix: t("landing.comparisonTeaser.rows.first.ohnix"),
+            competitor: t("landing.comparisonTeaser.rows.first.competitor"),
+        },
+        {
+            criteria: t("landing.comparisonTeaser.rows.second.criteria"),
+            ohnix: t("landing.comparisonTeaser.rows.second.ohnix"),
+            competitor: t("landing.comparisonTeaser.rows.second.competitor"),
+        },
+        {
+            criteria: t("landing.comparisonTeaser.rows.third.criteria"),
+            ohnix: t("landing.comparisonTeaser.rows.third.ohnix"),
+            competitor: t("landing.comparisonTeaser.rows.third.competitor"),
+        },
+    ];
+
+    const starterPrice = planPrice("starter", t("landing.pricing.plans.starter.price"));
+    const growthPrice = planPrice("growth", t("landing.pricing.plans.growth.price"));
+    const scalePrice = planPrice("scale", t("landing.pricing.plans.scale.price"));
 
     const pricingPlans = [
         {
             key: "starter",
             name: t("landing.pricing.plans.starter.name"),
             subtitle: t("landing.pricing.plans.starter.subtitle"),
-            ...planPrice("starter", t("landing.pricing.plans.starter.price")),
-            billing: t("landing.pricing.plans.starter.billing"),
+            ...starterPrice,
+            billing: starterPrice.billingSuffix || t("landing.pricing.plans.starter.billing"),
             description: t("landing.pricing.plans.starter.description"),
             features: [
                 t("landing.pricing.plans.starter.features.limits"),
@@ -219,7 +299,7 @@ const LandingPage = () => {
                 t("landing.pricing.plans.starter.features.reports"),
                 t("landing.pricing.plans.starter.features.pdf"),
                 t("landing.pricing.plans.starter.features.alerts"),
-            ],
+            ].filter(Boolean),
             cta: t("landing.pricing.plans.starter.cta"),
             note: t("landing.pricing.trial_note"),
             icon: brandIcons.action,
@@ -228,8 +308,8 @@ const LandingPage = () => {
             key: "growth",
             name: t("landing.pricing.plans.growth.name"),
             subtitle: t("landing.pricing.plans.growth.subtitle"),
-            ...planPrice("growth", t("landing.pricing.plans.growth.price")),
-            billing: t("landing.pricing.plans.growth.billing"),
+            ...growthPrice,
+            billing: growthPrice.billingSuffix || t("landing.pricing.plans.growth.billing"),
             description: t("landing.pricing.plans.growth.description"),
             features: [
                 t("landing.pricing.plans.growth.features.unlimited"),
@@ -240,6 +320,7 @@ const LandingPage = () => {
                 t("landing.pricing.plans.growth.features.export"),
                 t("landing.pricing.plans.growth.features.pdf"),
                 t("landing.pricing.plans.growth.features.alerts"),
+                { text: t("landing.pricing.plans.growth.features.sales_quotations"), highlight: true },
                 ELECTRONIC_INVOICING_ENABLED && { text: t("landing.pricing.plans.growth.features.invoicing"), highlight: true },
             ].filter(Boolean),
             cta: t("landing.pricing.plans.growth.cta"),
@@ -250,8 +331,8 @@ const LandingPage = () => {
             key: "scale",
             name: t("landing.pricing.plans.scale.name"),
             subtitle: t("landing.pricing.plans.scale.subtitle"),
-            ...planPrice("scale", t("landing.pricing.plans.scale.price")),
-            billing: t("landing.pricing.plans.scale.billing"),
+            ...scalePrice,
+            billing: scalePrice.billingSuffix || t("landing.pricing.plans.scale.billing"),
             description: t("landing.pricing.plans.scale.description"),
             features: [
                 t("landing.pricing.plans.scale.features.unlimited"),
@@ -261,7 +342,8 @@ const LandingPage = () => {
                 t("landing.pricing.plans.scale.features.limits"),
                 t("landing.pricing.plans.scale.features.reports"),
                 t("landing.pricing.plans.scale.features.pdf"),
-                t("landing.pricing.plans.scale.features.api"),
+                { text: t("landing.pricing.plans.scale.features.api"), highlight: true },
+                t("landing.pricing.plans.scale.features.sales_quotations"),
                 ELECTRONIC_INVOICING_ENABLED && t("landing.pricing.plans.scale.features.invoicing"),
                 { text: t("landing.pricing.plans.scale.features.accounting"), highlight: true },
                 t("landing.pricing.plans.scale.features.alerts"),
@@ -281,7 +363,7 @@ const LandingPage = () => {
                 t("landing.pricing.plans.enterprise.features.team"),
                 t("landing.pricing.plans.enterprise.features.locations"),
                 t("landing.pricing.plans.enterprise.features.api"),
-                t("landing.pricing.plans.enterprise.features.integrations"),
+                { text: t("landing.pricing.plans.enterprise.features.integrations"), highlight: true },
                 t("landing.pricing.plans.enterprise.features.manager"),
                 t("landing.pricing.plans.enterprise.features.sla"),
             ],
@@ -309,12 +391,12 @@ const LandingPage = () => {
         "@context": "https://schema.org",
         "@type": "Organization",
         name: "Ohnix",
-        url: "https://www.ohnix.co",
-        logo: "https://ohnix.co/Ohnix_FullLogo.png",
+        url: "https://ohnix.co",
+        logo: "https://ohnix.co/Ohnix_FullLogo_Transparent.png",
         contactPoint: {
             "@type": "ContactPoint",
             contactType: "sales",
-            email: "info@itcycle.com",
+            email: "info@itcycle.co",
             availableLanguage: ["es", "en"],
         },
     };
@@ -331,7 +413,7 @@ const LandingPage = () => {
             priceCurrency: "USD",
         },
         description: landingDescription,
-        url: "https://www.ohnix.co",
+        url: "https://ohnix.co",
     };
 
     return (
@@ -348,30 +430,21 @@ const LandingPage = () => {
                 ]}
             />
             <PageOrbitalLayer />
-            <VideoModal
-                isOpen={showDemo}
-                onClose={() => setShowDemo(false)}
-                /* Replace the src below with your real YouTube URL, e.g:
-                   src="https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
-                   Leave src undefined to show the "coming soon" placeholder */
-                src={undefined}
-                title={t("landing.demo.video_title")}
-            />
             <Navbar />
-            <main className="bg-[#050505] pb-24 md:pb-0">
+            <main className="marketing-main bg-[#050505] pb-24 md:pb-0">
                 <OrbitalHero
                     eyebrow={t("landing.hero.eyebrow")}
                     title={t("landing.hero.title")}
                     subtitle={t("landing.hero.subtitle")}
                     primaryCta={t("landing.hero.primary_cta")}
-                    secondaryCta={t("landing.hero.secondary_cta")}
                     onPrimary={handleGetStarted}
-                    onSecondary={handleWatchDemo}
+                    secondaryCta={t("landing.hero.secondary_cta")}
+                    onSecondary={() => scrollToSection("demo-preview")}
                     stats={heroStats}
                     orbitLabels={orbitLabels}
                     footerNote={t("landing.hero.footer_note")}
                     productImageAlt={t("landing.hero.product_image_alt")}
-                    heroVisual={<HeroDashboard />}
+                    heroVisual={<OhnixCommandCanvas />}
                     cyclingWords={[
                         t("landing.hero.cycling_words.one"),
                         t("landing.hero.cycling_words.two"),
@@ -406,9 +479,36 @@ const LandingPage = () => {
                         description={t("landing.solutions.description")}
                     />
                     <div className="mt-14">
-                        <CardGrid items={featureCards} columns={4} />
+                        <CardGrid items={featureCards} columns={3} />
                     </div>
                 </ContentSection>
+
+                <ContentSection id="differentiators">
+                    <SectionHeading
+                        eyebrow={t("landing.differentiators.eyebrow")}
+                        title={t("landing.differentiators.title")}
+                        description={t("landing.differentiators.description")}
+                    />
+                    <div className="mt-14">
+                        <CardGrid items={differentiatorCards} columns={3} />
+                    </div>
+                </ContentSection>
+
+                <ComparisonTeaserSection
+                    heading={{
+                        eyebrow: t("landing.comparisonTeaser.eyebrow"),
+                        title: t("landing.comparisonTeaser.title"),
+                        description: t("landing.comparisonTeaser.description"),
+                    }}
+                    headers={{
+                        criteria: t("landing.comparisonTeaser.headers.criteria"),
+                        ohnix: t("landing.comparisonTeaser.headers.ohnix"),
+                        competitor: t("landing.comparisonTeaser.headers.competitor"),
+                    }}
+                    rows={comparisonRows}
+                    cta={t("landing.comparisonTeaser.cta")}
+                    onCtaClick={() => navigate("/comparativa/ohnix-vs-alegra")}
+                />
 
                 <CycleTimelineSection
                     heading={{
@@ -428,7 +528,65 @@ const LandingPage = () => {
                     plans={pricingPlans}
                     featuredLabel={t("landing.pricing.most_popular")}
                     onPlanSelect={handlePlanCta}
+                    billingToggle={<BillingCycleToggle value={billingCycle} onChange={setBillingCycle} savingsLabel="-17%" />}
+                    paymentMethodsNote={t("landing.pricing.payment_methods_note")}
                 />
+
+                {/* Two separate sections, deliberately not merged into one -
+                    a company integrating the invoicing API into its own
+                    POS/ERP/SaaS and someone buying a digital certificate are
+                    generally different buyers, each with their own heading
+                    and CTA rather than sharing a single "also available"
+                    block (see git history for the earlier combined version). */}
+                {ELECTRONIC_INVOICING_ENABLED && (
+                    <ContentSection id="api-facturacion-electronica">
+                        <SectionHeading
+                            eyebrow={t("landing.apiInvoicingTeaser.eyebrow")}
+                            title={t("landing.apiInvoicingTeaser.title")}
+                            description={t("landing.apiInvoicingTeaser.description")}
+                        />
+                        <div className="mt-10 rounded-[28px] border border-white/10 bg-white/[0.03] p-7 md:p-9">
+                            <h3 className="text-xl font-semibold text-white">
+                                {t("landing.apiInvoicingTeaser.card.title")}
+                            </h3>
+                            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#A9B3B8]">
+                                {t("landing.apiInvoicingTeaser.card.description")}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/facturacion-electronica-sin-inventario")}
+                                className="mt-6 inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white hover:border-[#29D8D5]/40"
+                            >
+                                {t("landing.apiInvoicingTeaser.card.cta")}
+                            </button>
+                        </div>
+                    </ContentSection>
+                )}
+
+                {ELECTRONIC_INVOICING_ENABLED && (
+                    <ContentSection id="certificado-digital">
+                        <SectionHeading
+                            eyebrow={t("landing.certificateTeaser.eyebrow")}
+                            title={t("landing.certificateTeaser.title")}
+                            description={t("landing.certificateTeaser.description")}
+                        />
+                        <div className="mt-10 rounded-[28px] border border-[#29D8D5]/25 bg-[#29D8D5]/8 p-7 md:p-9">
+                            <h3 className="text-xl font-semibold text-white">
+                                {t("landing.certificateTeaser.card.title")}
+                            </h3>
+                            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#CFE8E8]">
+                                {t("landing.certificateTeaser.card.description")}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/certificado-digital-dian")}
+                                className="mt-6 inline-flex items-center justify-center rounded-full bg-[#29D8D5] px-5 py-3 text-sm font-semibold text-[#021314] hover:bg-[#44F3F0]"
+                            >
+                                {t("landing.certificateTeaser.card.cta")}
+                            </button>
+                        </div>
+                    </ContentSection>
+                )}
 
                 <FaqSection
                     heading={{
@@ -448,6 +606,15 @@ const LandingPage = () => {
                     useCases={useCases}
                 />
 
+                <DemoTeaserSection
+                    heading={{
+                        eyebrow: t("landing.demo.eyebrow"),
+                        title: t("landing.demo.title"),
+                        description: t("landing.demo.description"),
+                    }}
+                    onContactClick={() => scrollToSection("contact")}
+                />
+
                 <ContactFormSection
                     heading={{
                         eyebrow: t("landing.contact.eyebrow"),
@@ -455,12 +622,12 @@ const LandingPage = () => {
                         description: t("landing.contact.description"),
                     }}
                     contact={{
-                        email: "info@itcycle.com",
+                        email: "info@itcycle.co",
                     }}
                 />
 
                 <section className="px-6 pb-16 md:px-10">
-                    <div className="mx-auto max-w-7xl rounded-[24px] border border-white/10 bg-white/[0.03] p-6 md:p-8">
+                    <div className="mx-auto max-w-[1440px] rounded-[24px] border border-white/10 bg-white/[0.03] p-6 md:p-8">
                         <h2 className="text-2xl font-semibold text-white">{t("landing.explore.title")}</h2>
                         <p className="mt-3 text-sm leading-7 text-[#A9B3B8]">
                             {t("landing.explore.description")}
@@ -490,6 +657,14 @@ const LandingPage = () => {
                                 <span className="block text-sm font-semibold">{t("landing.explore.comparison.title")}</span>
                                 <span className="mt-1 block text-xs text-[#A9B3B8]">{t("landing.explore.comparison.description")}</span>
                             </button>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/integraciones")}
+                                className="rounded-2xl border border-white/12 bg-white/[0.03] px-4 py-4 text-left text-white hover:border-[#29D8D5]/35"
+                            >
+                                <span className="block text-sm font-semibold">{t("landing.explore.integrations.title")}</span>
+                                <span className="mt-1 block text-xs text-[#A9B3B8]">{t("landing.explore.integrations.description")}</span>
+                            </button>
                         </div>
                     </div>
                 </section>
@@ -501,9 +676,7 @@ const LandingPage = () => {
             </main>
             <MobileStickyCta
                 primaryCta={t("landing.hero.primary_cta")}
-                secondaryCta={t("landing.hero.secondary_cta")}
                 onPrimary={handleGetStarted}
-                onSecondary={handleWatchDemo}
             />
             <Footer />
         </div>

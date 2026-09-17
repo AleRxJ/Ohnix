@@ -11,6 +11,7 @@ import ProfileHeader from "../components/profile/ProfileHeader";
 import EditProfileForm from "../components/profile/EditProfileForm";
 import AccountInfoTab from "../components/profile/AccountInfoTab";
 import PasswordChangeTab from "../components/profile/PasswordChangeTab";
+import SessionsTab from "../components/profile/SessionsTab";
 import OtpVerificationModal from "../components/profile/OtpVerificationModal";
 
 const { Content } = Layout;
@@ -216,6 +217,11 @@ const ProfilePage = () => {
                                                 loading={loading}
                                             />
                                         ),
+                                    },
+                                    {
+                                        key: "3",
+                                        label: t("profile.active_sessions"),
+                                        children: <SessionsTab />,
                                     },
                                 ]}
                             />

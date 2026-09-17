@@ -7,6 +7,9 @@ import useI18n from "../useI18n";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { idempotencyHeaders } from "../../utils/idempotency";
 import { useDataInvalidation } from "../useDataInvalidation";
+import { getConnectivityState } from "../../offline/connectivity";
+import { subscribeSyncCompleted } from "../../offline/syncEngine";
+import { queueCreate, queueUpdate, readMirrorAll, mirrorReplaceAll } from "../../offline/entityQueue";
 
 const CREATE_QUOTATION_ERROR_CODES = {
     duplicate_quotation_products: "quotations.duplicate_product_message",
@@ -33,6 +36,13 @@ export const useQuotations = () => {
 
     const fetchQuotations = async () => {
         const requestId = ++latestRequestId.current;
+        if (!getConnectivityState()) {
+            const cached = await readMirrorAll("purchaseQuotations");
+            if (requestId !== latestRequestId.current) return;
+            setQuotations(cached);
+            setStats(calculateQuotationStats(cached));
+            return;
+        }
         setLoading(true);
         try {
             const response = await api.get("/purchase-quotations");
@@ -40,11 +50,19 @@ export const useQuotations = () => {
             if (response.data.success) {
                 setQuotations(response.data.data);
                 setStats(calculateQuotationStats(response.data.data));
+                mirrorReplaceAll("purchaseQuotations", response.data.data);
             } else {
                 toast.error(t("quotations.failed_fetch"));
             }
         } catch (error) {
             if (requestId !== latestRequestId.current) return;
+            if (!error.response) {
+                const cached = await readMirrorAll("purchaseQuotations");
+                if (requestId !== latestRequestId.current) return;
+                setQuotations(cached);
+                setStats(calculateQuotationStats(cached));
+                return;
+            }
             toast.error(t("quotations.error_fetching"));
             console.error("Error:", error);
         } finally {
@@ -53,20 +71,36 @@ export const useQuotations = () => {
     };
 
     const fetchSuppliers = async () => {
+        if (!getConnectivityState()) {
+            setSuppliers(await readMirrorAll("suppliers"));
+            return;
+        }
         try {
             const response = await api.get(user.role === "admin" ? "/suppliers/admin/all" : "/suppliers");
             if (response.data.success) setSuppliers(response.data.data);
         } catch (error) {
+            if (!error.response) {
+                setSuppliers(await readMirrorAll("suppliers"));
+                return;
+            }
             toast.error(t("purchases.error_fetching_suppliers"));
             console.error("Error:", error);
         }
     };
 
     const fetchProducts = async () => {
+        if (!getConnectivityState()) {
+            setProducts(await readMirrorAll("products"));
+            return;
+        }
         try {
             const response = await api.get("/products");
             if (response.data.success) setProducts(response.data.data);
         } catch (error) {
+            if (!error.response) {
+                setProducts(await readMirrorAll("products"));
+                return;
+            }
             toast.error(t("purchases.error_fetching_products"));
             console.error("Error:", error);
         }
@@ -86,6 +120,22 @@ export const useQuotations = () => {
     };
 
     const createQuotation = async (values) => {
+        if (!getConnectivityState()) {
+            const supplier = suppliers.find((s) => s._id === values.supplier_id);
+            await queueCreate({
+                entity: "purchaseQuotations",
+                url: "/purchase-quotations",
+                fields: values,
+                optimisticExtra: {
+                    supplier_id: supplier ? { _id: supplier._id, name: supplier.name } : values.supplier_id,
+                    status: values.status || "draft",
+                    quotation_date: new Date().toISOString(),
+                },
+            });
+            toast.success(t("common.offline_saved_locally"));
+            await fetchQuotations();
+            return { success: true };
+        }
         try {
             const response = await api.post("/purchase-quotations", values);
             if (response.data.success) {
@@ -103,6 +153,12 @@ export const useQuotations = () => {
     };
 
     const updateQuotation = async (quotationId, values) => {
+        if (!getConnectivityState()) {
+            await queueUpdate({ entity: "purchaseQuotations", url: `/purchase-quotations/${quotationId}`, id: quotationId, fields: values });
+            toast.success(t("common.offline_saved_locally"));
+            await fetchQuotations();
+            return { success: true };
+        }
         try {
             const response = await api.patch(`/purchase-quotations/${quotationId}`, values);
             if (response.data.success) {
@@ -121,6 +177,20 @@ export const useQuotations = () => {
 
     const markReceived = async (quotationId) => {
         setUpdatingQuotationId(quotationId);
+        if (!getConnectivityState()) {
+            await queueUpdate({
+                entity: "purchaseQuotations",
+                url: `/purchase-quotations/${quotationId}/received`,
+                id: quotationId,
+                fields: {},
+                optimisticPatch: { status: "received" },
+                method: "post",
+            });
+            toast.success(t("common.offline_saved_locally"));
+            await fetchQuotations();
+            setUpdatingQuotationId(null);
+            return { success: true };
+        }
         try {
             const response = await api.post(`/purchase-quotations/${quotationId}/received`, undefined, idempotencyHeaders());
             if (response.data.success) {
@@ -141,6 +211,20 @@ export const useQuotations = () => {
 
     const rejectQuotation = async (quotationId) => {
         setUpdatingQuotationId(quotationId);
+        if (!getConnectivityState()) {
+            await queueUpdate({
+                entity: "purchaseQuotations",
+                url: `/purchase-quotations/${quotationId}/reject`,
+                id: quotationId,
+                fields: {},
+                optimisticPatch: { status: "rejected" },
+                method: "post",
+            });
+            toast.success(t("common.offline_saved_locally"));
+            await fetchQuotations();
+            setUpdatingQuotationId(null);
+            return { success: true };
+        }
         try {
             const response = await api.post(`/purchase-quotations/${quotationId}/reject`, undefined, idempotencyHeaders());
             if (response.data.success) {
@@ -172,6 +256,18 @@ export const useQuotations = () => {
     useDataInvalidation(["purchase", "product"], () => {
         fetchQuotations();
     });
+
+    // Refetch once a full sync cycle completes (not merely "connectivity
+    // came back") - see useOrders.js for why the raw connectivity event
+    // alone races the outbox drain.
+    useEffect(() => {
+        return subscribeSyncCompleted(() => {
+            fetchQuotations();
+            fetchSuppliers();
+            fetchProducts();
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return {
         quotations,

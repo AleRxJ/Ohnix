@@ -18,6 +18,7 @@ const mapOrder = (order) => ({
           }
         : null,
     order_date: order.orderDate,
+    due_date: order.dueDate,
     order_status: order.orderStatus,
     total_products: order.totalProducts,
     sub_total: Number(order.subTotal),

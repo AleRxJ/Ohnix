@@ -9,6 +9,9 @@ import { useInventoryTour } from "../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../utils/apiError";
 import { useDataInvalidation } from "../hooks/useDataInvalidation";
 import { usePointOfSaleScope } from "../hooks/usePointOfSaleScope";
+import { getConnectivityState } from "../offline/connectivity";
+import { subscribeSyncCompleted } from "../offline/syncEngine";
+import { queueCreate, queueUpdate, queueDelete, readMirrorAll, mirrorReplaceAll } from "../offline/entityQueue";
 import MoveToPointOfSaleModal from "../components/common/MoveToPointOfSaleModal";
 import {
     CustomerStats,
@@ -70,6 +73,11 @@ const Customers = () => {
 
     // API functions
     const fetchCustomers = async () => {
+        if (!getConnectivityState()) {
+            const customers = await readMirrorAll("customers");
+            updateState({ customers, stats: calculateStats(customers) });
+            return;
+        }
         updateState({ loading: true });
         try {
             const response = await api.get("/customers");
@@ -77,8 +85,22 @@ const Customers = () => {
                 const customers = response.data.data;
                 const stats = calculateStats(customers);
                 updateState({ customers, stats });
+                mirrorReplaceAll("customers", customers);
             }
         } catch (error) {
+            if (!error.response) {
+                // Real network failure, not a server rejection - most likely
+                // we were actually offline this whole time and just didn't
+                // know it yet (getConnectivityState() can be stale - see
+                // connectivity.js's reportNetworkFailure, triggered by this
+                // very error). Fall back to the last-synced mirror instead of
+                // a scary "failed to load" toast - this is the same offline
+                // reading experience, just detected reactively instead of in
+                // advance.
+                const customers = await readMirrorAll("customers");
+                updateState({ customers, stats: calculateStats(customers) });
+                return;
+            }
             toast.error(
                 error.response?.data?.message || t("customers.failed_fetch_customers")
             );
@@ -95,6 +117,11 @@ const Customers = () => {
     // Another connected user (or this same one, another tab) creating,
     // editing, or deleting a customer.
     useDataInvalidation("customer", fetchCustomers);
+
+    // Coming back online: refetch for real (replaces any offline-queued
+    // optimistic rows with the server's canonical view once the outbox has
+    // had a chance to drain).
+    useEffect(() => subscribeSyncCompleted(fetchCustomers), []);
 
     const getFilteredCustomers = useCallback(() => {
         const { customers, searchText } = state;
@@ -115,8 +142,27 @@ const Customers = () => {
     const handleSubmit = async (values) => {
         updateState({ loading: true });
         const wasCreate = !editing.customer;
+        const formData = createFormData(values);
+
+        if (!getConnectivityState()) {
+            if (wasCreate) {
+                await queueCreate({ entity: "customers", url: "/customers", fields: formData });
+            } else {
+                await queueUpdate({
+                    entity: "customers",
+                    url: `/customers/${editing.customer._id}`,
+                    id: editing.customer._id,
+                    fields: formData,
+                });
+            }
+            toast.success(t("common.offline_saved_locally"));
+            await fetchCustomers();
+            handleCancel();
+            updateState({ loading: false });
+            return;
+        }
+
         try {
-            const formData = createFormData(values);
             const response = await submitCustomerData(formData);
 
             if (response.data.success) {
@@ -182,6 +228,12 @@ const Customers = () => {
     };
 
     const handleDelete = async (id) => {
+        if (!getConnectivityState()) {
+            await queueDelete({ entity: "customers", url: `/customers/${id}`, id });
+            toast.success(t("common.offline_deleted_locally"));
+            await fetchCustomers();
+            return;
+        }
         try {
             const response = await api.delete(`/customers/${id}`);
             if (response.data.success) {

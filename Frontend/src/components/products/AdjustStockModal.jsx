@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Modal, Form, InputNumber, Radio, Input, Button } from "antd";
+import { Modal, Form, InputNumber, Radio, Input, Button, DatePicker } from "antd";
 import { ArrowUpOutlined, ArrowDownOutlined, SwapOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
@@ -30,7 +30,16 @@ const AdjustStockModal = ({ visible, product, loading, onSubmit, onCancel }) => 
     const handleOk = async () => {
         const values = await form.validateFields();
         const finalDelta = values.direction === "out" ? -values.quantity : values.quantity;
-        await onSubmit(product._id, { delta: finalDelta, reason: values.reason.trim() });
+        await onSubmit(product._id, {
+            delta: finalDelta,
+            reason: values.reason.trim(),
+            ...(product.tracks_batches && values.direction === "in"
+                ? {
+                      batchNumber: values.batch_number.trim(),
+                      batchExpirationDate: values.batch_expiration_date ? values.batch_expiration_date.toISOString() : null,
+                  }
+                : {}),
+        });
     };
 
     return (
@@ -123,6 +132,21 @@ const AdjustStockModal = ({ visible, product, loading, onSubmit, onCancel }) => 
                 >
                     <InputNumber min={1} className="w-full auth-ohnix-input" size="large" />
                 </Form.Item>
+
+                {product.tracks_batches && direction === "in" && (
+                    <>
+                        <Form.Item
+                            name="batch_number"
+                            label={fieldLabel(t("products.batch_number"))}
+                            rules={[{ required: true, message: t("products.batch_number_required") }]}
+                        >
+                            <Input placeholder={t("products.batch_number_placeholder")} className="auth-ohnix-input" size="large" />
+                        </Form.Item>
+                        <Form.Item name="batch_expiration_date" label={fieldLabel(t("products.batch_expiration_date"))}>
+                            <DatePicker className="w-full auth-ohnix-input" size="large" format="YYYY-MM-DD" />
+                        </Form.Item>
+                    </>
+                )}
 
                 <Form.Item
                     name="reason"

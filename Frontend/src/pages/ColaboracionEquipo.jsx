@@ -42,7 +42,7 @@ const ColaboracionEquipo = () => {
     const faq = [
         {
             q: "Desde que plan puedo invitar a mi equipo?",
-            a: "Desde el plan Negocio ($49/mes), con hasta 3 usuarios. El plan Escala ($99/mes) permite hasta 10, y Enterprise no tiene limite. El plan Emprendedor no incluye equipos colaborativos.",
+            a: "Desde el plan Negocio ($129.000/mes), con hasta 3 usuarios. El plan Escala ($259.000/mes) permite hasta 10, y Enterprise no tiene limite. El plan Emprendedor no incluye equipos colaborativos.",
         },
         {
             q: "Puedo controlar que ve cada persona de mi equipo?",
@@ -105,7 +105,7 @@ const ColaboracionEquipo = () => {
                 structuredData={structuredData}
             />
             <Navbar />
-            <main className="bg-[#050505] pt-20">
+            <main className="bg-[#050505] pt-24">
                 <ContentSection id="colaboracion-en-equipo" shell={false}>
                     <SectionHeading
                         as="h1"
@@ -130,7 +130,7 @@ const ColaboracionEquipo = () => {
                     <div className="mt-12 rounded-[28px] border border-[#22C55E]/25 bg-[#22C55E]/8 p-7">
                         <h2 className="text-2xl font-semibold text-white">Disponible desde el plan Negocio</h2>
                         <p className="mt-3 text-sm leading-7 text-[#CFE8E8]">
-                            Equipos colaborativos esta incluido a partir del plan Negocio ($49/mes, hasta 3 usuarios), con mas asientos en Escala (hasta 10) y sin limite en Enterprise. El plan Emprendedor y el periodo de prueba gratuita no lo incluyen.
+                            Equipos colaborativos esta incluido a partir del plan Negocio ($129.000/mes, hasta 3 usuarios), con mas asientos en Escala (hasta 10) y sin limite en Enterprise. El plan Emprendedor y el periodo de prueba gratuita no lo incluyen.
                         </p>
                         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                             <button

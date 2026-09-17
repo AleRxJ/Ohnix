@@ -27,6 +27,7 @@ import {
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
+import DiscoveryDashboardHero from "../components/discoveries/DiscoveryDashboardHero";
 import StatCard from "../components/dashboard/StatCard";
 import ProductDistribution from "../components/dashboard/ProductDistribution";
 import DataTable from "../components/dashboard/DataTable";
@@ -425,6 +426,8 @@ const Dashboard = () => {
         <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(41,216,213,0.08),transparent_26%),linear-gradient(180deg,var(--ohnix-bg-alt)_0%,var(--ohnix-bg)_100%)] text-[var(--ohnix-text-primary)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <DashboardHeader onRefresh={fetchDashboardData} />
+
+                <DiscoveryDashboardHero />
 
                 {needsDianSetup && (
                     <section className="mt-6 animate-fade-up">

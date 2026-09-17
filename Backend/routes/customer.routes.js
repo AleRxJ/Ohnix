@@ -12,6 +12,7 @@ import { isAdmin } from "../middleware/admin.middleware.js";
 import { enforceEntityLimit, enforcePlanFeature } from "../middleware/pricing.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
+import { idempotent } from "../middleware/idempotency.middleware.js";
 
 const router = Router();
 
@@ -20,7 +21,7 @@ router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
 // Regular user routes - only for their own customers
 router
     .route("/")
-    .post(requireModulePermission("customers", "edit"), enforceEntityLimit("customers"), upload.single("photo"), createCustomer)
+    .post(requireModulePermission("customers", "edit"), enforceEntityLimit("customers"), upload.single("photo"), idempotent("customer.create"), createCustomer)
     .get(requireModulePermission("customers", "view"), getUserCustomers);
 
 // Admin routes - can access all customers
@@ -28,8 +29,8 @@ router.route("/all").get(isAdmin, getAllCustomers);
 
 router
     .route("/:id")
-    .patch(requireModulePermission("customers", "edit"), upload.single("photo"), updateCustomer)
-    .delete(requireModulePermission("customers", "edit"), deleteCustomer);
+    .patch(requireModulePermission("customers", "edit"), upload.single("photo"), idempotent("customer.update"), updateCustomer)
+    .delete(requireModulePermission("customers", "edit"), idempotent("customer.delete"), deleteCustomer);
 
 router
     .route("/:id/point-of-sale")

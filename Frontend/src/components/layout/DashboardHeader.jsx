@@ -16,9 +16,10 @@ import AuthContext from "../../context/AuthContext";
 import useI18n from "../../hooks/useI18n";
 import LanguageSwitcher from "../LanguageSwitcher/LanguageSwitcher";
 import ThemeToggle from "../common/ThemeToggle";
+import SyncStatusIndicator from "../common/SyncStatusIndicator";
 import { userService } from "../../services/userService";
-import { useTheme } from "../../context/ThemeContext";
 import { useTeam } from "../../context/TeamContext";
+import { useTheme } from "../../context/ThemeContext";
 
 const DashboardHeader = ({ collapsed, setCollapsed }) => {
     const { user, logout } = useContext(AuthContext);
@@ -101,11 +102,13 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                     onClick={handleLogoClick}
                 >
                     <div className="flex items-center gap-1.5">
-                        <img
-                            src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon.svg"}
-                            alt="Ohnix icon"
-                            className="h-14 w-14 object-contain"
-                        />
+                        <div className="flex items-center justify-center rounded-xl p-1.5">
+                            <img
+                                src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
+                                alt="Ohnix icon"
+                                className="h-11 w-11 object-contain"
+                            />
+                        </div>
                         <span className="text-sm font-semibold tracking-[0.18em] text-[var(--ohnix-text-primary)]">
                             OHNIX
                         </span>
@@ -166,6 +169,7 @@ const DashboardHeader = ({ collapsed, setCollapsed }) => {
                         </button>
                     </Dropdown>
                 </div>
+                <SyncStatusIndicator />
                 <div className="mr-2">
                     <ThemeToggle compact />
                 </div>

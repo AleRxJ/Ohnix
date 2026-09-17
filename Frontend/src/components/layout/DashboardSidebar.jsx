@@ -5,6 +5,7 @@ import { UserOutlined, LogoutOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import AuthContext from "../../context/AuthContext";
 import { useTeam } from "../../context/TeamContext";
+import { useDiscoveries } from "../../context/DiscoveryContext";
 import useSubscription from "../../hooks/useSubscription";
 import { getMenuItems } from "../../data";
 import useI18n from "../../hooks/useI18n";
@@ -18,6 +19,7 @@ const TEAM_CAPABLE_PLANS = ["growth", "scale", "enterprise"];
 const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     const { user, logout } = useContext(AuthContext);
     const { team, hasPermission, isTeamMember, loading: teamLoading } = useTeam();
+    const { openCount: openDiscoveriesCount } = useDiscoveries();
     const { plan } = useSubscription();
     const { t } = useI18n();
     const { isLite } = useTheme();
@@ -77,12 +79,21 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
                         items={getMenuItems(
                             t,
                             user?.role,
-                            ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO",
+                            // Documentos electrónicos tracks DIAN invoices/credit
+                            // notes actually issued - showing it as soon as the
+                            // company is merely Colombian (regardless of whether
+                            // fiscal-setup was ever completed) sent brand-new
+                            // companies to a confusing always-empty page. Gate on
+                            // electronicInvoicingEnabled instead, same milestone
+                            // ElectronicInvoicingSettings.jsx treats as "actually
+                            // organized" (see fiscal_setup.status_active there).
+                            ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && Boolean(user?.company?.electronicInvoicingEnabled),
                             showTeam,
                             hasPermission,
                             ELECTRONIC_INVOICING_ENABLED && user?.company?.countryCode === "CO" && user?.company?.electronicInvoicingProvider === "itcycle",
                             showFiscalSetup,
-                            needsFiscalSetup
+                            needsFiscalSetup,
+                            openDiscoveriesCount
                         ).map((item) => ({
                             ...item,
                         }))}
@@ -99,23 +110,40 @@ const DashboardSidebar = ({ collapsed, setCollapsed, currentPage }) => {
     );
 };
 
+// Ohnix_Icon_Transparent.png's pale strokes are tuned for a dark surface, and
+// it bakes the "OHNIX" wordmark into the raster itself - fine at the ~256px
+// this image ships at, but that text turns to mush once it's downscaled into
+// a 44-96px nav slot, and no color/CSS fix can recover text that was never
+// vector to begin with. Lite gets a different treatment instead of a filter
+// on the same file: Ohnix_Icon_Lite.png is cropped to just the cube+ring
+// glyph (no wordmark, no stray background dots) and pre-recoloured (dark
+// strokes, brand cyan kept) at 480px, so it stays crisp when scaled down and
+// reads fine directly on the white sidebar - no dark backing tile needed.
+// The "OHNIX" label is real text here instead, which is always crisp.
 const SidebarLogo = ({ collapsed, isLite, onClick }) => (
     <div
-        className={`flex items-center justify-center py-6 cursor-pointer group transition-all duration-200 ${collapsed ? "px-0" : "px-4"}`}
+        className={`flex flex-col items-center justify-center gap-2 py-6 cursor-pointer group transition-all duration-200 ${collapsed ? "px-0" : "px-4"}`}
         onClick={onClick}
     >
-        {collapsed ? (
-            <img
-                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon.svg"}
-                alt="Ohnix icon"
-                className="h-16 w-16 shrink-0 scale-125 object-contain transition-transform duration-200 group-hover:scale-[1.35] drop-shadow-lg"
-            />
-        ) : (
-            <img
-                src={isLite ? "/Logo-lite.svg" : "/Ohnix_Icon.svg"}
-                alt="Ohnix logo"
-                className="h-28 w-28 object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg"
-            />
+        <div
+            className={`flex items-center justify-center rounded-2xl transition-transform duration-200 ${collapsed ? "p-2" : "p-3"}`}
+        >
+            {collapsed ? (
+                <img
+                    src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
+                    alt="Ohnix icon"
+                    className="h-12 w-12 shrink-0 object-contain transition-transform duration-200 group-hover:scale-110 drop-shadow-lg"
+                />
+            ) : (
+                <img
+                    src={isLite ? "/Ohnix_Icon_Lite.png" : "/Ohnix_Icon_Transparent.png"}
+                    alt="Ohnix logo"
+                    className={`object-contain transition-transform duration-200 group-hover:scale-105 drop-shadow-lg ${isLite ? "h-16 w-16" : "h-24 w-24"}`}
+                />
+            )}
+        </div>
+        {!collapsed && isLite && (
+            <span className="text-sm font-bold tracking-[0.22em] text-[var(--ohnix-text-primary)]">OHNIX</span>
         )}
     </div>
 );

@@ -3,6 +3,7 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
 import { blockTeamMembers } from "../middleware/teamGuard.middleware.js";
+import { blockDuringImpersonation } from "../middleware/blockDuringImpersonation.middleware.js";
 import {
     cancelMySubscription,
     cancelMyUpgradeRequest,
@@ -32,6 +33,7 @@ import {
     reportEpaycoTransactionReference,
     reverifyAdminPayment,
     shortenUserSubscriptionAdmin,
+    startMyStarterTrial,
     uncancelUserSubscriptionAdmin,
     undoMyDowngrade,
     updateUpgradeRequestAdmin,
@@ -70,16 +72,22 @@ router.route("/me/checkout-payment-methods").get(requireModulePermission("billin
 router.route("/me/upgrade-requests")
     .get(requireModulePermission("billing", "view"), getMyUpgradeRequests)
     .post(requireModulePermission("billing", "edit"), createUpgradeRequest);
+// Fallback for a Negocio/Escala signup that never completed payment - starts
+// the Starter trial instead (see registerUser / startMyStarterTrial).
+router.route("/me/start-trial").post(requireModulePermission("billing", "edit"), startMyStarterTrial);
 
-// Billing mutations: require edit-level billing access.
-router.route("/me/upgrade-requests/:id/cancel").patch(requireModulePermission("billing", "edit"), cancelMyUpgradeRequest);
-router.route("/me/upgrade-requests/:id/checkout-session").post(requireModulePermission("billing", "edit"), createMyUpgradeCheckoutSession);
+// Billing mutations: require edit-level billing access, and are blocked
+// outright during an impersonation session - an impersonating admin should
+// never be able to move a customer's money or plan state (see
+// blockDuringImpersonation.middleware.js).
+router.route("/me/upgrade-requests/:id/cancel").patch(requireModulePermission("billing", "edit"), blockDuringImpersonation, cancelMyUpgradeRequest);
+router.route("/me/upgrade-requests/:id/checkout-session").post(requireModulePermission("billing", "edit"), blockDuringImpersonation, createMyUpgradeCheckoutSession);
 router.route("/me/upgrade-requests/:id/checkout-status").get(requireModulePermission("billing", "view"), getMyUpgradeCheckoutStatus);
-router.route("/me/upgrade-requests/:id/verify-activate").post(requireModulePermission("billing", "edit"), verifyAndActivateBySession);
+router.route("/me/upgrade-requests/:id/verify-activate").post(requireModulePermission("billing", "edit"), blockDuringImpersonation, verifyAndActivateBySession);
 // ePayco: fetch widget params for the checkout page (auth-protected)
 router.route("/me/upgrade-requests/:id/epayco-params").get(requireModulePermission("billing", "edit"), getEpaycoCheckoutParams);
 // ePayco: fallback verification when confirmation webhook is delayed
-router.route("/me/upgrade-requests/:id/epayco-verify").post(requireModulePermission("billing", "edit"), verifyAndActivateByEpayco);
+router.route("/me/upgrade-requests/:id/epayco-verify").post(requireModulePermission("billing", "edit"), blockDuringImpersonation, verifyAndActivateByEpayco);
 // ePayco: self-reported "closed the checkout without finishing" signal from
 // the onClosed hook (onpage/embedded checkout only) - see EpaycoCheckout.jsx
 router.route("/me/upgrade-requests/:id/epayco-checkout-closed").post(requireModulePermission("billing", "edit"), reportEpaycoCheckoutClosed);
@@ -89,15 +97,15 @@ router.route("/me/upgrade-requests/:id/epayco-checkout-closed").post(requireModu
 // existing trusted verification pipeline - see reportEpaycoTransactionReference.
 router.route("/me/upgrade-requests/:id/epayco-reference").post(requireModulePermission("billing", "edit"), reportEpaycoTransactionReference);
 // Renewal: creates checkout for the same current plan
-router.route("/me/renew").post(requireModulePermission("billing", "edit"), createRenewalCheckout);
-router.route("/me/pause").patch(requireModulePermission("billing", "edit"), pauseMySubscription);
-router.route("/me/cancel").patch(requireModulePermission("billing", "edit"), cancelMySubscription);
-router.route("/me/reactivate").patch(requireModulePermission("billing", "edit"), reactivateMySubscription);
+router.route("/me/renew").post(requireModulePermission("billing", "edit"), blockDuringImpersonation, createRenewalCheckout);
+router.route("/me/pause").patch(requireModulePermission("billing", "edit"), blockDuringImpersonation, pauseMySubscription);
+router.route("/me/cancel").patch(requireModulePermission("billing", "edit"), blockDuringImpersonation, cancelMySubscription);
+router.route("/me/reactivate").patch(requireModulePermission("billing", "edit"), blockDuringImpersonation, reactivateMySubscription);
 // "Bajar de plan" - stays on the current (higher) plan through the already-
 // paid period, switches at endsAt (see Subscription.scheduledPlan).
 router.route("/me/downgrade")
-    .post(requireModulePermission("billing", "edit"), downgradeMySubscription)
-    .delete(requireModulePermission("billing", "edit"), undoMyDowngrade);
+    .post(requireModulePermission("billing", "edit"), blockDuringImpersonation, downgradeMySubscription)
+    .delete(requireModulePermission("billing", "edit"), blockDuringImpersonation, undoMyDowngrade);
 
 router.route("/admin/users/:userId/plan").patch(isAdmin, updateUserPlan);
 router.route("/admin/users/:userId/usage").get(isAdmin, getUserUsageAdmin);

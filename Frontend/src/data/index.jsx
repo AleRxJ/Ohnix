@@ -1,7 +1,7 @@
 import {
-    DatabaseOutlined,
     TeamOutlined,
     BarChartOutlined,
+    RadarChartOutlined,
     DashboardOutlined,
     AppstoreOutlined,
     ShoppingCartOutlined,
@@ -18,78 +18,13 @@ import {
     WalletOutlined,
     BookOutlined,
     SafetyCertificateOutlined,
+    ExperimentOutlined,
     TagsOutlined,
+    ApiOutlined,
+    CloudServerOutlined,
+    BuildOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
-
-export const navLinks = [
-    { name: "Features", path: "features" },
-    { name: "Process", path: "process" },
-    { name: "Testimonials", path: "testimonials" },
-];
-
-export const features = [
-    {
-        icon: <DatabaseOutlined />,
-        title: "Inventory Tracking",
-        description:
-            "Real-time tracking of your inventory with automated updates and alerts.",
-    },
-    {
-        icon: <BarChartOutlined />,
-        title: "Advanced Analytics",
-        description:
-            "Gain insights with powerful reporting and visualization tools.",
-    },
-    {
-        icon: <TeamOutlined />,
-        title: "Team Collaboration",
-        description:
-            "Multiple user access with customizable permissions and roles.",
-    },
-];
-
-export const testimonials = [
-    {
-        name: "Sarah Johnson",
-        company: "Retail Solutions Inc.",
-        content: `This inventory system has transformed how we track our products. We've reduced stockouts by 45% and improved order accuracy significantly.`,
-        rating: 5,
-    },
-    {
-        name: "Michael Chen",
-        company: "Tech Distributors",
-        content: `The analytics features have given us insights we never had before. We can now forecast inventory needs with impressive accuracy.`,
-        rating: 5,
-    },
-    {
-        name: "Jessica Martinez",
-        company: "Global Logistics",
-        content: `Implementation was smoother than expected, and the support team was there every step of the way. Highly recommend!`,
-        rating: 4,
-    },
-];
-
-export const steps = [
-    {
-        number: "1",
-        title: "Sign Up for an Account",
-        description:
-            "Create your account in minutes and set up your inventory profiles.",
-    },
-    {
-        number: "2",
-        title: "Import Your Inventory",
-        description:
-            "Easily import your existing inventory data or start fresh.",
-    },
-    {
-        number: "3",
-        title: "Start Managing Efficiently",
-        description:
-            "Track, analyze, and optimize your inventory in real-time.",
-    },
-];
 
 // canAccess(moduleKey) gates the module-scoped items below for invited team
 // members with restricted roles (see TeamContext's hasPermission) - the
@@ -97,7 +32,7 @@ export const steps = [
 // ever hides items for someone acting on someone else's account. Defaults
 // to "always visible" so callers that don't pass it (or aren't inside a
 // team) see the full menu, same as before this existed.
-export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false, showFiscalSetup = false, needsFiscalSetup = false) => {
+export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam = false, canAccess = () => true, showSupportDocuments = false, showFiscalSetup = false, needsFiscalSetup = false, openDiscoveriesCount = 0) => {
     const items = [
         {
             key: "dashboard",
@@ -106,29 +41,17 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: <Link to="/dashboard">{t("common.dashboard")}</Link>,
         },
         {
-            key: "products",
-            moduleKey: "products",
-            icon: <AppstoreOutlined />,
-            label: <Link to="/products">{t("common.products")}</Link>,
-        },
-        {
-            key: "categories",
-            moduleKey: "categories",
-            icon: <AppstoreOutlined />,
-            label: <Link to="/categories">{t("common.categories")}</Link>,
-        },
-        {
             key: "orders",
             moduleKey: "orders",
             icon: <ShoppingCartOutlined />,
             label: <Link to="/orders">{t("common.orders")}</Link>,
         },
-        ...(showElectronicInvoicing ? [{
-            key: "electronic-invoices",
-            moduleKey: "orders",
-            icon: <FileTextOutlined />,
-            label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
-        }] : []),
+        {
+            key: "quotations",
+            moduleKey: "purchases",
+            icon: <TagsOutlined />,
+            label: <Link to="/quotations">{t("common.quotations_nav")}</Link>,
+        },
         {
             key: "customers",
             moduleKey: "customers",
@@ -136,10 +59,28 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             label: <Link to="/customers">{t("common.customers")}</Link>,
         },
         {
-            key: "quotations",
-            moduleKey: "purchases",
-            icon: <TagsOutlined />,
-            label: <Link to="/quotations">{t("common.quotations_nav")}</Link>,
+            key: "products",
+            moduleKey: "products",
+            icon: <AppstoreOutlined />,
+            label: <Link to="/products">{t("common.products")}</Link>,
+        },
+        {
+            key: "production-orders",
+            moduleKey: "products",
+            icon: <BuildOutlined />,
+            label: <Link to="/production-orders">{t("common.production_orders_nav")}</Link>,
+        },
+        {
+            key: "payroll",
+            moduleKey: "payroll",
+            icon: <WalletOutlined />,
+            label: <Link to="/payroll">{t("common.payroll_nav")}</Link>,
+        },
+        {
+            key: "categories",
+            moduleKey: "categories",
+            icon: <AppstoreOutlined />,
+            label: <Link to="/categories">{t("common.categories")}</Link>,
         },
         {
             key: "purchases",
@@ -159,6 +100,61 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             icon: <UserSwitchOutlined />,
             label: <Link to="/suppliers">{t("common.suppliers")}</Link>,
         },
+        {
+            key: "finance",
+            moduleKey: "finance",
+            icon: <WalletOutlined />,
+            label: <Link to="/finance">{t("common.finance_nav")}</Link>,
+        },
+        {
+            key: "accounting",
+            moduleKey: "accounting",
+            icon: <BookOutlined />,
+            label: <Link to="/accounting">{t("common.accounting_nav")}</Link>,
+        },
+        ...(showElectronicInvoicing ? [{
+            key: "electronic-invoices",
+            moduleKey: "orders",
+            icon: <FileTextOutlined />,
+            label: <Link to="/electronic-invoices">{t("common.electronic_invoices_nav")}</Link>,
+        }] : []),
+        {
+            key: "reports",
+            moduleKey: "reports",
+            icon: <BarChartOutlined />,
+            label: <Link to="/reports">{t("common.reports")}</Link>,
+        },
+        {
+            key: "discoveries",
+            moduleKey: "reports",
+            icon: <RadarChartOutlined />,
+            // A live count, not a plain nav row - this is Ohnix's own
+            // headline capability (findings the engine produced on its own,
+            // see components/discoveries/), not a peer of the CRUD pages
+            // around it, and the badge is what says so at a glance.
+            label: (
+                <Link to="/discoveries" className="flex items-center justify-between gap-2">
+                    <span>{t("common.discoveries_nav")}</span>
+                    {openDiscoveriesCount > 0 && (
+                        <span className="sidebar-discovery-badge">{openDiscoveriesCount > 9 ? "9+" : openDiscoveriesCount}</span>
+                    )}
+                </Link>
+            ),
+        },
+        ...(showTeam ? [{
+            key: "team",
+            icon: <UsergroupAddOutlined />,
+            label: <Link to="/team">{t("common.team_nav")}</Link>,
+        }] : []),
+        // Same gate as billing (moduleKey filter below) - API keys/
+        // integrations/webhooks are account-wide, owner-only, same as
+        // billing itself (see App.jsx#RequireBillingAccess).
+        {
+            key: "integrations",
+            moduleKey: "billing",
+            icon: <ApiOutlined />,
+            label: <Link to="/integrations">{t("common.integrations_nav")}</Link>,
+        },
         ...(showFiscalSetup ? [{
             key: "fiscal-setup",
             icon: <SafetyCertificateOutlined />,
@@ -173,29 +169,6 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
                     )}
                 </Link>
             ),
-        }] : []),
-        {
-            key: "reports",
-            moduleKey: "reports",
-            icon: <BarChartOutlined />,
-            label: <Link to="/reports">{t("common.reports")}</Link>,
-        },
-        {
-            key: "finance",
-            moduleKey: "finance",
-            icon: <WalletOutlined />,
-            label: <Link to="/finance">{t("common.finance_nav")}</Link>,
-        },
-        {
-            key: "accounting",
-            moduleKey: "accounting",
-            icon: <BookOutlined />,
-            label: <Link to="/accounting">{t("common.accounting_nav")}</Link>,
-        },
-        ...(showTeam ? [{
-            key: "team",
-            icon: <UsergroupAddOutlined />,
-            label: <Link to="/team">{t("common.team_nav")}</Link>,
         }] : []),
         {
             key: "billing",
@@ -231,6 +204,35 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             key: "admin-subscriptions",
             icon: <CrownOutlined />,
             label: <Link to="/admin/subscriptions">{t("common.admin_subscriptions")}</Link>,
+        });
+        items.push({
+            key: "admin-firmapass-validations",
+            icon: <SafetyCertificateOutlined />,
+            label: <Link to="/admin/firmapass-validations">{t("common.admin_firmapass_validations")}</Link>,
+        });
+        items.push({
+            key: "admin-certificate-orders",
+            // Distinct from admin-firmapass-validations right above (which
+            // uses SafetyCertificateOutlined too) - two adjacent identical
+            // icons in the same submenu read as one item at a glance. This
+            // page is about CertificateOrder payments/expirations, so the
+            // billing-flavored icon (same one "billing" uses above) fits.
+            icon: <CreditCardOutlined />,
+            label: <Link to="/admin/certificate-orders">{t("common.admin_certificate_orders")}</Link>,
+        });
+        items.push({
+            key: "admin-api-clients",
+            // Companies with no Ohnix account calling itcycle-api-dian
+            // directly via their own API key - distinct concept from every
+            // other item in this submenu (all of which are about Ohnix's
+            // own tenants), so it gets its own icon.
+            icon: <CloudServerOutlined />,
+            label: <Link to="/admin/api-clients">{t("common.admin_api_clients")}</Link>,
+        });
+        items.push({
+            key: "admin-dian-test-matrix",
+            icon: <ExperimentOutlined />,
+            label: <Link to="/admin/dian-test-matrix">{t("common.admin_dian_test_matrix")}</Link>,
         });
     }
 

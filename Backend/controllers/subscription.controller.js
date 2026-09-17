@@ -73,7 +73,7 @@ const ALLOWED_STATUS_TRANSITIONS = {
 // requester checked "requires manual review" or what their free-text notes
 // happened to say. Auto-approving one straight to "awaiting_checkout" used
 // to send the requester to a checkout that could never succeed.
-const shouldRouteToManualReview = ({ targetPlan, requiresManualReview }) => {
+export const shouldRouteToManualReview = ({ targetPlan, requiresManualReview }) => {
     if (targetPlan === "enterprise") {
         return true;
     }
@@ -93,13 +93,21 @@ export const UPGRADE_REQUEST_SELECT = {
     paymentProvider: true,
     paymentSessionId: true,
     paymentStatus: true,
+    billingCycle: true,
     isTestPayment: true,
     paidAt: true,
+    paidAmount: true,
+    paidCurrency: true,
     periodStartsAt: true,
     periodEndsAt: true,
     createdAt: true,
     updatedAt: true,
 };
+
+const VALID_BILLING_CYCLES = ["MONTHLY", "ANNUAL"];
+
+const normalizeBillingCycle = (value) =>
+    VALID_BILLING_CYCLES.includes(value) ? value : "MONTHLY";
 
 const getUsageSnapshot = async (userId, subscription) => {
     const effectivePlan = getEffectivePlan(subscription);
@@ -213,6 +221,12 @@ const getUsageSnapshot = async (userId, subscription) => {
     };
 };
 
+// MONTHLY renews every 30 days, ANNUAL ("paga 10, lleva 12") every 365 -
+// keyed by PlanUpgradeRequest.billingCycle, read fresh inside the
+// transaction below (not computed up front) since it depends on the request
+// being activated.
+const SUBSCRIPTION_PERIOD_DAYS_BY_CYCLE = { MONTHLY: 30, ANNUAL: 365 };
+
 const closeApprovedRequestAndActivatePlan = async ({
     requestId,
     actedBy,
@@ -222,13 +236,9 @@ const closeApprovedRequestAndActivatePlan = async ({
     paymentLink,
     adminResponse,
     isTestPayment,
+    paidAmount,
+    paidCurrency,
 }) => {
-    // Paid plans renew every 30 days — set endsAt on activation.
-    // For renewals (currentPlan === targetPlan), extend from the current endsAt
-    // so the user doesn't lose unused days. Computed inside the transaction below.
-    const SUBSCRIPTION_PERIOD_DAYS = 30;
-    const defaultEndsAt = new Date(Date.now() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000);
-
     const result = await prisma.$transaction(async (tx) => {
         const existing = await tx.planUpgradeRequest.findUnique({
             where: { id: requestId },
@@ -243,13 +253,15 @@ const closeApprovedRequestAndActivatePlan = async ({
             return { request: existing, activated: false };
         }
 
+        const periodDays = SUBSCRIPTION_PERIOD_DAYS_BY_CYCLE[existing.billingCycle] || 30;
+
         // For renewals: extend from current endsAt so no days are lost.
         // `base` is also the period's start - kept outside the `if` so a
         // straight upgrade (not a renewal) still gets a periodStartsAt of
         // "now" below instead of only renewals recording one.
         const isRenewal = existing.currentPlan === existing.targetPlan;
         let base = new Date();
-        let endsAt = defaultEndsAt;
+        let endsAt = new Date(Date.now() + periodDays * 24 * 60 * 60 * 1000);
         if (isRenewal) {
             const currentSub = await tx.subscription.findUnique({
                 where: { userId: existing.userId },
@@ -258,7 +270,7 @@ const closeApprovedRequestAndActivatePlan = async ({
             base = currentSub?.endsAt && new Date(currentSub.endsAt) > new Date()
                 ? new Date(currentSub.endsAt)   // still active → extend from expiry
                 : new Date();                    // already expired → extend from now
-            endsAt = new Date(base.getTime() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+            endsAt = new Date(base.getTime() + periodDays * 24 * 60 * 60 * 1000);
         }
 
         // Atomically claim the request before touching the subscription.
@@ -288,6 +300,13 @@ const closeApprovedRequestAndActivatePlan = async ({
                 // real payment just activated the plan.
                 periodStartsAt: paymentStatus === "paid" ? base : existing.periodStartsAt,
                 periodEndsAt: paymentStatus === "paid" ? endsAt : existing.periodEndsAt,
+                // What was actually charged - only known by the caller when
+                // a provider payload carried a verified amount/currency
+                // (Stripe/ePayco activation paths); admin/manual closes pass
+                // neither, so this stays whatever it already was (null on a
+                // fresh row, per the Prisma model comment).
+                paidAmount: paymentStatus === "paid" && paidAmount != null ? paidAmount : existing.paidAmount,
+                paidCurrency: paymentStatus === "paid" && paidCurrency != null ? paidCurrency : existing.paidCurrency,
                 // No fallback boilerplate text here - request_closed_paid
                 // (Billing.jsx) already tells the customer this, translated,
                 // from paymentStatus/paidAt/periodEndsAt. A literal English
@@ -326,12 +345,14 @@ const closeApprovedRequestAndActivatePlan = async ({
                     status: "active",
                     endsAt,
                     trialEndsAt: null,
+                    billingCycle: existing.billingCycle,
                 },
                 create: {
                     userId: existing.userId,
                     plan: existing.targetPlan,
                     status: "active",
                     endsAt,
+                    billingCycle: existing.billingCycle,
                 },
             });
         }
@@ -491,7 +512,7 @@ export const resolvePendingPaymentStatus = async (request) => {
                 // a verified session still doesn't prove it was created for
                 // the price this plan actually costs.
                 const currency = `${session?.currency || ""}`.toLowerCase();
-                const expectedAmount = getAmountForPlanAndCurrency(request.targetPlan, currency);
+                const expectedAmount = getAmountForPlanAndCurrency(request.targetPlan, currency, request.billingCycle);
                 const paidAmount = Math.round(Number(session?.amount_total));
                 const amountOk =
                     expectedAmount !== null &&
@@ -516,6 +537,8 @@ export const resolvePendingPaymentStatus = async (request) => {
                     paymentSessionId: request.paymentSessionId,
                     paymentProvider: "stripe",
                     paymentStatus: "paid",
+                    paidAmount,
+                    paidCurrency: currency,
                 });
                 return { ...request, status: "closed", paymentStatus: "paid" };
             }
@@ -561,7 +584,7 @@ export const resolvePendingPaymentStatus = async (request) => {
                 const currencyCode = `${
                     txData.x_currency_code ?? txData.moneda ?? txData.currency ?? ""
                 }`.toUpperCase();
-                const expectedAmount = getEpaycoAmount(request.targetPlan);
+                const expectedAmount = getEpaycoAmount(request.targetPlan, request.billingCycle);
                 const amountOk =
                     expectedAmount !== null && Math.abs(Math.round(paidAmount) - expectedAmount) <= 1;
                 const currencyOk = currencyCode === "COP";
@@ -586,6 +609,8 @@ export const resolvePendingPaymentStatus = async (request) => {
                     paymentProvider: "epayco",
                     paymentStatus: "paid",
                     isTestPayment,
+                    paidAmount: Math.round(paidAmount),
+                    paidCurrency: "cop",
                 });
                 return { ...request, status: "closed", paymentStatus: "paid" };
             }
@@ -732,6 +757,12 @@ export const getPlanCatalog = asyncHandler(async (_req, res) => {
 // .env), so for "rest of world" visitors this falls back to PLAN_PRICES_USD,
 // the existing approved reference price already shown elsewhere in-app
 // (SubscriptionPlanCard, PlanComparisonCard) - not a new invented number.
+// Converts a raw Stripe/ePayco smallest-unit amount to a display amount for
+// the given currency (COP has no minor unit, EUR/USD are cents) - shared by
+// both the monthly and annual branches below so they can never diverge.
+const toDisplayAmount = (rawAmount, currency) =>
+    currency === "cop" ? rawAmount : rawAmount / 100;
+
 export const getPublicPricing = asyncHandler(async (req, res) => {
     const currency = getCurrencyForCountry(req.query?.country);
 
@@ -739,22 +770,55 @@ export const getPublicPricing = asyncHandler(async (req, res) => {
         if (planKey === "enterprise") {
             // Always custom/consultative pricing - never shown as a fixed
             // number on the public pricing page, regardless of market.
-            return { key: planKey, currency, amount: null, source: "custom" };
+            return {
+                key: planKey,
+                currency,
+                amount: null,
+                monthlyAmount: null,
+                annualAmount: null,
+                source: "custom",
+            };
         }
 
-        const checkoutAmount = getAmountForPlanAndCurrency(planKey, currency);
+        const checkoutAmount = getAmountForPlanAndCurrency(planKey, currency, "MONTHLY");
         if (checkoutAmount !== null) {
-            // Stripe/ePayco amounts are in the smallest currency unit - COP
-            // has no minor unit (see .env.example), EUR/USD are cents.
-            const amount = currency === "cop" ? checkoutAmount : checkoutAmount / 100;
-            return { key: planKey, currency, amount, source: "checkout" };
+            const monthlyAmount = toDisplayAmount(checkoutAmount, currency);
+            // Annual is always monthly x10 ("paga 10, lleva 12") - recomputed
+            // from the same checkout resolver used for Stripe/ePayco, not a
+            // second hand-typed number, so it can never drift from what
+            // checkout would actually charge for an annual request.
+            const annualCheckoutAmount = getAmountForPlanAndCurrency(planKey, currency, "ANNUAL");
+            const annualAmount = toDisplayAmount(annualCheckoutAmount, currency);
+            return {
+                key: planKey,
+                currency,
+                amount: monthlyAmount, // back-compat: same as monthlyAmount
+                monthlyAmount,
+                annualAmount,
+                source: "checkout",
+            };
         }
 
         if (currency === "usd" && PLAN_PRICES_USD[planKey] != null) {
-            return { key: planKey, currency, amount: PLAN_PRICES_USD[planKey], source: "reference" };
+            const monthlyAmount = PLAN_PRICES_USD[planKey];
+            return {
+                key: planKey,
+                currency,
+                amount: monthlyAmount,
+                monthlyAmount,
+                annualAmount: monthlyAmount * 10,
+                source: "reference",
+            };
         }
 
-        return { key: planKey, currency, amount: null, source: "unavailable" };
+        return {
+            key: planKey,
+            currency,
+            amount: null,
+            monthlyAmount: null,
+            annualAmount: null,
+            source: "unavailable",
+        };
     });
 
     return res.status(200).json(new ApiResponse(200, { currency, plans }, "Public pricing fetched successfully"));
@@ -1338,8 +1402,18 @@ export const getUserUsageAdmin = asyncHandler(async (req, res, next) => {
     );
 });
 
+// Annual checkouts don't prorate (same no-proration policy this codebase
+// already applies to every upgrade, see the comment below) - upgrading away
+// from an ANNUAL plan mid-cycle would forfeit up to ~10 months of prepaid
+// time with nothing given back, since there's no stored payment method to
+// partially refund. Self-service blocks that case and routes to support
+// instead; once under a month remains, it's cheap enough to just let the
+// normal upgrade flow (and its own no-proration policy) handle it.
+const ANNUAL_UPGRADE_LOCK_DAYS = 30;
+
 export const createUpgradeRequest = asyncHandler(async (req, res, next) => {
     const { targetPlan, notes, requiresManualReview } = req.body;
+    const billingCycle = normalizeBillingCycle(req.body?.billingCycle);
 
     if (!targetPlan || !["growth", "scale", "enterprise"].includes(targetPlan)) {
         return next(
@@ -1351,6 +1425,19 @@ export const createUpgradeRequest = asyncHandler(async (req, res, next) => {
 
     if (subscription.plan === targetPlan) {
         return next(new ApiError(400, "You are already on this plan"));
+    }
+
+    if (
+        subscription.billingCycle === "ANNUAL" &&
+        subscription.endsAt &&
+        new Date(subscription.endsAt).getTime() - Date.now() > ANNUAL_UPGRADE_LOCK_DAYS * 24 * 60 * 60 * 1000
+    ) {
+        return next(
+            new ApiError(
+                409,
+                "You're on an annual plan with more than 30 days left - contact support to change plans mid-cycle, since upgrading here would forfeit your remaining prepaid time."
+            )
+        );
     }
 
     // This endpoint is upgrade-only - it charges immediately via checkout,
@@ -1404,6 +1491,7 @@ export const createUpgradeRequest = asyncHandler(async (req, res, next) => {
             userId: req.user.prismaId,
             currentPlan: subscription.plan,
             targetPlan,
+            billingCycle,
             notes: trimmedNotes,
             status: requiresReview ? "open" : "approved",
             // No adminResponse boilerplate here - the frontend's
@@ -1555,6 +1643,97 @@ export const cancelMyUpgradeRequest = asyncHandler(async (req, res, next) => {
     return res
         .status(200)
         .json(new ApiResponse(200, cancelledRequest, "Upgrade request cancelled"));
+});
+
+// Fallback offered when a Negocio/Escala signup doesn't go through with
+// payment (see registerUser in user.controller.js, which creates the
+// subscription as a paused "no plan yet" placeholder for those signups
+// instead of granting a trial) - lets that account start the Starter trial
+// instead of forcing the customer through registration a second time.
+//
+// Eligibility is intentionally strict and mirrors registerUser's own
+// starter-trial branch: only an account that has NEVER had a trial or a
+// paid period (trialEndsAt AND endsAt both still null) qualifies. This is
+// what stops the endpoint from being used to reset an already-used trial or
+// to escape a lapsed paid subscription for free - once either date is ever
+// set, it's set for good (closeApprovedRequestAndActivatePlan only clears
+// trialEndsAt on activation, it never re-nulls endsAt).
+export const startMyStarterTrial = asyncHandler(async (req, res, next) => {
+    const subscription = await ensureUserSubscription(req.user.prismaId);
+
+    if (subscription.plan !== "starter" || subscription.trialEndsAt || subscription.endsAt) {
+        return next(
+            new ApiError(
+                409,
+                "This account already has a plan or has already used its free trial."
+            )
+        );
+    }
+
+    const pendingRequest = await prisma.planUpgradeRequest.findFirst({
+        where: {
+            userId: req.user.prismaId,
+            status: { in: ["open", "reviewing", "approved"] },
+        },
+        select: { id: true, status: true, paymentStatus: true },
+    });
+
+    // Same protection cancelMyUpgradeRequest applies - a payment that's
+    // still being verified might actually have succeeded, so don't let the
+    // customer grab a free trial (and close the request out from under it)
+    // while that's still unresolved.
+    if (pendingRequest?.status === "approved" && pendingRequest.paymentStatus === "pending") {
+        return next(
+            new ApiError(
+                409,
+                "A payment for your pending request is still being verified. Please wait for it to complete before starting the free trial."
+            )
+        );
+    }
+
+    const TRIAL_DAYS = 14;
+    const updated = await prisma.subscription.update({
+        where: { userId: req.user.prismaId },
+        data: {
+            status: "active",
+            trialEndsAt: new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000),
+        },
+        select: {
+            plan: true,
+            status: true,
+            trialEndsAt: true,
+            endsAt: true,
+            cancelAtPeriodEnd: true,
+            scheduledPlan: true,
+            lowStockThreshold: true,
+        },
+    });
+
+    if (pendingRequest) {
+        await prisma.planUpgradeRequest.updateMany({
+            where: { id: pendingRequest.id, status: pendingRequest.status },
+            data: { status: "closed" },
+        });
+    }
+
+    const effectivePlan = getEffectivePlan(updated);
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                plan: updated.plan,
+                effectivePlan,
+                status: updated.status,
+                trialEndsAt: updated.trialEndsAt,
+                endsAt: updated.endsAt ?? null,
+                cancelAtPeriodEnd: updated.cancelAtPeriodEnd ?? false,
+                scheduledPlan: updated.scheduledPlan ?? null,
+                limits: getPlanLimits(effectivePlan),
+                lowStockThreshold: updated.lowStockThreshold ?? null,
+            },
+            "Starter trial started successfully"
+        )
+    );
 });
 
 export const getCheckoutPaymentMethods = asyncHandler(async (req, res) => {
@@ -2114,7 +2293,7 @@ const activateFromCheckoutSession = async ({ session, provider }) => {
 
     const existingRequest = await prisma.planUpgradeRequest.findUnique({
         where: { id: upgradeRequestId },
-        select: { id: true, status: true, paymentStatus: true, targetPlan: true },
+        select: { id: true, status: true, paymentStatus: true, targetPlan: true, billingCycle: true },
     });
 
     // Idempotency guard: a Stripe webhook can be redelivered - do not
@@ -2131,10 +2310,16 @@ const activateFromCheckoutSession = async ({ session, provider }) => {
     // defense-in-depth guard against a bug elsewhere in checkout-session
     // creation activating the wrong plan.
     let amountOk = true;
+    let paidAmount = null;
+    let paidCurrency = null;
     if (provider === "stripe") {
-        const currency = `${session?.currency || ""}`.toLowerCase();
-        const expectedAmount = getAmountForPlanAndCurrency(existingRequest.targetPlan, currency);
-        const paidAmount = Math.round(Number(session?.amount_total));
+        paidCurrency = `${session?.currency || ""}`.toLowerCase();
+        const expectedAmount = getAmountForPlanAndCurrency(
+            existingRequest.targetPlan,
+            paidCurrency,
+            existingRequest.billingCycle
+        );
+        paidAmount = Math.round(Number(session?.amount_total));
         amountOk =
             expectedAmount !== null &&
             Number.isFinite(paidAmount) &&
@@ -2173,6 +2358,8 @@ const activateFromCheckoutSession = async ({ session, provider }) => {
         paymentStatus: "paid",
         paymentLink: session?.url || session?.checkoutUrl || session?.paymentUrl || null,
         isTestPayment,
+        paidAmount,
+        paidCurrency,
     });
 };
 
@@ -2689,14 +2876,24 @@ export const createRenewalCheckout = asyncHandler(async (req, res, next) => {
         return next(new ApiError(400, "Se requiere un email válido para el checkout."));
     }
 
-    // Create auto-approved renewal request (currentPlan === targetPlan signals renewal)
+    // Create auto-approved renewal request (currentPlan === targetPlan signals
+    // renewal). billingCycle is inherited from the account's *standing*
+    // cycle (Subscription.billingCycle), never defaulted to MONTHLY here -
+    // otherwise an annual customer's first auto-renewal would silently
+    // re-bill them monthly instead of continuing their "paga 10, lleva 12"
+    // plan.
+    const renewalBillingCycle = normalizeBillingCycle(subscription.billingCycle);
     const request = await prisma.planUpgradeRequest.create({
         data: {
             userId: req.user.prismaId,
             currentPlan: subscription.plan,
             targetPlan: subscription.plan,
+            billingCycle: renewalBillingCycle,
             status: "approved",
-            adminResponse: "Renovación automática. Completa el pago para extender tu plan 30 días.",
+            adminResponse:
+                renewalBillingCycle === "ANNUAL"
+                    ? "Renovación automática. Completa el pago para extender tu plan 365 días."
+                    : "Renovación automática. Completa el pago para extender tu plan 30 días.",
             paymentStatus: "awaiting_checkout",
         },
         select: UPGRADE_REQUEST_SELECT,
@@ -2858,7 +3055,7 @@ export const handleEpaycoConfirmation = async (req, res) => {
         // Load the upgrade request
         const existingRequest = await prisma.planUpgradeRequest.findUnique({
             where: { id: requestId },
-            select: { id: true, status: true, paymentSessionId: true, paymentStatus: true, targetPlan: true },
+            select: { id: true, status: true, paymentSessionId: true, paymentStatus: true, targetPlan: true, billingCycle: true },
         });
 
         if (!existingRequest) {
@@ -2899,7 +3096,7 @@ export const handleEpaycoConfirmation = async (req, res) => {
             // manipulated `amount` sent to ePayco's widget in the browser
             // (see EpaycoCheckout.jsx) would still produce a validly-signed
             // confirmation for whatever lower amount was actually charged.
-            const expectedAmount = getEpaycoAmount(existingRequest.targetPlan);
+            const expectedAmount = getEpaycoAmount(existingRequest.targetPlan, existingRequest.billingCycle);
             const paidAmount = Math.round(Number(amount));
             const amountMatches = expectedAmount !== null && Math.abs(paidAmount - expectedAmount) <= 1;
             const currencyMatches = currencyCode.toUpperCase() === "COP";
@@ -2926,6 +3123,8 @@ export const handleEpaycoConfirmation = async (req, res) => {
                 paymentProvider: "epayco",
                 paymentStatus: "paid",
                 isTestPayment,
+                paidAmount,
+                paidCurrency: "cop",
             });
 
             console.log("[epayco-confirmation] Plan activated for requestId:", requestId);
@@ -2999,7 +3198,7 @@ export const handleEpaycoResponse = (req, res) => {
         `${data.x_extra1 || data.extra1 || ""}`.trim() ||
         `${req.query.requestId || ""}`.trim();
 
-    const frontendBase = `${process.env.FRONTEND_URL || "https://www.ohnix.co"}`.replace(/\/$/, "");
+    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
 
     if (!requestId) {
         return res.redirect(`${frontendBase}/billing`);

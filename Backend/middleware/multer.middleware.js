@@ -43,22 +43,31 @@ export const upload = multer({
     },
 });
 
-export const csvUpload = multer({
+// Accepts either a plain CSV, or a ZIP bundling the CSV together with the
+// product images it references (see product.bulk.controller.js) - the size
+// cap is higher than a bare CSV needs because a ZIP of a few dozen product
+// photos is legitimately much bigger.
+export const bulkUpload = multer({
     storage: multer.memoryStorage(),
     limits: {
-        fileSize: 5 * 1024 * 1024,
+        fileSize: 25 * 1024 * 1024,
     },
     fileFilter: function (req, file, cb) {
+        const name = file.originalname.toLowerCase();
         const isCSV =
             file.mimetype === "text/csv" ||
             file.mimetype === "application/csv" ||
             file.mimetype === "application/vnd.ms-excel" ||
-            file.originalname.toLowerCase().endsWith(".csv");
+            name.endsWith(".csv");
+        const isZip =
+            file.mimetype === "application/zip" ||
+            file.mimetype === "application/x-zip-compressed" ||
+            name.endsWith(".zip");
 
-        if (isCSV) {
+        if (isCSV || isZip) {
             cb(null, true);
         } else {
-            cb(new Error("Only CSV files are allowed for bulk upload"), false);
+            cb(new Error("Only CSV or ZIP files are allowed for bulk upload"), false);
         }
     },
 });

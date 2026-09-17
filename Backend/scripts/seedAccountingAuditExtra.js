@@ -4,7 +4,7 @@ dotenv.config({ path: "./.env" });
 import { prisma } from "../db/prisma.js";
 import purchaseService from "../services/purchase.service.js";
 
-const EMAIL = "alejandrovallejo10@outlook.com";
+const EMAIL = (process.argv[2] || "alejandrovallejo10@outlook.com").trim().toLowerCase();
 
 const run = async () => {
     await prisma.$connect();

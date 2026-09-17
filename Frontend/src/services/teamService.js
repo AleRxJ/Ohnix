@@ -1,4 +1,6 @@
 import { api } from "../api/api";
+import { getOrCreateDeviceId } from "../utils/deviceId.js";
+import { getClientPlatform } from "../utils/platform.js";
 
 // Mirrors Backend/routes/team.routes.js one to one.
 export const teamService = {
@@ -29,6 +31,21 @@ export const teamService = {
 
     async removeMember(teamId, userId) {
         const response = await api.patch(`/teams/${teamId}/members/${userId}`, { status: "removed" });
+        return response.data;
+    },
+
+    async getTeamSessions(teamId) {
+        const response = await api.get(`/teams/${teamId}/sessions`);
+        return response.data;
+    },
+
+    async getMemberSessions(teamId, userId) {
+        const response = await api.get(`/teams/${teamId}/members/${userId}/sessions`);
+        return response.data;
+    },
+
+    async revokeMemberSession(teamId, userId, sessionId) {
+        const response = await api.delete(`/teams/${teamId}/members/${userId}/sessions/${sessionId}`);
         return response.data;
     },
 
@@ -89,6 +106,8 @@ export const teamService = {
             username,
             password,
             preferredLanguage,
+            deviceId: getOrCreateDeviceId(),
+            deviceClass: getClientPlatform(),
         });
         return response.data;
     },

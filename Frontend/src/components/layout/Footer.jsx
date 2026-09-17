@@ -6,6 +6,7 @@ import {
     MailOutlined,
 } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
+import { ELECTRONIC_INVOICING_ENABLED } from "../../config/features";
 
 // Plain HTML/Tailwind instead of antd (Layout/Row/Col/Space/Divider) - see
 // Navbar.jsx for why: this is public marketing chrome, and antd's vendor
@@ -14,13 +15,15 @@ const Footer = () => {
     const { t } = useI18n();
 
     return (
-        <footer className="border-t border-white/5 bg-[#050505] pt-16 pb-8 text-[#A9B3B8]">
-            <div className="container mx-auto max-w-7xl px-6">
+        <footer className="border-t border-white/5 bg-[#050505] pt-16 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] text-[#A9B3B8] md:pb-8">
+            <div className="container mx-auto max-w-[1440px] px-6">
                 <div className="flex flex-col items-start gap-12 md:flex-row md:items-center md:justify-between">
                     <div>
                         <img
-                            src="/Ohnix_FullLogo.svg"
+                            src="/Ohnix_FullLogo_Transparent.png"
                             alt="Ohnix logo"
+                            width="160"
+                            height="40"
                             className="mb-4 h-10 w-auto"
                         />
                         <p className="max-w-md text-sm leading-relaxed text-[#A9B3B8]">
@@ -65,26 +68,39 @@ const Footer = () => {
                 <hr className="my-10 border-white/8 opacity-40" />
 
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <p className="text-sm text-[#6F7A81]">
+                    <p className="text-sm text-[#8B969C]">
                         © {new Date().getFullYear()} iTcycle. {t("landing.footer.copyright")}
                     </p>
-                    <div className="flex gap-8 text-sm">
-                        <Link to="/" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                    <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm md:justify-end md:gap-8">
+                        <Link to="/#home" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.nav.home")}
                         </Link>
-                        <Link to="/software-inventario-pymes" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        <Link to="/software-inventario-pymes" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.pymes")}
                         </Link>
-                        <Link to="/colaboracion-en-equipo" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        <Link to="/colaboracion-en-equipo" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.team")}
                         </Link>
-                        <Link to="/precios" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        <Link to="/precios" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.pricing")}
                         </Link>
-                        <Link to="/comparativa/ohnix-vs-alegra" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        <Link to="/comparativa/ohnix-vs-alegra" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.comparison")}
                         </Link>
-                        <Link to="/blog" className="text-[#6F7A81] transition-colors duration-200 hover:text-white">
+                        {ELECTRONIC_INVOICING_ENABLED && (
+                            <Link to="/facturacion-electronica-sin-inventario" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
+                                {t("landing.footer.links.standalone_invoicing")}
+                            </Link>
+                        )}
+                        {ELECTRONIC_INVOICING_ENABLED && (
+                            <Link to="/certificado-digital-dian" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
+                                {t("landing.footer.links.certificates")}
+                            </Link>
+                        )}
+                        <Link to="/integraciones" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
+                            {t("landing.footer.links.integrations")}
+                        </Link>
+                        <Link to="/blog" className="text-[#8B969C] transition-colors duration-200 hover:text-white">
                             {t("landing.footer.links.blog")}
                         </Link>
                     </div>

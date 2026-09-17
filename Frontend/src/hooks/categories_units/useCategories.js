@@ -6,6 +6,9 @@ import useI18n from "../useI18n";
 import { useInventoryTour } from "../../context/InventoryTourContext";
 import { resolveApiErrorMessage } from "../../utils/apiError";
 import { useDataInvalidation } from "../useDataInvalidation";
+import { getConnectivityState } from "../../offline/connectivity";
+import { subscribeSyncCompleted } from "../../offline/syncEngine";
+import { queueCreate, queueUpdate, queueDelete, readMirrorAll, mirrorReplaceAll } from "../../offline/entityQueue";
 
 const DELETE_CATEGORY_ERROR_CODES = {
     category_has_products: "categories.delete_conflict_products",
@@ -32,6 +35,12 @@ export const useCategories = () => {
     // Función interna que no depende de otras dependencias
     const loadCategoriesInternal = useCallback(async (admin) => {
         const requestId = ++latestRequestId.current;
+        if (!getConnectivityState()) {
+            const local = admin ? [] : await readMirrorAll("categories");
+            if (requestId !== latestRequestId.current) return local;
+            setCategories(local);
+            return local;
+        }
         setLoading(true);
         try {
             const endpoint = admin ? "/categories/admin/all" : "/categories/user";
@@ -40,12 +49,22 @@ export const useCategories = () => {
 
             if (response.data.success) {
                 setCategories(response.data.data);
+                // The admin "all accounts" view isn't this account's own
+                // catalog - mirroring it would corrupt the offline mirror
+                // with rows that don't belong to this account.
+                if (!admin) mirrorReplaceAll("categories", response.data.data);
                 return response.data.data;
             } else {
                 return [];
             }
         } catch (error) {
             if (requestId !== latestRequestId.current) return [];
+            if (!error.response) {
+                const local = admin ? [] : await readMirrorAll("categories");
+                if (requestId !== latestRequestId.current) return [];
+                setCategories(local);
+                return local;
+            }
             console.error("[useCategories] Error:", error);
             toast.error(t("categories.failed_load_categories"));
             return [];
@@ -68,8 +87,24 @@ export const useCategories = () => {
     // renaming, or deleting a category.
     useDataInvalidation("category", loadCategories);
 
+    // Coming back online: refetch for real (replaces any offline-queued
+    // optimistic rows with the server's canonical view once the outbox has
+    // had a chance to drain).
+    useEffect(() => subscribeSyncCompleted(loadCategories), [loadCategories]);
+
     const createCategory = useCallback(
         async (values) => {
+            if (!getConnectivityState()) {
+                await queueCreate({
+                    entity: "categories",
+                    url: "/categories",
+                    fields: values,
+                    optimisticExtra: { created_by: { _id: user?._id, username: user?.username }, products_count: 0 },
+                });
+                toast.success(t("common.offline_saved_locally"));
+                await loadCategories();
+                return { success: true };
+            }
             const loadingToast = toast.loading(t("categories.creating_category"));
             try {
                 const response = await api.post("/categories", {
@@ -103,17 +138,25 @@ export const useCategories = () => {
                 return { success: false, error: errorMsg };
             }
         },
-        [loadCategories, isTutorialActive, notifyAction]
+        [loadCategories, isTutorialActive, notifyAction, user]
     );
 
     const updateCategory = useCallback(
         async (id, values) => {
+            const endpoint = isAdmin
+                ? `/categories/admin/${id}`
+                : `/categories/user/${id}`;
+
+            // Admin's cross-account edit path has no local mirror to fall
+            // back to - only the account's own (non-admin) path is offline.
+            if (!isAdmin && !getConnectivityState()) {
+                await queueUpdate({ entity: "categories", url: endpoint, id, fields: values });
+                toast.success(t("common.offline_saved_locally"));
+                await loadCategories();
+                return { success: true };
+            }
             const loadingToast = toast.loading(t("categories.updating_category"));
             try {
-                const endpoint = isAdmin
-                    ? `/categories/admin/${id}`
-                    : `/categories/user/${id}`;
-
                 const response = await api.patch(endpoint, values);
                 if (response.data.success) {
                     toast.success(t("categories.category_updated"), {
@@ -138,12 +181,18 @@ export const useCategories = () => {
 
     const deleteCategory = useCallback(
         async (id) => {
+            const endpoint = isAdmin
+                ? `/categories/admin/${id}`
+                : `/categories/user/${id}`;
+
+            if (!isAdmin && !getConnectivityState()) {
+                await queueDelete({ entity: "categories", url: endpoint, id });
+                toast.success(t("common.offline_deleted_locally"));
+                await loadCategories();
+                return { success: true };
+            }
             const loadingToast = toast.loading(t("categories.deleting_category"));
             try {
-                const endpoint = isAdmin
-                    ? `/categories/admin/${id}`
-                    : `/categories/user/${id}`;
-
                 const response = await api.delete(endpoint);
                 if (response.data.success) {
                     toast.success(t("categories.category_deleted"), {
@@ -172,14 +221,14 @@ export const useCategories = () => {
             .includes(searchText.toLowerCase());
         const matchesFilter =
             filter === "all" ||
-            (filter === "mine" && category.created_by._id === user?._id) ||
-            (filter === "others" && category.created_by._id !== user?._id);
+            (filter === "mine" && category.created_by?._id === user?._id) ||
+            (filter === "others" && category.created_by?._id !== user?._id);
         return matchesSearch && matchesFilter;
     });
 
     const canEdit = useCallback(
         (category) => {
-            return isAdmin || category.created_by._id === user?._id;
+            return isAdmin || category.created_by?._id === user?._id;
         },
         [isAdmin, user]
     );
