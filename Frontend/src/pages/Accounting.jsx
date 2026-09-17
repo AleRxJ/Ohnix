@@ -2769,23 +2769,6 @@ const OverviewTab = () => {
     );
 };
 
-// "Próximamente" cards for withholdings Ohnix doesn't calculate yet -
-// ReteICA/Retefuente/renta are deliberately NOT presented as menu items
-// with forms behind them, since none of that logic exists server-side.
-// IVA is the one concept here that's real today, so it links out to what
-// already computes it instead of duplicating a second IVA UI.
-const ComingSoonTaxCard = ({ titleKey, descKey }) => {
-    const { t } = useI18n();
-    return (
-        <Card className="module-shell border border-[var(--ohnix-line-4)] h-full" size="small">
-            <div className="flex items-start justify-between gap-2 mb-2">
-                <p className="font-semibold text-[var(--ohnix-text-primary)]">{t(titleKey)}</p>
-                <Tag icon={<ClockCircleOutlined />} color="default">{t("accounting.taxes_coming_soon_badge")}</Tag>
-            </div>
-            <p className="text-xs text-[var(--ohnix-text-muted)]">{t(descKey)}</p>
-        </Card>
-    );
-};
 
 // Captures the facts a future retención en la fuente / ReteICA engine will
 // need (agente retenedor status, municipio, actividad CIIU, tarifa ICA) -
@@ -3055,6 +3038,183 @@ const ExogenaReportCard = () => {
     );
 };
 
+// Records which income-tax regime (Ordinario vs RST) and, for RST, which
+// Art. 908 ET activity group applies - RentaReportCard reads this indirectly
+// through the server (rentaDeclaration.service.js), it never recomputes it
+// client-side. Same "configuration fact the user enters, ideally with their
+// accountant" convention as WithholdingConfigCard below.
+const TaxRegimeConfigCard = () => {
+    const { t } = useI18n();
+    const [form] = Form.useForm();
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+
+    const load = async () => {
+        setLoading(true);
+        try {
+            const res = await companyService.getMyCompany();
+            const company = res?.data?.company || res?.data || null;
+            form.setFieldsValue({
+                taxRegime: company?.taxRegime || undefined,
+                simpleRegimeGroup: company?.simpleRegimeGroup || undefined,
+            });
+        } catch {
+            toast.error(t("accounting.failed"));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        load();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const handleSave = async (values) => {
+        setSaving(true);
+        try {
+            await companyService.updateMyCompany(values);
+            toast.success(t("accounting.taxes_config_saved"));
+        } catch (err) {
+            toast.error(accountingErrorMessage(err, t));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Card className="module-shell border border-[var(--ohnix-line-4)]" title={t("accounting.renta_config_title")} loading={loading}>
+            <p className="text-sm text-[var(--ohnix-text-muted)] mb-4">{t("accounting.renta_config_desc")}</p>
+            <Form form={form} layout="vertical" onFinish={handleSave} disabled={loading || saving}>
+                <Row gutter={16}>
+                    <Col xs={24} sm={12}>
+                        <Form.Item name="taxRegime" label={t("accounting.renta_regime_label")} extra={t("accounting.renta_regime_hint")}>
+                            <Select allowClear placeholder={t("accounting.renta_regime_placeholder")} options={["ordinario", "simple"].map((value) => ({ value, label: t(`accounting.renta_regime_${value}`) }))} />
+                        </Form.Item>
+                    </Col>
+                    <Form.Item noStyle shouldUpdate={(prev, next) => prev.taxRegime !== next.taxRegime}>
+                        {({ getFieldValue }) => getFieldValue("taxRegime") === "simple" && (
+                            <Col xs={24} sm={12}>
+                                <Form.Item name="simpleRegimeGroup" label={t("accounting.renta_simple_group_label")} extra={t("accounting.renta_simple_group_hint")}>
+                                    <Select allowClear placeholder={t("accounting.renta_simple_group_placeholder")} options={["group1", "group2", "group3", "group4"].map((value) => ({ value, label: t(`accounting.renta_simple_${value}`) }))} />
+                                </Form.Item>
+                            </Col>
+                        )}
+                    </Form.Item>
+                </Row>
+                <Button type="primary" htmlType="submit" loading={saving}>{t("common.save")}</Button>
+            </Form>
+        </Card>
+    );
+};
+
+// NOT a certified DIAN filing - every number here is a server-computed
+// estimate (rentaDeclaration.service.js), with `rates_verified` surfacing
+// whether an accountant has confirmed the underlying rate/bracket table yet
+// (see IncomeTaxYearConfig/SimpleRegimeBracket's schema comments). The
+// disclaimer Alert at the bottom is deliberately not collapsible, same
+// convention as ExogenaReportCard's.
+const RentaReportCard = () => {
+    const { t } = useI18n();
+    const { formatCurrency } = useCurrency();
+    const [year, setYear] = useState(dayjs().year() - 1);
+    const [adjustments, setAdjustments] = useState(0);
+    const [declaration, setDeclaration] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [pdfLoading, setPdfLoading] = useState(false);
+
+    const load = async (targetYear = year, targetAdjustments = adjustments) => {
+        setLoading(true);
+        try {
+            const response = await accountingService.getRentaDeclaration({ year: targetYear, manualAdjustments: targetAdjustments });
+            setDeclaration(response?.data || null);
+        } catch (error) {
+            toast.error(accountingErrorMessage(error, t));
+        } finally { setLoading(false); }
+    };
+    useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const downloadPdf = async () => {
+        setPdfLoading(true);
+        try {
+            await accountingService.downloadRentaDeclarationPdf({ year, manualAdjustments: adjustments });
+        } catch (error) {
+            toast.error(accountingErrorMessage(error, t));
+        } finally { setPdfLoading(false); }
+    };
+
+    const exportExcel = () => {
+        if (!declaration?.configured) return;
+        const rateInfo = declaration.ordinary
+            ? [[t("accounting.renta_col_tarifa"), `${declaration.ordinary.rate_percent}%`], [t("accounting.renta_col_impuesto_estimado"), declaration.ordinary.estimated_tax]]
+            : declaration.simple
+                ? [[t("accounting.renta_col_tarifa"), `${declaration.simple.bracket.rate_percent}%`], [t("accounting.renta_col_impuesto_estimado"), declaration.simple.estimated_tax]]
+                : [];
+        const rows = [
+            [t("accounting.renta_col_patrimonio_bruto"), declaration.patrimonio_bruto],
+            [t("accounting.renta_col_patrimonio_liquido"), declaration.patrimonio_liquido],
+            [t("accounting.renta_col_ingresos"), declaration.total_revenue],
+            [t("accounting.renta_col_costos"), declaration.total_costs],
+            [t("accounting.renta_col_gastos"), declaration.total_expenses],
+            [t("accounting.renta_col_utilidad_contable"), declaration.net_income],
+            [t("accounting.renta_col_ajustes"), declaration.manual_adjustments],
+            [t("accounting.renta_col_renta_liquida"), declaration.taxable_income],
+            ...rateInfo,
+        ];
+        exportAccountingExcel(`declaracion-renta-estimada-${year}.xlsx`, [{ name: t("accounting.renta_title"), rows }]);
+    };
+
+    const notConfiguredMessage = () => {
+        const reason = declaration?.reason;
+        if (reason === "tax_regime_not_set") return t("accounting.renta_not_configured_regime");
+        if (reason === "simple_regime_group_missing") return t("accounting.renta_not_configured_group");
+        if (reason === "year_config_missing" || reason === "brackets_missing") return t("accounting.renta_not_configured_year", { year });
+        return t("accounting.renta_not_configured_generic");
+    };
+
+    const estimatedTax = declaration?.ordinary?.estimated_tax ?? declaration?.simple?.estimated_tax ?? 0;
+
+    return (
+        <Card className="module-shell border border-[var(--ohnix-line-4)]" title={<span className="flex items-center gap-2"><CalculatorOutlined className="text-[var(--ohnix-accent)]" />{t("accounting.renta_title")}</span>}>
+            <p className="text-sm text-[var(--ohnix-text-muted)] mb-4">{t("accounting.renta_desc")}</p>
+            <div className="flex flex-wrap items-end gap-3 mb-4">
+                <div>
+                    <label className="block text-xs text-[var(--ohnix-text-dim)] mb-1">{t("accounting.renta_year_label")}</label>
+                    <Select value={year} style={{ width: 120 }} onChange={(value) => { setYear(value); load(value, adjustments); }} options={Array.from({ length: 6 }, (_, i) => dayjs().year() - i).map((y) => ({ value: y, label: y }))} />
+                </div>
+                <div>
+                    <label className="block text-xs text-[var(--ohnix-text-dim)] mb-1">{t("accounting.renta_adjustments_label")}</label>
+                    <InputNumber value={adjustments} onChange={(value) => setAdjustments(value || 0)} className="w-48" />
+                </div>
+                <Button type="primary" icon={<CalculatorOutlined />} loading={loading} onClick={() => load(year, adjustments)}>{t("accounting.renta_calculate")}</Button>
+            </div>
+
+            {declaration && !declaration.configured && (
+                <Alert className="dark-alert dark-alert-amber mb-4" type="warning" showIcon message={notConfiguredMessage()} />
+            )}
+
+            {declaration?.configured && (
+                <>
+                    {!declaration.rates_verified && (
+                        <Alert className="dark-alert dark-alert-amber mb-4" type="warning" showIcon message={t("accounting.renta_unverified_notice")} />
+                    )}
+                    <Row gutter={[12, 12]} className="mb-4">
+                        <Col xs={12} lg={6}><StatCard title={t("accounting.renta_col_patrimonio_bruto")} value={declaration.patrimonio_bruto} formatter={formatCurrency} /></Col>
+                        <Col xs={12} lg={6}><StatCard title={t("accounting.renta_col_patrimonio_liquido")} value={declaration.patrimonio_liquido} formatter={formatCurrency} /></Col>
+                        <Col xs={12} lg={6}><StatCard title={t("accounting.renta_col_renta_liquida")} value={declaration.taxable_income} formatter={formatCurrency} /></Col>
+                        <Col xs={12} lg={6}><StatCard title={t("accounting.renta_col_impuesto_estimado")} value={estimatedTax} formatter={formatCurrency} valueStyle={{ fontWeight: 700, color: "var(--ohnix-status-warning)" }} /></Col>
+                    </Row>
+                    <div className="flex gap-2 mb-2">
+                        <Button icon={<FileTextOutlined />} loading={pdfLoading} onClick={downloadPdf}>{t("accounting.renta_download_pdf")}</Button>
+                        <Button icon={<DownloadOutlined />} onClick={exportExcel}>{t("reports.export_to_excel")}</Button>
+                    </div>
+                </>
+            )}
+            <Alert className="dark-alert dark-alert-teal mt-3" type="info" showIcon message={t("accounting.renta_disclaimer")} />
+        </Card>
+    );
+};
+
 const WithholdingConfigCard = () => {
     const { t } = useI18n();
     const [form] = Form.useForm();
@@ -3168,7 +3328,8 @@ const TaxesTab = () => {
             <WithholdingConceptsCard />
             <WithholdingReportCard />
             <ExogenaReportCard />
-            <ComingSoonTaxCard titleKey="accounting.taxes_renta_title" descKey="accounting.taxes_renta_desc" />
+            <TaxRegimeConfigCard />
+            <RentaReportCard />
             <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={t("accounting.taxes_professional_review_notice")} />
         </div>
     );

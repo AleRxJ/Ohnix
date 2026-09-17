@@ -17,6 +17,14 @@ import {
     issueExternalApiClientApiKeyAdmin,
     listExternalApiClientLiveKeysAdmin,
     getExternalApiClientUsageAdmin,
+    createExternalApiClientBillingEnrollmentLinkAdmin,
+    getExternalApiClientBillingHistoryAdmin,
+    listIncomeTaxYearConfigsAdmin,
+    upsertIncomeTaxYearConfigAdmin,
+    setIncomeTaxYearConfigVerifiedAdmin,
+    listSimpleRegimeBracketsAdmin,
+    upsertSimpleRegimeBracketsAdmin,
+    setSimpleRegimeBracketsVerifiedAdmin,
 } from "../controllers/company.controller.js";
 
 const router = Router();
@@ -47,5 +55,18 @@ router.route("/admin/itcycle/external-clients/:id/live-api-keys").get(listExtern
 // Read-only billable-usage count (current calendar month, ACCEPTED documents
 // only) - see Backend/services/externalApiClient.service.js#getUsageForExternalClient.
 router.route("/admin/itcycle/external-clients/:id/usage").get(getExternalApiClientUsageAdmin);
+// Automatic recurring billing: generates the single-use card-enrollment link
+// (see Backend/services/externalApiClient.service.js#createBillingEnrollmentLink)
+// and lists the charge audit trail apiClientBillingScheduler.js writes to.
+router.route("/admin/itcycle/external-clients/:id/billing-enrollment-link").post(createExternalApiClientBillingEnrollmentLinkAdmin);
+router.route("/admin/itcycle/external-clients/:id/billing-history").get(getExternalApiClientBillingHistoryAdmin);
+
+// Renta/RST reference tables - see company.controller.js's comment on why
+// this lives here (isAdmin) instead of accounting.routes.js.
+router.route("/admin/income-tax-config").get(listIncomeTaxYearConfigsAdmin).post(upsertIncomeTaxYearConfigAdmin);
+router.route("/admin/income-tax-config/:year/verify").patch(setIncomeTaxYearConfigVerifiedAdmin);
+router.route("/admin/income-tax-config/simple-brackets").get(listSimpleRegimeBracketsAdmin);
+router.route("/admin/income-tax-config/simple-brackets/:year").post(upsertSimpleRegimeBracketsAdmin);
+router.route("/admin/income-tax-config/simple-brackets/:year/verify").patch(setSimpleRegimeBracketsVerifiedAdmin);
 
 export default router;

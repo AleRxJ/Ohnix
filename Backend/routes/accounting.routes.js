@@ -43,6 +43,8 @@ import {
     getExogenaReport,
     getWithholdingCertificate,
     downloadWithholdingCertificate,
+    getRentaDeclaration,
+    downloadRentaDeclarationPdf,
     listCostCenters,
     createCostCenter,
     updateCostCenter,
@@ -169,6 +171,15 @@ router.route("/reports/withholdings/certificates/:supplierId/pdf")
     .get(requireModulePermission("accounting", "view"), downloadWithholdingCertificate);
 router.route("/reports/exogena")
     .get(requireModulePermission("accounting", "view"), getExogenaReport);
+// Estimated only - see rentaDeclaration.service.js's own comment. Read-only,
+// same "view" gate as every other report/* route; the tax RATE TABLES this
+// reads from are platform-admin-only (company.routes.js's
+// /admin/income-tax-config, isAdmin-gated), never editable via this
+// per-tenant "accounting" permission.
+router.route("/reports/renta")
+    .get(requireModulePermission("accounting", "view"), getRentaDeclaration);
+router.route("/reports/renta/pdf")
+    .get(requireModulePermission("accounting", "view"), downloadRentaDeclarationPdf);
 
 router.route("/reports/income-statement").get(requireModulePermission("accounting", "view"), getIncomeStatement);
 router.route("/reports/income-statement/comparison").get(requireModulePermission("accounting", "view"), getIncomeStatementComparison);

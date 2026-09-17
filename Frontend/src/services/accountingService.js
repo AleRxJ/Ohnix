@@ -290,6 +290,28 @@ export const accountingService = {
         window.URL.revokeObjectURL(url);
     },
 
+    async getRentaDeclaration({ year, manualAdjustments, anticipoTier } = {}) {
+        const response = await api.get("/accounting/reports/renta", {
+            params: { year, ...(manualAdjustments ? { manual_adjustments: manualAdjustments } : {}), ...(anticipoTier ? { anticipo_tier: anticipoTier } : {}) },
+        });
+        return response.data;
+    },
+
+    async downloadRentaDeclarationPdf({ year, manualAdjustments, anticipoTier } = {}) {
+        const response = await api.get("/accounting/reports/renta/pdf", {
+            params: { year, ...(manualAdjustments ? { manual_adjustments: manualAdjustments } : {}), ...(anticipoTier ? { anticipo_tier: anticipoTier } : {}) },
+            responseType: "blob",
+        });
+        const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+        const link = window.document.createElement("a");
+        link.href = url;
+        link.download = `declaracion-renta-estimada-${year}.pdf`;
+        window.document.body.appendChild(link);
+        link.click();
+        window.document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+    },
+
     async listAccountingPeriods() {
         const response = await api.get("/accounting/periods");
         return response.data;

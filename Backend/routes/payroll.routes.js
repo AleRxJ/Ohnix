@@ -3,6 +3,7 @@ import { verifyJWT } from "../middleware/auth.middleware.js";
 import { isAdmin } from "../middleware/admin.middleware.js";
 import { requireModulePermission } from "../middleware/team.permissions.js";
 import { idempotent } from "../middleware/idempotency.middleware.js";
+import { requireActiveSubscription } from "../middleware/pricing.middleware.js";
 import {
     createPayrollPeriod,
     listPayrollPeriods,
@@ -18,6 +19,12 @@ import {
     upsertPayrollLegalParameters,
     getPayslipPdf,
 } from "../controllers/payroll.controller.js";
+import {
+    getDocumentElectronicPayroll,
+    issueDocumentElectronicPayroll,
+    syncDocumentElectronicPayroll,
+    issuePeriodElectronicPayroll,
+} from "../controllers/electronicPayroll.controller.js";
 
 const router = Router();
 
@@ -45,6 +52,14 @@ router.route("/periods/:id/cancel").patch(requireModulePermission("payroll", "ed
 
 router.route("/documents/:documentId/worked-days").patch(requireModulePermission("payroll", "edit"), updateDocumentWorkedDays);
 router.route("/documents/:documentId/payslip.pdf").get(requireModulePermission("payroll", "view"), getPayslipPdf);
+
+// Nómina Electrónica (DIAN) - one submission per employee payslip, same
+// requireActiveSubscription gating order.routes.js applies to its own
+// electronic-invoice issue/sync (costs real money per DIAN document).
+router.route("/documents/:documentId/electronic-payroll").get(requireModulePermission("payroll", "view"), getDocumentElectronicPayroll);
+router.route("/documents/:documentId/electronic-payroll/issue").post(requireModulePermission("payroll", "edit"), requireActiveSubscription, issueDocumentElectronicPayroll);
+router.route("/documents/:documentId/electronic-payroll/sync").post(requireModulePermission("payroll", "edit"), requireActiveSubscription, syncDocumentElectronicPayroll);
+router.route("/periods/:id/electronic-payroll/issue-all").post(requireModulePermission("payroll", "edit"), requireActiveSubscription, issuePeriodElectronicPayroll);
 
 router.route("/benefit-accruals").get(requireModulePermission("payroll", "view"), listEmployeeBenefitAccruals);
 router.route("/benefit-settlements").post(requireModulePermission("payroll", "edit"), idempotent("payroll-benefit.settle"), settleEmployeeBenefit);

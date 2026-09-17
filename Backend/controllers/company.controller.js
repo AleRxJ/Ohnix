@@ -14,12 +14,15 @@ import {
     getCompanyFirmaPassStatus,
 } from "../services/firmaPassProvisioning.service.js";
 import { listCertificateOrdersAdmin as listCertificateOrdersAdminService } from "../services/certificateOrder.service.js";
+import * as incomeTaxConfigService from "../services/incomeTaxConfig.service.js";
 import {
     createExternalApiClient,
     listExternalApiClients,
     issueApiKeyForExternalClient,
     listLiveApiKeysForExternalClient,
     getUsageForExternalClient,
+    createBillingEnrollmentLink,
+    getBillingHistoryForExternalClient,
 } from "../services/externalApiClient.service.js";
 
 // Deliberately distinct from companyCountry.service.js#normalizeCountryCode:
@@ -467,6 +470,57 @@ export const getExternalApiClientUsageAdmin = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const data = await getUsageForExternalClient({ externalApiClientId: id });
     return res.status(200).json(new ApiResponse(200, data, "Usage retrieved"));
+});
+
+// Generates the single-use link an admin sends (email/WhatsApp - there is no
+// Ohnix account to notify) so the external client can tokenize their own
+// card directly with ePayco - see createBillingEnrollmentLink's own comment.
+export const createExternalApiClientBillingEnrollmentLinkAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const data = await createBillingEnrollmentLink({ externalApiClientId: id });
+    return res.status(201).json(new ApiResponse(201, data, "Billing enrollment link created"));
+});
+
+export const getExternalApiClientBillingHistoryAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const data = await getBillingHistoryForExternalClient({ externalApiClientId: id });
+    return res.status(200).json(new ApiResponse(200, data, "Billing history retrieved"));
+});
+
+// Renta/RST tax-rate tables are national law, not a per-company setting -
+// see the schema comment on IncomeTaxYearConfig. Deliberately kept out of
+// accounting.routes.js (which only checks a company's own team permission):
+// only a real Ohnix platform admin (isAdmin, enforced by this whole router)
+// may write here, since a wrong edit would corrupt every tenant's renta
+// estimate at once, not just the editor's own company.
+export const listIncomeTaxYearConfigsAdmin = asyncHandler(async (_req, res) => {
+    const configs = await incomeTaxConfigService.listIncomeTaxYearConfigs();
+    return res.status(200).json(new ApiResponse(200, configs, "Income tax year configs fetched successfully."));
+});
+
+export const upsertIncomeTaxYearConfigAdmin = asyncHandler(async (req, res) => {
+    const config = await incomeTaxConfigService.upsertIncomeTaxYearConfig(req.user.prismaId, req.body || {});
+    return res.status(200).json(new ApiResponse(200, config, "Income tax year config saved successfully."));
+});
+
+export const setIncomeTaxYearConfigVerifiedAdmin = asyncHandler(async (req, res) => {
+    const config = await incomeTaxConfigService.setIncomeTaxYearConfigVerified(req.user.prismaId, req.params.year, req.body?.is_verified);
+    return res.status(200).json(new ApiResponse(200, config, "Income tax year config status updated successfully."));
+});
+
+export const listSimpleRegimeBracketsAdmin = asyncHandler(async (req, res) => {
+    const brackets = await incomeTaxConfigService.listSimpleRegimeBrackets(req.query.year);
+    return res.status(200).json(new ApiResponse(200, brackets, "Simple regime brackets fetched successfully."));
+});
+
+export const upsertSimpleRegimeBracketsAdmin = asyncHandler(async (req, res) => {
+    const brackets = await incomeTaxConfigService.upsertSimpleRegimeBrackets(req.user.prismaId, req.params.year, req.body?.brackets);
+    return res.status(200).json(new ApiResponse(200, brackets, "Simple regime brackets saved successfully."));
+});
+
+export const setSimpleRegimeBracketsVerifiedAdmin = asyncHandler(async (req, res) => {
+    const brackets = await incomeTaxConfigService.setSimpleRegimeBracketsVerified(req.user.prismaId, req.params.year, req.body?.is_verified);
+    return res.status(200).json(new ApiResponse(200, brackets, "Simple regime brackets status updated successfully."));
 });
 
 export const updateCompanyLogoAdmin = asyncHandler(async (req, res, next) => {

@@ -12,6 +12,7 @@ import * as thirdPartyLedgerService from "../services/thirdPartyLedger.service.j
 import * as withholdingConceptService from "../services/withholdingConcept.service.js";
 import * as withholdingReportService from "../services/withholdingReport.service.js";
 import * as exogenaReportService from "../services/exogenaReport.service.js";
+import * as rentaDeclarationService from "../services/rentaDeclaration.service.js";
 import * as accountingBudgetService from "../services/accountingBudget.service.js";
 import * as costCenterService from "../services/costCenter.service.js";
 import * as recurringExpenseService from "../services/recurringExpense.service.js";
@@ -709,3 +710,31 @@ export const downloadWithholdingCertificate = asyncHandler(async (req, res) => {
     const certificate = await withholdingReportService.getWithholdingCertificate({ accountId: req.user.prismaId, supplierId: req.params.supplierId, year: req.query.year });
     withholdingReportService.renderWithholdingCertificatePdf(res, certificate, req.query.language);
 });
+
+export const getRentaDeclaration = asyncHandler(async (req, res, next) => {
+    const year = Number(req.query.year);
+    if (!Number.isInteger(year)) return next(new ApiError(400, "A valid year is required.", [], "", "renta_invalid_year"));
+
+    const declaration = await rentaDeclarationService.getRentaDeclaration({
+        accountId: req.user.prismaId,
+        year,
+        manualAdjustments: req.query.manual_adjustments ? Number(req.query.manual_adjustments) : 0,
+        anticipoTier: req.query.anticipo_tier,
+    });
+    return res.status(200).json(new ApiResponse(200, declaration, "Renta declaration fetched successfully."));
+});
+
+export const downloadRentaDeclarationPdf = asyncHandler(async (req, res, next) => {
+    const year = Number(req.query.year);
+    if (!Number.isInteger(year)) return next(new ApiError(400, "A valid year is required.", [], "", "renta_invalid_year"));
+
+    const declaration = await rentaDeclarationService.getRentaDeclaration({
+        accountId: req.user.prismaId,
+        year,
+        manualAdjustments: req.query.manual_adjustments ? Number(req.query.manual_adjustments) : 0,
+        anticipoTier: req.query.anticipo_tier,
+    });
+    if (!declaration.configured) return next(new ApiError(400, "Configure el régimen tributario y las tarifas del año antes de exportar.", [], "", "renta_not_configured"));
+    rentaDeclarationService.renderRentaDeclarationPdf(res, declaration);
+});
+

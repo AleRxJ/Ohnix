@@ -199,6 +199,27 @@ enum VatResponsibility {
   not_responsible
 }
 
+// Which income-tax regime a company files under (ET Libro I for Régimen
+// Ordinario, art. 903-916 ET for Régimen Simple de Tributación/RST) - drives
+// which calculation rentaDeclaration.service.js applies. Null until the
+// company (ideally with their accountant) confirms it - same "unset until
+// confirmed" convention as vatResponsible above, and for the same reason:
+// nothing should compute an estimated tax liability before this is known.
+enum TaxRegime {
+  ordinario
+  simple
+}
+
+// The 4 activity groups Art. 908 ET splits RST's tariff table into - each
+// has its own set of income brackets/rates in SimpleRegimeBracket. Only
+// meaningful when Company.taxRegime is `simple`.
+enum SimpleRegimeGroup {
+  group1 // Tiendas, mini/micro-mercados, peluquerías
+  group2 // Comercio al por mayor y al por detal; servicios técnicos y mecánicos
+  group3 // Servicios profesionales, de consultoría y científicos
+  group4 // Actividades industriales, incluidas agroindustriales
+}
+
 // Colombia's ET distinguishes "excluido" (art. 424/476 - the sale never
 // causes VAT, and the seller gets no input-VAT credit) from "exento" (art.
 // 477/478/481 - VAT applies at a 0% rate, and the seller DOES get an input
@@ -397,51 +418,51 @@ model UserSession {
 }
 
 model Company {
-  id                               String            @id @default(cuid())
-  name                             String            @unique
-  legalName                        String?           @map("legal_name")
-  countryCode                      String?           @map("country_code")
-  contactEmail                     String?           @map("contact_email")
+  id                               String             @id @default(cuid())
+  name                             String             @unique
+  legalName                        String?            @map("legal_name")
+  countryCode                      String?            @map("country_code")
+  contactEmail                     String?            @map("contact_email")
   phone                            String?
-  electronicInvoicingEnabled       Boolean           @default(false) @map("electronic_invoicing_enabled")
+  electronicInvoicingEnabled       Boolean            @default(false) @map("electronic_invoicing_enabled")
   // Which provider issues this company's electronic invoices. Factus stays
   // fully wired (see factus.service.js) even though Alanube is the default
   // for new companies - kept dormant per-company rather than removed so it
   // can be switched back without re-integrating from scratch.
-  electronicInvoicingProvider      String            @default("itcycle") @map("electronic_invoicing_provider")
-  factusNumberingRangeId           String?           @map("factus_numbering_range_id")
+  electronicInvoicingProvider      String             @default("itcycle") @map("electronic_invoicing_provider")
+  factusNumberingRangeId           String?            @map("factus_numbering_range_id")
   // Factus requires a distinct numbering range per document type (invoices
   // are document code 21, credit notes are 22) - they cannot share a range.
-  factusCreditNoteNumberingRangeId String?           @map("factus_credit_note_numbering_range_id")
-  factusDocumentType               String            @default("01") @map("factus_document_type")
-  factusOperationType              String            @default("10") @map("factus_operation_type")
-  factusPaymentForm                String            @default("1") @map("factus_payment_form")
-  factusPaymentMethodCode          String            @default("42") @map("factus_payment_method_code")
+  factusCreditNoteNumberingRangeId String?            @map("factus_credit_note_numbering_range_id")
+  factusDocumentType               String             @default("01") @map("factus_document_type")
+  factusOperationType              String             @default("10") @map("factus_operation_type")
+  factusPaymentForm                String             @default("1") @map("factus_payment_form")
+  factusPaymentMethodCode          String             @default("42") @map("factus_payment_method_code")
   // Alanube (Alegra's e-provider API) requires each company to be registered
   // separately under its own NIT - there is no shared-account/branch model
   // like Factus's numbering ranges. taxIdentificationDv is the DIAN check
   // digit, auto-computed from taxIdentification (see nit.util.js) unless the
   // admin overrides it.
-  taxIdentification                String?           @map("tax_identification")
-  taxIdentificationDv              String?           @map("tax_identification_dv")
-  alanubeCompanyId                 String?           @map("alanube_company_id")
+  taxIdentification                String?            @map("tax_identification")
+  taxIdentificationDv              String?            @map("tax_identification_dv")
+  alanubeCompanyId                 String?            @map("alanube_company_id")
   // DIAN test-set id used to enable the company for a document type.
   // Sandbox uses Alanube's published constant by default; production
   // requires the real id DIAN issues once habilitación is completed.
-  alanubeTestSetId                 String?           @map("alanube_test_set_id")
+  alanubeTestSetId                 String?            @map("alanube_test_set_id")
   // Numbering authorization (DIAN "resolución de numeración"): resolutionNumber,
   // prefix, minNumber, maxNumber, startDate, endDate, technicalKey. Stored as
   // JSON rather than flat columns since it's fetched verbatim from Alanube's
   // getResolutions endpoint in production, or entered from DIAN's sandbox
   // example values for testing.
-  alanubeInvoiceResolution         Json?             @map("alanube_invoice_resolution")
-  alanubeCreditNoteResolution      Json?             @map("alanube_credit_note_resolution")
+  alanubeInvoiceResolution         Json?              @map("alanube_invoice_resolution")
+  alanubeCreditNoteResolution      Json?              @map("alanube_credit_note_resolution")
   // Unlike Factus, Alanube requires the caller to supply the next document
   // number itself (no server-side auto-numbering) - these track the next
   // number to use inside the resolution's [minNumber, maxNumber] range.
   // Null means "not started yet, seed from resolution.minNumber".
-  alanubeNextInvoiceNumber         Int?              @map("alanube_next_invoice_number")
-  alanubeNextCreditNoteNumber      Int?              @map("alanube_next_credit_note_number")
+  alanubeNextInvoiceNumber         Int?               @map("alanube_next_invoice_number")
+  alanubeNextCreditNoteNumber      Int?               @map("alanube_next_credit_note_number")
   // itcycle-api-dian ("software propio", see itcycleDian.service.js): the
   // company's id in that system's own database (created via its admin
   // provisioning API, not shared with Ohnix's own Company.id) and the API
@@ -450,14 +471,14 @@ model Company {
   // request, never as a plain column. Unlike Factus/Alanube (one shared
   // Ohnix-wide credential), itcycle-api-dian issues one key per company by
   // design, so each company needs its own here.
-  itcycleCompanyId                 String?           @map("itcycle_company_id")
-  itcycleApiKeyCiphertext          String?           @map("itcycle_api_key_ciphertext") @db.Text
+  itcycleCompanyId                 String?            @map("itcycle_company_id")
+  itcycleApiKeyCiphertext          String?            @map("itcycle_api_key_ciphertext") @db.Text
   // The DIAN-issued Software ID this company's habilitación (software propio)
   // was registered under - NOT a secret (unlike softwarePin/technicalKey,
   // which stay solely in itcycle-api-dian's own DianConfiguration and are
   // never sent back here). Kept only so RegisteredConfigSummary can show the
   // owner what itcycle-api-dian actually has on file, matching legalName/NIT.
-  dianSoftwareId                   String?           @map("dian_software_id")
+  dianSoftwareId                   String?            @map("dian_software_id")
   // Set only while this company's own DIAN "habilitación" (software propio)
   // is still "En proceso" - the DIAN sandbox rejects every send() unless it
   // carries this exact testSetId with method "SendTestSetAsync" (dian-kit's
@@ -465,7 +486,7 @@ model Company {
   // refuses outright until DIAN approves the software). Null once DIAN
   // approves the habilitación - clear it then so issuance falls back to the
   // production method automatically.
-  itcycleTestSetId                 String?           @map("itcycle_test_set_id")
+  itcycleTestSetId                 String?            @map("itcycle_test_set_id")
   // FirmaPass validation UUID this company has claimed (via order-number
   // lookup or pasting the UUID FirmaPass gave them directly) - set once, on
   // first successful self-service action against a UUID, and enforced on
@@ -474,40 +495,48 @@ model Company {
   // its UUID, since FirmaPass's own API has no per-company scoping at all
   // (see firmaPassProvisioning.service.js - this is a security boundary
   // Ohnix has to enforce itself, not one FirmaPass provides).
-  firmaPassValidationUuid          String?           @unique @map("firmapass_validation_uuid")
+  firmaPassValidationUuid          String?            @unique @map("firmapass_validation_uuid")
   // Order PDF branding (Negocio+): logo + legal data replace the generic
   // template. pdfFooterText is the Escala+ "personalizable" extra.
-  logoUrl                          String?           @map("logo_url") @db.Text
-  pdfFooterText                    String?           @map("pdf_footer_text") @db.Text
+  logoUrl                          String?            @map("logo_url") @db.Text
+  pdfFooterText                    String?            @map("pdf_footer_text") @db.Text
   // Escala+ brand color (hex, e.g. "#29D8D5") applied to the PDF's accent
   // line/TOTAL amount in place of the fixed default, completing the "fully
   // customizable" PDF promise alongside logo + footer.
-  pdfAccentColor                   String?           @map("pdf_accent_color")
+  pdfAccentColor                   String?            @map("pdf_accent_color")
   // VAT responsibility (ET art. 437) is a fact about the company, not a
   // billing setting - it belongs next to countryCode, not inside the DIAN/
   // Factus block below, since it also gates local (non-electronic) order
   // totals in order.service.js. vatResponsibleEffectiveFrom records when the
   // current status started applying, so a later status change never rewrites
   // the tax treatment of orders already placed before it.
-  vatResponsible                   VatResponsibility @default(unset) @map("vat_responsible")
-  vatResponsibleEffectiveFrom      DateTime?         @map("vat_responsible_effective_from")
+  vatResponsible                   VatResponsibility  @default(unset) @map("vat_responsible")
+  vatResponsibleEffectiveFrom      DateTime?          @map("vat_responsible_effective_from")
+  // Income-tax regime (Ordinario vs RST) - see TaxRegime's comment. Null
+  // until set; rentaDeclaration.service.js refuses to estimate a tax
+  // liability while this is null, same "configure before we calculate"
+  // posture as vatResponsible being `unset` by default.
+  taxRegime                        TaxRegime?         @map("tax_regime")
+  // Only meaningful (and required by rentaDeclaration.service.js) when
+  // taxRegime is `simple` - selects which SimpleRegimeBracket table applies.
+  simpleRegimeGroup                SimpleRegimeGroup? @map("simple_regime_group")
   // Withholding-agent status (agente retenedor de renta) - same shape and
   // "effective from" convention as vatResponsible above, but this is
   // CONFIGURATION only: no automatic retención en la fuente calculation
   // reads these fields yet (see accountingPosting.service.js's scope note).
   // Storing it now lets a company record the fact - and have it reviewed by
   // their accountant - ahead of that calculation engine existing.
-  isWithholdingAgent               Boolean           @default(false) @map("is_withholding_agent")
-  withholdingAgentEffectiveFrom    DateTime?         @map("withholding_agent_effective_from")
+  isWithholdingAgent               Boolean            @default(false) @map("is_withholding_agent")
+  withholdingAgentEffectiveFrom    DateTime?          @map("withholding_agent_effective_from")
   // ReteICA config: unlike IVA/Retefuente, the applicable rate is set by
   // each municipality's own acuerdo for a given economic activity (CIIU) -
   // there's no national default to fall back to, so this is captured as a
   // plain per-company fact the user enters (ideally with their accountant),
   // not derived from anything else in the system. Same "configuration only,
   // no calculation yet" scope as isWithholdingAgent above.
-  icaMunicipalityCode              String?           @map("ica_municipality_code")
-  icaActivityCode                  String?           @map("ica_activity_code")
-  icaRatePerThousand               Decimal?          @map("ica_rate_per_thousand") @db.Decimal(6, 3)
+  icaMunicipalityCode              String?            @map("ica_municipality_code")
+  icaActivityCode                  String?            @map("ica_activity_code")
+  icaRatePerThousand               Decimal?           @map("ica_rate_per_thousand") @db.Decimal(6, 3)
   // Ley 1819/2016 exoneración de aportes: whether THIS company qualifies for
   // the exemption regime at all (declarante de renta, not a natural person
   // employing fewer than 2 workers) - same "configuration fact the user
@@ -515,18 +544,19 @@ model Company {
   // above. The per-EMPLOYEE part of the rule (only wages under 10 SMLMV
   // qualify) is evaluated at calculation time, not stored here - see
   // payroll.service.js#calculatePayrollDocument.
-  payrollAportesExonerados         Boolean           @default(false) @map("payroll_aportes_exonerados")
-  isActive                         Boolean           @default(true) @map("is_active")
-  createdAt                        DateTime          @default(now()) @map("created_at")
-  updatedAt                        DateTime          @updatedAt @map("updated_at")
+  payrollAportesExonerados         Boolean            @default(false) @map("payroll_aportes_exonerados")
+  isActive                         Boolean            @default(true) @map("is_active")
+  createdAt                        DateTime           @default(now()) @map("created_at")
+  updatedAt                        DateTime           @updatedAt @map("updated_at")
 
-  users                    User[]
-  electronicInvoices       ElectronicInvoice[]
-  purchaseSupportDocuments PurchaseSupportDocument[]
-  receivedInvoiceReceipts  ReceivedInvoiceReceipt[]
-  apiKeys                  ApiKey[]
-  dianTestMatrixRuns       DianTestMatrixRun[]
-  certificateOrders        CertificateOrder[]
+  users                      User[]
+  electronicInvoices         ElectronicInvoice[]
+  purchaseSupportDocuments   PurchaseSupportDocument[]
+  receivedInvoiceReceipts    ReceivedInvoiceReceipt[]
+  apiKeys                    ApiKey[]
+  dianTestMatrixRuns         DianTestMatrixRun[]
+  certificateOrders          CertificateOrder[]
+  electronicPayrollDocuments ElectronicPayrollDocument[]
 
   @@map("companies")
 }
@@ -690,10 +720,62 @@ model ExternalApiClient {
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
+  // epaycoCustomerId/epaycoTokenCard are ePayco's own opaque reference ids
+  // (returned after the client tokenizes their card client-side, straight to
+  // ePayco's servers - see EnrollApiBilling.jsx) - never raw card data, same
+  // trust model as itcycleCompanyId itself. Safe to store as plain columns.
+  epaycoCustomerId String? @map("epayco_customer_id")
+  epaycoTokenCard  String? @map("epayco_token_card")
+  billingEnrolledAt DateTime? @map("billing_enrolled_at")
+  // Single-use, short-lived link token for the card-enrollment page - never
+  // an auth credential by itself (it only ever lets the holder submit an
+  // already-tokenized card for THIS client), cleared once enrollment
+  // completes or left to expire.
+  billingEnrollmentToken          String?   @unique @map("billing_enrollment_token")
+  billingEnrollmentTokenExpiresAt DateTime? @map("billing_enrollment_token_expires_at")
+  // Annual base package ($310.000 COP / 100 documents by default, see
+  // FacturacionSinInventario.jsx) - charged once per period by
+  // apiClientBillingScheduler.js, which then only charges the overage beyond
+  // annualDocsIncluded each month via cumulativeDocsThisPeriod.
+  annualPeriodStartsAt     DateTime? @map("annual_period_starts_at")
+  annualPeriodEndsAt       DateTime? @map("annual_period_ends_at")
+  annualDocsIncluded       Int       @default(100) @map("annual_docs_included")
+  annualBaseAmountCop      Int       @default(310000) @map("annual_base_amount_cop")
+  cumulativeDocsThisPeriod Int       @default(0) @map("cumulative_docs_this_period")
+  // Set (and left set) the moment any automatic charge fails - the monthly
+  // scheduler skips a client in this state on later runs rather than
+  // retrying blindly, until an admin investigates and clears it by hand.
+  billingAtRisk Boolean @default(false) @map("billing_at_risk")
+
   createdByUser   User                           @relation(fields: [createdByUserId], references: [id])
   apiKeyIssuances ExternalApiClientKeyIssuance[]
+  charges         ExternalApiClientCharge[]
 
   @@map("external_api_clients")
+}
+
+// One row per attempted automatic charge (annual base package or a month's
+// document overage) - the audit trail apiClientBillingScheduler.js writes to
+// on every run, success or failure, so ops can reconcile against ePayco and
+// see exactly what was billed and when without re-deriving it from usage
+// counts after the fact.
+model ExternalApiClientCharge {
+  id                  String   @id @default(cuid())
+  externalApiClientId String   @map("external_api_client_id")
+  chargeType          String   @map("charge_type") // "annual_base" | "monthly_overage"
+  periodYear          Int      @map("period_year")
+  periodMonth         Int?     @map("period_month") // null for annual_base
+  documentsCharged    Int?     @map("documents_charged") // null for annual_base
+  amountCop           Int      @map("amount_cop")
+  epaycoRef           String?  @map("epayco_ref") // ePayco's own transaction/ref id, for reconciliation
+  status              String // "success" | "failed"
+  errorMessage        String?  @map("error_message") @db.Text
+  chargedAt           DateTime @default(now()) @map("charged_at")
+
+  externalApiClient ExternalApiClient @relation(fields: [externalApiClientId], references: [id])
+
+  @@index([externalApiClientId])
+  @@map("external_api_client_charges")
 }
 
 // An audit trail of "a raw itcycle-api-dian API key was issued for this
@@ -2900,6 +2982,52 @@ model WithholdingConcept {
   @@map("withholding_concepts")
 }
 
+// Renta (income tax) rates are national law, not a per-company fact - unlike
+// WithholdingConcept above, this is deliberately NOT accountId-scoped: one
+// row per tax year, shared by every tenant filing under Régimen Ordinario.
+// Only a platform admin (isAdmin, not a company's "accounting" team
+// permission) can write here - see incomeTaxConfig.service.js and
+// company.routes.js's admin-only convention. isVerified defaults to false
+// because these rows are seeded from Claude's best recollection of current
+// law, not a DIAN resolution someone actually checked - see
+// rentaDeclaration.service.js's "estimated" flag, which surfaces this same
+// fact to whoever views the report.
+model IncomeTaxYearConfig {
+  id                  String    @id @default(cuid())
+  year                Int       @unique
+  ordinaryRatePercent Decimal   @map("ordinary_rate_percent") @db.Decimal(5, 2)
+  uvtValue            Decimal   @map("uvt_value") @db.Decimal(12, 2)
+  isVerified          Boolean   @default(false) @map("is_verified")
+  verifiedAt          DateTime? @map("verified_at")
+  verifiedByUserId    String?   @map("verified_by_user_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  @@map("income_tax_year_configs")
+}
+
+// Régimen Simple de Tributación tariff table (Art. 908 ET): one row per
+// (year, group, tramo). minUvt/maxUvt bound the company's TOTAL annual
+// gross income for that year, expressed in UVT (see IncomeTaxYearConfig.
+// uvtValue for the COP conversion) - maxUvt null means "no upper bound"
+// (the top bracket). Same platform-admin-only, isVerified convention as
+// IncomeTaxYearConfig above.
+model SimpleRegimeBracket {
+  id          String            @id @default(cuid())
+  year        Int
+  group       SimpleRegimeGroup
+  minUvt      Decimal           @map("min_uvt") @db.Decimal(10, 2)
+  maxUvt      Decimal?          @map("max_uvt") @db.Decimal(10, 2)
+  ratePercent Decimal           @map("rate_percent") @db.Decimal(5, 2)
+  isVerified  Boolean           @default(false) @map("is_verified")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  @@unique([year, group, minUvt])
+  @@index([year, group])
+  @@map("simple_regime_brackets")
+}
+
 enum AccountingPeriodStatus {
   open
   closed
@@ -4064,13 +4192,73 @@ model PayrollDocument {
   createdAt                  DateTime              @default(now()) @map("created_at")
   updatedAt                  DateTime              @updatedAt @map("updated_at")
 
-  payrollPeriod PayrollPeriod         @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
-  employee      Employee              @relation(fields: [employeeId], references: [id])
-  lines         PayrollDocumentLine[]
+  payrollPeriod     PayrollPeriod              @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  employee          Employee                   @relation(fields: [employeeId], references: [id])
+  lines             PayrollDocumentLine[]
+  electronicPayroll ElectronicPayrollDocument?
 
   @@unique([payrollPeriodId, employeeId])
   @@index([employeeId])
   @@map("payroll_documents")
+}
+
+// Nómina Electrónica (DIAN Resolución 000013 de 2021) submission for one
+// PayrollDocument (one employee's payslip within a period) - the payroll
+// counterpart to ElectronicInvoice, same 1:1-with-its-source-record shape
+// and same itcycle-api-dian-only provider (no Factus/Alanube equivalent for
+// nómina). Kept as its own model rather than columns on PayrollDocument
+// itself since PayrollDocumentStatus already means something else entirely
+// (the accounting draft/calculated/approved/paid/cancelled lifecycle) -
+// conflating that with DIAN transmission status (issuing/submitted/
+// accepted/rejected/contingency/error) would make both mean two different
+// things depending on context. See electronicPayroll.service.js.
+//
+// ⚠️ Built against itcycle-api-dian's best-effort reconstruction of the
+// Anexo Técnico de Nómina Electrónica (not yet validated against the
+// official XSD or a real habilitación run) - see that repo's
+// dian-engine/packages/core/src/types/payroll.ts for the same caveat.
+model ElectronicPayrollDocument {
+  id                    String                  @id @default(cuid())
+  payrollDocumentId     String                  @unique @map("payroll_document_id")
+  companyId             String                  @map("company_id")
+  countryCode           String                  @map("country_code")
+  provider              String                  @default("itcycle")
+  status                ElectronicInvoiceStatus @default(draft)
+  externalId            String?                 @unique @map("external_id")
+  referenceCode         String                  @unique @map("reference_code")
+  documentNumber        String?                 @map("document_number")
+  cune                  String?
+  rawRequest            Json?                   @map("raw_request")
+  rawResponse           Json?                   @map("raw_response")
+  errorMessage          String?                 @map("error_message") @db.Text
+  // Same reasoning as ElectronicInvoice.certificateId/certificateProvider/certificateIdentifier.
+  certificateId         String?                 @map("certificate_id")
+  certificateProvider   String?                 @map("certificate_provider")
+  certificateIdentifier String?                 @map("certificate_identifier")
+  issuedAt              DateTime?               @map("issued_at")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
+
+  payrollDocument PayrollDocument                  @relation(fields: [payrollDocumentId], references: [id])
+  company         Company                          @relation(fields: [companyId], references: [id])
+  events          ElectronicPayrollDocumentEvent[]
+
+  @@index([companyId, createdAt])
+  @@map("electronic_payroll_documents")
+}
+
+model ElectronicPayrollDocumentEvent {
+  id                          String                   @id @default(cuid())
+  electronicPayrollDocumentId String                   @map("electronic_payroll_document_id")
+  eventType                   String                   @map("event_type")
+  status                      ElectronicInvoiceStatus?
+  payload                     Json?
+  createdAt                   DateTime                 @default(now()) @map("created_at")
+
+  electronicPayrollDocument ElectronicPayrollDocument @relation(fields: [electronicPayrollDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([electronicPayrollDocumentId, createdAt])
+  @@map("electronic_payroll_document_events")
 }
 
 enum PayrollConceptCategory {

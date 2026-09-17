@@ -107,10 +107,18 @@ const SELF_SELECT = {
     icaMunicipalityCode: true,
     icaActivityCode: true,
     icaRatePerThousand: true,
+    // Which income-tax regime this company files under - see the schema
+    // comment on TaxRegime. Same "configuration fact, no calculation
+    // consequence beyond what rentaDeclaration.service.js reads" posture as
+    // isWithholdingAgent above.
+    taxRegime: true,
+    simpleRegimeGroup: true,
 };
 
 const isValidHexColor = (value) => /^#[0-9A-Fa-f]{6}$/.test(value || "");
 const VAT_RESPONSIBILITIES = ["unset", "responsible", "not_responsible"];
+const TAX_REGIMES = ["ordinario", "simple"];
+const SIMPLE_REGIME_GROUPS = ["group1", "group2", "group3", "group4"];
 
 const DIAN_ENVIRONMENTS = ["SANDBOX", "PRODUCTION"];
 
@@ -708,6 +716,8 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         icaMunicipalityCode,
         icaActivityCode,
         icaRatePerThousand,
+        taxRegime,
+        simpleRegimeGroup,
     } = req.body || {};
 
     const subscription = await ensureUserSubscription(req.user.prismaId);
@@ -760,6 +770,13 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         : icaRatePerThousand;
     if (icaRatePerThousand !== undefined && icaRatePerThousand !== null && icaRatePerThousand !== "" && (!Number.isFinite(parsedIcaRate) || parsedIcaRate < 0 || parsedIcaRate > 50)) {
         return next(new ApiError(400, "icaRatePerThousand debe ser un número entre 0 y 50 (tarifa por mil)."));
+    }
+
+    if (taxRegime !== undefined && taxRegime !== null && !TAX_REGIMES.includes(taxRegime)) {
+        return next(new ApiError(400, "taxRegime debe ser ordinario o simple."));
+    }
+    if (simpleRegimeGroup !== undefined && simpleRegimeGroup !== null && !SIMPLE_REGIME_GROUPS.includes(simpleRegimeGroup)) {
+        return next(new ApiError(400, "simpleRegimeGroup debe ser group1, group2, group3 o group4."));
     }
 
     const user = await prisma.user.findUnique({
@@ -827,6 +844,15 @@ export const updateMyCompany = asyncHandler(async (req, res, next) => {
         ...(icaMunicipalityCode !== undefined ? { icaMunicipalityCode: trimmedIcaMunicipalityCode || null } : {}),
         ...(icaActivityCode !== undefined ? { icaActivityCode: trimmedIcaActivityCode || null } : {}),
         ...(icaRatePerThousand !== undefined ? { icaRatePerThousand: parsedIcaRate === "" || parsedIcaRate === null ? null : parsedIcaRate } : {}),
+        ...(taxRegime !== undefined ? { taxRegime: taxRegime || null } : {}),
+        // Only meaningful under RST - switching taxRegime away from `simple`
+        // (or clearing it) drops any previously-selected group so a stale
+        // selection never lingers once it stops applying.
+        ...(taxRegime !== undefined && taxRegime !== "simple"
+            ? { simpleRegimeGroup: null }
+            : simpleRegimeGroup !== undefined
+            ? { simpleRegimeGroup: simpleRegimeGroup || null }
+            : {}),
         // For any other country this just stores the raw identifier with no
         // computed digit, same as company.controller.js's admin path leaves
         // it to be set explicitly there.

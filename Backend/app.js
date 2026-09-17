@@ -179,6 +179,7 @@ import webhookEndpointRouter from "./routes/webhookEndpoint.routes.js";
 import apiDocsRouter from "./routes/apiDocs.routes.js";
 import assistantRouter from "./routes/assistant.routes.js";
 import guestCertificateCheckoutRouter from "./routes/guestCertificateCheckout.routes.js";
+import externalApiBillingRouter from "./routes/externalApiBilling.routes.js";
 
 //routes declaration
 app.use("/api/v1/users", userRouter);
@@ -201,6 +202,10 @@ app.use("/api/v1/companies", companyRouter);
 // landing page (CertificadosDigitales.jsx) - see its own router file for why
 // it carries no auth middleware.
 app.use("/api/v1/certificate-checkout", guestCertificateCheckoutRouter);
+// Public, single-use-token-scoped card enrollment for automatic recurring
+// billing of external API clients - see externalApiBilling.routes.js for why
+// it carries no auth middleware.
+app.use("/api/v1/api-billing", externalApiBillingRouter);
 app.use("/api/v1/admin/dian-test-matrix", dianTestMatrixRouter);
 app.use("/api/v1/company/dian-test-matrix", dianTestMatrixSelfRouter);
 app.use("/api/v1/company", companySelfRouter);

@@ -649,6 +649,41 @@ export const retryItcycleSupportDocumentSend = async ({ apiKey, id, send }) => {
     });
 };
 
+// Nómina Electrónica (DIAN Resolución 000013 de 2021) - a separate document
+// family from invoicing (own numbering resolution "NE" on itcycle-api-dian's
+// side, own XML schema), but same auth/transport pattern as every other
+// document type here. Body field is "payroll" - matches itcycle-api-dian's
+// own CreatePayrollBodySchema (see electronicPayroll.service.js for the
+// Ohnix PayrollDocument -> this shape mapping).
+export const createItcyclePayroll = async ({ apiKey, internalReference, payroll, send }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "POST",
+        path: "/api/v1/documents/payroll",
+        body: { internalReference, payroll, send },
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
+export const getItcyclePayrollStatus = async ({ apiKey, id }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "GET",
+        path: `/api/v1/documents/payroll/${id}`,
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
+export const retryItcyclePayrollSend = async ({ apiKey, id, send }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "POST",
+        path: `/api/v1/documents/payroll/${id}/retry-send`,
+        body: { send },
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
 // Receipt acknowledgment events (acuse de recibo / recibo del bien / aceptación
 // expresa / reclamo) for a THIRD-PARTY supplier's own DIAN invoice - ET art.
 // 616-1 / Ley 2155 de 2021 art. 13. PHASE 1: itcycle-api-dian only accepts

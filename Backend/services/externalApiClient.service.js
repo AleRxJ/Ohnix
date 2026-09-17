@@ -13,9 +13,13 @@
 // Ohnix's backend never needs to reuse it. See issueApiKeyForExternalClient
 // below for why the raw key is never persisted here either.
 
+import { randomBytes } from "node:crypto";
 import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { provisionItcycleCompany, createItcycleApiKey, listItcycleApiKeys, getItcycleCompanyUsage } from "./itcycleDian.service.js";
+import { createEpaycoCustomerForClient } from "./epaycoRecurringBilling.service.js";
+
+const BILLING_ENROLLMENT_TOKEN_VALIDITY_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Calls itcycle-api-dian FIRST, before touching Ohnix's own DB - if
 // provisioning fails there, no ExternalApiClient row is ever created, so a
@@ -115,4 +119,83 @@ export const getUsageForExternalClient = async ({ externalApiClientId }) => {
     const client = await prisma.externalApiClient.findUnique({ where: { id: externalApiClientId } });
     if (!client) throw new ApiError(404, "External API client not found");
     return getItcycleCompanyUsage({ companyId: client.itcycleCompanyId });
+};
+
+// A single-use, 7-day link an admin generates and hands to the external
+// client (email/WhatsApp - there's no Ohnix account to email this through)
+// so THEY can tokenize their own card directly with ePayco (see
+// EnrollApiBilling.jsx) - the card itself never reaches Ohnix at any point.
+export const createBillingEnrollmentLink = async ({ externalApiClientId }) => {
+    const client = await prisma.externalApiClient.findUnique({ where: { id: externalApiClientId } });
+    if (!client) throw new ApiError(404, "External API client not found");
+
+    const token = randomBytes(32).toString("hex");
+    await prisma.externalApiClient.update({
+        where: { id: externalApiClientId },
+        data: {
+            billingEnrollmentToken: token,
+            billingEnrollmentTokenExpiresAt: new Date(Date.now() + BILLING_ENROLLMENT_TOKEN_VALIDITY_MS),
+        },
+    });
+
+    const frontendBase = `${process.env.FRONTEND_URL || "https://ohnix.co"}`.replace(/\/$/, "");
+    return { enrollmentUrl: `${frontendBase}/api-clients/enroll-billing/${token}` };
+};
+
+// Looked up by the public enrollment routes (externalApiBilling.routes.js) -
+// never by id, only by the single-use token, and only while unexpired. This
+// is the ONLY way an unauthenticated caller can ever reach an
+// ExternalApiClient row.
+const findClientByValidEnrollmentToken = async (token) => {
+    const client = await prisma.externalApiClient.findUnique({ where: { billingEnrollmentToken: token } });
+    if (!client) return null;
+    if (!client.billingEnrollmentTokenExpiresAt || client.billingEnrollmentTokenExpiresAt < new Date()) return null;
+    return client;
+};
+
+// Public-facing: only ever returns the company name, nothing else about the
+// client, to render the enrollment page's "you're enrolling billing for X"
+// confirmation.
+export const getBillingEnrollmentPreview = async ({ token }) => {
+    const client = await findClientByValidEnrollmentToken(token);
+    if (!client) throw new ApiError(404, "This enrollment link is invalid or has expired.");
+    return { companyName: client.companyName };
+};
+
+// Completes enrollment: creates the ePayco customer from the already-
+// tokenized card (tokenCard is an ePayco token id, never raw card data - see
+// EnrollApiBilling.jsx), stores ePayco's own reference ids, and burns the
+// single-use link token so it can never be replayed.
+export const completeBillingEnrollment = async ({ token, tokenCard }) => {
+    const client = await findClientByValidEnrollmentToken(token);
+    if (!client) throw new ApiError(404, "This enrollment link is invalid or has expired.");
+    if (!tokenCard) throw new ApiError(400, "tokenCard is required");
+
+    const customer = await createEpaycoCustomerForClient({ client, tokenCard });
+    const epaycoCustomerId = customer?.data?.customerId || customer?.data?.id_customer || customer?.data?.customer_id;
+    if (!epaycoCustomerId) {
+        throw new ApiError(502, "ePayco did not return a customer id");
+    }
+
+    await prisma.externalApiClient.update({
+        where: { id: client.id },
+        data: {
+            epaycoCustomerId: String(epaycoCustomerId),
+            epaycoTokenCard: tokenCard,
+            billingEnrolledAt: new Date(),
+            billingEnrollmentToken: null,
+            billingEnrollmentTokenExpiresAt: null,
+        },
+    });
+
+    return { enrolled: true };
+};
+
+export const getBillingHistoryForExternalClient = async ({ externalApiClientId }) => {
+    const client = await prisma.externalApiClient.findUnique({ where: { id: externalApiClientId } });
+    if (!client) throw new ApiError(404, "External API client not found");
+    return prisma.externalApiClientCharge.findMany({
+        where: { externalApiClientId },
+        orderBy: { chargedAt: "desc" },
+    });
 };
