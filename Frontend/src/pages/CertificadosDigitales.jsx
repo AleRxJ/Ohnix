@@ -64,7 +64,7 @@ const GuestCertificateCheckoutModal = ({ plan, onClose }) => {
             } else {
                 toast.error(
                     error?.response?.data?.message ||
-                        "No pudimos crear tu cuenta y tu orden. Intenta de nuevo en unos minutos."
+                        "No pudimos generar tu orden. Intenta de nuevo en unos minutos."
                 );
             }
         } finally {
@@ -81,10 +81,10 @@ const GuestCertificateCheckoutModal = ({ plan, onClose }) => {
                             {plan.label}
                         </p>
                         <h2 className="mt-1 text-xl font-semibold text-white">
-                            Crea tu cuenta y compra tu certificado
+                            Compra tu certificado digital
                         </h2>
                         <p className="mt-2 text-sm text-[#A9B3B8]">
-                            Con estos datos creamos tu cuenta Ohnix y tu orden de certificado, e ingresas directo al pago.
+                            Con estos datos generamos tu orden de certificado y pasas directo al pago. No necesitas adquirir ningun plan de Ohnix: solo te entregamos el certificado.
                         </p>
                     </div>
                     <button
@@ -217,7 +217,7 @@ const GuestCertificateCheckoutModal = ({ plan, onClose }) => {
                                 disabled={submitting}
                                 className="rounded-full bg-[#29D8D5] px-5 py-3 text-sm font-semibold text-[#021314] hover:bg-[#44F3F0] disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                {submitting ? "Creando tu cuenta..." : `Continuar al pago (${plan.price})`}
+                                {submitting ? "Generando tu orden..." : `Continuar al pago (${plan.price})`}
                             </button>
                         </div>
                     </form>
@@ -314,8 +314,8 @@ const CertificadosDigitales = () => {
             detail: "El precio de tu certificado es el que ves aqui: no necesitas pedir una cotizacion ni hablar con un asesor para saber cuanto cuesta.",
         },
         {
-            title: "Sin necesidad de usar el inventario",
-            detail: "Puedes comprar y activar tu certificado aunque no uses el modulo de inventario de Ohnix: solo necesitas una cuenta y tu configuracion fiscal.",
+            title: "No necesitas adquirir Ohnix",
+            detail: "Comprar tu certificado no significa adquirir Ohnix ni ningun plan de suscripcion: solo te entregamos el certificado activo en tu configuracion fiscal, lo uses o no con otro sistema de facturacion.",
         },
         {
             title: "Activacion desde un solo lugar",
@@ -337,8 +337,8 @@ const CertificadosDigitales = () => {
             a: "Como persona natural, tu documento de identidad. Como persona juridica (empresa), el NIT/Camara de Comercio de la empresa y el documento de identidad de quien la representa. Te lo pedimos en el paso de verificacion, no antes de pagar.",
         },
         {
-            q: "Necesito usar el inventario de Ohnix para comprar un certificado digital?",
-            a: "No. El certificado digital esta ligado a tu empresa y a tu configuracion fiscal, no al modulo de inventario. Puedes usarlo aunque factures desde otro sistema o solo factures manualmente.",
+            q: "Necesito adquirir Ohnix o el modulo de inventario para comprar un certificado digital?",
+            a: "No. Comprar el certificado no requiere adquirir Ohnix ni ningun plan de suscripcion: solo te entregamos el certificado, ligado a tu empresa y a tu configuracion fiscal, no al modulo de inventario. Puedes usarlo aunque factures desde otro sistema o solo factures manualmente.",
         },
         {
             q: "Cual es la diferencia entre el certificado de 1 y de 2 años?",
@@ -350,7 +350,7 @@ const CertificadosDigitales = () => {
         },
         {
             q: "Puedo comprar el certificado si todavia no facturo electronicamente con Ohnix?",
-            a: "Si. Puedes crear tu cuenta, completar tu configuracion fiscal y comprar el certificado como primer paso, incluso antes de emitir tu primera factura electronica.",
+            a: "Si. Puedes completar tu configuracion fiscal y comprar el certificado como primer paso, incluso antes de emitir tu primera factura electronica. No necesitas adquirir Ohnix para esto.",
         },
     ];
 
@@ -474,7 +474,7 @@ const CertificadosDigitales = () => {
                                             : "border border-white/15 bg-white/[0.03] text-white hover:border-[#29D8D5]/40"
                                     }`}
                                 >
-                                    Crear cuenta y comprar
+                                    Comprar certificado
                                 </button>
                             </article>
                         ))}

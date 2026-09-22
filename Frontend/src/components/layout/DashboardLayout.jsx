@@ -366,7 +366,15 @@ const DashboardLayout = () => {
     // (pricing.middleware.js) still blocks issuing/retrying/syncing any new
     // DIAN document from these pages while paused (see order.routes.js /
     // purchase.routes.js), only viewing already-issued ones stays open.
-    const COMPLIANCE_PAGES_EXEMPT_FROM_BLOCK = new Set(["billing", "electronic-invoices", "purchase-support-documents"]);
+    // fiscal-setup is exempt for the same reason plus a stronger one: it's
+    // also where the standalone-certificate guest checkout
+    // (CertificadosDigitales.jsx -> guestCertificateCheckout.service.js)
+    // lands its freshly auto-logged-in account, which never had - and was
+    // never meant to need - an Ohnix subscription of any kind. A DIAN
+    // certificate is the customer's own, paid-for-once asset; it must never
+    // be gated behind an inventory-SaaS plan lapsing (or never having
+    // existed at all).
+    const COMPLIANCE_PAGES_EXEMPT_FROM_BLOCK = new Set(["billing", "electronic-invoices", "purchase-support-documents", "fiscal-setup"]);
 
     // The ONLY thing allowed to actually block access. Mirrors the backend's
     // ensureActiveSubscription (pricing.middleware.js) exactly - every

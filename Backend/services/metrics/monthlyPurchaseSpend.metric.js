@@ -12,7 +12,10 @@ import { prisma } from "../../db/prisma.js";
 import { upsertMetricSnapshot, monthKey, monthBounds } from "../metricSnapshot.service.js";
 
 export const METRIC_KEY = "monthly_purchase_spend";
-const METRIC_LABEL = "Gasto mensual en compras a proveedores";
+// Both languages stored up front - see einvoiceRejectionRate.metric.js's
+// matching comment for why this writer picks neither one itself.
+const METRIC_LABEL_ES = "Gasto mensual en compras a proveedores";
+const METRIC_LABEL_EN = "Monthly supplier purchase spend";
 const MAX_HISTORY_MONTHS = 36;
 
 const lastNMonthKeys = (n, from) =>
@@ -56,7 +59,7 @@ export const writeMonthlyPurchaseSpendMetric = async ({ accountId, db = prisma, 
             periodStart,
             periodEnd,
             value: round2(byMonth.get(key)),
-            metadata: { label: METRIC_LABEL },
+            metadata: { label: METRIC_LABEL_ES, labelEn: METRIC_LABEL_EN },
             db,
         });
         written += 1;

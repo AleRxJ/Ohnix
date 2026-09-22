@@ -4,6 +4,9 @@ import {
     createItcyclePayroll,
     getItcyclePayrollStatus,
     retryItcyclePayrollSend,
+    createItcyclePayrollAdjustment,
+    getItcyclePayrollAdjustmentStatus,
+    retryItcyclePayrollAdjustmentSend,
     isItcycleConfigured,
     ItcycleDianError,
 } from "./itcycleDian.service.js";
@@ -177,7 +180,12 @@ const getDocumentWithRelations = (documentId) => prisma.payrollDocument.findFirs
         employee: true,
         lines: true,
         payrollPeriod: { include: { createdBy: { select: { id: true, companyId: true, company: true } } } },
-        electronicPayroll: { include: { events: { orderBy: { createdAt: "asc" } } } },
+        electronicPayroll: {
+            include: {
+                events: { orderBy: { createdAt: "asc" } },
+                adjustments: { orderBy: { createdAt: "asc" } },
+            },
+        },
     },
 });
 
@@ -185,6 +193,14 @@ const canManageDocument = (document, requesterUserId, requesterRole) =>
     requesterRole === "admin" || document.payrollPeriod.createdById === requesterUserId;
 
 const serializeEvent = (event) => ({ id: event.id, eventType: event.eventType, status: event.status, createdAt: event.createdAt });
+
+const serializeAdjustment = (adjustment) => !adjustment ? null : ({
+    id: adjustment.id, electronicPayrollDocumentId: adjustment.electronicPayrollDocumentId,
+    adjustmentType: adjustment.adjustmentType, status: adjustment.status, referenceCode: adjustment.referenceCode,
+    externalId: adjustment.externalId, documentNumber: adjustment.documentNumber, cune: adjustment.cune,
+    errorMessage: adjustment.errorMessage, issuedAt: adjustment.issuedAt,
+    createdAt: adjustment.createdAt, updatedAt: adjustment.updatedAt,
+});
 
 const serialize = (record) => !record ? null : ({
     id: record.id, payrollDocumentId: record.payrollDocumentId, countryCode: record.countryCode,
@@ -194,6 +210,7 @@ const serialize = (record) => !record ? null : ({
     errorMessage: record.errorMessage, issuedAt: record.issuedAt,
     createdAt: record.createdAt, updatedAt: record.updatedAt,
     events: Array.isArray(record.events) ? record.events.map(serializeEvent) : undefined,
+    adjustments: Array.isArray(record.adjustments) ? record.adjustments.map(serializeAdjustment) : undefined,
 });
 
 export const getElectronicPayrollForDocument = async ({ documentId, requesterUserId, requesterRole }) => {
@@ -346,4 +363,103 @@ export const issueElectronicPayrollForPeriod = async ({ periodId, requesterUserI
         }
     }
     return results;
+};
+
+// Nómina Individual de Ajuste ("1" Reemplazar / "2" Eliminar) - a correction
+// against an already-ACCEPTED ElectronicPayrollDocument. Always references it
+// by itcycle-api-dian's own externalId; that side derives predecessorCune
+// from its own record and never trusts the caller, same as invoicing's
+// credit/debit notes referencing their original invoice.
+export const issueElectronicPayrollAdjustment = async ({ documentId, adjustmentType, requesterUserId, requesterRole, trigger = "manual" }) => {
+    if (!["1", "2"].includes(adjustmentType)) {
+        throw new ApiError(400, 'adjustmentType must be "1" (reemplazar) or "2" (eliminar)');
+    }
+    const document = await getDocumentWithRelations(documentId);
+    if (!document) throw new ApiError(404, "Payroll document not found");
+    if (!canManageDocument(document, requesterUserId, requesterRole)) throw new ApiError(403, "You are not authorized to issue this payroll document");
+
+    const record = document.electronicPayroll;
+    if (!record || record.status !== "accepted" || !record.externalId) {
+        throw new ApiError(409, "An electronic payroll adjustment can only be issued against an ACCEPTED electronic payroll document");
+    }
+
+    const accountId = document.payrollPeriod.createdById;
+    const company = document.payrollPeriod.createdBy.company;
+    await ensureElectronicInvoicingPlan(accountId);
+    if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian integration is not configured for this environment");
+    if (!text(company.itcycleApiKeyCiphertext)) throw new ApiError(422, "This company has not been provisioned with itcycle-api-dian yet");
+    const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
+
+    // A correction resends the same current data (there's no separate "what
+    // changed" input in this phase) - DIAN's "Reemplazar" mode fully replaces
+    // the original regardless, and "Eliminar" still needs a structurally
+    // complete document even though it voids it.
+    const payload = buildItcyclePayrollPayload(document, company);
+    const referenceCode = `${record.referenceCode}-ADJ-${Date.now().toString(36).toUpperCase()}`;
+
+    const adjustment = await prisma.electronicPayrollAdjustment.create({
+        data: {
+            electronicPayrollDocumentId: record.id,
+            companyId: company.id,
+            countryCode: "CO",
+            provider: ITCYCLE_PROVIDER,
+            adjustmentType,
+            status: "issuing",
+            referenceCode,
+            rawRequest: payload,
+        },
+    });
+
+    try {
+        const raw = await createItcyclePayrollAdjustment({
+            apiKey,
+            internalReference: referenceCode,
+            payrollDocumentId: record.externalId,
+            adjustmentType,
+            payroll: payload,
+            send: buildItcycleSendOptions(company),
+        });
+        const mapped = mapItcyclePayrollResponse(raw);
+        const updated = await prisma.electronicPayrollAdjustment.update({
+            where: { id: adjustment.id },
+            data: { ...mapped, errorMessage: null, issuedAt: mapped.status === "accepted" ? new Date() : null },
+        });
+        emitAccountEvent(accountId, "payrollDocument", "electronic_payroll_adjustment_issued");
+        return { trigger, countryCode: "CO", adjustment: serializeAdjustment(updated) };
+    } catch (error) {
+        const providerPayload = error instanceof ItcycleDianError ? error.payload : null;
+        const updated = await prisma.electronicPayrollAdjustment.update({
+            where: { id: adjustment.id },
+            data: { status: "error", rawResponse: providerPayload, errorMessage: error.message || "Unknown itcycle-api-dian error" },
+        });
+        throw new ApiError(502, updated.errorMessage);
+    }
+};
+
+export const syncElectronicPayrollAdjustmentStatus = async ({ documentId, adjustmentId, requesterUserId, requesterRole }) => {
+    const document = await getDocumentWithRelations(documentId);
+    if (!document) throw new ApiError(404, "Payroll document not found");
+    if (!canManageDocument(document, requesterUserId, requesterRole)) throw new ApiError(403, "You are not authorized to access this payroll document");
+
+    const adjustment = (document.electronicPayroll?.adjustments || []).find((a) => a.id === adjustmentId);
+    if (!adjustment) throw new ApiError(404, "Electronic payroll adjustment not found");
+    if (!SYNCABLE_STATUSES.includes(adjustment.status)) throw new ApiError(409, `Electronic payroll adjustment status "${adjustment.status}" cannot be synced`);
+
+    const company = document.payrollPeriod.createdBy.company;
+    try {
+        if (!adjustment.externalId) throw new ApiError(409, "This electronic payroll adjustment does not have a provider id yet");
+        if (!isItcycleConfigured()) throw new ApiError(503, "itcycle-api-dian integration is not configured for this environment");
+        if (!text(company.itcycleApiKeyCiphertext)) throw new ApiError(422, "This company has not been provisioned with itcycle-api-dian yet");
+        const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
+        const mapped = adjustment.status === "contingency"
+            ? mapItcyclePayrollResponse(await retryItcyclePayrollAdjustmentSend({ apiKey, id: adjustment.externalId, send: buildItcycleSendOptions(company) }))
+            : mapItcyclePayrollResponse(await getItcyclePayrollAdjustmentStatus({ apiKey, id: adjustment.externalId }));
+        const updated = await prisma.electronicPayrollAdjustment.update({
+            where: { id: adjustment.id },
+            data: { ...mapped, errorMessage: mapped.status === "rejected" ? "Payroll adjustment rejected by provider" : null, issuedAt: mapped.status === "accepted" ? new Date() : adjustment.issuedAt },
+        });
+        return { adjustment: serializeAdjustment(updated) };
+    } catch (error) {
+        throw new ApiError(502, error.message || "Failed to sync electronic payroll adjustment status with itcycle-api-dian");
+    }
 };

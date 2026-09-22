@@ -158,6 +158,7 @@ const AdminFirmaPassValidations = lazy(() => import("./pages/AdminFirmaPassValid
 const AdminCertificateOrders = lazy(() => import("./pages/AdminCertificateOrders"));
 const AdminApiClients = lazy(() => import("./pages/AdminApiClients"));
 const AdminDianTestMatrix = lazy(() => import("./pages/AdminDianTestMatrix"));
+const AdminIncomeTaxConfig = lazy(() => import("./pages/AdminIncomeTaxConfig"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const EpaycoCheckout = lazy(() => import("./pages/EpaycoCheckout"));
 const EpaycoResponseRedirect = lazy(() => import("./pages/EpaycoResponseRedirect"));
@@ -168,6 +169,7 @@ const CertificateOrderCheckout = lazy(() => import("./pages/CertificateOrderChec
 const CertificateOrderPaymentResponse = lazy(() => import("./pages/CertificateOrderPaymentResponse"));
 const Team = lazy(() => import("./pages/Team"));
 const AcceptInvitation = lazy(() => import("./pages/AcceptInvitation"));
+const EnrollApiBilling = lazy(() => import("./pages/EnrollApiBilling"));
 
 const RouteLoadingFallback = () => (
     <div className="min-h-screen bg-[var(--ohnix-bg)] flex items-center justify-center text-sm text-[var(--ohnix-text-muted)]">
@@ -353,6 +355,11 @@ function App() {
                                 itself is the credential, no ProtectedRoute wrapper. */}
                             <Route path="/team/invite/:token" element={<AcceptInvitation />} />
                             <Route path="/public/sales-quotations/:token" element={<PublicSalesQuotation />} />
+                            {/* Public card enrollment for an external API client's
+                                automatic recurring billing - the token itself is the
+                                credential, no ProtectedRoute wrapper (the enrollee has
+                                no Ohnix account at all). */}
+                            <Route path="/api-clients/enroll-billing/:token" element={<EnrollApiBilling />} />
 
                             {/* Email verification route (protected, but doesn't require verification) */}
                             <Route
@@ -414,6 +421,7 @@ function App() {
                                 <Route path="admin/certificate-orders" element={<AdminCertificateOrders />} />
                                 <Route path="admin/api-clients" element={<AdminApiClients />} />
                                 <Route path="admin/dian-test-matrix" element={<AdminDianTestMatrix />} />
+                                <Route path="admin/income-tax-config" element={<AdminIncomeTaxConfig />} />
                             </Route>
 
                             {/* Fiscal setup (including the certificate checkout) deliberately does NOT

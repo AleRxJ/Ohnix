@@ -1,6 +1,7 @@
 import { prisma } from "../db/prisma.js";
 import { computeDiscoveryScore, applyLearnedConfidence } from "./discoveryScoring.js";
 import { runExplanationCheck } from "./discoveryExplanation.service.js";
+import { resolveIsEnglish } from "./discoveryLocale.service.js";
 
 const OPEN_STATUSES_EXCLUDED = ["resolved", "dismissed"];
 
@@ -36,6 +37,8 @@ export const upsertDiscovery = async ({
     // how often that detector has actually been right before - capped so a
     // "usually right" detector still can't skip having real evidence for
     // THIS specific finding.
+    const isEN = await resolveIsEnglish({ accountId, db });
+
     const patternStats = await db.discoveryPatternStats.findUnique({ where: { detectorKey } });
     const learned = applyLearnedConfidence({ confidence: scores.confidence, patternStats });
     const score = computeDiscoveryScore({ ...scores, confidence: learned.confidence });
@@ -43,7 +46,7 @@ export const upsertDiscovery = async ({
         ? [
               {
                   kind: "learned_confidence",
-                  label: "Confianza ajustada por historial de este detector",
+                  label: isEN ? "Confidence adjusted by this detector's track record" : "Confianza ajustada por historial de este detector",
                   data: {
                       fresh_confidence: learned.freshConfidence,
                       learned_confidence: learned.learnedConfidence,
@@ -91,11 +94,13 @@ export const upsertDiscovery = async ({
             perceptionGapEvidence = [
                 {
                     kind: "perception_gap",
-                    label: "Contraste con tu explicación anterior",
+                    label: isEN ? "Contrast with your previous explanation" : "Contraste con tu explicación anterior",
                     data: {
                         previous_explanation: explanation,
                         explanation_days_ago: daysAgo,
-                        note: "Esta explicación se había dado para este mismo patrón, y volvió a presentarse.",
+                        note: isEN
+                            ? "This explanation was given for this same pattern before, and it came back."
+                            : "Esta explicación se había dado para este mismo patrón, y volvió a presentarse.",
                     },
                     sourceType: "discovery",
                     sourceId: priorClosed.id,

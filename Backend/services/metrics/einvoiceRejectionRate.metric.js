@@ -24,7 +24,12 @@ import { prisma } from "../../db/prisma.js";
 import { upsertMetricSnapshot, monthKey, monthBounds } from "../metricSnapshot.service.js";
 
 export const METRIC_KEY = "einvoice_rejection_rate_pct";
-const METRIC_LABEL = "Tasa de rechazo de facturación electrónica (DIAN)";
+// Stored as both languages (trajectoryShift.detector.js picks whichever the
+// account's preferredLanguage calls for) rather than looked up per-account
+// here - this writer has no reason to know about locale beyond providing
+// both labels, same division of concerns as everywhere else in Discovery.
+const METRIC_LABEL_ES = "Tasa de rechazo de facturación electrónica (DIAN)";
+const METRIC_LABEL_EN = "Electronic invoicing (DIAN) rejection rate";
 const MAX_HISTORY_MONTHS = 36;
 
 // Only statuses that actually reached DIAN (or tried to and failed there) -
@@ -73,7 +78,7 @@ export const writeEinvoiceRejectionRateMetric = async ({ accountId, db = prisma,
             periodStart,
             periodEnd,
             value: round2((bucket.rejected / bucket.attempted) * 100),
-            metadata: { label: METRIC_LABEL, attempted: bucket.attempted, rejected: bucket.rejected },
+            metadata: { label: METRIC_LABEL_ES, labelEn: METRIC_LABEL_EN, attempted: bucket.attempted, rejected: bucket.rejected },
             db,
         });
         written += 1;

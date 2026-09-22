@@ -103,6 +103,27 @@ export const adminService = {
         return response.data;
     },
 
+    // Single-use, 7-day card enrollment link for automatic recurring
+    // billing - see Backend/services/externalApiClient.service.js#createBillingEnrollmentLink.
+    // Returned in the response body EXACTLY ONCE, same one-time-reveal
+    // pattern as issueExternalApiClientApiKey above.
+    async createExternalApiClientBillingEnrollmentLink(id) {
+        const response = await api.post(`/companies/admin/itcycle/external-clients/${id}/billing-enrollment-link`);
+        return response.data;
+    },
+
+    async getExternalApiClientBillingHistory(id) {
+        const response = await api.get(`/companies/admin/itcycle/external-clients/${id}/billing-history`);
+        return response.data;
+    },
+
+    // Occasional cross-sell email inviting an API-only client to also try
+    // full Ohnix - see Backend/services/externalApiClient.service.js#sendExternalClientUpsellEmail.
+    async sendExternalApiClientUpsellEmail(id, note) {
+        const response = await api.post(`/companies/admin/itcycle/external-clients/${id}/upsell-email`, { note });
+        return response.data;
+    },
+
     async listUsers() {
         const response = await api.get("/users/admin/users");
         return response.data;
@@ -212,6 +233,40 @@ export const adminService = {
 
     async updateColombiaTaxSettings(payload) {
         const response = await api.patch("/system-settings/colombia-tax", payload);
+        return response.data;
+    },
+
+    // Renta/RST rate tables - national tax law, shared by every tenant (see
+    // the schema comment on IncomeTaxYearConfig), so this lives under the
+    // isAdmin-gated /companies/admin surface rather than a per-company
+    // "accounting" permission.
+    async listIncomeTaxYearConfigs() {
+        const response = await api.get("/companies/admin/income-tax-config");
+        return response.data;
+    },
+
+    async upsertIncomeTaxYearConfig(payload) {
+        const response = await api.post("/companies/admin/income-tax-config", payload);
+        return response.data;
+    },
+
+    async setIncomeTaxYearConfigVerified(year, isVerified) {
+        const response = await api.patch(`/companies/admin/income-tax-config/${year}/verify`, { is_verified: isVerified });
+        return response.data;
+    },
+
+    async listSimpleRegimeBrackets(year) {
+        const response = await api.get("/companies/admin/income-tax-config/simple-brackets", { params: year ? { year } : undefined });
+        return response.data;
+    },
+
+    async upsertSimpleRegimeBrackets(year, brackets) {
+        const response = await api.post(`/companies/admin/income-tax-config/simple-brackets/${year}`, { brackets });
+        return response.data;
+    },
+
+    async setSimpleRegimeBracketsVerified(year, isVerified) {
+        const response = await api.patch(`/companies/admin/income-tax-config/simple-brackets/${year}/verify`, { is_verified: isVerified });
         return response.data;
     },
 };

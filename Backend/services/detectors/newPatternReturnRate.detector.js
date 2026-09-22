@@ -17,6 +17,7 @@
 
 import { prisma } from "../../db/prisma.js";
 import { upsertDiscovery } from "../discoveryEngine.service.js";
+import { resolveIsEnglish } from "../discoveryLocale.service.js";
 
 export const DETECTOR_KEY = "new_pattern_return_rate";
 
@@ -27,7 +28,10 @@ const MIN_LIFT = 1.5;
 const MIN_ABS_DIFF_PCT = 10;
 const MAX_FINDINGS = 2;
 
-const DAY_LABELS_ES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const DAY_LABELS = {
+    es: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"],
+    en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+};
 
 const round1 = (n) => Number(n.toFixed(1));
 const round2 = (n) => Number(n.toFixed(2));
@@ -39,34 +43,38 @@ const zScoreForProportion = (sliceRate, baselineRate, sliceN) => {
 };
 
 // Groups orders by one dimension's value, returning [{ value, label, total, returned }].
-const DIMENSIONS = [
+// `dimensionLabel`/`valueLabel` end up embedded in the title/summary text
+// AND in evidence data shown to the user, so the dimension list itself has
+// to be locale-aware, not just the sentences built around it.
+const buildDimensions = (isEN) => [
     {
         key: "day_of_week",
-        label: "Día de la semana",
+        label: isEN ? "Day of week" : "Día de la semana",
         valueOf: (order) => String(new Date(order.orderDate).getUTCDay()),
-        labelOf: (value) => DAY_LABELS_ES[Number(value)],
+        labelOf: (value) => (isEN ? DAY_LABELS.en : DAY_LABELS.es)[Number(value)],
     },
     {
         key: "channel",
-        label: "Canal de venta",
+        label: isEN ? "Sales channel" : "Canal de venta",
         valueOf: (order) => order.channel,
         labelOf: (value) => value,
     },
     {
         key: "point_of_sale",
-        label: "Punto de venta",
+        label: isEN ? "Point of sale" : "Punto de venta",
         valueOf: (order) => order.pointOfSaleId,
         labelOf: (value, posNames) => posNames.get(value) || value,
     },
     {
         key: "customer_type",
-        label: "Tipo de cliente",
+        label: isEN ? "Customer type" : "Tipo de cliente",
         valueOf: (order) => order.customerType || "regular",
         labelOf: (value) => value,
     },
 ];
 
-export const computeNewPatterns = async ({ accountId, db = prisma }) => {
+export const computeNewPatterns = async ({ accountId, db = prisma, isEN = false }) => {
+    const DIMENSIONS = buildDimensions(isEN);
     const rawOrders = await db.order.findMany({
         where: { createdById: accountId, orderStatus: { in: ["completed", "returned"] } },
         select: { orderDate: true, channel: true, pointOfSaleId: true, orderStatus: true, customer: { select: { type: true } } },
@@ -147,7 +155,8 @@ export const computeNewPatterns = async ({ accountId, db = prisma }) => {
 };
 
 export const runNewPatternReturnRateDetector = async ({ accountId, db = prisma }) => {
-    const { findings, reason, baselineRatePct } = await computeNewPatterns({ accountId, db });
+    const isEN = await resolveIsEnglish({ accountId, db });
+    const { findings, reason, baselineRatePct } = await computeNewPatterns({ accountId, db, isEN });
     if (findings.length === 0) {
         return { discovery: null, created: false, reason: reason || "no_pattern_found" };
     }
@@ -160,23 +169,45 @@ export const runNewPatternReturnRateDetector = async ({ accountId, db = prisma }
         const novelty = 0.7; // by construction this is a slice nobody had a pre-built report for
         const reversibility = 0.65; // usually a process/QA fix, not structural
 
+        const copy = isEN
+            ? {
+                  title: `Found a pattern that wasn't defined in Ohnix: ${finding.dimensionLabel.toLowerCase()} "${finding.valueLabel}" has an unusual return rate`,
+                  summary: `Orders where "${finding.dimensionLabel.toLowerCase()}" is "${finding.valueLabel}" (${finding.sliceOrders} orders) have a ${finding.sliceRatePct}% return rate, vs. the account's overall ${finding.baselineRatePct}% - ${finding.lift}x more. This combination isn't defined as a metric or alert in any existing report.`,
+                  hypothesis: "Something specific to this condition (the day, the channel, the point of sale, or the customer type) is associated with a higher return rate - a correlation found by automatic search, not an already-confirmed cause.",
+                  unknowns: "We haven't yet investigated the specific cause (quality, logistics, customer expectations, a particular product), nor whether the association holds while controlling for other variables at the same time.",
+                  recommendation: `Manually review a sample of "${finding.valueLabel}" returns to identify a common cause.`,
+                  comparisonLabel: "Return rate: this condition vs. the rest of the account",
+                  distributionLabel: `Return rate by "${finding.dimensionLabel}" (full distribution)`,
+                  predictionStatement: `If this pattern is real, the return rate for "${finding.valueLabel}" should stay above the account's overall average over the next 90 days.`,
+              }
+            : {
+                  title: `Encontré un patrón que no estaba definido en Ohnix: ${finding.dimensionLabel.toLowerCase()} "${finding.valueLabel}" tiene una tasa de devolución fuera de lo normal`,
+                  summary: `Los pedidos donde "${finding.dimensionLabel.toLowerCase()}" es "${finding.valueLabel}" (${finding.sliceOrders} pedidos) tienen una tasa de devolución de ${finding.sliceRatePct}%, frente al ${finding.baselineRatePct}% general de la cuenta - ${finding.lift}x más. Esta combinación no está definida como métrica ni alerta en ningún reporte existente.`,
+                  hypothesis: "Algo específico de esta condición (el día, el canal, el punto de venta o el tipo de cliente) está asociado con una mayor tasa de devolución - correlación encontrada por búsqueda automática, no una causa ya confirmada.",
+                  unknowns: "No hemos investigado todavía la causa específica (calidad, logística, expectativa del cliente, un producto en particular) ni si la asociación se mantiene controlando por otras variables al mismo tiempo.",
+                  recommendation: `Revisar manualmente una muestra de las devoluciones de "${finding.valueLabel}" para identificar una causa común.`,
+                  comparisonLabel: "Tasa de devolución: esta condición vs. el resto de la cuenta",
+                  distributionLabel: `Tasa de devolución por "${finding.dimensionLabel}" (distribución completa)`,
+                  predictionStatement: `Si este patrón es real, la tasa de devolución de "${finding.valueLabel}" debería seguir por encima del promedio general de la cuenta en los próximos 90 días.`,
+              };
+
         const { discovery, created } = await upsertDiscovery({
             accountId,
             detectorKey: DETECTOR_KEY,
             type: "new_pattern",
             dedupeKey: `${DETECTOR_KEY}:account:${finding.dimensionKey}:${finding.value}`,
-            title: `Encontré un patrón que no estaba definido en Ohnix: ${finding.dimensionLabel.toLowerCase()} "${finding.valueLabel}" tiene una tasa de devolución fuera de lo normal`,
-            summary: `Los pedidos donde "${finding.dimensionLabel.toLowerCase()}" es "${finding.valueLabel}" (${finding.sliceOrders} pedidos) tienen una tasa de devolución de ${finding.sliceRatePct}%, frente al ${finding.baselineRatePct}% general de la cuenta - ${finding.lift}x más. Esta combinación no está definida como métrica ni alerta en ningún reporte existente.`,
-            hypothesis: "Algo específico de esta condición (el día, el canal, el punto de venta o el tipo de cliente) está asociado con una mayor tasa de devolución - correlación encontrada por búsqueda automática, no una causa ya confirmada.",
-            unknowns: "No hemos investigado todavía la causa específica (calidad, logística, expectativa del cliente, un producto en particular) ni si la asociación se mantiene controlando por otras variables al mismo tiempo.",
-            recommendation: `Revisar manualmente una muestra de las devoluciones de "${finding.valueLabel}" para identificar una causa común.`,
+            title: copy.title,
+            summary: copy.summary,
+            hypothesis: copy.hypothesis,
+            unknowns: copy.unknowns,
+            recommendation: copy.recommendation,
             scores: { impact, novelty, urgency, confidence, reversibility },
             entityCount: 0,
             patternSince: null,
             evidence: [
                 {
                     kind: "comparison",
-                    label: "Tasa de devolución: esta condición vs. el resto de la cuenta",
+                    label: copy.comparisonLabel,
                     data: {
                         dimension: finding.dimensionLabel,
                         value: finding.valueLabel,
@@ -192,7 +223,7 @@ export const runNewPatternReturnRateDetector = async ({ accountId, db = prisma }
                 },
                 {
                     kind: "cohort_sample",
-                    label: `Tasa de devolución por "${finding.dimensionLabel}" (distribución completa)`,
+                    label: copy.distributionLabel,
                     data: finding.distribution,
                     sourceType: null,
                     sourceId: null,
@@ -201,7 +232,7 @@ export const runNewPatternReturnRateDetector = async ({ accountId, db = prisma }
             entities: [],
             predictions: [
                 {
-                    statement: `Si este patrón es real, la tasa de devolución de "${finding.valueLabel}" debería seguir por encima del promedio general de la cuenta en los próximos 90 días.`,
+                    statement: copy.predictionStatement,
                     predictedData: { dimension_key: finding.dimensionKey, value: finding.value, slice_rate_pct_at_prediction: finding.sliceRatePct, baseline_rate_pct_at_prediction: finding.baselineRatePct },
                     confidenceAtStake: confidence,
                     checkAfter: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
@@ -220,13 +251,18 @@ export const runNewPatternReturnRateDetector = async ({ accountId, db = prisma }
 // rate against the account's CURRENT overall rate, and checks whether the
 // gap the prediction described held up.
 export const checkPrediction = async ({ accountId, prediction, db = prisma }) => {
-    const dimension = DIMENSIONS.find((d) => d.key === prediction.predictedData?.dimension_key);
+    const isEN = await resolveIsEnglish({ accountId, db });
+    const dimension = buildDimensions(isEN).find((d) => d.key === prediction.predictedData?.dimension_key);
     const targetValue = prediction.predictedData?.value;
     if (!dimension || targetValue === undefined) {
-        return { outcome: "inconclusive", actualData: {}, notes: "La predicción no registró una condición específica para volver a evaluar." };
+        return {
+            outcome: "inconclusive",
+            actualData: {},
+            notes: isEN ? "The prediction didn't record a specific condition to re-evaluate." : "La predicción no registró una condición específica para volver a evaluar.",
+        };
     }
 
-    const { candidates } = await computeNewPatterns({ accountId, db });
+    const { candidates } = await computeNewPatterns({ accountId, db, isEN });
     // Searches every slice that still clears the per-slice thresholds, NOT
     // just the capped top-2 `findings` the detector publishes - the named
     // slice can still be true even if it's no longer the single most
@@ -242,7 +278,17 @@ export const checkPrediction = async ({ accountId, prediction, db = prisma }) =>
     };
 
     if (stillFlagged) {
-        return { outcome: "correct", actualData, notes: "La condición sigue teniendo una tasa de devolución notablemente por encima del promedio de la cuenta." };
+        return {
+            outcome: "correct",
+            actualData,
+            notes: isEN
+                ? "The condition still has a return rate notably above the account average."
+                : "La condición sigue teniendo una tasa de devolución notablemente por encima del promedio de la cuenta.",
+        };
     }
-    return { outcome: "incorrect", actualData, notes: "La condición ya no muestra una tasa de devolución fuera de lo normal - la brecha se cerró." };
+    return {
+        outcome: "incorrect",
+        actualData,
+        notes: isEN ? "The condition no longer shows an unusual return rate - the gap closed." : "La condición ya no muestra una tasa de devolución fuera de lo normal - la brecha se cerró.",
+    };
 };

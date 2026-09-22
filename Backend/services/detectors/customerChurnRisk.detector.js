@@ -14,6 +14,7 @@
 
 import { prisma } from "../../db/prisma.js";
 import { upsertDiscovery } from "../discoveryEngine.service.js";
+import { resolveIsEnglish } from "../discoveryLocale.service.js";
 
 export const DETECTOR_KEY = "customer_churn_risk";
 
@@ -117,23 +118,48 @@ export const runCustomerChurnRiskDetector = async ({ accountId, db = prisma, now
 
     const sortedAtRisk = [...atRisk].sort((a, b) => b.lifetimeValue - a.lifetimeValue);
 
+    const isEN = await resolveIsEnglish({ accountId, db });
+    const copy = isEN
+        ? {
+              title: `${atRisk.length} customers are entering a pattern that historically ends in customer loss`,
+              summary: `${atRisk.length} customers have been buying at a pace ${round1(avgRiskRatio)}x slower than their own historical rhythm - a level of delay similar to what ${churnedPrecedent.length} customers showed right before they stopped buying entirely. These ${atRisk.length} customers represent ${round1(revenueSharePct)}% of the historical revenue of the customer base analyzed.`,
+              hypothesis: "Customers who fall more than 1.8x behind their own normal buying cycle, without yet reaching 4x, have historically tended to follow the same path as customers who already stopped buying entirely - the gap with their normal rhythm keeps widening instead of correcting on its own.",
+              unknowns: "We still don't know if there's a common cause among these customers (price, service, a competitor, seasonality in their own business), nor whether each one individually will re-engage or not - this is an aggregate pattern, not a per-customer certainty.",
+              recommendation: "Prioritize outreach/retention with the highest historical-value customers on this list before they cross the total-inactivity threshold.",
+              cohortLabel: "At-risk customers (sorted by historical value)",
+              precedentLabel: "Historical precedent: customers who reached total inactivity",
+              revenueLabel: "Historical revenue at risk",
+              predictionStatement: `Without intervention, at least some of these ${atRisk.length} customers are expected to cross the total-inactivity threshold (${CHURNED_RATIO_MIN}x their normal cycle) in the next 60 days.`,
+          }
+        : {
+              title: `${atRisk.length} clientes están entrando en un patrón que históricamente termina en pérdida del cliente`,
+              summary: `${atRisk.length} clientes llevan comprando con una frecuencia ${round1(avgRiskRatio)}x más lenta que su propio ritmo histórico - un nivel de atraso parecido al que tenían ${churnedPrecedent.length} clientes justo antes de dejar de comprar por completo. Estos ${atRisk.length} clientes representan ${round1(revenueSharePct)}% de los ingresos históricos de la base de clientes analizada.`,
+              hypothesis: "Los clientes que se atrasan más de 1.8x su propio ciclo de compra normal, sin todavía llegar a 4x, tienden históricamente a seguir el mismo camino que los clientes que ya dejaron de comprar del todo - la brecha con su ritmo normal sigue ampliándose en vez de corregirse sola.",
+              unknowns: "No sabemos todavía si hay una causa común entre estos clientes (precio, servicio, un competidor, estacionalidad de su propio negocio) ni si cada uno individualmente va a reactivarse o no - es un patrón agregado, no una certeza por cliente.",
+              recommendation: "Priorizar contacto/retención con los clientes de mayor valor histórico en esta lista antes de que crucen el umbral de inactividad total.",
+              cohortLabel: "Clientes en riesgo (ordenados por valor histórico)",
+              precedentLabel: "Precedente histórico: clientes que llegaron a inactividad total",
+              revenueLabel: "Ingresos históricos en riesgo",
+              predictionStatement: `Si no hay intervención, se espera que al menos parte de estos ${atRisk.length} clientes crucen el umbral de inactividad total (${CHURNED_RATIO_MIN}x su ciclo normal) en los próximos 60 días.`,
+          };
+
     const { discovery, created } = await upsertDiscovery({
         accountId,
         detectorKey: DETECTOR_KEY,
         type: "risk",
         dedupeKey: `${DETECTOR_KEY}:account`,
-        title: `${atRisk.length} clientes están entrando en un patrón que históricamente termina en pérdida del cliente`,
-        summary: `${atRisk.length} clientes llevan comprando con una frecuencia ${round1(avgRiskRatio)}x más lenta que su propio ritmo histórico - un nivel de atraso parecido al que tenían ${churnedPrecedent.length} clientes justo antes de dejar de comprar por completo. Estos ${atRisk.length} clientes representan ${round1(revenueSharePct)}% de los ingresos históricos de la base de clientes analizada.`,
-        hypothesis: "Los clientes que se atrasan más de 1.8x su propio ciclo de compra normal, sin todavía llegar a 4x, tienden históricamente a seguir el mismo camino que los clientes que ya dejaron de comprar del todo - la brecha con su ritmo normal sigue ampliándose en vez de corregirse sola.",
-        unknowns: "No sabemos todavía si hay una causa común entre estos clientes (precio, servicio, un competidor, estacionalidad de su propio negocio) ni si cada uno individualmente va a reactivarse o no - es un patrón agregado, no una certeza por cliente.",
-        recommendation: "Priorizar contacto/retención con los clientes de mayor valor histórico en esta lista antes de que crucen el umbral de inactividad total.",
+        title: copy.title,
+        summary: copy.summary,
+        hypothesis: copy.hypothesis,
+        unknowns: copy.unknowns,
+        recommendation: copy.recommendation,
         scores: { impact, novelty, urgency, confidence, reversibility },
         entityCount: atRisk.length,
         patternSince: null,
         evidence: [
             {
                 kind: "cohort_sample",
-                label: "Clientes en riesgo (ordenados por valor histórico)",
+                label: copy.cohortLabel,
                 data: sortedAtRisk.slice(0, MAX_LISTED_CUSTOMERS).map((p) => ({
                     customer_id: p.customerId,
                     customer_name: nameById.get(p.customerId) || null,
@@ -148,7 +174,7 @@ export const runCustomerChurnRiskDetector = async ({ accountId, db = prisma, now
             },
             {
                 kind: "comparison",
-                label: "Precedente histórico: clientes que llegaron a inactividad total",
+                label: copy.precedentLabel,
                 data: {
                     at_risk_count: atRisk.length,
                     churned_precedent_count: churnedPrecedent.length,
@@ -161,7 +187,7 @@ export const runCustomerChurnRiskDetector = async ({ accountId, db = prisma, now
             },
             {
                 kind: "metric",
-                label: "Ingresos históricos en riesgo",
+                label: copy.revenueLabel,
                 data: {
                     at_risk_lifetime_revenue: round2(atRiskRevenue),
                     total_customer_revenue_considered: round2(totalConsideredRevenue),
@@ -184,7 +210,7 @@ export const runCustomerChurnRiskDetector = async ({ accountId, db = prisma, now
         })),
         predictions: [
             {
-                statement: `Si no hay intervención, se espera que al menos parte de estos ${atRisk.length} clientes crucen el umbral de inactividad total (${CHURNED_RATIO_MIN}x su ciclo normal) en los próximos 60 días.`,
+                statement: copy.predictionStatement,
                 predictedData: {
                     at_risk_customer_ids: atRisk.map((p) => p.customerId).slice(0, 100),
                     churned_ratio_threshold: CHURNED_RATIO_MIN,
@@ -213,8 +239,14 @@ export const checkPrediction = async ({ accountId, prediction, db = prisma, now 
     const customerIds = prediction.predictedData?.at_risk_customer_ids || [];
     const churnedRatioThreshold = Number(prediction.predictedData?.churned_ratio_threshold ?? CHURNED_RATIO_MIN);
 
+    const isEN = await resolveIsEnglish({ accountId, db });
+
     if (customerIds.length === 0) {
-        return { outcome: "inconclusive", actualData: { checked_customers: 0 }, notes: "La predicción no registró clientes específicos para volver a evaluar." };
+        return {
+            outcome: "inconclusive",
+            actualData: { checked_customers: 0 },
+            notes: isEN ? "The prediction didn't record specific customers to re-evaluate." : "La predicción no registró clientes específicos para volver a evaluar.",
+        };
     }
 
     const profiles = await computeCustomerRiskProfiles({ accountId, db, now, customerIds });
@@ -244,12 +276,28 @@ export const checkPrediction = async ({ accountId, prediction, db = prisma, now 
     };
 
     if (crossed > 0) {
-        return { outcome: "correct", actualData, notes: `${crossed} de ${customerIds.length} clientes cruzaron al umbral de inactividad total.` };
+        return {
+            outcome: "correct",
+            actualData,
+            notes: isEN ? `${crossed} of ${customerIds.length} customers crossed into total inactivity.` : `${crossed} de ${customerIds.length} clientes cruzaron al umbral de inactividad total.`,
+        };
     }
     if (recovered >= Math.ceil(customerIds.length / 2)) {
-        return { outcome: "incorrect", actualData, notes: "La mayoría de los clientes señalados volvieron a comprar y salieron de la zona de riesgo." };
+        return {
+            outcome: "incorrect",
+            actualData,
+            notes: isEN
+                ? "Most of the flagged customers ordered again and left the risk zone."
+                : "La mayoría de los clientes señalados volvieron a comprar y salieron de la zona de riesgo.",
+        };
     }
-    return { outcome: "inconclusive", actualData, notes: "Ningún cliente cruzó todavía a inactividad total, pero tampoco se recuperó una mayoría." };
+    return {
+        outcome: "inconclusive",
+        actualData,
+        notes: isEN
+            ? "No customer has crossed into total inactivity yet, but a majority hasn't recovered either."
+            : "Ningún cliente cruzó todavía a inactividad total, pero tampoco se recuperó una mayoría.",
+    };
 };
 
 const MIN_PRIOR_YEARS_PER_CUSTOMER = 2;
@@ -272,8 +320,14 @@ const CONTRADICTED_THRESHOLD = 0.3;
 // perception-gap can't: it answers the question the moment the explanation
 // is given, not weeks later.
 export const checkSeasonalExplanation = async ({ accountId, customerIds, db = prisma, now = new Date() }) => {
+    const isEN = await resolveIsEnglish({ accountId, db });
+
     if (!customerIds?.length) {
-        return { outcome: "inconclusive", customers_with_history: 0, notes: "Este descubrimiento no tiene clientes específicos asociados para comparar." };
+        return {
+            outcome: "inconclusive",
+            customers_with_history: 0,
+            notes: isEN ? "This Discovery has no specific customers attached to compare." : "Este descubrimiento no tiene clientes específicos asociados para comparar.",
+        };
     }
 
     const orders = await db.order.findMany({
@@ -312,17 +366,24 @@ export const checkSeasonalExplanation = async ({ accountId, customerIds, db = pr
             outcome: "inconclusive",
             customers_with_history: customersWithHistory,
             customers_checked: customerIds.length,
-            notes: "Todavía no hay suficiente historial de varios años para estos clientes como para evaluar si esto es estacional.",
+            notes: isEN
+                ? "There still isn't enough multi-year history for these customers to evaluate whether this is seasonal."
+                : "Todavía no hay suficiente historial de varios años para estos clientes como para evaluar si esto es estacional.",
         };
     }
 
     const supportRatioPct = round1((historicallyQuietToo / customersWithHistory) * 100);
     const outcome = supportRatioPct >= SUPPORTED_THRESHOLD * 100 ? "supported" : supportRatioPct <= CONTRADICTED_THRESHOLD * 100 ? "contradicted" : "inconclusive";
 
-    const notes =
-        outcome === "supported"
-            ? "La mayoría de estos clientes también estuvieron inactivos en este mismo mes en años anteriores - la explicación de temporada baja tiene respaldo en el historial."
+    const notes = isEN
+        ? outcome === "supported"
+            ? "Most of these customers were also inactive in this same month in prior years - the low-season explanation is backed by history."
             : outcome === "contradicted"
+              ? "Most of these customers normally DID buy in this same month in prior years - history doesn't support this being a low season, something else could be going on."
+              : "History is split - it neither clearly supports nor clearly contradicts this being a low season."
+        : outcome === "supported"
+          ? "La mayoría de estos clientes también estuvieron inactivos en este mismo mes en años anteriores - la explicación de temporada baja tiene respaldo en el historial."
+          : outcome === "contradicted"
             ? "La mayoría de estos clientes normalmente SÍ compraban en este mismo mes en años anteriores - el historial no respalda que sea temporada baja, podría estar pasando algo distinto."
             : "El historial está dividido - ni respalda claramente ni contradice claramente que sea temporada baja.";
 

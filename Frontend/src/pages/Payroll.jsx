@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { Layout, Tabs, Table, Button, Tag, Popconfirm, Tooltip } from "antd";
-import { PlusOutlined, TeamOutlined, CalendarOutlined, DollarOutlined, SettingOutlined, EyeOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons";
+import { PlusOutlined, TeamOutlined, CalendarOutlined, DollarOutlined, SettingOutlined, EyeOutlined, DeleteOutlined, EditOutlined, StopOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../hooks/useI18n";
 import AuthContext from "../context/AuthContext";
@@ -15,6 +15,7 @@ import PayrollPeriodDetailDrawer from "../components/payroll/PayrollPeriodDetail
 import PayPeriodModal from "../components/payroll/PayPeriodModal";
 import BenefitAccrualsPanel from "../components/payroll/BenefitAccrualsPanel";
 import LegalParametersPanel from "../components/payroll/LegalParametersPanel";
+import TerminationSettlementModal from "../components/payroll/TerminationSettlementModal";
 import EmptyState from "../components/common/EmptyState";
 
 const { Content } = Layout;
@@ -25,9 +26,16 @@ const EmployeesPanel = ({ canEdit }) => {
     const { t } = useI18n();
     const { formatCurrency } = useCurrency();
     const { employees, loading, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
+    const { accounts: cashAccounts, load: loadCashAccounts } = useCashAccounts();
     const [modalVisible, setModalVisible] = useState(false);
     const [editing, setEditing] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [terminating, setTerminating] = useState(null);
+
+    useEffect(() => {
+        loadCashAccounts();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleSave = async (values) => {
         setSaving(true);
@@ -49,7 +57,15 @@ const EmployeesPanel = ({ canEdit }) => {
             key: "pay_frequency",
             render: (_, row) => t(`payroll.frequency_${row.pay_frequency}`),
         },
-        { title: t("common.status"), key: "status", render: (_, row) => <Tag color={row.status === "active" ? "green" : "default"}>{t(`payroll.employee_status_${row.status}`)}</Tag> },
+        {
+            title: t("common.status"),
+            key: "status",
+            render: (_, row) => (
+                <Tag color={row.status === "active" ? "green" : row.status === "terminated" ? "red" : "default"}>
+                    {t(`payroll.employee_status_${row.status}`)}
+                </Tag>
+            ),
+        },
         {
             title: t("common.actions"),
             key: "actions",
@@ -65,6 +81,11 @@ const EmployeesPanel = ({ canEdit }) => {
                             setModalVisible(true);
                         }}
                     />
+                    {row.status !== "terminated" && (
+                        <Tooltip title={t("payroll.terminate_employee")}>
+                            <Button type="text" size="small" icon={<StopOutlined />} disabled={!canEdit} onClick={() => setTerminating(row)} />
+                        </Tooltip>
+                    )}
                     <Popconfirm title={t("common.warning")} okText={t("common.yes")} cancelText={t("common.no")} onConfirm={() => deleteEmployee(row._id)} disabled={!canEdit}>
                         <Button type="text" danger size="small" icon={<DeleteOutlined />} disabled={!canEdit} />
                     </Popconfirm>
@@ -110,6 +131,13 @@ const EmployeesPanel = ({ canEdit }) => {
                     setModalVisible(false);
                     setEditing(null);
                 }}
+            />
+            <TerminationSettlementModal
+                visible={Boolean(terminating)}
+                employee={terminating}
+                cashAccounts={(cashAccounts || []).filter((a) => a.is_active !== false)}
+                onUpdateContractEndDate={(id, contractEndDate) => updateEmployee(id, { contract_end_date: contractEndDate })}
+                onClose={() => setTerminating(null)}
             />
         </div>
     );

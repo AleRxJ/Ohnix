@@ -8,7 +8,7 @@
 // first Ohnix admin UI for it. See Backend/services/externalApiClient.service.js.
 import { useContext, useEffect, useMemo, useState } from "react";
 import { Alert, Button, Empty, Form, Input, Modal, Select, Table, Tooltip } from "antd";
-import { BarChartOutlined, CloudServerOutlined, CopyOutlined, KeyOutlined, PlusOutlined, SafetyCertificateOutlined, SearchOutlined } from "@ant-design/icons";
+import { BarChartOutlined, CloudServerOutlined, CopyOutlined, CreditCardOutlined, KeyOutlined, MailOutlined, PlusOutlined, RocketOutlined, SafetyCertificateOutlined, SearchOutlined } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import AuthContext from "../context/AuthContext";
 import useI18n from "../hooks/useI18n";
@@ -72,6 +72,26 @@ const AdminApiClients = () => {
     const [usageLoading, setUsageLoading] = useState(false);
     const [usage, setUsage] = useState(null);
     const [usageError, setUsageError] = useState("");
+
+    // Automatic recurring billing modal - shows enrollment status, lets the
+    // admin generate a single-use card-enrollment link (one-time reveal,
+    // same "no show again" rule as the issue-key modal above - see
+    // Backend/services/externalApiClient.service.js#createBillingEnrollmentLink),
+    // and lists past charges (ExternalApiClientCharge rows).
+    const [billingClient, setBillingClient] = useState(null);
+    const [billingHistoryLoading, setBillingHistoryLoading] = useState(false);
+    const [billingHistory, setBillingHistory] = useState(null);
+    const [billingHistoryError, setBillingHistoryError] = useState("");
+    const [generatingLink, setGeneratingLink] = useState(false);
+    const [enrollmentLink, setEnrollmentLink] = useState(null);
+
+    // Occasional cross-sell email modal - a client with no Ohnix account at
+    // all (see this file's own top comment) only has their contactEmail as a
+    // channel, so this is just a free-text note + send button, admin-decided
+    // every time rather than any kind of automated campaign.
+    const [upsellClient, setUpsellClient] = useState(null);
+    const [upsellNote, setUpsellNote] = useState("");
+    const [sendingUpsell, setSendingUpsell] = useState(false);
 
     const fetchData = async () => {
         try {
@@ -213,6 +233,77 @@ const AdminApiClients = () => {
         setUsageError("");
     };
 
+    const openBillingModal = async (client) => {
+        setBillingClient(client);
+        setBillingHistory(null);
+        setBillingHistoryError("");
+        setEnrollmentLink(null);
+        setBillingHistoryLoading(true);
+        try {
+            const response = await adminService.getExternalApiClientBillingHistory(client.id);
+            setBillingHistory(response?.data || []);
+        } catch (error) {
+            setBillingHistoryError(error.response?.data?.message || t("common.error"));
+        } finally {
+            setBillingHistoryLoading(false);
+        }
+    };
+
+    const closeBillingModal = () => {
+        setBillingClient(null);
+        setBillingHistory(null);
+        setBillingHistoryError("");
+        setEnrollmentLink(null);
+    };
+
+    const handleGenerateEnrollmentLink = async () => {
+        if (!billingClient) return;
+        try {
+            setGeneratingLink(true);
+            const response = await adminService.createExternalApiClientBillingEnrollmentLink(billingClient.id);
+            setEnrollmentLink(response?.data?.enrollmentUrl || "");
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setGeneratingLink(false);
+        }
+    };
+
+    const openUpsellModal = (client) => {
+        setUpsellClient(client);
+        setUpsellNote("");
+    };
+
+    const closeUpsellModal = () => {
+        setUpsellClient(null);
+        setUpsellNote("");
+    };
+
+    const handleSendUpsell = async () => {
+        if (!upsellClient) return;
+        try {
+            setSendingUpsell(true);
+            await adminService.sendExternalApiClientUpsellEmail(upsellClient.id, upsellNote.trim() || undefined);
+            toast.success(t("admin.api_clients_upsell_sent"));
+            closeUpsellModal();
+            fetchData();
+        } catch (error) {
+            toast.error(error.response?.data?.message || t("common.error"));
+        } finally {
+            setSendingUpsell(false);
+        }
+    };
+
+    const copyEnrollmentLink = async () => {
+        if (!enrollmentLink) return;
+        try {
+            await navigator.clipboard.writeText(enrollmentLink);
+            toast.success(t("admin.api_clients_issue_key_copied"));
+        } catch {
+            // Clipboard API can be unavailable - the value is still visible in the field.
+        }
+    };
+
     const formatDate = (value) => (value ? new Date(value).toLocaleDateString() : "—");
 
     const columns = [
@@ -287,6 +378,23 @@ const AdminApiClients = () => {
                         onClick={() => openUsageModal(record)}
                     >
                         {t("admin.api_clients_usage_button")}
+                    </Button>
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={<CreditCardOutlined />}
+                        onClick={() => openBillingModal(record)}
+                    >
+                        {t("admin.api_clients_billing_button")}
+                    </Button>
+                    <Button
+                        type="text"
+                        size="small"
+                        icon={<RocketOutlined />}
+                        onClick={() => openUpsellModal(record)}
+                        disabled={!record.contactEmail}
+                    >
+                        {t("admin.api_clients_upsell_button")}
                     </Button>
                 </div>
             ),
@@ -594,6 +702,182 @@ const AdminApiClients = () => {
                                 </div>
                             </div>
                         )}
+                    </div>
+                )}
+            </Modal>
+
+            <Modal
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                            <CreditCardOutlined className="text-[#44F3F0]" />
+                        </div>
+                        <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                            {t("admin.api_clients_billing_modal_title")}
+                        </span>
+                    </div>
+                }
+                open={Boolean(billingClient)}
+                onCancel={closeBillingModal}
+                footer={<Button onClick={closeBillingModal}>{t("admin.api_clients_issue_key_close")}</Button>}
+                destroyOnClose
+                width={640}
+                styles={darkModalStyles}
+            >
+                {billingClient && (
+                    <div className="mt-2 space-y-5">
+                        {billingClient.billingAtRisk && (
+                            <Alert
+                                className="dark-alert dark-alert-amber"
+                                type="warning"
+                                showIcon
+                                message={t("admin.api_clients_billing_at_risk")}
+                            />
+                        )}
+
+                        <div>
+                            <p className="text-sm text-[var(--ohnix-text-muted)] mb-2">
+                                {billingClient.epaycoCustomerId
+                                    ? t("admin.api_clients_billing_enrolled", { date: formatDate(billingClient.billingEnrolledAt) })
+                                    : t("admin.api_clients_billing_not_enrolled")}
+                            </p>
+
+                            {!enrollmentLink && (
+                                <Button
+                                    type="primary"
+                                    loading={generatingLink}
+                                    onClick={handleGenerateEnrollmentLink}
+                                    className="h-10 rounded-md font-medium"
+                                >
+                                    {billingClient.epaycoCustomerId
+                                        ? t("admin.api_clients_billing_regenerate_link_button")
+                                        : t("admin.api_clients_billing_generate_link_button")}
+                                </Button>
+                            )}
+
+                            {enrollmentLink && (
+                                <div className="space-y-2">
+                                    <Alert
+                                        className="dark-alert dark-alert-amber"
+                                        type="warning"
+                                        showIcon
+                                        message={t("admin.api_clients_issue_key_warning_title")}
+                                        description={t("admin.api_clients_billing_link_warning_description")}
+                                    />
+                                    <Input.Group compact className="flex">
+                                        <Input readOnly value={enrollmentLink} className="auth-ohnix-input font-mono" />
+                                        <Tooltip title={t("admin.api_clients_issue_key_copy")}>
+                                            <Button icon={<CopyOutlined />} onClick={copyEnrollmentLink} className="h-10" />
+                                        </Tooltip>
+                                    </Input.Group>
+                                </div>
+                            )}
+                        </div>
+
+                        <div>
+                            <p className="text-sm font-medium text-[var(--ohnix-text-primary)] mb-2">
+                                {t("admin.api_clients_billing_history_title")}
+                            </p>
+                            {billingHistoryLoading && (
+                                <p className="text-sm text-[var(--ohnix-text-muted)]">{t("admin.api_clients_usage_loading")}</p>
+                            )}
+                            {!billingHistoryLoading && billingHistoryError && (
+                                <Alert className="dark-alert dark-alert-amber" type="warning" showIcon message={billingHistoryError} />
+                            )}
+                            {!billingHistoryLoading && !billingHistoryError && billingHistory && billingHistory.length === 0 && (
+                                <Empty description={t("admin.api_clients_billing_history_empty")} />
+                            )}
+                            {!billingHistoryLoading && !billingHistoryError && billingHistory && billingHistory.length > 0 && (
+                                <div className="space-y-2 max-h-72 overflow-y-auto">
+                                    {billingHistory.map((charge) => (
+                                        <div
+                                            key={charge.id}
+                                            className="flex items-center justify-between rounded-xl border border-[var(--ohnix-line-4)] bg-[var(--ohnix-hover-overlay)] px-4 py-3"
+                                        >
+                                            <div>
+                                                <div className="text-sm font-medium text-[var(--ohnix-text-primary)]">
+                                                    {charge.chargeType === "annual_base"
+                                                        ? t("admin.api_clients_billing_charge_type_annual")
+                                                        : t("admin.api_clients_billing_charge_type_overage", {
+                                                            docs: charge.documentsCharged,
+                                                        })}
+                                                </div>
+                                                <div className="text-xs text-[var(--ohnix-text-muted)]">
+                                                    {charge.periodMonth ? `${charge.periodMonth}/${charge.periodYear}` : charge.periodYear}
+                                                    {" · "}
+                                                    {formatDate(charge.chargedAt)}
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-sm font-semibold text-[var(--ohnix-text-primary)]">
+                                                    ${Number(charge.amountCop).toLocaleString("es-CO")}
+                                                </div>
+                                                <span
+                                                    className={`text-xs uppercase tracking-wide ${
+                                                        charge.status === "success" ? "text-emerald-400" : "text-red-400"
+                                                    }`}
+                                                >
+                                                    {charge.status === "success"
+                                                        ? t("admin.api_clients_billing_status_success")
+                                                        : t("admin.api_clients_billing_status_failed")}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </Modal>
+
+            <Modal
+                title={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--ohnix-line-2)] border border-[var(--ohnix-line-4)]">
+                            <RocketOutlined className="text-[#44F3F0]" />
+                        </div>
+                        <span className="text-lg font-semibold text-[var(--ohnix-text-primary)]">
+                            {t("admin.api_clients_upsell_modal_title")}
+                        </span>
+                    </div>
+                }
+                open={Boolean(upsellClient)}
+                onCancel={closeUpsellModal}
+                onOk={handleSendUpsell}
+                confirmLoading={sendingUpsell}
+                okText={t("admin.api_clients_upsell_send_button")}
+                cancelText={t("common.cancel")}
+                okButtonProps={{ className: "h-10 px-6 rounded-md font-medium", icon: <MailOutlined /> }}
+                cancelButtonProps={{ className: "h-10 px-6 rounded-md" }}
+                destroyOnClose
+                width={560}
+                styles={darkModalStyles}
+            >
+                {upsellClient && (
+                    <div className="mt-2 space-y-4">
+                        <p className="text-sm text-[var(--ohnix-text-muted)]">
+                            {t("admin.api_clients_upsell_intro", { name: upsellClient.companyName, email: upsellClient.contactEmail })}
+                        </p>
+                        {upsellClient.upsellEmailSentAt && (
+                            <Alert
+                                className="dark-alert dark-alert-purple"
+                                type="info"
+                                showIcon
+                                message={t("admin.api_clients_upsell_last_sent", { date: formatDate(upsellClient.upsellEmailSentAt) })}
+                            />
+                        )}
+                        <Form layout="vertical">
+                            <Form.Item label={t("admin.api_clients_upsell_note_label")} className="mb-0">
+                                <Input.TextArea
+                                    rows={3}
+                                    className="auth-ohnix-input"
+                                    value={upsellNote}
+                                    onChange={(e) => setUpsellNote(e.target.value)}
+                                    placeholder={t("admin.api_clients_upsell_note_placeholder")}
+                                />
+                            </Form.Item>
+                        </Form>
                     </div>
                 )}
             </Modal>

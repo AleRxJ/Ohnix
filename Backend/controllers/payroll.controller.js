@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { prisma } from "../db/prisma.js";
 import { streamReportPdf } from "../utils/reportPdf.js";
 import * as payrollService from "../services/payroll.service.js";
+import * as payrollTerminationService from "../services/payrollTermination.service.js";
 
 // Spanish labels for the PDF - the enum values themselves (payroll.
 // service.js#calculateDocumentLines) stay English/snake_case like every
@@ -48,6 +49,26 @@ const mapLine = (line) => ({
     amount: Number(line.amount),
 });
 
+const mapElectronicPayrollAdjustment = (adjustment) => ({
+    _id: adjustment.id,
+    adjustment_type: adjustment.adjustmentType,
+    status: adjustment.status,
+    document_number: adjustment.documentNumber,
+    cune: adjustment.cune,
+    error_message: adjustment.errorMessage,
+    issued_at: adjustment.issuedAt,
+});
+
+const mapElectronicPayroll = (electronicPayroll) => !electronicPayroll ? null : ({
+    _id: electronicPayroll.id,
+    status: electronicPayroll.status,
+    document_number: electronicPayroll.documentNumber,
+    cune: electronicPayroll.cune,
+    error_message: electronicPayroll.errorMessage,
+    issued_at: electronicPayroll.issuedAt,
+    adjustments: (electronicPayroll.adjustments || []).map(mapElectronicPayrollAdjustment),
+});
+
 const mapDocument = (document) => ({
     _id: document.id,
     employee_id: document.employeeId,
@@ -62,6 +83,7 @@ const mapDocument = (document) => ({
     total_employer_contributions: Number(document.totalEmployerContributions),
     net_pay: Number(document.netPay),
     lines: (document.lines || []).map(mapLine),
+    electronic_payroll: mapElectronicPayroll(document.electronicPayroll),
 });
 
 const mapPeriod = (period) => ({
@@ -196,6 +218,65 @@ export const settleEmployeeBenefit = handle(async (req, res) => {
             "Benefit settled successfully"
         )
     );
+});
+
+const terminationRequestBody = (req) => ({
+    accountId: req.user.prismaId,
+    employeeId: req.body?.employee_id,
+    terminationDate: req.body?.termination_date,
+    terminationReason: req.body?.termination_reason,
+    remainingWorkDays: req.body?.remaining_work_days,
+    manualIndemnityOverride: req.body?.manual_indemnity_override,
+});
+
+const mapTerminationSettlement = (settlement) => ({
+    _id: settlement.id,
+    employee_id: settlement.employeeId,
+    termination_date: settlement.terminationDate,
+    termination_reason: settlement.terminationReason,
+    base_salary_snapshot: Number(settlement.baseSalarySnapshot),
+    severance_amount: Number(settlement.severanceAmount),
+    severance_interest_amount: Number(settlement.severanceInterestAmount),
+    service_bonus_amount: Number(settlement.serviceBonusAmount),
+    vacation_amount: Number(settlement.vacationAmount),
+    indemnity_amount: Number(settlement.indemnityAmount),
+    indemnity_days: settlement.indemnityDays === null ? null : Number(settlement.indemnityDays),
+    total_amount: Number(settlement.totalAmount),
+    cash_account_id: settlement.cashAccountId,
+    created_at: settlement.createdAt,
+});
+
+export const previewTermination = handle(async (req, res) => {
+    if (!req.body?.employee_id || !req.body?.termination_date || !req.body?.termination_reason) {
+        throw new ApiError(400, "employee_id, termination_date and termination_reason are required");
+    }
+    const preview = await payrollTerminationService.previewTerminationSettlement(terminationRequestBody(req));
+    return res.status(200).json(new ApiResponse(200, preview, "Termination settlement preview calculated successfully"));
+});
+
+export const settleTermination = handle(async (req, res) => {
+    if (!req.body?.employee_id || !req.body?.termination_date || !req.body?.termination_reason || !req.body?.cash_account_id) {
+        throw new ApiError(400, "employee_id, termination_date, termination_reason and cash_account_id are required");
+    }
+    const settlement = await payrollTerminationService.settleTermination({ ...terminationRequestBody(req), cashAccountId: req.body.cash_account_id });
+    return res.status(201).json(new ApiResponse(201, mapTerminationSettlement(settlement), "Employee terminated and settled successfully"));
+});
+
+// Same "one PDF library, one generic section/table renderer" convention as
+// getPayslipPdf below - streams directly, no ApiResponse wrapper.
+export const getTerminationSettlementPdf = asyncHandler(async (req, res, next) => {
+    try {
+        const settlement = await payrollTerminationService.getTerminationSettlement(req.user.prismaId, req.params.employeeId);
+        const account = await prisma.user.findUnique({
+            where: { id: req.user.prismaId },
+            select: { company: { select: { name: true, legalName: true } } },
+        });
+        payrollTerminationService.renderTerminationSettlementPdf(res, settlement, account?.company?.legalName || account?.company?.name);
+    } catch (error) {
+        if (error instanceof ApiError) return next(error);
+        console.error(error);
+        return next(new ApiError(500, "Something went wrong. Please try again."));
+    }
 });
 
 export const listPayrollLegalParameters = handle(async (_req, res) => {

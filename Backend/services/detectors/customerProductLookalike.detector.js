@@ -17,6 +17,7 @@
 
 import { prisma } from "../../db/prisma.js";
 import { upsertDiscovery } from "../discoveryEngine.service.js";
+import { resolveIsEnglish } from "../discoveryLocale.service.js";
 
 export const DETECTOR_KEY = "customer_product_lookalike";
 
@@ -138,23 +139,46 @@ export const runCustomerProductLookalikeDetector = async ({ accountId, db = pris
     const sortedLookalikes = [...lookalikes].sort((a, b) => b.revenue - a.revenue);
     const productLabel = product?.productName || bestCandidate.productId;
 
+    const isEN = await resolveIsEnglish({ accountId, db });
+    const copy = isEN
+        ? {
+              title: `${lookalikes.length} customers look like your most profitable ones, but have never bought "${productLabel}"`,
+              summary: `${round1(bestCandidate.topCoveragePct)}% of your most profitable customers have bought "${productLabel}", vs. only ${round1(bestCandidate.overallCoveragePct)}% of the rest of your customer base (${round1(bestCandidate.lift)}x more frequent among top customers). I found ${lookalikes.length} customers with an average ticket similar to that top group who haven't bought it yet.`,
+              hypothesis: "An average ticket similar to your most profitable customers suggests similar spending capacity/need - this product's absence from their history could be unfamiliarity more than real lack of interest.",
+              unknowns: "We don't know if these customers already know the product and passed on it, buy it elsewhere, or simply were never offered it - this is a prioritized list to investigate/offer, not a conversion guarantee.",
+              recommendation: `Prioritize these customers in the next campaign or sales pitch for "${productLabel}", starting with the highest historical value.`,
+              coverageLabel: "Product coverage: top customers vs. the rest of the base",
+              cohortLabel: "Similar customers who have never bought this product",
+              referenceLabel: "Reference: top customers who did buy this product",
+          }
+        : {
+              title: `${lookalikes.length} clientes se parecen a tus clientes más rentables, pero nunca han comprado "${productLabel}"`,
+              summary: `El ${round1(bestCandidate.topCoveragePct)}% de tus clientes más rentables ha comprado "${productLabel}", frente a solo ${round1(bestCandidate.overallCoveragePct)}% del resto de la base de clientes (${round1(bestCandidate.lift)}x más frecuente entre los mejores clientes). Encontré ${lookalikes.length} clientes con un ticket promedio similar al de ese grupo top que todavía no lo han comprado.`,
+              hypothesis: "Un ticket promedio parecido al de los clientes más rentables sugiere una capacidad de gasto/necesidad similar - la ausencia de este producto en su historial podría ser desconocimiento más que falta de interés real.",
+              unknowns: "No sabemos si estos clientes ya conocen el producto y lo rechazaron, si lo compran en otro lugar, o simplemente nunca se los ha ofrecido - esto es una lista priorizada para investigar/ofrecer, no una garantía de conversión.",
+              recommendation: `Priorizar a estos clientes en la próxima campaña o sugerencia de venta para "${productLabel}", empezando por los de mayor valor histórico.`,
+              coverageLabel: "Cobertura del producto: clientes top vs. resto de la base",
+              cohortLabel: "Clientes similares que nunca han comprado este producto",
+              referenceLabel: "Referencia: clientes top que sí compraron este producto",
+          };
+
     const { discovery, created } = await upsertDiscovery({
         accountId,
         detectorKey: DETECTOR_KEY,
         type: "opportunity",
         dedupeKey: `${DETECTOR_KEY}:account:${bestCandidate.productId}`,
-        title: `${lookalikes.length} clientes se parecen a tus clientes más rentables, pero nunca han comprado "${productLabel}"`,
-        summary: `El ${round1(bestCandidate.topCoveragePct)}% de tus clientes más rentables ha comprado "${productLabel}", frente a solo ${round1(bestCandidate.overallCoveragePct)}% del resto de la base de clientes (${round1(bestCandidate.lift)}x más frecuente entre los mejores clientes). Encontré ${lookalikes.length} clientes con un ticket promedio similar al de ese grupo top que todavía no lo han comprado.`,
-        hypothesis: "Un ticket promedio parecido al de los clientes más rentables sugiere una capacidad de gasto/necesidad similar - la ausencia de este producto en su historial podría ser desconocimiento más que falta de interés real.",
-        unknowns: "No sabemos si estos clientes ya conocen el producto y lo rechazaron, si lo compran en otro lugar, o simplemente nunca se los ha ofrecido - esto es una lista priorizada para investigar/ofrecer, no una garantía de conversión.",
-        recommendation: `Priorizar a estos clientes en la próxima campaña o sugerencia de venta para "${productLabel}", empezando por los de mayor valor histórico.`,
+        title: copy.title,
+        summary: copy.summary,
+        hypothesis: copy.hypothesis,
+        unknowns: copy.unknowns,
+        recommendation: copy.recommendation,
         scores: { impact, novelty, urgency, confidence, reversibility },
         entityCount: lookalikes.length,
         patternSince: null,
         evidence: [
             {
                 kind: "comparison",
-                label: "Cobertura del producto: clientes top vs. resto de la base",
+                label: copy.coverageLabel,
                 data: {
                     product_id: bestCandidate.productId,
                     product_name: product?.productName || null,
@@ -168,7 +192,7 @@ export const runCustomerProductLookalikeDetector = async ({ accountId, db = pris
             },
             {
                 kind: "cohort_sample",
-                label: "Clientes similares que nunca han comprado este producto",
+                label: copy.cohortLabel,
                 data: sortedLookalikes.slice(0, MAX_LISTED_CUSTOMERS).map((c) => ({
                     customer_id: c.customerId,
                     customer_name: nameById.get(c.customerId) || null,
@@ -181,7 +205,7 @@ export const runCustomerProductLookalikeDetector = async ({ accountId, db = pris
             },
             {
                 kind: "metric",
-                label: "Referencia: clientes top que sí compraron este producto",
+                label: copy.referenceLabel,
                 data: {
                     top_buyers_of_product: topBuyersOfProduct.length,
                     avg_lifetime_revenue_among_top_buyers: round2(avgTopBuyerRevenue),

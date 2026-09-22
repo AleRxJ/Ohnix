@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, DatePicker, Form, Input, Modal, Select, Tag, Tooltip, Typography } from "antd";
+import { Alert, Button, Card, Collapse, DatePicker, Form, Input, Modal, Select, Tag, Tooltip, Typography } from "antd";
 import {
     ArrowLeftOutlined,
     ArrowRightOutlined,
@@ -35,6 +35,34 @@ import PlanGate from "../common/PlanGate";
 const validatorRule = (isValid, message) => ({
     validator: (_, value) => (!value || isValid(value) ? Promise.resolve() : Promise.reject(new Error(message))),
 });
+
+// Collapsed by default (Collapse, not always-visible text) - users who
+// already know their way around the DIAN portal shouldn't have to scroll
+// past a wall of instructions every time, but it's one click away for
+// everyone else instead of assuming they'll figure out a government portal
+// on their own. See fiscal_setup.dian_portal_guide_* / payroll_dian_portal_guide_*.
+const DianPortalGuide = ({ titleKey, stepKeys }) => {
+    const { t } = useI18n();
+    return (
+        <Collapse
+            ghost
+            className="mb-4 dian-portal-guide"
+            items={[
+                {
+                    key: "guide",
+                    label: <span className="text-sm font-medium text-[#44F3F0]">{t(titleKey)}</span>,
+                    children: (
+                        <ol className="list-decimal space-y-2 pl-5 text-sm text-[var(--ohnix-text-muted)]">
+                            {stepKeys.map((key) => (
+                                <li key={key}>{t(key)}</li>
+                            ))}
+                        </ol>
+                    ),
+                },
+            ]}
+        />
+    );
+};
 
 const { Text, Title } = Typography;
 // ensureElectronicInvoicingPlan (Backend/services/electronicInvoicing.service.js)
@@ -1086,6 +1114,31 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged, canActivateInv
                                     onAdded={refresh}
                                 />
                             )}
+                            {/* NE (nómina electrónica) - sandbox-only for now, unlike "05" above:
+                                this pipeline hasn't been validated against a real DIAN habilitación
+                                run yet (see electronicPayroll.service.js's own caveat), so it's kept
+                                behind the same isSandbox gate as the other not-yet-hardened additions. */}
+                            {isSandbox && !hasResolution("NE") && (
+                                <>
+                                    <DianPortalGuide
+                                        titleKey="fiscal_setup.payroll_dian_portal_guide_title"
+                                        stepKeys={[
+                                            "fiscal_setup.payroll_dian_portal_guide_step1",
+                                            "fiscal_setup.payroll_dian_portal_guide_step2",
+                                            "fiscal_setup.payroll_dian_portal_guide_step3",
+                                            "fiscal_setup.payroll_dian_portal_guide_step4",
+                                        ]}
+                                    />
+                                    <NumberingResolutionForm
+                                        documentType="NE"
+                                        titleKey="fiscal_setup.payroll_resolution_title"
+                                        hintKey="fiscal_setup.payroll_resolution_hint"
+                                        buttonKey="fiscal_setup.add_payroll_resolution"
+                                        onAdded={refresh}
+                                        planAllowed={canActivateInvoicing}
+                                    />
+                                </>
+                            )}
                             {isSandbox && <DianHabilitacionPanel knownTestSetId={status?.itcycleTestSetId} />}
                         </>
                     ) : null /* Every one of these either sends a real document to
@@ -1200,6 +1253,16 @@ const ElectronicInvoicingSettings = ({ company, onCompanyChanged, canActivateInv
                             {field("vatResponsible", t("fiscal_setup.vat_responsibility"), { required: true, hint: t("fiscal_setup.vat_responsibility_hint"), select: [{ value: "responsible", label: t("fiscal_setup.vat_responsible") }, { value: "not_responsible", label: t("fiscal_setup.vat_not_responsible") }] })}
                         </div>
                         <div style={{ display: step === 1 ? undefined : "none" }}>
+                            <DianPortalGuide
+                                titleKey="fiscal_setup.dian_portal_guide_title"
+                                stepKeys={[
+                                    "fiscal_setup.dian_portal_guide_step1",
+                                    "fiscal_setup.dian_portal_guide_step2",
+                                    "fiscal_setup.dian_portal_guide_step3",
+                                    "fiscal_setup.dian_portal_guide_step4",
+                                    "fiscal_setup.dian_portal_guide_step5",
+                                ]}
+                            />
                             <Alert
                                 className="mb-4 dark-alert dark-alert-purple"
                                 type="info"

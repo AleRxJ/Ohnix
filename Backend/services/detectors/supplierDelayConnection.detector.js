@@ -14,6 +14,7 @@
 
 import { prisma } from "../../db/prisma.js";
 import { upsertDiscovery } from "../discoveryEngine.service.js";
+import { resolveIsEnglish } from "../discoveryLocale.service.js";
 
 export const DETECTOR_KEY = "supplier_delay_customer_connection";
 
@@ -141,23 +142,48 @@ export const runSupplierDelayConnectionDetector = async ({ accountId, db = prism
         const novelty = 0.65; // this is the cross-domain "nobody wired these two tables together" case
         const reversibility = 0.5; // depends on renegotiating with the supplier / diversifying, not trivial but not structural either
 
+        const isEN = await resolveIsEnglish({ accountId, db });
+        const copy = isEN
+            ? {
+                  title: `"${supplierLabel}"'s delays and its customers leaving appear related`,
+                  summary: `Supplier "${supplierLabel}" went from an average delay of ${round1(connection.priorAvgDelay)} to ${round1(connection.recentAvgDelay)} days in its most recent deliveries. Over the same period, ${round1(connection.treatment.ratePct)}% of customers who bought products from that supplier stopped buying them - vs. ${round1(connection.control.ratePct)}% across the rest of the customer base (${round1(connection.ratio)}x more). We don't know yet if one caused the other, but the two show up together under this condition.`,
+                  hypothesis: "When a supplier keeps falling behind, the products that depend on it likely run into stockouts, and those stockouts could be pushing its regular customers to stop buying - a hypothesis, not confirmed causality.",
+                  unknowns: "We haven't directly verified whether there were stockouts (this detector doesn't reconstruct inventory history yet), whether these customers bought the same product elsewhere, or whether they stopped buying for an unrelated reason.",
+                  recommendation: `Review the recent stock level of products you buy from "${supplierLabel}" and consider an alternate supplier or a backup order while the delay gets resolved.`,
+                  delayComparisonLabel: "Supplier delivery delay: before vs. now",
+                  wentQuietComparisonLabel: "Customers who stopped buying: this supplier's products vs. control (rest of the base)",
+                  cohortLabel: "This supplier's customers who stopped buying",
+                  predictionStatement: `If "${supplierLabel}"'s delay continues, the gap between its inactive-customer rate and the rest of the base should hold or grow over the next 90 days.`,
+              }
+            : {
+                  title: `Los retrasos de "${supplierLabel}" y la pérdida de sus clientes aparecen relacionados`,
+                  summary: `El proveedor "${supplierLabel}" pasó de un atraso promedio de ${round1(connection.priorAvgDelay)} a ${round1(connection.recentAvgDelay)} días en sus últimas entregas. En el mismo periodo, ${round1(connection.treatment.ratePct)}% de los clientes que compraban productos de ese proveedor dejaron de comprarlos - frente a ${round1(connection.control.ratePct)}% en el resto de la base de clientes (${round1(connection.ratio)}x más). No sabemos todavía si una cosa causó la otra, pero las dos cosas aparecen juntas bajo esta condición.`,
+                  hypothesis: "Cuando un proveedor se atrasa de forma sostenida, los productos que depende de él probablemente sufren quiebres de stock, y esos quiebres podrían estar empujando a sus clientes habituales a dejar de comprar - una hipótesis, no una causalidad confirmada.",
+                  unknowns: "No hemos verificado directamente si hubo quiebres de stock (este detector no reconstruye el historial de inventario todavía), ni si estos clientes compraron el mismo producto en otro lugar, ni si dejaron de comprar por otra razón sin relación con este proveedor.",
+                  recommendation: `Revisar el nivel de stock reciente de los productos que compras a "${supplierLabel}" y considerar un proveedor alterno o un pedido de respaldo mientras se resuelve el atraso.`,
+                  delayComparisonLabel: "Atraso de entregas del proveedor: antes vs. ahora",
+                  wentQuietComparisonLabel: "Clientes que dejaron de comprar: productos de este proveedor vs. control (resto de la base)",
+                  cohortLabel: "Clientes de este proveedor que dejaron de comprar",
+                  predictionStatement: `Si el atraso de "${supplierLabel}" continúa, la brecha entre su tasa de clientes inactivos y la del resto de la base debería mantenerse o crecer en los próximos 90 días.`,
+              };
+
         const { discovery, created } = await upsertDiscovery({
             accountId,
             detectorKey: DETECTOR_KEY,
             type: "connection",
             dedupeKey: `${DETECTOR_KEY}:supplier:${connection.supplierId}`,
-            title: `Los retrasos de "${supplierLabel}" y la pérdida de sus clientes aparecen relacionados`,
-            summary: `El proveedor "${supplierLabel}" pasó de un atraso promedio de ${round1(connection.priorAvgDelay)} a ${round1(connection.recentAvgDelay)} días en sus últimas entregas. En el mismo periodo, ${round1(connection.treatment.ratePct)}% de los clientes que compraban productos de ese proveedor dejaron de comprarlos - frente a ${round1(connection.control.ratePct)}% en el resto de la base de clientes (${round1(connection.ratio)}x más). No sabemos todavía si una cosa causó la otra, pero las dos cosas aparecen juntas bajo esta condición.`,
-            hypothesis: "Cuando un proveedor se atrasa de forma sostenida, los productos que depende de él probablemente sufren quiebres de stock, y esos quiebres podrían estar empujando a sus clientes habituales a dejar de comprar - una hipótesis, no una causalidad confirmada.",
-            unknowns: "No hemos verificado directamente si hubo quiebres de stock (este detector no reconstruye el historial de inventario todavía), ni si estos clientes compraron el mismo producto en otro lugar, ni si dejaron de comprar por otra razón sin relación con este proveedor.",
-            recommendation: `Revisar el nivel de stock reciente de los productos que compras a "${supplierLabel}" y considerar un proveedor alterno o un pedido de respaldo mientras se resuelve el atraso.`,
+            title: copy.title,
+            summary: copy.summary,
+            hypothesis: copy.hypothesis,
+            unknowns: copy.unknowns,
+            recommendation: copy.recommendation,
             scores: { impact, novelty, urgency, confidence, reversibility },
             entityCount: connection.treatment.wentQuietCount,
             patternSince: recentStartFromNow(now),
             evidence: [
                 {
                     kind: "comparison",
-                    label: "Atraso de entregas del proveedor: antes vs. ahora",
+                    label: copy.delayComparisonLabel,
                     data: {
                         avg_delay_prior_days: round1(connection.priorAvgDelay),
                         avg_delay_recent_days: round1(connection.recentAvgDelay),
@@ -170,7 +196,7 @@ export const runSupplierDelayConnectionDetector = async ({ accountId, db = prism
                 },
                 {
                     kind: "comparison",
-                    label: "Clientes que dejaron de comprar: productos de este proveedor vs. control (resto de la base)",
+                    label: copy.wentQuietComparisonLabel,
                     data: {
                         went_quiet_pct_this_supplier: round1(connection.treatment.ratePct),
                         went_quiet_pct_control_group: round1(connection.control.ratePct),
@@ -183,7 +209,7 @@ export const runSupplierDelayConnectionDetector = async ({ accountId, db = prism
                 },
                 {
                     kind: "cohort_sample",
-                    label: "Clientes de este proveedor que dejaron de comprar",
+                    label: copy.cohortLabel,
                     data: connection.treatment.wentQuietCustomerIds.slice(0, MAX_LISTED_CUSTOMERS).map((customerId) => ({
                         customer_id: customerId,
                         customer_name: nameById.get(customerId) || null,
@@ -203,7 +229,7 @@ export const runSupplierDelayConnectionDetector = async ({ accountId, db = prism
             ],
             predictions: [
                 {
-                    statement: `Si el atraso de "${supplierLabel}" continúa, la brecha entre su tasa de clientes inactivos y la del resto de la base debería mantenerse o crecer en los próximos 90 días.`,
+                    statement: copy.predictionStatement,
                     predictedData: { supplier_id: connection.supplierId, went_quiet_gap_pct_at_prediction: round1(connection.absDiff) },
                     confidenceAtStake: confidence,
                     checkAfter: new Date(now.getTime() + 90 * DAY_MS),
@@ -229,8 +255,14 @@ export const checkPrediction = async ({ accountId, prediction, db = prisma, now 
     const supplierId = prediction.predictedData?.supplier_id;
     const gapAtPrediction = Number(prediction.predictedData?.went_quiet_gap_pct_at_prediction ?? 0);
 
+    const isEN = await resolveIsEnglish({ accountId, db });
+
     if (!supplierId) {
-        return { outcome: "inconclusive", actualData: {}, notes: "La predicción no registró un proveedor específico." };
+        return {
+            outcome: "inconclusive",
+            actualData: {},
+            notes: isEN ? "The prediction didn't record a specific supplier." : "La predicción no registró un proveedor específico.",
+        };
     }
 
     const connections = await computeSupplierDelayConnections({ accountId, db, now });
@@ -243,10 +275,26 @@ export const checkPrediction = async ({ accountId, prediction, db = prisma, now 
     };
 
     if (stillFlagged && stillFlagged.absDiff >= gapAtPrediction * 0.5) {
-        return { outcome: "correct", actualData, notes: "La brecha entre este proveedor y el grupo de control se mantuvo (o creció)." };
+        return {
+            outcome: "correct",
+            actualData,
+            notes: isEN ? "The gap between this supplier and the control group held (or grew)." : "La brecha entre este proveedor y el grupo de control se mantuvo (o creció).",
+        };
     }
     if (!stillFlagged) {
-        return { outcome: "incorrect", actualData, notes: "El proveedor ya no cumple las condiciones originales (el atraso o la brecha de clientes se normalizó)." };
+        return {
+            outcome: "incorrect",
+            actualData,
+            notes: isEN
+                ? "The supplier no longer meets the original conditions (the delay or the customer gap normalized)."
+                : "El proveedor ya no cumple las condiciones originales (el atraso o la brecha de clientes se normalizó).",
+        };
     }
-    return { outcome: "inconclusive", actualData, notes: "La brecha se redujo de forma parcial - no es un caso claro de acierto ni de error." };
+    return {
+        outcome: "inconclusive",
+        actualData,
+        notes: isEN
+            ? "The gap narrowed partially - not a clear case of either a hit or a miss."
+            : "La brecha se redujo de forma parcial - no es un caso claro de acierto ni de error.",
+    };
 };

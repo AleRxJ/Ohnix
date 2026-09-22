@@ -13,6 +13,7 @@ import recurringJournalScheduler from "./utils/recurringJournalScheduler.js";
 import receiptTacitaScheduler from "./utils/receiptTacitaScheduler.js";
 import itcycleKeepAliveScheduler from "./utils/itcycleKeepAliveScheduler.js";
 import discoveryScheduler from "./utils/discoveryScheduler.js";
+import apiClientBillingScheduler from "./utils/apiClientBillingScheduler.js";
 import { reconcileLegacyApprovedRequests, reconcileStuckPendingPayments } from "./utils/subscriptionReconcile.js";
 import { reconcileStuckCertificateOrderPayments } from "./utils/certificateOrderReconcile.js";
 import { reconcileOrphanedDianTestMatrixRuns } from "./services/dianTestMatrix.service.js";
@@ -109,6 +110,8 @@ connectDB()
                 itcycleKeepAliveScheduler.start();
                 console.log("🔎 Starting discovery engine scheduler...");
                 discoveryScheduler.start();
+                console.log("💳 Starting API client billing scheduler...");
+                apiClientBillingScheduler.start();
             }
         });
     })
@@ -129,6 +132,7 @@ process.on("SIGTERM", () => {
     receiptTacitaScheduler.stop();
     itcycleKeepAliveScheduler.stop();
     discoveryScheduler.stop();
+    apiClientBillingScheduler.stop();
     process.exit(0);
 });
 
@@ -144,5 +148,6 @@ process.on("SIGINT", () => {
     receiptTacitaScheduler.stop();
     itcycleKeepAliveScheduler.stop();
     discoveryScheduler.stop();
+    apiClientBillingScheduler.stop();
     process.exit(0);
 });

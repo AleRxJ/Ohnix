@@ -18,12 +18,17 @@ import {
     listPayrollLegalParameters,
     upsertPayrollLegalParameters,
     getPayslipPdf,
+    previewTermination,
+    settleTermination,
+    getTerminationSettlementPdf,
 } from "../controllers/payroll.controller.js";
 import {
     getDocumentElectronicPayroll,
     issueDocumentElectronicPayroll,
     syncDocumentElectronicPayroll,
     issuePeriodElectronicPayroll,
+    issueDocumentElectronicPayrollAdjustment,
+    syncDocumentElectronicPayrollAdjustment,
 } from "../controllers/electronicPayroll.controller.js";
 
 const router = Router();
@@ -60,8 +65,18 @@ router.route("/documents/:documentId/electronic-payroll").get(requireModulePermi
 router.route("/documents/:documentId/electronic-payroll/issue").post(requireModulePermission("payroll", "edit"), requireActiveSubscription, issueDocumentElectronicPayroll);
 router.route("/documents/:documentId/electronic-payroll/sync").post(requireModulePermission("payroll", "edit"), requireActiveSubscription, syncDocumentElectronicPayroll);
 router.route("/periods/:id/electronic-payroll/issue-all").post(requireModulePermission("payroll", "edit"), requireActiveSubscription, issuePeriodElectronicPayroll);
+router.route("/documents/:documentId/electronic-payroll/adjustments").post(requireModulePermission("payroll", "edit"), requireActiveSubscription, issueDocumentElectronicPayrollAdjustment);
+router.route("/documents/:documentId/electronic-payroll/adjustments/:adjustmentId/sync").post(requireModulePermission("payroll", "edit"), requireActiveSubscription, syncDocumentElectronicPayrollAdjustment);
 
 router.route("/benefit-accruals").get(requireModulePermission("payroll", "view"), listEmployeeBenefitAccruals);
 router.route("/benefit-settlements").post(requireModulePermission("payroll", "edit"), idempotent("payroll-benefit.settle"), settleEmployeeBenefit);
+
+// Liquidación definitiva (Fase 3) - preview is read-only (no idempotency key
+// needed, it writes nothing); the actual settlement moves cash and
+// terminates the employee, same idempotent-POST convention as every other
+// money-moving payroll action above.
+router.route("/terminations/preview").post(requireModulePermission("payroll", "edit"), previewTermination);
+router.route("/terminations").post(requireModulePermission("payroll", "edit"), idempotent("payroll-termination.settle"), settleTermination);
+router.route("/terminations/:employeeId/pdf").get(requireModulePermission("payroll", "view"), getTerminationSettlementPdf);
 
 export default router;

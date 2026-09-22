@@ -8,6 +8,12 @@
 // the EXISTING CertificateOrderCheckout.jsx paywall - no visible
 // "create your password" screen first.
 //
+// Buying a certificate never means acquiring Ohnix's inventory SaaS - the
+// account created here gets NO Subscription row (unlike a real signup would
+// eventually accumulate through ensureUserSubscription), and DashboardLayout
+// exempts "fiscal-setup" from its lapsed-subscription paywall, so this
+// account's certificate is never gated behind a plan it was never sold.
+//
 // Deliberately mirrors registerUser (user.controller.js) and
 // createOrReuseMyCertificateOrder (certificateOrder.service.js) rather than
 // reimplementing either - this is just the glue that runs both, plus a
@@ -20,6 +26,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { sendMailSafe } from "../utils/nodemailer.js";
 import { buildOtpEmail } from "../controllers/user.controller.js";
 import { createOrReuseMyCertificateOrder } from "./certificateOrder.service.js";
+import { provisionCompanyWithItcycleForCertificate } from "./electronicInvoicing.service.js";
 
 // Guest accounts aren't set up same-day the way a "forgot password" reset
 // is - the resetOtp emailed here is really "the code you'll use whenever you
@@ -116,6 +123,12 @@ export const registerGuestCompanyForCertificate = async ({
     const avatarSeed = encodeURIComponent(username || normalizedEmail);
     const avatarUrl = `https://ui-avatars.com/api/?background=29D8D5&color=021314&name=${avatarSeed}`;
 
+    // No subscription is created here, deliberately: buying a standalone
+    // certificate never requires acquiring Ohnix's inventory SaaS at all
+    // (Subscription is optional on User - see schema.prisma - exactly like
+    // every other signup path, none of which pre-create a starter/trial
+    // subscription either; ensureUserSubscription only exists to lazily
+    // backfill one for accounts that actually go on to use the SaaS).
     const user = await prisma.user.create({
         data: {
             email: normalizedEmail,
@@ -125,13 +138,6 @@ export const registerGuestCompanyForCertificate = async ({
             preferredLanguage: "es",
             resetOtp,
             resetOtpExpiry,
-            subscription: {
-                create: {
-                    plan: "starter",
-                    status: "active",
-                    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-                },
-            },
         },
     });
 
@@ -159,6 +165,23 @@ export const registerGuestCompanyForCertificate = async ({
             requestedByUserId: user.id,
             durationYears,
         });
+
+        // Best-effort: this is exactly what ElectronicInvoicingSettings.jsx's
+        // "Solo activar mi certificado" button (provisionCertificateOnly)
+        // does by hand - doing it here too means a certificate-only guest
+        // lands on /fiscal-setup already provisioned, seeing the
+        // FirmaPass/Viafirma cards straight away instead of a wizard step.
+        // Must never block the checkout itself if itcycle-api-dian is
+        // briefly unreachable - the CertificateOrder above is what actually
+        // matters, and that same manual button remains a working fallback.
+        try {
+            await provisionCompanyWithItcycleForCertificate({ companyId: company.id });
+        } catch (provisionError) {
+            console.error("[guest-certificate-checkout] itcycle-api-dian provisioning failed, falling back to manual activation", {
+                companyId: company.id,
+                message: provisionError?.message,
+            });
+        }
     } catch (error) {
         // No interactive-transaction rollback here on purpose (see this
         // service's own doc comment in the task write-up): a stray

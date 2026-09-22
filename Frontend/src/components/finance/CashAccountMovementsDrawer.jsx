@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, Checkbox, Drawer, Table, Tag, Divider, Form, DatePicker, Input, InputNumber, Button, Modal, Select, Spin, Upload } from "antd";
+import { Alert, Checkbox, Collapse, Drawer, Table, Tag, Divider, Form, DatePicker, Input, InputNumber, Button, Modal, Select, Spin, Upload } from "antd";
 import { BulbOutlined, CloseOutlined, FileSearchOutlined, PlusOutlined, ThunderboltOutlined, UploadOutlined, WalletOutlined } from "@ant-design/icons";
 import * as XLSX from "xlsx";
 import dayjs from "dayjs";
@@ -79,11 +79,6 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
     } = useCashAccountMovements(account?._id);
 
     const normalizeHeader = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[\s_-]+/g, "");
-    const pick = (row, names) => {
-        const entries = Object.entries(row);
-        const found = entries.find(([key]) => names.includes(normalizeHeader(key)));
-        return found?.[1];
-    };
     const parseNumber = (value) => {
         if (typeof value === "number") return value;
         const raw = String(value ?? "").trim().replace(/\s/g, "");
@@ -93,28 +88,130 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
             : raw.replace(",", ".");
         return Number(normalized.replace(/[^0-9.-]/g, ""));
     };
+
+    // Best-effort default mapping from real header names - the column
+    // Selects in the preview modal start here, but the user can always
+    // override any of them (see updateMapping below) when a bank's export
+    // uses headers this heuristic doesn't recognize.
+    const detectMapping = (headers) => {
+        const findHeader = (names) => headers.find((header) => names.includes(normalizeHeader(header))) || null;
+        return {
+            dateCol: findHeader(["fecha", "date", "fechamovimiento", "transactiondate"]),
+            amountCol: findHeader(["valor", "monto", "importe", "amount"]),
+            creditCol: findHeader(["credito", "credit", "abono", "ingreso"]),
+            debitCol: findHeader(["debito", "debit", "cargo", "salida"]),
+            descriptionCol: findHeader(["descripcion", "description", "detalle", "concepto", "memo", "referencia"]),
+        };
+    };
+
+    // Applies `mapping` to already-read rows, collecting bad/duplicate rows
+    // into `rowErrors` instead of throwing on the first one - a row that
+    // fails here never reaches the backend, so the tolerant behavior of
+    // Backend/services/bankReconciliation.service.js#createStatementEntries
+    // is only the second line of defense, not the only one.
+    const buildEntriesFromRows = (rows, mapping, batchKey) => {
+        const entries = [];
+        const rowErrors = [];
+        const seen = new Set();
+        rows.forEach((row, index) => {
+            const rawDate = mapping.dateCol ? row[mapping.dateCol] : undefined;
+            const excelDate = typeof rawDate === "number" ? XLSX.SSF.parse_date_code(rawDate) : null;
+            const date = excelDate ? dayjs(new Date(excelDate.y, excelDate.m - 1, excelDate.d)) : dayjs(rawDate);
+            const direct = mapping.amountCol ? row[mapping.amountCol] : undefined;
+            const credit = mapping.creditCol ? parseNumber(row[mapping.creditCol]) : 0;
+            const debit = mapping.debitCol ? parseNumber(row[mapping.debitCol]) : 0;
+            const amount = direct !== undefined && direct !== "" ? parseNumber(direct) : credit - debit;
+            if (!date.isValid() || !Number.isFinite(amount) || amount === 0) {
+                rowErrors.push({ row: index + 2, reason: t("finance.import_reason_invalid") });
+                return;
+            }
+            const description = mapping.descriptionCol ? String(row[mapping.descriptionCol] || "").trim() || null : null;
+            const dupKey = `${date.toISOString()}|${amount.toFixed(2)}|${description || ""}`;
+            if (seen.has(dupKey)) {
+                rowErrors.push({ row: index + 2, reason: t("finance.import_reason_duplicate") });
+                return;
+            }
+            seen.add(dupKey);
+            entries.push({ entry_date: date.toISOString(), description, amount, import_fingerprint: `${batchKey}:${index}` });
+        });
+        return { entries, rowErrors };
+    };
+
+    const parseSpreadsheetFile = async (file) => {
+        const buffer = await file.arrayBuffer();
+        const digest = await crypto.subtle.digest("SHA-256", buffer);
+        const batchKey = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+        const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "", raw: true });
+        if (!rows.length) throw new Error(t("finance.import_empty"));
+        if (rows.length > 1000) throw new Error(t("finance.import_too_many"));
+        const headers = Object.keys(rows[0]);
+        const mapping = detectMapping(headers);
+        const mappingIncomplete = !mapping.dateCol || (!mapping.amountCol && !mapping.creditCol && !mapping.debitCol);
+        const { entries, rowErrors } = buildEntriesFromRows(rows, mapping, batchKey);
+        setImportPreview({ kind: "spreadsheet", fileName: file.name, headers, rawRows: rows, batchKey, mapping, entries, rowErrors, mappingOpen: mappingIncomplete });
+    };
+
+    const updateMapping = (field, value) => {
+        setImportPreview((current) => {
+            if (!current || current.kind !== "spreadsheet") return current;
+            const mapping = { ...current.mapping, [field]: value };
+            const { entries, rowErrors } = buildEntriesFromRows(current.rawRows, mapping, current.batchKey);
+            return { ...current, mapping, entries, rowErrors };
+        });
+    };
+
+    // OFX1.x (SGML) tags routinely have no closing tag (e.g. `<DTPOSTED>
+    // 20260105120000`), which XML parsers reject outright - a simple regex
+    // per tag, scoped to one <STMTTRN> block, works for both OFX1 and the
+    // XML-strict OFX2 without needing an XML/SGML library.
+    const extractOfxTag = (block, tag) => block.match(new RegExp(`<${tag}>([^<\\r\\n]*)`, "i"))?.[1]?.trim();
+    const parseOfxDate = (raw) => {
+        const match = String(raw || "").match(/^(\d{4})(\d{2})(\d{2})/);
+        return match ? dayjs(`${match[1]}-${match[2]}-${match[3]}`) : dayjs(NaN);
+    };
+    const parseOfxFile = async (file) => {
+        const text = await file.text();
+        const blocks = text
+            .split(/<STMTTRN>/i)
+            .slice(1)
+            .map((chunk) => chunk.split(/<\/STMTTRN>|<STMTTRN>|<\/BANKTRANLIST>/i)[0]);
+        if (!blocks.length) throw new Error(t("finance.import_ofx_empty"));
+        if (blocks.length > 1000) throw new Error(t("finance.import_too_many"));
+        const entries = [];
+        const rowErrors = [];
+        const seen = new Set();
+        blocks.forEach((block, index) => {
+            const date = parseOfxDate(extractOfxTag(block, "DTPOSTED"));
+            const amount = parseNumber(extractOfxTag(block, "TRNAMT"));
+            const description = extractOfxTag(block, "NAME") || extractOfxTag(block, "MEMO") || null;
+            const fitid = extractOfxTag(block, "FITID");
+            if (!date.isValid() || !Number.isFinite(amount) || amount === 0) {
+                rowErrors.push({ row: index + 1, reason: t("finance.import_reason_invalid") });
+                return;
+            }
+            // FITID is the bank's own transaction id - a far more reliable
+            // duplicate key than the file-hash fingerprint CSV/XLSX rows use,
+            // since re-exporting an overlapping date range naturally
+            // deduplicates against a PREVIOUS OFX import too, not just
+            // within this same file.
+            const dupKey = fitid ? `fitid:${fitid}` : `${date.toISOString()}|${amount.toFixed(2)}|${description || ""}`;
+            if (seen.has(dupKey)) {
+                rowErrors.push({ row: index + 1, reason: t("finance.import_reason_duplicate") });
+                return;
+            }
+            seen.add(dupKey);
+            entries.push({ entry_date: date.toISOString(), description, amount, import_fingerprint: fitid ? `ofx:${fitid}` : `ofx:${index}:${date.toISOString()}:${amount}` });
+        });
+        setImportPreview({ kind: "ofx", fileName: file.name, entries, rowErrors });
+    };
+
     const readStatementFile = async (file) => {
         setImportReading(true);
         try {
-            const buffer = await file.arrayBuffer();
-            const digest = await crypto.subtle.digest("SHA-256", buffer);
-            const batchKey = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
-            const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
-            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "", raw: true });
-            if (!rows.length) throw new Error(t("finance.import_empty"));
-            const parsed = rows.map((row, index) => {
-                const rawDate = pick(row, ["fecha", "date", "fechamovimiento", "transactiondate"]);
-                const excelDate = typeof rawDate === "number" ? XLSX.SSF.parse_date_code(rawDate) : null;
-                const date = excelDate ? dayjs(new Date(excelDate.y, excelDate.m - 1, excelDate.d)) : dayjs(rawDate);
-                const direct = pick(row, ["valor", "monto", "importe", "amount"]);
-                const credit = parseNumber(pick(row, ["credito", "credit", "abono", "ingreso"]));
-                const debit = parseNumber(pick(row, ["debito", "debit", "cargo", "salida"]));
-                const amount = direct !== undefined ? parseNumber(direct) : credit - debit;
-                if (!date.isValid() || !Number.isFinite(amount) || amount === 0) throw new Error(t("finance.import_row_invalid", { row: index + 2 }));
-                return { entry_date: date.toISOString(), description: String(pick(row, ["descripcion", "description", "detalle", "concepto", "memo", "referencia"]) || "").trim() || null, amount, import_fingerprint: `${batchKey}:${index}` };
-            });
-            if (parsed.length > 1000) throw new Error(t("finance.import_too_many"));
-            setImportPreview({ fileName: file.name, entries: parsed });
+            const name = file.name.toLowerCase();
+            if (name.endsWith(".ofx") || name.endsWith(".qfx")) await parseOfxFile(file);
+            else await parseSpreadsheetFile(file);
         } catch (error) {
             setImportPreview(null);
             Modal.error({ title: t("finance.import_failed"), content: error.message });
@@ -356,7 +453,7 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
 
                     <div className="rounded-2xl border border-dashed border-[var(--ohnix-line-4)] bg-[var(--ohnix-line-1)] p-4 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div><strong className="text-[var(--ohnix-text-primary)]">{t("finance.import_title")}</strong><p className="text-xs text-[var(--ohnix-text-muted)] mt-1 mb-0">{t("finance.import_help")}</p></div>
-                        <Upload accept=".csv,.xlsx,.xls" showUploadList={false} beforeUpload={readStatementFile} disabled={submitting || importReading}>
+                        <Upload accept=".csv,.xlsx,.xls,.ofx,.qfx" showUploadList={false} beforeUpload={readStatementFile} disabled={submitting || importReading}>
                             <Button icon={<UploadOutlined />} loading={importReading}>{t("finance.import_cta")}</Button>
                         </Upload>
                     </div>
@@ -441,8 +538,54 @@ const CashAccountMovementsDrawer = ({ visible, onClose, account }) => {
                     </div>
                 )}
             </Modal>
-            <Modal title={t("finance.import_preview_title")} open={Boolean(importPreview)} onCancel={() => setImportPreview(null)} onOk={confirmImport} confirmLoading={submitting} okText={t("finance.import_confirm")} width={760}>
-                {importPreview && <><Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.import_preview_summary", { file: importPreview.fileName, count: importPreview.entries.length })} description={t("finance.import_sign_help")} /><Table size="small" rowKey={(_, index) => index} pagination={{ pageSize: 8 }} dataSource={importPreview.entries} columns={[{ title: t("finance.col_date"), dataIndex: "entry_date", render: (v) => dayjs(v).format("DD/MM/YYYY") }, { title: t("finance.entry_description_label"), dataIndex: "description", ellipsis: true, render: (v) => v || t("common.na") }, { title: t("finance.col_amount"), dataIndex: "amount", align: "right", render: (v) => <span className={v > 0 ? "text-[var(--ohnix-status-success)]" : "text-[var(--ohnix-status-danger)]"}>{v > 0 ? "+" : ""}{formatCurrency(v)}</span> }]} /></>}
+            <Modal title={t("finance.import_preview_title")} open={Boolean(importPreview)} onCancel={() => setImportPreview(null)} onOk={confirmImport} confirmLoading={submitting} okText={t("finance.import_confirm")} okButtonProps={{ disabled: !importPreview?.entries?.length }} width={800}>
+                {importPreview && <>
+                    <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.import_preview_summary", { file: importPreview.fileName, count: importPreview.entries.length })} description={t("finance.import_sign_help")} />
+                    {importPreview.kind === "spreadsheet" && (
+                        <Collapse
+                            className="mb-4"
+                            defaultActiveKey={importPreview.mappingOpen ? ["mapping"] : []}
+                            items={[{
+                                key: "mapping",
+                                label: t("finance.import_mapping_title"),
+                                children: (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs text-[var(--ohnix-text-muted)] mb-1">{t("finance.import_mapping_date")} *</label>
+                                            <Select className="w-full" value={importPreview.mapping.dateCol} onChange={(value) => updateMapping("dateCol", value)} options={importPreview.headers.map((h) => ({ value: h, label: h }))} placeholder={t("finance.import_mapping_select_column")} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-[var(--ohnix-text-muted)] mb-1">{t("finance.import_mapping_description")}</label>
+                                            <Select allowClear className="w-full" value={importPreview.mapping.descriptionCol} onChange={(value) => updateMapping("descriptionCol", value ?? null)} options={importPreview.headers.map((h) => ({ value: h, label: h }))} placeholder={t("finance.import_mapping_select_column")} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-[var(--ohnix-text-muted)] mb-1">{t("finance.import_mapping_amount")}</label>
+                                            <Select allowClear className="w-full" value={importPreview.mapping.amountCol} onChange={(value) => updateMapping("amountCol", value ?? null)} options={importPreview.headers.map((h) => ({ value: h, label: h }))} placeholder={t("finance.import_mapping_select_column")} />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs text-[var(--ohnix-text-muted)] mb-1">{t("finance.import_mapping_credit")}</label>
+                                                <Select allowClear className="w-full" value={importPreview.mapping.creditCol} onChange={(value) => updateMapping("creditCol", value ?? null)} options={importPreview.headers.map((h) => ({ value: h, label: h }))} placeholder={t("finance.import_mapping_select_column")} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-[var(--ohnix-text-muted)] mb-1">{t("finance.import_mapping_debit")}</label>
+                                                <Select allowClear className="w-full" value={importPreview.mapping.debitCol} onChange={(value) => updateMapping("debitCol", value ?? null)} options={importPreview.headers.map((h) => ({ value: h, label: h }))} placeholder={t("finance.import_mapping_select_column")} />
+                                            </div>
+                                        </div>
+                                        <p className="col-span-1 sm:col-span-2 text-xs text-[var(--ohnix-text-dim)] m-0">{t("finance.import_mapping_help")}</p>
+                                    </div>
+                                ),
+                            }]}
+                        />
+                    )}
+                    <Table size="small" rowKey={(_, index) => index} pagination={{ pageSize: 8 }} dataSource={importPreview.entries} columns={[{ title: t("finance.col_date"), dataIndex: "entry_date", render: (v) => dayjs(v).format("DD/MM/YYYY") }, { title: t("finance.entry_description_label"), dataIndex: "description", ellipsis: true, render: (v) => v || t("common.na") }, { title: t("finance.col_amount"), dataIndex: "amount", align: "right", render: (v) => <span className={v > 0 ? "text-[var(--ohnix-status-success)]" : "text-[var(--ohnix-status-danger)]"}>{v > 0 ? "+" : ""}{formatCurrency(v)}</span> }]} />
+                    {importPreview.rowErrors.length > 0 && (
+                        <div className="mt-4">
+                            <Alert className="dark-alert dark-alert-amber mb-2" type="warning" showIcon message={t("finance.import_skipped_title", { count: importPreview.rowErrors.length })} />
+                            <Table size="small" rowKey={(row) => row.row} pagination={{ pageSize: 5 }} dataSource={importPreview.rowErrors} columns={[{ title: t("finance.import_skipped_row"), dataIndex: "row", width: 90 }, { title: t("finance.import_skipped_reason"), dataIndex: "reason" }]} />
+                        </div>
+                    )}
+                </>}
             </Modal>
             <Modal title={t("finance.suggestions_title")} open={Array.isArray(suggestions)} onCancel={() => setSuggestions(null)} onOk={confirmSuggestions} confirmLoading={submitting} okButtonProps={{ disabled: selectedSuggestions.length === 0 }} okText={t("finance.suggestions_confirm")} width={820}>
                 <Alert className="dark-alert dark-alert-teal mb-4" type="info" showIcon message={t("finance.suggestions_help_title")} description={t("finance.suggestions_help_desc")} />

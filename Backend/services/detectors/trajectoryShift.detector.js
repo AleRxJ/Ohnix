@@ -29,6 +29,7 @@
 import { prisma } from "../../db/prisma.js";
 import { upsertMetricSnapshot, monthKey, monthBounds } from "../metricSnapshot.service.js";
 import { upsertDiscovery } from "../discoveryEngine.service.js";
+import { resolveIsEnglish } from "../discoveryLocale.service.js";
 
 export const DETECTOR_KEY = "trajectory_shift";
 
@@ -67,10 +68,14 @@ const evaluateShift = (baselineValues, recentValues) => {
 // Each metric here is self-contained: its own aggregation over Order/
 // CashMovement, independent of any other detector's own MetricSnapshot
 // writes, so this detector never depends on run order within a tick.
-const METRICS = [
+// `label` is a function of isEN (not a static string) for the same reason
+// new_pattern_return_rate.detector.js's DIMENSIONS became one - it ends up
+// embedded in the title/summary text the account's own preferredLanguage
+// should control.
+const buildMetrics = (isEN) => [
     {
         key: "monthly_revenue",
-        label: "Facturación mensual",
+        label: isEN ? "Monthly revenue" : "Facturación mensual",
         compute: async (db, accountId, start, end) => {
             const orders = await db.order.findMany({ where: { createdById: accountId, orderStatus: { not: "cancelled" }, orderDate: { gte: start, lt: end } }, select: { orderDate: true, total: true } });
             return bucketSum(orders, "orderDate", (o) => Number(o.total));
@@ -78,7 +83,7 @@ const METRICS = [
     },
     {
         key: "monthly_order_count",
-        label: "Número de pedidos mensuales",
+        label: isEN ? "Monthly order count" : "Número de pedidos mensuales",
         compute: async (db, accountId, start, end) => {
             const orders = await db.order.findMany({ where: { createdById: accountId, orderStatus: { not: "cancelled" }, orderDate: { gte: start, lt: end } }, select: { orderDate: true } });
             return bucketSum(orders, "orderDate", () => 1);
@@ -86,7 +91,7 @@ const METRICS = [
     },
     {
         key: "monthly_active_customers",
-        label: "Clientes únicos que compraron por mes",
+        label: isEN ? "Unique customers who bought per month" : "Clientes únicos que compraron por mes",
         compute: async (db, accountId, start, end) => {
             const orders = await db.order.findMany({ where: { createdById: accountId, orderStatus: { not: "cancelled" }, orderDate: { gte: start, lt: end } }, select: { orderDate: true, customerId: true } });
             const byMonth = new Map();
@@ -101,7 +106,7 @@ const METRICS = [
     },
     {
         key: "monthly_cash_collected",
-        label: "Efectivo cobrado mensual",
+        label: isEN ? "Monthly cash collected" : "Efectivo cobrado mensual",
         compute: async (db, accountId, start, end) => {
             const movements = await db.cashMovement.findMany({
                 where: { delta: { gt: 0 }, sourceType: "order_payment", createdAt: { gte: start, lt: end }, cashAccount: { createdById: accountId } },
@@ -111,7 +116,7 @@ const METRICS = [
         },
     },
 ];
-const BUILT_IN_KEYS = new Set(METRICS.map((m) => m.key));
+const BUILT_IN_KEYS = new Set(buildMetrics(false).map((m) => m.key));
 
 const bucketSum = (rows, dateField, valueFn) => {
     const map = new Map();
@@ -127,7 +132,8 @@ const bucketSum = (rows, dateField, valueFn) => {
 // unlabeled external metric still reads as words, not a raw snake_case key.
 const humanizeKey = (key) => key.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 
-export const computeTrajectoryShifts = async ({ accountId, db = prisma, now = new Date() }) => {
+export const computeTrajectoryShifts = async ({ accountId, db = prisma, now = new Date(), isEN = false }) => {
+    const METRICS = buildMetrics(isEN);
     const monthKeys = lastNMonthKeys(MAX_HISTORY_MONTHS, now);
     const { start } = monthBounds(monthKeys[0]);
     const { end } = monthBounds(monthKeys[monthKeys.length - 1]);
@@ -176,13 +182,18 @@ export const computeTrajectoryShifts = async ({ accountId, db = prisma, now = ne
     const externalByKey = new Map();
     for (const row of externalRows) {
         if (BUILT_IN_KEYS.has(row.metricKey)) continue;
-        const bucket = externalByKey.get(row.metricKey) || { byMonth: new Map(), label: null };
+        const bucket = externalByKey.get(row.metricKey) || { byMonth: new Map(), label: null, labelEn: null };
         bucket.byMonth.set(monthKey(new Date(row.periodStart)), Number(row.value));
+        // Writers built before this file's bilingual pass only ever stored
+        // `label` (Spanish only) - `labelEn` is optional so those older
+        // snapshot rows keep working, just without an English label until
+        // that writer is updated to also send one.
         if (row.metadata?.label) bucket.label = row.metadata.label;
+        if (row.metadata?.labelEn) bucket.labelEn = row.metadata.labelEn;
         externalByKey.set(row.metricKey, bucket);
     }
 
-    for (const [metricKey, { byMonth, label }] of externalByKey.entries()) {
+    for (const [metricKey, { byMonth, label, labelEn }] of externalByKey.entries()) {
         // Every one of the truly-recent months must actually have a
         // snapshot - a metric that just went quiet is silence, not
         // necessarily a shift, and this detector has no way to tell the
@@ -202,21 +213,22 @@ export const computeTrajectoryShifts = async ({ accountId, db = prisma, now = ne
             return { month: key, value: round2(byMonth.get(key)), periodStart, periodEnd };
         });
 
-        shifts.push({ metricKey, metricLabel: label || humanizeKey(metricKey), series, baselineMonths: priorKeys.length, ...shift });
+        const metricLabel = (isEN ? labelEn : null) || label || humanizeKey(metricKey);
+        shifts.push({ metricKey, metricLabel, series, baselineMonths: priorKeys.length, ...shift });
     }
 
     return shifts;
 };
 
 export const runTrajectoryShiftDetector = async ({ accountId, db = prisma, now = new Date() }) => {
-    const shifts = await computeTrajectoryShifts({ accountId, db, now });
+    const isEN = await resolveIsEnglish({ accountId, db });
+    const shifts = await computeTrajectoryShifts({ accountId, db, now, isEN });
     if (shifts.length === 0) {
         return { discovery: null, created: false, reason: "no_shift_found" };
     }
 
     const outcomes = [];
     for (const shift of shifts) {
-        const directionWord = shift.direction === "up" ? "subió" : "bajó";
         const relPct = round1(Math.abs(shift.relativeChange) * 100);
 
         const impact = Math.min(1, Math.abs(shift.relativeChange) / 0.6);
@@ -225,30 +237,54 @@ export const runTrajectoryShiftDetector = async ({ accountId, db = prisma, now =
         const novelty = Math.min(0.9, 0.5 + (shift.baselineMonths / 36) * 0.4);
         const reversibility = 0.6; // direction (good/bad) isn't judged here - see hypothesis field
 
+        const copy = isEN
+            ? {
+                  directionWord: shift.direction === "up" ? "went up" : "went down",
+                  title: (dir) => `"${shift.metricLabel}" ${dir} ${relPct}% compared to behavior that stayed stable for ${shift.baselineMonths} months`,
+                  summary: `Over the last ${RECENT_MONTHS} months, "${shift.metricLabel}" averaged ${round2(shift.recentMean)} - vs. a historical average of ${round2(shift.baselineMean)} sustained over the prior ${shift.baselineMonths} months. That's a ${relPct}% change not seen in that period.`,
+                  hypothesis: "This level doesn't appear in the account's recent history - it could be the start of a real, sustained change in the business, or a one-off event (a campaign, a season, a new channel) we don't yet know will hold.",
+                  unknowns: "We still don't know the cause of this change, whether it's desirable or not, or whether it will hold - only that it's statistically different from what this account had been showing.",
+                  recommendation: `Review what changed operationally over the last ${RECENT_MONTHS} months (channel, pricing, team, season) that could explain this move in "${shift.metricLabel}".`,
+                  seriesLabel: `${shift.metricLabel} by month`,
+                  comparisonLabel: "Recent level vs. historical",
+                  predictionStatement: `If this new level of "${shift.metricLabel}" holds, we expect its average over the next ${RECENT_MONTHS} months to stay close to ${round2(shift.recentMean)} instead of reverting to its historical level of ${round2(shift.baselineMean)}.`,
+              }
+            : {
+                  directionWord: shift.direction === "up" ? "subió" : "bajó",
+                  title: (dir) => `"${shift.metricLabel}" ${dir} ${relPct}% frente a un comportamiento que se mantuvo estable por ${shift.baselineMonths} meses`,
+                  summary: `En los últimos ${RECENT_MONTHS} meses, "${shift.metricLabel}" promedió ${round2(shift.recentMean)} - frente a un promedio histórico de ${round2(shift.baselineMean)} sostenido durante los ${shift.baselineMonths} meses anteriores. Es un cambio de ${relPct}% que no se había visto en ese periodo.`,
+                  hypothesis: "Este nivel no aparece en el historial reciente de la cuenta - podría ser el inicio de un cambio real y sostenido en el negocio, o un evento puntual (una campaña, una temporada, un canal nuevo) que todavía no sabemos si va a mantenerse.",
+                  unknowns: "Todavía no sabemos la causa de este cambio, ni si es deseable o no, ni si va a mantenerse - solo que es estadísticamente distinto de lo que esta cuenta venía mostrando.",
+                  recommendation: `Revisar qué cambió operativamente en los últimos ${RECENT_MONTHS} meses (canal, precios, equipo, temporada) que pueda explicar este movimiento en "${shift.metricLabel}".`,
+                  seriesLabel: `${shift.metricLabel} por mes`,
+                  comparisonLabel: "Nivel reciente vs. histórico",
+                  predictionStatement: `Si este nuevo nivel de "${shift.metricLabel}" se mantiene, esperamos que su promedio en los próximos ${RECENT_MONTHS} meses siga cerca de ${round2(shift.recentMean)} en vez de volver a su nivel histórico de ${round2(shift.baselineMean)}.`,
+              };
+
         const { discovery, created } = await upsertDiscovery({
             accountId,
             detectorKey: DETECTOR_KEY,
             type: "trajectory_shift",
             dedupeKey: `${DETECTOR_KEY}:account:${shift.metricKey}`,
-            title: `"${shift.metricLabel}" ${directionWord} ${relPct}% frente a un comportamiento que se mantuvo estable por ${shift.baselineMonths} meses`,
-            summary: `En los últimos ${RECENT_MONTHS} meses, "${shift.metricLabel}" promedió ${round2(shift.recentMean)} - frente a un promedio histórico de ${round2(shift.baselineMean)} sostenido durante los ${shift.baselineMonths} meses anteriores. Es un cambio de ${relPct}% que no se había visto en ese periodo.`,
-            hypothesis: "Este nivel no aparece en el historial reciente de la cuenta - podría ser el inicio de un cambio real y sostenido en el negocio, o un evento puntual (una campaña, una temporada, un canal nuevo) que todavía no sabemos si va a mantenerse.",
-            unknowns: "Todavía no sabemos la causa de este cambio, ni si es deseable o no, ni si va a mantenerse - solo que es estadísticamente distinto de lo que esta cuenta venía mostrando.",
-            recommendation: `Revisar qué cambió operativamente en los últimos ${RECENT_MONTHS} meses (canal, precios, equipo, temporada) que pueda explicar este movimiento en "${shift.metricLabel}".`,
+            title: copy.title(copy.directionWord),
+            summary: copy.summary,
+            hypothesis: copy.hypothesis,
+            unknowns: copy.unknowns,
+            recommendation: copy.recommendation,
             scores: { impact, novelty, urgency, confidence, reversibility },
             entityCount: 0,
             patternSince: monthBounds(lastNMonthKeys(RECENT_MONTHS, now)[0]).start,
             evidence: [
                 {
                     kind: "metric_series",
-                    label: `${shift.metricLabel} por mes`,
+                    label: copy.seriesLabel,
                     data: shift.series.map((p) => ({ month: p.month, value: p.value })),
                     sourceType: "metric_snapshot",
                     sourceId: null,
                 },
                 {
                     kind: "comparison",
-                    label: "Nivel reciente vs. histórico",
+                    label: copy.comparisonLabel,
                     data: {
                         baseline_months: shift.baselineMonths,
                         baseline_mean: round2(shift.baselineMean),
@@ -264,7 +300,7 @@ export const runTrajectoryShiftDetector = async ({ accountId, db = prisma, now =
             entities: [],
             predictions: [
                 {
-                    statement: `Si este nuevo nivel de "${shift.metricLabel}" se mantiene, esperamos que su promedio en los próximos ${RECENT_MONTHS} meses siga cerca de ${round2(shift.recentMean)} en vez de volver a su nivel histórico de ${round2(shift.baselineMean)}.`,
+                    statement: copy.predictionStatement,
                     predictedData: { metric_key: shift.metricKey, recent_mean_at_prediction: round2(shift.recentMean), baseline_mean_at_prediction: round2(shift.baselineMean) },
                     confidenceAtStake: confidence,
                     checkAfter: new Date(now.getTime() + RECENT_MONTHS * 30 * 24 * 60 * 60 * 1000),
@@ -294,7 +330,8 @@ export const checkPrediction = async ({ accountId, prediction, db = prisma, now 
     const { start } = monthBounds(monthKeys[0]);
     const { end } = monthBounds(monthKeys[monthKeys.length - 1]);
 
-    const builtIn = METRICS.find((m) => m.key === metricKey);
+    const isEN = await resolveIsEnglish({ accountId, db });
+    const builtIn = buildMetrics(isEN).find((m) => m.key === metricKey);
     let currentMean;
     if (builtIn) {
         const byMonth = await builtIn.compute(db, accountId, start, end);
@@ -302,7 +339,13 @@ export const checkPrediction = async ({ accountId, prediction, db = prisma, now 
     } else {
         const rows = await db.metricSnapshot.findMany({ where: { accountId, entityType: "account", metricKey, periodStart: { gte: start } } });
         if (rows.length === 0) {
-            return { outcome: "inconclusive", actualData: {}, notes: "No hay snapshots recientes de esta métrica para volver a evaluarla - el módulo que la reporta pudo haber dejado de hacerlo." };
+            return {
+                outcome: "inconclusive",
+                actualData: {},
+                notes: isEN
+                    ? "No recent snapshots for this metric to re-evaluate it - the module reporting it may have stopped."
+                    : "No hay snapshots recientes de esta métrica para volver a evaluarla - el módulo que la reporta pudo haber dejado de hacerlo.",
+            };
         }
         currentMean = mean(rows.map((r) => Number(r.value)));
     }
@@ -312,7 +355,17 @@ export const checkPrediction = async ({ accountId, prediction, db = prisma, now 
     const actualData = { recent_mean_at_prediction: round2(recentMeanAtPrediction), baseline_mean_at_prediction: round2(baselineMeanAtPrediction), current_mean: round2(currentMean) };
 
     if (distanceToNew <= distanceToOld) {
-        return { outcome: "correct", actualData, notes: "El nuevo nivel se mantuvo - sigue más cerca del nivel reciente que del histórico anterior." };
+        return {
+            outcome: "correct",
+            actualData,
+            notes: isEN
+                ? "The new level held - it's still closer to the recent level than to the prior historical one."
+                : "El nuevo nivel se mantuvo - sigue más cerca del nivel reciente que del histórico anterior.",
+        };
     }
-    return { outcome: "incorrect", actualData, notes: "La métrica volvió a acercarse a su nivel histórico anterior - el cambio no se sostuvo." };
+    return {
+        outcome: "incorrect",
+        actualData,
+        notes: isEN ? "The metric moved back toward its prior historical level - the change didn't hold." : "La métrica volvió a acercarse a su nivel histórico anterior - el cambio no se sostuvo.",
+    };
 };

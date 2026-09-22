@@ -34,13 +34,14 @@ const PARAFISCAL_CODES = ["sena", "icbf", "compensation_fund"];
 const DOCUMENT_INCLUDE = {
     employee: true,
     lines: true,
+    electronicPayroll: { include: { adjustments: { orderBy: { createdAt: "asc" } } } },
 };
 
 const PERIOD_INCLUDE = {
     documents: { include: DOCUMENT_INCLUDE },
 };
 
-const getLegalParameters = async (year) => {
+export const getLegalParameters = async (year) => {
     const params = await prisma.payrollLegalParameter.findUnique({ where: { year } });
     if (!params) {
         throw new ApiError(
@@ -129,7 +130,7 @@ export const getPayrollPeriod = async (accountId, id) => {
         where: { id, createdById: accountId },
         include: {
             documents: {
-                include: { employee: true, lines: true },
+                include: DOCUMENT_INCLUDE,
                 orderBy: { createdAt: "asc" },
             },
         },
@@ -482,6 +483,21 @@ export const cancelPayrollPeriod = async ({ accountId, periodId }) => {
 // earlier settlements), never more than that even if the caller asks for
 // more, and records the audit-trail row + accounting entry in one
 // transaction.
+// Core of a benefit-accrual payout - create the audit-trail row, drain the
+// accrual's running balance. Deliberately has NO cash/journal side effects:
+// the caller decides whether that's one settlement's own cash movement +
+// journal entry (settleEmployeeBenefit below) or one consolidated movement
+// covering several buckets at once (payrollTermination.service.js#
+// settleTermination, which drains every pending bucket in a single "acta de
+// liquidación" instead of one settlement event per bucket).
+export const createBenefitSettlementRecord = (tx, { accrual, pending, createdById }) =>
+    tx.payrollBenefitSettlement
+        .create({ data: { employeeId: accrual.employeeId, type: accrual.type, year: accrual.year, semester: accrual.semester, amount: pending, createdById } })
+        .then(async (created) => {
+            await tx.employeeBenefitAccrual.update({ where: { id: accrual.id }, data: { settledAmount: { increment: pending } } });
+            return created;
+        });
+
 export const settleEmployeeBenefit = async ({ accountId, employeeId, type, year, semester, cashAccountId }) => {
     const employee = await prisma.employee.findFirst({ where: { id: employeeId, createdById: accountId } });
     if (!employee) throw new ApiError(404, "Employee not found");
@@ -498,10 +514,7 @@ export const settleEmployeeBenefit = async ({ accountId, employeeId, type, year,
     if (!cashAccount) throw new ApiError(404, "Cash account not found.", [], "", "payroll_cash_account_not_found");
 
     const settlement = await prisma.$transaction(async (tx) => {
-        const created = await tx.payrollBenefitSettlement.create({
-            data: { employeeId, type, year: Number(year), semester: semester ? Number(semester) : null, amount: pending, createdById: accountId },
-        });
-        await tx.employeeBenefitAccrual.update({ where: { id: accrual.id }, data: { settledAmount: { increment: pending } } });
+        const created = await createBenefitSettlementRecord(tx, { accrual, pending, createdById: accountId });
 
         const balanceAfter = await claimCashAccount(tx, { cashAccountId: cashAccount.id, amount: pending });
         if (balanceAfter === null) {

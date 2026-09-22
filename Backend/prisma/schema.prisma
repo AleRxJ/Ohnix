@@ -335,6 +335,7 @@ model User {
   payrollPeriodsCreated             PayrollPeriod[]             @relation("PayrollPeriodCreatedBy")
   payrollPeriodsUpdated             PayrollPeriod[]             @relation("PayrollPeriodUpdatedBy")
   payrollBenefitSettlementsCreated  PayrollBenefitSettlement[]
+  payrollTerminationSettlementsCreated PayrollTerminationSettlement[]
   accountingConfigAuditsPerformed   AccountingConfigAudit[]     @relation("AccountingConfigAuditActor")
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
@@ -549,14 +550,15 @@ model Company {
   createdAt                        DateTime           @default(now()) @map("created_at")
   updatedAt                        DateTime           @updatedAt @map("updated_at")
 
-  users                      User[]
-  electronicInvoices         ElectronicInvoice[]
-  purchaseSupportDocuments   PurchaseSupportDocument[]
-  receivedInvoiceReceipts    ReceivedInvoiceReceipt[]
-  apiKeys                    ApiKey[]
-  dianTestMatrixRuns         DianTestMatrixRun[]
-  certificateOrders          CertificateOrder[]
-  electronicPayrollDocuments ElectronicPayrollDocument[]
+  users                        User[]
+  electronicInvoices           ElectronicInvoice[]
+  purchaseSupportDocuments     PurchaseSupportDocument[]
+  receivedInvoiceReceipts      ReceivedInvoiceReceipt[]
+  apiKeys                      ApiKey[]
+  dianTestMatrixRuns           DianTestMatrixRun[]
+  certificateOrders            CertificateOrder[]
+  electronicPayrollDocuments   ElectronicPayrollDocument[]
+  electronicPayrollAdjustments ElectronicPayrollAdjustment[]
 
   @@map("companies")
 }
@@ -724,9 +726,9 @@ model ExternalApiClient {
   // (returned after the client tokenizes their card client-side, straight to
   // ePayco's servers - see EnrollApiBilling.jsx) - never raw card data, same
   // trust model as itcycleCompanyId itself. Safe to store as plain columns.
-  epaycoCustomerId String? @map("epayco_customer_id")
-  epaycoTokenCard  String? @map("epayco_token_card")
-  billingEnrolledAt DateTime? @map("billing_enrolled_at")
+  epaycoCustomerId                String?   @map("epayco_customer_id")
+  epaycoTokenCard                 String?   @map("epayco_token_card")
+  billingEnrolledAt               DateTime? @map("billing_enrolled_at")
   // Single-use, short-lived link token for the card-enrollment page - never
   // an auth credential by itself (it only ever lets the holder submit an
   // already-tokenized card for THIS client), cleared once enrollment
@@ -737,15 +739,22 @@ model ExternalApiClient {
   // FacturacionSinInventario.jsx) - charged once per period by
   // apiClientBillingScheduler.js, which then only charges the overage beyond
   // annualDocsIncluded each month via cumulativeDocsThisPeriod.
-  annualPeriodStartsAt     DateTime? @map("annual_period_starts_at")
-  annualPeriodEndsAt       DateTime? @map("annual_period_ends_at")
-  annualDocsIncluded       Int       @default(100) @map("annual_docs_included")
-  annualBaseAmountCop      Int       @default(310000) @map("annual_base_amount_cop")
-  cumulativeDocsThisPeriod Int       @default(0) @map("cumulative_docs_this_period")
+  annualPeriodStartsAt            DateTime? @map("annual_period_starts_at")
+  annualPeriodEndsAt              DateTime? @map("annual_period_ends_at")
+  annualDocsIncluded              Int       @default(100) @map("annual_docs_included")
+  annualBaseAmountCop             Int       @default(310000) @map("annual_base_amount_cop")
+  cumulativeDocsThisPeriod        Int       @default(0) @map("cumulative_docs_this_period")
   // Set (and left set) the moment any automatic charge fails - the monthly
   // scheduler skips a client in this state on later runs rather than
   // retrying blindly, until an admin investigates and clears it by hand.
-  billingAtRisk Boolean @default(false) @map("billing_at_risk")
+  billingAtRisk                   Boolean   @default(false) @map("billing_at_risk")
+  // An external API client has no Ohnix account/login at all (see this
+  // model's own top comment) - its contactEmail is the only channel to
+  // occasionally offer it the full Ohnix SaaS (inventory, orders, etc.)
+  // alongside the API-only relationship it already has. Admin-triggered only
+  // (sendExternalClientUpsellEmail), never automatic - tracked here just so
+  // the admin UI can show "last invited on X" and avoid re-sending too often.
+  upsellEmailSentAt               DateTime? @map("upsell_email_sent_at")
 
   createdByUser   User                           @relation(fields: [createdByUserId], references: [id])
   apiKeyIssuances ExternalApiClientKeyIssuance[]
@@ -2459,6 +2468,7 @@ model CashAccount {
   paymentCredits            PaymentCreditBalance[]
   statementEntries          BankStatementEntry[]
   recurringExpenseTemplates RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateCashAccount")
+  terminationSettlements    PayrollTerminationSettlement[]
 
   @@index([pointOfSaleId])
   @@index([createdById])
@@ -2479,6 +2489,7 @@ enum CashMovementSourceType {
   adjustment
   payroll_payment
   payroll_benefit_settlement
+  payroll_termination_settlement
 }
 
 // Append-only ledger - literal mirror of StockMovement, money instead of
@@ -3153,6 +3164,12 @@ enum JournalSourceType {
   payroll
   payroll_payment
   payroll_benefit_settlement
+  // Fase 3 (liquidación) - the one consolidated entry a "Liquidar contrato"
+  // action posts: drains every pending prestación-social liability at once
+  // (same accounts payroll_benefit_settlement would touch one at a time)
+  // plus, when applicable, the indemnización expense - see
+  // accountingPosting.service.js#postTerminationSettlementJournalEntry.
+  payroll_termination_settlement
 }
 
 enum FiscalYearClosureStatus {
@@ -4016,6 +4033,19 @@ enum EmployeeStatus {
   terminated
 }
 
+// Drives whether payrollTermination.service.js computes an indemnización
+// (CST art. 64, modificado por Ley 789/2002 art. 28) at all - only
+// `without_just_cause` does. A real rehire is modeled as a brand-new
+// Employee row (see PayrollTerminationSettlement's own comment), not by
+// reusing this field, so there's no "re-activated" value here.
+enum EmployeeTerminationReason {
+  resignation
+  just_cause
+  without_just_cause
+  contract_expiration
+  mutual_agreement
+}
+
 // Decreto 1607 de 2002's five ARL risk classes - the rate each maps to is a
 // fixed national table (payroll.service.js's ARL_RATES_BY_RISK_LEVEL), not a
 // per-year legal parameter like SMLMV, so it isn't in PayrollLegalParameter.
@@ -4044,6 +4074,12 @@ model Employee {
   address           String?
   hireDate          DateTime             @map("hire_date")
   terminationDate   DateTime?            @map("termination_date")
+  terminationReason EmployeeTerminationReason? @map("termination_reason")
+  // Only meaningful for contractType = fijo - the originally pactado end
+  // date, needed by payrollTermination.service.js to compute how many days
+  // remained when terminated early (CST art. 64 num. 4 lit. b). Null for
+  // indefinido/obra_labor/aprendizaje.
+  contractEndDate   DateTime?            @map("contract_end_date")
   contractType      EmployeeContractType @default(indefinido) @map("contract_type")
   workerType        EmployeeWorkerType   @default(normal) @map("worker_type")
   payFrequency      PayrollPeriodicity   @default(monthly) @map("pay_frequency")
@@ -4076,9 +4112,10 @@ model Employee {
   createdBy          User                       @relation("EmployeeCreatedBy", fields: [createdById], references: [id])
   updatedBy          User?                      @relation("EmployeeUpdatedBy", fields: [updatedById], references: [id])
   pointOfSale        PointOfSale?               @relation(fields: [pointOfSaleId], references: [id])
-  payrollDocuments   PayrollDocument[]
-  benefitAccruals    EmployeeBenefitAccrual[]
-  benefitSettlements PayrollBenefitSettlement[]
+  payrollDocuments     PayrollDocument[]
+  benefitAccruals      EmployeeBenefitAccrual[]
+  benefitSettlements   PayrollBenefitSettlement[]
+  terminationSettlement PayrollTerminationSettlement?
 
   @@unique([documentNumber, createdById])
   @@index([createdById, status])
@@ -4242,6 +4279,7 @@ model ElectronicPayrollDocument {
   payrollDocument PayrollDocument                  @relation(fields: [payrollDocumentId], references: [id])
   company         Company                          @relation(fields: [companyId], references: [id])
   events          ElectronicPayrollDocumentEvent[]
+  adjustments     ElectronicPayrollAdjustment[]
 
   @@index([companyId, createdAt])
   @@map("electronic_payroll_documents")
@@ -4259,6 +4297,45 @@ model ElectronicPayrollDocumentEvent {
 
   @@index([electronicPayrollDocumentId, createdAt])
   @@map("electronic_payroll_document_events")
+}
+
+/// Nómina Individual de Ajuste (DIAN "1" Reemplazar / "2" Eliminar) - a
+/// correction against an already-ACCEPTED ElectronicPayrollDocument. Mirrors
+/// ElectronicCreditNote's relationship to ElectronicInvoice (a correction
+/// document referencing its already-accepted original), not a 1:1 like
+/// ElectronicPayrollDocument itself - a payslip can in principle be corrected
+/// more than once over its lifetime.
+model ElectronicPayrollAdjustment {
+  id                          String                  @id @default(cuid())
+  electronicPayrollDocumentId String                  @map("electronic_payroll_document_id")
+  companyId                   String                  @map("company_id")
+  countryCode                 String                  @map("country_code")
+  provider                    String                  @default("itcycle")
+  // "1" Reemplazar / "2" Eliminar - matches DIAN's PayrollAdjustmentType
+  // catalog verbatim rather than an Ohnix-specific enum, same reasoning as
+  // ElectronicCreditNote.correctionConceptCode.
+  adjustmentType              String                  @map("adjustment_type")
+  status                      ElectronicInvoiceStatus @default(draft)
+  externalId                  String?                 @unique @map("external_id")
+  referenceCode               String                  @unique @map("reference_code")
+  documentNumber              String?                 @map("document_number")
+  cune                        String?
+  rawRequest                  Json?                   @map("raw_request")
+  rawResponse                 Json?                   @map("raw_response")
+  errorMessage                String?                 @map("error_message") @db.Text
+  certificateId               String?                 @map("certificate_id")
+  certificateProvider         String?                 @map("certificate_provider")
+  certificateIdentifier       String?                 @map("certificate_identifier")
+  issuedAt                    DateTime?               @map("issued_at")
+  createdAt                   DateTime                @default(now()) @map("created_at")
+  updatedAt                   DateTime                @updatedAt @map("updated_at")
+
+  electronicPayrollDocument ElectronicPayrollDocument @relation(fields: [electronicPayrollDocumentId], references: [id])
+  company                   Company                   @relation(fields: [companyId], references: [id])
+
+  @@index([electronicPayrollDocumentId, createdAt])
+  @@index([companyId, createdAt])
+  @@map("electronic_payroll_adjustments")
 }
 
 enum PayrollConceptCategory {
@@ -4383,4 +4460,39 @@ model PayrollBenefitSettlement {
 
   @@index([employeeId, type])
   @@map("payroll_benefit_settlements")
+}
+
+// The consolidated "acta de liquidación" for one employee's final
+// settlement - see payrollTermination.service.js. One per employee
+// (@unique employeeId): a real rehire is modeled as a brand-new Employee
+// row rather than un-terminating this one, same convention most payroll
+// systems use, so there's never a second settlement to record here.
+// Every *Amount field is what THIS settlement actually drained/paid,
+// snapshotted independently of EmployeeBenefitAccrual's running balances
+// (which move on afterward) - same "freeze what was used" convention as
+// PayrollDocument.baseSalarySnapshot. indemnityAmount/indemnityDays are 0/
+// null when terminationReason isn't without_just_cause, or when
+// manualIndemnityOverride was used instead of the CST art. 64 formula.
+model PayrollTerminationSettlement {
+  id                      String                    @id @default(cuid())
+  employeeId              String                    @unique @map("employee_id")
+  terminationDate         DateTime                  @map("termination_date")
+  terminationReason       EmployeeTerminationReason @map("termination_reason")
+  baseSalarySnapshot      Decimal                   @map("base_salary_snapshot") @db.Decimal(14, 2)
+  severanceAmount         Decimal                   @default(0) @map("severance_amount") @db.Decimal(14, 2)
+  severanceInterestAmount Decimal                   @default(0) @map("severance_interest_amount") @db.Decimal(14, 2)
+  serviceBonusAmount      Decimal                   @default(0) @map("service_bonus_amount") @db.Decimal(14, 2)
+  vacationAmount          Decimal                   @default(0) @map("vacation_amount") @db.Decimal(14, 2)
+  indemnityAmount         Decimal                   @default(0) @map("indemnity_amount") @db.Decimal(14, 2)
+  indemnityDays           Decimal?                  @map("indemnity_days") @db.Decimal(6, 2)
+  totalAmount             Decimal                   @map("total_amount") @db.Decimal(14, 2)
+  cashAccountId           String                    @map("cash_account_id")
+  createdById             String                    @map("created_by")
+  createdAt               DateTime                  @default(now()) @map("created_at")
+
+  employee    Employee    @relation(fields: [employeeId], references: [id])
+  createdBy   User        @relation(fields: [createdById], references: [id])
+  cashAccount CashAccount @relation(fields: [cashAccountId], references: [id])
+
+  @@map("payroll_termination_settlements")
 }

@@ -23,6 +23,7 @@ import {
     getUsageForExternalClient,
     createBillingEnrollmentLink,
     getBillingHistoryForExternalClient,
+    sendExternalClientUpsellEmail,
 } from "../services/externalApiClient.service.js";
 
 // Deliberately distinct from companyCountry.service.js#normalizeCountryCode:
@@ -485,6 +486,17 @@ export const getExternalApiClientBillingHistoryAdmin = asyncHandler(async (req, 
     const { id } = req.params;
     const data = await getBillingHistoryForExternalClient({ externalApiClientId: id });
     return res.status(200).json(new ApiResponse(200, data, "Billing history retrieved"));
+});
+
+// Occasional, admin-decided cross-sell email to an API-only client, inviting
+// them to also try the full Ohnix SaaS - see
+// externalApiClient.service.js#sendExternalClientUpsellEmail for why this is
+// never automatic.
+export const sendExternalApiClientUpsellEmailAdmin = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { note } = req.body || {};
+    const data = await sendExternalClientUpsellEmail({ externalApiClientId: id, note });
+    return res.status(200).json(new ApiResponse(200, data, "Upsell email sent"));
 });
 
 // Renta/RST tax-rate tables are national law, not a per-company setting -

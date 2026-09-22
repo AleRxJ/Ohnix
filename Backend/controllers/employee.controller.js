@@ -28,6 +28,11 @@ const mapEmployee = (employee, currentUser) => ({
     address: employee.address,
     hire_date: employee.hireDate,
     termination_date: employee.terminationDate,
+    termination_reason: employee.terminationReason,
+    // Only meaningful for contract_type = fijo - see the schema comment on
+    // Employee.contractEndDate and payrollTermination.service.js, which
+    // needs it to compute indemnización for an early termination.
+    contract_end_date: employee.contractEndDate,
     contract_type: employee.contractType,
     worker_type: employee.workerType,
     pay_frequency: employee.payFrequency,
@@ -239,6 +244,7 @@ const updateEmployee = asyncHandler(async (req, res, next) => {
                 ...(body.address !== undefined && { address: body.address?.trim() || null }),
                 ...(body.hire_date !== undefined && { hireDate: new Date(body.hire_date) }),
                 ...(body.termination_date !== undefined && { terminationDate: body.termination_date ? new Date(body.termination_date) : null }),
+                ...(body.contract_end_date !== undefined && { contractEndDate: body.contract_end_date ? new Date(body.contract_end_date) : null }),
                 ...(body.contract_type !== undefined && { contractType: body.contract_type }),
                 ...(body.worker_type !== undefined && { workerType: body.worker_type }),
                 ...(body.pay_frequency !== undefined && { payFrequency: body.pay_frequency }),

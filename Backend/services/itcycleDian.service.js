@@ -684,6 +684,41 @@ export const retryItcyclePayrollSend = async ({ apiKey, id, send }) => {
     });
 };
 
+// Nómina Individual de Ajuste ("1" Reemplazar / "2" Eliminar) - a correction
+// against an already-ACCEPTED payroll document, always referencing it by
+// itcycle-api-dian's own payrollDocumentId (that side derives predecessorCune
+// from its own record, never trusts the caller - see nomina.service.ts's
+// createPayrollAdjustment). Body field names match itcycle-api-dian's own
+// CreatePayrollAdjustmentBodySchema.
+export const createItcyclePayrollAdjustment = async ({ apiKey, internalReference, payrollDocumentId, adjustmentType, payroll, send }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "POST",
+        path: "/api/v1/documents/payroll-adjustments",
+        body: { internalReference, payrollDocumentId, adjustmentType, payroll, send },
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
+export const getItcyclePayrollAdjustmentStatus = async ({ apiKey, id }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "GET",
+        path: `/api/v1/documents/payroll-adjustments/${id}`,
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
+export const retryItcyclePayrollAdjustmentSend = async ({ apiKey, id, send }) => {
+    if (!isItcycleConfigured()) throw new Error("itcycle-api-dian is not configured (ITCYCLE_API_URL)");
+    return request({
+        method: "POST",
+        path: `/api/v1/documents/payroll-adjustments/${id}/retry-send`,
+        body: { send },
+        authHeader: companyAuthHeader(apiKey),
+    });
+};
+
 // Receipt acknowledgment events (acuse de recibo / recibo del bien / aceptación
 // expresa / reclamo) for a THIRD-PARTY supplier's own DIAN invoice - ET art.
 // 616-1 / Ley 2155 de 2021 art. 13. PHASE 1: itcycle-api-dian only accepts

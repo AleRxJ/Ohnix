@@ -10,6 +10,7 @@
 
 import { prisma } from "../db/prisma.js";
 import { checkSeasonalExplanation } from "./detectors/customerChurnRisk.detector.js";
+import { resolveIsEnglish } from "./discoveryLocale.service.js";
 
 // Shown to the user as the fixed set of selectable tags - keep this in sync
 // with Frontend/src/components/discoveries/discoveryMeta.js's
@@ -42,9 +43,11 @@ export const runExplanationCheck = async ({ accountId, discovery, tag, db = pris
     const result = await checker({ accountId, discovery, db });
     if (!result) return null;
 
+    const isEN = await resolveIsEnglish({ accountId, db });
+
     return {
         kind: "explanation_check",
-        label: "Contraste de tu explicación con la evidencia",
+        label: isEN ? "Your explanation checked against the evidence" : "Contraste de tu explicación con la evidencia",
         data: result,
         sourceType: null,
         sourceId: null,

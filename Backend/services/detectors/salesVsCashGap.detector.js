@@ -15,6 +15,7 @@
 import { prisma } from "../../db/prisma.js";
 import { upsertMetricSnapshot } from "../metricSnapshot.service.js";
 import { upsertDiscovery } from "../discoveryEngine.service.js";
+import { resolveIsEnglish } from "../discoveryLocale.service.js";
 
 export const DETECTOR_KEY = "sales_vs_cash_gap";
 
@@ -133,25 +134,50 @@ export const runSalesVsCashGapDetector = async ({ accountId, db = prisma, now = 
     const novelty = 0.6;
     const reversibility = 0.55; // a collections/cartera process fix, not structural
 
+    const isEN = await resolveIsEnglish({ accountId, db });
+    const copy = isEN
+        ? {
+              title: "Revenue is growing, but cash collected isn't keeping up",
+              summary: `Over the last ${MONTHS_WINDOW} months revenue grew ${round1(revenueTrend.growthPct)}% (first half of the period vs. the second half), but cash actually collected from those sales grew only ${round1(cashTrend.growthPct)}% over the same span. That ${round1(gapPct)}-point gap usually means accounts receivable is quietly absorbing the growth.`,
+              hypothesis: "Sales growth is being financed by giving customers more time to pay, not by more cash coming in - if nothing changes, the gap between what's billed and what's collected should keep widening.",
+              unknowns: "We still don't know if this is a deliberate decision (terms to win customers), a collections problem, or a few concentrated customers falling behind - or which specific customers explain the gap.",
+              recommendation: "Review the accounts receivable (AR) report to identify which customers concentrate the growth in outstanding balance, and whether their payment terms have stretched compared to prior months.",
+              revenueSeriesLabel: "Monthly revenue (Order.total)",
+              cashSeriesLabel: "Monthly cash collected (CashMovement, order_payment)",
+              comparisonLabel: "Revenue growth vs. cash collected growth (1st half vs. 2nd half of the period)",
+              predictionStatement: "If this gap continues, the outstanding AR balance should keep growing faster than sales over the next 90 days.",
+          }
+        : {
+              title: "La facturación está creciendo, pero el efectivo cobrado no la está siguiendo",
+              summary: `En los últimos ${MONTHS_WINDOW} meses la facturación creció ${round1(revenueTrend.growthPct)}% (primera mitad del período vs. segunda mitad), pero el efectivo realmente cobrado por esas ventas creció solo ${round1(cashTrend.growthPct)}% en el mismo lapso. Esa brecha de ${round1(gapPct)} puntos porcentuales normalmente significa que la cartera (cuentas por cobrar) está absorbiendo el crecimiento en silencio.`,
+              hypothesis: "El crecimiento de ventas se está financiando dando más plazo a los clientes, no con más efectivo entrando - si nada cambia, la brecha entre lo facturado y lo cobrado debería seguir ampliándose.",
+              unknowns: "Todavía no sabemos si es una decisión deliberada (plazo para ganar clientes), un problema de cobranza, o clientes concentrados atrasándose - ni cuáles clientes específicos explican la brecha.",
+              recommendation: "Revisar el reporte de cartera (AR) para identificar qué clientes concentran el crecimiento del saldo pendiente y si su plazo de pago se ha extendido frente a meses anteriores.",
+              revenueSeriesLabel: "Facturación mensual (Order.total)",
+              cashSeriesLabel: "Efectivo cobrado mensual (CashMovement, order_payment)",
+              comparisonLabel: "Crecimiento facturación vs. efectivo cobrado (1ª mitad vs. 2ª mitad del período)",
+              predictionStatement: "Si esta brecha continúa, el saldo de cartera pendiente debería seguir creciendo por encima del crecimiento de ventas en los próximos 90 días.",
+          };
+
     const { discovery, created } = await upsertDiscovery({
         accountId,
         detectorKey: DETECTOR_KEY,
         type: "contradiction",
         dedupeKey: `${DETECTOR_KEY}:account`,
-        title: "La facturación está creciendo, pero el efectivo cobrado no la está siguiendo",
-        summary: `En los últimos ${MONTHS_WINDOW} meses la facturación creció ${round1(revenueTrend.growthPct)}% (primera mitad del período vs. segunda mitad), pero el efectivo realmente cobrado por esas ventas creció solo ${round1(cashTrend.growthPct)}% en el mismo lapso. Esa brecha de ${round1(gapPct)} puntos porcentuales normalmente significa que la cartera (cuentas por cobrar) está absorbiendo el crecimiento en silencio.`,
-        hypothesis: "El crecimiento de ventas se está financiando dando más plazo a los clientes, no con más efectivo entrando - si nada cambia, la brecha entre lo facturado y lo cobrado debería seguir ampliándose.",
-        unknowns: "Todavía no sabemos si es una decisión deliberada (plazo para ganar clientes), un problema de cobranza, o clientes concentrados atrasándose - ni cuáles clientes específicos explican la brecha.",
-        recommendation: "Revisar el reporte de cartera (AR) para identificar qué clientes concentran el crecimiento del saldo pendiente y si su plazo de pago se ha extendido frente a meses anteriores.",
+        title: copy.title,
+        summary: copy.summary,
+        hypothesis: copy.hypothesis,
+        unknowns: copy.unknowns,
+        recommendation: copy.recommendation,
         scores: { impact, novelty, urgency, confidence, reversibility },
         entityCount: 1,
         patternSince: monthBounds(monthKeys[0]).start,
         evidence: [
-            { kind: "metric_series", label: "Facturación mensual (Order.total)", data: revenueSeries, sourceType: "order", sourceId: null },
-            { kind: "metric_series", label: "Efectivo cobrado mensual (CashMovement, order_payment)", data: cashSeries, sourceType: "cash_movement", sourceId: null },
+            { kind: "metric_series", label: copy.revenueSeriesLabel, data: revenueSeries, sourceType: "order", sourceId: null },
+            { kind: "metric_series", label: copy.cashSeriesLabel, data: cashSeries, sourceType: "cash_movement", sourceId: null },
             {
                 kind: "comparison",
-                label: "Crecimiento facturación vs. efectivo cobrado (1ª mitad vs. 2ª mitad del período)",
+                label: copy.comparisonLabel,
                 data: {
                     revenue_growth_pct: round1(revenueTrend.growthPct),
                     cash_growth_pct: round1(cashTrend.growthPct),
@@ -166,7 +192,7 @@ export const runSalesVsCashGapDetector = async ({ accountId, db = prisma, now = 
         entities: [{ entityType: "cash_flow", entityId: accountId, role: "account_wide", metadata: { months: monthKeys } }],
         predictions: [
             {
-                statement: "Si esta brecha continúa, el saldo de cartera pendiente debería seguir creciendo por encima del crecimiento de ventas en los próximos 90 días.",
+                statement: copy.predictionStatement,
                 predictedData: { expected_direction: "cartera_growth_outpaces_revenue_growth", gap_pct_at_prediction: round1(gapPct) },
                 confidenceAtStake: confidence,
                 checkAfter: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000),
@@ -197,15 +223,37 @@ export const checkPrediction = async ({ accountId, prediction, db = prisma, now 
         months_with_revenue_at_check: monthsWithRevenue,
     };
 
+    const isEN = await resolveIsEnglish({ accountId, db });
+
     if (monthsWithRevenue < MIN_MONTHS_WITH_DATA) {
-        return { outcome: "inconclusive", actualData, notes: "No hay suficiente historia de facturación reciente para volver a medir la brecha." };
+        return {
+            outcome: "inconclusive",
+            actualData,
+            notes: isEN ? "Not enough recent revenue history to measure the gap again." : "No hay suficiente historia de facturación reciente para volver a medir la brecha.",
+        };
     }
 
     if (currentGapPct >= gapPctAtPrediction * 0.5) {
-        return { outcome: "correct", actualData, notes: "La brecha entre facturación y efectivo cobrado se mantuvo (o creció) frente al momento de la predicción." };
+        return {
+            outcome: "correct",
+            actualData,
+            notes: isEN
+                ? "The gap between revenue and cash collected held (or grew) compared to when the prediction was made."
+                : "La brecha entre facturación y efectivo cobrado se mantuvo (o creció) frente al momento de la predicción.",
+        };
     }
     if (currentGapPct <= 0) {
-        return { outcome: "incorrect", actualData, notes: "El efectivo cobrado se puso al día con la facturación - la brecha desapareció." };
+        return {
+            outcome: "incorrect",
+            actualData,
+            notes: isEN ? "Cash collected caught up with revenue - the gap disappeared." : "El efectivo cobrado se puso al día con la facturación - la brecha desapareció.",
+        };
     }
-    return { outcome: "inconclusive", actualData, notes: "La brecha se redujo de forma parcial - no es un caso claro de acierto ni de error." };
+    return {
+        outcome: "inconclusive",
+        actualData,
+        notes: isEN
+            ? "The gap narrowed partially - not a clear case of either a hit or a miss."
+            : "La brecha se redujo de forma parcial - no es un caso claro de acierto ni de error.",
+    };
 };

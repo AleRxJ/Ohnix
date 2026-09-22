@@ -49,6 +49,12 @@ const DEFAULT_ACCOUNTS = [
     { code: "2530", name: "Aportes de seguridad social por pagar", accountType: "liability" },
     { code: "2531", name: "Aportes parafiscales por pagar", accountType: "liability" },
     { code: "2370", name: "Retención en la fuente por pagar (nómina)", accountType: "liability" },
+    // Fase 3 (liquidación) - indemnización is never provisioned month-to-month
+    // the way cesantías/prima/vacaciones are (it only exists if/when a
+    // termination without justa causa actually happens), so it needs its own
+    // expense account rather than reusing 5115 - see
+    // accountingPosting.service.js#postTerminationSettlementJournalEntry.
+    { code: "5116", name: "Gastos de personal - Indemnizaciones laborales", accountType: "expense" },
 ];
 
 // Lazily seeds the default chart the first time a tenant needs one - same

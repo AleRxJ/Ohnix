@@ -226,11 +226,18 @@ export const createStatementEntries = asyncHandler(async (req, res, next) => {
         cashAccountId: cash_account_id,
         entries: (entries || []).map((e) => ({ entryDate: e.entry_date, description: e.description, amount: e.amount, importFingerprint: e.import_fingerprint })),
     });
-    return res.status(201).json(new ApiResponse(201, {
+    const hasErrors = result.errors.length > 0;
+    // 207 (partial success) when some rows failed, same convention as
+    // product.bulk.controller.js's CSV importer - the caller still gets its
+    // valid rows imported, with `errors` naming exactly which ones didn't.
+    return res.status(hasErrors ? 207 : 201).json(new ApiResponse(hasErrors ? 207 : 201, {
         entries: result.unmatched.map(mapStatementEntry),
         imported_count: result.importedCount,
         skipped_count: result.skippedCount,
-    }, "Statement entries created successfully"));
+        errors: result.errors,
+    }, hasErrors
+        ? `${result.importedCount} entries imported, ${result.errors.length} row(s) skipped.`
+        : "Statement entries created successfully"));
 });
 
 export const listUnmatchedStatementEntries = asyncHandler(async (req, res, next) => {

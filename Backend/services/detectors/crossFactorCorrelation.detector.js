@@ -24,6 +24,7 @@
 import { prisma } from "../../db/prisma.js";
 import { upsertDiscovery } from "../discoveryEngine.service.js";
 import { getEnabledDimensionKeys } from "../discoveryDimensionConfig.service.js";
+import { resolveIsEnglish } from "../discoveryLocale.service.js";
 
 export const DETECTOR_KEY = "cross_factor_correlation";
 
@@ -39,8 +40,14 @@ const MIN_ABS_DIFF_PCT = 10;
 const MIN_INTERACTION_LIFT = 1.25;
 const MAX_FINDINGS = 2;
 
-const DAY_LABELS_ES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-const MONTH_LABELS_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const DAY_LABELS = {
+    es: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"],
+    en: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+};
+const MONTH_LABELS = {
+    es: ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"],
+    en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+};
 
 const round1 = (n) => Number(n.toFixed(1));
 const round2 = (n) => Number(n.toFixed(2));
@@ -64,51 +71,55 @@ const zScoreForProportion = (sliceRate, baselineRate, sliceN) => {
 // adding search surface is a deliberate config change, not a silent
 // widening of what a deploy does. Turning one on later is a database write,
 // not a deploy - that's the entire point of this being data.
-const DIMENSION_REGISTRY = [
+// `label`/`labelOf` are a function of isEN for the same reason
+// new_pattern_return_rate.detector.js's DIMENSIONS became one - dimAlabel/
+// valueALabel end up embedded in the title/summary text and in evidence
+// data shown to the user.
+const buildDimensionRegistry = (isEN) => [
     {
         key: "day_of_week",
-        label: "Día de la semana",
+        label: isEN ? "Day of week" : "Día de la semana",
         defaultEnabled: true,
         valueOf: (order) => String(new Date(order.orderDate).getUTCDay()),
-        labelOf: (value) => DAY_LABELS_ES[Number(value)],
+        labelOf: (value) => (isEN ? DAY_LABELS.en : DAY_LABELS.es)[Number(value)],
     },
     {
         key: "channel",
-        label: "Canal de venta",
+        label: isEN ? "Sales channel" : "Canal de venta",
         defaultEnabled: true,
         valueOf: (order) => order.channel,
         labelOf: (value) => value,
     },
     {
         key: "point_of_sale",
-        label: "Punto de venta",
+        label: isEN ? "Point of sale" : "Punto de venta",
         defaultEnabled: true,
         valueOf: (order) => order.pointOfSaleId,
         labelOf: (value, posNames) => posNames.get(value) || value,
     },
     {
         key: "customer_type",
-        label: "Tipo de cliente",
+        label: isEN ? "Customer type" : "Tipo de cliente",
         defaultEnabled: true,
         valueOf: (order) => order.customerType || "regular",
         labelOf: (value) => value,
     },
     {
         key: "is_weekend",
-        label: "Fin de semana",
+        label: isEN ? "Weekend" : "Fin de semana",
         defaultEnabled: false,
         valueOf: (order) => {
             const day = new Date(order.orderDate).getUTCDay();
             return day === 0 || day === 6 ? "weekend" : "weekday";
         },
-        labelOf: (value) => (value === "weekend" ? "fin de semana" : "entre semana"),
+        labelOf: (value) => (isEN ? (value === "weekend" ? "weekend" : "weekday") : value === "weekend" ? "fin de semana" : "entre semana"),
     },
     {
         key: "month_of_year",
-        label: "Mes del año",
+        label: isEN ? "Month of year" : "Mes del año",
         defaultEnabled: false,
         valueOf: (order) => String(new Date(order.orderDate).getUTCMonth()),
-        labelOf: (value) => MONTH_LABELS_ES[Number(value)],
+        labelOf: (value) => (isEN ? MONTH_LABELS.en : MONTH_LABELS.es)[Number(value)],
     },
 ];
 
@@ -117,8 +128,10 @@ const pairsOf = (dimensions) => dimensions.flatMap((a, i) => dimensions.slice(i 
 // Metadata-only view for the admin config endpoint (routes/
 // discoveryDimensionConfig.routes.js) - deliberately excludes valueOf/
 // labelOf: those are the reviewed extraction logic itself and must never
-// leave this module, let alone reach an HTTP response.
-export const DIMENSION_METADATA = DIMENSION_REGISTRY.map(({ key, label, defaultEnabled }) => ({ key, label, defaultEnabled }));
+// leave this module, let alone reach an HTTP response. Spanish-only for
+// now (the admin tool is internal, unlike the customer-facing Discovery
+// text below) - not wired to the requesting admin's own preferredLanguage.
+export const DIMENSION_METADATA = buildDimensionRegistry(false).map(({ key, label, defaultEnabled }) => ({ key, label, defaultEnabled }));
 
 // `dimensionKeys`, when passed, FORCES exactly those dimensions into the
 // search regardless of what's currently enabled - used only by
@@ -127,7 +140,8 @@ export const DIMENSION_METADATA = DIMENSION_REGISTRY.map(({ key, label, defaultE
 // dimension has since been turned off (disabling one only stops NEW
 // searches from using it, it must never make an already-published finding
 // impossible to re-check).
-export const computeCrossFactorFindings = async ({ accountId, db = prisma, dimensionKeys = null }) => {
+export const computeCrossFactorFindings = async ({ accountId, db = prisma, dimensionKeys = null, isEN = false }) => {
+    const DIMENSION_REGISTRY = buildDimensionRegistry(isEN);
     const rawOrders = await db.order.findMany({
         where: { createdById: accountId, orderStatus: { in: ["completed", "returned"] } },
         select: { orderDate: true, channel: true, pointOfSaleId: true, orderStatus: true, customer: { select: { type: true } } },
@@ -256,7 +270,8 @@ export const computeCrossFactorFindings = async ({ accountId, db = prisma, dimen
 };
 
 export const runCrossFactorCorrelationDetector = async ({ accountId, db = prisma }) => {
-    const { findings, reason } = await computeCrossFactorFindings({ accountId, db });
+    const isEN = await resolveIsEnglish({ accountId, db });
+    const { findings, reason } = await computeCrossFactorFindings({ accountId, db, isEN });
     if (findings.length === 0) {
         return { discovery: null, created: false, reason: reason || "no_pattern_found" };
     }
@@ -275,23 +290,45 @@ export const runCrossFactorCorrelationDetector = async ({ accountId, db = prisma
         const novelty = 0.8;
         const reversibility = 0.6;
 
+        const copy = isEN
+            ? {
+                  title: `Found a combination nobody had crossed before: "${finding.valueALabel}" + "${finding.valueBLabel}" drives up the return rate`,
+                  summary: `Orders where "${finding.dimALabel.toLowerCase()}" is "${finding.valueALabel}" AND "${finding.dimBLabel.toLowerCase()}" is "${finding.valueBLabel}" at the same time (${finding.sliceOrders} orders) have a ${finding.combinedRatePct}% return rate, vs. the account's overall ${finding.baselineRatePct}%. Separately, "${finding.valueALabel}" has ${finding.rateAPct}% and "${finding.valueBLabel}" has ${finding.rateBPct}% - neither condition alone explains what happens when they occur together.`,
+                  hypothesis: `This specific combination wasn't defined in any report or alert - I found it by automatically crossing "${finding.dimALabel.toLowerCase()}" and "${finding.dimBLabel.toLowerCase()}" against the rest of the account. Something about that specific combination (not each condition separately) is associated with more returns.`,
+                  unknowns: "We don't yet know if there's a third underlying variable explaining both conditions at once (e.g. an employee, a supplier, or a product that coincides with this combination), nor whether the cause is logistics, quality, or customer expectations.",
+                  recommendation: `Review a sample of orders with "${finding.valueALabel}" + "${finding.valueBLabel}" to look for a common cause before treating them as two separate problems.`,
+                  comparisonLabel: "Return rate: combination vs. each condition separately vs. the account",
+                  distributionLabel: `Return rate within "${finding.valueALabel}", by "${finding.dimBLabel.toLowerCase()}"`,
+                  predictionStatement: `If this combination is real, "${finding.valueALabel}" + "${finding.valueBLabel}" should keep showing a return rate above the overall average over the next 90 days.`,
+              }
+            : {
+                  title: `Encontré una combinación que nadie había cruzado antes: "${finding.valueALabel}" + "${finding.valueBLabel}" dispara la tasa de devolución`,
+                  summary: `Los pedidos donde "${finding.dimALabel.toLowerCase()}" es "${finding.valueALabel}" Y "${finding.dimBLabel.toLowerCase()}" es "${finding.valueBLabel}" a la vez (${finding.sliceOrders} pedidos) tienen ${finding.combinedRatePct}% de devoluciones, frente al ${finding.baselineRatePct}% general de la cuenta. Por separado, "${finding.valueALabel}" tiene ${finding.rateAPct}% y "${finding.valueBLabel}" tiene ${finding.rateBPct}% - ninguna de las dos condiciones por sí sola explica lo que pasa cuando ocurren juntas.`,
+                  hypothesis: `Esta combinación específica no estaba definida en ningún reporte ni alerta - la encontré cruzando automáticamente "${finding.dimALabel.toLowerCase()}" y "${finding.dimBLabel.toLowerCase()}" contra el resto de la cuenta. Hay algo en esa combinación concreta (no en cada condición por separado) asociado con más devoluciones.`,
+                  unknowns: "No sé todavía si hay una tercera variable de fondo explicando ambas condiciones a la vez (por ejemplo, un empleado, un proveedor o un producto que coincide con esta combinación), ni si la causa es logística, de calidad o de expectativa del cliente.",
+                  recommendation: `Revisar una muestra de pedidos con "${finding.valueALabel}" + "${finding.valueBLabel}" para buscar una causa común antes de tratarlas como dos problemas separados.`,
+                  comparisonLabel: "Tasa de devolución: combinación vs. cada condición por separado vs. la cuenta",
+                  distributionLabel: `Tasa de devolución dentro de "${finding.valueALabel}", por "${finding.dimBLabel.toLowerCase()}"`,
+                  predictionStatement: `Si esta combinación es real, "${finding.valueALabel}" + "${finding.valueBLabel}" debería seguir con una tasa de devolución por encima del promedio general en los próximos 90 días.`,
+              };
+
         const { discovery, created } = await upsertDiscovery({
             accountId,
             detectorKey: DETECTOR_KEY,
             type: "connection",
             dedupeKey: `${DETECTOR_KEY}:account:${finding.dimAKey}:${finding.valueA}:${finding.dimBKey}:${finding.valueB}`,
-            title: `Encontré una combinación que nadie había cruzado antes: "${finding.valueALabel}" + "${finding.valueBLabel}" dispara la tasa de devolución`,
-            summary: `Los pedidos donde "${finding.dimALabel.toLowerCase()}" es "${finding.valueALabel}" Y "${finding.dimBLabel.toLowerCase()}" es "${finding.valueBLabel}" a la vez (${finding.sliceOrders} pedidos) tienen ${finding.combinedRatePct}% de devoluciones, frente al ${finding.baselineRatePct}% general de la cuenta. Por separado, "${finding.valueALabel}" tiene ${finding.rateAPct}% y "${finding.valueBLabel}" tiene ${finding.rateBPct}% - ninguna de las dos condiciones por sí sola explica lo que pasa cuando ocurren juntas.`,
-            hypothesis: `Esta combinación específica no estaba definida en ningún reporte ni alerta - la encontré cruzando automáticamente "${finding.dimALabel.toLowerCase()}" y "${finding.dimBLabel.toLowerCase()}" contra el resto de la cuenta. Hay algo en esa combinación concreta (no en cada condición por separado) asociado con más devoluciones.`,
-            unknowns: "No sé todavía si hay una tercera variable de fondo explicando ambas condiciones a la vez (por ejemplo, un empleado, un proveedor o un producto que coincide con esta combinación), ni si la causa es logística, de calidad o de expectativa del cliente.",
-            recommendation: `Revisar una muestra de pedidos con "${finding.valueALabel}" + "${finding.valueBLabel}" para buscar una causa común antes de tratarlas como dos problemas separados.`,
+            title: copy.title,
+            summary: copy.summary,
+            hypothesis: copy.hypothesis,
+            unknowns: copy.unknowns,
+            recommendation: copy.recommendation,
             scores: { impact, novelty, urgency, confidence, reversibility },
             entityCount: 0,
             patternSince: null,
             evidence: [
                 {
                     kind: "comparison",
-                    label: "Tasa de devolución: combinación vs. cada condición por separado vs. la cuenta",
+                    label: copy.comparisonLabel,
                     data: {
                         dimension: `${finding.dimALabel} + ${finding.dimBLabel}`,
                         value: `${finding.valueALabel} + ${finding.valueBLabel}`,
@@ -307,7 +344,7 @@ export const runCrossFactorCorrelationDetector = async ({ accountId, db = prisma
                 },
                 {
                     kind: "cohort_sample",
-                    label: `Tasa de devolución dentro de "${finding.valueALabel}", por "${finding.dimBLabel.toLowerCase()}"`,
+                    label: copy.distributionLabel,
                     data: finding.withinADistribution,
                     sourceType: null,
                     sourceId: null,
@@ -316,7 +353,7 @@ export const runCrossFactorCorrelationDetector = async ({ accountId, db = prisma
             entities: [],
             predictions: [
                 {
-                    statement: `Si esta combinación es real, "${finding.valueALabel}" + "${finding.valueBLabel}" debería seguir con una tasa de devolución por encima del promedio general en los próximos 90 días.`,
+                    statement: copy.predictionStatement,
                     predictedData: {
                         dim_a_key: finding.dimAKey,
                         value_a: finding.valueA,
@@ -342,12 +379,17 @@ export const runCrossFactorCorrelationDetector = async ({ accountId, db = prisma
 // against the account's CURRENT data and checks whether the interaction
 // held up - same shape as new_pattern_return_rate.detector.js#checkPrediction.
 export const checkPrediction = async ({ accountId, prediction, db = prisma }) => {
+    const isEN = await resolveIsEnglish({ accountId, db });
     const { dim_a_key: dimAKey, value_a: valueA, dim_b_key: dimBKey, value_b: valueB } = prediction.predictedData || {};
     if (!dimAKey || valueA === undefined || !dimBKey || valueB === undefined) {
-        return { outcome: "inconclusive", actualData: {}, notes: "La predicción no registró una combinación específica para volver a evaluar." };
+        return {
+            outcome: "inconclusive",
+            actualData: {},
+            notes: isEN ? "The prediction didn't record a specific combination to re-evaluate." : "La predicción no registró una combinación específica para volver a evaluar.",
+        };
     }
 
-    const { candidates } = await computeCrossFactorFindings({ accountId, db, dimensionKeys: [dimAKey, dimBKey] });
+    const { candidates } = await computeCrossFactorFindings({ accountId, db, dimensionKeys: [dimAKey, dimBKey], isEN });
     const stillFlagged = (candidates || []).find(
         (f) => f.dimAKey === dimAKey && String(f.valueA) === String(valueA) && f.dimBKey === dimBKey && String(f.valueB) === String(valueB)
     );
@@ -361,7 +403,19 @@ export const checkPrediction = async ({ accountId, prediction, db = prisma }) =>
     };
 
     if (stillFlagged) {
-        return { outcome: "correct", actualData, notes: "La combinación sigue teniendo una tasa de devolución notablemente por encima del promedio de la cuenta." };
+        return {
+            outcome: "correct",
+            actualData,
+            notes: isEN
+                ? "The combination still has a return rate notably above the account average."
+                : "La combinación sigue teniendo una tasa de devolución notablemente por encima del promedio de la cuenta.",
+        };
     }
-    return { outcome: "incorrect", actualData, notes: "La combinación ya no muestra una tasa de devolución fuera de lo normal - la brecha se cerró." };
+    return {
+        outcome: "incorrect",
+        actualData,
+        notes: isEN
+            ? "The combination no longer shows an unusual return rate - the gap closed."
+            : "La combinación ya no muestra una tasa de devolución fuera de lo normal - la brecha se cerró.",
+    };
 };

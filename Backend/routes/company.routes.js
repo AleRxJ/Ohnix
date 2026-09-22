@@ -19,6 +19,7 @@ import {
     getExternalApiClientUsageAdmin,
     createExternalApiClientBillingEnrollmentLinkAdmin,
     getExternalApiClientBillingHistoryAdmin,
+    sendExternalApiClientUpsellEmailAdmin,
     listIncomeTaxYearConfigsAdmin,
     upsertIncomeTaxYearConfigAdmin,
     setIncomeTaxYearConfigVerifiedAdmin,
@@ -60,6 +61,7 @@ router.route("/admin/itcycle/external-clients/:id/usage").get(getExternalApiClie
 // and lists the charge audit trail apiClientBillingScheduler.js writes to.
 router.route("/admin/itcycle/external-clients/:id/billing-enrollment-link").post(createExternalApiClientBillingEnrollmentLinkAdmin);
 router.route("/admin/itcycle/external-clients/:id/billing-history").get(getExternalApiClientBillingHistoryAdmin);
+router.route("/admin/itcycle/external-clients/:id/upsell-email").post(sendExternalApiClientUpsellEmailAdmin);
 
 // Renta/RST reference tables - see company.controller.js's comment on why
 // this lives here (isAdmin) instead of accounting.routes.js.

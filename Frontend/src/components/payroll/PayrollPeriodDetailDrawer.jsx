@@ -1,11 +1,17 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Drawer, Typography, Spin, Button, Popconfirm, Collapse, InputNumber } from "antd";
-import { CheckOutlined, CloseOutlined, BankOutlined, FilePdfOutlined, DollarOutlined } from "@ant-design/icons";
+import { CheckOutlined, CloseOutlined, BankOutlined, FilePdfOutlined, DollarOutlined, SendOutlined, SyncOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import useI18n from "../../hooks/useI18n";
 import { useCurrency } from "../../context/CurrencyContext";
 import { payrollService } from "../../services/payrollService";
 import EmptyState from "../common/EmptyState";
+import StatusPill from "../common/StatusPill";
+
+// itcycle-api-dian's own PayrollDocument.status values (reused ElectronicInvoiceStatus)
+// that this drawer can still resend/refresh from - see electronicPayroll.service.js.
+const ELECTRONIC_PAYROLL_ISSUABLE_STATUSES = [undefined, null, "draft", "error", "rejected"];
+const ELECTRONIC_PAYROLL_SYNCABLE_STATUSES = ["issuing", "submitted", "contingency"];
 
 const STATUS_COLORS = { draft: "#8b98a0", calculated: "#7c6af7", approved: "#f59e0b", paid: "#44f3f0", cancelled: "#fb7185" };
 
@@ -30,6 +36,7 @@ const PayrollPeriodDetailDrawer = ({ periodId, canEdit, onClose, onCalculate, on
     const [status, setStatus] = useState("loading");
     const [actionLoading, setActionLoading] = useState(false);
     const [workedDaysEdits, setWorkedDaysEdits] = useState({});
+    const [electronicPayrollLoading, setElectronicPayrollLoading] = useState({});
 
     const load = useCallback(async () => {
         if (!periodId) return;
@@ -75,6 +82,54 @@ const PayrollPeriodDetailDrawer = ({ periodId, canEdit, onClose, onCalculate, on
             toast.error(t("payroll.failed_download_payslip"));
         }
     };
+
+    const runElectronicPayrollAction = async (documentId, fn, successMessage, failureKey) => {
+        setElectronicPayrollLoading((prev) => ({ ...prev, [documentId]: true }));
+        try {
+            await fn(documentId);
+            toast.success(successMessage);
+            await load();
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t(failureKey));
+        } finally {
+            setElectronicPayrollLoading((prev) => ({ ...prev, [documentId]: false }));
+        }
+    };
+
+    const issueElectronicPayroll = (documentId) =>
+        runElectronicPayrollAction(documentId, payrollService.issueElectronicPayroll, t("payroll.electronic_payroll_issued"), "payroll.failed_issue_electronic_payroll");
+
+    const syncElectronicPayroll = (documentId) =>
+        runElectronicPayrollAction(documentId, payrollService.syncElectronicPayroll, t("payroll.electronic_payroll_synced"), "payroll.failed_sync_electronic_payroll");
+
+    const issueAllElectronicPayroll = async () => {
+        setActionLoading(true);
+        try {
+            await payrollService.issueAllElectronicPayroll(period._id);
+            toast.success(t("payroll.electronic_payroll_bulk_started"));
+            await load();
+        } catch (err) {
+            toast.error(err?.response?.data?.message || t("payroll.failed_issue_electronic_payroll"));
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const issueElectronicPayrollAdjustment = (documentId, adjustmentType) =>
+        runElectronicPayrollAction(
+            documentId,
+            (id) => payrollService.issueElectronicPayrollAdjustment(id, adjustmentType),
+            t("payroll.electronic_payroll_adjustment_issued"),
+            "payroll.failed_issue_electronic_payroll_adjustment"
+        );
+
+    const syncElectronicPayrollAdjustment = (documentId, adjustmentId) =>
+        runElectronicPayrollAction(
+            `${documentId}:${adjustmentId}`,
+            () => payrollService.syncElectronicPayrollAdjustment(documentId, adjustmentId),
+            t("payroll.electronic_payroll_synced"),
+            "payroll.failed_sync_electronic_payroll"
+        );
 
     return (
         <Drawer
@@ -138,6 +193,13 @@ const PayrollPeriodDetailDrawer = ({ periodId, canEdit, onClose, onCalculate, on
                                     </Button>
                                 </Popconfirm>
                             )}
+                            {["approved", "paid"].includes(period.status) && (
+                                <Popconfirm title={t("payroll.issue_all_electronic_payroll_confirm")} okText={t("common.yes")} cancelText={t("common.no")} onConfirm={issueAllElectronicPayroll}>
+                                    <Button icon={<SendOutlined />} loading={actionLoading} className="h-9 rounded-md">
+                                        {t("payroll.issue_all_electronic_payroll")}
+                                    </Button>
+                                </Popconfirm>
+                            )}
                         </div>
                     )}
 
@@ -187,6 +249,76 @@ const PayrollPeriodDetailDrawer = ({ periodId, canEdit, onClose, onCalculate, on
                                         <Button size="small" icon={<FilePdfOutlined />} onClick={() => downloadPayslip(doc._id, doc.employee_name)}>
                                             {t("payroll.download_payslip")}
                                         </Button>
+                                    )}
+                                    {["approved", "paid"].includes(period.status) && (
+                                        <div className="flex items-center gap-2 pt-1 border-t border-[var(--ohnix-line-4)] mt-1">
+                                            <span className="text-xs text-[var(--ohnix-text-muted)]">{t("payroll.electronic_payroll")}</span>
+                                            {doc.electronic_payroll && <StatusPill status={doc.electronic_payroll.status} />}
+                                            {ELECTRONIC_PAYROLL_ISSUABLE_STATUSES.includes(doc.electronic_payroll?.status) && (
+                                                <Button
+                                                    size="small"
+                                                    icon={<SendOutlined />}
+                                                    loading={Boolean(electronicPayrollLoading[doc._id])}
+                                                    onClick={() => issueElectronicPayroll(doc._id)}
+                                                >
+                                                    {t("payroll.issue_electronic_payroll")}
+                                                </Button>
+                                            )}
+                                            {ELECTRONIC_PAYROLL_SYNCABLE_STATUSES.includes(doc.electronic_payroll?.status) && (
+                                                <Button
+                                                    size="small"
+                                                    icon={<SyncOutlined />}
+                                                    loading={Boolean(electronicPayrollLoading[doc._id])}
+                                                    onClick={() => syncElectronicPayroll(doc._id)}
+                                                >
+                                                    {t("payroll.sync_electronic_payroll")}
+                                                </Button>
+                                            )}
+                                            {doc.electronic_payroll?.status === "accepted" && (
+                                                <>
+                                                    <Popconfirm
+                                                        title={t("payroll.correct_electronic_payroll_confirm")}
+                                                        okText={t("common.yes")}
+                                                        cancelText={t("common.no")}
+                                                        onConfirm={() => issueElectronicPayrollAdjustment(doc._id, "1")}
+                                                    >
+                                                        <Button size="small" loading={Boolean(electronicPayrollLoading[doc._id])}>
+                                                            {t("payroll.correct_electronic_payroll")}
+                                                        </Button>
+                                                    </Popconfirm>
+                                                    <Popconfirm
+                                                        title={t("payroll.void_electronic_payroll_confirm")}
+                                                        okText={t("common.yes")}
+                                                        cancelText={t("common.no")}
+                                                        onConfirm={() => issueElectronicPayrollAdjustment(doc._id, "2")}
+                                                    >
+                                                        <Button size="small" danger loading={Boolean(electronicPayrollLoading[doc._id])}>
+                                                            {t("payroll.void_electronic_payroll")}
+                                                        </Button>
+                                                    </Popconfirm>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                    {doc.electronic_payroll?.adjustments?.length > 0 && (
+                                        <div className="flex flex-col gap-1.5 pl-2 border-l-2 border-[var(--ohnix-line-4)]">
+                                            <span className="text-xs text-[var(--ohnix-text-muted)]">{t("payroll.electronic_payroll_adjustments")}</span>
+                                            {doc.electronic_payroll.adjustments.map((adjustment) => (
+                                                <div key={adjustment._id} className="flex items-center gap-2">
+                                                    <StatusPill status={adjustment.status} />
+                                                    {ELECTRONIC_PAYROLL_SYNCABLE_STATUSES.includes(adjustment.status) && (
+                                                        <Button
+                                                            size="small"
+                                                            icon={<SyncOutlined />}
+                                                            loading={Boolean(electronicPayrollLoading[`${doc._id}:${adjustment._id}`])}
+                                                            onClick={() => syncElectronicPayrollAdjustment(doc._id, adjustment._id)}
+                                                        >
+                                                            {t("payroll.sync_electronic_payroll")}
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
                             ),

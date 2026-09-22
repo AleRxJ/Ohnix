@@ -81,4 +81,65 @@ export const payrollService = {
         });
         return response.data;
     },
+    // Nómina Electrónica (DIAN) - mirrors electronicInvoiceService.js's
+    // issue/sync shape, scoped to one employee's payslip instead of one order.
+    async getElectronicPayroll(documentId) {
+        const response = await api.get(`/payroll/documents/${documentId}/electronic-payroll`);
+        return response.data;
+    },
+    async issueElectronicPayroll(documentId) {
+        const response = await api.post(`/payroll/documents/${documentId}/electronic-payroll/issue`, {}, idempotencyHeaders());
+        return response.data;
+    },
+    async syncElectronicPayroll(documentId) {
+        const response = await api.post(`/payroll/documents/${documentId}/electronic-payroll/sync`);
+        return response.data;
+    },
+    async issueAllElectronicPayroll(periodId) {
+        const response = await api.post(`/payroll/periods/${periodId}/electronic-payroll/issue-all`, {}, idempotencyHeaders());
+        return response.data;
+    },
+    // Nómina Individual de Ajuste - adjustmentType is "1" (reemplazar) or "2" (eliminar).
+    async issueElectronicPayrollAdjustment(documentId, adjustmentType) {
+        const response = await api.post(
+            `/payroll/documents/${documentId}/electronic-payroll/adjustments`,
+            { adjustment_type: adjustmentType },
+            idempotencyHeaders()
+        );
+        return response.data;
+    },
+    async syncElectronicPayrollAdjustment(documentId, adjustmentId) {
+        const response = await api.post(`/payroll/documents/${documentId}/electronic-payroll/adjustments/${adjustmentId}/sync`);
+        return response.data;
+    },
+    // Liquidación definitiva - preview never writes, so no idempotency key.
+    async previewTermination({ employeeId, terminationDate, terminationReason, remainingWorkDays, manualIndemnityOverride }) {
+        const response = await api.post("/payroll/terminations/preview", {
+            employee_id: employeeId,
+            termination_date: terminationDate,
+            termination_reason: terminationReason,
+            remaining_work_days: remainingWorkDays,
+            manual_indemnity_override: manualIndemnityOverride,
+        });
+        return response.data;
+    },
+    async settleTermination({ employeeId, terminationDate, terminationReason, remainingWorkDays, manualIndemnityOverride, cashAccountId }) {
+        const response = await api.post(
+            "/payroll/terminations",
+            {
+                employee_id: employeeId,
+                termination_date: terminationDate,
+                termination_reason: terminationReason,
+                remaining_work_days: remainingWorkDays,
+                manual_indemnity_override: manualIndemnityOverride,
+                cash_account_id: cashAccountId,
+            },
+            idempotencyHeaders()
+        );
+        return response.data;
+    },
+    async downloadTerminationPdf(employeeId) {
+        const response = await api.get(`/payroll/terminations/${employeeId}/pdf`, { responseType: "blob" });
+        return response.data;
+    },
 };

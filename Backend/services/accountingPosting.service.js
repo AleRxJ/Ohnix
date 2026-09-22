@@ -292,6 +292,48 @@ export const postBenefitSettlementJournalEntry = async (
     });
 };
 
+// Consolidated "acta de liquidación" entry - see
+// payrollTermination.service.js#settleTermination. Unlike
+// postBenefitSettlementJournalEntry (which only ever settles ONE already-
+// provisioned liability), this drains however many of the four prestación
+// accounts actually had a pending balance, in the SAME entry, plus an
+// expense line for indemnización (5116) when one was paid - indemnización
+// is never provisioned month-to-month the way the other four are, so it has
+// no liability leg to debit, only a fresh expense.
+export const postTerminationSettlementJournalEntry = async (
+    tx,
+    { accountId, createdById, settlement, employeeName, cashAccount, entryDate = new Date() }
+) => {
+    const coa = await getChartAccountMap(tx, accountId);
+    const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
+
+    const lines = [];
+    const addLiabilityDebit = (code, amount) => {
+        if (round2(amount) > 0) lines.push({ chartAccountId: coa.get(code).id, debit: round2(amount), credit: 0 });
+    };
+    addLiabilityDebit("2510", settlement.severanceAmount);
+    addLiabilityDebit("2515", settlement.severanceInterestAmount);
+    addLiabilityDebit("2520", settlement.serviceBonusAmount);
+    addLiabilityDebit("2525", settlement.vacationAmount);
+    if (round2(settlement.indemnityAmount) > 0) {
+        lines.push({ chartAccountId: coa.get("5116").id, debit: round2(settlement.indemnityAmount), credit: 0 });
+    }
+
+    const total = round2(lines.reduce((sum, line) => sum + line.debit, 0));
+    if (total <= 0) return null;
+    lines.push({ chartAccountId: cashChartAccountId, debit: 0, credit: total });
+
+    return recordJournalEntry(tx, {
+        accountId,
+        createdById,
+        entryDate,
+        description: `Liquidación definitiva - ${employeeName || settlement.employeeId}`,
+        sourceType: "payroll_termination_settlement",
+        sourceId: settlement.id,
+        lines,
+    });
+};
+
 export const postTransferDiscrepancyJournalEntry = async (
     tx,
     { accountId, createdById, transferId, amount, entryDate = new Date() }

@@ -23,6 +23,7 @@ import {
     ApiOutlined,
     CloudServerOutlined,
     BuildOutlined,
+    CalculatorOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 
@@ -233,6 +234,11 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             key: "admin-dian-test-matrix",
             icon: <ExperimentOutlined />,
             label: <Link to="/admin/dian-test-matrix">{t("common.admin_dian_test_matrix")}</Link>,
+        });
+        items.push({
+            key: "admin-income-tax-config",
+            icon: <CalculatorOutlined />,
+            label: <Link to="/admin/income-tax-config">{t("common.admin_income_tax_config")}</Link>,
         });
     }
 

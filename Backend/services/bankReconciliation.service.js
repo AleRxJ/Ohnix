@@ -2,9 +2,10 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 
 // Conciliación deliberately simple: a BankStatementEntry is a line already
-// structured by the caller (no bank-file-format parser in this scope - see
-// the Fase 3 plan). Reconciling = pairing an entry with a CashMovement that
-// already exists in the ledger; nothing about the ledger itself changes.
+// structured by the caller (CSV/XLSX/OFX parsing happens client-side, see
+// CashAccountMovementsDrawer.jsx). Reconciling = pairing an entry with a
+// CashMovement that already exists in the ledger; nothing about the ledger
+// itself changes.
 
 const assertCashAccountOwned = async (accountId, cashAccountId) => {
     const cashAccount = await prisma.cashAccount.findFirst({ where: { id: cashAccountId, createdById: accountId } });
@@ -15,6 +16,14 @@ const assertCashAccountOwned = async (accountId, cashAccountId) => {
 export const isReconciliationAmountMatch = (statementAmount, movementAmount) =>
     Math.abs(Number(statementAmount) - Number(movementAmount)) < 0.005;
 
+// Tolerant on purpose: a single malformed or duplicated row inside an
+// otherwise-good file used to abort the ENTIRE import (see git history) -
+// painful for a 500-row bank export where one row is a stray "saldo total"
+// line. Only structural problems (not an array, empty, over the row cap)
+// reject the whole call; a bad/duplicate individual row is collected into
+// `errors` and simply excluded from what gets inserted, mirroring
+// product.bulk.controller.js's partial-success convention (its caller
+// returns HTTP 207 when `errors.length > 0`).
 export const createStatementEntries = async ({ accountId, actorId, cashAccountId, entries }) => {
     await assertCashAccountOwned(accountId, cashAccountId);
 
@@ -26,34 +35,43 @@ export const createStatementEntries = async ({ accountId, actorId, cashAccountId
     }
 
     const fingerprints = new Set();
-    const data = entries.map((entry, index) => {
+    const data = [];
+    const errors = [];
+    entries.forEach((entry, index) => {
         const amount = Number(entry.amount);
         const entryDate = new Date(entry.entryDate);
         if (!entry.entryDate || Number.isNaN(entryDate.getTime()) || !Number.isFinite(amount) || amount === 0) {
-            throw new ApiError(400, `Bank statement entry ${index + 1} is invalid.`, [{ index: index + 1 }], "", "reconciliation_entry_invalid");
+            errors.push({ index: index + 1, code: "reconciliation_entry_invalid", message: `Bank statement entry ${index + 1} is invalid.` });
+            return;
         }
         const description = entry.description?.trim() || null;
         const fingerprint = `${entryDate.toISOString()}|${amount.toFixed(2)}|${description || ""}`;
         if (fingerprints.has(fingerprint)) {
-            throw new ApiError(409, `Bank statement row ${index + 1} is duplicated.`, [{ index: index + 1 }], "", "reconciliation_entry_duplicate");
+            errors.push({ index: index + 1, code: "reconciliation_entry_duplicate", message: `Bank statement row ${index + 1} is duplicated.` });
+            return;
         }
         fingerprints.add(fingerprint);
-        return {
+        data.push({
             cashAccountId,
             entryDate,
             description,
             amount,
             createdById: actorId,
             importFingerprint: entry.importFingerprint?.trim() || null,
-        };
+        });
     });
 
-    const created = await prisma.bankStatementEntry.createMany({ data, skipDuplicates: true });
+    const created = data.length ? await prisma.bankStatementEntry.createMany({ data, skipDuplicates: true }) : { count: 0 };
     const unmatched = await prisma.bankStatementEntry.findMany({
         where: { cashAccountId, matchedMovementId: null },
         orderBy: { entryDate: "desc" },
     });
-    return { unmatched, importedCount: created.count, skippedCount: data.length - created.count };
+    // `data.length - created.count` covers rows skipDuplicates dropped at the
+    // DB level (already-imported importFingerprint); errors.length covers
+    // rows that never made it into `data` at all - both are "not imported",
+    // reported through the same skippedCount total the frontend already
+    // shows, with the per-row detail layered on top via `errors`.
+    return { unmatched, importedCount: created.count, skippedCount: data.length - created.count + errors.length, errors };
 };
 
 export const listUnmatchedStatementEntries = async ({ accountId, cashAccountId }) => {

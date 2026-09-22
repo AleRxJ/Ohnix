@@ -245,7 +245,15 @@ export const useCashAccountMovements = (cashAccountId) => {
             const response = await financeService.createStatementEntries(cashAccountId, entries);
             const imported = response?.data?.imported_count ?? entries.length;
             const skipped = response?.data?.skipped_count ?? 0;
-            toast.success(t("finance.import_success", { count: imported, skipped }));
+            const errors = response?.data?.errors || [];
+            // Rows the client-side preview thought were clean can still
+            // collide server-side (e.g. an importFingerprint from a
+            // PREVIOUS import of an overlapping file the browser never saw)
+            // - createStatementEntries is tolerant now, so this is just a
+            // heads-up, not a failure.
+            toast[errors.length ? "error" : "success"](
+                errors.length ? t("finance.import_success_with_errors", { count: imported, skipped, failed: errors.length }) : t("finance.import_success", { count: imported, skipped })
+            );
             await load();
             return true;
         } catch (err) {

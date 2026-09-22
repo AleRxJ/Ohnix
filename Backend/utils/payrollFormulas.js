@@ -195,3 +195,30 @@ export const computeBenefitAccruals = ({ benefitsBase, baseSalary, workedDays, p
     const vacationProvision = round2(vacationDays * dailyRate(baseSalary));
     return { severance, serviceBonus, severanceInterest, vacationDays, vacationProvision };
 };
+
+// Indemnización por despido sin justa causa, contrato a término indefinido
+// (CST art. 64 lit. a/b, modificado por Ley 789/2002 art. 28) - stable law
+// since 2002, unlike SMLMV/UVT it isn't a per-year PayrollLegalParameter.
+// `yearsOfService` uses the same 360-day-year convention as
+// computeBenefitAccruals above (not 365.25), so a partial final year comes
+// out proportional the same way the rest of this module already prorates.
+// "Menos de un año de servicio continuo" (< 1 year) pays the flat base days
+// with no proration below that floor - only years AFTER the first prorate.
+export const computeIndefiniteTermIndemnityDays = ({ yearsOfService, baseSalary, smlmv }) => {
+    const isLowWage = Number(baseSalary) < 10 * Number(smlmv);
+    const firstYearDays = isLowWage ? 30 : 20;
+    const perAdditionalYearDays = isLowWage ? 20 : 15;
+    if (Number(yearsOfService) <= 1) return firstYearDays;
+    return round2(firstYearDays + perAdditionalYearDays * (Number(yearsOfService) - 1));
+};
+
+// Indemnización para contrato a término fijo u obra/labor (CST art. 64 num.
+// 4 lit. b/c): lo que falte del plazo pactado o de la obra, nunca menos de
+// 15 días - `remainingDays` is caller-supplied (days between termination
+// and Employee.contractEndDate for `fijo`; a manual estimate for
+// `obra_labor`, since this system has no predictable end date for a work/
+// labor contract to compute from).
+export const computeFixedTermIndemnityAmount = ({ dailySalary, remainingDays }) => {
+    const days = Math.max(Number(remainingDays) || 0, 15);
+    return round2(Number(dailySalary) * days);
+};
