@@ -22,6 +22,7 @@ import {
 
 const DELETE_CUSTOMER_ERROR_CODES = {
     customer_has_orders: "customers.delete_conflict_orders",
+    customer_has_warranties: "customers.delete_conflict_warranties",
 };
 
 const SAVE_CUSTOMER_ERROR_CODES = {

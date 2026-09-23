@@ -388,6 +388,20 @@ const deleteCustomer = asyncHandler(async (req, res, next) => {
             .json(new ApiResponse(200, {}, "Customer deleted successfully"));
     } catch (error) {
         if (isForeignKeyRestrictError(error)) {
+            // Warranty.customerId is also RESTRICT (see schema.prisma) - a
+            // customer with an open/closed warranty claim but zero orders
+            // would otherwise get the misleading "has orders" message below.
+            if (typeof error?.message === "string" && error.message.includes("warrant")) {
+                return next(
+                    new ApiError(
+                        409,
+                        "This customer can't be deleted because it still has warranty claims assigned to it. Resolve or delete those first.",
+                        [],
+                        "",
+                        "customer_has_warranties"
+                    )
+                );
+            }
             return next(
                 new ApiError(
                     409,

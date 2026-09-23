@@ -10,6 +10,7 @@ import { queueCreate, queueUpdate, queueDelete, readMirrorAll, mirrorReplaceAll,
 
 const DELETE_PRODUCT_ERROR_CODES = {
     product_has_history: "products.delete_conflict_history",
+    product_has_warranties: "products.delete_conflict_warranties",
 };
 
 const STALE_EDIT_ERROR_CODES = {

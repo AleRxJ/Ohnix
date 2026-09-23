@@ -1303,6 +1303,20 @@ const deleteProduct = asyncHandler(async (req, res, next) => {
             .json(new ApiResponse(200, {}, "Product deleted successfully"));
     } catch (error) {
         if (isForeignKeyRestrictError(error)) {
+            // Warranty.productId is also RESTRICT (see schema.prisma) - call
+            // that out specifically rather than folding it into the vaguer
+            // "purchases, sales, or stock movements" message below.
+            if (typeof error?.message === "string" && error.message.includes("warrant")) {
+                return next(
+                    new ApiError(
+                        409,
+                        "This product can't be deleted because it has warranty claims on record. Resolve or delete those first.",
+                        [],
+                        "",
+                        "product_has_warranties"
+                    )
+                );
+            }
             return next(
                 new ApiError(
                     409,
