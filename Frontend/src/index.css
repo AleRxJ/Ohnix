@@ -267,49 +267,47 @@
 
 .discoveries-page .ant-empty-description { color: var(--ohnix-text-muted); }
 
-/* Sidebar/mobile-menu nav row for Descubrimientos - a live cyan count badge
-   instead of a plain menu label, same gradient as the FAB/action buttons,
-   so the entry itself signals "Ohnix found something" instead of reading
-   as one more item in the list. See data/index.jsx's getMenuItems. */
-.sidebar-discovery-badge {
+/* Sidebar/mobile-menu "live badge" system - the cyan glowing pill/circle
+   used for anything that should catch the eye at a glance: an open
+   Discovery count (.sidebar-discovery-badge) or a "this module unlocks
+   with an upgrade" hint (.sidebar-locked-badge). Both share one visual
+   language on purpose (same gradient, same glow) so they read as one
+   consistent system instead of two unrelated indicators. Both are
+   positioned absolutely within their menu item (which needs position:
+   relative - see data/index.jsx) rather than sharing flex space with the
+   label text: an earlier version that took up flex width clipped long
+   labels like "Integraciones y API". See data/index.jsx's getMenuItems. */
+.sidebar-discovery-badge,
+.sidebar-locked-badge {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
   border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 800;
-  line-height: 1;
   color: var(--ohnix-accent-contrast);
   background: linear-gradient(135deg, #29D8D5 0%, #44F3F0 100%);
   box-shadow: 0 0 10px rgba(41,216,213,.35);
 }
 
-/* Sidebar/mobile-menu nav row for a module the current plan doesn't include
-   (Cotizaciones, Contabilidad, Descubrimientos, Integraciones y API) - an
-   icon-only "needs upgrade" indicator instead of hiding the item outright,
-   so the module stays discoverable but the user knows before clicking that
-   it's locked (required plan is in the title tooltip). See
-   data/index.jsx's LockedPlanBadge. Fixed circular footprint, same as
-   .sidebar-discovery-badge, so it can never get clipped by the menu row's
-   overflow the way a text pill did. Amber (not the brand cyan used for
-   "good news" badges) to match the fiscal-setup pulsing dot's existing
-   "needs your attention" color language elsewhere in this sidebar - a
-   translucent amber tint reads consistently on both the dark sidebar and
-   the lighter selected-item highlight, unlike a plain white/gray chip. */
+.sidebar-discovery-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* The crown (not a padlock) is deliberate - this should read as "there's
+   something worth unlocking here", not as a blocked/error state. The
+   required plan name lives in the title tooltip, not inline text - a text
+   pill was what got clipped in the version this replaced. */
 .sidebar-locked-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
   width: 20px;
   height: 20px;
-  border-radius: 999px;
-  color: #FFCF70;
-  background: rgba(255, 207, 112, 0.14);
-  border: 1px solid rgba(255, 207, 112, 0.35);
 }
 
 /* Dashboard hero card for the top live Discovery - see

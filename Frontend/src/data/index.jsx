@@ -24,30 +24,32 @@ import {
     CloudServerOutlined,
     BuildOutlined,
     CalculatorOutlined,
-    LockOutlined,
 } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import { FEATURE_MINIMUM_PLAN, PLAN_DISPLAY } from "../hooks/useSubscription";
 
-// Small "needs upgrade" indicator for menu items gated by subscription plan
+// "Upgrade to unlock" indicator for menu items gated by subscription plan
 // (not by team role - that's canAccess below). Shown instead of hiding the
-// item outright: the module stays visible for discoverability/upsell (same
+// item outright: the module stays visible for discoverability (same
 // "vitrina" behavior each page's own <PlanGate> already provides once you
-// click through), but the badge sets the expectation up front instead of
-// letting the user navigate into a paywall with no warning. Icon-only and
-// fixed-size (mirrors .sidebar-discovery-badge's circular footprint) so it
-// never overflows a long label like "Integraciones y API" - the exact plan
-// name lives in the tooltip, not inline text, since a text pill was getting
-// clipped by the menu row's overflow. Amber, matching the fiscal-setup
-// pulsing dot's existing "needs your attention" language elsewhere in this
-// same sidebar, instead of a generic gray chip with no brand identity.
+// click through), and the badge sets the expectation up front instead of
+// letting the user navigate into a paywall with no warning. Reuses the
+// exact same cyan gradient + glow as .sidebar-discovery-badge (not a
+// separate color) so every "live" badge in this sidebar reads as one
+// consistent system, and a crown - not a padlock - because this should
+// invite curiosity about the upgrade, not read as "blocked"/an error;
+// CrownOutlined already carries that "subscription/plan" meaning elsewhere
+// in this same file (admin-subscriptions). Positioned absolutely (see
+// index.css) so it never competes with the label for flex width - an
+// earlier version that shared the row's flex space clipped long labels
+// like "Integraciones y API".
 const LockedPlanBadge = ({ featureKey, lang }) => {
     const planKey = FEATURE_MINIMUM_PLAN[featureKey] ?? "growth";
     const planLabel = PLAN_DISPLAY[planKey]?.[lang] ?? planKey;
     const title = lang === "es" ? `Disponible desde el plan ${planLabel}` : `Available from the ${planLabel} plan`;
     return (
         <span className="sidebar-locked-badge" title={title}>
-            <LockOutlined style={{ fontSize: 10 }} />
+            <CrownOutlined style={{ fontSize: 10 }} />
         </span>
     );
 };
@@ -76,8 +78,8 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             moduleKey: "purchases",
             icon: <TagsOutlined />,
             label: (
-                <Link to="/quotations" className="flex items-center justify-between gap-2">
-                    <span className="truncate min-w-0 flex-1">{t("common.quotations_nav")}</span>
+                <Link to="/quotations" className="relative flex items-center pr-4">
+                    <span className="truncate" title={t("common.quotations_nav")}>{t("common.quotations_nav")}</span>
                     {!can("salesQuotations") && <LockedPlanBadge featureKey="salesQuotations" lang={lang} />}
                 </Link>
             ),
@@ -153,8 +155,8 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             moduleKey: "accounting",
             icon: <BookOutlined />,
             label: (
-                <Link to="/accounting" className="flex items-center justify-between gap-2">
-                    <span className="truncate min-w-0 flex-1">{t("common.accounting_nav")}</span>
+                <Link to="/accounting" className="relative flex items-center pr-4">
+                    <span className="truncate" title={t("common.accounting_nav")}>{t("common.accounting_nav")}</span>
                     {!can("accounting") && <LockedPlanBadge featureKey="accounting" lang={lang} />}
                 </Link>
             ),
@@ -180,8 +182,8 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             // see components/discoveries/), not a peer of the CRUD pages
             // around it, and the badge is what says so at a glance.
             label: (
-                <Link to="/discoveries" className="flex items-center justify-between gap-2">
-                    <span className="truncate min-w-0 flex-1">{t("common.discoveries_nav")}</span>
+                <Link to="/discoveries" className="relative flex items-center pr-4">
+                    <span className="truncate" title={t("common.discoveries_nav")}>{t("common.discoveries_nav")}</span>
                     {!can("discoveryEngine") ? (
                         <LockedPlanBadge featureKey="discoveryEngine" lang={lang} />
                     ) : (
@@ -205,8 +207,8 @@ export const getMenuItems = (t, role, showElectronicInvoicing = false, showTeam 
             moduleKey: "billing",
             icon: <ApiOutlined />,
             label: (
-                <Link to="/integrations" className="flex items-center justify-between gap-2">
-                    <span className="truncate min-w-0 flex-1">{t("common.integrations_nav")}</span>
+                <Link to="/integrations" className="relative flex items-center pr-4">
+                    <span className="truncate" title={t("common.integrations_nav")}>{t("common.integrations_nav")}</span>
                     {!can("apiAccess") && <LockedPlanBadge featureKey="apiAccess" lang={lang} />}
                 </Link>
             ),
