@@ -131,6 +131,7 @@ const FacturacionSinInventario = lazy(() => import("./pages/FacturacionSinInvent
 const CertificadosDigitales = lazy(() => import("./pages/CertificadosDigitales"));
 const OhnixVsAlegra = lazy(() => import("./pages/OhnixVsAlegra"));
 const ColaboracionEquipo = lazy(() => import("./pages/ColaboracionEquipo"));
+const DeteccionRiesgosNegocio = lazy(() => import("./pages/DeteccionRiesgosNegocio"));
 const Integraciones = lazy(() => import("./pages/Integraciones"));
 const ProfilePage = lazy(() => import("./components/ProfilePage"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -339,6 +340,7 @@ function App() {
                             )}
                             <Route path="/comparativa/ohnix-vs-alegra" element={<OhnixVsAlegra />} />
                             <Route path="/colaboracion-en-equipo" element={<ColaboracionEquipo />} />
+                            <Route path="/deteccion-riesgos-oportunidades-negocio" element={<DeteccionRiesgosNegocio />} />
                             <Route path="/integraciones" element={<Integraciones />} />
                             <Route path="/demo" element={<Demo />} />
 

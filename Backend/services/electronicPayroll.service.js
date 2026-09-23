@@ -13,7 +13,6 @@ import {
 import {
     ensureElectronicInvoicingPlan,
     buildItcyclePartyAddress,
-    buildItcycleSendOptions,
     normalizeItcycleStatus,
 } from "./electronicInvoicing.service.js";
 import { decryptSecret } from "../utils/secretEncryption.js";
@@ -39,6 +38,16 @@ const SYNCABLE_STATUSES = ["issuing", "submitted", "contingency"];
 
 const text = (value) => `${value || ""}`.trim();
 const round2 = (value) => Number(Number(value).toFixed(2));
+
+// Nómina's own habilitación is a separate DIAN process from invoicing's
+// (own set de pruebas, own TestSetID) - deliberately NOT
+// electronicInvoicing.service.js#buildItcycleSendOptions, which reads
+// company.itcycleTestSetId. Reusing that field would have made a payroll
+// send apply invoicing's test-set (or the reverse) whenever the two
+// habilitaciones are at different stages - see Company.itcyclePayrollTestSetId's
+// own schema comment for the full rationale.
+const buildItcyclePayrollSendOptions = (company) =>
+    text(company?.itcyclePayrollTestSetId) ? { method: "SendTestSetAsync", testSetId: company.itcyclePayrollTestSetId } : undefined;
 
 // DIAN "TipoDocumento" catalog subset - Employee.documentType is a free
 // dropdown value (EmployeeModal.jsx: CC/CE/PA/PEP), not already a DIAN code
@@ -273,7 +282,7 @@ export const issueElectronicPayrollForDocument = async ({ documentId, requesterU
     const payload = buildItcyclePayrollPayload(document, company);
     const claim = await claimElectronicPayroll({ document, company, payload });
     const submit = () =>
-        createItcyclePayroll({ apiKey, internalReference: document.id, payroll: payload, send: buildItcycleSendOptions(company) }).then(mapItcyclePayrollResponse);
+        createItcyclePayroll({ apiKey, internalReference: document.id, payroll: payload, send: buildItcyclePayrollSendOptions(company) }).then(mapItcyclePayrollResponse);
 
     if (!claim.claimed) return { reused: true, trigger, countryCode: "CO", electronicPayroll: serialize(claim.record) };
     try {
@@ -318,7 +327,7 @@ export const syncElectronicPayrollStatus = async ({ documentId, requesterUserId,
         if (!text(company.itcycleApiKeyCiphertext)) throw new ApiError(422, "This company has not been provisioned with itcycle-api-dian yet");
         const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
         const mapped = record.status === "contingency"
-            ? mapItcyclePayrollResponse(await retryItcyclePayrollSend({ apiKey, id: record.externalId, send: buildItcycleSendOptions(company) }))
+            ? mapItcyclePayrollResponse(await retryItcyclePayrollSend({ apiKey, id: record.externalId, send: buildItcyclePayrollSendOptions(company) }))
             : mapItcyclePayrollResponse(await getItcyclePayrollStatus({ apiKey, id: record.externalId }));
         const updated = await prisma.$transaction(async (tx) => {
             const updatedRecord = await tx.electronicPayrollDocument.update({
@@ -417,7 +426,7 @@ export const issueElectronicPayrollAdjustment = async ({ documentId, adjustmentT
             payrollDocumentId: record.externalId,
             adjustmentType,
             payroll: payload,
-            send: buildItcycleSendOptions(company),
+            send: buildItcyclePayrollSendOptions(company),
         });
         const mapped = mapItcyclePayrollResponse(raw);
         const updated = await prisma.electronicPayrollAdjustment.update({
@@ -452,7 +461,7 @@ export const syncElectronicPayrollAdjustmentStatus = async ({ documentId, adjust
         if (!text(company.itcycleApiKeyCiphertext)) throw new ApiError(422, "This company has not been provisioned with itcycle-api-dian yet");
         const apiKey = decryptSecret(company.itcycleApiKeyCiphertext);
         const mapped = adjustment.status === "contingency"
-            ? mapItcyclePayrollResponse(await retryItcyclePayrollAdjustmentSend({ apiKey, id: adjustment.externalId, send: buildItcycleSendOptions(company) }))
+            ? mapItcyclePayrollResponse(await retryItcyclePayrollAdjustmentSend({ apiKey, id: adjustment.externalId, send: buildItcyclePayrollSendOptions(company) }))
             : mapItcyclePayrollResponse(await getItcyclePayrollAdjustmentStatus({ apiKey, id: adjustment.externalId }));
         const updated = await prisma.electronicPayrollAdjustment.update({
             where: { id: adjustment.id },

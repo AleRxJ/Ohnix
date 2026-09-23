@@ -280,69 +280,69 @@ model User {
   subscription      Subscription?
   company           Company?      @relation(fields: [companyId], references: [id])
 
-  categoriesCreated                 Category[]                  @relation("CategoryCreatedBy")
-  categoriesUpdated                 Category[]                  @relation("CategoryUpdatedBy")
-  unitsCreated                      Unit[]                      @relation("UnitCreatedBy")
-  unitsUpdated                      Unit[]                      @relation("UnitUpdatedBy")
-  productsCreated                   Product[]                   @relation("ProductCreatedBy")
-  productsUpdated                   Product[]                   @relation("ProductUpdatedBy")
-  customers                         Customer[]
-  suppliers                         Supplier[]
-  purchasesCreated                  Purchase[]                  @relation("PurchaseCreatedBy")
-  purchasesUpdated                  Purchase[]                  @relation("PurchaseUpdatedBy")
-  quotationsCreated                 PurchaseQuotation[]         @relation("QuotationCreatedBy")
-  quotationsUpdated                 PurchaseQuotation[]         @relation("QuotationUpdatedBy")
-  salesQuotationsCreated            SalesQuotation[]            @relation("SalesQuotationCreatedBy")
-  salesQuotationsUpdated            SalesQuotation[]            @relation("SalesQuotationUpdatedBy")
-  ordersCreated                     Order[]                     @relation("OrderCreatedBy")
-  ordersUpdated                     Order[]                     @relation("OrderUpdatedBy")
-  planUpgradeRequests               PlanUpgradeRequest[]
-  apiKeys                           ApiKey[]
-  integrationConnections            IntegrationConnection[]
-  webhookEndpoints                  WebhookEndpoint[]
-  stockMovementsCreated             StockMovement[]             @relation("StockMovementCreatedBy")
-  cashAccountsCreated               CashAccount[]
-  cashMovementsCreated              CashMovement[]
-  orderPaymentsRecorded             OrderPayment[]
-  paymentCreditsCreated             PaymentCreditBalance[]      @relation("PaymentCreditCreatedBy")
-  paymentCreditAccounts             PaymentCreditBalance[]      @relation("PaymentCreditAccount")
-  orderPaymentAllocationsCreated    OrderPaymentAllocation[]    @relation("OrderPaymentAllocationCreatedBy")
-  purchasePaymentsRecorded          PurchasePayment[]
-  purchasePaymentAllocationsCreated PurchasePaymentAllocation[] @relation("PurchasePaymentAllocationCreatedBy")
-  bankStatementEntriesAdded         BankStatementEntry[]
-  chartAccountsCreated              ChartAccount[]
-  accountingPeriodsCreated          AccountingPeriod[]          @relation("AccountingPeriodCreatedBy")
-  accountingPeriodsClosed           AccountingPeriod[]          @relation("AccountingPeriodClosedBy")
-  fiscalYearClosuresOwned           FiscalYearClosure[]         @relation("FiscalYearClosureCreatedBy")
-  fiscalYearClosuresClosed          FiscalYearClosure[]         @relation("FiscalYearClosureClosedBy")
-  journalEntriesCreated             JournalEntry[]
-  accountingConfigAuditsOwned       AccountingConfigAudit[]     @relation("AccountingConfigAuditAccount")
-  costCentersOwned                  CostCenter[]                @relation("CostCenterAccount")
-  recurringExpenseTemplatesOwned    RecurringExpenseTemplate[]  @relation("RecurringExpenseTemplateAccount")
-  accountingBudgetsOwned            AccountingBudget[]          @relation("AccountingBudgetAccount")
-  accountingBudgetsCreated          AccountingBudget[]          @relation("AccountingBudgetCreatedBy")
-  accountingBudgetsUpdated          AccountingBudget[]          @relation("AccountingBudgetUpdatedBy")
-  financialStatementNotesOwned      FinancialStatementNote[]    @relation("FinancialStatementNoteAccount")
-  financialStatementNotesCreated    FinancialStatementNote[]    @relation("FinancialStatementNoteCreatedBy")
-  financialStatementNotesUpdated    FinancialStatementNote[]    @relation("FinancialStatementNoteUpdatedBy")
-  fixedAssetsOwned                  FixedAsset[]                @relation("FixedAssetCreatedBy")
-  recurringJournalTemplatesOwned    RecurringJournalTemplate[]  @relation("RecurringJournalTemplateCreatedBy")
-  productBatchesCreated             ProductBatch[]
-  productionOrdersCreated           ProductionOrder[]           @relation("ProductionOrderCreatedBy")
-  productionOrdersUpdated           ProductionOrder[]           @relation("ProductionOrderUpdatedBy")
-  employeesCreated                  Employee[]                  @relation("EmployeeCreatedBy")
-  employeesUpdated                  Employee[]                  @relation("EmployeeUpdatedBy")
-  payrollPeriodsCreated             PayrollPeriod[]             @relation("PayrollPeriodCreatedBy")
-  payrollPeriodsUpdated             PayrollPeriod[]             @relation("PayrollPeriodUpdatedBy")
-  payrollBenefitSettlementsCreated  PayrollBenefitSettlement[]
+  categoriesCreated                    Category[]                     @relation("CategoryCreatedBy")
+  categoriesUpdated                    Category[]                     @relation("CategoryUpdatedBy")
+  unitsCreated                         Unit[]                         @relation("UnitCreatedBy")
+  unitsUpdated                         Unit[]                         @relation("UnitUpdatedBy")
+  productsCreated                      Product[]                      @relation("ProductCreatedBy")
+  productsUpdated                      Product[]                      @relation("ProductUpdatedBy")
+  customers                            Customer[]
+  suppliers                            Supplier[]
+  purchasesCreated                     Purchase[]                     @relation("PurchaseCreatedBy")
+  purchasesUpdated                     Purchase[]                     @relation("PurchaseUpdatedBy")
+  quotationsCreated                    PurchaseQuotation[]            @relation("QuotationCreatedBy")
+  quotationsUpdated                    PurchaseQuotation[]            @relation("QuotationUpdatedBy")
+  salesQuotationsCreated               SalesQuotation[]               @relation("SalesQuotationCreatedBy")
+  salesQuotationsUpdated               SalesQuotation[]               @relation("SalesQuotationUpdatedBy")
+  ordersCreated                        Order[]                        @relation("OrderCreatedBy")
+  ordersUpdated                        Order[]                        @relation("OrderUpdatedBy")
+  planUpgradeRequests                  PlanUpgradeRequest[]
+  apiKeys                              ApiKey[]
+  integrationConnections               IntegrationConnection[]
+  webhookEndpoints                     WebhookEndpoint[]
+  stockMovementsCreated                StockMovement[]                @relation("StockMovementCreatedBy")
+  cashAccountsCreated                  CashAccount[]
+  cashMovementsCreated                 CashMovement[]
+  orderPaymentsRecorded                OrderPayment[]
+  paymentCreditsCreated                PaymentCreditBalance[]         @relation("PaymentCreditCreatedBy")
+  paymentCreditAccounts                PaymentCreditBalance[]         @relation("PaymentCreditAccount")
+  orderPaymentAllocationsCreated       OrderPaymentAllocation[]       @relation("OrderPaymentAllocationCreatedBy")
+  purchasePaymentsRecorded             PurchasePayment[]
+  purchasePaymentAllocationsCreated    PurchasePaymentAllocation[]    @relation("PurchasePaymentAllocationCreatedBy")
+  bankStatementEntriesAdded            BankStatementEntry[]
+  chartAccountsCreated                 ChartAccount[]
+  accountingPeriodsCreated             AccountingPeriod[]             @relation("AccountingPeriodCreatedBy")
+  accountingPeriodsClosed              AccountingPeriod[]             @relation("AccountingPeriodClosedBy")
+  fiscalYearClosuresOwned              FiscalYearClosure[]            @relation("FiscalYearClosureCreatedBy")
+  fiscalYearClosuresClosed             FiscalYearClosure[]            @relation("FiscalYearClosureClosedBy")
+  journalEntriesCreated                JournalEntry[]
+  accountingConfigAuditsOwned          AccountingConfigAudit[]        @relation("AccountingConfigAuditAccount")
+  costCentersOwned                     CostCenter[]                   @relation("CostCenterAccount")
+  recurringExpenseTemplatesOwned       RecurringExpenseTemplate[]     @relation("RecurringExpenseTemplateAccount")
+  accountingBudgetsOwned               AccountingBudget[]             @relation("AccountingBudgetAccount")
+  accountingBudgetsCreated             AccountingBudget[]             @relation("AccountingBudgetCreatedBy")
+  accountingBudgetsUpdated             AccountingBudget[]             @relation("AccountingBudgetUpdatedBy")
+  financialStatementNotesOwned         FinancialStatementNote[]       @relation("FinancialStatementNoteAccount")
+  financialStatementNotesCreated       FinancialStatementNote[]       @relation("FinancialStatementNoteCreatedBy")
+  financialStatementNotesUpdated       FinancialStatementNote[]       @relation("FinancialStatementNoteUpdatedBy")
+  fixedAssetsOwned                     FixedAsset[]                   @relation("FixedAssetCreatedBy")
+  recurringJournalTemplatesOwned       RecurringJournalTemplate[]     @relation("RecurringJournalTemplateCreatedBy")
+  productBatchesCreated                ProductBatch[]
+  productionOrdersCreated              ProductionOrder[]              @relation("ProductionOrderCreatedBy")
+  productionOrdersUpdated              ProductionOrder[]              @relation("ProductionOrderUpdatedBy")
+  employeesCreated                     Employee[]                     @relation("EmployeeCreatedBy")
+  employeesUpdated                     Employee[]                     @relation("EmployeeUpdatedBy")
+  payrollPeriodsCreated                PayrollPeriod[]                @relation("PayrollPeriodCreatedBy")
+  payrollPeriodsUpdated                PayrollPeriod[]                @relation("PayrollPeriodUpdatedBy")
+  payrollBenefitSettlementsCreated     PayrollBenefitSettlement[]
   payrollTerminationSettlementsCreated PayrollTerminationSettlement[]
-  accountingConfigAuditsPerformed   AccountingConfigAudit[]     @relation("AccountingConfigAuditActor")
+  accountingConfigAuditsPerformed      AccountingConfigAudit[]        @relation("AccountingConfigAuditActor")
   // Points of Sale belong to the account (same accountId every other model
   // scopes by - see teamContext.js), never to a Team, since most accounts
   // (starter/growth without a Team row) still need exactly one default
   // location - see PointOfSale below.
-  pointsOfSaleOwned                 PointOfSale[]               @relation("PointOfSaleAccount")
-  stockTransfersRequested           StockTransfer[]             @relation("StockTransferRequestedBy")
+  pointsOfSaleOwned                    PointOfSale[]                  @relation("PointOfSaleAccount")
+  stockTransfersRequested              StockTransfer[]                @relation("StockTransferRequestedBy")
 
   // Teams: a user is either a team owner (ownedTeam), a member of exactly one
   // active team at a time (via TeamMember, enforced in team.service.js - not
@@ -488,6 +488,16 @@ model Company {
   // approves the habilitación - clear it then so issuance falls back to the
   // production method automatically.
   itcycleTestSetId                 String?            @map("itcycle_test_set_id")
+  // Nómina electrónica has its OWN, separate DIAN habilitación from
+  // invoicing's (own set de pruebas, own TestSetID) - a distinct field is
+  // required rather than reusing itcycleTestSetId above: a company can be
+  // fully live in production for invoicing (itcycleTestSetId already null)
+  // while nómina is still mid-habilitación, or vice versa. Reusing the same
+  // field would have made electronicPayroll.service.js's SendTestSetAsync
+  // silently apply to invoicing traffic too (or the reverse) - same
+  // "set only while En proceso, then null" admin-managed lifecycle as
+  // itcycleTestSetId.
+  itcyclePayrollTestSetId          String?            @map("itcycle_payroll_test_set_id")
   // FirmaPass validation UUID this company has claimed (via order-number
   // lookup or pasting the UUID FirmaPass gave them directly) - set once, on
   // first successful self-service action against a UUID, and enforced on
@@ -2459,15 +2469,15 @@ model CashAccount {
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
-  pointOfSale               PointOfSale?               @relation(fields: [pointOfSaleId], references: [id])
-  chartAccount              ChartAccount?              @relation(fields: [chartAccountId], references: [id])
-  createdBy                 User                       @relation(fields: [createdById], references: [id])
+  pointOfSale               PointOfSale?                   @relation(fields: [pointOfSaleId], references: [id])
+  chartAccount              ChartAccount?                  @relation(fields: [chartAccountId], references: [id])
+  createdBy                 User                           @relation(fields: [createdById], references: [id])
   movements                 CashMovement[]
   orderPayments             OrderPayment[]
   purchasePayments          PurchasePayment[]
   paymentCredits            PaymentCreditBalance[]
   statementEntries          BankStatementEntry[]
-  recurringExpenseTemplates RecurringExpenseTemplate[] @relation("RecurringExpenseTemplateCashAccount")
+  recurringExpenseTemplates RecurringExpenseTemplate[]     @relation("RecurringExpenseTemplateCashAccount")
   terminationSettlements    PayrollTerminationSettlement[]
 
   @@index([pointOfSaleId])
@@ -4062,59 +4072,59 @@ enum ArlRiskLevel {
 // employee usually has no Ohnix account at all, and a User is never
 // implicitly an Employee just because they work at the company.
 model Employee {
-  id                String               @id @default(cuid())
-  documentType      String               @default("CC") @map("document_type")
-  documentNumber    String               @map("document_number")
-  firstName         String               @map("first_name")
-  secondName        String?              @map("second_name")
-  lastName          String               @map("last_name")
-  secondLastName    String?              @map("second_last_name")
+  id                String                     @id @default(cuid())
+  documentType      String                     @default("CC") @map("document_type")
+  documentNumber    String                     @map("document_number")
+  firstName         String                     @map("first_name")
+  secondName        String?                    @map("second_name")
+  lastName          String                     @map("last_name")
+  secondLastName    String?                    @map("second_last_name")
   email             String?
   phone             String?
   address           String?
-  hireDate          DateTime             @map("hire_date")
-  terminationDate   DateTime?            @map("termination_date")
+  hireDate          DateTime                   @map("hire_date")
+  terminationDate   DateTime?                  @map("termination_date")
   terminationReason EmployeeTerminationReason? @map("termination_reason")
   // Only meaningful for contractType = fijo - the originally pactado end
   // date, needed by payrollTermination.service.js to compute how many days
   // remained when terminated early (CST art. 64 num. 4 lit. b). Null for
   // indefinido/obra_labor/aprendizaje.
-  contractEndDate   DateTime?            @map("contract_end_date")
-  contractType      EmployeeContractType @default(indefinido) @map("contract_type")
-  workerType        EmployeeWorkerType   @default(normal) @map("worker_type")
-  payFrequency      PayrollPeriodicity   @default(monthly) @map("pay_frequency")
-  baseSalary        Decimal              @map("base_salary") @db.Decimal(14, 2)
+  contractEndDate   DateTime?                  @map("contract_end_date")
+  contractType      EmployeeContractType       @default(indefinido) @map("contract_type")
+  workerType        EmployeeWorkerType         @default(normal) @map("worker_type")
+  payFrequency      PayrollPeriodicity         @default(monthly) @map("pay_frequency")
+  baseSalary        Decimal                    @map("base_salary") @db.Decimal(14, 2)
   // Salario integral (CST art. 132, >= 13 SMLMV): already bundles prestaciones
   // sociales into the agreed pay, so payroll.service.js skips computing
   // separate cesantías/intereses/prima/vacaciones provisions for this
   // employee entirely rather than double-paying them.
-  isIntegralSalary  Boolean              @default(false) @map("is_integral_salary")
-  riskLevel         ArlRiskLevel         @default(I) @map("risk_level")
+  isIntegralSalary  Boolean                    @default(false) @map("is_integral_salary")
+  riskLevel         ArlRiskLevel               @default(I) @map("risk_level")
   position          String?
   eps               String?
-  pensionFund       String?              @map("pension_fund")
-  severanceFund     String?              @map("severance_fund")
-  compensationFund  String?              @map("compensation_fund")
-  bankName          String?              @map("bank_name")
-  bankAccountType   String?              @map("bank_account_type")
-  bankAccountNumber String?              @map("bank_account_number")
-  workCity          String?              @map("work_city")
+  pensionFund       String?                    @map("pension_fund")
+  severanceFund     String?                    @map("severance_fund")
+  compensationFund  String?                    @map("compensation_fund")
+  bankName          String?                    @map("bank_name")
+  bankAccountType   String?                    @map("bank_account_type")
+  bankAccountNumber String?                    @map("bank_account_number")
+  workCity          String?                    @map("work_city")
   // Optional cost-center attribution for payroll's accounting posting - same
   // resolveLocationCostCenter mechanism orders/purchases already use, keyed
   // off where this employee actually works rather than off the period/order.
-  pointOfSaleId     String?              @map("point_of_sale_id")
-  status            EmployeeStatus       @default(active)
-  createdById       String               @map("created_by")
-  updatedById       String?              @map("updated_by")
-  createdAt         DateTime             @default(now()) @map("created_at")
-  updatedAt         DateTime             @updatedAt @map("updated_at")
+  pointOfSaleId     String?                    @map("point_of_sale_id")
+  status            EmployeeStatus             @default(active)
+  createdById       String                     @map("created_by")
+  updatedById       String?                    @map("updated_by")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
 
-  createdBy          User                       @relation("EmployeeCreatedBy", fields: [createdById], references: [id])
-  updatedBy          User?                      @relation("EmployeeUpdatedBy", fields: [updatedById], references: [id])
-  pointOfSale        PointOfSale?               @relation(fields: [pointOfSaleId], references: [id])
-  payrollDocuments     PayrollDocument[]
-  benefitAccruals      EmployeeBenefitAccrual[]
-  benefitSettlements   PayrollBenefitSettlement[]
+  createdBy             User                          @relation("EmployeeCreatedBy", fields: [createdById], references: [id])
+  updatedBy             User?                         @relation("EmployeeUpdatedBy", fields: [updatedById], references: [id])
+  pointOfSale           PointOfSale?                  @relation(fields: [pointOfSaleId], references: [id])
+  payrollDocuments      PayrollDocument[]
+  benefitAccruals       EmployeeBenefitAccrual[]
+  benefitSettlements    PayrollBenefitSettlement[]
   terminationSettlement PayrollTerminationSettlement?
 
   @@unique([documentNumber, createdById])

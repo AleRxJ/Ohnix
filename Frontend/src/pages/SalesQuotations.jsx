@@ -192,7 +192,9 @@ const SalesQuotations = () => {
             toast.error(t("sales_quotations.customer_phone_missing"));
             return;
         }
+        const company = quotation.point_of_sale?.account?.company;
         const message = t("sales_quotations.whatsapp_message", {
+            company: company?.legalName || company?.name || "Ohnix",
             number: quotation.quotation_no,
             total: formatCurrency(quotation.total),
             url: `${window.location.origin}/public/sales-quotations/${quotation.public_token}`,
@@ -258,7 +260,7 @@ const SalesQuotations = () => {
             render: (_, quotation) => (
                 <Space>
                     <Tooltip title={t("sales_quotations.view_details")}><Button icon={<EyeOutlined />} onClick={() => setDetailQuotation(quotation)} /></Tooltip>
-                    <Tooltip title={t("sales_quotations.print")}><Button icon={<PrinterOutlined />} onClick={() => printSalesQuotation({ quotation, formatCurrency, currentLanguage })} /></Tooltip>
+                    <Tooltip title={t("sales_quotations.print")}><Button icon={<PrinterOutlined />} onClick={() => printSalesQuotation({ quotation, company: quotation.point_of_sale?.account?.company, formatCurrency, currentLanguage })} /></Tooltip>
                     <Tooltip title={t("sales_quotations.share_whatsapp")}><Button icon={<ShareAltOutlined />} onClick={() => handleWhatsApp(quotation)} /></Tooltip>
                     <Tooltip title={t("sales_quotations.send_email")}><Button icon={<SendOutlined />} onClick={() => handleSendEmail(quotation)} disabled={!quotation.customer?.email || ["accepted", "rejected", "expired", "converted"].includes(quotation.status)} /></Tooltip>
                     {quotation.status === "accepted" && <Popconfirm title={t("sales_quotations.confirm_convert")} onConfirm={() => handleConvert(quotation)}><Tooltip title={t("sales_quotations.convert")}><Button icon={<FileTextOutlined />} /></Tooltip></Popconfirm>}

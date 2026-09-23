@@ -48,8 +48,16 @@ const METRIC_WRITERS = [writeEinvoiceRejectionRateMetric, writeMonthlyPurchaseSp
 
 // "Has activity" is approximated by "has placed at least one Order ever",
 // so brand-new/empty accounts aren't scanned for nothing every night.
+// Discovery Engine is a Negocio+ feature (PLAN_FEATURES.discoveryEngine,
+// pricing.middleware.js) - same subscription filter lowStockScheduler.js's
+// getEligibleUsers() already uses for its own growth+ cutoff, so Starter
+// accounts never burn nightly compute on a feature they can't see.
 const getActiveAccountIds = async () => {
-    const rows = await prisma.order.findMany({ distinct: ["createdById"], select: { createdById: true } });
+    const rows = await prisma.order.findMany({
+        distinct: ["createdById"],
+        where: { createdBy: { subscription: { status: "active", plan: { not: "starter" } } } },
+        select: { createdById: true },
+    });
     return rows.map((r) => r.createdById);
 };
 

@@ -25,6 +25,7 @@ export const PLAN_FEATURES = {
         teamActivityLog:     false,
         multiLocation:       false,
         salesQuotations:     false,
+        discoveryEngine:     false,
     },
     growth: {
         reportSales:         true,
@@ -45,6 +46,7 @@ export const PLAN_FEATURES = {
         teamActivityLog:     true,
         multiLocation:       false,
         salesQuotations:     true,
+        discoveryEngine:     true,
     },
     scale: {
         reportSales:         true,
@@ -65,6 +67,7 @@ export const PLAN_FEATURES = {
         teamActivityLog:     true,
         multiLocation:       true,
         salesQuotations:     true,
+        discoveryEngine:     true,
     },
     enterprise: {
         reportSales:         true,
@@ -85,6 +88,7 @@ export const PLAN_FEATURES = {
         teamActivityLog:     true,
         multiLocation:       true,
         salesQuotations:     true,
+        discoveryEngine:     true,
     },
 };
 
@@ -126,6 +130,7 @@ export const FEATURE_LABELS = [
     { key: "teamActivityLog",   es: "Log de actividad del equipo",     en: "Team activity log"            },
     { key: "multiLocation",     es: "Múltiples puntos de venta",       en: "Multiple points of sale"      },
     { key: "salesQuotations",   es: "Cotizaciones para clientes",       en: "Customer sales quotations"    },
+    { key: "discoveryEngine",   es: "Discovery Engine: detección automática de riesgos y oportunidades", en: "Discovery Engine: automatic risk & opportunity detection" },
 ].filter((feature) => ELECTRONIC_INVOICING_ENABLED || feature.key !== "electronicInvoicing");
 
 // The minimum plan that unlocks each feature (used for "upgrade to X" messages)
@@ -148,6 +153,7 @@ export const FEATURE_MINIMUM_PLAN = {
     teamActivityLog:     "growth",
     multiLocation:       "scale",
     salesQuotations:     "growth",
+    discoveryEngine:     "growth",
 };
 
 // Snapshot of the last confirmed plan, so a real network failure (offline,

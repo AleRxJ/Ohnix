@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { useTeam } from "./TeamContext";
+import useSubscription from "../hooks/useSubscription";
 import { discoveryService } from "../services/discoveryService";
 
 const DiscoveryContext = createContext(null);
@@ -17,10 +18,16 @@ const OPEN_STATUSES = ["detected", "investigating", "validated", "published", "l
 // drifting until their next independent poll.
 export const DiscoveryProvider = ({ children }) => {
     const { hasPermission, loading: teamLoading } = useTeam();
+    // Discovery Engine is a Negocio+ feature (PLAN_FEATURES.discoveryEngine) -
+    // a Starter account would just 403 on every request here, so this stays
+    // silent for them the same way the widget/reveal overlay already stay
+    // silent for someone without "reports" view permission.
+    const { can, loading: subscriptionLoading } = useSubscription();
     const [discoveries, setDiscoveries] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const canView = !teamLoading && hasPermission("reports", "view");
+    const anyLoading = teamLoading || subscriptionLoading;
+    const canView = !anyLoading && hasPermission("reports", "view") && can("discoveryEngine");
 
     const refresh = useCallback(() => {
         if (!canView) {
@@ -37,10 +44,10 @@ export const DiscoveryProvider = ({ children }) => {
     }, [canView]);
 
     useEffect(() => {
-        if (teamLoading) return;
+        if (anyLoading) return;
         refresh();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [canView, teamLoading]);
+    }, [canView, anyLoading]);
 
     const top = [...discoveries].sort((a, b) => b.priority_score - a.priority_score);
     const openCount = discoveries.filter((d) => OPEN_STATUSES.includes(d.status)).length;

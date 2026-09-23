@@ -2120,6 +2120,26 @@ export const FeatureHubSection = ({ heading }) => {
                 </svg>
             ),
         },
+        {
+            title: t("landing.hub.features.discovery.title"),
+            label: t("landing.hub.features.discovery.label"),
+            description: t("landing.hub.features.discovery.description"),
+            highlights: [
+                t("landing.hub.features.discovery.highlights.one"),
+                t("landing.hub.features.discovery.highlights.two"),
+                t("landing.hub.features.discovery.highlights.three"),
+            ],
+            accent: "#FBBF24",
+            icon: (
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
+                    <circle cx="16" cy="17" r="11" />
+                    <circle cx="16" cy="17" r="6.3" opacity="0.5" />
+                    <path d="M16 17L24.5 9" />
+                    <circle cx="24.5" cy="9" r="1.7" fill="currentColor" stroke="none" />
+                    <circle cx="16" cy="17" r="1.4" fill="currentColor" stroke="none" />
+                </svg>
+            ),
+        },
     ];
 
     return (

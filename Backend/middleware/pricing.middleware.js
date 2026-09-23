@@ -120,6 +120,13 @@ export const PLAN_FEATURES = {
         // PLAN_LIMITS.maxPointsOfSale, see pointOfSale.service.js).
         multiLocation:       false,
         salesQuotations:     false,
+        // The Discovery Engine (nightly risk/opportunity/pattern detection -
+        // see Backend/utils/discoveryScheduler.js) starts at Negocio - a
+        // Starter account's order volume is rarely enough for its detectors'
+        // own MIN_ACCOUNT_ORDERS/MIN_AT_RISK_COUNT thresholds to clear
+        // anyway, so gating it here also saves real nightly compute
+        // (getActiveAccountIds skips starter accounts entirely).
+        discoveryEngine:     false,
     },
     // $49/mes — Negocio: full analytics + exports + DIAN e-invoicing
     // (electronicInvoicing costs real money per document via Alanube - never
@@ -147,6 +154,7 @@ export const PLAN_FEATURES = {
         teamActivityLog:     true,
         multiLocation:       false,
         salesQuotations:     true,
+        discoveryEngine:     true,
     },
     // $99/mes — Escala: API + advanced reports (profit margin, top
     // customers, sales-by-team-member, period comparison - see
@@ -172,6 +180,7 @@ export const PLAN_FEATURES = {
         teamActivityLog:     true,
         multiLocation:       true,
         salesQuotations:     true,
+        discoveryEngine:     true,
     },
     // Custom — Enterprise: everything
     enterprise: {
@@ -193,6 +202,7 @@ export const PLAN_FEATURES = {
         teamActivityLog:     true,
         multiLocation:       true,
         salesQuotations:     true,
+        discoveryEngine:     true,
     },
 };
 

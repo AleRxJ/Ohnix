@@ -3440,7 +3440,7 @@
     "load_failed": "No se pudieron cargar las cotizaciones para clientes",
     "create_failed": "No se pudo crear la cotización para el cliente",
     "customer_phone_missing": "Este cliente no tiene un teléfono registrado",
-    "whatsapp_message": "Hola, te compartimos la cotización {{number}} de Ohnix por {{total}}. Puedes verla aquí: {{url}}",
+    "whatsapp_message": "Hola, te compartimos la cotización {{number}} de {{company}} por {{total}}. Puedes verla aquí: {{url}}",
     "print": "Imprimir o guardar como PDF",
     "share_whatsapp": "Compartir por WhatsApp",
     "send_email": "Enviar por correo",
@@ -3468,12 +3468,12 @@
     "vat_hint": "El IVA se calcula automáticamente según la responsabilidad tributaria de la empresa y la configuración de cada producto.",
     "vat_form_hint": "El IVA se calcula automáticamente al guardar: si la empresa es responsable, se aplica la tarifa fiscal de cada producto; si no, queda en $0.",
     "point_of_sale": "Punto de venta",
-    "quotation_prepared": "Propuesta preparada por Ohnix",
+    "quotation_prepared": "Propuesta comercial",
     "accept": "Aceptar cotización",
     "reject": "Rechazar cotización",
     "response_title": "¿Qué deseas hacer con esta propuesta?",
-    "response_hint": "Tu respuesta será enviada al equipo de Ohnix.",
-    "footer_note": "Propuesta comercial generada con Ohnix"
+    "response_hint": "Tu respuesta será enviada a quien emitió esta cotización.",
+    "footer_note": "Propuesta comercial generada vía Ohnix"
   },
   "suppliers": {
     "supplier": "Proveedor",
@@ -4514,6 +4514,7 @@
             "alerts": "Alertas automáticas de stock bajo por email",
             "invoicing": "Facturación electrónica DIAN incluida hasta 300 pedidos/mes",
             "sales_quotations": "Cotizaciones para clientes con envío y conversión a pedido",
+            "discovery": "Discovery Engine: riesgos y oportunidades detectados automáticamente",
             "support": "Soporte prioritario por correo y WhatsApp"
           },
           "cta": "Elegir plan Negocio"
@@ -4537,6 +4538,7 @@
             "alerts": "Alertas con umbral configurable por producto",
             "sales_quotations": "Cotizaciones para clientes con envío y conversión a pedido",
             "invoicing": "Facturación electrónica DIAN incluida hasta 1.000 pedidos/mes",
+            "discovery": "Discovery Engine: riesgos y oportunidades detectados automáticamente",
             "support": "Soporte prioritario · Onboarding asistido"
           },
           "cta": "Elegir plan Escala"
@@ -4553,6 +4555,7 @@
             "locations": "Puntos de venta ilimitados con traslados de inventario entre ubicaciones",
             "api": "API sin restricciones de rate limit",
             "accounting": "Contabilidad automática (asientos, plan de cuentas, cierres)",
+            "discovery": "Discovery Engine: riesgos y oportunidades detectados automáticamente",
             "integrations": "Conectores Shopify y WooCommerce, webhooks salientes e integraciones a medida (ERP, contabilidad)",
             "manager": "Account manager dedicado",
             "sla": "SLA definido en el contrato",
@@ -4635,6 +4638,16 @@
             "one": "Stock por ubicación",
             "two": "Traslados con historial completo",
             "three": "Alcance por miembro del equipo"
+          }
+        },
+        "discovery": {
+          "label": "DISCOVERY ENGINE",
+          "title": "Ohnix encuentra lo que tú no estás mirando",
+          "description": "Cada noche, Ohnix revisa tus ventas, clientes, proveedores e inventario buscando riesgos, oportunidades y contradicciones que nadie te pidió que buscaras — siempre con la evidencia real detrás, nunca un número inventado. Disponible desde el plan Negocio.",
+          "highlights": {
+            "one": "Clientes en riesgo de irse, antes de que se vayan",
+            "two": "Patrones que ni tú sabías que existían en tu negocio",
+            "three": "Cada hallazgo con su evidencia, nunca una caja negra"
           }
         }
       }

@@ -96,6 +96,7 @@ const SELF_SELECT = {
     itcycleCompanyId: true,
     dianSoftwareId: true,
     itcycleTestSetId: true,
+    itcyclePayrollTestSetId: true,
     vatResponsible: true,
     vatResponsibleEffectiveFrom: true,
     // Tax configuration only - no calculation reads these yet (see the
@@ -214,6 +215,10 @@ export const getMyItcycleStatus = asyncHandler(async (req, res) => {
             // field instead of asking the owner to go find it again in DIAN's
             // portal when Ohnix already has it on file.
             itcycleTestSetId: company.itcycleTestSetId,
+            // Nómina's own, separate habilitación testSetId - see
+            // Company.itcyclePayrollTestSetId's schema comment for why this
+            // can't just reuse itcycleTestSetId above.
+            itcyclePayrollTestSetId: company.itcyclePayrollTestSetId,
             electronicInvoicingEnabled: company.electronicInvoicingEnabled,
             electronicInvoicingAtRisk,
             electronicInvoicingProvider: company.electronicInvoicingProvider,

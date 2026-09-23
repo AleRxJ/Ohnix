@@ -135,6 +135,7 @@ class SalesQuotationService {
             where: { id: quotationId },
             include: {
                 customer: { select: { id: true, name: true, email: true } },
+                pointOfSale: { select: { account: { select: { company: { select: { name: true, legalName: true, contactEmail: true, phone: true } } } } } },
                 details: { include: { product: { select: { productName: true } } } },
             },
         });
@@ -144,13 +145,21 @@ class SalesQuotationService {
         if (!quotation.customer?.email) throw new ApiError(400, "The customer has no email address");
         if (!["draft", "sent"].includes(quotation.status)) throw new ApiError(400, "Only draft or sent quotations can be sent");
 
+        // The quote is issued by the tenant company, not by Ohnix - the
+        // customer-facing subject/body/reply-to must name the actual issuer.
+        // Brevo's sender identity stays "Ohnix" regardless (see
+        // nodemailer.js's hardcoded SENDER_NAME - required for the verified
+        // sending domain), so this is the only place the real issuer shows.
+        const company = quotation.pointOfSale?.account?.company;
+        const companyName = company?.legalName || company?.name || "Ohnix";
         const rows = quotation.details.map((detail) => `<tr><td style="padding:8px;border-bottom:1px solid #dce5e8;">${escapeHtml(detail.product.productName)}</td><td style="padding:8px;border-bottom:1px solid #dce5e8;text-align:center;">${escapeHtml(detail.quantity)}</td><td style="padding:8px;border-bottom:1px solid #dce5e8;text-align:right;">${escapeHtml(Number(detail.lineTotal).toLocaleString())}</td></tr>`).join("");
         const publicUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/public/sales-quotations/${quotation.publicToken}`;
         await transporter.sendMail({
-            from: `Ohnix <${process.env.SENDER_EMAIL}>`,
+            from: `${companyName} <${process.env.SENDER_EMAIL}>`,
             to: quotation.customer.email,
-            subject: `Ohnix - Sales quotation #${quotation.quotationNo}`,
-            html: `<div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;padding:24px;color:#15232a;"><div style="color:#0b9997;font-weight:700;letter-spacing:.2em;">OHNIX</div><h2>Sales quotation #${escapeHtml(quotation.quotationNo)}</h2><p>Hello ${escapeHtml(quotation.customer.name)}, here is the quotation prepared for you.</p><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="text-align:left;padding:8px;">Product</th><th style="padding:8px;">Qty</th><th style="text-align:right;padding:8px;">Total</th></tr></thead><tbody>${rows}</tbody></table><p style="text-align:right;font-size:20px;font-weight:700;border-top:2px solid #29d8d5;padding-top:12px;">Total: ${escapeHtml(Number(quotation.total).toLocaleString())}</p>${quotation.notes ? `<p style="border-top:1px solid #dce5e8;padding-top:12px;">${escapeHtml(quotation.notes)}</p>` : ""}<p style="margin-top:24px;text-align:center;"><a href="${escapeHtml(publicUrl)}" style="display:inline-block;background:#29d8d5;color:#021314;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none;">View quotation</a></p></div>`,
+            replyTo: company?.contactEmail || undefined,
+            subject: `${companyName} - Sales quotation #${quotation.quotationNo}`,
+            html: `<div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;padding:24px;color:#15232a;"><div style="color:#0b9997;font-weight:700;font-size:15px;">${escapeHtml(companyName)}</div><h2>Sales quotation #${escapeHtml(quotation.quotationNo)}</h2><p>Hello ${escapeHtml(quotation.customer.name)}, here is the quotation prepared for you by ${escapeHtml(companyName)}.</p><table style="width:100%;border-collapse:collapse;"><thead><tr><th style="text-align:left;padding:8px;">Product</th><th style="padding:8px;">Qty</th><th style="text-align:right;padding:8px;">Total</th></tr></thead><tbody>${rows}</tbody></table><p style="text-align:right;font-size:20px;font-weight:700;border-top:2px solid #29d8d5;padding-top:12px;">Total: ${escapeHtml(Number(quotation.total).toLocaleString())}</p>${quotation.notes ? `<p style="border-top:1px solid #dce5e8;padding-top:12px;">${escapeHtml(quotation.notes)}</p>` : ""}<p style="margin-top:24px;text-align:center;"><a href="${escapeHtml(publicUrl)}" style="display:inline-block;background:#29d8d5;color:#021314;padding:12px 22px;border-radius:8px;font-weight:700;text-decoration:none;">View quotation</a></p><p style="margin-top:28px;padding-top:12px;border-top:1px solid #eef2f3;color:#9aa7ad;font-size:11px;">Sent via Ohnix</p></div>`,
         });
         return prisma.salesQuotation.update({ where: { id: quotationId }, data: { status: "sent", updatedById: userId } });
     }

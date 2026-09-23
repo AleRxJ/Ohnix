@@ -22,6 +22,7 @@ export const MARKETING_ROUTES = [
     "/certificado-digital-dian",
     "/comparativa/ohnix-vs-alegra",
     "/colaboracion-en-equipo",
+    "/deteccion-riesgos-oportunidades-negocio",
     "/integraciones",
     "/blog",
     ...BLOG_SLUGS.map((slug) => `/blog/${slug}`),

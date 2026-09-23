@@ -3439,7 +3439,7 @@
     "load_failed": "Could not load customer quotations",
     "create_failed": "Could not create the customer quotation",
     "customer_phone_missing": "This customer does not have a phone number",
-    "whatsapp_message": "Hello, here is your Ohnix quotation {{number}} for {{total}}. View it here: {{url}}",
+    "whatsapp_message": "Hello, here is your quotation {{number}} from {{company}} for {{total}}. View it here: {{url}}",
     "print": "Print or save as PDF",
     "share_whatsapp": "Share via WhatsApp",
     "send_email": "Send by email",
@@ -3467,12 +3467,12 @@
     "vat_hint": "VAT is calculated automatically from the company's tax responsibility and each product's configuration.",
     "vat_form_hint": "VAT is calculated automatically when saved: responsible companies use each product's tax rate; otherwise it remains $0.",
     "point_of_sale": "Point of sale",
-    "quotation_prepared": "Proposal prepared by Ohnix",
+    "quotation_prepared": "Commercial proposal",
     "accept": "Accept quotation",
     "reject": "Reject quotation",
     "response_title": "What would you like to do with this proposal?",
-    "response_hint": "Your response will be sent to the Ohnix team.",
-    "footer_note": "Commercial proposal generated with Ohnix"
+    "response_hint": "Your response will be sent to whoever issued this quotation.",
+    "footer_note": "Commercial proposal generated via Ohnix"
   },
   "suppliers": {
     "supplier": "Supplier",
@@ -4519,6 +4519,7 @@
             "alerts": "Automatic low-stock email alerts",
             "invoicing": "DIAN electronic invoicing included up to 300 orders/month",
             "sales_quotations": "Customer quotations with sending and order conversion",
+            "discovery": "Discovery Engine: risks and opportunities detected automatically",
             "support": "Priority email & WhatsApp support"
           },
           "cta": "Choose Business"
@@ -4542,6 +4543,7 @@
             "alerts": "Per-product configurable stock thresholds",
             "sales_quotations": "Customer quotations with sending and order conversion",
             "invoicing": "DIAN electronic invoicing included up to 1,000 orders/month",
+            "discovery": "Discovery Engine: risks and opportunities detected automatically",
             "support": "Priority support · Assisted onboarding"
           },
           "cta": "Choose Scale"
@@ -4558,6 +4560,7 @@
             "locations": "Unlimited points of sale with inventory transfers between locations",
             "api": "Unrestricted API access",
             "accounting": "Automated accounting (journal entries, chart of accounts, closes)",
+            "discovery": "Discovery Engine: risks and opportunities detected automatically",
             "integrations": "Shopify and WooCommerce connectors, outbound webhooks, and custom integrations (ERP, accounting)",
             "manager": "Dedicated account manager",
             "sla": "SLA defined in your contract",
@@ -4640,6 +4643,16 @@
             "one": "Stock per location",
             "two": "Transfers with a full history",
             "three": "Per-member location scope"
+          }
+        },
+        "discovery": {
+          "label": "DISCOVERY ENGINE",
+          "title": "Ohnix finds what you're not looking at",
+          "description": "Every night, Ohnix scans your sales, customers, suppliers and inventory for risks, opportunities and contradictions nobody asked it to look for — always backed by real evidence, never an invented number. Available from the Business plan.",
+          "highlights": {
+            "one": "Customers at risk of leaving, before they leave",
+            "two": "Patterns you didn't know existed in your business",
+            "three": "Every finding comes with its evidence, never a black box"
           }
         }
       }

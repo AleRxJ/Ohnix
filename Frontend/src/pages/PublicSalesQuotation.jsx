@@ -72,7 +72,7 @@ const PublicSalesQuotation = () => {
 
                 <section className="public-sales-quotation-meta">
                     <div><span>{t("sales_quotations.customer")}</span><strong>{quotation.customer?.name}</strong><small>{quotation.customer?.email}</small></div>
-                    <div><span>{t("sales_quotations.issued_by")}</span><strong>{quotation.point_of_sale?.account?.company?.legalName || quotation.point_of_sale?.account?.company?.name || "Ohnix"}</strong><small>{quotation.point_of_sale?.name ? `${t("sales_quotations.point_of_sale")}: ${quotation.point_of_sale.name}` : t("sales_quotations.quotation_prepared")}</small><small>{quotation.point_of_sale?.account?.company?.contactEmail || quotation.point_of_sale?.account?.company?.phone || ""}</small></div>
+                    <div><span>{t("sales_quotations.issued_by")}</span><strong>{quotation.point_of_sale?.account?.company?.legalName || quotation.point_of_sale?.account?.company?.name || t("common.na")}</strong><small>{quotation.point_of_sale?.name ? `${t("sales_quotations.point_of_sale")}: ${quotation.point_of_sale.name}` : t("sales_quotations.quotation_prepared")}</small><small>{[quotation.point_of_sale?.account?.company?.contactEmail, quotation.point_of_sale?.account?.company?.phone].filter(Boolean).join(" · ")}</small></div>
                     <div><span>{t("sales_quotations.issued")}</span><strong>{formatDateTime(quotation.issued_at)}</strong></div>
                     <div><span>{t("sales_quotations.valid_until")}</span><strong>{formatDateTime(quotation.valid_until)}</strong></div>
                 </section>

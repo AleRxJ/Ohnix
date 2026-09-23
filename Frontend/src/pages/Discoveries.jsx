@@ -5,9 +5,11 @@ import { Empty, Spin, Alert } from "antd";
 import { RadarChartOutlined } from "@ant-design/icons";
 import toast from "react-hot-toast";
 import PageHeader from "../components/common/PageHeader";
+import PlanGate from "../components/common/PlanGate";
 import DiscoveryListCard from "../components/discoveries/DiscoveryListCard";
 import DiscoveryDetailDrawer from "../components/discoveries/DiscoveryDetailDrawer";
 import useI18n from "../hooks/useI18n";
+import useSubscription from "../hooks/useSubscription";
 import { discoveryService } from "../services/discoveryService";
 import { getConnectivityState, subscribeConnectivity } from "../offline/connectivity";
 
@@ -57,6 +59,7 @@ DiscoveryFilterTabs.propTypes = {
 const Discoveries = () => {
     const { t } = useI18n();
     const location = useLocation();
+    const { can, loading: subscriptionLoading } = useSubscription();
     const [filter, setFilter] = useState("open");
     const [discoveries, setDiscoveries] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -79,9 +82,14 @@ const Discoveries = () => {
     };
 
     useEffect(() => {
+        // Skip the fetch entirely on a Starter account - it would only ever
+        // 403 (Backend/routes/discovery.routes.js's enforcePlanFeature), and
+        // subscriptionLoading gates this until the real plan is confirmed so
+        // a Growth+ account never sees a flash of the locked state first.
+        if (subscriptionLoading || !can("discoveryEngine")) return;
         load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [subscriptionLoading]);
 
     const filtered = discoveries
         .filter((d) => {
@@ -101,6 +109,29 @@ const Discoveries = () => {
     const handleStatusChanged = (updated) => {
         setDiscoveries((prev) => prev.map((d) => (d._id === updated._id ? { ...d, ...updated } : d)));
     };
+
+    if (subscriptionLoading) {
+        return (
+            <div className="discoveries-page p-4 sm:p-6 text-[var(--ohnix-text-primary)]">
+                <div className="flex justify-center py-16">
+                    <Spin />
+                </div>
+            </div>
+        );
+    }
+
+    if (!can("discoveryEngine")) {
+        return (
+            <div className="discoveries-page p-4 sm:p-6 text-[var(--ohnix-text-primary)]">
+                <PageHeader
+                    title={t("discoveries.page_title")}
+                    subtitle={t("discoveries.page_subtitle")}
+                    icon={<RadarChartOutlined />}
+                />
+                <PlanGate featureKey="discoveryEngine" />
+            </div>
+        );
+    }
 
     return (
         <div className="discoveries-page p-4 sm:p-6 text-[var(--ohnix-text-primary)]">
