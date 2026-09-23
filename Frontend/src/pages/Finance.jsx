@@ -14,6 +14,7 @@ import AccountsPayablePlanner from "../components/finance/AccountsPayablePlanner
 import AccountsReceivablePlanner from "../components/finance/AccountsReceivablePlanner";
 import { accountingService } from "../services/accountingService";
 import CashIntegrityPanel from "../components/finance/CashIntegrityPanel";
+import PaymentMethodsCard from "../components/finance/PaymentMethodsCard";
 import { financeService } from "../services/financeService";
 
 const ACCOUNT_TYPE_ICON = { cash: WalletOutlined, bank: BankOutlined };
@@ -236,6 +237,7 @@ const Finance = () => {
                         </div>
                     )}
                     <CashIntegrityPanel onOpenMovements={setMovementsAccount} />
+                    <PaymentMethodsCard />
                     <AccountsPayablePlanner canEdit={canEdit} />
                     <AccountsReceivablePlanner canEdit={canEdit} />
                 </div>

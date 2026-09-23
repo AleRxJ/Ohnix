@@ -54,6 +54,9 @@ const WarrantyList = () => {
 
     return (
         <div>
+            <div className="mb-4">
+                <p className="text-sm text-[var(--ohnix-text-muted)] m-0">{t("warranties.page_subtitle")}</p>
+            </div>
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <h1 className="text-xl font-semibold text-[var(--ohnix-text-primary)] m-0">{t("warranties.title")}</h1>
                 <Space>

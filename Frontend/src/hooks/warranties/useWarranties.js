@@ -130,8 +130,15 @@ export const useWarranties = () => {
                 await fetchWarranties(pagination.current, pagination.pageSize, filters);
                 return true;
             }
-            await api.post("/warranties", values);
-            toast.success(t("warranties.created_successfully"));
+            const response = await api.post("/warranties", values);
+            // Coverage counts from the purchase date, not from today - a
+            // claim opened long after the sale can be born already outside
+            // its window (see warranty.controller.js's `already_expired`).
+            if (response.data.data?.already_expired) {
+                toast(t("warranties.created_but_already_expired"), { icon: "⚠️" });
+            } else {
+                toast.success(t("warranties.created_successfully"));
+            }
             await fetchWarranties(1, pagination.pageSize, filters);
             await fetchDashboard();
             return true;

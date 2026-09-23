@@ -62,6 +62,13 @@ const DEFAULT_ACCOUNTS = [
     // postOrderPaymentJournalEntry/postPurchasePaymentJournalEntry.
     { code: "4210", name: "Ingresos financieros - diferencia en cambio", accountType: "revenue" },
     { code: "5305", name: "Gastos financieros - diferencia en cambio", accountType: "expense" },
+    // Fase 5 (causación automática) - default expense account a PaymentMethod
+    // can point to (the user may instead point one at a different expense
+    // account they already have) - see paymentMethod.service.js and
+    // accountingPosting.service.js's payment-fee lines. Distinct code from
+    // 5305 above, which Fase 4 already reserved specifically for diferencia
+    // en cambio, not commissions.
+    { code: "530520", name: "Comisiones bancarias y de pasarelas de pago", accountType: "expense" },
 ];
 
 // Lazily seeds the default chart the first time a tenant needs one - same

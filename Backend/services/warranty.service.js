@@ -144,6 +144,11 @@ export const createWarranty = async ({ user, actorId, pointOfSaleId, payload: ra
         reason: rawPayload.reason,
         problemDescription: rawPayload.problem_description,
         warrantyDurationDays: rawPayload.warranty_duration_days,
+        // Optional override for when warranty coverage starts on a date
+        // other than the purchase date (e.g. a made-to-order item whose
+        // warranty starts at delivery, weeks later) - defaults to the
+        // linked sale's date below when not supplied.
+        warrantyStartDate: rawPayload.warranty_start_date,
         observations: rawPayload.observations,
         assignedToId: rawPayload.assigned_to,
     };
@@ -179,8 +184,22 @@ export const createWarranty = async ({ user, actorId, pointOfSaleId, payload: ra
         ? Math.round(Number(payload.warrantyDurationDays))
         : settings.defaultWarrantyDurationDays;
 
-    const warrantyStartDate = new Date();
+    // Coverage counts from the PURCHASE date, not from whenever the merchant
+    // gets around to registering the claim - a product bought 25 days ago
+    // under a 30-day warranty must show as "5 days left", not reset to a
+    // fresh 30 days just because the claim was opened today. Falls back to
+    // "now" only when there's no linked sale at all (a fully manual entry
+    // with no order/orderDetail), and an explicit override always wins.
+    const warrantyStartDate = payload.warrantyStartDate
+        ? new Date(payload.warrantyStartDate)
+        : order?.orderDate || new Date();
     const dueDate = new Date(warrantyStartDate.getTime() + warrantyDurationDays * 24 * 60 * 60 * 1000);
+    // Registering a claim for a sale whose coverage window already lapsed
+    // isn't blocked (a merchant may still choose to honor it as a courtesy),
+    // but the warranty is created already in the "overdue" state rather than
+    // pretending it has a fresh 30/60/365 days left from today - see
+    // warranty.controller.js#mapWarranty's `already_expired` flag, which the
+    // UI uses to warn the merchant right at creation.
 
     const reason = String(payload.reason || "").trim();
     const problemDescription = String(payload.problemDescription || "").trim();

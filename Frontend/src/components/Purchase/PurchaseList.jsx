@@ -59,6 +59,7 @@ const PurchaseList = ({
         useState(false);
     const [paymentModalVisible, setPaymentModalVisible] = useState(false);
     const [cashAccounts, setCashAccounts] = useState([]);
+    const [paymentMethods, setPaymentMethods] = useState([]);
     const [selectedPurchase, setSelectedPurchase] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [form] = Form.useForm();
@@ -83,6 +84,14 @@ const PurchaseList = ({
                 setCashAccounts(res?.data || []);
             } catch {
                 // RegisterPaymentModal shows the "no accounts" hint either way
+            }
+        }
+        if (paymentMethods.length === 0) {
+            try {
+                const res = await financeService.listPaymentMethods({ activeOnly: true });
+                setPaymentMethods(res?.data || []);
+            } catch {
+                // RegisterPaymentModal simply hides the payment-method select when empty
             }
         }
         paymentForm.resetFields();
@@ -264,6 +273,8 @@ const PurchaseList = ({
                     )}
                     cashAccounts={cashAccounts}
                     isForeignCurrency={Boolean(selectedPurchase.currency_code && selectedPurchase.currency_code !== "COP")}
+                    paymentMethods={paymentMethods}
+                    feeDirection="add"
                 />
             )}
 

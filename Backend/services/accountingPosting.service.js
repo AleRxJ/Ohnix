@@ -421,12 +421,29 @@ export const postPurchaseJournalEntry = async (tx, { accountId, createdById, pur
 // goes to 4210 (ganancia) or 5305 (pérdida) - same "credit revenue / debit
 // expense depending on the sign" branching postPurchaseReturnJournalEntry
 // already uses for its own variance.
+// Fase 5 (causación automática) - `feeAmount` is 0 unless the payment was
+// registered against a PaymentMethod with a configured commission (see
+// orderPayment.service.js#registerOrderPayment). It never touches
+// clearedReceivable (1305 still clears by the FULL sale amount - the
+// customer paid the invoice in full, the commission is Ohnix's own cost,
+// not a discount) - only the cash leg shrinks to what actually landed in
+// the bank after the processor's cut, with the difference debited to the
+// method's own expense account. Purely additive on the debit side (cash
+// down, expense up by the same amount), so it never disturbs the FX
+// gain/loss balancing above - both can coexist in the same entry.
 export const postOrderPaymentJournalEntry = async (tx, { accountId, createdById, payment, cashAccount, order, thirdParty }) => {
     const coa = await getChartAccountMap(tx, accountId);
     const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
     const costCenterId = await resolveLocationCostCenter(tx, accountId, order.pointOfSaleId);
+    // Prisma Decimal's `valueOf()` returns a STRING - `-` still forces
+    // numeric coercion regardless, but `+` below would silently do string
+    // concatenation instead of addition if fed a raw Decimal. Converting
+    // once here avoids that footgun for every line below.
+    const paymentAmount = Number(payment.amount);
     const fxDifference = round2(payment.exchangeRateDifference || 0);
-    const clearedReceivable = round2(payment.amount - fxDifference);
+    const clearedReceivable = round2(paymentAmount - fxDifference);
+    const feeAmount = round2(payment.feeAmount || 0);
+    const cashDelta = round2(paymentAmount - feeAmount);
 
     return recordJournalEntry(tx, {
         accountId,
@@ -436,10 +453,11 @@ export const postOrderPaymentJournalEntry = async (tx, { accountId, createdById,
         sourceType: "order_payment",
         sourceId: payment.id,
         lines: withCostCenter(withThirdParty([
-            { chartAccountId: cashChartAccountId, debit: payment.amount, credit: 0 },
+            { chartAccountId: cashChartAccountId, debit: cashDelta, credit: 0 },
             { chartAccountId: coa.get("1305").id, debit: 0, credit: clearedReceivable },
             ...(fxDifference > 0 ? [{ chartAccountId: coa.get("4210").id, debit: 0, credit: fxDifference }] : []),
             ...(fxDifference < 0 ? [{ chartAccountId: coa.get("5305").id, debit: -fxDifference, credit: 0 }] : []),
+            ...(feeAmount > 0 ? [{ chartAccountId: payment.paymentMethod.expenseAccountId, debit: feeAmount, credit: 0 }] : []),
         ], thirdParty, coa.get("1305").id), costCenterId),
     });
 };
@@ -448,8 +466,17 @@ export const postPurchasePaymentJournalEntry = async (tx, { accountId, createdBy
     const coa = await getChartAccountMap(tx, accountId);
     const cashChartAccountId = await resolveCashAccountChartAccount(tx, accountId, cashAccount);
     const costCenterId = await resolveLocationCostCenter(tx, accountId, purchase.pointOfSaleId);
+    // See postOrderPaymentJournalEntry's matching comment on why this gets
+    // converted once up front (a raw Decimal fed into `+` below would
+    // silently string-concatenate instead of adding).
+    const paymentAmount = Number(payment.amount);
     const fxDifference = round2(payment.exchangeRateDifference || 0);
-    const clearedPayable = round2(payment.amount - fxDifference);
+    const clearedPayable = round2(paymentAmount - fxDifference);
+    // Opposite direction from the order side: paying a supplier via a
+    // method with a fee costs MORE cash than the payable itself (the fee is
+    // an extra cost on top, not deducted from what the supplier receives).
+    const feeAmount = round2(payment.feeAmount || 0);
+    const cashDelta = round2(paymentAmount + feeAmount);
 
     // Opposite sign meaning from the order side above: here `fxDifference`
     // is `amount paid - payable booked`, so paying MORE than what was
@@ -465,9 +492,10 @@ export const postPurchasePaymentJournalEntry = async (tx, { accountId, createdBy
         sourceId: payment.id,
         lines: withCostCenter(withThirdParty([
             { chartAccountId: coa.get("2205").id, debit: clearedPayable, credit: 0 },
-            { chartAccountId: cashChartAccountId, debit: 0, credit: payment.amount },
+            { chartAccountId: cashChartAccountId, debit: 0, credit: cashDelta },
             ...(fxDifference > 0 ? [{ chartAccountId: coa.get("5305").id, debit: fxDifference, credit: 0 }] : []),
             ...(fxDifference < 0 ? [{ chartAccountId: coa.get("4210").id, debit: 0, credit: -fxDifference }] : []),
+            ...(feeAmount > 0 ? [{ chartAccountId: payment.paymentMethod.expenseAccountId, debit: feeAmount, credit: 0 }] : []),
         ], thirdParty, coa.get("2205").id), costCenterId),
     });
 };

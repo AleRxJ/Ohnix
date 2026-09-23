@@ -80,6 +80,12 @@ const mapWarranty = (warranty) => ({
     warranty_start_date: warranty.warrantyStartDate,
     warranty_duration_days: warranty.warrantyDurationDays,
     due_date: warranty.dueDate,
+    // Coverage is counted from the purchase date (see
+    // warranty.service.js#createWarranty), so a claim registered long after
+    // the sale can legitimately be born already outside its window - this
+    // lets the UI warn the merchant right at creation instead of them only
+    // noticing later in the "vencidas" filter.
+    already_expired: new Date(warranty.dueDate).getTime() < Date.now(),
     reason: warranty.reason,
     problem_description: warranty.problemDescription,
     observations: warranty.observations,

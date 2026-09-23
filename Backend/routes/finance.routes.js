@@ -38,6 +38,10 @@ import {
     listPaymentCredits,
     registerPaymentAdvance,
     applyPaymentCredit,
+    listPaymentMethods,
+    createPaymentMethod,
+    updatePaymentMethod,
+    setPaymentMethodActive,
 } from "../controllers/finance.controller.js";
 
 const router = Router();
@@ -113,5 +117,17 @@ router.route("/reconciliation/summary")
     .get(requireModulePermission("finance", "view"), getReconciliationSummary);
 router.route("/reconciliation/report")
     .get(requireModulePermission("finance", "view"), getReconciliationReport);
+
+// Payment methods (Fase 5 - causación automática) - creating/editing a
+// method changes what every future payment against it automatically
+// causes, so it's gated at "admin" like WithholdingConcept CRUD in
+// accounting.routes.js, not routine "edit" data entry.
+router.route("/payment-methods")
+    .get(requireModulePermission("finance", "view"), listPaymentMethods)
+    .post(requireModulePermission("finance", "admin"), createPaymentMethod);
+router.route("/payment-methods/:id")
+    .patch(requireModulePermission("finance", "admin"), updatePaymentMethod);
+router.route("/payment-methods/:id/active")
+    .patch(requireModulePermission("finance", "admin"), setPaymentMethodActive);
 
 export default router;

@@ -2,6 +2,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { recordCashMovement, creditCashAccount } from "./cashMovement.service.js";
 import { buildAccountingThirdParty, postOrderPaymentJournalEntry } from "./accountingPosting.service.js";
+import { getActivePaymentMethod } from "./paymentMethod.service.js";
 
 const round2 = (value) => Number(Number(value || 0).toFixed(2));
 // Fase 4 (multi-moneda) - only ever consulted when the order isn't COP AND
@@ -44,12 +45,16 @@ export const listOrderPayments = async ({ accountId, orderId }) => {
 
     return prisma.orderPayment.findMany({
         where: { orderId: order.id },
-        include: { cashAccount: { select: { id: true, name: true } }, createdBy: { select: { id: true, username: true } } },
+        include: {
+            cashAccount: { select: { id: true, name: true } },
+            createdBy: { select: { id: true, username: true } },
+            paymentMethod: { select: { id: true, name: true } },
+        },
         orderBy: { paidAt: "desc" },
     });
 };
 
-export const registerOrderPayment = async ({ accountId, actorId, orderId, amount, cashAccountId, method, reference, settleInFull }) => {
+export const registerOrderPayment = async ({ accountId, actorId, orderId, amount, cashAccountId, method, reference, settleInFull, paymentMethodId }) => {
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
         throw new ApiError(400, "Payment amount must be greater than zero.", [], "", "order_payment_amount_invalid");
@@ -68,6 +73,14 @@ export const registerOrderPayment = async ({ accountId, actorId, orderId, amount
         where: { id: cashAccountId, createdById: accountId, isActive: true },
     });
     if (!cashAccount) throw new ApiError(404, "Cash account not found.", [], "", "order_payment_cash_account_not_found");
+
+    // Fase 5 (causación automática) - the processor's cut on THIS payment,
+    // frozen from the method's current rate. Capped at the payment's own
+    // amount (a misconfigured >100% rate can never make cashDelta negative).
+    const paymentMethod = await getActivePaymentMethod(accountId, paymentMethodId);
+    const feeAmount = paymentMethod
+        ? Math.min(round2(numericAmount * (Number(paymentMethod.feePercent) / 100) + Number(paymentMethod.feeFixedAmount)), numericAmount)
+        : 0;
 
     try {
         return await prisma.$transaction(async (tx) => {
@@ -93,6 +106,8 @@ export const registerOrderPayment = async ({ accountId, actorId, orderId, amount
                 orderId,
                 amount: numericAmount,
                 exchangeRateDifference,
+                paymentMethodId: paymentMethod?.id || null,
+                feeAmount,
                 cashAccountId,
                 method: method?.trim() || null,
                 reference: reference?.trim() || null,
@@ -100,11 +115,15 @@ export const registerOrderPayment = async ({ accountId, actorId, orderId, amount
             },
         });
 
-        const balanceAfter = await creditCashAccount(tx, { cashAccountId, amount: numericAmount });
+        // The processor keeps its cut before depositing - only the NET
+        // amount actually reaches the cash account, even though the
+        // customer paid (and 1305 clears by) the full sale amount.
+        const cashDelta = round2(numericAmount - feeAmount);
+        const balanceAfter = await creditCashAccount(tx, { cashAccountId, amount: cashDelta });
 
         await recordCashMovement(tx, {
             cashAccountId,
-            delta: numericAmount,
+            delta: cashDelta,
             balanceAfter,
             sourceType: "order_payment",
             sourceId: payment.id,
@@ -115,7 +134,7 @@ export const registerOrderPayment = async ({ accountId, actorId, orderId, amount
         await postOrderPaymentJournalEntry(tx, {
             accountId,
             createdById: actorId,
-            payment,
+            payment: { ...payment, paymentMethod },
             cashAccount,
             order,
             thirdParty: buildAccountingThirdParty("customer", order.customer),

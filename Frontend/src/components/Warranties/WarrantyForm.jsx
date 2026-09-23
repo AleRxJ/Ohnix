@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Modal, Form, Input, InputNumber, Button, AutoComplete, Descriptions, Divider, Empty } from "antd";
+import { Modal, Form, Input, InputNumber, Button, AutoComplete, Descriptions, Divider, Empty, Alert } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
@@ -18,6 +18,19 @@ const WarrantyForm = ({ open, onClose, onSubmit, submitting, lookupSale, prefill
     const [searching, setSearching] = useState(false);
     const [orders, setOrders] = useState([]);
     const [selectedLine, setSelectedLine] = useState(null);
+    // Client-side heads-up only - the account's real configured default
+    // duration lives in warranty settings (not fetched here to keep this
+    // form lightweight), so 30 is just a reasonable assumption for this
+    // preview. The backend's own `already_expired` flag (shown as a toast
+    // after saving) is the authoritative check either way.
+    const watchedDurationDays = Form.useWatch("warranty_duration_days", form);
+    const expiredWarningDate = (() => {
+        const purchaseDate = selectedLine?.order?.order_date;
+        if (!purchaseDate) return null;
+        const days = Number(watchedDurationDays) > 0 ? Number(watchedDurationDays) : 30;
+        const estimatedDueDate = dayjs(purchaseDate).add(days, "day");
+        return estimatedDueDate.isBefore(dayjs()) ? estimatedDueDate.format("DD/MM/YYYY") : null;
+    })();
 
     useEffect(() => {
         if (!open) {
@@ -168,12 +181,22 @@ const WarrantyForm = ({ open, onClose, onSubmit, submitting, lookupSale, prefill
                     <TextArea rows={2} />
                 </Form.Item>
 
+                {expiredWarningDate && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        className="mb-4"
+                        message={t("warranties.already_expired_warning", { date: expiredWarningDate })}
+                    />
+                )}
+
                 <div className="flex justify-end gap-2 mt-4">
                     <Button onClick={onClose}>{t("common.cancel")}</Button>
                     <Button type="primary" htmlType="submit" loading={submitting} disabled={!prefill && !selectedLine && false}>
                         {t("warranties.register_warranty")}
                     </Button>
                 </div>
+                <p className="text-xs text-[var(--ohnix-text-muted)] mt-2 mb-0">{t("warranties.register_notify_hint")}</p>
             </Form>
         </Modal>
     );

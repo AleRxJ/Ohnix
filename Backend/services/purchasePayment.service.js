@@ -2,6 +2,7 @@ import { prisma } from "../db/prisma.js";
 import { ApiError } from "../utils/ApiError.js";
 import { recordCashMovement, claimCashAccount } from "./cashMovement.service.js";
 import { buildAccountingThirdParty, postPurchasePaymentJournalEntry } from "./accountingPosting.service.js";
+import { getActivePaymentMethod } from "./paymentMethod.service.js";
 
 const round2 = (value) => Number(Number(value || 0).toFixed(2));
 // See orderPayment.service.js's matching constant/comment.
@@ -39,12 +40,16 @@ export const listPurchasePayments = async ({ accountId, purchaseId }) => {
 
     return prisma.purchasePayment.findMany({
         where: { purchaseId: purchase.id },
-        include: { cashAccount: { select: { id: true, name: true } }, createdBy: { select: { id: true, username: true } } },
+        include: {
+            cashAccount: { select: { id: true, name: true } },
+            createdBy: { select: { id: true, username: true } },
+            paymentMethod: { select: { id: true, name: true } },
+        },
         orderBy: { paidAt: "desc" },
     });
 };
 
-export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, amount, cashAccountId, method, reference, settleInFull }) => {
+export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, amount, cashAccountId, method, reference, settleInFull, paymentMethodId }) => {
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
         throw new ApiError(400, "Payment amount must be greater than zero.", [], "", "purchase_payment_amount_invalid");
@@ -60,6 +65,14 @@ export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, 
         where: { id: cashAccountId, createdById: accountId, isActive: true },
     });
     if (!cashAccount) throw new ApiError(404, "Cash account not found.", [], "", "purchase_payment_cash_account_not_found");
+
+    // See orderPayment.service.js's matching comment - a fee here is an
+    // ADDITIONAL cost, so it's added to (not subtracted from) what leaves
+    // the cash account below.
+    const paymentMethod = await getActivePaymentMethod(accountId, paymentMethodId);
+    const feeAmount = paymentMethod
+        ? round2(numericAmount * (Number(paymentMethod.feePercent) / 100) + Number(paymentMethod.feeFixedAmount))
+        : 0;
 
     try {
         return await prisma.$transaction(async (tx) => {
@@ -79,7 +92,10 @@ export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, 
             throw new ApiError(422, `Payment (${numericAmount}) exceeds the purchase balance (${pending}).`, [], "", "purchase_payment_exceeds_balance");
         }
 
-        const balanceAfter = await claimCashAccount(tx, { cashAccountId, amount: numericAmount });
+        // The fee is an extra cost on top of the payable itself - the
+        // business pays the supplier's invoice AND the method's commission.
+        const cashDelta = round2(numericAmount + feeAmount);
+        const balanceAfter = await claimCashAccount(tx, { cashAccountId, amount: cashDelta });
         if (balanceAfter === null) {
             throw new ApiError(422, "The selected cash account has insufficient funds.", [], "", "purchase_payment_insufficient_funds");
         }
@@ -89,6 +105,8 @@ export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, 
                 purchaseId,
                 amount: numericAmount,
                 exchangeRateDifference,
+                paymentMethodId: paymentMethod?.id || null,
+                feeAmount,
                 cashAccountId,
                 method: method?.trim() || null,
                 reference: reference?.trim() || null,
@@ -98,7 +116,7 @@ export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, 
 
         await recordCashMovement(tx, {
             cashAccountId,
-            delta: -numericAmount,
+            delta: -cashDelta,
             balanceAfter,
             sourceType: "purchase_payment",
             sourceId: payment.id,
@@ -109,7 +127,7 @@ export const registerPurchasePayment = async ({ accountId, actorId, purchaseId, 
         await postPurchasePaymentJournalEntry(tx, {
             accountId,
             createdById: actorId,
-            payment,
+            payment: { ...payment, paymentMethod },
             cashAccount,
             purchase,
             thirdParty: buildAccountingThirdParty("supplier", purchase.supplier),

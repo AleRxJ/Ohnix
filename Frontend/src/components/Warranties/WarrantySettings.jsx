@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Drawer, Checkbox, InputNumber, Table, Switch, Input, Button, Divider, Spin } from "antd";
+import { Drawer, Checkbox, InputNumber, Table, Switch, Input, Button, Divider, Spin, Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import useI18n from "../../hooks/useI18n";
 
 const { TextArea } = Input;
@@ -63,7 +64,14 @@ const WarrantySettings = ({ open, onClose, settings, loading, saving, onSave }) 
     const columns = [
         { title: t("warranties.settings_col_event"), key: "event", render: (_, row) => t(`warranties.status_${row.event}`) },
         {
-            title: t("warranties.channel_whatsapp"),
+            title: (
+                <span className="inline-flex items-center gap-1">
+                    {t("warranties.channel_whatsapp")}
+                    <Tooltip title={t("warranties.whatsapp_not_configured_hint")}>
+                        <InfoCircleOutlined className="text-[var(--ohnix-text-muted)]" />
+                    </Tooltip>
+                </span>
+            ),
             key: "whatsapp",
             render: (_, row) => (
                 <Switch
@@ -90,6 +98,7 @@ const WarrantySettings = ({ open, onClose, settings, loading, saving, onSave }) 
                 <Spin />
             ) : (
                 <>
+                    <p className="text-sm text-[var(--ohnix-text-muted)] mb-4">{t("warranties.settings_intro")}</p>
                     <Divider orientation="left" className="text-base font-semibold !mt-0">
                         {t("warranties.settings_enabled_statuses")}
                     </Divider>
@@ -99,6 +108,7 @@ const WarrantySettings = ({ open, onClose, settings, loading, saving, onSave }) 
                         onChange={setEnabledStatuses}
                         options={ALL_STATUSES.map((s) => ({ label: t(`warranties.status_${s}`), value: s }))}
                     />
+                    <p className="text-xs text-[var(--ohnix-text-muted)] mb-4">{t("warranties.settings_enabled_statuses_hint")}</p>
 
                     <Divider orientation="left" className="text-base font-semibold">
                         {t("warranties.settings_default_duration")}
@@ -120,6 +130,7 @@ const WarrantySettings = ({ open, onClose, settings, loading, saving, onSave }) 
                     <Divider orientation="left" className="text-base font-semibold">
                         {t("warranties.settings_templates_title")}
                     </Divider>
+                    <p className="text-xs text-[var(--ohnix-text-muted)] mb-3">{t("warranties.settings_templates_hint")}</p>
                     {NOTIFIABLE_EVENTS.map((event) => (
                         <div key={event} className="mb-4">
                             <p className="text-sm font-medium mb-1">{t(`warranties.status_${event}`)} — {t("warranties.channel_email")}</p>

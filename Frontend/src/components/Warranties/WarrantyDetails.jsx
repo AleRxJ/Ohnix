@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Drawer, Descriptions, Select, Button, Timeline, Upload, Image, Table, Tag, Modal, Radio, Input, Spin, Divider, Space } from "antd";
-import { UploadOutlined, SendOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Drawer, Descriptions, Select, Button, Timeline, Upload, Image, Table, Tag, Modal, Radio, Input, Spin, Divider, Space, Alert } from "antd";
+import { UploadOutlined, SendOutlined, DeleteOutlined, WarningOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import useI18n from "../../hooks/useI18n";
 
@@ -61,6 +61,15 @@ const WarrantyDetails = ({
         label: t(`warranties.status_${s}`),
     }));
 
+    // Spec section 11 explicitly asks for a visible in-app alert (not just a
+    // buried log line) when a warranty event couldn't reach the customer on
+    // any channel. Heuristic: a "no_channel_available" event exists and no
+    // communication after it actually succeeded - good enough for Phase 1
+    // without a dedicated "resolved" flag on the event itself.
+    const hasUnreachedCustomerAlert =
+        (warranty.events || []).some((e) => e.event_type === "no_channel_available") &&
+        !(warranty.communications || []).some((c) => ["sent", "delivered", "read"].includes(c.status));
+
     const openNotifyModal = async () => {
         setNotifyModalOpen(true);
         await onFetchPreview(warranty._id, "email", warranty.status);
@@ -93,6 +102,16 @@ const WarrantyDetails = ({
 
     return (
         <Drawer open={open} onClose={onClose} width={680} title={`${t("warranties.warranty_details")} — ${warranty.warranty_number}`} loading={loading}>
+            {hasUnreachedCustomerAlert && (
+                <Alert
+                    className="mb-4"
+                    type="warning"
+                    showIcon
+                    icon={<WarningOutlined />}
+                    message={t("warranties.alert_no_channel_title")}
+                    description={t("warranties.alert_no_channel_desc")}
+                />
+            )}
             <Descriptions size="small" column={2} bordered className="mb-4">
                 <Descriptions.Item label={t("warranties.field_customer")} span={2}>
                     {warranty.customer_name_snapshot}
@@ -114,7 +133,7 @@ const WarrantyDetails = ({
                 </Descriptions.Item>
             </Descriptions>
 
-            <div className="flex items-center gap-2 mb-6">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <Select
                     className="min-w-[220px]"
                     value={pendingStatus || warranty.status}
@@ -138,6 +157,9 @@ const WarrantyDetails = ({
                     {t("warranties.send_update")}
                 </Button>
             </div>
+            <p className="text-xs text-[var(--ohnix-text-muted)] mb-6 min-h-[16px]">
+                {pendingStatus && pendingStatus !== warranty.status ? t("warranties.status_change_hint") : ""}
+            </p>
 
             <Divider orientation="left" className="text-base font-semibold">
                 {t("warranties.section_resolution")}
@@ -252,7 +274,9 @@ const WarrantyDetails = ({
                     if (ok) setNotifyModalOpen(false);
                 }}
                 confirmLoading={notifying}
+                okText={t("warranties.send_now")}
             >
+                <p className="text-xs text-[var(--ohnix-text-muted)] mb-3">{t("warranties.send_update_hint")}</p>
                 <Radio.Group value={notifyChannel} onChange={(e) => handlePreviewChannelChange(e.target.value)} className="mb-4">
                     <Radio.Button value="whatsapp">{t("warranties.channel_whatsapp")}</Radio.Button>
                     <Radio.Button value="email">{t("warranties.channel_email")}</Radio.Button>

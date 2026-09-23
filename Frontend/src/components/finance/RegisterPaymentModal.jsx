@@ -6,6 +6,8 @@ import { getCurrencyInputProps } from "../../utils/currency";
 
 const { Option } = Select;
 
+const round2 = (value) => Math.round((Number(value) || 0) * 100) / 100;
+
 // Shared by Orders (OrderDetailsDrawer) and Purchases (PurchaseDetails) -
 // same "parent owns the Form instance, Modal is purely presentational"
 // pattern as CreateOrderModal.jsx. `pendingBalance` drives both the helper
@@ -16,11 +18,25 @@ const { Option } = Select;
 // cambio (see Backend/services/orderPayment.service.js#registerOrderPayment);
 // for a COP document this prop is simply false and nothing here changes
 // from before that phase.
-const RegisterPaymentModal = ({ visible, onCancel, onSubmit, submitting, form, pendingBalance, cashAccounts, isForeignCurrency = false }) => {
+// `paymentMethods` (Fase 5/causación automática) is the optional list of
+// configured PaymentMethod records - selecting one previews the fee that
+// accountingPosting.service.js will automatically cause into 530520.
+// `feeDirection`: "subtract" (order - the gateway keeps its cut before
+// depositing) or "add" (purchase - the fee is an extra cost on top of what
+// the supplier receives), mirrors the cashDelta sign in
+// orderPayment.service.js/purchasePayment.service.js.
+const RegisterPaymentModal = ({ visible, onCancel, onSubmit, submitting, form, pendingBalance, cashAccounts, isForeignCurrency = false, paymentMethods = [], feeDirection = "subtract" }) => {
     const { t } = useI18n();
     const { formatCurrency, currency } = useCurrency();
     const currencyInputProps = getCurrencyInputProps(currency.code);
     const settleInFull = Form.useWatch("settle_in_full", form);
+    const amount = Form.useWatch("amount", form);
+    const paymentMethodId = Form.useWatch("payment_method_id", form);
+    const selectedMethod = paymentMethods.find((method) => method.id === paymentMethodId);
+    const estimatedFee = selectedMethod && amount > 0
+        ? Math.min(round2((Number(amount) * Number(selectedMethod.fee_percent)) / 100 + Number(selectedMethod.fee_fixed_amount)), feeDirection === "subtract" ? Number(amount) : Infinity)
+        : 0;
+    const estimatedNet = feeDirection === "subtract" ? Number(amount || 0) - estimatedFee : Number(amount || 0) + estimatedFee;
 
     return (
         <Modal
@@ -105,6 +121,28 @@ const RegisterPaymentModal = ({ visible, onCancel, onSubmit, submitting, form, p
                 <Form.Item name="method" label={t("finance.method_label")}>
                     <Input size="large" placeholder={t("finance.method_placeholder")} maxLength={40} />
                 </Form.Item>
+
+                {paymentMethods.length > 0 && (
+                    <Form.Item name="payment_method_id" label={t("finance.payment_method_configured_label")} extra={t("finance.payment_method_configured_hint")}>
+                        <Select size="large" allowClear placeholder={t("finance.payment_method_configured_placeholder")}>
+                            {paymentMethods.map((method) => (
+                                <Option key={method.id} value={method.id}>
+                                    {method.name} ({method.fee_percent}% + {formatCurrency(method.fee_fixed_amount)})
+                                </Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                )}
+
+                {selectedMethod && amount > 0 && (
+                    <Alert
+                        className="dark-alert dark-alert-teal mb-4"
+                        type="info"
+                        showIcon
+                        message={t("finance.payment_method_fee_preview_title")}
+                        description={t("finance.payment_method_fee_preview_desc", { fee: formatCurrency(estimatedFee), net: formatCurrency(estimatedNet) })}
+                    />
+                )}
 
                 <Form.Item name="reference" label={t("finance.reference_label")}>
                     <Input size="large" placeholder={t("finance.reference_placeholder")} maxLength={80} />

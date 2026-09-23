@@ -15,6 +15,7 @@ import * as accountsPayableService from "../services/accountsPayable.service.js"
 import * as accountsReceivableService from "../services/accountsReceivable.service.js";
 import * as paymentAllocationService from "../services/paymentAllocation.service.js";
 import * as paymentCreditService from "../services/paymentCredit.service.js";
+import * as paymentMethodService from "../services/paymentMethod.service.js";
 
 const scope = (req) => ({
     accountId: req.user.prismaId,
@@ -56,6 +57,10 @@ const mapPayment = (p) => ({
     // against a foreign-currency order/purchase. See
     // OrderPayment.exchangeRateDifference's schema comment.
     exchange_rate_difference: Number(p.exchangeRateDifference || 0),
+    // Fase 5 (causación automática) - non-zero only when registered against
+    // a configured PaymentMethod. See OrderPayment.feeAmount's schema comment.
+    fee_amount: Number(p.feeAmount || 0),
+    payment_method: p.paymentMethod ? { _id: p.paymentMethod.id, name: p.paymentMethod.name } : null,
     cash_account: p.cashAccount ? { _id: p.cashAccount.id, name: p.cashAccount.name } : { _id: p.cashAccountId },
     method: p.method,
     reference: p.reference,
@@ -160,7 +165,7 @@ export const listOrderPayments = asyncHandler(async (req, res) => {
 });
 
 export const registerOrderPayment = asyncHandler(async (req, res, next) => {
-    const { amount, cash_account_id, method, reference, settle_in_full } = req.body || {};
+    const { amount, cash_account_id, method, reference, settle_in_full, payment_method_id } = req.body || {};
     if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
 
     const payment = await orderPaymentService.registerOrderPayment({
@@ -172,6 +177,7 @@ export const registerOrderPayment = asyncHandler(async (req, res, next) => {
         method,
         reference,
         settleInFull: settle_in_full === true,
+        paymentMethodId: payment_method_id || null,
     });
     return res.status(201).json(new ApiResponse(201, mapPayment(payment), "Order payment registered successfully"));
 });
@@ -184,7 +190,7 @@ export const listPurchasePayments = asyncHandler(async (req, res) => {
 });
 
 export const registerPurchasePayment = asyncHandler(async (req, res, next) => {
-    const { amount, cash_account_id, method, reference, settle_in_full } = req.body || {};
+    const { amount, cash_account_id, method, reference, settle_in_full, payment_method_id } = req.body || {};
     if (!cash_account_id) return next(new ApiError(400, "cash_account_id is required.", [], "", "finance_cash_account_required"));
 
     const payment = await purchasePaymentService.registerPurchasePayment({
@@ -196,6 +202,7 @@ export const registerPurchasePayment = asyncHandler(async (req, res, next) => {
         method,
         reference,
         settleInFull: settle_in_full === true,
+        paymentMethodId: payment_method_id || null,
     });
     return res.status(201).json(new ApiResponse(201, mapPayment(payment), "Purchase payment registered successfully"));
 });
@@ -394,4 +401,26 @@ export const registerPaymentAdvance = asyncHandler(async (req, res) => {
 export const applyPaymentCredit = asyncHandler(async (req, res) => {
     const allocation = await paymentCreditService.applyCreditBalance({ accountId: req.user.prismaId, actorId: req.user.actorId, creditId: req.params.creditId, documentId: req.body?.document_id, amount: req.body?.amount, payable: req.body?.type === "payable" });
     return res.status(201).json(new ApiResponse(201, allocation, "Payment credit applied successfully."));
+});
+
+// --- Payment methods (Fase 5 - causación automática de comisiones) ---
+
+export const listPaymentMethods = asyncHandler(async (req, res) => {
+    const methods = await paymentMethodService.listPaymentMethods(req.user.prismaId, { activeOnly: req.query.active_only === "true" });
+    return res.status(200).json(new ApiResponse(200, methods, "Payment methods fetched successfully."));
+});
+
+export const createPaymentMethod = asyncHandler(async (req, res) => {
+    const method = await paymentMethodService.createPaymentMethod(req.user.prismaId, req.body || {});
+    return res.status(201).json(new ApiResponse(201, method, "Payment method created successfully."));
+});
+
+export const updatePaymentMethod = asyncHandler(async (req, res) => {
+    const method = await paymentMethodService.updatePaymentMethod(req.user.prismaId, req.params.id, req.body || {});
+    return res.status(200).json(new ApiResponse(200, method, "Payment method updated successfully."));
+});
+
+export const setPaymentMethodActive = asyncHandler(async (req, res) => {
+    const method = await paymentMethodService.setPaymentMethodActive(req.user.prismaId, req.params.id, req.body?.is_active);
+    return res.status(200).json(new ApiResponse(200, method, "Payment method status updated successfully."));
 });

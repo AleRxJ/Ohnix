@@ -2600,7 +2600,22 @@ model OrderPayment {
   appliedCreditId        String?  @map("applied_credit_id")
   // Free-text, same looseness as Supplier.type/Customer.type elsewhere in
   // this schema - "cash"/"transfer"/"card"/whatever the business uses.
+  // Deliberately untouched by Fase 5's PaymentMethod (below) - an old
+  // payment's free-text label never gets rewritten just because a
+  // same-named PaymentMethod is configured later.
   method                 String?
+  // Fase 5 (causación automática) - set only when the payment was
+  // registered against a configured PaymentMethod. Optional and
+  // independent of `method` above - a payment can have free-text `method`
+  // with no `paymentMethodId`, or (usually) both together.
+  paymentMethodId        String?  @map("payment_method_id")
+  // The commission this SPECIFIC payment actually incurred, frozen at
+  // registration from PaymentMethod.feePercent/feeFixedAmount as they stood
+  // that day (see orderPayment.service.js#registerOrderPayment) - a later
+  // rate change on the PaymentMethod never rewrites an already-registered
+  // payment's fee, same "freeze what was used" convention as
+  // exchangeRateDifference above. Always 0 when paymentMethodId is null.
+  feeAmount              Decimal  @default(0) @map("fee_amount") @db.Decimal(14, 2)
   reference              String?
   paidAt                 DateTime @default(now()) @map("paid_at")
   createdById            String   @map("created_by")
@@ -2611,11 +2626,13 @@ model OrderPayment {
   creditBalances PaymentCreditBalance[]   @relation("OrderPaymentCreditSource")
   appliedCredit  PaymentCreditBalance?    @relation("OrderPaymentAppliedCredit", fields: [appliedCreditId], references: [id])
   cashAccount    CashAccount              @relation(fields: [cashAccountId], references: [id])
+  paymentMethod  PaymentMethod?           @relation(fields: [paymentMethodId], references: [id])
   createdBy      User                     @relation(fields: [createdById], references: [id])
 
   @@index([orderId])
   @@index([cashAccountId, createdAt])
   @@index([appliedCreditId])
+  @@index([paymentMethodId])
   @@map("order_payments")
 }
 
@@ -2631,6 +2648,12 @@ model PurchasePayment {
   cashAccountId          String   @map("cash_account_id")
   appliedCreditId        String?  @map("applied_credit_id")
   method                 String?
+  // See OrderPayment.paymentMethodId/feeAmount's comments - same
+  // convention, mirrored for the accounts-payable side (a fee here is an
+  // ADDITIONAL cost on top of what was owed, not a deduction - see
+  // accountingPosting.service.js#postPurchasePaymentJournalEntry).
+  paymentMethodId        String?  @map("payment_method_id")
+  feeAmount              Decimal  @default(0) @map("fee_amount") @db.Decimal(14, 2)
   reference              String?
   paidAt                 DateTime @default(now()) @map("paid_at")
   createdById            String   @map("created_by")
@@ -2641,11 +2664,13 @@ model PurchasePayment {
   creditBalances PaymentCreditBalance[]      @relation("PurchasePaymentCreditSource")
   appliedCredit  PaymentCreditBalance?       @relation("PurchasePaymentAppliedCredit", fields: [appliedCreditId], references: [id])
   cashAccount    CashAccount                 @relation(fields: [cashAccountId], references: [id])
+  paymentMethod  PaymentMethod?              @relation(fields: [paymentMethodId], references: [id])
   createdBy      User                        @relation(fields: [createdById], references: [id])
 
   @@index([purchaseId])
   @@index([cashAccountId, createdAt])
   @@index([appliedCreditId])
+  @@index([paymentMethodId])
   @@map("purchase_payments")
 }
 
@@ -2792,6 +2817,7 @@ model ChartAccount {
   fixedAssetsAsDepreciation     FixedAsset[]                   @relation("FixedAssetDepreciationAccount")
   fixedAssetsAsExpense          FixedAsset[]                   @relation("FixedAssetExpenseAccount")
   recurringJournalTemplateLines RecurringJournalTemplateLine[]
+  paymentMethods                PaymentMethod[]
 
   @@unique([createdById, code])
   @@index([createdById])
@@ -3063,6 +3089,38 @@ model WithholdingConcept {
   @@index([accountId, isActive, effectiveFrom])
   @@index([chartAccountId])
   @@map("withholding_concepts")
+}
+
+// Fase 5 (causación automática) - a tenant-configured named payment method
+// (ej. "Datáfono Bancolombia", "ePayco") with the commission it charges, so
+// registering a payment against it automatically causes the expense instead
+// of the user computing/entering it by hand every time - see
+// orderPayment.service.js#registerOrderPayment/accountingPosting.service.js#
+// postOrderPaymentJournalEntry. Deliberately NOT tied to
+// OrderPayment/PurchasePayment.method (free text, unvalidated) - a payment
+// can use one, the other, both, or neither with zero interaction between
+// them, so nothing here ever needs to touch already-registered payments.
+model PaymentMethod {
+  id               String   @id @default(cuid())
+  accountId        String   @map("account_id")
+  name             String
+  // 0-15% - a sanity ceiling on a configured RATE, not on any one payment's
+  // actual fee (see registerOrderPayment's separate per-payment cap against
+  // the payment's own amount).
+  feePercent       Decimal  @default(0) @map("fee_percent") @db.Decimal(5, 2)
+  feeFixedAmount   Decimal  @default(0) @map("fee_fixed_amount") @db.Decimal(14, 2)
+  expenseAccountId String   @map("expense_account_id")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  expenseAccount   ChartAccount      @relation(fields: [expenseAccountId], references: [id])
+  orderPayments    OrderPayment[]
+  purchasePayments PurchasePayment[]
+
+  @@unique([accountId, name])
+  @@index([accountId, isActive])
+  @@map("payment_methods")
 }
 
 // Renta (income tax) rates are national law, not a per-company fact - unlike

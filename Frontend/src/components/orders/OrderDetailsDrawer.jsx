@@ -86,8 +86,12 @@ const OrderDetailsDrawer = ({
     const handleCreateWarranty = async (payload) => {
         setRegisteringWarranty(true);
         try {
-            await api.post("/warranties", payload);
-            toast.success(t("warranties.created_successfully"));
+            const response = await api.post("/warranties", payload);
+            if (response.data.data?.already_expired) {
+                toast(t("warranties.created_but_already_expired"), { icon: "⚠️" });
+            } else {
+                toast.success(t("warranties.created_successfully"));
+            }
             return true;
         } catch (error) {
             toast.error(resolveApiErrorMessage(error, t) || t("warranties.error_creating"));
@@ -137,6 +141,15 @@ const OrderDetailsDrawer = ({
             key: "exchange_rate_difference",
             align: "right",
             render: (v) => v ? <span className={v > 0 ? "text-[var(--ohnix-status-success)]" : "text-[var(--ohnix-status-danger)]"}>{v > 0 ? "+" : ""}{formatCurrency(v)}</span> : t("common.na"),
+        }] : []),
+        // Fase 5 (causación automática) - only non-zero when the payment used
+        // a configured PaymentMethod with a fee.
+        ...(orderPayments.some((p) => p.fee_amount) ? [{
+            title: t("finance.payment_fee_label"),
+            dataIndex: "fee_amount",
+            key: "fee_amount",
+            align: "right",
+            render: (v) => v ? <span className="text-[var(--ohnix-status-warning)]">-{formatCurrency(v)}</span> : t("common.na"),
         }] : []),
     ];
 

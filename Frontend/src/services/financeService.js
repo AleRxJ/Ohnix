@@ -154,4 +154,23 @@ export const financeService = {
         const response = await api.get("/reports/cartera", { params });
         return response.data;
     },
+
+    async listPaymentMethods({ activeOnly = false } = {}) {
+        const response = await api.get("/finance/payment-methods", {
+            params: activeOnly ? { active_only: "true" } : undefined,
+        });
+        return response.data;
+    },
+    async createPaymentMethod(payload) {
+        const response = await api.post("/finance/payment-methods", payload);
+        return response.data;
+    },
+    async updatePaymentMethod(id, payload) {
+        const response = await api.patch(`/finance/payment-methods/${id}`, payload);
+        return response.data;
+    },
+    async setPaymentMethodActive(id, isActive) {
+        const response = await api.patch(`/finance/payment-methods/${id}/active`, { is_active: isActive });
+        return response.data;
+    },
 };

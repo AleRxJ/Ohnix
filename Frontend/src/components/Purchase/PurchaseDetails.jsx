@@ -540,6 +540,16 @@ const PurchaseDetails = ({
                                 align: "right",
                                 render: (v) => v ? <span className={v > 0 ? "text-[var(--ohnix-status-success)]" : "text-[var(--ohnix-status-danger)]"}>{v > 0 ? "+" : ""}{formatCurrency(v)}</span> : t("common.na"),
                             }] : []),
+                            // Fase 5 (causación automática) - see OrderDetailsDrawer.jsx's matching
+                            // comment; on the purchase side the fee is an extra cost on top of the
+                            // payable, so it's shown as an addition rather than a deduction.
+                            ...(purchasePayments.some((p) => p.fee_amount) ? [{
+                                title: t("finance.payment_fee_label"),
+                                dataIndex: "fee_amount",
+                                key: "fee_amount",
+                                align: "right",
+                                render: (v) => v ? <span className="text-[var(--ohnix-status-warning)]">+{formatCurrency(v)}</span> : t("common.na"),
+                            }] : []),
                         ];
                         return (
                             <>

@@ -30,6 +30,7 @@ const Orders = () => {
     const [returnPreviewVisible, setReturnPreviewVisible] = useState(false);
     const [paymentModalVisible, setPaymentModalVisible] = useState(false);
     const [cashAccounts, setCashAccounts] = useState([]);
+    const [paymentMethods, setPaymentMethods] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [createForm] = Form.useForm();
@@ -107,6 +108,14 @@ const Orders = () => {
                 setCashAccounts(res?.data || []);
             } catch {
                 // RegisterPaymentModal shows the "no accounts" hint either way
+            }
+        }
+        if (paymentMethods.length === 0) {
+            try {
+                const res = await financeService.listPaymentMethods({ activeOnly: true });
+                setPaymentMethods(res?.data || []);
+            } catch {
+                // RegisterPaymentModal simply hides the payment-method select when empty
             }
         }
         paymentForm.resetFields();
@@ -258,6 +267,8 @@ const Orders = () => {
                     pendingBalance={Math.max(0, selectedOrder.total - orderPayments.reduce((sum, p) => sum + p.amount, 0))}
                     cashAccounts={cashAccounts}
                     isForeignCurrency={Boolean(selectedOrder.currency_code && selectedOrder.currency_code !== "COP")}
+                    paymentMethods={paymentMethods}
+                    feeDirection="subtract"
                 />
             )}
 
